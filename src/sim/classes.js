@@ -37,10 +37,10 @@ export const CLASSES = {
   archer: {
     name: 'Archer',
     role: 'Ranged · basic attacks',
-    blurb: 'Shoots from range and attacks fast. Every third basic attack is a guaranteed crit.',
+    blurb: 'Shoots from range and attacks fast. Every third shot is a guaranteed crit, and crit chance over 100% becomes extra crit damage.',
     stats: { hp: 0.85, ad: 1.2, as: 1.32, armor: 0.7, ms: 1.05, crit: 8, haste: 0 },
     basic: { range: 9.5, mult: 1, shot: 'arrow', speed: 32 },
-    passive: { name: 'Steady Aim', desc: 'Every third basic attack is a guaranteed crit.' },
+    passive: { name: 'Steady Aim', desc: 'Every third basic attack gets +100% crit chance: it always crits, and any crit chance over 100% becomes extra crit damage on that shot.' },
     abilities: {
       q: {
         key: 'Q', name: 'Piercing Shot', type: 'line', icon: 'line', unlock: 1, cd: 5, range: 15, width: 1.4,
@@ -48,15 +48,15 @@ export const CLASSES = {
         desc: 'Loose an arrow that pierces every enemy in a line.',
       },
       w: {
-        key: 'W', name: 'Volley', type: 'cone', icon: 'q', unlock: 2, cd: 8, range: 10, angle: 0.9, slow: 0.4, slowDur: 2.5,
-        dmg: (s, lvl) => 1.0 * s.ad + 10 + 4 * lvl,
-        desc: 'Fire a spread of arrows that slows enemies by 40%.',
+        key: 'W', name: 'Barrage', type: 'barrage', icon: 'barrage', unlock: 2, cd: 8, range: 11, count: 5, gap: 0.09,
+        dmg: (s, lvl) => 0.55 * s.ad + 2 + 1 * lvl, // per arrow
+        desc: 'Loose 5 arrows at one target in quick succession. Each arrow counts as a basic attack: it advances Steady Aim, can be its guaranteed crit, and steals life.',
       },
       e: {
-        key: 'E', name: 'Tumble', type: 'dash', icon: 'e', unlock: 3, cd: 8, range: 5.5, minRange: 3, duration: 0.18, width: 0,
-        empower: { mult: 1.8, time: 3 },
+        key: 'E', name: 'Tumble', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.18, width: 0,
+        rush: { as: 0.5, time: 4 },
         dmg: () => 0,
-        desc: 'Roll toward your cursor. Your next basic attack deals 80% more. Nothing can hit you mid-roll.',
+        desc: 'Roll toward your cursor, then attack 50% faster for 4 seconds. Nothing can hit you mid-roll.',
       },
       r: {
         key: 'R', name: 'Arrow Storm', type: 'zone', icon: 'zone', unlock: 6, cd: 40, range: 12, radius: 5, duration: 3, tick: 0.5, slow: 0.3, slowDur: 1,

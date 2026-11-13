@@ -293,6 +293,9 @@ export class World {
       empowerT: 0, // > 0 while the next basic attack is empowered
       empowerMult: 1,
       slipT: 0,
+      rushT: 0, // > 0 while Tumble's attack speed bonus lasts
+      rushAs: 0,
+      barrage: null, // Barrage arrows still to come
       undyingUsed: false,
     };
     if (save) {
@@ -336,7 +339,7 @@ export class World {
       // `ad` is the hero's power for every damage formula. Spell Power (staves) feeds it for the Mage.
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
-      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip ? 0.3 : 0)) * m.asMult, // attacks per second
+      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0)) * m.asMult, // attacks per second
       ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
@@ -585,27 +588,37 @@ export class World {
     }
   }
 
-  /** The basic attack lands (melee) or leaves the bow or staff (ranged). */
-  basicAttack(target) {
+  /** How far basic attacks reach (talents and augments can stretch it). */
+  basicRange() {
+    return this.basic.range * (1 + (this.mods.rangePct || 0));
+  }
+
+  /**
+   * The basic attack lands (melee) or leaves the bow or staff (ranged).
+   * `dmgOverride` is used by Barrage, whose arrows count as basic attacks.
+   */
+  basicAttack(target, dmgOverride = null) {
     const p = this.player;
     const b = this.basic;
     p.swingCount++;
-    let dmg = p.stats.ad * b.mult;
+    let dmg = dmgOverride ?? p.stats.ad * b.mult;
     if (p.empowerT > 0) {
-      dmg *= p.empowerMult; // Tumble / Shadowstep empower the next basic attack
+      dmg *= p.empowerMult; // Shadowstep empowers the next basic attack
       p.empowerT = 0;
     }
-    const forceCrit = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0; // Steady Aim
+    // Steady Aim: every third shot gets +100% crit chance; anything over 100% becomes crit damage.
+    const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
+    const forceCrit = false;
     if (b.shot) {
       const a = Math.atan2(target.z - p.z, target.x - p.x);
       this.projectiles.push({
-        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit,
+        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit, critBonus,
         x: p.x + Math.cos(a) * 0.7, z: p.z + Math.sin(a) * 0.7, px: p.x, pz: p.z,
         vx: Math.cos(a) * b.speed, vz: Math.sin(a) * b.speed, speed: b.speed,
         radius: 0.3, dmg, parryable: false, reflected: false, life: 1.2, dead: false,
       });
     } else {
-      this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit });
+      this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
     }
     if (this.mods.stormcaller && p.swingCount % 4 === 0) this.lightning(target);
   }
@@ -629,7 +642,7 @@ export class World {
 
     // Single-target abilities need someone to hit before they go on cooldown.
     let target = null;
-    if (def.type === 'strike') {
+    if (def.type === 'strike' || def.type === 'barrage') {
       target = this.enemyNear(x, z, 3.5, range) || this.enemyNear(p.x, p.z, range + 2, range);
       if (!target) {
         this.emit('noTarget', { slot, x: p.x, z: p.z });
@@ -703,7 +716,7 @@ export class World {
         }
         const len = clamp(d, def.minRange || 0, range);
         const end = this.clampToArena(p.x + cos * len, p.z + sin * len, p.radius);
-        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null };
+        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null };
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
         break;
@@ -755,6 +768,14 @@ export class World {
           });
         }
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        break;
+      }
+      case 'barrage': {
+        // Arrows leave one after another (see stepPlayer); each is a basic attack.
+        p.facing = Math.atan2(target.z - p.z, target.x - p.x);
+        p.barrage = { id: target.id, left: def.count + (m.wExtra || 0), t: 0, gap: def.gap, dmg: this.abilityDamage(slot), range: range + 2 };
+        p.targetId = target.id;
+        this.emit('cast', { slot, fx: 'barrage', x: target.x, z: target.z });
         break;
       }
       case 'strike': {
@@ -920,6 +941,32 @@ export class World {
         this.recalcStats();
       }
     }
+    if (p.rushT > 0) {
+      p.rushT -= dt;
+      if (p.rushT <= 0) {
+        p.rushT = 0;
+        this.recalcStats();
+      }
+    }
+    if (p.barrage) {
+      // Barrage: the next arrow when its moment comes, at the same target if it still stands, else the nearest.
+      const bg = p.barrage;
+      bg.t -= dt;
+      if (bg.t <= 0) {
+        let t = this.enemyById(bg.id);
+        if (!t || t.dead || dist(t.x, t.z, p.x, p.z) > bg.range) t = this.enemyNear(p.x, p.z, bg.range, bg.range);
+        if (!t) p.barrage = null;
+        else {
+          bg.id = t.id;
+          p.facing = Math.atan2(t.z - p.z, t.x - p.x);
+          this.basicAttack(t, bg.dmg);
+          this.emit('swing', { dur: 0.08 });
+          bg.left--;
+          bg.t = bg.gap;
+          if (bg.left <= 0) p.barrage = null;
+        }
+      }
+    }
 
     // Parry window
     if (p.parryT > 0) {
@@ -953,6 +1000,12 @@ export class World {
       }
       if (k >= 1) {
         p.dash = null;
+        if (ds.rush) {
+          p.rushT = ds.rush.time + (this.mods.eRushTime || 0);
+          p.rushAs = ds.rush.as + (this.mods.eRush || 0);
+          this.recalcStats();
+          this.emit('rush', { time: p.rushT });
+        }
         if (ds.empower) {
           p.empowerT = ds.empower.time;
           p.empowerMult = ds.empower.mult + (this.mods[ds.slot + 'Empower'] || 0);
@@ -1000,7 +1053,7 @@ export class World {
     if (p.targetId != null && !target) p.targetId = null;
     if (!target && !p.moveTarget && p.autoAcquire && p.parryT <= 0) {
       let best = null;
-      let bestD = Math.max(CONFIG.ACQUIRE_RANGE, this.basic.range);
+      let bestD = Math.max(CONFIG.ACQUIRE_RANGE, this.basicRange());
       for (const e of this.enemies) {
         if (e.dead || e.state === 'spawn') continue;
         const d = dist(e.x, e.z, p.x, p.z) - e.radius;
@@ -1021,7 +1074,7 @@ export class World {
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
       const a = Math.atan2(target.z - p.z, target.x - p.x);
-      if (d > this.basic.range) {
+      if (d > this.basicRange()) {
         p.atkWind = 0;
         this.movePlayer(Math.cos(a), Math.sin(a), speed * dt);
         p.facing = turnToward(p.facing, a, 14 * dt);
@@ -1080,8 +1133,8 @@ export class World {
   }
 
   /** Crit damage multiplier, including crit chance over 100% turned into crit damage. */
-  critMultiplier() {
-    return CONFIG.CRIT_MULT + this.mods.critMult + Math.max(0, this.player.stats.crit - 100) * CONFIG.CRIT_OVERFLOW;
+  critMultiplier(bonus = 0) {
+    return CONFIG.CRIT_MULT + this.mods.critMult + Math.max(0, this.player.stats.crit + bonus - 100) * CONFIG.CRIT_OVERFLOW;
   }
 
   hitPlayer(rawDamage, { parryable = true, src = null, proj = null } = {}) {
@@ -1918,8 +1971,9 @@ export class World {
     const p = this.player;
     let dmg = base;
     let crit = false;
-    if (opts.canCrit !== false && (opts.forceCrit || this.rng() < p.stats.crit / 100)) {
-      dmg *= this.critMultiplier();
+    const chance = p.stats.crit + (opts.critBonus || 0);
+    if (opts.canCrit !== false && (opts.forceCrit || this.rng() < chance / 100)) {
+      dmg *= this.critMultiplier(opts.critBonus || 0);
       crit = true;
     }
     dmg *= this.gapScale(e.level).dealt;
@@ -2260,7 +2314,7 @@ export class World {
                 e.bleedT = 3;
                 e.bleedDps = (p.stats.ad * pr.bleed) / 3;
               }
-              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit });
+              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
               if (pr.splash) {
                 for (const o of this.enemies) {
                   if (o === e || o.dead || o.state === 'spawn') continue;

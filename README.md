@@ -212,8 +212,8 @@ At level 15 press **T** and choose one of two subclasses for your class:
 | --- | --- | --- |
 | Warrior | **Berserker** | Fast swings, lifesteal, more damage below half health, a Cleave that resets on kills |
 | Warrior | **Bulwark** | Longer parry window, riposte, armor, heals on perfect parries |
-| Archer | **Sharpshooter** | Crit chance and crit damage, a harder Piercing Shot that marks targets |
-| Archer | **Windrunner** | Move and attack speed, shorter Tumble, longer Arrow Storm |
+| Archer | **Sharpshooter** | Longer attack range, crit chance and crit damage, a harder Piercing Shot that marks targets |
+| Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Tumble flurry, longer Arrow Storm |
 | Rogue | **Assassin** | Crits, brutal Backstabs, a Death Mark that resets on a kill |
 | Rogue | **Shadowdancer** | Speed, lifesteal, bleeds, a Shadowstep that is nearly always ready |
 | Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
@@ -266,7 +266,7 @@ load). Gold and arena tickets are shared by every class. Everyone can parry.
 | Class | Plays like | Q | W | E | R |
 | --- | --- | --- | --- | --- | --- |
 | Warrior | Melee, the toughest | Cleave | Whirlwind | Lunge | Skyfall |
-| Archer | Ranged basic attacks; every third one crits | Piercing Shot | Volley | Tumble | Arrow Storm |
+| Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Tumble (then +50% attack speed for 4 s) | Arrow Storm |
 | Rogue | Fast melee burst; Backstab hits 60% harder from behind or on a stunned enemy | Backstab | Fan of Knives | Shadowstep | Death Mark |
 | Mage | Weak basics, strong ranged spells, +20 ability haste | Fire Bolt | Frost Nova | Blink | Meteor |
 

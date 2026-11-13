@@ -398,9 +398,35 @@ import { makeRng } from '../src/sim/rng.js';
     const ticks = w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy').length;
     check('archer: Arrow Storm ticks over time', ticks >= 5, ticks + ' ticks');
     check('archer: Arrow Storm ends', w.zones.length === 0 && w.telegraphs.length === 0);
+    {
+      // Barrage: five arrows, each a basic attack (so one of them is Steady Aim's crit).
+      const b = duel('archer', 8);
+      b.e.maxHp = b.e.hp = 1e9;
+      b.p.swingCount = 0;
+      b.w.command({ type: 'cast', slot: 'w', x: b.e.x, z: b.e.z }); run(b.w, 1.2);
+      const hits = b.w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.basic);
+      check('archer: Barrage looses five arrows that count as basic attacks', b.p.swingCount >= 5 && hits.length >= 5 && hits.some((h) => h.crit), `${hits.length} arrow hits, ${hits.filter((h) => h.crit).length} crits`);
+      const c = duel('archer', 8);
+      c.e.x = 40; c.e.z = 0;
+      c.w.command({ type: 'cast', slot: 'w', x: 40, z: 0 }); run(c.w, 0.1);
+      check('archer: Barrage needs a target in range', c.p.cd.w === 0);
+    }
+    {
+      // Steady Aim: +100% crit chance on the third shot; anything over 100% becomes crit damage.
+      const s = duel('archer', 8);
+      const base = s.w.critMultiplier();
+      s.p.stats.crit = 30;
+      check('archer: Steady Aim turns spare crit chance into crit damage', Math.abs(s.w.critMultiplier(100) - (base + 0.3)) < 1e-9 && s.w.critMultiplier(0) === base);
+      const r0 = s.w.basicRange();
+      s.w.mods.rangePct = 0.25;
+      check('archer: range bonuses stretch basic attack range', Math.abs(s.w.basicRange() - r0 * 1.25) < 1e-9, `${r0} -> ${s.w.basicRange()}`);
+    }
     const x0 = p.x; w.events.length = 0;
+    const as0 = p.stats.as;
     w.command({ type: 'cast', slot: 'e', x: -10, z: 0 }); run(w, 0.4);
-    check('archer: Tumble moves and empowers the next shot', p.x < x0 - 2 && p.empowerT > 0);
+    check('archer: Tumble moves, then attacks 50% faster for a while', p.x < x0 - 2 && p.rushT > 3 && Math.abs(p.stats.as / as0 - (1 + 0.015 * (p.level - 1) + 0.5) / (1 + 0.015 * (p.level - 1))) < 0.05, `${as0.toFixed(2)} -> ${p.stats.as.toFixed(2)} attacks per second`);
+    run(w, 4.5);
+    check('archer: ...and the bonus wears off', p.rushT === 0 && Math.abs(p.stats.as - as0) < 1e-9);
   }
   // Rogue: Backstab is far stronger on an exposed enemy; Death Mark closes the gap.
   {

@@ -737,7 +737,9 @@ function start(hot = {}) {
       btn.dataset.armed = '1';
       btn.dataset.label = btn.textContent;
       btn.textContent = armedText;
-      setTimeout(() => {
+      // One timer per button, so an old one cannot cancel a fresh confirmation early.
+      clearTimeout(btn._disarm);
+      btn._disarm = setTimeout(() => {
         if (btn.dataset.armed === '1') {
           btn.dataset.armed = '';
           btn.textContent = btn.dataset.label;

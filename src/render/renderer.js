@@ -664,6 +664,9 @@ export class Renderer {
           this.heroAnim.swingDur = 0.2;
           this.flash(this.sectorGeo(ev.angle, 0.3), { x: ev.x, z: ev.z, y: 0.9, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xbfeaff, from: ev.range * 0.7, to: ev.range, dur: 0.28, opacity: 0.85 });
           this.shake = Math.max(this.shake, 0.12);
+        } else if (fx === 'barrage') {
+          this.heroAnim.swing = 0;
+          this.heroAnim.swingDur = 0.12;
         } else if (fx === 'nova') {
           this.heroAnim.spin = 1;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xbfeaff, from: ev.pull ? ev.radius : 1, to: ev.pull ? 1 : ev.radius, dur: 0.32, opacity: 0.9 });

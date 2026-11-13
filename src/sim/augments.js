@@ -15,7 +15,7 @@ export function defaultMods() {
     qRange: 1, qRadius: 1, wRange: 1, eRadius: 1, rRange: 1, // every slot has Range / Radius / Dmg / Cd
     qAngle: 1, wAngle: 1, qDmg: 1, qCd: 1,
     // Switches used by the Archer, Rogue and Mage augments. Named <slot><What>, read in world.js.
-    eEmpower: 0, rDuration: 0, critEvery: 3, qBleed: 0, qBehind: 0, rStun: 0, wStun: 0,
+    eEmpower: 0, eRush: 0, eRushTime: 0, wExtra: 0, rangePct: 0, rDuration: 0, critEvery: 3, qBleed: 0, qBehind: 0, rStun: 0, wStun: 0,
     wResetOnKill: false, rResetOnKill: false, qSplashFull: false, qBolts: 1, eBlast: 0, rDelay: 1, qResetOnKill: false, qSunder: 0, qEcho: 0,
     // Whirlwind (W)
     wRadius: 1, wDmg: 1, wCd: 1, wPull: false, wBleed: 0, wSlow: 0,
@@ -73,11 +73,12 @@ const CLASS_AUGMENTS = {
   // --- Archer ----------------------------------------------------------------
   archer_q_reset: { name: 'Clean Kill', slot: 'q', cls: 'archer', tier: 1, desc: 'Piercing Shot kills reset its cooldown.', apply: (m) => { m.qResetOnKill = true; } },
   archer_q_mark: { name: 'Marked Prey', slot: 'q', cls: 'archer', tier: 1, desc: 'Enemies hit by Piercing Shot take 20% more damage for 4 seconds.', apply: (m) => { m.qSunder = 0.2; } },
-  archer_w_wide: { name: 'Wide Volley', slot: 'w', cls: 'archer', tier: 1, desc: 'Volley covers a 60% wider cone and reaches 20% further.', apply: (m) => { m.wAngle *= 1.6; m.wRange *= 1.2; } },
-  archer_w_pin: { name: 'Pinning Volley', slot: 'w', cls: 'archer', tier: 1, desc: 'Volley slows enemies by 80% instead of 40%.', apply: (m) => { m.wSlow = 0.8; } },
-  archer_e_shot: { name: 'Deadly Roll', slot: 'e', cls: 'archer', tier: 1, desc: 'The shot after Tumble deals 180% more damage instead of 80%.', apply: (m) => { m.eEmpower += 1; } },
+  archer_w_more: { name: 'Endless Barrage', slot: 'w', cls: 'archer', tier: 1, desc: 'Barrage looses 3 more arrows.', apply: (m) => { m.wExtra += 3; } },
+  archer_w_fast: { name: 'Quick Draw', slot: 'w', cls: 'archer', tier: 1, desc: 'Barrage comes back 35% sooner.', apply: (m) => { m.wCd *= 0.65; } },
+  archer_e_rush: { name: 'Second Wind', slot: 'e', cls: 'archer', tier: 1, desc: 'Tumble makes you attack 100% faster instead of 50%, for 2 seconds longer.', apply: (m) => { m.eRush += 0.5; m.eRushTime += 2; } },
+  archer_range: { name: 'Eagle Eye', slot: 'hero', cls: 'archer', tier: 1, desc: 'Your basic attacks reach 25% further.', apply: (m) => { m.rangePct += 0.25; } },
   archer_r_rain: { name: 'Endless Rain', slot: 'r', cls: 'archer', tier: 2, desc: 'Arrow Storm lasts 2 seconds longer and covers a 25% wider area.', apply: (m) => { m.rDuration += 2; m.rRadius *= 1.25; } },
-  archer_rapid: { name: 'Rapid Aim', slot: 'hero', cls: 'archer', tier: 2, desc: 'Every second basic attack is a guaranteed crit, instead of every third.', apply: (m) => { m.critEvery = 2; } },
+  archer_rapid: { name: 'Rapid Aim', slot: 'hero', cls: 'archer', tier: 2, desc: 'Steady Aim works on every second basic attack, instead of every third.', apply: (m) => { m.critEvery = 2; } },
   // --- Rogue -----------------------------------------------------------------
   rogue_q_reset: { name: 'Assassinate', slot: 'q', cls: 'rogue', tier: 1, desc: 'Backstab kills reset its cooldown.', apply: (m) => { m.qResetOnKill = true; } },
   rogue_q_bleed: { name: 'Serrated Blade', slot: 'q', cls: 'rogue', tier: 1, desc: 'Backstab makes its target bleed for 100% attack damage over 3 seconds.', apply: (m) => { m.qBleed = 1; } },

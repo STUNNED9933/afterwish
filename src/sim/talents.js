@@ -50,25 +50,25 @@ export const SPECS = {
   // ------------------------------------------------------------------- Archer
   sharpshooter: {
     cls: 'archer', name: 'Sharpshooter',
-    blurb: 'One arrow, one problem solved. Crits that hit harder and a Piercing Shot that marks what it touches.',
+    blurb: 'One arrow, one problem solved, from further away than anyone else. Longer range, crits that hit harder, and a Piercing Shot that marks what it touches.',
     talents: [
       { id: 'ss_eye', row: 'minor', name: 'Keen Eye', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
-      { id: 'ss_draw', row: 'minor', name: 'Heavy Draw', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
+      { id: 'ss_draw', row: 'minor', name: 'Longbow', max: 5, desc: (r) => `Your basic attacks reach ${5 * r}% further.`, apply: (m, r) => { m.rangePct += 0.05 * r; } },
       { id: 'ss_deadly', row: 'minor', name: 'Deadly Aim', max: 5, desc: (r) => `Crits deal a further ${4 * r}% damage.`, apply: (m, r) => { m.critMult += 0.04 * r; } },
       { id: 'ss_pierce', row: 'major', name: 'Bodkin Point', max: 3, desc: (r) => `Piercing Shot deals ${10 * r}% more damage and reaches ${5 * r}% further.`, apply: (m, r) => { m.qDmg *= 1 + 0.1 * r; m.qRange *= 1 + 0.05 * r; } },
       { id: 'ss_mark', row: 'major', name: 'Marked Prey', max: 3, desc: (r) => `Enemies hit by Piercing Shot take ${6 * r}% more damage for 4 seconds.`, apply: (m, r) => { m.qSunder = Math.max(m.qSunder, 0.06 * r); } },
-      { id: 'ss_cap', row: 'capstone', name: 'Rapid Aim', max: 1, desc: () => 'Every second basic attack is a guaranteed crit, instead of every third.', apply: (m) => { m.critEvery = Math.min(m.critEvery, 2); } },
+      { id: 'ss_cap', row: 'capstone', name: 'Rapid Aim', max: 1, desc: () => 'Steady Aim works on every second basic attack, instead of every third, and your basic attacks reach 10% further.', apply: (m) => { m.critEvery = Math.min(m.critEvery, 2); m.rangePct += 0.1; } },
     ],
   },
   windrunner: {
     cls: 'archer', name: 'Windrunner',
-    blurb: 'Never where the blow lands. Quicker feet, a shorter Tumble, and a longer storm of arrows.',
+    blurb: 'Never where the blow lands. Quicker feet, a Tumble that turns into a flurry, a bigger Barrage and a longer storm of arrows.',
     talents: [
       { id: 'wr_fleet', row: 'minor', name: 'Fleet', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'wr_hands', row: 'minor', name: 'Quick Hands', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
       { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Tumble cooldown is ${4 * r}% shorter.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; } },
-      { id: 'wr_volley', row: 'major', name: 'Wide Volley', max: 3, desc: (r) => `Volley deals ${10 * r}% more damage in a ${12 * r}% wider cone.`, apply: (m, r) => { m.wDmg *= 1 + 0.1 * r; m.wAngle *= 1 + 0.12 * r; } },
-      { id: 'wr_shot', row: 'major', name: 'Deadly Roll', max: 3, desc: (r) => `The shot after Tumble deals a further ${30 * r}% damage.`, apply: (m, r) => { m.eEmpower += 0.3 * r; } },
+      { id: 'wr_volley', row: 'major', name: 'Rolling Barrage', max: 3, desc: (r) => `Barrage looses ${r} more arrow${r > 1 ? 's' : ''}, and each deals ${5 * r}% more.`, apply: (m, r) => { m.wExtra += r; m.wDmg *= 1 + 0.05 * r; } },
+      { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Tumble's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
       { id: 'wr_cap', row: 'capstone', name: 'Gale', max: 1, desc: () => 'Arrow Storm lasts 1.5 seconds longer and its cooldown is 25% shorter.', apply: (m) => { m.rDuration += 1.5; m.rCd *= 0.75; } },
     ],
   },

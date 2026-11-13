@@ -36,6 +36,7 @@ export const ICONS = {
   chest: '<path d="M7 4l5 2 5-2 3 4-3 2v10H7V10L4 8z"/>',
   boots: '<path d="M8 4h5v9l6 3v4H8z"/><path d="M8 16h11"/>',
   ring: '<circle cx="12" cy="14.5" r="5.5"/><path d="M9.5 6l2.5-3 2.5 3-2.5 3z"/>',
+  barrage: '<path d="M3 15l9-9M6 19l9-9M10 22l9-9"/><path d="M8 6h4v4M11 10h4v4M15 13h4v4"/>',
   // class ability icons
   line: '<path d="M3 12h17"/><path d="M16 8l4 4-4 4"/><path d="M6 9l-3 3 3 3"/>',
   zone: '<circle cx="12" cy="16" r="5.5"/><path d="M8 3v6M12 2v8M16 3v6"/>',

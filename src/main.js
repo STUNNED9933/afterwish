@@ -781,6 +781,39 @@ function start(hot = {}) {
     actions,
   });
 
+  // The browser's own right-click menu never opens over the game, dialogs included.
+  // Text boxes keep it so a room code or save code can still be pasted with the mouse.
+  window.addEventListener('contextmenu', (e) => {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+  });
+  // Right-click outside an open window closes it. The margin around the window means a
+  // right-click that only just misses it does not throw the player out by accident.
+  const CLOSE_MARGIN = 56;
+  const CLOSABLE = {
+    talk: '#talk .menu-card',
+    read: '#read .menu-card',
+    journal: '#journal .menu-card',
+    talents: '#talents .menu-card',
+    travel: '#travel .menu-card',
+    gear: '#inventory',
+  };
+  window.addEventListener('mousedown', (e) => {
+    if (e.button !== 2) return;
+    const card = CLOSABLE[mode] && document.querySelector(CLOSABLE[mode]);
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    const m = CLOSE_MARGIN;
+    if (e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m) return;
+    e.preventDefault();
+    if (mode === 'gear') actions.toggleInventory();
+    else {
+      setMode('play');
+      sfx.ui();
+    }
+  });
+
   // --------------------------------------------------------------- buttons
   const armThenRun = (btn, armedText, run) => {
     if (btn.dataset.armed === '1') {

@@ -172,6 +172,9 @@ every map) and from what four people in Haven say when they give you work.
 No spoilers here; the whole thing is written out at the top of
 `src/sim/story.js` if you want to read or change it.
 
+- **Close windows with a right-click** anywhere outside them (a near-miss just
+  beside the window does nothing). The browser's own right-click menu never
+  opens over the game.
 - **Talk and read with a right-click** on a person or a sign: your hero walks
   over and opens it (or press G when you are next to one). Over people's heads,
   a gold `!` means a quest to take, a grey `?` a quest you are still on, and a

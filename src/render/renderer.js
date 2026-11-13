@@ -706,7 +706,7 @@ export class Renderer {
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.exposed ? 0xffe27a : 0xdff4ff, from: 2.2, to: 0.4, dur: 0.22, opacity: 1 });
           this.burst(ev.x, 1.2, ev.z, { count: ev.exposed ? 22 : 10, color: ev.exposed ? 0xffe27a : 0xdff4ff, speed: 8, up: 4, life: 0.4 });
           if (ev.exposed) this.shake = Math.max(this.shake, 0.3);
-        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor') {
+        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.22;
         }
@@ -716,6 +716,23 @@ export class Renderer {
       case 'burst':
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff9a3a, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
         this.burst(ev.x, 1, ev.z, { count: 18, color: 0xffb060, speed: 8, up: 5, life: 0.45 });
+        break;
+      case 'orbTick':
+        for (let n = 0; n < 5; n++) {
+          const a = Math.random() * 6.283;
+          const r = Math.sqrt(Math.random()) * ev.radius;
+          this.burst(ev.x + Math.cos(a) * r, 0.4, ev.z + Math.sin(a) * r, { count: 2, color: 0xbfeaff, speed: 3, up: 3, life: 0.35 });
+        }
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0x9fe8ff, from: ev.radius * 0.8, to: ev.radius, dur: 0.25, opacity: 0.35 });
+        break;
+      case 'shatter':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xffffff, from: 0.6, to: ev.radius * 1.1, dur: 0.35, opacity: 1 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fd8ff, from: ev.radius, to: ev.radius, dur: 0.45, opacity: 0.35 });
+        this.burst(ev.x, 1, ev.z, { count: 40, color: 0xc8f0ff, speed: 11, up: 6, size: 1.4, life: 0.6 });
+        this.shake = Math.max(this.shake, 0.35);
+        break;
+      case 'bloodied':
+        if (ev.on) this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xff3344, speed: 6, up: 5, life: 0.5 });
         break;
       case 'zoneTick':
         for (let n = 0; n < 7; n++) {
@@ -1019,15 +1036,21 @@ export class Renderer {
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a }[pr.kind]; // the hero's own shots
+      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff }[pr.kind]; // the hero's own shots
+      m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
-      m.scale.setScalar(pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      if (pr.kind === 'orb') {
+        m.rotation.y += 0.12;
+        m.rotation.x += 0.07;
+        if (Math.random() < 0.8) this.burst(m.position.x, 1.2, m.position.z, { count: 2, color: 0xe8fbff, speed: 2.5, up: 1, gravity: 0, life: 0.5, size: 1.1 });
+      }
       if (Math.random() < 0.6) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: own || (pr.reflected ? 0x9fe8ff : 0xb44aff), speed: 0.6, up: 0.4, gravity: 0, life: 0.35, size: 0.9 });
     }
     for (const [id, m] of this.projViews) {
       if (!seen.has(id)) {
-        this.burst(m.position.x, 1.2, m.position.z, { count: 8, color: 0xd78bff, speed: 4, up: 2 });
+        this.burst(m.position.x, 1.2, m.position.z, { count: 8, color: m.userData.color || 0xd78bff, speed: 4, up: 2 });
         this.scene.remove(m);
         m.geometry.dispose();
         m.material.dispose();

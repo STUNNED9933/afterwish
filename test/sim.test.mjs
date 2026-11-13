@@ -295,7 +295,7 @@ import { makeRng } from '../src/sim/rng.js';
   const target = w2.enemies.slice().sort((a, b) => Math.hypot(a.x - p2.x, a.z - p2.z) - Math.hypot(b.x - p2.x, b.z - p2.z))[0];
   w2.command({ type: 'move', x: target.home.x - 4, z: target.home.z });
   let woke = false;
-  for (let i = 0; i < 60 * 12; i++) { w2.step(CONFIG.TICK); if (w2.enemies.some((e) => e.aggro)) woke = true; }
+  for (let i = 0; i < 60 * 12; i++) { p2.hp = p2.stats.maxHp; w2.step(CONFIG.TICK); if (w2.enemies.some((e) => e.aggro)) woke = true; } // kept standing: this checks waking, not fighting
   check('explore: enemies wake when you come close', woke);
   const n = w2.enemies.length; const gold = p2.gold;
   w2.hitEnemy(w2.enemies.find((e) => e.aggro) || w2.enemies[0], 999999); run(w2, 0.1);
@@ -522,8 +522,8 @@ import { makeRng } from '../src/sim/rng.js';
   {
     const a = withAug('mage', 'mage_q_twin'); a.w.command({ type: 'cast', slot: 'q', x: 6, z: 0 }); run(a.w, 0.05);
     check('mage Twin Bolt: two bolts', a.w.projectiles.filter((pr) => pr.kind === 'bolt').length === 2);
-    const b = withAug('mage', 'mage_w_freeze', 3); b.e.state = 'chase'; b.w.command({ type: 'cast', slot: 'w', x: 3, z: 0 }); run(b.w, 0.05);
-    check('mage Deep Freeze: Frost Nova stuns', b.e.state === 'stunned');
+    const b = withAug('mage', 'mage_w_freeze', 3); b.e.state = 'chase'; b.w.command({ type: 'cast', slot: 'w', x: 3, z: 0 }); run(b.w, 0.5);
+    check("mage Deep Freeze: Frozen Orb's shatter stuns", b.e.state === 'stunned');
     const c = withAug('mage', 'mage_r_twin'); c.w.command({ type: 'cast', slot: 'r', x: 6, z: 0 }); run(c.w, 2.3);
     const spell = hits(c.w).filter((h) => !h.basic);
     check('mage Second Impact: Meteor hits twice', spell.length === 2 && c.w.telegraphs.length === 0, spell.length + ' hits');
@@ -787,7 +787,8 @@ import { makeRng } from '../src/sim/rng.js';
   check('gap: hitting a level 40 enemy at level 30 does half damage', Math.round(hp0 - e.hp) === 500, String(hp0 - e.hp));
   p.hp = p.stats.maxHp; const before = p.hp; w.hitPlayer(100, { parryable: false, src: e });
   const plain = Math.round(100 * CONFIG.ENEMY_DMG * (100 / (100 + p.stats.armor)));
-  check('gap: and it hits 70% harder', Math.abs(before - p.hp - Math.round(plain * 1.7)) <= 1, `${before - p.hp} vs ${plain}`);
+  check('gap: and it hits about twice as hard (2.05x at +10)', Math.abs(before - p.hp - Math.round(plain * 2.05)) <= 1, `${before - p.hp} vs ${plain}`);
+  check('gap: +20 levels is close to 4x, and it tops out at 5x', Math.abs(g(50).taken - 3.8) < 0.01 && g(57).taken === 5, JSON.stringify([g(50), g(57)]));
   const base = w.critMultiplier();
   p.stats.crit = 140;
   check('crit: chance over 100% becomes crit damage', p.stats.crit === 140 && Math.abs(w.critMultiplier() - base - 0.4) < 1e-9, `${base} -> ${w.critMultiplier()}`);
@@ -858,6 +859,125 @@ import { makeRng } from '../src/sim/rng.js';
     if (!w2.heroes.every((h) => Number.isFinite(h.player.x) && Number.isFinite(h.player.hp)) || w2.cur !== w2.heroes[0]) ok = false;
   }
   check('party: half a minute of three heroes fighting stays sound', ok && w2.player === w2.heroes[0].player);
+}
+// --- 0.17: lifesteal rules, Frozen Orb, Battle Rhythm, Berserker, Bulwark ----------
+{
+  const { geared } = await import('./balance.mjs');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (cls, spec = null, talents = {}) => {
+    const w = new World({ seed: 11, cls, save: Object.assign(geared(cls, 30, 2), { spec, talents }) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0, type = 'grunt') => { const e = w.spawnEnemy(type, { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; return e; };
+
+  // Lifesteal: capped, full from basic attacks, a third from abilities, none from damage over time.
+  {
+    const { w, p } = setup('warrior');
+    const e = dummy(w, 3);
+    p.stats.lifesteal = 60;
+    const heal = (opts) => { p.hp = 1; w.hitEnemy(e, 1000, Object.assign({ canCrit: false }, opts)); return Math.round(p.hp - 1); };
+    check('lifesteal: capped at 25%', heal({ basic: true }) === 250, String(heal({ basic: true })));
+    check('lifesteal: abilities heal a third as much', Math.abs(heal({}) - 250 * CONFIG.ABILITY_LIFESTEAL) <= 1, String(heal({})));
+    check('lifesteal: damage over time does not heal', heal({ dot: true }) === 0);
+  }
+  // Frozen Orb
+  {
+    const { w, p } = setup('mage');
+    const mid = dummy(w, 4, 0.5), end = dummy(w, 8.4), off = dummy(w, 4, 6);
+    w.command({ type: 'cast', slot: 'w', x: 8, z: 0 }); w.runCommands();
+    const orb = w.projectiles.find((pr) => pr.kind === 'orb');
+    check('Frozen Orb: casting sends out a slow orb', !!orb && orb.speed < 10);
+    run(w, 0.55);
+    check('Frozen Orb: shards cut and chill what it passes', mid.hp < 1e9 && mid.slowT > 0 && off.hp === 1e9 && end.hp === 1e9);
+    run(w, 0.6);
+    const shattered = w.events.some((ev) => ev.type === 'shatter' && Math.abs(ev.x - 8) < 0.6);
+    check('Frozen Orb: it shatters at the cursor, hitting what is there', shattered && !w.projectiles.some((pr) => pr.kind === 'orb') && end.hp < 1e9 && end.slowT > 2);
+    const big = 1e9 - end.hp, small = (1e9 - mid.hp);
+    check('Frozen Orb: the shatter is the big hit', big > w.abilityDamage('w') * 0.5, `${Math.round(big)} vs shards ${Math.round(small)}`);
+    p.cd.w = 0; w.events.length = 0;
+    w.command({ type: 'cast', slot: 'w', x: 12, z: 0 }); w.runCommands(); run(w, 0.2);
+    w.command({ type: 'cast', slot: 'w', x: 12, z: 0 }); w.runCommands();
+    const early = w.events.find((ev) => ev.type === 'shatter');
+    check('Frozen Orb: casting again shatters it early, where it is', !!early && early.x < 4 && p.cd.w > 2, early ? early.x.toFixed(1) : 'no shatter');
+  }
+  // Warrior passive: Battle Rhythm
+  {
+    const { w, p } = setup('warrior');
+    for (let i = 0; i < 6; i++) dummy(w, 2, -1 + i * 0.4);
+    p.cd.r = 30; p.cd.e = 5;
+    w.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w.runCommands();
+    check('Battle Rhythm: a Cleave into a crowd takes 1.5 s off the other cooldowns', Math.abs(p.cd.r - 28.5) < 0.01 && Math.abs(p.cd.e - 3.5) < 0.01, `${p.cd.r} ${p.cd.e}`);
+    const { w: w1, p: p1 } = setup('warrior');
+    dummy(w1, 2); p1.cd.r = 30;
+    w1.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w1.runCommands();
+    check('Battle Rhythm: one enemy, 0.3 s', Math.abs(p1.cd.r - 29.7) < 0.01, String(p1.cd.r));
+  }
+  // Berserker: Blood Rage
+  {
+    const { w, p } = setup('warrior', 'berserker');
+    dummy(w, 2);
+    const max = p.stats.maxHp;
+    w.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w.runCommands();
+    const cost = w.events.find((ev) => ev.type === 'bloodCost');
+    check('Berserker: Cleave costs 4% of maximum health', !!cost && Math.abs(cost.amount - max * 0.04) <= 1, cost ? String(cost.amount) : 'none');
+    const as0 = p.stats.as;
+    p.hp = max * 0.45; w.step(CONFIG.TICK);
+    check('Berserker: below half health you are Bloodied, attacking 20% faster', p.bloodied && Math.abs(p.stats.as / as0 - (1 + 0.2 / (as0 / (1.05 * 1.2) - 0))) < 1 || (p.bloodied && p.stats.as > as0 * 1.1), `${as0.toFixed(2)} -> ${p.stats.as.toFixed(2)}`);
+    const e = dummy(w, 2.5);
+    const dealt = (hp) => { p.hp = hp; e.hp = 1e9; w.hitEnemy(e, 1000, { canCrit: false }); return 1e9 - e.hp; };
+    check('Berserker: and deal 15% more damage', dealt(max * 0.45) === Math.round(dealt(max) * 1.15), `${dealt(max * 0.45)} vs ${dealt(max)}`);
+    p.hp = max * 0.11; p.cd.q = 0;
+    w.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w.runCommands();
+    check('Berserker: the health cost never takes you below 10%', p.hp >= max * 0.1 - 0.01 && !p.dead);
+    p.hp = max; w.step(CONFIG.TICK);
+    check('Berserker: healing back over half ends Bloodied', !p.bloodied && Math.abs(p.stats.as - as0) < 1e-9);
+    const { w: w2, p: p2 } = setup('warrior', 'bulwark');
+    dummy(w2, 2); const hp2 = p2.hp;
+    w2.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w2.runCommands();
+    check('Bulwark pays nothing for Cleave', p2.hp === hp2);
+  }
+  // Bulwark: Undertow, Gravity Well, Shield Wall, Bastion
+  {
+    const { w, p } = setup('warrior', 'bulwark');
+    const e = dummy(w, 4), brute = dummy(w, -3.9, 0, 'brute');
+    w.command({ type: 'cast', slot: 'w', x: 0, z: 0 }); w.runCommands();
+    check('Bulwark: Whirlwind stuns normal enemies and taunts what it hits', e.state === 'stunned' && e.tauntT > 2 && brute.tauntT > 2 && brute.state !== 'stunned');
+    run(w, 0.4);
+    check('Bulwark: ...and drags them to you instead of pushing them away', e.x < 2.4 && e.x > 0.5, e.x.toFixed(2));
+    check('Bulwark: heavy enemies stay put without Gravity Well', Math.abs(brute.x + 3.9) < 0.3, brute.x.toFixed(2));
+    const { w: w2 } = setup('warrior', 'bulwark', { bw_armor: 5, bw_tide: 1 });
+    const b2 = dummy(w2, -4.2, 0, 'brute');
+    w2.command({ type: 'cast', slot: 'w', x: 0, z: 0 }); w2.runCommands();
+    run(w2, 0.4);
+    check('Bulwark Gravity Well: drags and stuns heavy enemies too', b2.x > -3.4 && b2.stunT > 0, b2.x.toFixed(2));
+    const old = new World({ seed: 2, cls: 'warrior', save: Object.assign(geared('warrior', 40, 1), { spec: 'bulwark', talents: { bw_riposte: 2, bw_mirror: 1 } }) });
+    check('talents from before the Bulwark rework keep their points', old.player.talents.bw_wall === 2 && old.player.talents.bw_tide === 1 && old.talentsSpent() === 3);
+    // In a party: the Bulwark parries for a friend standing close, and taunted enemies go for it.
+    const pw = new World({ seed: 5, mode: 'explore', save: Object.assign(geared('warrior', 40, 2), { spec: 'bulwark', talents: { bw_armor: 5, bw_wall: 3, bw_vigor: 5, bw_guard: 2, bw_cap: 1 } }) });
+    pw.addHero(1, { save: geared('mage', 40, 2), name: 'Mia' });
+    const host = pw.player, mia = pw.heroByPid(1).player;
+    host.x = 0; host.z = 0; mia.x = 3; mia.z = 0;
+    const foe = pw.spawnEnemy('grunt', { x: 6, z: 0, level: 40 });
+    const hit = () => { mia.hp = mia.stats.maxHp; return pw.as(pw.heroByPid(1), () => pw.hitPlayer(200, { parryable: true, src: foe })); };
+    host.parryT = 0;
+    const r0 = hit(), lost0 = mia.stats.maxHp - mia.hp;
+    host.parryT = 0.3; host.parryAge = 0;
+    const r1 = hit(), lost1 = mia.stats.maxHp - mia.hp;
+    check('Bulwark Shield Wall: a parry also catches hits aimed at a friend close by', r0 === 'hit' && lost0 > 0 && r1 === 'parried' && lost1 === 0, `${r0}/${lost0} ${r1}/${lost1}`);
+    mia.x = 9; host.parryT = 0.3;
+    check('Bulwark Shield Wall: ...but not one too far away', hit() === 'hit');
+    mia.x = 3; mia.hp = mia.stats.maxHp * 0.5; host.parryT = 0.3; host.parryAge = 0;
+    pw.as(pw.heroByPid(1), () => pw.hitPlayer(200, { parryable: true, src: foe }));
+    check('Bulwark Bastion: a perfect parry heals friends nearby too', mia.hp > mia.stats.maxHp * 0.5 + 1);
+    foe.tauntT = 3; foe.tauntPid = 1; foe.x = 0.5;
+    check('a taunted enemy goes for whoever taunted it', pw.targetFor(foe).pid === 1);
+    foe.tauntT = 0;
+    check('...and back to the nearest hero when it wears off', pw.targetFor(foe).pid === 0);
+  }
 }
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---
 {

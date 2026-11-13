@@ -62,15 +62,26 @@ export const CONFIG = {
   // --- Level gap (like MapleStory) ---
   // Enemies above your level hit harder and shrug off more of your damage;
   // enemies below it hit softer and take more. gap = enemy level - hero level.
-  ENEMY_DMG: 1.3, // every enemy hits this much harder than before 0.10
-  GAP_DMG_TAKEN_UP: 0.07, // +7% damage taken per level an enemy is above you...
-  GAP_DMG_TAKEN_UP_MAX: 1.5, // ...up to +150% (2.5x) at about 21 levels
+  ENEMY_DMG: 1.5, // every enemy hits this much harder than before 0.10 (1.3 until 0.17)
+  // Damage taken from an enemy above you: +7% per level, plus a part that grows with the
+  // square of the gap, so a few levels is a nudge and twenty levels is deadly:
+  // about 1.4x at +5, 2x at +10, 3.8x at +20 (most hits take half your health,
+  // a heavy one all of it), and at most 5x from about +25.
+  GAP_DMG_TAKEN_UP: 0.07,
+  GAP_DMG_TAKEN_UP2: 0.0035,
+  GAP_DMG_TAKEN_UP_MAX: 4,
   GAP_DMG_TAKEN_DOWN: 0.04, // -4% per level it is below you...
   GAP_DMG_TAKEN_DOWN_MIN: 0.4, // ...down to 40% of normal
   GAP_DMG_DEALT_UP: 0.05, // you deal -5% per level an enemy is above you...
   GAP_DMG_DEALT_UP_MIN: 0.2, // ...down to 20%: a level 1 hero cannot farm level 30s
   GAP_DMG_DEALT_DOWN: 0.02, // +2% per level it is below you...
   GAP_DMG_DEALT_DOWN_MAX: 1.3, // ...up to +30%
+  // --- Lifesteal ---
+  // Lifesteal heals in full from basic attacks only. Ability hits heal a third as much
+  // (an ability that hits ten enemies would otherwise refill you at once), damage over
+  // time does not heal at all, and lifesteal above the cap does nothing.
+  LIFESTEAL_CAP: 25,
+  ABILITY_LIFESTEAL: 0.33,
   MAX_LEVEL: 100,
   SPEC_LEVEL: 15, // level at which you choose a subclass
   TALENT_LEVEL: 16, // first talent point; then one more every TALENT_EVERY levels

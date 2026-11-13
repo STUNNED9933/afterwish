@@ -16,6 +16,17 @@ import { CLASSES } from './classes.js';
 import { buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
+
+/** Talents renamed in 0.17 (Bulwark rework) keep the points put into them. */
+const RENAMED_TALENTS = { bw_riposte: 'bw_wall', bw_mirror: 'bw_tide' };
+function migrateTalents(saved) {
+  const out = {};
+  for (const id in saved || {}) {
+    const to = RENAMED_TALENTS[id] || id;
+    out[to] = (out[to] || 0) + saved[id];
+  }
+  return out;
+}
 import { QUESTS, QUEST_IDS, SIGNS, NPCS, BOSS_LOOT } from './story.js';
 
 const TAU = Math.PI * 2;
@@ -203,6 +214,14 @@ export class World {
 
   /** Who this enemy goes for: its current target if still fair game, else the nearest standing hero. */
   targetFor(e) {
+    if (e.tauntT > 0) {
+      // Taunted (Bulwark's Undertow): it goes for the hero who taunted it.
+      const t = this.heroByPid(e.tauntPid);
+      if (t && !t.player.dead) {
+        e.targetPid = t.pid;
+        return t;
+      }
+    }
     const cur = e.targetPid != null ? this.heroByPid(e.targetPid) : null;
     if (cur && !cur.player.dead && (e.state === 'windup' || e.state === 'charge')) return cur;
     let best = null, bd = 1e9;
@@ -286,7 +305,7 @@ export class World {
       signs: Array.isArray(save?.signs) ? save.signs.filter((id) => SIGNS[id]) : [], // signs read so far
       bossKills: Object.assign({}, save?.bossKills), // boss type -> times beaten out in the world
       spec: save?.spec && SPECS[save.spec] && SPECS[save.spec].cls === this.cls ? save.spec : null, // subclass
-      talents: Object.assign({}, save?.talents), // talent id -> rank
+      talents: migrateTalents(save?.talents), // talent id -> rank
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       swingCount: 0,
@@ -315,6 +334,7 @@ export class World {
     const m = defaultMods();
     // Talents first, so an augment that sets the same thing higher wins for the run.
     const spec = SPECS[this.player.spec];
+    if (spec && spec.perk) spec.perk.apply(m); // the subclass trait, from the moment it is chosen
     if (spec) for (const t of spec.talents) if (this.player.talents[t.id] > 0) t.apply(m, this.player.talents[t.id]);
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
     for (const slot of SLOTS) {
@@ -339,7 +359,7 @@ export class World {
       // `ad` is the hero's power for every damage formula. Spell Power (staves) feeds it for the Mage.
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
-      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0)) * m.asMult, // attacks per second
+      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
       ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
@@ -526,6 +546,7 @@ export class World {
   cleaveHit(dir, range, angle, dmg, slot = 'q', def = null) {
     const p = this.player;
     const m = this.mods;
+    let hits = 0;
     for (const e of this.enemies) {
       if (e.dead || e.state === 'spawn') continue;
       const de = dist(e.x, e.z, p.x, p.z);
@@ -542,7 +563,65 @@ export class World {
         e.slow = slow;
       }
       this.hitEnemy(e, dmg, { source: slot });
+      hits++;
     }
+    return hits;
+  }
+
+  /** Warrior passive: every enemy Cleave or Whirlwind hits takes time off the other cooldowns. */
+  battleRhythm(slot, hits) {
+    const ps = CLASSES[this.cls].passive;
+    if (!ps || !ps.rhythm || !hits) return;
+    const p = this.player;
+    const cut = Math.min(ps.rhythmMax, ps.rhythm * hits);
+    for (const k of ['q', 'w', 'e', 'r']) if (k !== slot && p.cd[k] > 0) p.cd[k] = Math.max(0, p.cd[k] - cut);
+  }
+
+  /** Frozen Orb: drift toward the target point, chilling and cutting what it passes, then shatter. */
+  stepOrb(pr, dt) {
+    pr.px = pr.x;
+    pr.pz = pr.z;
+    const len = Math.min(pr.speed * dt, Math.max(0, pr.left));
+    pr.x += (pr.vx / pr.speed) * len;
+    pr.z += (pr.vz / pr.speed) * len;
+    pr.left -= len;
+    pr.next -= dt;
+    if (pr.next <= 0) {
+      pr.next += pr.tick;
+      for (const e of this.enemies) {
+        if (e.dead || e.state === 'spawn') continue;
+        if (dist(e.x, e.z, pr.x, pr.z) > pr.aura + e.radius) continue;
+        if (!(e.slowT > 0 && e.slow > pr.chill)) {
+          e.slow = pr.chill;
+          e.slowT = Math.max(e.slowT || 0, 1);
+        }
+        this.hitEnemy(e, pr.dmg * pr.shard, { source: 'w' });
+      }
+      this.emit('orbTick', { x: pr.x, z: pr.z, radius: pr.aura });
+    }
+    if (pr.left <= 0) this.shatterOrb(pr);
+  }
+
+  shatterOrb(pr) {
+    if (pr.dead) return;
+    pr.dead = true;
+    const m = this.mods;
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      if (dist(e.x, e.z, pr.x, pr.z) > pr.burst + e.radius) continue;
+      e.slowT = pr.slowDur;
+      e.slow = pr.slow;
+      this.hitEnemy(e, pr.dmg, { source: 'w' });
+      if (e.dead || e.def.heavy) continue;
+      if (m.wStun > 0) this.stun(e, m.wStun);
+      else if (e.state === 'windup' || e.state === 'chase') {
+        this.removeTelegraph(e);
+        e.state = 'recover';
+        e.t = 0.6;
+        e.cue = 0;
+      }
+    }
+    this.emit('shatter', { x: pr.x, z: pr.z, radius: pr.burst });
   }
 
   /** The living enemy nearest a point, within `pick` of it and within `reach` of the hero. */
@@ -631,6 +710,14 @@ export class World {
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
+    if (def && def.type === 'orb') {
+      // Frozen Orb: casting again while it is out shatters it where it is.
+      const mine = this.projectiles.find((pr) => pr.kind === 'orb' && !pr.dead && pr.pid === this.cur.pid);
+      if (mine) {
+        this.shatterOrb(mine);
+        return;
+      }
+    }
     if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05) return;
     let a = Math.atan2(z - p.z, x - p.x);
     if (!Number.isFinite(a)) a = p.facing;
@@ -651,6 +738,14 @@ export class World {
     }
 
     p.cd[slot] = this.abilityCooldown(slot);
+    if (m.bloodCost > 0 && (slot === 'q' || slot === 'w')) {
+      // Blood Rage: Cleave and Whirlwind are paid for in health, but never below 10%.
+      const cost = Math.min(p.stats.maxHp * m.bloodCost, Math.max(0, p.hp - p.stats.maxHp * 0.1));
+      if (cost >= 1) {
+        p.hp -= cost;
+        this.emit('bloodCost', { x: p.x, z: p.z, amount: Math.round(cost) });
+      }
+    }
     p.atkWind = 0;
     p.parryT = 0; // casting drops the parry stance
     const dmg = this.abilityDamage(slot);
@@ -665,7 +760,7 @@ export class World {
         const angle = Math.min(TAU, def.angle * (m[slot + 'Angle'] || 1));
         p.facing = a;
         p.castLock = 0.16;
-        this.cleaveHit(a, range, angle, dmg, slot, def);
+        this.battleRhythm(slot, this.cleaveHit(a, range, angle, dmg, slot, def));
         if (slot === 'q' && m.qEcho > 0) this.delayed.push({ t: 0.28, kind: 'cleave', dir: a, range, angle, dmg: dmg * m.qEcho });
         this.emit('cast', { slot, fx: 'cone', x: p.x, z: p.z, dir: a, range, angle });
         break;
@@ -676,10 +771,14 @@ export class World {
         const slow = (slot === 'w' ? m.wSlow : 0) || def.slow || 0;
         const knock = def.knockback || 0;
         p.castLock = 0.12;
+        let hits = 0;
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
           const de = dist(e.x, e.z, p.x, p.z);
           if (de > radius + e.radius) continue;
+          hits++;
+          // Gravity Well: heavy enemies (never bosses) get dragged and stunned too.
+          const heavy = e.def.heavy && !(pull && m.wPullHeavy && !e.def.boss);
           if (bleed > 0) {
             e.bleedT = 3;
             e.bleedDps = (p.stats.ad * bleed) / 3;
@@ -689,11 +788,24 @@ export class World {
             e.slow = slow;
           }
           this.hitEnemy(e, dmg, { source: slot });
-          if (m[slot + 'Stun'] > 0 && !e.dead && !e.def.heavy) this.stun(e, m[slot + 'Stun']);
-          if (e.dead || e.def.heavy || !knock) continue;
-          const k = (pull ? -knock * 2 : knock) / Math.max(de, 0.4);
-          e.kx = (e.x - p.x) * k;
-          e.kz = (e.z - p.z) * k;
+          if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
+            // Undertow: whatever it hits fights you for a while.
+            e.tauntPid = this.cur.pid;
+            e.tauntT = m.wTaunt;
+          }
+          if (m[slot + 'Stun'] > 0 && !e.dead && !heavy) this.stun(e, m[slot + 'Stun']);
+          if (e.dead || heavy || !knock) continue;
+          if (pull) {
+            // Drag it to just in front of you (knockback slows at 9/s, so speed = 9 x distance).
+            const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
+            const de1 = Math.max(de, 0.01);
+            e.kx = ((p.x - e.x) / de1) * gap * 9;
+            e.kz = ((p.z - e.z) / de1) * gap * 9;
+          } else {
+            const k = knock / Math.max(de, 0.4);
+            e.kx = (e.x - p.x) * k;
+            e.kz = (e.z - p.z) * k;
+          }
           if (e.state === 'windup' || e.state === 'chase') {
             this.removeTelegraph(e);
             e.state = 'recover';
@@ -702,6 +814,7 @@ export class World {
           }
         }
         this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull });
+        this.battleRhythm(slot, hits);
         break;
       }
       case 'dash': {
@@ -768,6 +881,24 @@ export class World {
           });
         }
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        break;
+      }
+      case 'orb': {
+        // Frozen Orb: drifts to the cursor (see stepOrb), then shatters.
+        p.facing = a;
+        p.castLock = 0.14;
+        const len = clamp(d, def.minRange || 0, range);
+        const end = this.clampToArena(p.x + cos * len, p.z + sin * len, 0.5);
+        const sx = p.x + cos * 0.8;
+        const sz = p.z + sin * 0.8;
+        this.projectiles.push({
+          id: this.nextId++, owner: 'player', kind: 'orb', slot, pid: this.cur.pid,
+          x: sx, z: sz, px: p.x, pz: p.z, vx: cos * def.speed, vz: sin * def.speed, speed: def.speed,
+          radius: 0.6, dmg, left: Math.max(0, Math.hypot(end.x - sx, end.z - sz)), next: 0.05, tick: def.tick,
+          aura: radius, burst: def.burst * (m[slot + 'Radius'] || 1), shard: def.shard, chill: def.chill,
+          slow: def.slow, slowDur: def.slowDur, parryable: false, reflected: false, life: 99, dead: false,
+        });
+        this.emit('cast', { slot, fx: 'orb', x: p.x, z: p.z, dir: a });
         break;
       }
       case 'barrage': {
@@ -934,6 +1065,13 @@ export class World {
     p.hurtT = Math.max(0, p.hurtT - dt);
     p.empowerT = Math.max(0, p.empowerT - dt);
     p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
+    // Berserker: Bloodied while below half health (attack speed needs a stat rebuild when it flips).
+    const bloodied = !!this.mods.bloodRage && p.hp < p.stats.maxHp * 0.5;
+    if (bloodied !== !!p.bloodied) {
+      p.bloodied = bloodied;
+      this.recalcStats();
+      this.emit('bloodied', { on: bloodied, x: p.x, z: p.z });
+    }
     if (p.slipT > 0) {
       p.slipT -= dt;
       if (p.slipT <= 0) {
@@ -1128,7 +1266,7 @@ export class World {
   gapScale(level) {
     const C = CONFIG;
     const gap = (level || this.player.level) - this.player.level;
-    if (gap >= 0) return { taken: 1 + Math.min(C.GAP_DMG_TAKEN_UP_MAX, C.GAP_DMG_TAKEN_UP * gap), dealt: Math.max(C.GAP_DMG_DEALT_UP_MIN, 1 - C.GAP_DMG_DEALT_UP * gap) };
+    if (gap >= 0) return { taken: 1 + Math.min(C.GAP_DMG_TAKEN_UP_MAX, C.GAP_DMG_TAKEN_UP * gap + C.GAP_DMG_TAKEN_UP2 * gap * gap), dealt: Math.max(C.GAP_DMG_DEALT_UP_MIN, 1 - C.GAP_DMG_DEALT_UP * gap) };
     return { taken: Math.max(C.GAP_DMG_TAKEN_DOWN_MIN, 1 + C.GAP_DMG_TAKEN_DOWN * gap), dealt: Math.min(C.GAP_DMG_DEALT_DOWN_MAX, 1 - C.GAP_DMG_DEALT_DOWN * gap) };
   }
 
@@ -1141,6 +1279,11 @@ export class World {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
+    if (parryable && this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
+      // Shield Wall: a parrying Bulwark standing close catches the hit instead.
+      const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
+      if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj }));
+    }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     if (p.dash || p.leap) {
       if (p.dash && !p.dash.refunded) {
@@ -1164,13 +1307,21 @@ export class World {
         if (perfect) {
           this.stats.perfects++;
           this.healPlayer(p.stats.maxHp * (CONFIG.PERFECT_HEAL + m.parryHeal), true);
+          if (m.allyParryHeal > 0 && this.party) {
+            // Bastion: a perfect parry also heals friends nearby.
+            for (const h of this.heroes) {
+              if (h === this.cur || h.player.dead || dist(h.player.x, h.player.z, p.x, p.z) > 8) continue;
+              this.as(h, (hp) => this.healPlayer(hp.stats.maxHp * m.allyParryHeal, true));
+            }
+          }
           for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - CONFIG.PERFECT_CD_REFUND);
           this.startSlow();
           this.triggerSlipstream();
         }
         this.emit('parry', { perfect, x: p.x, z: p.z, srcId: src ? src.id : null, projectile: !!proj });
         if (proj) {
-          // Send the projectile back where it came from.
+          // Send the projectile back where it came from (it now belongs to whoever parried it).
+          proj.pid = this.cur.pid;
           proj.owner = 'player';
           proj.reflected = true;
           let a = Math.atan2(-proj.vz, -proj.vx);
@@ -1994,7 +2145,12 @@ export class World {
       e.aggro = true; // hitting a camp enemy wakes it up
       e.returning = false;
     }
-    if (p.stats.lifesteal > 0 && !p.dead) this.healPlayer((dmg * p.stats.lifesteal) / 100, false);
+    if (!p.dead && !opts.dot) {
+      // Lifesteal: full from basic attacks, a third from abilities, capped (see CONFIG).
+      let ls = Math.min(p.stats.lifesteal, CONFIG.LIFESTEAL_CAP) + (p.bloodied ? this.mods.bloodLeech : 0);
+      if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
+      if (ls > 0) this.healPlayer((dmg * ls) / 100, false);
+    }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, basic: !!opts.basic, dot: !!opts.dot });
     if (e.def.boss && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.4) {
       e.enraged = true;
@@ -2081,6 +2237,7 @@ export class World {
       if (e.hitFlash > 0) e.hitFlash -= dt;
       if (e.vulnT > 0) e.vulnT -= dt;
       if (e.slowT > 0) e.slowT -= dt;
+      if (e.tauntT > 0) e.tauntT -= dt;
       if (e.bleedT > 0) {
         e.bleedT -= dt;
         e.bleedAcc += dt;
@@ -2273,6 +2430,10 @@ export class World {
         p = this.player;
       }
       const d = pr.owner === 'enemy' ? edt : dt;
+      if (pr.kind === 'orb') {
+        this.stepOrb(pr, d);
+        continue;
+      }
       if (pr.targetId != null) {
         // Basic-attack shots curve toward their target so they do not miss.
         const t = this.enemyById(pr.targetId);
@@ -2303,7 +2464,6 @@ export class World {
         if (!pr.spent && !p.dead && dist(pr.x, pr.z, p.x, p.z) < pr.radius + p.radius) {
           const res = this.hitPlayer(pr.dmg, { parryable: pr.parryable, src: this.enemyById(pr.srcId), proj: pr });
           if (res === 'parried') {
-            pr.pid = this.cur.pid;
             this.emit('reflect', { x: pr.x, z: pr.z });
           }
           else if (res === 'dodged') pr.spent = true;

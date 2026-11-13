@@ -114,6 +114,12 @@ export class Input {
       return;
     }
     if (!this.isPlaying() || typing) return;
+    if (e.ctrlKey && !e.metaKey && !e.altKey && (key === 'q' || key === 'w' || key === 'e' || key === 'r')) {
+      // Ctrl + ability key spends a skill point, as in League (Shift works too).
+      e.preventDefault();
+      if (!e.repeat) this.getWorld().command({ type: 'rankUp', slot: key });
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const world = this.getWorld();
 
@@ -124,7 +130,7 @@ export class Input {
       e.preventDefault();
       if (e.repeat) return;
       if (e.shiftKey) {
-        world.command({ type: 'rankUp', slot: key }); // Shift + ability key spends a skill point
+        world.command({ type: 'rankUp', slot: key }); // Shift (or Ctrl, above) + ability key spends a skill point
         return;
       }
       const g = this.ground() || { x: world.player.x, z: world.player.z };

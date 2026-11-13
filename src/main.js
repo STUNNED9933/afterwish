@@ -392,7 +392,8 @@ function start(hot = {}) {
         const sp = SPECS[id];
         const card = document.createElement('div');
         card.className = 'spec-card';
-        card.innerHTML = `<h3>${sp.name}</h3><p>${sp.blurb}</p><ul>${sp.talents.map((t) => `<li><b>${t.name}</b>: ${t.desc(t.max)}</li>`).join('')}</ul>`;
+        const trait = sp.perk ? `<p class="spec-trait"><b>Trait · ${sp.perk.name}</b> (from the start): ${sp.perk.desc}</p>` : '';
+        card.innerHTML = `<h3>${sp.name}</h3><p>${sp.blurb}</p>${trait}<ul>${sp.talents.map((t) => `<li><b>${t.name}</b>: ${t.desc(t.max)}</li>`).join('')}</ul>`;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'primary';
@@ -411,6 +412,12 @@ function start(hot = {}) {
     $('talents-title').textContent = sp.name;
     const nextAt = p.level < CONFIG.TALENT_LEVEL ? CONFIG.TALENT_LEVEL : p.level + CONFIG.TALENT_EVERY - ((p.level - CONFIG.TALENT_LEVEL) % CONFIG.TALENT_EVERY);
     $('talents-sub').textContent = `${sp.blurb}  ${pts} point${pts === 1 ? '' : 's'} to spend, ${spent} spent.` + (nextAt <= CONFIG.MAX_LEVEL ? ` Next point at level ${nextAt}.` : '');
+    if (sp.perk) {
+      const tr = document.createElement('div');
+      tr.className = 'spec-trait';
+      tr.innerHTML = `<b>Trait · ${sp.perk.name}</b> ${sp.perk.desc}`;
+      body.appendChild(tr);
+    }
     for (const [row, title] of [['minor', 'Foundations'], ['major', `Techniques · opens after ${ROW_NEED.major} points`], ['capstone', `Mastery · opens after ${ROW_NEED.capstone} points`]]) {
       const sec = document.createElement('div');
       sec.className = 'tal-row' + (spent < ROW_NEED[row] ? ' locked' : '');
@@ -658,7 +665,14 @@ function start(hot = {}) {
       hud.feedText(`Room code: ${net.code}`);
     }
   });
-  window.addEventListener('beforeunload', () => {
+  // Ctrl + W ranks up W (as in League), but in Chrome it also closes the tab and a page
+  // cannot stop that. So once you are in the game, leaving asks first.
+  window.addEventListener('beforeunload', (e) => {
+    if (mode === 'title') return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+  window.addEventListener('pagehide', () => {
     if (net) net.room.close();
   });
 
@@ -1131,6 +1145,15 @@ function start(hot = {}) {
         break;
       case 'heal':
         hud.float(renderer, ev.x, 2.8, ev.z, '+' + ev.amount, 'heal');
+        break;
+      case 'bloodCost':
+        hud.float(renderer, ev.x, 2.6, ev.z, '-' + ev.amount, 'blood');
+        break;
+      case 'bloodied':
+        if (ev.on) hud.float(renderer, ev.x, 3.2, ev.z, 'Bloodied', 'word blood');
+        break;
+      case 'shatter':
+        sfx.cast('w');
         break;
       case 'swing':
         sfx.swing();

@@ -92,7 +92,7 @@ export class Inventory {
       ['Ability Haste', s.haste],
       ['Crit Chance', Math.min(100, s.crit) + '%'],
       ['Crit Damage', Math.round(world.critMultiplier() * 100) + '%' + (s.crit > 100 ? ` (+${s.crit - 100}% from overflow)` : '')],
-      ['Lifesteal', s.lifesteal + '%'],
+      ['Lifesteal', s.lifesteal > CONFIG.LIFESTEAL_CAP ? `${CONFIG.LIFESTEAL_CAP}% (${s.lifesteal}%, capped)` : s.lifesteal + '%'],
       ['Best wave', world.bestWave],
     ];
     $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');

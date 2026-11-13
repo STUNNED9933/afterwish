@@ -24,26 +24,36 @@ export const SPECS = {
   // ------------------------------------------------------------------ Warrior
   berserker: {
     cls: 'warrior', name: 'Berserker',
-    blurb: 'Fights harder the closer it is to falling. Fast swings, stolen health, a Cleave that never stops.',
+    blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
+    perk: {
+      name: 'Blood Rage',
+      desc: 'Below half health you are Bloodied: +15% damage and +20% attack speed. Cleave and Whirlwind cost 4% of your maximum health (they never take you below 10%).',
+      apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); },
+    },
     talents: [
       { id: 'bz_haste', row: 'minor', name: 'Bloodlust', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
       { id: 'bz_might', row: 'minor', name: 'Savagery', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
-      { id: 'bz_leech', row: 'minor', name: 'Red Thirst', max: 5, desc: (r) => `+${r}% lifesteal.`, apply: (m, r) => { m.lifesteal += r; } },
+      { id: 'bz_leech', row: 'minor', name: 'Red Thirst', max: 5, desc: (r) => `While Bloodied, +${r}% lifesteal (over the usual cap).`, apply: (m, r) => { m.bloodLeech += r; } },
       { id: 'bz_whirl', row: 'major', name: 'Rampage', max: 3, desc: (r) => `Whirlwind deals ${10 * r}% more damage and its cooldown is ${6 * r}% shorter.`, apply: (m, r) => { m.wDmg *= 1 + 0.1 * r; m.wCd *= 1 - 0.06 * r; } },
-      { id: 'bz_reckless', row: 'major', name: 'Reckless', max: 3, desc: (r) => `Deal ${8 * r}% more damage while below half health.`, apply: (m, r) => { m.lowHpDmg += 0.08 * r; } },
+      { id: 'bz_reckless', row: 'major', name: 'Reckless', max: 3, desc: (r) => `While Bloodied, deal a further ${8 * r}% damage and attack ${5 * r}% faster.`, apply: (m, r) => { m.lowHpDmg += 0.08 * r; m.bloodAs += 0.05 * r; } },
       { id: 'bz_cap', row: 'capstone', name: "Executioner's Rhythm", max: 1, desc: () => 'Cleave strikes a second time for 40% damage, and a Cleave kill resets its cooldown.', apply: (m) => { m.qEcho = Math.max(m.qEcho, 0.4); m.qResetOnKill = true; } },
     ],
   },
   bulwark: {
     cls: 'warrior', name: 'Bulwark',
-    blurb: 'The wall. A wider parry, a harder riposte, and armor that makes the big hits survivable.',
+    blurb: 'The wall the party stands behind. Drags enemies into one place for the others to hit, makes them look only at you, and parries for the whole group.',
+    perk: {
+      name: 'Undertow',
+      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds.',
+      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); },
+    },
     talents: [
       { id: 'bw_armor', row: 'minor', name: 'Iron Skin', max: 5, desc: (r) => `+${4 * r}% armor.`, apply: (m, r) => { m.armorPct += 0.04 * r; } },
       { id: 'bw_vigor', row: 'minor', name: 'Vigor', max: 5, desc: (r) => `+${2 * r}% maximum health.`, apply: (m, r) => { m.hpPct += 0.02 * r; } },
       { id: 'bw_guard', row: 'minor', name: 'Steady Guard', max: 5, desc: (r) => `Your parry window is ${4 * r}% longer.`, apply: (m, r) => { m.parryWindow *= 1 + 0.04 * r; } },
-      { id: 'bw_riposte', row: 'major', name: 'Riposte', max: 3, desc: (r) => `Parrying a melee hit strikes the attacker for ${50 * r}% attack damage.`, apply: (m, r) => { m.riposte = Math.max(m.riposte, 0.5 * r); } },
-      { id: 'bw_mirror', row: 'major', name: 'Mirror Guard', max: 3, desc: (r) => `Projectiles you send back deal ${30 * r}% more, and time stays slowed ${15 * r}% longer after a perfect parry.`, apply: (m, r) => { m.reflectDmg *= 1 + 0.3 * r; m.slowDur *= 1 + 0.15 * r; } },
-      { id: 'bw_cap', row: 'capstone', name: 'Unbreakable', max: 1, desc: () => 'Take 12% less damage. A perfect parry heals you for a further 5% of your maximum health.', apply: (m) => { m.dmgTaken += 0.12; m.parryHeal += 0.05; } },
+      { id: 'bw_tide', row: 'major', name: 'Gravity Well', max: 3, desc: (r) => `Whirlwind reaches ${10 * r}% further and stuns ${(0.1 * r).toFixed(1)} seconds longer. It now drags and stuns heavy enemies too (never bosses).`, apply: (m, r) => { m.wRadius *= 1 + 0.1 * r; m.wStun += 0.1 * r; m.wPullHeavy = true; } },
+      { id: 'bw_wall', row: 'major', name: 'Shield Wall', max: 3, desc: (r) => `Your parry also catches attacks aimed at friends within ${2 + r} m of you, and a parried melee hit strikes back for ${50 * r}% attack damage.`, apply: (m, r) => { m.guardRange = Math.max(m.guardRange, 2 + r); m.riposte = Math.max(m.riposte, 0.5 * r); } },
+      { id: 'bw_cap', row: 'capstone', name: 'Bastion', max: 1, desc: () => 'Take 12% less damage. A perfect parry heals you and every friend within 8 m for 5% of their maximum health.', apply: (m) => { m.dmgTaken += 0.12; m.parryHeal += 0.05; m.allyParryHeal = Math.max(m.allyParryHeal, 0.05); } },
     ],
   },
 
@@ -114,13 +124,13 @@ export const SPECS = {
   },
   frostbinder: {
     cls: 'mage', name: 'Frostbinder',
-    blurb: 'Nothing reaches you. A Frost Nova that freezes solid, a tougher body, and a Blink that bites.',
+    blurb: 'Nothing reaches you. A bigger Frozen Orb that freezes solid, a tougher body, and a Blink that bites.',
     talents: [
       { id: 'fb_vigor', row: 'minor', name: 'Cold Blood', max: 5, desc: (r) => `+${2 * r}% maximum health.`, apply: (m, r) => { m.hpPct += 0.02 * r; } },
       { id: 'fb_armor', row: 'minor', name: 'Rime Coat', max: 5, desc: (r) => `+${4 * r}% armor.`, apply: (m, r) => { m.armorPct += 0.04 * r; } },
       { id: 'fb_haste', row: 'minor', name: 'Clear Mind', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
-      { id: 'fb_nova', row: 'major', name: 'Wide Winter', max: 3, desc: (r) => `Frost Nova is ${8 * r}% wider and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.wRadius *= 1 + 0.08 * r; m.wCd *= 1 - 0.08 * r; } },
-      { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frost Nova freezes normal enemies solid for ${(0.4 * r).toFixed(1)} seconds.`, apply: (m, r) => { m.wStun = Math.max(m.wStun, 0.4 * r); } },
+      { id: 'fb_nova', row: 'major', name: 'Wide Winter', max: 3, desc: (r) => `Frozen Orb is ${8 * r}% bigger and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.wRadius *= 1 + 0.08 * r; m.wCd *= 1 - 0.08 * r; } },
+      { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frozen Orb's shatter freezes normal enemies solid for ${(0.4 * r).toFixed(1)} seconds.`, apply: (m, r) => { m.wStun = Math.max(m.wStun, 0.4 * r); } },
       { id: 'fb_cap', row: 'capstone', name: 'Absolute Zero', max: 1, desc: () => 'Take 12% less damage. Blink leaves a blast where you stood for 120% spell power.', apply: (m) => { m.dmgTaken += 0.12; m.eBlast = Math.max(m.eBlast, 1.2); } },
     ],
   },

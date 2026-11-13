@@ -15,7 +15,7 @@ export const STATS = {
   ms: { label: 'Move Speed', base: 4, growth: 0.03, weight: 1.3, pct: true },
   haste: { label: 'Ability Haste', base: 8, growth: 0.05, weight: 1 },
   crit: { label: 'Crit Chance', base: 5, growth: 0.03, weight: 1.3, pct: true },
-  lifesteal: { label: 'Lifesteal', base: 2, growth: 0.02, weight: 2.2, pct: true },
+  lifesteal: { label: 'Lifesteal', base: 2, growth: 0.01, weight: 2.2, pct: true },
 };
 export const STAT_KEYS = Object.keys(STATS);
 

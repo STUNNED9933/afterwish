@@ -19,7 +19,7 @@ Double-click `dist/index.html`. It opens in your browser and works offline.
 | Right-click | Move. Right-click an enemy to attack it (left-click on an enemy works too) |
 | Space (or F) | Parry. Press it when an enemy flashes white |
 | Q W E R | Cleave, Whirlwind (level 2), Lunge (level 3), Skyfall (level 6) |
-| Shift + Q/W/E/R | Spend a skill point to rank that ability up (or click the + above it) |
+| Ctrl or Shift + Q/W/E/R | Spend a skill point to rank that ability up (or click the + above it) |
 | 1 2 3 | Pick an augment when three are offered |
 | 1 (or D) | Health potion |
 | Tab (or I) | Gear and stats. The fight pauses while it is open |
@@ -150,6 +150,40 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Higher stakes, Frozen Orb, warrior subclasses (0.17)
+
+- **Lifesteal no longer refills you.** It heals in full only from basic
+  attacks; ability hits heal a third as much (one Whirlwind into ten enemies
+  used to top you up), damage over time heals nothing, and lifesteal above
+  **25%** does nothing (the gear screen shows when you are capped). Lifesteal
+  on new gear also grows half as fast with item level.
+- **Enemies hit harder**: 1.5x instead of 1.3x at your own level, and the
+  level gap now grows with the square of the gap: about 1.4x at +5, 2x at +10,
+  **3.8x at +20** (two hits from most enemies, one from a heavy attack), and
+  at most 5x.
+- **Warrior passive, Battle Rhythm**: every enemy Cleave or Whirlwind hits
+  takes 0.3 s off the other cooldowns (up to 1.5 s a swing). The warrior also
+  moves faster and hits harder (+10 ability haste).
+- **Mage W is now Frozen Orb**: a slow orb that drifts to the cursor, cutting
+  and chilling everything it passes, then shatters for the big hit, slowing
+  and interrupting. Press W again to shatter it early.
+- **Subclass traits.** Warrior subclasses now change the class the moment you
+  pick them:
+  - **Berserker, Blood Rage**: below half health you are *Bloodied* (+15%
+    damage, +20% attack speed; the health bar burns red, with a mark at
+    half). Cleave and Whirlwind cost 4% of your maximum health (never below
+    10%), so you can choose to drop into it, then stay there. Red Thirst now
+    gives lifesteal only while Bloodied; Reckless adds attack speed too.
+  - **Bulwark, Undertow**: Whirlwind drags enemies to you, stuns normal ones
+    for a moment and taunts everything it hits for 3 s. New talents: Gravity
+    Well (wider, longer stun, drags heavy enemies too), Shield Wall (your
+    parry also catches hits aimed at friends within 3 to 5 m, plus riposte)
+    and Bastion (a perfect parry heals nearby friends too). Points in the old
+    Riposte and Mirror Guard talents move over by themselves.
+- **Ctrl + Q/W/E/R ranks up an ability**, as in League (Shift still works).
+  Chrome closes the tab on Ctrl+W and pages cannot stop that, so leaving the
+  page mid-game now asks first.
+
 ### Difficulty and the level gap (0.10)
 
 - Every enemy hits 30% harder than before (`ENEMY_DMG`).
@@ -218,14 +252,14 @@ At level 15 press **T** and choose one of two subclasses for your class:
 
 | Class | Subclass | Plays like |
 | --- | --- | --- |
-| Warrior | **Berserker** | Fast swings, lifesteal, more damage below half health, a Cleave that resets on kills |
-| Warrior | **Bulwark** | Longer parry window, riposte, armor, heals on perfect parries |
+| Warrior | **Berserker** | Bloodied below half health (more damage and attack speed), Cleave and Whirlwind cost health, a Cleave that resets on kills |
+| Warrior | **Bulwark** | Whirlwind drags, stuns and taunts; parries that cover friends; heals the party on perfect parries |
 | Archer | **Sharpshooter** | Longer attack range, crit chance and crit damage, a harder Piercing Shot that marks targets |
 | Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Tumble flurry, longer Arrow Storm |
 | Rogue | **Assassin** | Crits, brutal Backstabs, a Death Mark that resets on a kill |
 | Rogue | **Shadowdancer** | Speed, lifesteal, bleeds, a Shadowstep that is nearly always ready |
 | Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
-| Mage | **Frostbinder** | Health, armor, a Frost Nova that freezes, damage reduction |
+| Mage | **Frostbinder** | Health, armor, a bigger Frozen Orb that freezes, damage reduction |
 
 From level 16 you earn a talent point every 4 levels: 22 by level 100, which
 is exactly one full tree. Each tree has three rows: three small stat talents
@@ -273,10 +307,10 @@ load). Gold and arena tickets are shared by every class. Everyone can parry.
 
 | Class | Plays like | Q | W | E | R |
 | --- | --- | --- | --- | --- | --- |
-| Warrior | Melee, the toughest | Cleave | Whirlwind | Lunge | Skyfall |
+| Warrior | Melee, the toughest; every enemy Cleave or Whirlwind hits takes time off the other cooldowns | Cleave | Whirlwind | Lunge | Skyfall |
 | Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Tumble (then +50% attack speed for 4 s) | Arrow Storm |
 | Rogue | Fast melee burst; Backstab hits 60% harder from behind or on a stunned enemy | Backstab | Fan of Knives | Shadowstep | Death Mark |
-| Mage | Weak basics, strong ranged spells, +20 ability haste | Fire Bolt | Frost Nova | Blink | Meteor |
+| Mage | Weak basics, strong ranged spells, +25 ability haste | Fire Bolt | Frozen Orb (recast to shatter early) | Blink | Meteor |
 
 Changes in 0.5:
 
@@ -295,7 +329,7 @@ Changes in 0.5:
   gold. It never makes them weaker.
 
 Classes live in `src/sim/classes.js`. An ability is a `type` (cone, nova, dash,
-leap, line, bolt, strike, zone, meteor) plus numbers, so a new ability or a
+leap, line, bolt, strike, zone, meteor, orb, barrage) plus numbers, so a new ability or a
 whole new class is mostly data. The Warrior has hand-written augments; the
 other classes get a generated set (more damage and shorter cooldown per
 ability) plus the shared parry and hero augments.

@@ -41,6 +41,7 @@ export const ICONS = {
   line: '<path d="M3 12h17"/><path d="M16 8l4 4-4 4"/><path d="M6 9l-3 3 3 3"/>',
   zone: '<circle cx="12" cy="16" r="5.5"/><path d="M8 3v6M12 2v8M16 3v6"/>',
   strike: '<path d="M21 3l-1 6-8 8-5-5 8-8z"/><path d="M6 13l5 5"/><path d="M3 21l4-4"/>',
+  orb: '<circle cx="12" cy="12" r="5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
 };
 // Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
@@ -204,6 +205,11 @@ export class Hud {
     const hpFrac = Math.max(0, p.hp / p.stats.maxHp);
     $('hp-fill').style.transform = `scaleX(${hpFrac})`;
     $('hp-text').textContent = `${Math.ceil(p.hp)} / ${p.stats.maxHp}`;
+    // Berserker: a mark at half health, and the bar burns red while Bloodied.
+    const bar = $('hp-bar');
+    const zerk = p.spec === 'berserker';
+    bar.classList.toggle('berserk', zerk);
+    bar.classList.toggle('bloodied', zerk && !p.dead && hpFrac < 0.5);
     const need = expToNext(p.level);
     const maxed = p.level >= CONFIG.MAX_LEVEL;
     $('xp-fill').style.transform = `scaleX(${maxed ? 1 : p.exp / need})`;
@@ -247,7 +253,7 @@ export class Hud {
       slot.up.classList.toggle('hidden', !show);
       canRank = canRank || show;
     }
-    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Shift + Q W E R` : '';
+    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Ctrl + Q W E R` : '';
     if (note !== this.lastNote) {
       this.lastNote = note;
       $('sp-note').textContent = note;

@@ -29,6 +29,8 @@ export function defaultMods() {
     hpPct: 0, adPct: 0, asPct: 0, msPct: 0, crit: 0, lifesteal: 0, haste: 0,
     // Used by talents (sim/talents.js)
     armorPct: 0, asMult: 1, critMult: 0, dmgTaken: 0, lowHpDmg: 0, parryHeal: 0,
+    // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (Undertow, Shield Wall, Bastion)
+    bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };
@@ -91,7 +93,8 @@ const CLASS_AUGMENTS = {
   mage_q_ball: { name: 'Fireball', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt bursts 60% wider and the burst deals full damage.', apply: (m) => { m.qRadius *= 1.6; m.qSplashFull = true; } },
   mage_q_burn: { name: 'Ignite', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt sets its target burning for 90% spell power over 3 seconds.', apply: (m) => { m.qBleed = 0.9; } },
   mage_q_twin: { name: 'Twin Bolt', slot: 'q', cls: 'mage', tier: 2, desc: 'Fire Bolt fires two bolts, each dealing 65% damage.', apply: (m) => { m.qBolts = 2; } },
-  mage_w_freeze: { name: 'Deep Freeze', slot: 'w', cls: 'mage', tier: 1, desc: 'Frost Nova freezes normal enemies solid for 1.2 seconds.', apply: (m) => { m.wStun = 1.2; } },
+  mage_w_freeze: { name: 'Deep Freeze', slot: 'w', cls: 'mage', tier: 1, desc: "Frozen Orb's shatter freezes normal enemies solid for 1.2 seconds.", apply: (m) => { m.wStun = 1.2; } },
+  mage_w_big: { name: 'Glacier', slot: 'w', cls: 'mage', tier: 1, desc: 'Frozen Orb is 30% bigger: a wider trail of shards and a wider shatter.', apply: (m) => { m.wRadius *= 1.3; } },
   mage_e_rift: { name: 'Rift', slot: 'e', cls: 'mage', tier: 1, desc: 'Blink leaves a blast where you were standing for 120% spell power.', apply: (m) => { m.eBlast = 1.2; } },
   mage_r_fast: { name: 'Falling Star', slot: 'r', cls: 'mage', tier: 1, desc: 'Meteor lands twice as fast and its cooldown is 20% shorter.', apply: (m) => { m.rDelay *= 0.5; m.rCd *= 0.8; } },
   mage_r_twin: { name: 'Second Impact', slot: 'r', cls: 'mage', tier: 2, desc: 'One second after Meteor lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },

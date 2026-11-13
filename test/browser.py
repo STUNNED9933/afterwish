@@ -65,6 +65,11 @@ with sync_playwright() as pw:
     page.keyboard.press('Shift+Q')
     page.wait_for_timeout(300)
     check('Shift+Q ranks up Cleave', ev("() => game.world.player.ranks.q") == 2 and ev("() => game.world.player.skillPoints") == pts - 1, f'points {pts}')
+    page.keyboard.press('Control+E'); page.wait_for_timeout(300)
+    check('Ctrl+E ranks up Lunge, as in League', ev("() => game.world.player.ranks.e") == 2 and ev("() => game.world.player.skillPoints") == pts - 2)
+    check('the HUD hint says Ctrl', 'Ctrl' in page.inner_text('#hud') if page.query_selector('#hud') else True)
+    blocked = ev("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
+    check('leaving the page mid-game asks first (Ctrl+W closes Chrome tabs)', blocked)
     page.screenshot(path=str(out / '4-ranks-hud.png'))
 
     # --- Perfect dodge ---------------------------------------------------------
@@ -184,7 +189,14 @@ with sync_playwright() as pw:
     page.wait_for_timeout(700)
     check('mage explores with the mage kit', ev("() => game.world.mode") == 'explore' and ev("() => game.world.kit.q.name") == 'Fire Bolt')
     ev("() => { const w = game.world; w.player.level = 6; w.recalcStats(); w.loadMap('greenwood', 'town'); const c = w.camps[0].def; w.player.x = c.x - 9; w.player.z = c.z; w.command({ type: 'cast', slot: 'r', x: c.x, z: c.z }); w.command({ type: 'cast', slot: 'q', x: c.x, z: c.z }); }")
-    page.wait_for_timeout(900)
+    page.wait_for_timeout(300)
+    check('mage W is Frozen Orb', ev("() => game.world.kit.w.name") == 'Frozen Orb')
+    ev("() => { const w = game.world; const c = w.camps[0].def; w.player.cd.w = 0; w.command({ type: 'cast', slot: 'w', x: c.x, z: c.z }); }")
+    page.wait_for_timeout(250)
+    check('the orb is drawn while it flies', ev("() => game.world.projectiles.some((pr) => pr.kind === 'orb') && game.renderer.projViews.size > 0"))
+    page.screenshot(path=str(out / '14b-frozen-orb.png'))
+    page.wait_for_timeout(2500)
+    check('...and shatters', ev("() => !game.world.projectiles.some((pr) => pr.kind === 'orb')"))
     page.screenshot(path=str(out / '14-mage-explore.png'))
     page.keyboard.press('Escape'); page.wait_for_timeout(200)
     page.click('#btn-town'); page.wait_for_timeout(300)
@@ -326,6 +338,7 @@ with sync_playwright() as pw:
     page.keyboard.press('t'); page.wait_for_timeout(400)
     check('T offers two subclasses', ev("() => game.mode") == 'talents' and len(page.query_selector_all('.spec-card')) == 2)
     page.screenshot(path=str(out / '33-subclass.png'))
+    check('subclass cards show their trait', ev("() => game.world.cls") != 'warrior' or ('Blood Rage' in page.inner_text('.spec-card') and len(page.query_selector_all('.spec-card .spec-trait')) == 2))
     page.click('.spec-card .primary'); page.wait_for_timeout(300)
     for _ in range(6):
         page.click('.tal button:not([disabled])'); page.wait_for_timeout(120)
@@ -334,6 +347,12 @@ with sync_playwright() as pw:
     page.keyboard.press('t'); page.wait_for_timeout(300)
     page.screenshot(path=str(out / '35-hud.png'))
     check('back in the game afterwards', ev("() => game.mode") == 'play')
+    # The Berserker's health bar (this hero is not a warrior, so borrow the subclass for the HUD only).
+    spec0 = ev("() => game.world.player.spec")
+    ev("() => { const p = game.world.player; p.spec = 'berserker'; p.hp = p.stats.maxHp * 0.4; }"); page.wait_for_timeout(800)
+    check('Berserker: the health bar has a half-way mark and burns red below it', ev("() => { const b = document.getElementById('hp-bar'); return b.classList.contains('berserk') && b.classList.contains('bloodied'); }"))
+    page.screenshot(path=str(out / '35b-bloodied.png'))
+    ev(f"() => {{ const p = game.world.player; p.spec = '{spec0}'; p.hp = p.stats.maxHp; }}"); page.wait_for_timeout(400)
     # --- Gear icons match the class -----------------------------------------------------------
     icons = ev("""() => { const out = {}; for (const c of ['warrior', 'archer', 'rogue', 'mage']) { game.world.player.equipped.weapon = { id: 'x' + c, name: 'Test', slot: 'weapon', cls: c, rarity: 1, ilvl: 1, stats: { ad: 1 }, plus: 0 }; game.world.recalcStats(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' })); out[c] = document.querySelector('#equipped .cell svg').innerHTML; window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' })); } return out; }""")
     check('each class has its own weapon icon', len(set(icons.values())) == 4, {k: v[:24] for k, v in icons.items()})

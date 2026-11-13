@@ -612,10 +612,10 @@ import { makeRng } from '../src/sim/rng.js';
   const { buildMap, MAP_IDS } = await import('../src/sim/maps.js');
   const step = (w, n = 1) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
   // The data hangs together.
-  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (g.kill || g.reach || g.read); }), QUEST_IDS.length + ' quests');
+  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (g.kill || g.reach || g.read || g.wave); }), QUEST_IDS.length + ' quests');
   check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy]; }));
   check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy) return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
-  check('story: two signs on every map, each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === 2 && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
+  check('story: two signs on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
   check('story: four people live in Haven', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;
@@ -683,6 +683,24 @@ import { makeRng } from '../src/sim/rng.js';
     f.command({ type: 'claimQuest', id: 'again' }); step(f);
     check('quests: a repeatable quest can be taken again after it is handed in', f.questState('again') === 'done' && f.questOpen('again'));
   }
+}
+{
+  // The Echo Ring quests: taken in Haven, finished by clearing waves in the arena.
+  const t = new World({ seed: 7, mode: 'explore', save: { v: 2, level: 8 } });
+  t.command({ type: 'acceptQuest', id: 'ringglass' }); t.step(CONFIG.TICK);
+  const carried = t.toSave();
+  check('ring: Odile asks you to clear five waves in the Echo Ring', t.questState('ringglass') === 'active');
+  const a = new World({ seed: 7, save: JSON.parse(JSON.stringify(carried)) });
+  let ready = false;
+  for (let n = 1; n <= 5; n++) { a.wave.n = n; a.questEvent('wave', n); if (n === 4) ready = a.questState('ringglass') === 'ready'; }
+  check('ring: clearing wave 5 in the arena completes it (not wave 4)', !ready && a.questState('ringglass') === 'ready');
+  const back = new World({ seed: 7, mode: 'explore', save: JSON.parse(JSON.stringify(a.toSave())) });
+  const t0 = back.player.tickets;
+  back.command({ type: 'claimQuest', id: 'ringglass' }); back.step(CONFIG.TICK);
+  check('ring: handed in back in Haven, paying starglass shards', back.questState('ringglass') === 'done' && back.player.tickets === t0 + 2);
+  const deep = new World({ seed: 7, mode: 'explore', save: { v: 2, level: 40, bestWave: 20, quests: { ringglass: { s: 'done', n: 1 } } } });
+  deep.command({ type: 'acceptQuest', id: 'ringlast' }); deep.step(CONFIG.TICK);
+  check('ring: a wave you already reached counts straight away', deep.questState('ringlast') === 'ready');
 }
 // --- Subclasses and talents -------------------------------------------------------
 {

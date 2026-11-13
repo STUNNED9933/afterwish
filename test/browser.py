@@ -299,6 +299,16 @@ with sync_playwright() as pw:
     page.keyboard.press('t'); page.wait_for_timeout(300)
     page.screenshot(path=str(out / '35-hud.png'))
     check('back in the game afterwards', ev("() => game.mode") == 'play')
+    # --- Starting a new character (deleting the old one) begins in Haven, not the arena ---------
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    page.click('#btn-town'); page.wait_for_timeout(800)
+    check('back on the title screen with a saved character', ev("() => game.mode") == 'title' and 'Start a new' in page.inner_text('#btn-new'))
+    tk = ev("() => game.account.tickets")
+    page.click('#btn-new'); page.wait_for_timeout(200)
+    check('deleting asks for a second click', 'Click again' in page.inner_text('#btn-new'))
+    page.click('#btn-new'); page.wait_for_timeout(1500)
+    check('a new character starts exploring in Haven, level 1, without spending a shard', ev("() => game.world.mode") == 'explore' and ev("() => game.world.map.id") == 'town' and ev("() => game.world.player.level") == 1 and ev("() => game.account.tickets") == tk, f"{ev('() => game.world.mode')} {ev('() => game.world.map.id')} level {ev('() => game.world.player.level')}")
+    check('the opening keeps the story a mystery', 'queen' not in page.evaluate("() => document.querySelector('#title .lede').textContent.toLowerCase()") and 'wish' not in page.evaluate("() => document.querySelector('#title .tagline').textContent.toLowerCase()"))
     browser.close()
 
 print('console errors:', json.dumps(errors, indent=1) if errors else 'none')

@@ -1255,6 +1255,7 @@ export class World {
     // Some goals may already be met: a map you have been to, signs you have read.
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
     if (q.goal.read) st.n = Math.min(q.goal.read, p.signs.length);
+    if (q.goal.wave && this.bestWave >= q.goal.wave) st.n = 1;
     if (st.n >= this.questNeed(q)) st.s = 'ready';
     this.questStamp++;
     this.emit('quest', { id, what: 'accepted', name: q.name, state: st.s });
@@ -1274,6 +1275,9 @@ export class World {
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
         if (hit) st.n++;
       } else if (kind === 'reach' && g.reach === data) {
+        hit = true;
+        st.n = 1;
+      } else if (kind === 'wave' && g.wave && data >= g.wave) {
         hit = true;
         st.n = 1;
       } else if (kind === 'read' && g.read) {
@@ -2324,6 +2328,7 @@ export class World {
       const gold = 10 + 4 * w.n + (boss ? 80 : 0);
       p.gold += gold;
       this.emit('waveClear', { n: w.n, boss, gold });
+      this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.
       if (w.n % 2 === 1 || boss) this.makeOffer(boss);
     }

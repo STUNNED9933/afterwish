@@ -1,5 +1,5 @@
-// The town: where you spend what the arena gave you.
-//   Arena gate   pick a checkpoint and start a run
+// The camp at the Echo Ring: where you spend what the echoes left behind.
+//   The Ring     pick a checkpoint and wake it (one starglass shard)
 //   Blacksmith   upgrade equipped gear with scrap and gold
 //   Cache vault  loot caches, with their odds on display
 //   Trainer      spend skill points on ability ranks, buy more with gold
@@ -67,7 +67,7 @@ export class Town {
       gate.appendChild(b);
     }
     $('gate-best').textContent = world.bestWave ? `Best wave cleared: ${world.bestWave}. A new checkpoint opens after every boss.` : 'A new checkpoint opens after every boss.';
-    $('btn-enter').textContent = p.tickets > 0 ? `Enter at wave ${this.startWave} · 1 ticket (you have ${p.tickets})` : 'No arena tickets · earn them exploring';
+    $('btn-enter').textContent = p.tickets > 0 ? `Wake it at wave ${this.startWave} · 1 shard (you have ${p.tickets})` : 'No starglass shards · they are found on the road';
     $('btn-enter').disabled = p.tickets <= 0;
 
     // --- Blacksmith ------------------------------------------------------

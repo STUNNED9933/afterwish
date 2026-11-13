@@ -153,7 +153,7 @@ function start(hot = {}) {
     talentBadge();
     if (mode === 'title') refreshTitle();
     tune();
-    if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Return to town';
+    if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
     last = performance.now();
   }
@@ -165,11 +165,11 @@ function start(hot = {}) {
     $('class-desc').textContent = `${c.role}. ${c.blurb}`;
     $('btn-explore').textContent = has ? `Explore · ${c.name} level ${save.level}` : `Explore as ${c.name}`;
     $('btn-continue').classList.toggle('hidden', !has);
-    if (has) $('btn-continue').textContent = 'Arena town';
+    if (has) $('btn-continue').textContent = 'The Echo Ring';
     const fresh = $('btn-new');
-    fresh.textContent = has ? `Start a new ${c.name}` : 'Enter the arena · 1 ticket';
+    fresh.textContent = has ? `Start a new ${c.name}` : 'Wake the Echo Ring · 1 shard';
     fresh.dataset.armed = '';
-    $('title-save').textContent = `${account.gold} gold · ${account.tickets} arena ticket${account.tickets === 1 ? '' : 's'}. Each class is one character, used in both exploration and the arena. Gold and tickets are shared by every class. Progress is saved in this browser.`;
+    $('title-save').textContent = `${account.gold} gold · ${account.tickets} starglass shard${account.tickets === 1 ? '' : 's'}. Each class is one character, used both on the road and in the Echo Ring. Gold and shards are shared by every class. Progress is saved in this browser.`;
   }
 
   function resetViews() {
@@ -185,7 +185,7 @@ function start(hot = {}) {
   /** Start a run in the arena. `startWave` must be a checkpoint the save has reached. */
   function startRun(fromSave, startWave) {
     if (account.tickets <= 0) {
-      $('title-save').textContent = 'You have no arena tickets. Enemies in Explore drop them.';
+      $('title-save').textContent = 'You have no starglass shards. The things on the road above Haven carry them.';
       return;
     }
     account.tickets--; // every arena run costs one ticket
@@ -274,7 +274,7 @@ function start(hot = {}) {
     if (r.gold) parts.push(`${r.gold.toLocaleString()} gold`);
     if (r.scrap) parts.push(`${r.scrap} scrap`);
     if (r.keys) parts.push(`${r.keys} Warden key${r.keys > 1 ? 's' : ''}`);
-    if (r.tickets) parts.push(`${r.tickets} arena ticket`);
+    if (r.tickets) parts.push(`${r.tickets} starglass shard${r.tickets > 1 ? 's' : ''}`);
     if (r.skill) parts.push(`${r.skill} skill points`);
     return parts.join(' · ');
   }
@@ -745,12 +745,11 @@ function start(hot = {}) {
       }, 4000);
     }
   };
+  // A new character always starts at the beginning of the story, in Haven.
   const wipe = () => {
-    const exploring = world.mode === 'explore' && mode !== 'title';
     clearSave(world.cls);
     save = null;
-    if (exploring) startExplore(true);
-    else startRun(null);
+    startExplore(true);
   };
 
   // Class picker on the title screen. Each class is a separate character.
@@ -775,7 +774,7 @@ function start(hot = {}) {
   $('btn-continue').addEventListener('click', () => enterTown());
   $('btn-new').addEventListener('click', (e) => {
     if (!save) startRun(null);
-    else armThenRun(e.currentTarget, 'Click again to delete your saved character', wipe);
+    else armThenRun(e.currentTarget, `Click again to delete your ${CLASSES[settings.cls].name} and start over`, wipe);
   });
   $('btn-resume').addEventListener('click', () => setMode('play'));
   $('btn-travel-close').addEventListener('click', () => setMode('play'));
@@ -951,7 +950,8 @@ function start(hot = {}) {
     switch (ev.type) {
       case 'waveStart':
         tune();
-        hud.banner(`Wave ${ev.n}`, ev.boss ? `${ev.bossName} enters the ring` : '');
+        hud.banner(`Wave ${ev.n}`, ev.boss ? `An echo of ${ev.bossName} rises` : ev.n === 1 ? 'The stones remember' : '');
+        if (ev.n === 1) hintOnce('ring', 'The Echo Ring calls up what the mountain remembers. Echoes fall like anything else; they just keep coming.', 9);
         sfx.wave(ev.boss);
         if (ev.n === 1) hintOnce('move', 'Right-click the ground to move. Right-click an enemy to attack it.', 7);
         if (ev.boss) hintOnce('boss', 'Parry the boss three times to break its guard. Get clear of the red slam.', 9);
@@ -1191,8 +1191,8 @@ function start(hot = {}) {
         break;
       case 'ticket':
         sfx.pickup(4);
-        hud.feedText('Arena ticket found');
-        hud.float(renderer, ev.x, 2.6, ev.z, '+1 ticket', 'word stun');
+        hud.feedText('A sliver of starglass, still warm');
+        hud.float(renderer, ev.x, 2.6, ev.z, '+1 shard', 'word stun');
         break;
       case 'playerDeath':
         sfx.defeat();
@@ -1206,7 +1206,7 @@ function start(hot = {}) {
           ]
             .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
             .join('');
-          $('btn-retry').textContent = account.tickets > 0 ? `Retry from wave ${save.checkpoint} · 1 ticket (${account.tickets} left)` : 'No arena tickets left';
+          $('btn-retry').textContent = account.tickets > 0 ? `Wake it again from wave ${save.checkpoint} · 1 shard (${account.tickets} left)` : 'No starglass shards left';
           $('btn-retry').disabled = account.tickets <= 0;
           gearReturn = 'defeat';
           setMode('defeat');

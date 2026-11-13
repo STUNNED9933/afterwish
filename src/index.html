@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Afterwish</title>
-<meta name="description" content="Afterwish: a browser action RPG about a kingdom that cannot die. Parry, explore ten maps to level 100, and play co-op with friends." />
+<meta name="description" content="Afterwish: a browser action RPG. Nothing you cut down stays down. Parry, climb ten maps to level 100, and play co-op with friends." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;1,500;1,600&display=swap" rel="stylesheet">
 <style>/*__CSS__*/</style>
@@ -49,7 +49,7 @@
     <div id="abilities"></div>
   </div>
   <div id="hud-buttons">
-    <div id="purse">Gold <b id="hud-gold">0</b> · Tickets <b id="hud-tickets">0</b></div>
+    <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b></div>
     <button type="button" id="btn-talents" class="hud-btn">Talents <kbd>T</kbd><span id="talent-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-journal" class="hud-btn">Journal <kbd>J</kbd></button>
     <button type="button" id="btn-gear" class="hud-btn">Gear <kbd>Tab</kbd><span id="gear-badge" class="badge hidden"></span></button>
@@ -95,25 +95,25 @@
 <section id="town" class="screen hidden">
   <div class="town-head">
     <div>
-      <p class="eyebrow">Between runs</p>
-      <h2>Town</h2>
+      <p class="eyebrow">Camp at the stones</p>
+      <h2>The Echo Ring</h2>
     </div>
     <div class="town-res">
       <span>Gold <b id="town-gold">0</b></span>
       <span>Scrap <b id="town-scrap">0</b></span>
       <span>Warden keys <b id="town-keys">0</b></span>
-      <span>Tickets <b id="town-tickets">0</b></span>
+      <span>Shards <b id="town-tickets">0</b></span>
       <button type="button" id="town-gear" class="ghost">Gear <kbd>Tab</kbd><span id="town-gear-badge" class="badge hidden"></span></button>
       <button type="button" id="town-title" class="ghost">Title screen</button>
     </div>
   </div>
   <div class="town-grid">
     <article class="town-card" id="card-gate">
-      <h3>Arena gate</h3>
-      <p class="setting-desc">Start from any checkpoint you have reached. Earlier waves are easier to farm; later waves drop better gear.</p>
+      <h3>The Ring</h3>
+      <p class="setting-desc">Seven standing stones set with star-glass. Press a shard into the stones and they call up what the mountain remembers, wave after wave. Echoes are paid for in gold by those who collect what they leave behind. Start from any checkpoint you have reached.</p>
       <div id="gate-waves" class="segmented" role="group" aria-label="Starting wave"></div>
       <p class="setting-desc" id="gate-best"></p>
-      <button type="button" id="btn-enter" class="primary">Enter the arena</button>
+      <button type="button" id="btn-enter" class="primary">Wake the Ring</button>
     </article>
     <article class="town-card" id="card-smith">
       <h3>Blacksmith</h3>
@@ -138,10 +138,10 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.12</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.13</p>
     <h1>After<em>wish</em></h1>
-    <p class="tagline">&ldquo;Let nothing I love be taken from me.&rdquo;</p>
-    <p class="lede">A star granted a queen's wish, and now nothing on the mountain can die. Explore the road up from Haven, parry at the flash to stun what comes for you, and find out what the wish cost. Alone, or with friends.</p>
+    <p class="tagline">What falls here does not stay down.</p>
+    <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>
     <div class="class-pick">
       <div class="setting-label">Class</div>
       <div id="class-picker" class="segmented" role="group" aria-label="Class"></div>
@@ -149,8 +149,8 @@
     </div>
     <div class="title-actions">
       <button type="button" id="btn-explore" class="primary">Explore</button>
-      <button type="button" id="btn-continue" class="ghost hidden">Arena town</button>
-      <button type="button" id="btn-new" class="ghost">Enter the arena</button>
+      <button type="button" id="btn-continue" class="ghost hidden">The Echo Ring</button>
+      <button type="button" id="btn-new" class="ghost">Wake the Echo Ring</button>
     </div>
     <p id="title-save" class="save-line"></p>
     <button type="button" id="btn-mp" class="ghost">Play with friends</button>
@@ -166,7 +166,7 @@
       <dt><kbd>Shift</kbd> + <kbd>Q</kbd></dt><dd>Spend a skill point to rank that ability up.</dd>
       <dt><kbd>1</kbd></dt><dd>Drink a health potion.</dd>
       <dt><kbd>Tab</kbd></dt><dd>Gear and stats.</dd>
-      <dt><kbd>Esc</kbd></dt><dd>Pause, settings, return to town.</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Pause, settings, save and quit.</dd>
     </dl>
     <div class="legend">
       <span><i class="swatch gold"></i>Pale gold attack: parry it</span>
@@ -228,7 +228,7 @@
   <div class="menu-card story-card">
     <p class="eyebrow">Your saves</p>
     <h2>Move to another browser</h2>
-    <p class="setting-desc">Saves live in the browser you play in. To carry them over: <b>export</b> here, then <b>import</b> in the other browser. Every character, the shared gold and tickets, and your settings come along.</p>
+    <p class="setting-desc">Saves live in the browser you play in. To carry them over: <b>export</b> here, then <b>import</b> in the other browser. Every character, the shared gold and shards, and your settings come along.</p>
     <h3 class="transfer-h">Export from this browser</h3>
     <div class="transfer-row">
       <button type="button" id="btn-export-file" class="primary">Download save file</button>
@@ -303,10 +303,10 @@
     <p class="eyebrow">Defeated</p>
     <h2 id="defeat-title">You fell on wave 1</h2>
     <dl id="defeat-stats" class="defeat-stats"></dl>
-    <p class="setting-desc">Your level, gear, gold and scrap stay with you. Augments reset each run. Checkpoints are saved after every boss.</p>
+    <p class="setting-desc">The echoes go quiet, and you wake on the grass outside the stones, as you always do. Your level, gear, gold and scrap stay with you. Augments fade with each waking. Checkpoints are kept after every great echo.</p>
     <button type="button" id="btn-retry" class="primary">Retry</button>
     <div class="menu-foot">
-      <button type="button" id="btn-defeat-town" class="ghost">Return to town</button>
+      <button type="button" id="btn-defeat-town" class="ghost">Back to camp</button>
       <button type="button" id="btn-defeat-gear" class="ghost">Check gear</button>
     </div>
   </div>

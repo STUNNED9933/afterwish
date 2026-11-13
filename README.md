@@ -1,6 +1,6 @@
 # Afterwish
 
-*"Let nothing I love be taken from me."*
+*What falls here does not stay down.*
 
 A 3D action RPG by STUNNED Games that runs in the browser. League-style controls
 (right-click to move, QWER aimed at the cursor), a parry at the heart of the
@@ -88,8 +88,11 @@ The eight enemies added in 0.8:
   walk around them; a move order to a spot you cannot reach is dropped.
   Arrows and spells still fly over them.
 - Being knocked out only sends you back to Haven. You lose nothing.
-- You explore and fight in the arena with the same character. Entering the
-  arena costs one ticket; enemies out here drop them (always from Crushers
+- **The arena is the Echo Ring** (since 0.13): a ring of standing stones on the
+  hill behind Haven, set with star-glass, that calls up echoes of what the
+  mountain remembers. In the code it is still called the arena, and shards are
+  still called tickets. Sister Odile has two quests there. You fight there with
+  the same character. Waking the Ring costs one starglass shard; enemies out here drop them (always from Crushers
   and bosses).
 - The arena follows your level: its enemies are about as strong as you are,
   and each wave adds health and damage on top. It pays half the EXP of
@@ -164,7 +167,7 @@ tickets, and your settings, and replaces whatever was there.
 ### Story, people and quests (added in 0.9)
 
 The game now has a backstory, and it is not a happy one. It is never told in
-one piece: you put it together from **22 signs, notes and carvings** (two on
+one piece: you put it together from **23 signs, notes and carvings** (two on
 every map) and from what four people in Haven say when they give you work.
 No spoilers here; the whole thing is written out at the top of
 `src/sim/story.js` if you want to read or change it.
@@ -184,7 +187,7 @@ No spoilers here; the whole thing is written out at the top of
 
 Adding a quest or a sign is one entry in `QUESTS` or `SIGNS` in
 `src/sim/story.js`. Goals can be "kill n (of an enemy / on a map / a boss)",
-"reach a map" or "read n signs".
+"reach a map", "read n signs" or "clear wave n in the Echo Ring".
 
 ### Boss rewards (reworked in 0.9)
 

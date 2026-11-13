@@ -19,6 +19,17 @@
 // The child is the hero. That is why the hero wakes up in Haven after every
 // defeat, and why The Unmade rises again two minutes after she falls: the wish
 // holds for as long as there is something left that she loves.
+//
+// THE ECHO RING (the arena)
+// Before he went up the mountain for good, Tobin set shards of the fallen star
+// into a ring of standing stones on the hill behind Haven, to study it. The
+// glass remembers. Press a shard into the stones and they call up echoes of
+// what the mountain has made, wave after wave, and at the deepest waves the
+// echoes of the three who became bosses. Echoes fall like anything else and
+// keep coming. Every unmade creature carries a sliver of the star inside it,
+// which is why the things on the road drop starglass shards (the "tickets" in
+// the code), and why the Ring needs one to wake. Sister Odile, Tobin's
+// apprentice, is the one who knows what the stones are.
 
 /** People in Haven. `at` is where they stand; `look` is how they are drawn. */
 export const NPCS = {
@@ -54,6 +65,7 @@ export const NPCS = {
  */
 export const SIGNS = {
   haven1: { map: 'town', spot: [9.4, 2.7], title: 'Town notice board', text: 'HAVEN. All who come down the mountain are welcome here.\n\nDo not go back up for the ones you left. They will not know you.\n\n— Elder Wren' },
+  haven3: { map: 'town', spot: [-9.6, 3.6], title: 'Path marker on the hill road', text: 'TO THE STONES.\n\nScratched underneath, in a careful hand: The glass remembers. Bring a shard, and do not go in looking for anyone you lost.\n\n— O.' },
   haven2: { map: 'town', spot: [2.0, -5.9], title: 'The well stone', text: 'Nineteen names are cut into the rim: the dead of the first winter, before the star.\n\nThey are the last names anyone in Haven has had to carve.' },
 
   green1: { map: 'greenwood', spot: 'in', title: 'Milestone', text: 'ASTERFELL, 9 leagues. By order of Queen Maren this road is kept safe for all who travel it.\n\nBelow, scratched with a knife: TURN BACK.' },
@@ -97,6 +109,7 @@ export const SIGN_IDS = Object.keys(SIGNS);
 //   goal    { kill: n, enemy?, map?, boss? }  kill n enemies (of a type / on a map / a boss)
 //           { reach: mapId }                  walk into a map
 //           { read: n }                       have read n signs in total
+//           { wave: n }                       clear wave n in the Echo Ring (the arena)
 //   reward  exp:   fraction of the level's EXP bar
 //           gold, scrap: base amounts, scaled up by the quest's level
 //           item:  minimum rarity of a piece of gear (0 common .. 6 immortal), slot optional
@@ -215,6 +228,18 @@ export const QUESTS = {
     offer: 'The Hollow was my master\'s garden. Every Sporecap in it is one of his trials. Fifteen of them. I should have stayed and stopped him. I should have stayed and helped him. I do not know which.',
     done: 'He wrote me a last page, did he? ... He was glad I left. I have waited nineteen years for someone to tell me that.',
     reward: { exp: 1, gold: 320, item: 4, slot: 'helm' },
+  },
+  ringglass: {
+    giver: 'odile', level: 6, name: 'What the Glass Remembers', goal: { wave: 5 },
+    offer: 'There is a ring of standing stones on the hill behind Haven. My master set starglass into them, years ago, to study the star. Now the glass remembers things. Press a shard into the stones and they will show you. Clear five waves of whatever they show, and tell me if you saw anything you recognised.',
+    done: 'Husks, and spitters, and at the end something that wore a captain\'s armour. Brother Tobin wanted the stones to show him the star. They show us everything it took instead.\n\nKeep the shards you find on the road. Every one of those poor things carries a sliver of it inside.',
+    reward: { exp: 0.6, gold: 80, tickets: 2 },
+  },
+  ringlast: {
+    giver: 'odile', level: 40, after: 'ringglass', name: 'The Oldest Echo', goal: { wave: 15 },
+    offer: 'The deeper you go in the Ring, the older the echoes. Some of the hill folk say the fifteenth is not an echo of a monster at all, but of someone the mountain cannot stop remembering. Go and see. Then come back and tell me. Slowly.',
+    done: 'It spoke to you? ... It asked whether the child was safe.\n\nThe stones carried that question all the way down the mountain. I think it is the only thing the mountain still says. I do not know whose child she means. I am not sure I want to.',
+    reward: { exp: 1, gold: 300, item: 4, tickets: 3 },
   },
   wraith: {
     giver: 'odile', level: 72, name: 'Storm Glass', goal: { kill: 15, enemy: 'wraith' },

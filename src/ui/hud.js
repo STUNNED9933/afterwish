@@ -15,6 +15,7 @@ export function goalText(q) {
   const g = q.goal;
   if (g.reach) return `Travel to ${MAPS[g.reach].name}`;
   if (g.read) return `Read ${g.read} signs or notes`;
+  if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
   if (g.boss) return `Defeat ${ENEMIES[g.boss].name}`;
   const who = g.enemy ? ENEMIES[g.enemy].name + (g.kill > 1 ? 's' : '') : 'enemies';
   return `Defeat ${g.kill} ${who}${g.map ? ' in ' + MAPS[g.map].name : ''}`;

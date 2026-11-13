@@ -172,9 +172,14 @@ every map) and from what four people in Haven say when they give you work.
 No spoilers here; the whole thing is written out at the top of
 `src/sim/story.js` if you want to read or change it.
 
-- **Talk and read with G.** Stand next to a person or a sign and a prompt
-  appears. `!` over someone's head means they have a quest for you, `?` means
-  you can hand one in. Unread signs are marked on the map and minimap.
+- **Talk and read with a right-click** on a person or a sign: your hero walks
+  over and opens it (or press G when you are next to one). Over people's heads,
+  a gold `!` means a quest to take, a grey `?` a quest you are still on, and a
+  green book a quest ready to hand in. In a conversation, G or Enter hands in a
+  finished quest or accepts the next one, and the number keys pick a quest.
+  Unread signs are marked on the map and minimap.
+- **Gear icons match your class**: bows, daggers and staves, hoods, masks and
+  wizard hats, and so on.
 - **Elder Wren** gives the main story, ten quests from the first step outside
   to The Unmade. **Bram** the smith, **Sister Odile** and **Pip** have side
   quests tied to the map you are on; each of them lost someone up the mountain.

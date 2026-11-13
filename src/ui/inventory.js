@@ -1,7 +1,7 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, RARITIES, EFFECTS, itemScore, itemStats, itemName, scrapValue, formatStat } from '../sim/items.js';
-import { svg } from './hud.js';
+import { svg, gearIcon } from './hud.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,7 +38,7 @@ export function itemCell(tooltip, item, { button = false, compareTo = null, upgr
   if (item) {
     const color = RARITIES[item.rarity].color;
     el.style.setProperty('--rarity', color);
-    el.innerHTML = `${svg(item.slot)}<span class="lvl">${item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}`;
+    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}`;
     el.addEventListener('mouseenter', () => tooltip.show(itemTooltip(item, compareTo), el, color));
     el.addEventListener('mouseleave', () => tooltip.hide());
     if (button) el.setAttribute('aria-label', `${itemName(item)}, ${RARITIES[item.rarity].name} ${itemTypeName(item)}${upgrade ? ', upgrade' : ''}`);
@@ -71,7 +71,7 @@ export class Inventory {
       row.className = 'eq-row';
       const cell = itemCell(this.tooltip, item);
       if (!item) {
-        cell.innerHTML = svg(slot);
+        cell.innerHTML = gearIcon(slot);
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');

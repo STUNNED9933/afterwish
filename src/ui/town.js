@@ -8,7 +8,7 @@
 import { CONFIG } from '../config.js';
 import { ABILITY_SLOTS } from '../sim/defs.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, RARITIES, CACHES, MAX_PLUS, itemName, itemScore, scrapValue, upgradeCost } from '../sim/items.js';
-import { svg, abilityTooltip } from './hud.js';
+import { svg, abilityTooltip, gearIcon } from './hud.js';
 import { itemCell } from './inventory.js';
 
 const $ = (id) => document.getElementById(id);
@@ -79,7 +79,7 @@ export class Town {
       row.className = 'town-row';
       const cell = itemCell(this.tooltip, item);
       if (!item) {
-        cell.innerHTML = svg(slot);
+        cell.innerHTML = gearIcon(slot);
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');

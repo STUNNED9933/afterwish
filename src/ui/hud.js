@@ -43,6 +43,57 @@ export const ICONS = {
   strike: '<path d="M21 3l-1 6-8 8-5-5 8-8z"/><path d="M6 13l5 5"/><path d="M3 21l4-4"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
 };
+// Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
+// Line art on a 24x24 grid, drawn with the same stroke style as the ability icons.
+const GEAR_ICONS = {
+  warrior: {
+    weapon: ICONS.weapon, // sword
+    helm: '<path d="M5 19v-6a7 7 0 0 1 14 0v6z"/><path d="M5 13h14"/><path d="M9 13v3M12 13v3M15 13v3"/><path d="M12 6V3"/>', // visored great helm
+    chest: '<path d="M6 5l6 2 6-2 2 4-2 1v10H6V10L4 9z"/><path d="M6 12h12"/><path d="M12 7v13"/>', // plate cuirass
+    boots: '<path d="M8 3h5v10l6 2v5H8z"/><path d="M8 9h5"/><path d="M8 17h11"/>', // armoured sabatons
+    ring: '<circle cx="12" cy="15" r="5.5"/><rect x="9" y="3.5" width="6" height="5" rx="1"/>', // signet
+  },
+  archer: {
+    weapon: '<path d="M7 3c7 3 7 15 0 18"/><path d="M7 3v18"/><path d="M4 12h15"/><path d="M16 9l3 3-3 3"/>', // bow with nocked arrow
+    helm: '<path d="M4 20c0-9 3-16 8-16s8 7 8 16"/><path d="M8 20c0-5 2-8 4-8s4 3 4 8"/>', // hood
+    chest: '<path d="M7 5l5 2 5-2 2 4-2 1v10H7V10L5 9z"/><path d="M8 9l8 9"/><path d="M17 3l3 3M18.5 2.5l-1 4"/>', // leather jerkin, quiver strap and fletching
+    boots: '<path d="M9 5h5v9l6 2v4H9z"/><path d="M8 5h7"/><path d="M10 8l3 3M13 8l-3 3"/>', // cuffed, cross-laced boots
+    ring: '<circle cx="12" cy="15" r="5.5"/><path d="M12 9.5c-3-1-4-4-2-6.5 3 1 4 4 2 6.5z"/>', // leaf ring
+  },
+  rogue: {
+    weapon: '<path d="M4 20l9-9"/><path d="M13 11l4-6 1 1-5 5"/><path d="M20 20l-9-9"/><path d="M11 11L7 5 6 6l5 5"/><path d="M3 17l4 4M21 17l-4 4"/>', // crossed daggers
+    helm: '<path d="M4 9c3-2 13-2 16 0-1 6-5 9-8 9s-7-3-8-9z"/><path d="M8 11h3M13 11h3"/>', // mask
+    chest: '<path d="M12 3l7 4-2 14H7L5 7z"/><path d="M12 3v18"/><path d="M5 7c3 2 11 2 14 0"/>', // cloak
+    boots: '<path d="M10 3h4v10c2 1 5 3 8 7H10z"/><path d="M10 8h4"/>', // soft boots with a pointed toe
+    ring: '<circle cx="12" cy="15" r="5.5"/><path d="M14 3a3.3 3.3 0 1 0 0 6 2.6 2.6 0 0 1 0-6z"/>', // crescent-moon ring
+  },
+  mage: {
+    weapon: '<path d="M5 22l9-12"/><path d="M12 11l-2.5-1M13 13l1 2.5"/><circle cx="16.5" cy="6.5" r="3.5"/><path d="M21 2l-1 1M22 6h-1.5M17 1v1.2"/>', // staff with a glowing orb
+    helm: '<path d="M4 18h16"/><path d="M7 18l5-15 3 8 3 7"/><path d="M15 11l3-2"/>', // pointed hat
+    chest: '<path d="M9 3h6l2 5-1 13H8L7 8z"/><path d="M12 3v18"/><path d="M8 13h8"/>', // robe
+    boots: '<path d="M8 6c0-2 5-2 5 0v8c3 0 7 1 7 5H8z"/><path d="M20 19l1-2"/>', // curled slippers
+    ring: '<circle cx="12" cy="15" r="5.5"/><path d="M12 3l3 3-3 3-3-3z"/>', // ring with a gem
+  },
+};
+let gearClass = 'warrior';
+/** Which class's gear icons to show (the character being played). */
+export function setGearClass(cls) {
+  if (GEAR_ICONS[cls]) gearClass = cls;
+}
+/** The icon for a gear slot, or for an item (its own class if it has one, else the player's). */
+export function gearIcon(slotOrItem) {
+  const item = typeof slotOrItem === 'object' && slotOrItem ? slotOrItem : null;
+  const slot = item ? item.slot : slotOrItem;
+  const set = GEAR_ICONS[(item && item.cls) || gearClass] || GEAR_ICONS.warrior;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${set[slot] || ICONS[slot] || ICONS.hero}</svg>`;
+}
+// Quest markers over people's heads.
+export const MARKS = {
+  available: '<b class="mark avail" title="A quest to take">!</b>',
+  progress: '<b class="mark progress" title="Quest in progress">?</b>',
+  ready: '<b class="mark ready" title="Quest ready to hand in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1v14c-3-2-6-2-9-1z"/><path d="M21 5c-3-1-6-1-9 1v14c3-2 6-2 9-1z"/></svg></b>',
+};
+
 export const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.hero}</svg>`;
 
 /** Tooltip text for an ability, including its rank and any augments changing it. */
@@ -404,8 +455,7 @@ export class Hud {
       this.storyStamp = world.questStamp;
       for (const l of this.portalLabels) {
         if (l.story === 'npc') {
-          const mark = world.npcMarker(l.gate.id);
-          l.el.innerHTML = (mark ? `<b class="mark ${mark === '?' ? 'ready' : ''}">${mark}</b>` : '') + l.gate.name;
+          l.el.innerHTML = (MARKS[world.npcMarker(l.gate.id)] || '') + l.gate.name;
         } else if (l.story === 'sign') {
           const unread = !world.player.signs.includes(l.gate.id);
           l.el.textContent = unread ? 'Unread' : '';

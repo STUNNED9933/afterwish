@@ -386,8 +386,12 @@ button:disabled:hover { border-color: var(--line); }
 /* ---------- Story: people, signs, quests, journal ---------- */
 .plabel.npc { border-color: #ffd27a; color: #fff3d6; }
 .plabel.sign { border-color: #8a8f9c; color: #d8dce6; font-size: 12px; padding: 1px 7px; }
-.plabel .mark { display: inline-block; margin-right: 6px; color: #ffd27a; font: 700 17px var(--body); }
-.plabel .mark.ready { color: #7fe0a0; }
+.plabel .mark { display: inline-block; vertical-align: -2px; margin-right: 6px; color: #ffd27a; font: 800 18px var(--body); text-shadow: 0 0 6px rgba(255, 210, 122, 0.7); }
+.plabel .mark.progress { color: #b9bfcc; text-shadow: none; }
+.plabel .mark.ready svg { width: 18px; height: 18px; fill: rgba(127, 224, 160, 0.25); stroke: #7fe0a0; stroke-width: 2; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(127, 224, 160, 0.8)); }
+.quest .primary kbd, .quest .ghost kbd { margin-left: 6px; }
+.talk-keys { font-size: 13px; color: var(--muted); }
+canvas.hover-talk { cursor: pointer; }
 #prompt {
   position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 6; padding: 7px 16px; pointer-events: none;
   background: rgba(10, 13, 22, 0.88); border: 1px solid var(--gold); border-radius: 4px; font: 600 16px var(--body); color: var(--bone); white-space: nowrap;

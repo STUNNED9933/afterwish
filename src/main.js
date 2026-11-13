@@ -16,7 +16,7 @@ import { MAPS, MAP_IDS } from './sim/maps.js';
 import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
-import { goalText } from './ui/hud.js';
+import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName } from './sim/items.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -64,6 +64,7 @@ function start(hot = {}) {
   function makeWorld(opts) {
     const w = new World(Object.assign({ parryPreset: settings.parryPreset, cls: settings.cls }, opts));
     renderer.setHeroClass(w.cls);
+    setGearClass(w.cls);
     w.player.gold = account.gold;
     w.player.tickets = account.tickets;
     return w;
@@ -76,6 +77,8 @@ function start(hot = {}) {
   let talkTo = null; // the person being talked to
   let reading = null; // the sign being read
   let talkNote = ''; // what they say after you hand a quest in
+  let pendingTalk = null; // { id, until }: a person or sign you right-clicked and are walking to
+  let frameNo = 0; // counts frames, to check what the mouse is over only every few
   let freeze = 0; // brief hit-stop after a parry
   // Multiplayer: null alone; { role: 'host' | 'client', room, pid, code, ... } in a room.
   let net = null;
@@ -287,6 +290,7 @@ function start(hot = {}) {
     const list = $('talk-quests');
     list.innerHTML = '';
     let shown = 0, later = null;
+    let keyNo = 0;
     for (const id of QUEST_IDS) {
       const q = QUESTS[id];
       if (q.giver !== talkTo) continue;
@@ -307,7 +311,8 @@ function start(hot = {}) {
       btn.type = 'button';
       if (st === 'ready') {
         btn.className = 'primary';
-        btn.textContent = 'Take the reward';
+        btn.innerHTML = `Take the reward <kbd>${++keyNo}</kbd>`;
+        btn.dataset.key = keyNo;
         btn.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'claimQuest', id }); });
       } else if (st === 'active') {
         btn.className = 'ghost';
@@ -315,12 +320,14 @@ function start(hot = {}) {
         btn.disabled = true;
       } else {
         btn.className = 'primary';
-        btn.textContent = 'Accept';
+        btn.innerHTML = `Accept <kbd>${++keyNo}</kbd>`;
+        btn.dataset.key = keyNo;
         btn.addEventListener('click', () => applyNow({ type: 'acceptQuest', id }));
       }
       el.appendChild(btn);
       list.appendChild(el);
     }
+    $('talk-keys').classList.toggle('hidden', !keyNo);
     $('talk-line').textContent = talkNote || (shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
   }
 
@@ -655,10 +662,47 @@ function start(hot = {}) {
     if (net) net.room.close();
   });
 
+  /**
+   * Quest shortcut in a conversation. n = 1..9 presses that quest's button; null does the
+   * most useful thing: hand in a finished quest first, else accept the next one, else close.
+   */
+  function quickQuest(n) {
+    const btns = [...document.querySelectorAll('#talk-quests .quest button.primary:not([disabled])')];
+    if (n) {
+      const b = btns.find((x) => Number(x.dataset.key) === n);
+      if (!b) return false;
+      b.click();
+      return true;
+    }
+    const ready = btns.find((x) => x.closest('.quest').classList.contains('ready'));
+    const b = ready || btns[0];
+    if (b) b.click();
+    else setMode('play');
+    return true;
+  }
+
+  /** Right-clicked a person or sign: walk to them, and talk/read on arrival (see the frame loop). */
+  function walkToInteract(o) {
+    const p = world.player;
+    const d = Math.hypot(p.x - o.x, p.z - o.z) || 1;
+    const stand = o.r + 1.1;
+    pendingTalk = { id: o.id, until: performance.now() + 9000 };
+    if (d <= o.r + CONFIG.INTERACT_RANGE - 0.2) return; // already close enough
+    world.command({ type: 'move', x: o.x + ((p.x - o.x) / d) * stand, z: o.z + ((p.z - o.z) / d) * stand });
+  }
+
   const actions = {
+    walkToInteract,
+    cancelInteract() {
+      pendingTalk = null;
+    },
     /** G: talk to the person, or read the sign, you are standing next to. */
+    /** G: in a conversation, do the obvious thing (hand in, else accept); on a sign, step away. */
     interact() {
+      if (mode === 'talk') return quickQuest(null);
+      if (mode === 'read') return setMode('play');
       if (mode !== 'play') return;
+      pendingTalk = null;
       const near = world.interactable();
       if (!near) return;
       world.command({ type: 'stop' });
@@ -710,6 +754,15 @@ function start(hot = {}) {
     },
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
+      if (mode === 'talk') {
+        if (key === 'enter') return quickQuest(null) || true;
+        if (/^[1-9]$/.test(key)) return quickQuest(Number(key));
+        return false;
+      }
+      if (mode === 'read' && key === 'enter') {
+        setMode('play');
+        return true;
+      }
       if (mode !== 'augment' || !world.offer) return false;
       const i = ['1', '2', '3'].indexOf(key);
       if (i >= 0 && world.offer.choices[i]) {
@@ -1233,6 +1286,15 @@ function start(hot = {}) {
     requestAnimationFrame(frame);
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
     last = now;
+    if (pendingTalk) {
+      // Walking to someone you right-clicked: open the conversation when they are in reach.
+      const near = mode === 'play' ? world.interactable() : null;
+      if (mode !== 'play' || now > pendingTalk.until || world.player.dead) pendingTalk = null;
+      else if (near && near.id === pendingTalk.id) actions.interact();
+    }
+    if (mode === 'play' && world.mode === 'explore' && ((frameNo = (frameNo + 1) % 6) === 0)) {
+      canvas.classList.toggle('hover-talk', !!renderer.pickInteractable(input.mouse.x, input.mouse.y, world));
+    }
 
     let alpha = Math.min(1, acc / CONFIG.TICK);
     if (net && net.role === 'client') {

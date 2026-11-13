@@ -59,11 +59,18 @@ export class Input {
     if (e.button === 2) {
       e.preventDefault();
       this.mouse.right = true;
-      if (enemy) {
+      const prop = enemy ? null : this.renderer.pickInteractable(e.clientX, e.clientY, world);
+      if (prop && this.actions.walkToInteract) {
+        // Right-click a person or a sign: walk over and talk to them / read it.
+        this.actions.walkToInteract(prop);
+        this.renderer.moveMarker(prop.x, prop.z, false);
+        this.mouse.right = false;
+      } else if (enemy) {
         world.command({ type: 'attack', id: enemy.id });
         this.renderer.moveMarker(enemy.x, enemy.z, true);
         this.mouse.right = false; // do not turn the attack into a move while held
       } else {
+        if (this.actions.cancelInteract) this.actions.cancelInteract();
         const g = this.ground();
         if (g) {
           world.command({ type: 'move', x: g.x, z: g.z });

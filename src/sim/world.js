@@ -1415,13 +1415,19 @@ export class World {
     this.questEvent('read');
   }
 
-  /** '!' a quest to take, '?' a quest to hand in, '' nothing. Shown over each person's head. */
+  /**
+   * The marker over a person's head: 'ready' (a quest to hand in, shown as a book),
+   * 'available' (a quest to take, '!'), 'progress' (one of theirs you are still on, '?'),
+   * or '' for nothing. The most useful one wins.
+   */
   npcMarker(npcId) {
     let mark = '';
     for (const id of QUEST_IDS) {
       if (QUESTS[id].giver !== npcId) continue;
-      if (this.questState(id) === 'ready') return '?';
-      if (this.questOpen(id)) mark = '!';
+      const st = this.questState(id);
+      if (st === 'ready') return 'ready';
+      if (this.questOpen(id)) mark = 'available';
+      else if (st === 'active' && !mark) mark = 'progress';
     }
     return mark;
   }

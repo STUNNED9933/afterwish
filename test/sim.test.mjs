@@ -645,16 +645,16 @@ import { makeRng } from '../src/sim/rng.js';
   check('story: four people live in Haven', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;
-  check('quests: a new hero has work waiting with Elder Wren and nothing from the others yet at their level', w.npcMarker('wren') === '!' && w.questOpen('road') && !w.questOpen('husks') && !w.questOpen('gate'));
+  check('quests: a new hero has work waiting with Elder Wren and nothing from the others yet at their level', w.npcMarker('wren') === 'available' && w.questOpen('road') && !w.questOpen('husks') && !w.questOpen('gate'));
   // Walk up to Wren and take the first quest.
   const wren = w.map.obstacles.find((o) => o.id === 'wren');
   check('talk: nobody is in reach from the middle of the plaza', w.interactable() === null);
   p.x = wren.x + 1.6; p.z = wren.z; step(w);
   check('talk: standing next to someone puts them in reach, and you cannot walk through them', w.interactable() && w.interactable().id === 'wren' && Math.hypot(p.x - wren.x, p.z - wren.z) >= wren.r + p.radius - 0.06);
   w.command({ type: 'acceptQuest', id: 'road' }); step(w);
-  check('quests: accepted', w.questState('road') === 'active');
+  check('quests: accepted, and Wren shows a ? while it is in progress', w.questState('road') === 'active' && w.npcMarker('wren') === 'progress');
   w.loadMap('greenwood', 'town'); step(w);
-  check('quests: walking into the map completes "The Road Out"', w.questState('road') === 'ready' && w.npcMarker('wren') === '?');
+  check('quests: walking into the map completes "The Road Out"', w.questState('road') === 'ready' && w.npcMarker('wren') === 'ready');
   const gold0 = p.gold, lvl0 = p.level, exp0 = p.exp;
   w.command({ type: 'claimQuest', id: 'road' }); step(w);
   check('quests: handing it in pays gold, EXP and gear', w.questState('road') === 'done' && p.gold > gold0 && (p.level > lvl0 || p.exp > exp0) && !!p.equipped.boots, `+${p.gold - gold0} gold, boots: ${p.equipped.boots && p.equipped.boots.name}`);

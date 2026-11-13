@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Afterwish</title>
+<meta name="description" content="Afterwish: a browser action RPG about a kingdom that cannot die. Parry, explore ten maps to level 100, and play co-op with friends." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;1,500;1,600&display=swap" rel="stylesheet">
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="slowtint" aria-hidden="true"></div>
+<div id="world-ui" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
+
+<header id="top">
+  <div id="wave-box">
+    <span id="wave-label">Wave 1</span>
+    <span id="wave-sub"></span>
+  </div>
+  <div id="boss-box" class="hidden">
+    <div id="boss-head"><span id="boss-name">The Warden</span><span id="boss-posture" title="Parry its attacks to break its guard"></span></div>
+    <div class="bar boss"><div id="boss-fill" class="fill"></div></div>
+  </div>
+</header>
+
+<div id="banner" aria-live="polite"><div id="banner-title"></div><div id="banner-sub"></div></div>
+<div id="hint" class="hidden" aria-live="polite"></div>
+<div id="feed" aria-live="polite"></div>
+<div id="prompt" class="hidden"></div>
+<aside id="quest-track" class="hidden" aria-label="Quests"></aside>
+<div id="room-badge" class="hidden"></div>
+<canvas id="minimap" class="hidden" width="150" height="150" aria-label="Map"></canvas>
+<aside id="augment-list" aria-label="Augments this run"></aside>
+
+<footer id="hud">
+  <div id="hero-box">
+    <div id="level-badge" title="Level">1</div>
+    <div id="bars">
+      <div class="bar hp"><div id="hp-fill" class="fill"></div><span id="hp-text" class="bar-text"></span></div>
+      <div class="bar xp"><div id="xp-fill" class="fill"></div><span id="xp-text" class="bar-text"></span></div>
+    </div>
+  </div>
+  <div id="ability-wrap">
+    <div id="sp-note" class="hidden"></div>
+    <div id="abilities"></div>
+  </div>
+  <div id="hud-buttons">
+    <div id="purse">Gold <b id="hud-gold">0</b> · Tickets <b id="hud-tickets">0</b></div>
+    <button type="button" id="btn-talents" class="hud-btn">Talents <kbd>T</kbd><span id="talent-badge" class="badge hidden"></span></button>
+    <button type="button" id="btn-journal" class="hud-btn">Journal <kbd>J</kbd></button>
+    <button type="button" id="btn-gear" class="hud-btn">Gear <kbd>Tab</kbd><span id="gear-badge" class="badge hidden"></span></button>
+    <button type="button" id="btn-menu" class="hud-btn">Menu <kbd>Esc</kbd></button>
+  </div>
+</footer>
+
+<section id="inventory" class="drawer hidden" aria-label="Gear">
+  <div class="drawer-head">
+    <h2>Gear</h2>
+    <span class="drawer-note" id="inv-res"></span>
+    <button type="button" id="inv-close" class="ghost">Close <kbd>Tab</kbd></button>
+  </div>
+  <div class="drawer-body">
+    <div class="inv-left">
+      <h3>Equipped</h3>
+      <div id="equipped"></div>
+      <h3>Stats</h3>
+      <dl id="stats"></dl>
+    </div>
+    <div class="inv-right">
+      <h3>Bag <span id="bag-count"></span></h3>
+      <div id="bag"></div>
+      <div class="inv-actions">
+        <button type="button" id="btn-scrap" class="ghost">Scrap everything that is not an upgrade</button>
+      </div>
+      <p class="inv-help">Click an item to equip it. Shift-click to break it down into scrap for the blacksmith. A green arrow marks an upgrade. The fight is paused while this is open.</p>
+    </div>
+  </div>
+</section>
+<div id="tooltip" class="hidden"></div>
+
+<section id="augment" class="screen hidden">
+  <div class="augment-wrap">
+    <p class="eyebrow" id="augment-eyebrow">Wave cleared</p>
+    <h2>Choose an augment</h2>
+    <p class="setting-desc">It changes how you fight until this run ends. Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click.</p>
+    <div id="augment-cards"></div>
+    <div class="augment-foot"><button type="button" id="btn-reroll" class="ghost">Reroll</button></div>
+  </div>
+</section>
+
+<section id="town" class="screen hidden">
+  <div class="town-head">
+    <div>
+      <p class="eyebrow">Between runs</p>
+      <h2>Town</h2>
+    </div>
+    <div class="town-res">
+      <span>Gold <b id="town-gold">0</b></span>
+      <span>Scrap <b id="town-scrap">0</b></span>
+      <span>Warden keys <b id="town-keys">0</b></span>
+      <span>Tickets <b id="town-tickets">0</b></span>
+      <button type="button" id="town-gear" class="ghost">Gear <kbd>Tab</kbd><span id="town-gear-badge" class="badge hidden"></span></button>
+      <button type="button" id="town-title" class="ghost">Title screen</button>
+    </div>
+  </div>
+  <div class="town-grid">
+    <article class="town-card" id="card-gate">
+      <h3>Arena gate</h3>
+      <p class="setting-desc">Start from any checkpoint you have reached. Earlier waves are easier to farm; later waves drop better gear.</p>
+      <div id="gate-waves" class="segmented" role="group" aria-label="Starting wave"></div>
+      <p class="setting-desc" id="gate-best"></p>
+      <button type="button" id="btn-enter" class="primary">Enter the arena</button>
+    </article>
+    <article class="town-card" id="card-smith">
+      <h3>Blacksmith</h3>
+      <p class="setting-desc">Each upgrade adds 8% to every stat on the item, up to +10.</p>
+      <div id="smith-list"></div>
+      <button type="button" id="smith-scrap" class="ghost">Scrap bag items that are not upgrades</button>
+    </article>
+    <article class="town-card" id="card-vault">
+      <h3>Cache vault</h3>
+      <p class="setting-desc">Every cache holds one item at your best wave's item level. The odds are shown on each cache.</p>
+      <div id="cache-list"></div>
+      <div id="cache-result" class="hidden"></div>
+    </article>
+    <article class="town-card" id="card-trainer">
+      <h3>Trainer</h3>
+      <p class="setting-desc" id="trainer-points"></p>
+      <div id="trainer-list"></div>
+      <button type="button" id="btn-tome" class="ghost">Buy a skill point</button>
+    </article>
+  </div>
+</section>
+
+<section id="title" class="screen">
+  <div class="title-col">
+    <p class="eyebrow">STUNNED Games &middot; version 0.12</p>
+    <h1>After<em>wish</em></h1>
+    <p class="tagline">&ldquo;Let nothing I love be taken from me.&rdquo;</p>
+    <p class="lede">A star granted a queen's wish, and now nothing on the mountain can die. Explore the road up from Haven, parry at the flash to stun what comes for you, and find out what the wish cost. Alone, or with friends.</p>
+    <div class="class-pick">
+      <div class="setting-label">Class</div>
+      <div id="class-picker" class="segmented" role="group" aria-label="Class"></div>
+      <p id="class-desc" class="setting-desc"></p>
+    </div>
+    <div class="title-actions">
+      <button type="button" id="btn-explore" class="primary">Explore</button>
+      <button type="button" id="btn-continue" class="ghost hidden">Arena town</button>
+      <button type="button" id="btn-new" class="ghost">Enter the arena</button>
+    </div>
+    <p id="title-save" class="save-line"></p>
+    <button type="button" id="btn-mp" class="ghost">Play with friends</button>
+    <button type="button" id="btn-transfer" class="link-btn">Move saves to another browser</button>
+    <p id="touch-note" class="save-line hidden">This prototype needs a mouse and keyboard.</p>
+  </div>
+  <div class="controls-card">
+    <h2>Controls</h2>
+    <dl class="controls">
+      <dt><kbd>Right-click</kbd></dt><dd>Move. Right-click an enemy to attack it.</dd>
+      <dt><kbd>Space</kbd></dt><dd>Parry. Press it when an enemy flashes white.</dd>
+      <dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd></dt><dd>Abilities, aimed at your cursor.</dd>
+      <dt><kbd>Shift</kbd> + <kbd>Q</kbd></dt><dd>Spend a skill point to rank that ability up.</dd>
+      <dt><kbd>1</kbd></dt><dd>Drink a health potion.</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Gear and stats.</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Pause, settings, return to town.</dd>
+    </dl>
+    <div class="legend">
+      <span><i class="swatch gold"></i>Pale gold attack: parry it</span>
+      <span><i class="swatch red"></i>Red attack: get out of the way</span>
+    </div>
+  </div>
+</section>
+
+<section id="pause" class="screen hidden">
+  <div class="menu-card">
+    <h2>Paused</h2>
+    <button type="button" id="btn-resume" class="primary">Resume</button>
+    <div class="setting">
+      <div class="setting-label">Parry timing</div>
+      <div id="parry-presets" class="segmented" role="group" aria-label="Parry timing"></div>
+      <p id="parry-desc" class="setting-desc"></p>
+    </div>
+    <div class="setting">
+      <label class="setting-label" for="volume">Sound volume</label>
+      <input type="range" id="volume" min="0" max="100" step="5" value="60">
+    </div>
+    <div class="setting">
+      <label class="setting-label" for="music-volume">Music volume</label>
+      <input type="range" id="music-volume" min="0" max="100" step="5" value="45">
+    </div>
+    <div class="setting row">
+      <label class="setting-label" for="shadows">Shadows</label>
+      <input type="checkbox" id="shadows" checked>
+      <span class="setting-desc">Turn off if the game runs slowly.</span>
+    </div>
+    <div class="menu-foot">
+      <button type="button" id="btn-town" class="ghost">Return to town</button>
+      <button type="button" id="btn-wipe" class="ghost danger">Delete character</button>
+    </div>
+    <p class="setting-desc">Returning to town ends this run. You keep your level, gear, gold and scrap; augments are lost.</p>
+    <p class="setting-desc keys">Also: <kbd>G</kbd> talk or read &middot; <kbd>J</kbd> journal &middot; <kbd>T</kbd> talents &middot; <kbd>S</kbd> stop &middot; <kbd>Enter</kbd> start next wave now &middot; <kbd>M</kbd> mute &middot; mouse wheel to zoom &middot; <kbd>I</kbd> gear &middot; <kbd>P</kbd> pause</p>
+  </div>
+</section>
+
+<section id="mp" class="screen hidden">
+  <div class="menu-card story-card">
+    <p class="eyebrow">Co-op exploration</p>
+    <h2>Play with friends</h2>
+    <p class="setting-desc">One of you hosts and gets a room code. Everyone else types the code to join (up to 4 players). You explore the same map together; each of you keeps your own character, loot and quest progress, and it saves on your own computer.</p>
+    <label class="setting-label" for="mp-name">Your name</label>
+    <input id="mp-name" maxlength="16" autocomplete="off" spellcheck="false" />
+    <h3 class="transfer-h">Host</h3>
+    <p class="setting-desc" id="mp-host-desc"></p>
+    <div class="transfer-row"><button type="button" id="btn-host" class="primary">Host a room</button></div>
+    <h3 class="transfer-h">Join</h3>
+    <div class="transfer-row"><input id="mp-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" /><button type="button" id="btn-join" class="primary">Join</button></div>
+    <p id="mp-msg" class="setting-desc"></p>
+    <p class="setting-desc">Friends join through a free matchmaking service and then connect straight to the host. Some school or work networks block this; home internet and phone hotspots usually work.</p>
+    <button type="button" id="btn-mp-close" class="ghost">Back <kbd>Esc</kbd></button>
+  </div>
+</section>
+
+<section id="transfer" class="screen hidden">
+  <div class="menu-card story-card">
+    <p class="eyebrow">Your saves</p>
+    <h2>Move to another browser</h2>
+    <p class="setting-desc">Saves live in the browser you play in. To carry them over: <b>export</b> here, then <b>import</b> in the other browser. Every character, the shared gold and tickets, and your settings come along.</p>
+    <h3 class="transfer-h">Export from this browser</h3>
+    <div class="transfer-row">
+      <button type="button" id="btn-export-file" class="primary">Download save file</button>
+      <button type="button" id="btn-export-code" class="ghost">Copy save code</button>
+    </div>
+    <h3 class="transfer-h">Import into this browser</h3>
+    <p class="setting-desc">This replaces the saves in this browser.</p>
+    <div class="transfer-row">
+      <button type="button" id="btn-import-file" class="ghost">Load save file</button>
+      <input type="file" id="import-file" accept=".json,application/json,text/plain" hidden />
+    </div>
+    <textarea id="import-code" rows="3" placeholder="...or paste a save code here" spellcheck="false"></textarea>
+    <div class="transfer-row">
+      <button type="button" id="btn-import-code" class="ghost">Import pasted code</button>
+    </div>
+    <p id="transfer-msg" class="setting-desc"></p>
+    <button type="button" id="btn-transfer-close" class="ghost">Back <kbd>Esc</kbd></button>
+  </div>
+</section>
+
+<section id="talk" class="screen hidden">
+  <div class="menu-card story-card">
+    <p class="eyebrow" id="talk-role"></p>
+    <h2 id="talk-name"></h2>
+    <p id="talk-line" class="story-text"></p>
+    <div id="talk-quests"></div>
+    <button type="button" id="btn-talk-close" class="ghost">Goodbye <kbd>Esc</kbd></button>
+  </div>
+</section>
+
+<section id="read" class="screen hidden">
+  <div class="menu-card story-card sign-card">
+    <p class="eyebrow" id="read-where"></p>
+    <h2 id="read-title"></h2>
+    <p id="read-text" class="story-text"></p>
+    <p id="read-note" class="setting-desc"></p>
+    <button type="button" id="btn-read-close" class="ghost">Step away <kbd>Esc</kbd></button>
+  </div>
+</section>
+
+<section id="journal" class="screen hidden">
+  <div class="menu-card wide-card">
+    <div class="card-head"><h2>Journal</h2><button type="button" id="btn-journal-close" class="ghost">Close <kbd>J</kbd></button></div>
+    <div class="journal-cols">
+      <div><h3>Quests</h3><div id="journal-quests"></div></div>
+      <div><h3 id="journal-lore-head">What the road remembers</h3><div id="journal-lore"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="talents" class="screen hidden">
+  <div class="menu-card wide-card">
+    <div class="card-head"><h2 id="talents-title">Talents</h2><button type="button" id="btn-talents-close" class="ghost">Close <kbd>T</kbd></button></div>
+    <p id="talents-sub" class="setting-desc"></p>
+    <div id="talents-body"></div>
+    <div class="menu-foot"><button type="button" id="btn-respec" class="ghost hidden"></button></div>
+  </div>
+</section>
+
+<section id="travel" class="screen hidden">
+  <div class="menu-card travel-card">
+    <p class="eyebrow">Waygate</p>
+    <h2>Where to?</h2>
+    <p class="setting-desc">The Waygate reaches any map you have walked into. Maps you have not found yet stay locked: get there on foot through the portals first.</p>
+    <div id="travel-list"></div>
+    <button type="button" id="btn-travel-close" class="ghost">Stay in Haven <kbd>Esc</kbd></button>
+  </div>
+</section>
+
+<section id="defeat" class="screen hidden">
+  <div class="menu-card">
+    <p class="eyebrow">Defeated</p>
+    <h2 id="defeat-title">You fell on wave 1</h2>
+    <dl id="defeat-stats" class="defeat-stats"></dl>
+    <p class="setting-desc">Your level, gear, gold and scrap stay with you. Augments reset each run. Checkpoints are saved after every boss.</p>
+    <button type="button" id="btn-retry" class="primary">Retry</button>
+    <div class="menu-foot">
+      <button type="button" id="btn-defeat-town" class="ghost">Return to town</button>
+      <button type="button" id="btn-defeat-gear" class="ghost">Check gear</button>
+    </div>
+  </div>
+</section>
+
+<script src="game.js"></script>
+</body>
+</html>

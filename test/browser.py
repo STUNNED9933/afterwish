@@ -1,0 +1,307 @@
+# Opens the built game in headless Chromium, walks through every screen, saves
+# screenshots and reports any console errors.
+# Usage: python3 test/browser.py <dist/index.html> <out_dir>
+import sys, pathlib, json
+from playwright.sync_api import sync_playwright
+
+page_path = pathlib.Path(sys.argv[1]).resolve()
+out = pathlib.Path(sys.argv[2]); out.mkdir(parents=True, exist_ok=True)
+errors = []
+failed = []
+
+def check(name, ok, extra=''):
+    print(('PASS ' if ok else 'FAIL ') + name + ('  ' + str(extra) if extra != '' else ''))
+    if not ok:
+        failed.append(name)
+
+with sync_playwright() as pw:
+    browser = pw.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
+    page = browser.new_page(viewport={'width': 1366, 'height': 768})
+    page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    page.on('pageerror', lambda e: errors.append('PAGEERROR ' + str(e)))
+    ev = page.evaluate
+    page.goto(page_path.as_uri())
+    page.wait_for_timeout(1200)
+    page.screenshot(path=str(out / '1-title.png'))
+
+    # --- New character goes straight into the arena --------------------------
+    page.click('#btn-new')
+    page.wait_for_timeout(4500)
+    check('new run starts in play mode', ev("() => game.mode") == 'play')
+
+    # Perfect parry, applied directly so the check does not depend on frame rate.
+    for _ in range(300):
+        if ev("() => game.world.enemies.some(e => e.state !== 'spawn')"): break
+        page.wait_for_timeout(50)
+    ev("""() => { const w = game.world, p = w.player, e = w.enemies.find(e => e.state !== 'spawn');
+        p.parryT = 0.3; p.parryAge = 0; p.parryHit = false; w.hitPlayer(10, { parryable: true, src: e }); }""")
+    page.wait_for_timeout(350)
+    page.screenshot(path=str(out / '2-perfect-parry-slow.png'))
+    check('perfect parry slows time', ev("() => game.world.stats.perfects") == 1 and ev("() => game.world.slowT") > 0)
+    check('slow-motion tint shows', ev("() => document.body.classList.contains('slowmo')"))
+
+    # --- Clear wave 1 -> augment offer --------------------------------------
+    ev("() => { const w = game.world; w.enemies.forEach(e => w.killEnemy(e)); w.wave.queue = []; }")
+    for _ in range(200):
+        if ev("() => game.mode") == 'augment': break
+        page.wait_for_timeout(50)
+    check('augment screen opens after wave 1', ev("() => game.mode") == 'augment')
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / '3-augment-offer.png'))
+    check('three augment cards', len(page.query_selector_all('.aug-card')) == 3)
+    before = ev("() => game.world.offer.choices.join()")
+    page.click('#btn-reroll')
+    page.wait_for_timeout(150)
+    check('reroll changes the offer', ev("() => game.world.offer.choices.join()") != before)
+    page.keyboard.press('2')
+    page.wait_for_timeout(300)
+    check('picking an augment resumes play', ev("() => game.mode") == 'play' and ev("() => game.world.augments.length") == 1)
+    check('augment chip listed', len(page.query_selector_all('.aug-chip')) == 1)
+
+    # --- Skill points and rank up --------------------------------------------
+    ev("() => { const w = game.world; w.gainExp(400); }")
+    page.wait_for_timeout(400)
+    pts = ev("() => game.world.player.skillPoints")
+    page.keyboard.press('Shift+Q')
+    page.wait_for_timeout(300)
+    check('Shift+Q ranks up Cleave', ev("() => game.world.player.ranks.q") == 2 and ev("() => game.world.player.skillPoints") == pts - 1, f'points {pts}')
+    page.screenshot(path=str(out / '4-ranks-hud.png'))
+
+    # --- Perfect dodge ---------------------------------------------------------
+    ev("() => { const w = game.world; w.command({ type: 'cast', slot: 'e', x: w.player.x + 5, z: w.player.z }); }")
+    page.wait_for_timeout(120)
+    ev("() => game.world.hitPlayer(10, { parryable: false })")
+    page.wait_for_timeout(200)
+    check('dodging with Lunge refunds its cooldown', ev("() => game.world.player.cd.e") <= 0.6, ev("() => game.world.player.cd.e"))
+
+    # --- Town ----------------------------------------------------------------
+    ev("""() => { const w = game.world, p = w.player; p.gold += 5000; p.scrap += 400; p.keys += 2;
+        w.bestWave = 7; w.maxCheckpoint = 6; }""")
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(200)
+    page.screenshot(path=str(out / '5-pause.png'))
+    page.click('#btn-town')
+    page.wait_for_timeout(400)
+    check('town opens', ev("() => game.mode") == 'town')
+    check('town keeps gold', ev("() => game.world.player.gold") >= 5000)
+    page.screenshot(path=str(out / '6-town.png'))
+
+    page.click('#smith-list button:not([disabled])')
+    page.wait_for_timeout(150)
+    check('blacksmith upgrades the weapon', ev("() => game.world.player.equipped.weapon.plus") == 1)
+
+    bag0 = ev("() => game.world.player.bag.length")
+    opens = page.query_selector_all('#cache-list button')
+    check('three caches listed', len(opens) == 3)
+    page.query_selector_all('#cache-list button')[2].click()
+    page.wait_for_timeout(150)
+    page.query_selector_all('#cache-list button')[1].click()
+    page.wait_for_timeout(150)
+    check('caches put items in the bag', ev("() => game.world.player.bag.length") == bag0 + 2, ev("() => game.world.player.bag.map(i => i.name + ' r' + i.rarity).join(', ')"))
+    check('warden cache used a key', ev("() => game.world.player.keys") == 1)
+
+    page.click('#trainer-list button:not([disabled])')
+    page.wait_for_timeout(150)
+    page.click('#btn-tome')
+    page.wait_for_timeout(150)
+    check('trainer sells a skill point', ev("() => game.world.player.tomes") == 1)
+    page.screenshot(path=str(out / '7-town-after.png'))
+
+    # Force an Immortal item into the bag to check its tile and tooltip.
+    ev("""() => { const w = game.world; w.player.bag.push({ id: 'imm', name: 'Stormcaller', slot: 'weapon', rarity: 6, ilvl: 7, plus: 0, effect: 'stormcaller',
+        stats: { ad: 42, as: 10, crit: 8, lifesteal: 3, haste: 12 } }); }""")
+    page.keyboard.press('Tab')
+    page.wait_for_timeout(250)
+    check('gear opens from town', ev("() => game.mode") == 'gear')
+    cells = page.query_selector_all('#bag button.cell')
+    cells[-1].hover()
+    page.wait_for_timeout(200)
+    page.screenshot(path=str(out / '8-gear-immortal.png'))
+    cells[-1].click()
+    page.wait_for_timeout(150)
+    check('immortal effect switches on when equipped', ev("() => game.world.mods.stormcaller") is True)
+    page.keyboard.press('Tab')
+    page.wait_for_timeout(200)
+    check('closing gear returns to town', ev("() => game.mode") == 'town')
+
+    # --- Start from an earlier checkpoint --------------------------------------
+    page.click('#gate-waves button:first-child')
+    page.wait_for_timeout(100)
+    page.click('#btn-enter')
+    page.wait_for_timeout(500)
+    check('run starts at wave 1 from the gate', ev("() => game.mode") == 'play' and ev("() => game.world.wave.n") == 0)
+    check('save survived the trip', ev("() => JSON.parse(localStorage.getItem('stunned-arena-save-v1')).v") == 2)
+
+    # --- Death -> defeat -> town -------------------------------------------------
+    ev("() => { game.world.hitPlayer(99999, { parryable: false }); }")
+    page.wait_for_timeout(2300)
+    check('defeat screen', ev("() => game.mode") == 'defeat')
+    page.screenshot(path=str(out / '9-defeat.png'))
+    page.click('#btn-defeat-town')
+    page.wait_for_timeout(300)
+    check('defeat -> town', ev("() => game.mode") == 'town')
+    page.click('#town-title')
+    page.wait_for_timeout(200)
+    check('town -> title, Continue offered', ev("() => game.mode") == 'title' and page.is_visible('#btn-continue'))
+
+    # --- Exploration -----------------------------------------------------------
+    tickets = ev("() => game.account.tickets")
+    check('arena runs cost tickets', tickets == 1, tickets)
+    page.click('#btn-explore')
+    page.wait_for_timeout(1500)
+    check('explore starts on the open map', ev("() => game.mode") == 'play' and ev("() => game.world.mode") == 'explore')
+    check('the explorer is the same character as in the arena', ev("() => game.world.player.level") > 1, ev("() => game.world.player.level"))
+    check('explorer shares the gold', ev("() => game.world.player.gold") == ev("() => game.account.gold"))
+    check('minimap shows', page.is_visible('#minimap'))
+    page.screenshot(path=str(out / '10-explore-town.png'))
+    check('exploration starts in Haven with a portal', ev("() => game.world.map.id") == 'town' and ev("() => game.world.map.portals.length") == 1 and len(page.query_selector_all('.plabel:not(.npc):not(.sign)')) == 2)  # the portal and the Waygate
+    ev("() => { const w = game.world, g = w.map.portals[0]; w.player.x = g.x; w.player.z = g.z; w.portalArmed = true; }")
+    page.wait_for_timeout(3000)
+    page.screenshot(path=str(out / '11-explore-camp.png'))
+    check('the portal takes you to the Greenwood Trail', ev("() => game.world.map.id") == 'greenwood' and ev("() => document.getElementById('wave-label').textContent") == 'Greenwood Trail', ev("() => game.world.map.id"))
+    check('the new map has enemies and two portals', ev("() => game.world.enemies.length") >= 14 and len(page.query_selector_all('.plabel:not(.npc):not(.sign)')) == 2)
+    ev("() => { const w = game.world; w.hitEnemy(w.spawnEnemy('brute', { x: w.player.x + 5, z: w.player.z, level: 1 }), 999999); }")
+    page.wait_for_timeout(400)
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(200)
+    page.click('#btn-town')
+    page.wait_for_timeout(300)
+    check('exploring saves to the one character slot', ev("() => !localStorage.getItem('stunned-explore-save-v1') and JSON.parse(localStorage.getItem('stunned-arena-save-v1')).level > 1".replace(' and ', ' && ')) and ev("() => game.mode") == 'title')
+    check('ticket from the wilds reaches the account', ev("() => game.account.tickets") == tickets + 1, ev("() => game.account.tickets"))
+    page.screenshot(path=str(out / '12-title.png'))
+    # --- Classes -------------------------------------------------------------------
+    if ev("() => game.mode") != 'title':
+        page.keyboard.press('Escape'); page.wait_for_timeout(200)
+        page.click('#btn-town'); page.wait_for_timeout(300)
+        if ev("() => game.mode") == 'town':
+            page.click('#town-title'); page.wait_for_timeout(200)
+    check('four class buttons on the title screen', len(page.query_selector_all('#class-picker button')) == 4)
+    page.click('#class-picker button[data-cls="mage"]')
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / '13-title-classes.png'))
+    check('picking Mage switches the character', ev("() => game.world.cls") == 'mage' and ev("() => game.world.player.level") == 1)
+    page.click('#btn-explore')
+    page.wait_for_timeout(700)
+    check('mage explores with the mage kit', ev("() => game.world.mode") == 'explore' and ev("() => game.world.kit.q.name") == 'Fire Bolt')
+    ev("() => { const w = game.world; w.player.level = 6; w.recalcStats(); w.loadMap('greenwood', 'town'); const c = w.camps[0].def; w.player.x = c.x - 9; w.player.z = c.z; w.command({ type: 'cast', slot: 'r', x: c.x, z: c.z }); w.command({ type: 'cast', slot: 'q', x: c.x, z: c.z }); }")
+    page.wait_for_timeout(900)
+    page.screenshot(path=str(out / '14-mage-explore.png'))
+    page.keyboard.press('Escape'); page.wait_for_timeout(200)
+    page.click('#btn-town'); page.wait_for_timeout(300)
+    check('mage saves to its own slot', ev("() => !!localStorage.getItem('stunned-arena-save-v1-mage')") and ev("() => JSON.parse(localStorage.getItem('stunned-arena-save-v1-mage')).cls") == 'mage')
+    page.click('#class-picker button[data-cls="archer"]')
+    page.wait_for_timeout(200)
+    page.click('#btn-explore'); page.wait_for_timeout(600)
+    ev("() => { const w = game.world; w.loadMap('greenwood', 'town'); const c = w.camps[0].def; w.player.x = c.x - 9; w.player.z = c.z; const e = w.enemies.find(e => e.home.x === c.x); w.command({ type: 'attack', id: e.id }); }")
+    page.wait_for_timeout(1500)
+    page.screenshot(path=str(out / '15-archer-explore.png'))
+    check('archer is a fresh level 1 character', ev("() => game.world.cls") == 'archer' and ev("() => game.world.player.level") == 1)
+    page.keyboard.press('Escape'); page.wait_for_timeout(200)
+    page.click('#btn-town'); page.wait_for_timeout(300)
+    page.click('#class-picker button[data-cls="warrior"]')
+    page.wait_for_timeout(200)
+    check('the warrior keeps its earlier progress', ev("() => game.world.cls") == 'warrior' and page.is_visible('#btn-continue'))
+    # --- A pre-0.5 pair of saves (arena + explorer) is folded into one character -------
+    ev("""() => {
+      const item = (name) => ({ id: name, name, slot: 'helm', rarity: 1, ilvl: 2, stats: { hp: 40 }, plus: 0 });
+      localStorage.setItem('stunned-arena-save-v1-rogue', JSON.stringify({ v: 2, cls: 'rogue', level: 3, exp: 0, bestWave: 7, maxCheckpoint: 6, scrap: 10, equipped: { helm: item('Arena Helm') }, bag: [] }));
+      localStorage.setItem('stunned-explore-save-v1-rogue', JSON.stringify({ v: 2, cls: 'rogue', level: 5, exp: 0, bestWave: 0, maxCheckpoint: 1, scrap: 5, equipped: { helm: item('Wilds Helm') }, bag: [] }));
+    }""")
+    page.click('#class-picker button[data-cls="rogue"]')
+    page.wait_for_timeout(300)
+    merged = ev("() => { const p = game.world.player; return [p.level, game.world.maxCheckpoint, p.scrap, p.equipped.helm.name, p.bag.map(i => i.name).join(), localStorage.getItem('stunned-explore-save-v1-rogue')] }")
+    check('old arena + explorer saves merge into one character', merged == [5, 6, 15, 'Wilds Helm', 'Arena Helm', None], merged)
+    page.click('#btn-explore'); page.wait_for_timeout(600)
+    check('rogue starts exploring at the merged level with daggers ready', ev("() => game.world.player.level") == 5 and ev("() => game.world.kit.q.name") == 'Backstab')
+    page.keyboard.press('Tab'); page.wait_for_timeout(300)
+    page.screenshot(path=str(out / '16-rogue-gear.png'))
+    page.keyboard.press('Tab'); page.wait_for_timeout(200)
+    # --- The other maps -------------------------------------------------------------------
+    if ev("() => game.mode") != 'play' or ev("() => game.world.mode") != 'explore':
+        page.keyboard.press('Escape'); page.wait_for_timeout(200)
+        if page.is_visible('#btn-town'):
+            page.click('#btn-town'); page.wait_for_timeout(300)
+        if ev("() => game.mode") == 'town':
+            page.click('#town-title'); page.wait_for_timeout(200)
+        page.click('#btn-explore'); page.wait_for_timeout(600)
+    page.wait_for_timeout(600)
+    page.screenshot(path=str(out / '17-haven.png'))
+    for n, mid in enumerate(['fen', 'ridge', 'keep']):
+        ev("(id) => { const w = game.world; w.loadMap(id, null); w.player.x = 6; w.player.z = 6; }", mid)
+        page.wait_for_timeout(1200)
+        page.screenshot(path=str(out / f'{18 + n}-{mid}.png'))
+        check(f'{mid} loads with its scenery', ev("() => game.world.map.id") == mid and ev("() => game.renderer.mapId") == mid)
+    # --- Music -----------------------------------------------------------------------
+    for mid, tune in [('greenwood', 'greenwood'), ('fen', 'fen'), ('ridge', 'ridge'), ('keep', 'keep'), ('town', 'haven')]:
+        ev("(id) => game.world.loadMap(id, null)", mid)
+        page.wait_for_timeout(500)
+        check(f'music: {mid} plays its own theme', ev("() => game.music.current") == tune, ev("() => game.music.current"))
+    check('music: audio is switched on by the first click', ev("() => !!game.music.ctx"))
+    page.keyboard.press('Escape'); page.wait_for_timeout(200)
+    check('music: volume slider in the pause menu', page.is_visible('#music-volume'))
+    page.click('#btn-resume'); page.wait_for_timeout(200)
+    for tune in ['haven', 'greenwood', 'fen', 'ridge', 'keep', 'arena']:
+        lv = ev("(id) => game.Music.measure(id, 6)", tune)
+        check(f'music: "{tune}" renders real sound without clipping', 0.03 < lv['peak'] < 0.98 and lv['rms'] > 0.008, 'peak %.2f, average %.3f' % (lv['peak'], lv['rms']))
+    # --- Levels 1 to 100: the six later maps, their music, and the Waygate ---------------
+    for n, (mid, tune) in enumerate([('frost', 'frost'), ('dunes', 'dunes'), ('hollow', 'hollow'), ('spire', 'spire'), ('maw', 'maw'), ('sanctum', 'sanctum')]):
+        ev("(id) => { const w = game.world; w.loadMap(id, null); w.player.x = 6; w.player.z = 6; w.player.hp = w.player.stats.maxHp = 1e9; }", mid)
+        page.wait_for_timeout(1500)
+        page.screenshot(path=str(out / f'{21 + n}-{mid}.png'))
+        check(f'{mid} loads with its scenery and music', ev("() => game.world.map.id") == mid and ev("() => game.renderer.mapId") == mid and ev("() => game.music.current") == tune, ev("() => game.music.current"))
+        lv = ev("(id) => game.Music.measure(id, 6)", tune)
+        check(f'music: "{tune}" renders real sound without clipping', 0.03 < lv['peak'] < 0.98 and lv['rms'] > 0.008, 'peak %.2f, average %.3f' % (lv['peak'], lv['rms']))
+    ev("() => { const w = game.world; w.loadMap('town', null); w.player.x = 0; w.player.z = 0; w.command({ type: 'move', x: w.map.waygate.x, z: w.map.waygate.z }); }")
+    page.wait_for_timeout(1000)
+    page.screenshot(path=str(out / '27-waygate.png'))
+    ev("() => { const w = game.world; for (let i = 0; i < 400 && game.mode === 'play'; i++) { w.step(1 / 60); } }")
+    page.wait_for_function("() => game.mode === 'travel'", timeout=20000)
+    page.wait_for_timeout(300)
+    page.screenshot(path=str(out / '28-travel.png'))
+    rows = ev("() => [...document.querySelectorAll('.travel-row')].map((b) => [b.querySelector('b').textContent, b.disabled])")
+    check('waygate: lists all ten maps, with the ones you have reached unlocked', len(rows) == 10 and not rows[9][1] and rows[9][0] == 'Starfall Sanctum', str(rows[:3]))
+    page.click('.travel-row:nth-child(5)'); page.wait_for_timeout(900)
+    check('waygate: clicking a map takes you there', ev("() => game.world.map.id") == 'frost' and ev("() => game.mode") == 'play', ev("() => game.world.map.id"))
+    # --- Story: people, signs, journal, talents ------------------------------------------
+    ev("() => { const w = game.world; w.loadMap('town', null); w.player.x = 0; w.player.z = 1; }")
+    page.wait_for_timeout(1200)
+    page.screenshot(path=str(out / '29-haven-people.png'))
+    check('four people stand in Haven, with a quest marker on the Elder', len(page.query_selector_all('.plabel.npc')) == 4 and page.inner_text('.plabel.npc .mark') == '!')
+    ev("() => { const w = game.world; const o = w.map.obstacles.find((x) => x.id === 'wren'); w.player.x = o.x + 1.6; w.player.z = o.z; w.player.moveTarget = null; }")
+    page.wait_for_function("() => !document.getElementById('prompt').classList.contains('hidden')", timeout=20000)
+    check('a prompt appears next to someone you can talk to', 'Elder Wren' in page.inner_text('#prompt'), page.inner_text('#prompt'))
+    page.keyboard.press('g'); page.wait_for_timeout(400)
+    check('G opens the conversation', ev("() => game.mode") == 'talk' and page.inner_text('#talk-name') == 'Elder Wren' and 'The Road Out' in page.inner_text('#talk-quests'))
+    page.screenshot(path=str(out / '30-talk.png'))
+    page.click('#talk-quests .primary'); page.wait_for_timeout(300)
+    check('accepting a quest starts it', ev("() => game.world.questState('road')") in ('active', 'ready'))
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    ev("() => { const w = game.world; const o = w.map.obstacles.find((x) => x.id === 'haven1'); w.player.x = o.x + 1.3; w.player.z = o.z; w.player.moveTarget = null; }")
+    page.wait_for_function("() => document.getElementById('prompt').textContent.includes('Read')", timeout=20000)
+    page.keyboard.press('g'); page.wait_for_timeout(400)
+    check('G reads a sign', ev("() => game.mode") == 'read' and 'HAVEN' in page.inner_text('#read-text') and ev("() => game.world.player.signs.length") == 1)
+    page.screenshot(path=str(out / '31-sign.png'))
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    page.keyboard.press('j'); page.wait_for_timeout(400)
+    check('J opens the journal with the quest and the sign in it', ev("() => game.mode") == 'journal' and 'Town notice board' in page.inner_text('#journal-lore') and 'The Road Out' in page.inner_text('#journal-quests'))
+    page.screenshot(path=str(out / '32-journal.png'))
+    page.keyboard.press('j'); page.wait_for_timeout(300)
+    check('the quest tracker shows the quest in hand', page.is_visible('#quest-track') and 'The Road Out' in page.inner_text('#quest-track'))
+    ev("() => { const p = game.world.player; p.level = 44; p.gold += 5000; game.world.recalcStats(); }")
+    page.keyboard.press('t'); page.wait_for_timeout(400)
+    check('T offers two subclasses', ev("() => game.mode") == 'talents' and len(page.query_selector_all('.spec-card')) == 2)
+    page.screenshot(path=str(out / '33-subclass.png'))
+    page.click('.spec-card .primary'); page.wait_for_timeout(300)
+    for _ in range(6):
+        page.click('.tal button:not([disabled])'); page.wait_for_timeout(120)
+    check('choosing a subclass and spending points works', ev("() => !!game.world.player.spec") and ev("() => game.world.talentsSpent()") == 6, ev("() => game.world.player.spec"))
+    page.screenshot(path=str(out / '34-talents.png'))
+    page.keyboard.press('t'); page.wait_for_timeout(300)
+    page.screenshot(path=str(out / '35-hud.png'))
+    check('back in the game afterwards', ev("() => game.mode") == 'play')
+    browser.close()
+
+print('console errors:', json.dumps(errors, indent=1) if errors else 'none')
+if failed or errors:
+    print('FAILED:', failed)
+    sys.exit(1)

@@ -1,5 +1,6 @@
 // A simple bot that plays a Weekly Echo run while it is recorded, for the replay tests
 // (test/sim.test.mjs) and the cross-browser check (test/determinism.mjs).
+import { dHypot } from '../src/sim/dmath.js';
 import { CONFIG } from '../src/config.js';
 import { buildTrialWorld, trialFinished, trialScore, stateHash } from '../src/sim/trial.js';
 
@@ -21,7 +22,7 @@ export function playTrialBot(week, build, maxTicks = 60 * 120, seed = 7) {
       let near = null, nd = Infinity;
       for (const e of w.enemies) {
         if (e.dead || e.state === 'spawn') continue;
-        const d = Math.hypot(e.x - p.x, e.z - p.z);
+        const d = dHypot(e.x - p.x, e.z - p.z); // the game's own maths: the same in every browser
         if (d < nd) { nd = d; near = e; }
         if (e.state === 'windup' && e.cue && rnd() < 0.5 && p.parryT <= 0) w.command({ type: 'parry' });
       }

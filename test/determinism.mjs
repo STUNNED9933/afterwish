@@ -23,11 +23,17 @@ for (const name of (process.env.DET_BROWSERS || 'chromium,firefox,webkit').split
   await page.setContent('<!doctype html><title>det</title>');
   await page.addScriptTag({ content: bundle });
   for (const w of WEEKS) {
-    const got = await page.evaluate(([wi, s]) => globalThis.Det.runAll(wi, s), [w, SECONDS]);
+    // What the Weekly Echo relies on: Node's recordings (as the server would replay them) give the same result here.
+    const got = await page.evaluate(([wi, runs]) => globalThis.Det.replayAll(wi, runs), [w, expected[w].map((r) => ({ spec: r.spec, build: r.build, record: r.record, ticks: r.ticks }))]);
     got.forEach((r, i) => {
       const e = expected[w][i];
-      const same = r.hash === e.hash && r.replayHash === e.hash && r.floor === e.floor && r.clearTick === e.clearTick && r.ticks === e.ticks;
-      if (!same) { bad++; console.log(`FAIL ${name} week ${w} ${r.spec}: ${JSON.stringify(r)} vs node ${JSON.stringify(e)}`); }
+      const same = r.hash === e.hash && r.floor === e.floor && r.clearTick === e.clearTick;
+      if (!same) { bad++; console.log(`FAIL ${name} week ${w} ${r.spec}: replay ${JSON.stringify(r)} vs node ${JSON.stringify({ floor: e.floor, clearTick: e.clearTick, hash: e.hash })}`); }
+    });
+    // Also play live, as a player would (informational: the bot's own choices can differ on near-ties).
+    const live = await page.evaluate(([wi, s]) => globalThis.Det.runAll(wi, s).map((r) => ({ spec: r.spec, hash: r.hash, replayHash: r.replayHash })), [w, SECONDS]);
+    live.forEach((r) => {
+      if (r.hash !== r.replayHash) { bad++; console.log(`FAIL ${name} week ${w} ${r.spec}: its own live run and replay differ`); }
     });
   }
   console.log(`${name}: checked`);

@@ -31,7 +31,7 @@ export function defaultMods() {
     armorPct: 0, asMult: 1, critMult: 0, dmgTaken: 0, lowHpDmg: 0, parryHeal: 0,
     // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (Undertow, Shield Wall, Bastion)
     bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
-    // Shadowdancer (Living Shadow and its talents)
+    // Shadowdancer (Afterimage and its talents)
     shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
@@ -88,9 +88,9 @@ const CLASS_AUGMENTS = {
   rogue_q_bleed: { name: 'Serrated Blade', slot: 'q', cls: 'rogue', tier: 1, desc: 'Backstab makes its target bleed for 100% attack damage over 3 seconds.', apply: (m) => { m.qBleed = 1; } },
   rogue_q_cheap: { name: 'Cheap Shot', slot: 'q', cls: 'rogue', tier: 2, desc: 'Backstab deals 120% more from behind or on a stunned enemy, instead of 60%.', apply: (m) => { m.qBehind += 0.6; } },
   rogue_w_venom: { name: 'Venom', slot: 'w', cls: 'rogue', tier: 1, desc: 'Fan of Knives is 25% wider and slows enemies by 45% for 3 seconds.', apply: (m) => { m.wSlow = 0.45; m.wRadius *= 1.25; } },
-  rogue_e_ambush: { name: 'Ambush', slot: 'e', cls: 'rogue', tier: 1, desc: 'The basic attack after Shadowstep deals 150% more damage instead of 50%.', apply: (m) => { m.eEmpower += 1; } },
-  rogue_r_daze: { name: 'Dazing Mark', slot: 'r', cls: 'rogue', tier: 1, desc: 'Death Mark stuns its target for 1.5 seconds.', apply: (m) => { m.rStun = 1.5; } },
-  rogue_r_chain: { name: 'Chain Kill', slot: 'r', cls: 'rogue', tier: 2, desc: 'A Death Mark kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
+  rogue_e_ambush: { name: 'From Nowhere', slot: 'e', cls: 'rogue', tier: 1, desc: 'The ability after Shadowstep deals 100% more damage instead of 35%.', apply: (m) => { m.eEmpower += 0.65; } },
+  rogue_r_daze: { name: 'Dazing Blow', slot: 'r', cls: 'rogue', tier: 1, desc: 'Last Rites stuns its target for 1.5 seconds.', apply: (m) => { m.rStun = 1.5; } },
+  rogue_r_chain: { name: 'Chain Kill', slot: 'r', cls: 'rogue', tier: 2, desc: 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
   // --- Mage ------------------------------------------------------------------
   mage_q_ball: { name: 'Fireball', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt bursts 60% wider and the burst deals full damage.', apply: (m) => { m.qRadius *= 1.6; m.qSplashFull = true; } },
   mage_q_burn: { name: 'Ignite', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt sets its target burning for 90% spell power over 3 seconds.', apply: (m) => { m.qBleed = 0.9; } },

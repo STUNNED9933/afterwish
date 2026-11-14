@@ -87,14 +87,14 @@ export const CLASSES = {
       },
       e: {
         key: 'E', name: 'Shadowstep', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 8.5, minRange: 2, duration: 0.1, width: 0,
-        empower: { mult: 1.5, time: 3 },
+        empower: { mult: 1.35, time: 3 },
         dmg: () => 0,
-        desc: 'Blink a long way toward your cursor. Your next basic attack deals 50% more.',
+        desc: 'Blink a long way toward your cursor. The next ability you use within 3 seconds deals 35% more.',
       },
       r: {
-        key: 'R', name: 'Death Mark', type: 'strike', icon: 'strike', unlock: 6, cd: 30, range: 10, gap: true, behind: 0, refundOnKill: 0.6,
+        key: 'R', name: 'Last Rites', type: 'strike', icon: 'strike', unlock: 6, cd: 30, range: 10, gap: true, behind: 0, refundOnKill: 0.6,
         dmg: (s, lvl) => 3.6 * s.ad + 70 + 16 * lvl,
-        desc: 'Leap to the enemy nearest your cursor and strike. A kill gives back 60% of the cooldown.',
+        desc: 'Leap to the enemy nearest your cursor and give it the death the mountain denied it. A kill gives back 60% of the cooldown.',
       },
     },
   },

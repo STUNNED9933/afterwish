@@ -41,7 +41,7 @@ export const ICONS = {
   line: '<path d="M3 12h17"/><path d="M16 8l4 4-4 4"/><path d="M6 9l-3 3 3 3"/>',
   zone: '<circle cx="12" cy="16" r="5.5"/><path d="M8 3v6M12 2v8M16 3v6"/>',
   strike: '<path d="M21 3l-1 6-8 8-5-5 8-8z"/><path d="M6 13l5 5"/><path d="M3 21l4-4"/>',
-  shuriken: '<path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/><circle cx="12" cy="12" r="2"/>',
+  kunai: '<path d="M20 4l-9 4-3 3 5 5 3-3 4-9z"/><path d="M8 11l-1.5 1.5M13 16l-1.5 1.5M9.5 14.5L4 20"/><circle cx="3.5" cy="20.5" r="1.5"/>',
   orb: '<circle cx="12" cy="12" r="5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
 };
@@ -96,6 +96,8 @@ export const MARKS = {
   ready: '<b class="mark ready" title="Quest ready to hand in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c3-1 6-1 9 1v14c-3-2-6-2-9-1z"/><path d="M21 5c-3-1-6-1-9 1v14c3-2 6-2 9-1z"/></svg></b>',
 };
 
+/** The class whose gear is being shown (armor effects depend on who wears them). */
+export const gearClassNow = () => gearClass;
 export const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.hero}</svg>`;
 
 /** Tooltip text for an ability, including its rank and any augments changing it. */
@@ -250,6 +252,7 @@ export class Hud {
       const again = (s === 'e' && world.mods.shadowStep && (world.shadows || []).some((x) => x.pid === me && x.src === 'e' && !x.swapped))
         || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
       slot.el.classList.toggle('recast', !!again);
+      slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Shadowstep: the next ability hits harder
       const rank = p.ranks[s];
       if (rank !== slot.rank) {
         slot.rank = rank;

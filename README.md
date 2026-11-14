@@ -150,29 +150,38 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Immortals that fit your class, kunai, new names (0.19)
+
+- **Every Immortal effect now plays to the class wearing it.**
+
+  | Slot | Warrior | Archer | Rogue | Mage |
+  | --- | --- | --- | --- | --- |
+  | Weapon | **Stormcaller**: Cleave and Whirlwind call lightning on every enemy hit (up to 6) | **Stormstring**: every 4th basic attack calls lightning | **Nightfang**: ability crits deal 40% more and take 1 s off Shadowstep | **Wishfall**: every 3rd ability drops a star shard on the cursor |
+  | Helm | Crown of the Undying: survive a killing blow at 35%, and your escape (Lunge, Tumble, Shadowstep, Blink) is ready at once. Recharges each wave, in Haven, or after 2 minutes | same | same | same |
+  | Chest | Aegis of Retribution: parries send a shockwave around you | parries shoot starlight at the nearest enemy | shockwave | starlight |
+  | Boots | Slipstream: +move and attack speed after a perfect parry or dodge | same | +move speed, cooldowns run 60% faster | same as Rogue |
+  | Ring | The Timekeeper: kills, and every 4% of a boss's health, take 0.5 s off cooldowns | same | same | same |
+
+  Old Stormcaller daggers and staves take their new names automatically.
+- **Shadowstep empowers your next ability** (35% more within 3 s; the
+  ability buttons glow gold) instead of your next basic attack. From Nowhere
+  (was Ambush) makes it 100%.
+- **Shadowdancer:** the shurikens are now **Starglass Kunai**, which stop in
+  the first enemy they hit (cooldown 7 s). Names that matched League kits are
+  gone: Living Shadow is **Afterimage**, Shadow Slash is **Mirrored Cut**,
+  Marked for Death is **Second Death**, Lord of Shadows is **Crowd of One**,
+  Long Shadow is **Slow to Fade**, and the Rogue's R, Death Mark, is now
+  **Last Rites**.
+- Boss test (level 100, The Unmade, rare gear): Shadowdancer 20 s,
+  Sharpshooter 23 s, Assassin 28 s. Farming (three maps): Assassin 213 kills,
+  Shadowdancer 199, no subclass 192.
+
 ### Shadowdancer rework: the boss killer (0.18)
 
-The Rogue's two subclasses now split the work: the **Assassin** chains kills
-and farms fastest, the **Shadowdancer** fights from two places at once and
-kills bosses fastest (no kill resets; its power is in long fights).
-
-- **Trait, Living Shadow** (from level 15): Shadowstep leaves a **Shadow**
-  where you stood for 5 s. Press **E again** to swap places with it (the E
-  button glows while you can). **W becomes Razor Shuriken**, a throw that
-  cuts through every enemy in a line, and every Shadow throws one too, at the
-  same spot. Aim so the throws cross on a boss: the second shuriken on the
-  same enemy deals 60%.
-- **Long Shadow** (minor): Shadows last longer, shurikens hit harder.
-- **Shadow Slash** (major): when you Backstab, each Shadow slashes the enemy
-  nearest it.
-- **Marked for Death** (major): Death Mark marks its target, and 3 s later it
-  takes 15 to 35% of everything you dealt it in that time, again (a closing
-  purple ring shows the timer).
-- **Lord of Shadows** (capstone): Death Mark leaves a Shadow too, the mark
-  repeats a further 15%, and Shadowstep comes back 20% sooner.
-- Boss test (level 100, The Unmade, rare gear): Shadowdancer 20 s,
-  Sharpshooter 23 s, Windrunner 24 s, Assassin 30 s. Farming: Assassin 215
-  kills in 3 maps, Shadowdancer 205, no subclass 194.
+The Rogue's two subclasses split the work: the **Assassin** chains kills and
+farms fastest, the **Shadowdancer** fights from two places at once and kills
+bosses fastest (see 0.19 for the current names: afterimages, Starglass Kunai,
+Last Rites, Second Death).
 
 ### Higher stakes, Frozen Orb, warrior subclasses (0.17)
 
@@ -280,8 +289,8 @@ At level 15 press **T** and choose one of two subclasses for your class:
 | Warrior | **Bulwark** | Whirlwind drags, stuns and taunts; parries that cover friends; heals the party on perfect parries |
 | Archer | **Sharpshooter** | Longer attack range, crit chance and crit damage, a harder Piercing Shot that marks targets |
 | Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Tumble flurry, longer Arrow Storm |
-| Rogue | **Assassin** | Crits, brutal Backstabs, a Death Mark that resets on a kill |
-| Rogue | **Shadowdancer** | Boss killer: Shadows to swap with, Razor Shurikens thrown from every Shadow, a Death Mark that hits again |
+| Rogue | **Assassin** | Farming: crits, brutal Backstabs, Last Rites that resets on a kill |
+| Rogue | **Shadowdancer** | Boss killer: afterimages to trade places with, Starglass Kunai thrown from every afterimage, Last Rites that makes the target die twice |
 | Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
 | Mage | **Frostbinder** | Health, armor, a bigger Frozen Orb that freezes, damage reduction |
 
@@ -333,7 +342,7 @@ load). Gold and arena tickets are shared by every class. Everyone can parry.
 | --- | --- | --- | --- | --- | --- |
 | Warrior | Melee, the toughest; every enemy Cleave or Whirlwind hits takes time off the other cooldowns | Cleave | Whirlwind | Lunge | Skyfall |
 | Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Tumble (then +50% attack speed for 4 s) | Arrow Storm |
-| Rogue | Fast melee burst; Backstab hits 60% harder from behind or on a stunned enemy | Backstab | Fan of Knives | Shadowstep | Death Mark |
+| Rogue | Fast melee burst; Backstab hits 60% harder from behind or on a stunned enemy | Backstab | Fan of Knives | Shadowstep (next ability +35%) | Last Rites |
 | Mage | Weak basics, strong ranged spells, +25 ability haste | Fire Bolt | Frozen Orb (recast to shatter early) | Blink | Meteor |
 
 Changes in 0.5:

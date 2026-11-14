@@ -52,40 +52,67 @@ export const RARITIES = [
 ];
 export const IMMORTAL = RARITIES.length - 1;
 
-// Special effects. Every Immortal item carries the effect for its slot.
-// The game logic for each lives in sim/world.js (search for `mods.<key>`).
+// Special effects. Every Immortal item carries the effect for its slot, and the
+// effect plays to the class wearing it: a bow's storm rides on basic attacks,
+// daggers and staves reward abilities, and so on. `byClass` overrides the plain
+// name, item name and text for one class. The game logic lives in sim/world.js
+// (search for `mods.<key>`); effectFor() below picks the right text.
+const ESCAPE = { warrior: 'Lunge', archer: 'Tumble', rogue: 'Shadowstep', mage: 'Blink' };
 export const EFFECTS = {
   stormcaller: {
     slot: 'weapon',
     name: 'Stormcaller',
     itemName: 'Stormcaller',
     desc: 'Every 4th basic attack calls lightning for 150% attack damage on your target and enemies near it.',
+    byClass: {
+      warrior: { name: 'Stormcaller', itemName: 'Stormcaller', desc: 'Cleave and Whirlwind call lightning down on every enemy they hit (up to 6), for 60% attack damage each. The bigger the crowd, the bigger the storm.' },
+      archer: { name: 'Stormstring', itemName: 'Stormstring', desc: 'Every 4th basic attack calls lightning for 150% attack damage on your target and enemies near it. Barrage arrows count.' },
+      rogue: { name: 'Nightfang', itemName: 'Nightfang', desc: 'Your abilities deal 40% more when they crit, and every ability crit takes 1 second off Shadowstep.' },
+      mage: { name: 'Wishfall', itemName: 'Wishfall', desc: 'Every third ability you cast calls a shard of the fallen star down on your cursor a moment later, for 160% spell power around it.' },
+    },
   },
   undying: {
     slot: 'helm',
     name: 'Undying',
     itemName: 'Crown of the Undying',
-    desc: 'Once per wave, a killing blow leaves you alive and restores 35% of your health.',
+    desc: 'A killing blow leaves you alive with 35% of your health instead. Ready again each arena wave, in Haven, or 2 minutes after it saves you.',
+    byClass: Object.fromEntries(Object.entries(ESCAPE).map(([cls, e]) => [cls, { desc: `A killing blow leaves you alive with 35% of your health instead, and ${e} is ready again at once. Ready again each arena wave, in Haven, or 2 minutes after it saves you.` }])),
   },
   retribution: {
     slot: 'chest',
     name: 'Retribution',
     itemName: 'Aegis of Retribution',
     desc: 'Every parry releases a shockwave for 120% attack damage around you. Perfect parries deal 200%.',
+    byClass: {
+      archer: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for 150% attack damage (250% on a perfect parry).' },
+      mage: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for 150% spell power (250% on a perfect parry).' },
+    },
   },
   slipstream: {
     slot: 'boots',
     name: 'Slipstream',
     itemName: 'Slipstream Treads',
     desc: 'A perfect parry or perfect dodge gives +40% move speed and +30% attack speed for 4 seconds.',
+    byClass: {
+      rogue: { desc: 'A perfect parry or perfect dodge gives +40% move speed for 4 seconds, and your ability cooldowns run 60% faster meanwhile.' },
+      mage: { desc: 'A perfect parry or perfect dodge gives +40% move speed for 4 seconds, and your ability cooldowns run 60% faster meanwhile.' },
+    },
   },
   timekeeper: {
     slot: 'ring',
     name: 'Timekeeper',
     itemName: 'The Timekeeper',
-    desc: 'Slowed time lasts 60% longer, and every kill takes 0.5s off your ability cooldowns.',
+    desc: 'Slowed time lasts 60% longer. Every kill takes 0.5 seconds off your ability cooldowns, and so does every 4% of a boss\'s health you take away.',
   },
 };
+/** The effect as the given class gets it: { key, slot, name, itemName, desc }. */
+export function effectFor(key, cls) {
+  const e = EFFECTS[key];
+  if (!e) return null;
+  return Object.assign({ key, slot: e.slot, name: e.name, itemName: e.itemName, desc: e.desc }, (e.byClass && e.byClass[cls]) || {});
+}
+/** Classes whose Slipstream speeds up cooldowns instead of attacks. */
+export const CASTER_CLASSES = new Set(['rogue', 'mage']);
 const EFFECT_FOR_SLOT = {};
 for (const key in EFFECTS) EFFECT_FOR_SLOT[EFFECTS[key].slot] = key;
 
@@ -166,7 +193,7 @@ export function rollItem(rng, ilvl, { minRarity = 0, weights = null, slot = null
   const item = { id: 'i' + Date.now().toString(36) + '-' + itemCounter++, name: '', slot, rarity: ri, ilvl, stats, plus: 0 };
   if (rarity.effect) {
     item.effect = EFFECT_FOR_SLOT[slot];
-    item.name = EFFECTS[item.effect].itemName;
+    item.name = effectFor(item.effect, weapon ? cls : null).itemName;
   } else {
     item.name = (rarity.prefix ? rarity.prefix + ' ' : '') + (weapon ? weapon.names : BASE_NAMES[slot])[tier];
   }
@@ -193,7 +220,9 @@ export function itemStats(item) {
 }
 
 export function itemName(item) {
-  return item.plus ? `${item.name} +${item.plus}` : item.name;
+  // An Immortal weapon is named for its class (an old Stormcaller dagger is Nightfang now).
+  const name = item.effect && item.cls ? effectFor(item.effect, item.cls).itemName : item.name;
+  return item.plus ? `${name} +${item.plus}` : name;
 }
 
 const SCRAP_BY_RARITY = [1, 2, 4, 7, 12, 20, 35];

@@ -396,6 +396,7 @@ button:disabled:hover { border-color: var(--line); }
 .plabel.npc { border-color: #ffd27a; color: #fff3d6; }
 .plabel.sign { border-color: #8a8f9c; color: #d8dce6; font-size: 12px; padding: 1px 7px; }
 .plabel .mark { display: inline-block; vertical-align: -2px; margin-right: 6px; color: #ffd27a; font: 800 18px var(--body); text-shadow: 0 0 6px rgba(255, 210, 122, 0.7); }
+#abilities .empowered { box-shadow: 0 0 0 2px #ffd27a, 0 0 12px rgba(255, 210, 122, 0.75); }
 #abilities .recast { box-shadow: 0 0 0 2px #b98cff, 0 0 14px rgba(185, 140, 255, 0.8); }
 .spec-trait { margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(255, 210, 122, 0.35); border-radius: 6px; background: rgba(255, 210, 122, 0.06); font-size: 14px; line-height: 1.45; }
 .spec-trait b { color: #ffd27a; margin-right: 4px; }

@@ -86,38 +86,38 @@ export const SPECS = {
   // -------------------------------------------------------------------- Rogue
   assassin: {
     cls: 'rogue', name: 'Assassin',
-    blurb: 'Picks one target and ends it. Brutal Backstabs, heavier crits, and a Death Mark that chains.',
+    blurb: 'Clears the road one throat at a time. Brutal Backstabs, heavier crits, and Last Rites that chains from kill to kill: the subclass for farming.',
     talents: [
       { id: 'as_eye', row: 'minor', name: 'Find the Gap', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'as_deadly', row: 'minor', name: 'Twist the Knife', max: 5, desc: (r) => `Crits deal a further ${4 * r}% damage.`, apply: (m, r) => { m.critMult += 0.04 * r; } },
       { id: 'as_might', row: 'minor', name: 'Honed Edge', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
       { id: 'as_back', row: 'major', name: 'Cheap Shot', max: 3, desc: (r) => `Backstab deals a further ${20 * r}% from behind or on a stunned enemy.`, apply: (m, r) => { m.qBehind += 0.2 * r; } },
-      { id: 'as_mark', row: 'major', name: 'Contract', max: 3, desc: (r) => `Death Mark deals ${10 * r}% more damage and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.rDmg *= 1 + 0.1 * r; m.rCd *= 1 - 0.08 * r; } },
-      { id: 'as_cap', row: 'capstone', name: 'Chain Kill', max: 1, desc: () => 'A Death Mark kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
+      { id: 'as_mark', row: 'major', name: 'Contract', max: 3, desc: (r) => `Last Rites deals ${10 * r}% more damage and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.rDmg *= 1 + 0.1 * r; m.rCd *= 1 - 0.08 * r; } },
+      { id: 'as_cap', row: 'capstone', name: 'Chain Kill', max: 1, desc: () => 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
     ],
   },
   shadowdancer: {
     cls: 'rogue', name: 'Shadowdancer',
-    blurb: 'Fights from two places at once. Shadowstep leaves a shadow you can swap back to, every shadow throws your shurikens, and Death Mark makes a boss pay twice. Built for long fights against one big enemy.',
+    blurb: 'Fights from two places at once. Shadowstep leaves an afterimage you can trade places with, every afterimage throws your kunai, and Last Rites makes a boss die twice over. Built for long fights against one big enemy.',
     perk: {
-      name: 'Living Shadow',
-      desc: 'Shadowstep leaves a Shadow where you stood for 5 seconds: press E again to swap places with it. Fan of Knives becomes Razor Shuriken, a throw that pierces in a line, and every Shadow throws one too, aimed at your cursor. A shuriken after the first deals 60% to the same enemy.',
+      name: 'Afterimage',
+      desc: 'Shadowstep leaves an afterimage of you where you stood for 5 seconds: press E again to trade places with it. Fan of Knives becomes Starglass Kunai, and every afterimage throws one too, aimed at your cursor. A kunai stops at the first enemy it hits; a second one on the same enemy deals 60%.',
       apply: (m) => { m.shadowStep = true; m.shadowDur = Math.max(m.shadowDur, 5); },
     },
     kit: {
       w: {
-        key: 'W', name: 'Razor Shuriken', type: 'shuriken', icon: 'shuriken', unlock: 2, cd: 6, range: 11, speed: 24, width: 1.1, repeat: 0.6,
-        dmg: (s, lvl) => 1.25 * s.ad + 12 + 5 * lvl,
-        desc: 'Throw a shuriken toward your cursor that cuts through every enemy in its path. Each of your Shadows throws one too, at the same spot. A shuriken after the first deals 60% to the same enemy.',
+        key: 'W', name: 'Starglass Kunai', type: 'kunai', icon: 'kunai', unlock: 2, cd: 7, range: 11, speed: 26, width: 1.1, repeat: 0.6,
+        dmg: (s, lvl) => 1.05 * s.ad + 10 + 4 * lvl,
+        desc: 'Throw a kunai of starglass toward your cursor. It stops in the first enemy it hits. Each of your afterimages throws one too, at the same spot, so aim where they cross: a second kunai on the same enemy deals 60%.',
       },
     },
     talents: [
       { id: 'sd_fleet', row: 'minor', name: 'Soft Shoes', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'sd_hands', row: 'minor', name: 'Flurry', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
-      { id: 'sd_leech', row: 'minor', name: 'Long Shadow', max: 5, desc: (r) => `Shadows last ${(0.4 * r).toFixed(1)} seconds longer and Razor Shuriken deals ${4 * r}% more.`, apply: (m, r) => { m.shadowDur += 0.4 * r; m.wDmg *= 1 + 0.04 * r; } },
-      { id: 'sd_fan', row: 'major', name: 'Shadow Slash', max: 3, desc: (r) => `When you Backstab, each Shadow slashes the enemy nearest it for ${15 * r + 15}% of Backstab's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
-      { id: 'sd_bleed', row: 'major', name: 'Marked for Death', max: 3, desc: (r) => `Death Mark marks its target. 3 seconds later it takes ${10 * r + 5}% of all the damage you dealt it in that time, again.`, apply: (m, r) => { m.rMark = Math.max(m.rMark, 0.1 * r + 0.05); } },
-      { id: 'sd_cap', row: 'capstone', name: 'Lord of Shadows', max: 1, desc: () => 'Death Mark leaves a Shadow where you leapt from, its mark repeats a further 15%, and Shadowstep cooldown is 20% shorter.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
+      { id: 'sd_leech', row: 'minor', name: 'Slow to Fade', max: 5, desc: (r) => `Afterimages last ${(0.4 * r).toFixed(1)} seconds longer and Starglass Kunai deals ${4 * r}% more.`, apply: (m, r) => { m.shadowDur += 0.4 * r; m.wDmg *= 1 + 0.04 * r; } },
+      { id: 'sd_fan', row: 'major', name: 'Mirrored Cut', max: 3, desc: (r) => `When you Backstab, each afterimage cuts the enemy nearest it for ${15 * r + 15}% of Backstab's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
+      { id: 'sd_bleed', row: 'major', name: 'Second Death', max: 3, desc: (r) => `Nothing here stays down, so make it fall twice. Last Rites marks its target, and 3 seconds later it takes ${10 * r + 5}% of all the damage you dealt it in that time, again.`, apply: (m, r) => { m.rMark = Math.max(m.rMark, 0.1 * r + 0.05); } },
+      { id: 'sd_cap', row: 'capstone', name: 'Crowd of One', max: 1, desc: () => 'Last Rites leaves an afterimage where you leapt from, Second Death repeats a further 15%, and Shadowstep comes back 20% sooner.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
     ],
   },
 

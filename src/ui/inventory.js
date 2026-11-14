@@ -1,7 +1,7 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, RARITIES, EFFECTS, itemScore, itemStats, itemName, scrapValue, formatStat } from '../sim/items.js';
-import { svg, gearIcon } from './hud.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat } from '../sim/items.js';
+import { svg, gearIcon, gearClassNow } from './hud.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,7 +14,10 @@ export function itemTooltip(item, compareTo) {
   keys.forEach((k, i) => {
     html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${formatStat(k, stats[k])}</div>`;
   });
-  if (item.effect && EFFECTS[item.effect]) html += `<div class="tt-effect"><b>${EFFECTS[item.effect].name}</b> ${EFFECTS[item.effect].desc}</div>`;
+  if (item.effect && EFFECTS[item.effect]) {
+    const fx = effectFor(item.effect, item.cls || gearClassNow());
+    html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}</div>`;
+  }
   if (compareTo && compareTo !== item) {
     const other = itemStats(compareTo);
     let diff = '';
@@ -22,7 +25,7 @@ export function itemTooltip(item, compareTo) {
       const d = (stats[k] || 0) - (other[k] || 0);
       if (d !== 0) diff += `<div class="${d > 0 ? 'plus' : 'minus'}">${formatStat(k, d)}</div>`;
     }
-    if (compareTo.effect && compareTo.effect !== item.effect) diff += `<div class="minus">Loses ${EFFECTS[compareTo.effect].name}</div>`;
+    if (compareTo.effect && compareTo.effect !== item.effect) diff += `<div class="minus">Loses ${effectFor(compareTo.effect, compareTo.cls || gearClassNow()).name}</div>`;
     const dp = Math.round(itemScore(item) - itemScore(compareTo));
     html += `<div class="tt-diff"><b>Compared with what you are wearing</b>${diff || '<div>No change</div>'}<div class="${dp >= 0 ? 'plus' : 'minus'}">${dp >= 0 ? '+' : ''}${dp} power overall</div></div>`;
   }

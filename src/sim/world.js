@@ -11,7 +11,7 @@
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES } from './items.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES } from './items.js';
 import { CLASSES } from './classes.js';
 import { buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
@@ -311,7 +311,7 @@ export class World {
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       swingCount: 0,
-      empowerT: 0, // > 0 while the next basic attack is empowered
+      empowerT: 0, // > 0 while the next ability is empowered (after Shadowstep)
       empowerMult: 1,
       slipT: 0,
       rushT: 0, // > 0 while Tumble's attack speed bonus lasts
@@ -337,7 +337,7 @@ export class World {
     // Talents first, so an augment that sets the same thing higher wins for the run.
     const spec = SPECS[this.player.spec];
     if (spec && spec.perk) spec.perk.apply(m); // the subclass trait, from the moment it is chosen
-    // A subclass can swap out an ability (the Shadowdancer's Razor Shuriken).
+    // A subclass can swap out an ability (the Shadowdancer's Starglass Kunai).
     const base = CLASSES[this.cls].abilities;
     this.kit = spec && spec.kit && spec.cls === this.cls ? Object.assign({}, base, spec.kit) : base;
     if (spec) for (const t of spec.talents) if (this.player.talents[t.id] > 0) t.apply(m, this.player.talents[t.id]);
@@ -364,7 +364,7 @@ export class World {
       // `ad` is the hero's power for every damage formula. Spell Power (staves) feeds it for the Mage.
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
-      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
+      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
       ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
@@ -552,6 +552,7 @@ export class World {
     const p = this.player;
     const m = this.mods;
     let hits = 0;
+    const struck = [];
     for (const e of this.enemies) {
       if (e.dead || e.state === 'spawn') continue;
       const de = dist(e.x, e.z, p.x, p.z);
@@ -569,8 +570,23 @@ export class World {
       }
       this.hitEnemy(e, dmg, { source: slot });
       hits++;
+      if (def) struck.push(e);
     }
+    if (struck.length) this.warriorStorm(struck);
     return hits;
+  }
+
+  /** Stormcaller (Warrior): lightning on every enemy a Cleave or Whirlwind hit, up to 6. */
+  warriorStorm(list) {
+    if (!this.mods.stormcaller || this.cls !== 'warrior') return;
+    const p = this.player;
+    let n = 0;
+    for (const e of list) {
+      if (e.dead || n >= 6) continue;
+      n++;
+      this.emit('lightning', { x: e.x, z: e.z, small: true });
+      this.hitEnemy(e, p.stats.ad * 0.6, { source: 'storm', canCrit: false });
+    }
   }
 
   /** Warrior passive: every enemy Cleave or Whirlwind hits takes time off the other cooldowns. */
@@ -582,7 +598,7 @@ export class World {
     for (const k of ['q', 'w', 'e', 'r']) if (k !== slot && p.cd[k] > 0) p.cd[k] = Math.max(0, p.cd[k] - cut);
   }
 
-  /** A Shadowdancer Shadow (one from Shadowstep, one from Death Mark with Lord of Shadows). */
+  /** A Shadowdancer afterimage (one from Shadowstep, one from Last Rites with Crowd of One). */
   addShadow(src, x, z, facing) {
     const pid = this.cur.pid;
     this.shadows = this.shadows.filter((s) => !(s.pid === pid && s.src === src));
@@ -599,8 +615,8 @@ export class World {
     this.shadows = this.shadows.filter((s) => s.t > 0);
   }
 
-  /** Razor Shuriken: flies straight, cutting each enemy once; a second shuriken of the same throw deals less. */
-  stepShuriken(pr, dt) {
+  /** Starglass Kunai: flies straight and stops in the first enemy; a second kunai of the same throw deals less. */
+  stepKunai(pr, dt) {
     pr.px = pr.x;
     pr.pz = pr.z;
     pr.x += pr.vx * dt;
@@ -611,9 +627,9 @@ export class World {
       return;
     }
     for (const e of this.enemies) {
-      if (e.dead || e.state === 'spawn' || pr.hitSet.has(e.id)) continue;
+      if (e.dead || e.state === 'spawn') continue;
       if (dist(pr.x, pr.z, e.x, e.z) > pr.radius + e.radius) continue;
-      pr.hitSet.add(e.id);
+      pr.dead = true; // a kunai stops in the first thing it hits
       const again = pr.group.hit.has(e.id);
       pr.group.hit.add(e.id);
       if (pr.slow > 0) {
@@ -621,10 +637,11 @@ export class World {
         e.slow = pr.slow;
       }
       this.hitEnemy(e, pr.dmg * (again ? pr.repeat : 1), { source: 'w' });
+      return;
     }
   }
 
-  /** Marked for Death: the mark goes off and the target takes a share of what it took meanwhile. */
+  /** Second Death: the mark goes off and the target takes a share of what it took meanwhile. */
   popMark(e) {
     const h = this.heroByPid(e.markPid);
     const amount = e.markAcc * e.markPct;
@@ -701,7 +718,7 @@ export class World {
     return best;
   }
 
-  /** One heavy single-target hit (Backstab, Death Mark). */
+  /** One heavy single-target hit (Backstab, Last Rites). */
   strike(target, slot, dmg) {
     const p = this.player;
     const def = this.kit[slot];
@@ -717,7 +734,7 @@ export class World {
     p.facing = Math.atan2(target.z - p.z, target.x - p.x);
     this.emit('cast', { slot, fx: 'strike', x: target.x, z: target.z, exposed: bonus > 1 });
     if (slot === 'r' && m.rMark > 0) {
-      // Marked for Death: count everything this hero deals it for 3 seconds (this strike included).
+      // Second Death: count everything this hero deals it for 3 seconds (this strike included).
       target.markT = 3;
       target.markPid = this.cur.pid;
       target.markAcc = 0;
@@ -726,7 +743,7 @@ export class World {
     }
     this.hitEnemy(target, dmg * bonus, { source: slot });
     if (slot === 'q' && m.shadowSlash > 0) {
-      // Shadow Slash: each Shadow copies the Backstab on whatever is nearest it.
+      // Mirrored Cut: each afterimage copies the Backstab on whatever is nearest it.
       for (const s of this.shadows) {
         if (s.pid !== this.cur.pid) continue;
         let best = null, bd = 4;
@@ -765,11 +782,7 @@ export class World {
     const p = this.player;
     const b = this.basic;
     p.swingCount++;
-    let dmg = dmgOverride ?? p.stats.ad * b.mult;
-    if (p.empowerT > 0) {
-      dmg *= p.empowerMult; // Shadowstep empowers the next basic attack
-      p.empowerT = 0;
-    }
+    const dmg = dmgOverride ?? p.stats.ad * b.mult;
     // Steady Aim: every third shot gets +100% crit chance; anything over 100% becomes crit damage.
     const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
     const forceCrit = false;
@@ -784,7 +797,7 @@ export class World {
     } else {
       this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
     }
-    if (this.mods.stormcaller && p.swingCount % 4 === 0) this.lightning(target);
+    if (this.mods.stormcaller && this.cls === 'archer' && p.swingCount % 4 === 0) this.lightning(target); // Stormstring
   }
 
   /**
@@ -804,7 +817,7 @@ export class World {
       }
     }
     if (slot === 'e' && m.shadowStep && !p.dash && !p.leap) {
-      // Living Shadow: E again swaps places with the Shadow Shadowstep left.
+      // Afterimage: E again trades places with the afterimage Shadowstep left.
       const sh = this.shadows.find((s) => s.pid === this.cur.pid && s.src === 'e' && !s.swapped);
       if (sh) {
         const ox = p.x, oz = p.z;
@@ -848,7 +861,13 @@ export class World {
     }
     p.atkWind = 0;
     p.parryT = 0; // casting drops the parry stance
-    const dmg = this.abilityDamage(slot);
+    let dmg = this.abilityDamage(slot);
+    if (p.empowerT > 0 && slot !== 'e') {
+      // Shadowstep: the next ability hits harder.
+      dmg *= p.empowerMult;
+      p.empowerT = 0;
+      this.emit('empowered', { slot, x: p.x, z: p.z });
+    }
     /** A point toward the cursor, no further than the ability's range, inside the map. */
     const aimPoint = () => {
       const len = Math.min(d, range);
@@ -872,11 +891,13 @@ export class World {
         const knock = def.knockback || 0;
         p.castLock = 0.12;
         let hits = 0;
+        const struck = [];
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
           const de = dist(e.x, e.z, p.x, p.z);
           if (de > radius + e.radius) continue;
           hits++;
+          if (slot === 'w') struck.push(e);
           // Gravity Well: heavy enemies (never bosses) get dragged and stunned too.
           const heavy = e.def.heavy && !(pull && m.wPullHeavy && !e.def.boss);
           if (bleed > 0) {
@@ -915,6 +936,7 @@ export class World {
         }
         this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull });
         this.battleRhythm(slot, hits);
+        this.warriorStorm(struck);
         break;
       }
       case 'dash': {
@@ -984,8 +1006,8 @@ export class World {
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
         break;
       }
-      case 'shuriken': {
-        // Razor Shuriken: one from you and one from each of your Shadows, all at the cursor.
+      case 'kunai': {
+        // Starglass Kunai: one from you and one from each of your afterimages, all at the cursor.
         p.facing = a;
         p.castLock = 0.12;
         const group = { hit: new Set() };
@@ -1002,13 +1024,13 @@ export class World {
         for (const f of from) {
           const c = Math.cos(f.ang), sn = Math.sin(f.ang);
           this.projectiles.push({
-            id: this.nextId++, owner: 'player', kind: 'shuriken', slot, pid: this.cur.pid,
+            id: this.nextId++, owner: 'player', kind: 'kunai', slot, pid: this.cur.pid,
             x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
-            radius: width / 2, dmg, group, hitSet: new Set(), repeat: def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
+            radius: width / 2, dmg, group, repeat: def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
             parryable: false, reflected: false, life: range / def.speed, dead: false,
           });
         }
-        this.emit('cast', { slot, fx: 'shuriken', x: p.x, z: p.z, dir: a, count: from.length });
+        this.emit('cast', { slot, fx: 'kunai', x: p.x, z: p.z, dir: a, count: from.length });
         break;
       }
       case 'orb': {
@@ -1077,6 +1099,17 @@ export class World {
         p.castLock = 0.2;
         this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius });
         break;
+      }
+    }
+    if (m.stormcaller && this.cls === 'mage') {
+      // Wishfall: every third ability calls down a shard of the star on the cursor.
+      p.spellCount = (p.spellCount || 0) + 1;
+      if (p.spellCount % 3 === 0) {
+        const len = Math.min(d, 13);
+        const c = this.clampToArena(p.x + cos * len, p.z + sin * len, 0.5);
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius: 3, t: 0, dur: 0.45, parryable: false };
+        this.telegraphs.push(tele);
+        this.delayed.push({ t: 0.45, kind: 'quake', x: c.x, z: c.z, radius: 3, dmg: p.stats.ad * 1.6, tele, slot: 'wish', fx: 'starfall' });
       }
     }
   }
@@ -1186,7 +1219,15 @@ export class World {
     if (p.dead) return;
     p.moving = false;
 
-    for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt);
+    // Slipstream on a Rogue or Mage: cooldowns run 60% faster while it lasts.
+    const cdRate = p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1.6 : 1;
+    for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
+    if (p.fangT > 0) p.fangT -= dt;
+    if (p.undyingUsed && p.undyingT > 0) {
+      // Crown of the Undying recharges 2 minutes after it saves you.
+      p.undyingT -= dt;
+      if (p.undyingT <= 0) p.undyingUsed = false;
+    }
     p.attackCd = Math.max(0, p.attackCd - dt);
     p.parryCd = Math.max(0, p.parryCd - dt);
     p.potionCd = Math.max(0, p.potionCd - dt);
@@ -1464,7 +1505,19 @@ export class World {
           this.addPosture(src, perfect ? 2 : 1, perfect);
           if (m.riposte > 0 && !src.dead) this.hitEnemy(src, p.stats.ad * m.riposte, { source: 'riposte', canCrit: false });
         }
-        if (m.retribution) {
+        if (m.retribution && this.basic.range > 5) {
+          // Archer and Mage: a bolt of starlight at the nearest enemy instead of a shockwave they would never be close enough to use.
+          let best = null, bd = 12;
+          for (const e of this.enemies) {
+            if (e.dead || e.state === 'spawn') continue;
+            const de = dist(e.x, e.z, p.x, p.z) - e.radius;
+            if (de < bd) { bd = de; best = e; }
+          }
+          if (best) {
+            this.emit('starBolt', { x: p.x, z: p.z, tx: best.x, tz: best.z });
+            this.hitEnemy(best, p.stats.ad * (perfect ? 2.5 : 1.5), { source: 'retribution', canCrit: false });
+          }
+        } else if (m.retribution) {
           const radius = 4.5;
           for (const e of this.enemies) {
             if (e.dead || e.state === 'spawn') continue;
@@ -1483,7 +1536,9 @@ export class World {
     if (p.hp <= 0) {
       if (m.undying && !p.undyingUsed) {
         p.undyingUsed = true;
+        p.undyingT = 120;
         p.hp = Math.round(p.stats.maxHp * 0.35);
+        p.cd.e = 0; // and the escape is ready
         this.emit('undying', { x: p.x, z: p.z });
         return 'hit';
       }
@@ -2264,13 +2319,30 @@ export class World {
     }
     const stunned = e.state === 'stunned';
     if (!opts.raw) {
-      // (raw: already-final damage, like a Death Mark going off, is not scaled again)
+      // (raw: already-final damage, like Second Death going off, is not scaled again)
       dmg *= this.gapScale(e.level).dealt;
       if (this.mods.lowHpDmg > 0 && p.hp < p.stats.maxHp * 0.5) dmg *= 1 + this.mods.lowHpDmg;
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
     }
+    if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
+      // Nightfang: ability crits cut deeper and bring Shadowstep back sooner.
+      dmg *= 1.4;
+      if (!(p.fangT > 0)) {
+        p.cd.e = Math.max(0, p.cd.e - 1);
+        p.fangT = 0.3;
+      }
+    }
     dmg = Math.max(1, Math.round(dmg));
+    if (this.mods.timekeeper && e.def.boss) {
+      // The Timekeeper: every 4% of a boss's health taken away counts as a kill for cooldowns.
+      p.tkAcc = (p.tkAcc || 0) + Math.min(dmg, Math.max(0, e.hp));
+      const chunk = e.maxHp * 0.04;
+      while (p.tkAcc >= chunk) {
+        p.tkAcc -= chunk;
+        for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
+      }
+    }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -2574,8 +2646,8 @@ export class World {
         this.stepOrb(pr, d);
         continue;
       }
-      if (pr.kind === 'shuriken') {
-        this.stepShuriken(pr, d);
+      if (pr.kind === 'kunai') {
+        this.stepKunai(pr, d);
         continue;
       }
       if (pr.targetId != null) {

@@ -122,6 +122,7 @@ with sync_playwright() as pw:
     cells[-1].hover()
     page.wait_for_timeout(200)
     page.screenshot(path=str(out / '8-gear-immortal.png'))
+    check("an Immortal's text is the one for your class (Warrior: Cleave and Whirlwind call lightning)", 'Cleave and Whirlwind' in page.inner_text('#tooltip'), page.inner_text('#tooltip')[-160:])
     cells[-1].click()
     page.wait_for_timeout(150)
     check('immortal effect switches on when equipped', ev("() => game.world.mods.stormcaller") is True)
@@ -353,17 +354,17 @@ with sync_playwright() as pw:
     check('Berserker: the health bar has a half-way mark and burns red below it', ev("() => { const b = document.getElementById('hp-bar'); return b.classList.contains('berserk') && b.classList.contains('bloodied'); }"))
     page.screenshot(path=str(out / '35b-bloodied.png'))
     ev(f"() => {{ const p = game.world.player; p.spec = '{spec0}'; p.hp = p.stats.maxHp; }}"); page.wait_for_timeout(400)
-    # Shadowdancer (this hero is a rogue here): a Shadow you can see and swap with, and shurikens.
+    # Shadowdancer (this hero is a rogue here): an afterimage you can see and trade places with, and kunai.
     if ev("() => game.world.cls") == 'rogue':
         ev("() => { const w = game.world, p = w.player; p.spec = 'shadowdancer'; p.talents = {}; w.recalcStats(); w.loadMap('greenwood', 'town'); p.hp = p.stats.maxHp; }")
         page.wait_for_timeout(1500)
-        check('Shadowdancer: W becomes Razor Shuriken on the ability bar', ev("() => game.world.kit.w.name") == 'Razor Shuriken')
+        check('Shadowdancer: W becomes Starglass Kunai on the ability bar', ev("() => game.world.kit.w.name") == 'Starglass Kunai')
         ev("() => { const w = game.world, p = w.player; p.cd.e = 0; w.command({ type: 'cast', slot: 'e', x: p.x + 6, z: p.z + 2 }); }")
         page.wait_for_timeout(700)
         check('Shadowdancer: Shadowstep leaves a Shadow you can see, and E glows while you can swap', ev("() => game.world.shadows.length === 1 && game.renderer.shadowViews.size === 1 && document.querySelectorAll('#abilities .recast').length === 1"))
         ev("() => { const w = game.world, p = w.player; p.cd.w = 0; w.command({ type: 'cast', slot: 'w', x: p.x + 9, z: p.z - 4 }); }")
         page.wait_for_timeout(150)
-        check('Shadowdancer: you and your Shadow both throw a shuriken', ev("() => game.world.projectiles.filter((pr) => pr.kind === 'shuriken').length") == 2)
+        check('Shadowdancer: you and your afterimage both throw a kunai', ev("() => game.world.projectiles.filter((pr) => pr.kind === 'kunai').length") == 2)
         page.screenshot(path=str(out / '35c-shadowdancer.png'))
         page.wait_for_timeout(300)
         before = ev("() => [game.world.player.x, game.world.shadows[0].x]")

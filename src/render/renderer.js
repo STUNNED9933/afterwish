@@ -706,7 +706,7 @@ export class Renderer {
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.exposed ? 0xffe27a : 0xdff4ff, from: 2.2, to: 0.4, dur: 0.22, opacity: 1 });
           this.burst(ev.x, 1.2, ev.z, { count: ev.exposed ? 22 : 10, color: ev.exposed ? 0xffe27a : 0xdff4ff, speed: 8, up: 4, life: 0.4 });
           if (ev.exposed) this.shake = Math.max(this.shake, 0.3);
-        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb' || fx === 'shuriken') {
+        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb' || fx === 'kunai') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.22;
         }
@@ -765,7 +765,7 @@ export class Renderer {
       case 'impact': {
         // Skyfall lands hard; its aftershock and the Retribution shockwave are lighter.
         const big = ev.kind === 'skyfall';
-        const tint = ev.kind === 'retribution' ? COLORS.immortal : ev.kind === 'aftershock' ? 0xffe2a0 : 0x7fd8ff;
+        const tint = ev.kind === 'retribution' ? COLORS.immortal : ev.kind === 'aftershock' ? 0xffe2a0 : ev.kind === 'starfall' ? 0xfff0a0 : 0x7fd8ff;
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffffff, from: 1, to: ev.radius * 1.15, dur: 0.45, opacity: 1 });
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: tint, from: ev.radius, to: ev.radius, dur: 0.5, opacity: big ? 0.45 : 0.3 });
         this.burst(ev.x, 0.3, ev.z, { count: big ? 46 : 24, color: tint, speed: big ? 13 : 9, up: big ? 9 : 6, size: 1.5, life: 0.7 });
@@ -779,7 +779,24 @@ export class Renderer {
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: COLORS.parry, from: 0.5, to: 3.2, dur: 0.3, opacity: 1 });
         this.burst(ev.x, 1, ev.z, { count: 20, color: COLORS.parry, speed: 8, up: 4, life: 0.45 });
         break;
+      case 'starBolt': {
+        const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.2, dir, color: COLORS.immortal, sx: Math.hypot(ev.tx - ev.x, ev.tz - ev.z), sz: 0.45, dur: 0.3, opacity: 1 });
+        this.burst(ev.tx, 1.2, ev.tz, { count: 18, color: COLORS.immortal, speed: 8, up: 4, life: 0.4 });
+        break;
+      }
+      case 'empowered':
+        this.burst(ev.x, 1.2, ev.z, { count: 12, color: 0xffd27a, speed: 4, up: 3, life: 0.35 });
+        break;
       case 'lightning': {
+        if (ev.small) {
+          // Stormcaller (Warrior): one bolt per enemy hit, so keep each light.
+          const b = this.flash(this.geo('bolt', () => new THREE.CylinderGeometry(0.25, 0.1, 16, 5, 1, true).translate(0, 8, 0)), { x: ev.x, z: ev.z, y: 0, color: COLORS.immortal, dur: 0.22, opacity: 0.9 });
+          b.rotation.y = Math.random() * 3;
+          this.burst(ev.x, 0.5, ev.z, { count: 8, color: COLORS.immortal, speed: 6, up: 5, life: 0.35 });
+          this.shake = Math.max(this.shake, 0.15);
+          break;
+        }
         const bolt = this.flash(this.geo('bolt', () => new THREE.CylinderGeometry(0.25, 0.1, 16, 5, 1, true).translate(0, 8, 0)), { x: ev.x, z: ev.z, y: 0, color: COLORS.immortal, dur: 0.28, opacity: 1 });
         bolt.rotation.y = Math.random() * 3;
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: COLORS.immortal, from: 0.5, to: 3.3, dur: 0.35, opacity: 1 });
@@ -1012,7 +1029,7 @@ export class Renderer {
       else if (e.enraged) this.setEmissive(mats, 0.22, 0.03, 0.02);
       else this.setEmissive(mats, 0, 0, 0);
 
-      // Death Mark (Marked for Death): a broken purple ring that closes in until it goes off.
+      // Second Death (on Last Rites): a broken purple ring that closes in until it goes off.
       if (e.markT > 0) {
         if (!v.markRing) {
           v.markRing = new THREE.Mesh(this.sectorGeo(5.2, 0.8), new THREE.MeshBasicMaterial({ color: 0xb07cff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
@@ -1070,14 +1087,15 @@ export class Renderer {
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, shuriken: 0xe4d6ff }[pr.kind]; // the hero's own shots
+      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
       m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
-      if (pr.kind === 'shuriken') {
-        m.scale.set(2.1, 0.4, 2.1);
-        m.rotation.y += 0.6;
+      if (pr.kind === 'kunai') {
+        // A thin blade pointing where it flies.
+        m.scale.set(0.45, 0.45, 2.4);
+        if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, Math.atan2(pr.x - pr.px, pr.z - pr.pz), 0);
       }
       if (pr.kind === 'orb') {
         m.rotation.y += 0.12;

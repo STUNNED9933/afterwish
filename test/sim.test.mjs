@@ -997,7 +997,8 @@ import { makeRng } from '../src/sim/rng.js';
   const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
 
   const { w, p } = setup();
-  check('Shadowdancer: W becomes Razor Shuriken', w.kit.w.name === 'Razor Shuriken' && CLASSES.rogue.abilities.w.name === 'Fan of Knives');
+  check('Shadowdancer: W becomes Starglass Kunai', w.kit.w.name === 'Starglass Kunai' && CLASSES.rogue.abilities.w.name === 'Fan of Knives');
+  check('Last Rites (no more League names on the Rogue R)', CLASSES.rogue.abilities.r.name === 'Last Rites');
   check('Assassin keeps Fan of Knives', setup({}, 'assassin').w.kit.w.name === 'Fan of Knives');
   // Shadowstep leaves a Shadow; E again swaps with it, once.
   cast(w, 'e', 7, 0); run(w, 0.3);
@@ -1008,20 +1009,24 @@ import { makeRng } from '../src/sim/rng.js';
   check('E again swaps places with the Shadow', Math.hypot(p.x, p.z) < 0.5 && Math.abs(sh.x - hx) < 0.01 && sh.swapped && w.events.some((ev) => ev.type === 'shadowSwap'));
   cast(w, 'e', 7, 0);
   check('...only once per Shadow (then E is just on cooldown)', Math.hypot(p.x, p.z) < 0.5 && !p.dash);
-  // Shurikens: one from you, one from the Shadow, both at the cursor; a second one on the same enemy deals 60%.
+  // Kunai: one from you, one from the afterimage, both at the cursor. Each stops in the first enemy;
+  // a second kunai on the same enemy deals 60%.
   const a = dummy(w, 3, 0), b = dummy(w, 6, 0);
-  sh.x = 4.5; sh.z = 6; // a Shadow off to the side, so its throw crosses b
+  sh.x = 4.5; sh.z = 6; // an afterimage off to the side, so its throw comes at b from another angle
   w.events.length = 0;
   p.stats.crit = 0; // no crits, so the numbers can be compared
   cast(w, 'w', 6, 0);
-  const sh2 = w.projectiles.filter((pr) => pr.kind === 'shuriken');
-  check('Razor Shuriken: one from you and one from each Shadow', sh2.length === 2, String(sh2.length));
+  const ku = w.projectiles.filter((pr) => pr.kind === 'kunai');
+  check('Starglass Kunai: one from you and one from each afterimage', ku.length === 2, String(ku.length));
   run(w, 0.8);
-  // (only the shuriken hits: the rogue also auto-attacks the dummy next to it)
+  // (only the kunai hits: the rogue also auto-attacks the dummy next to it)
   const dmgs = (e) => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === e.id && !ev.basic).map((ev) => ev.amount);
-  const da = dmgs(a), db = dmgs(b);
-  check('Razor Shuriken: it cuts through every enemy in its path', da.length === 1 && db.length >= 1 && da[0] === db[0], `${da} / ${db}`);
-  check('Razor Shuriken: two land on the enemy where they cross, the second for 60%', db.length === 2 && Math.abs(db[1] / db[0] - 0.6) < 0.01, `${db}`);
+  check('Starglass Kunai: yours stops in the first enemy in its path', dmgs(a).length === 1 && dmgs(b).length === 1, `${dmgs(a)} / ${dmgs(b)}`);
+  a.x = a.px = 40; w.events.length = 0; p.cd.w = 0;
+  run(w, 0.2);
+  cast(w, 'w', 6, 0); run(w, 0.8);
+  const db = dmgs(b);
+  check('Starglass Kunai: with the way clear, both land and the second deals 60%', db.length === 2 && Math.abs(db[1] / db[0] - 0.6) < 0.01, `${db}`);
   run(w, 5);
   check('Shadows fade after 5 seconds', w.shadows.length === 0);
   // Marked for Death
@@ -1053,6 +1058,120 @@ import { makeRng } from '../src/sim/rng.js';
     w4.addShadow('e', 1, 1, 0);
     const snap = makeSnapshot(w4, 0, {});
     check('Shadows are sent to friends in co-op', snap.shadows.length === 1 && snap.shadows[0].src === 'e');
+  }
+}
+// --- 0.19: Shadowstep empowers abilities, Immortal effects that fit each class ----------
+{
+  const { geared } = await import('./balance.mjs');
+  const { effectFor, itemName } = await import('../src/sim/items.js');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (cls, effects = [], spec = null) => {
+    const save = Object.assign(geared(cls, 40, 2), spec ? { spec } : {});
+    for (const fx of effects) save.equipped[effectFor(fx).slot] = { id: 'imm-' + fx, name: 'x', slot: effectFor(fx).slot, rarity: 6, ilvl: 40, stats: { ad: 1 }, plus: 0, effect: fx, cls: effectFor(fx).slot === 'weapon' ? cls : undefined };
+    const w = new World({ seed: 21, cls, save });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0, type = 'grunt') => { const e = w.spawnEnemy(type, { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; e.facing = 0; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+  const dealt = (w, id, src) => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === id && !ev.basic).map((ev) => ev.amount);
+
+  // Shadowstep: the next ability, not the next basic attack.
+  {
+    const { w, p } = setup('rogue');
+    p.stats.crit = 0;
+    const e = dummy(w, 2);
+    cast(w, 'q', 2, 0); const plain = dealt(w, e.id)[0];
+    run(w, 0.3); w.events.length = 0; p.cd.q = 0; p.stats.crit = 0;
+    cast(w, 'e', -6, 0); run(w, 0.3); p.x = 0; p.z = 0;
+    check('Shadowstep empowers the next ability (the button bar glows)', p.empowerT > 0);
+    p.stats.crit = 0; e.facing = 0; // (the dummy turned to watch the rogue; face it away again, as for the first stab)
+    cast(w, 'q', 2, 0);
+    const boosted = dealt(w, e.id)[0];
+    check('Shadowstep: that ability deals 35% more', Math.abs(boosted / plain - 1.35) < 0.02 && p.empowerT === 0, `${plain} -> ${boosted}`);
+  }
+  // Names follow the class.
+  {
+    const names = ['warrior', 'archer', 'rogue', 'mage'].map((c) => effectFor('stormcaller', c).itemName);
+    check('Immortal weapons have a name per class', new Set(names).size === 4 && names.includes('Nightfang') && names.includes('Wishfall'), names.join(', '));
+    check('an old Stormcaller dagger is called Nightfang now', itemName({ name: 'Stormcaller', effect: 'stormcaller', cls: 'rogue', plus: 2 }) === 'Nightfang +2');
+  }
+  // Weapons
+  {
+    const { w, p } = setup('warrior', ['stormcaller']);
+    for (let i = 0; i < 3; i++) dummy(w, 2, -0.8 + i * 0.8);
+    const t = w.enemies[0];
+    for (let i = 0; i < 8; i++) w.basicAttack(t);
+    check('Stormcaller (Warrior): basic attacks no longer call lightning', !w.events.some((ev) => ev.type === 'lightning'));
+    cast(w, 'q', 3, 0);
+    check('Stormcaller (Warrior): Cleave calls lightning on every enemy it hits', w.events.filter((ev) => ev.type === 'lightning' && ev.small).length === 3);
+  }
+  {
+    const { w } = setup('archer', ['stormcaller']);
+    const t = dummy(w, 6);
+    for (let i = 0; i < 4; i++) w.basicAttack(t);
+    check('Stormstring (Archer): every 4th basic attack still calls lightning', w.events.filter((ev) => ev.type === 'lightning').length === 1);
+  }
+  {
+    const { w, p } = setup('rogue', ['stormcaller']);
+    const e = dummy(w, 2);
+    p.cd.e = 5;
+    const plainCrit = Math.round(w.abilityDamage('q') * w.critMultiplier() * w.gapScale(e.level).dealt);
+    w.hitEnemy(e, w.abilityDamage('q'), { source: 'q', forceCrit: true });
+    const got = dealt(w, e.id)[0];
+    check('Nightfang (Rogue): ability crits deal 40% more and take 1 s off Shadowstep', Math.abs(got / plainCrit - 1.4) < 0.01 && Math.abs(p.cd.e - 4) < 1e-9, `${plainCrit} -> ${got}, E ${p.cd.e}`);
+    w.events.length = 0;
+    w.hitEnemy(e, 100, { basic: true, source: 'basic', forceCrit: true });
+    check('Nightfang: basic attack crits are not boosted', Math.abs(w.events.find((ev) => ev.type === 'damage').amount - Math.round(100 * w.critMultiplier())) <= 1);
+  }
+  {
+    const { w, p } = setup('mage', ['stormcaller']);
+    dummy(w, 6);
+    for (const k of ['q', 'q', 'q']) { p.cd.q = 0; p.castLock = 0; cast(w, k, 6, 0); }
+    const star = w.delayed.find((d) => d.fx === 'starfall');
+    run(w, 0.6);
+    check('Wishfall (Mage): every third ability calls down a star shard on the cursor', !!star && Math.abs(star.x - 6) < 0.5 && w.events.some((ev) => ev.type === 'impact' && ev.kind === 'starfall'));
+  }
+  // Helm, chest, boots, ring
+  {
+    const { w, p } = setup('rogue', ['undying']);
+    p.cd.e = 9;
+    w.hitPlayer(1e9, { parryable: false });
+    check('Crown of the Undying: saves you and readies your escape', !p.dead && p.cd.e === 0 && p.undyingUsed);
+    run(w, 121);
+    check('Crown of the Undying: ready again 2 minutes later', !p.undyingUsed);
+  }
+  {
+    const { w, p } = setup('mage', ['retribution']);
+    const e = dummy(w, 9);
+    p.parryT = 0.3; p.parryAge = 0;
+    w.hitPlayer(50, { parryable: true, src: e });
+    check('Aegis of Retribution (ranged): a parry shoots starlight at the nearest enemy', w.events.some((ev) => ev.type === 'starBolt') && e.hp < 1e9);
+    const { w: w2, p: p2 } = setup('warrior', ['retribution']);
+    const e2 = dummy(w2, 2);
+    p2.parryT = 0.3; p2.parryAge = 0;
+    w2.hitPlayer(50, { parryable: true, src: e2 });
+    check('Aegis of Retribution (melee): still a shockwave around you', w2.events.some((ev) => ev.type === 'impact' && ev.kind === 'retribution'));
+  }
+  {
+    const { w, p } = setup('rogue', ['slipstream']);
+    const as0 = p.stats.as;
+    w.triggerSlipstream();
+    p.cd.q = 4; run(w, 1);
+    check('Slipstream (Rogue): cooldowns run 60% faster instead of attack speed', Math.abs(p.cd.q - (4 - 1.6)) < 0.05 && Math.abs(p.stats.as - as0) < 1e-9, `${p.cd.q.toFixed(2)} as ${as0.toFixed(2)}->${p.stats.as.toFixed(2)}`);
+    const { w: w2, p: p2 } = setup('archer', ['slipstream']);
+    const a0 = p2.stats.as; w2.triggerSlipstream();
+    check('Slipstream (Archer): still attack speed', p2.stats.as > a0 * 1.1, `${a0.toFixed(2)} -> ${p2.stats.as.toFixed(2)}`);
+  }
+  {
+    const { w, p } = setup('rogue', ['timekeeper']);
+    const boss = dummy(w, 3, 0, 'boss'); boss.hp = boss.maxHp = 10000;
+    p.cd.r = 20;
+    w.hitEnemy(boss, 800 / w.gapScale(boss.level).dealt, { canCrit: false, source: 'q' });
+    check('The Timekeeper: every 4% of a boss\'s health takes 0.5 s off cooldowns', Math.abs(p.cd.r - 19) < 0.01, String(p.cd.r));
   }
 }
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---

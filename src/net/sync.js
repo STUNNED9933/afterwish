@@ -14,7 +14,7 @@ export const NET_VERSION = 1; // host and friends must run the same build of the
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }

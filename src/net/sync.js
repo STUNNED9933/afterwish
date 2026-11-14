@@ -9,7 +9,7 @@
 import { ENEMIES } from '../sim/defs.js';
 import { buildRiftMap } from '../sim/maps.js';
 
-export const NET_VERSION = 3; // host and friends must run the same build of the rules (3: 0.26 tiers and rifts)
+export const NET_VERSION = 4; // host and friends must run the same build of the rules (4: 0.26.1 lighter updates)
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
@@ -25,7 +25,9 @@ export function eventFor(ev, pid) {
 }
 
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
-const ENEMY_KEYS = ['id', 'type', 'phase', 'elite', 'shield', 'maxShield', 'riftGuardian', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
+// What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
+const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius'];
+const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue'];
 const pack = (o, keys) => keys.map((k) => r2(o[k]));
@@ -49,6 +51,138 @@ function heavyPlayer(p) {
   return out;
 }
 
+/** Enemies this friend has not been told about yet (or whose fixed details changed): [id, ...ENEMY_FIXED]. */
+function fixedEnemies(world, memo) {
+  const was = memo.fixed || new Map();
+  const now = new Map();
+  const out = [];
+  for (const e of world.enemies) {
+    const row = [e.id, ...ENEMY_FIXED.map((k) => e[k] ?? null)];
+    const str = JSON.stringify(row);
+    now.set(e.id, str);
+    if (was.get(e.id) !== str) out.push(row);
+  }
+  memo.fixed = now;
+  return out.length ? out : undefined;
+}
+
+/**
+ * Enemies: a new one goes in full; after that, only the fields that changed
+ * ([id, index, value, index, value...] as {d}), or just its id if nothing did.
+ * The connection is reliable and in order, so the friend rebuilds full rows as updates arrive.
+ */
+function enemyRows(world, memo) {
+  const was = memo.rows || new Map();
+  const now = new Map();
+  const out = world.enemies.map((e) => {
+    const row = pack({ ...e, atkName: e.atk ? e.atk.name : 0 }, ENEMY_KEYS).map((v) => (v === undefined ? null : v));
+    now.set(e.id, row);
+    const old = was.get(e.id);
+    if (!old) return row;
+    const d = [];
+    for (let i = 1; i < row.length; i++) if (JSON.stringify(row[i]) !== JSON.stringify(old[i])) d.push(i, row[i]);
+    return d.length ? { i: e.id, d } : e.id;
+  });
+  memo.rows = now;
+  return out;
+}
+
+/** Your own hero: only the fields that changed since the last update (null for one that went away). */
+function changedOnly(me, memo) {
+  const was = memo.me || {};
+  const now = {};
+  const out = {};
+  for (const k in me) {
+    const str = JSON.stringify(me[k] ?? null);
+    now[k] = str;
+    if (was[k] !== str) out[k] = me[k] ?? null;
+  }
+  for (const k in was) if (!(k in now)) out[k] = null;
+  memo.me = now;
+  return out;
+}
+
+/**
+ * Loot this friend can see: a new drop in full, once; then just its id, or
+ * {id, x, z} while it moves (flying to whoever picks it up).
+ */
+function lootFor(world, pid, memo) {
+  const was = memo.loot || new Map();
+  const now = new Map();
+  const out = [];
+  for (const l of world.loot) {
+    if (l.owner !== undefined && l.owner !== pid) continue;
+    const x = r2(l.x), z = r2(l.z);
+    const at = x + ',' + z;
+    now.set(l.id, at);
+    const old = was.get(l.id);
+    if (old === undefined) out.push({ id: l.id, x, z, item: l.item });
+    else if (old !== at) out.push({ id: l.id, x, z });
+    else out.push(l.id);
+  }
+  memo.loot = now;
+  return out;
+}
+
+/**
+ * Friend side, as each update arrives (before it waits in the playback queue): keep
+ * the once-only parts (enemy details, loot items), so they are there even if this
+ * update is skipped to catch up. Safe to call twice.
+ */
+export function receiveSnapshot(world, snap) {
+  if (snap._got) return !snap._bad;
+  snap._got = true;
+  const c = world.netCache || (world.netCache = { fixed: new Map(), items: new Map(), rows: new Map(), me: {}, n: 0, seq: null });
+  if (snap.full) {
+    c.rows = new Map();
+    c.me = {};
+  } else if (c.seq == null || snap.seq !== c.seq + 1) {
+    snap._bad = true; // an update went missing: this one cannot be pieced together
+    return false;
+  }
+  c.seq = snap.seq;
+  c.n++;
+  // Rebuild full rows from the changes (updates arrive complete and in order).
+  const rows = new Map();
+  snap.enemies = (snap.enemies || []).map((x) => {
+    let row;
+    if (Array.isArray(x)) row = x;
+    else if (typeof x === 'number') row = c.rows.get(x);
+    else {
+      row = (c.rows.get(x.i) || [x.i]).slice();
+      for (let j = 0; j < x.d.length; j += 2) row[x.d[j]] = x.d[j + 1];
+    }
+    if (row) rows.set(row[0], row);
+    return row;
+  }).filter(Boolean);
+  c.rows = rows;
+  c.me = { ...c.me, ...(snap.me || {}) };
+  snap.me = c.me;
+  for (const row of snap.fixed || []) c.fixed.set(row[0], { row, seen: c.n });
+  for (const e of snap.enemies || []) {
+    const f = c.fixed.get(e[0]);
+    if (f) f.seen = c.n;
+  }
+  snap.loot = (snap.loot || []).map((l) => {
+    const id = typeof l === 'number' ? l : l.id;
+    const it = l.item ? { item: l.item } : c.items.get(id);
+    if (!it) return null;
+    if (typeof l !== 'number') {
+      it.x = l.x;
+      it.z = l.z;
+    }
+    it.seen = c.n;
+    c.items.set(id, it);
+    return { id, x: it.x, z: it.z, item: it.item };
+  }).filter(Boolean);
+  // Forget what has not been in an update for a while (a few seconds' worth).
+  if (c.n % 60 === 0) {
+    for (const [id, f] of c.fixed) if (c.n - f.seen > 120) c.fixed.delete(id);
+    for (const [id, it] of c.items) if (c.n - it.seen > 120) c.items.delete(id);
+  }
+  return true;
+}
+
 /**
  * Host side: the snapshot for one friend. `memo` is that friend's record, used
  * to send the heavy hero data only when it has changed.
@@ -56,29 +190,38 @@ function heavyPlayer(p) {
 export function makeSnapshot(world, pid, memo) {
   const h = world.heroByPid(pid);
   if (!h) return null;
+  // Updates are numbered; a friend who sees a gap asks for a full one (memo reset to {}).
+  const full = !memo.seq;
+  memo.seq = (memo.seq || 0) + 1;
   return world.as(h, (p) => {
     const snap = {
       t: 'snap',
+      seq: memo.seq,
+      full: full || undefined,
       map: world.map.id,
       slowT: r2(world.slowT),
-      me: lightPlayer(p),
+      me: changedOnly(lightPlayer(p), memo),
       hero: { portalT: r2(world.portalT), portalArmed: world.portalArmed, portalOn: world.portalOn ? world.map.portals.indexOf(world.portalOn) : -1, wayT: r2(world.wayT), wayArmed: world.wayArmed, respawnT: r2(world.respawnT), stats: world.stats },
       allies: world.allies().map((a) => ({ ...a, x: r2(a.x), z: r2(a.z), px: r2(a.px), pz: r2(a.pz), facing: r2(a.facing), hp: Math.round(a.hp) })),
-      enemies: world.enemies.map((e) => pack({ ...e, atkName: e.atk ? e.atk.name : 0 }, ENEMY_KEYS)),
+      enemies: enemyRows(world, memo),
+      fixed: fixedEnemies(world, memo),
       proj: world.projectiles.filter((pr) => pr.owner === 'enemy' || pr.kind).map((pr) => pack(pr, PROJ_KEYS)),
       tele: world.telegraphs.map((t) => pack(t, TELE_KEYS)),
       walls: world.walls.map((wl) => ({ id: wl.id, x: r2(wl.x), z: r2(wl.z), rot: r2(wl.rot), hw: r2(wl.hw), hd: wl.hd, t: r2(wl.t), dur: wl.dur })),
       shadows: world.shadows.map((s) => ({ id: s.id, pid: s.pid, src: s.src, swapped: !!s.swapped, x: r2(s.x), z: r2(s.z), t: r2(s.t), dur: s.dur, facing: r2(s.facing), cls: s.cls, throwT: r2(s.throwT) })),
-      loot: world.loot.filter((l) => l.owner === undefined || l.owner === pid).map((l) => ({ id: l.id, x: r2(l.x), z: r2(l.z), item: l.item, age: l.age, magnet: l.magnet })),
+      loot: lootFor(world, pid, memo),
       chests: world.chests.map((c) => ({ id: c.id, x: r2(c.x), z: r2(c.z), tier: c.tier })),
       tick: world.ticks, // the host's clock, so the friend can play updates back at an even pace
       tier: world.worldTier(),
       rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
     };
-    const heavy = JSON.stringify(heavyPlayer(p));
-    if (memo.heavy !== heavy) {
-      memo.heavy = heavy;
-      snap.heavy = heavyPlayer(p);
+    // The heavy parts one by one, so picking up an item resends the bag and nothing else.
+    memo.heavy = memo.heavy && typeof memo.heavy === 'object' ? memo.heavy : {};
+    for (const k of HEAVY) {
+      const str = JSON.stringify(p[k] ?? null);
+      if (memo.heavy[k] === str) continue;
+      memo.heavy[k] = str;
+      (snap.heavy = snap.heavy || {})[k] = p[k];
     }
     return snap;
   });
@@ -90,6 +233,8 @@ export function makeSnapshot(world, pid, memo) {
  * Returns true if the map changed.
  */
 export function applySnapshot(world, snap, alpha = 1) {
+  if (!receiveSnapshot(world, snap)) return false;
+  const cache = world.netCache;
   // Each glide starts from where things are drawn right now (part way along the last glide),
   // so an update that arrives early never makes anything jump.
   const at = (o, k) => (o['p' + k] === undefined ? o[k] : o['p' + k] + (o[k] - o['p' + k]) * alpha);
@@ -136,8 +281,12 @@ export function applySnapshot(world, snap, alpha = 1) {
     return { ...a, px: o && !mapChanged ? at(o, 'x') : a.x, pz: o && !mapChanged ? at(o, 'z') : a.z };
   });
   const oldEnemies = new Map(world.enemies.map((e) => [e.id, e]));
-  world.enemies = snap.enemies.map((arr) => {
+  world.enemies = snap.enemies.filter((arr) => cache.fixed.has(arr[0])).map((arr) => {
     const e = unpack(arr, ENEMY_KEYS);
+    const f = cache.fixed.get(e.id);
+    if (f) ENEMY_FIXED.forEach((k, i) => {
+      if (f.row[i + 1] !== null) e[k] = f.row[i + 1];
+    });
     const o = oldEnemies.get(e.id);
     e.def = ENEMIES[e.type];
     e.atk = e.atkName ? e.def.attackByName[e.atkName] : null;

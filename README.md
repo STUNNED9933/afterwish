@@ -152,6 +152,11 @@ tickets, and your settings, and replaces whatever was there.
 
 ### After The Unmade: world tiers, elites, Echo Rifts, Wishborne (0.26)
 
+- **0.26.1, smoother co-op:** the host now sends each friend only what changed
+  (enemy details and loot items once, then just moves and health), about
+  0.8 KB per update instead of 3 to 6 KB. Updates are numbered; if one goes
+  missing, the friend asks for a full one. Host and friends must both be on 0.26.1.
+
 - **World tiers.** Beating The Unmade opens tier II; beating it again on your
   highest tier opens the next, up to tier V. Pick the tier at the Waygate in
   Haven (the party leader's tier applies to everyone). From tier II every map

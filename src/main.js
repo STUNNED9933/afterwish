@@ -27,7 +27,7 @@ import { RARITIES, itemName } from './sim/items.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
-import { makeSnapshot, applySnapshot, eventFor } from './net/sync.js';
+import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor } from './net/sync.js';
 
 const $ = (id) => document.getElementById(id);
 const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Breakthrough', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
@@ -1045,6 +1045,15 @@ function start(hot = {}) {
     if (msg.t === 'snap') {
       // Updates can arrive in bunches (the host's frame ran long, or the network hiccuped).
       // They wait here and are played back at the pace the host made them (see playSnapshots).
+      if (!receiveSnapshot(world, msg)) {
+        // One went missing (say, while joining): ask the host to start over with a full update.
+        if (!net.resyncAt || performance.now() - net.resyncAt > 1000) {
+          net.resyncAt = performance.now();
+          net.room.send({ t: 'resync' });
+        }
+        return;
+      }
+      net.resyncAt = 0;
       net.queue.push(msg);
     } else if (msg.t === 'save') {
       save = msg.save;
@@ -1063,7 +1072,7 @@ function start(hot = {}) {
     while (q.length > 4) {
       const old = q.shift();
       for (const ev of old.ev || []) world.events.push(ev);
-      if (old.heavy) Object.assign(q[0], { heavy: q[0].heavy || old.heavy });
+      if (old.heavy) q[0].heavy = { ...old.heavy, ...(q[0].heavy || {}) }; // heavy parts come one by one: keep every one
       if (old.map !== q[0].map) {
         q.unshift(old);
         break;

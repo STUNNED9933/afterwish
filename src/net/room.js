@@ -113,6 +113,8 @@ export class HostRoom {
         return;
       }
       if (msg.t === 'cmd' && msg.cmd && typeof msg.cmd.type === 'string') this.onCmd(pid, msg.cmd);
+      // The friend missed an update (they arrive as changes): the next one goes in full.
+      else if (msg.t === 'resync') { const f = this.friends.get(pid); if (f) f.memo = {}; }
       else if (msg.t === 'bye') conn.close();
     });
     const gone = () => {
@@ -128,6 +130,7 @@ export class HostRoom {
   sendTo(pid, msg) {
     const f = this.friends.get(pid);
     if (f && f.conn.open) f.conn.send(msg);
+    else if (f) f.memo = {}; // not sent: start the friend over with a full update
   }
 
   get size() {

@@ -1951,4 +1951,62 @@ import { makeRng } from '../src/sim/rng.js';
     check('co-op: a friend gets the same rift map and its progress', friend.map.id === 'rift' && friend.map.riftTheme === w.rift.theme && friend.obstacles.length === w.obstacles.length && friend.rift.need === w.rift.need);
   }
 }
+// --- 0.26.1: lighter co-op updates --------------------------------------------------
+// The host sends what changed; the friend rebuilds the whole picture as updates arrive,
+// even when it skips some to catch up. Its world must match the host's at every step.
+{
+  const { makeSnapshot, applySnapshot, receiveSnapshot } = await import('../src/net/sync.js');
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 21, mode: 'explore', save: { ...geared('archer', 100, 5), tierMax: 3, worldTier: 3 } });
+  w.addHero(1, { save: geared('mage', 100, 5), name: 'Mia' });
+  w.loadMap('ridge', 'town');
+  const friend = new World({ seed: 9, cls: 'mage', mode: 'explore' });
+  friend.loadMapMirror('town');
+  const look = (enemies, loot, me) => JSON.stringify({
+    e: enemies.filter((e) => e.type).map((e) => [e.id, e.type, Math.round(e.hp), e.maxHp, e.level, e.elite || null, e.state]).sort((a, b) => a[0] - b[0]),
+    l: loot.map((l) => [l.id, l.item.id, l.x, l.z]).sort((a, b) => a[0] - b[0]),
+    me: [me.hp, me.gold, me.exp, me.level, me.cd && me.cd.q],
+    bag: (me.bag || []).map((i) => i.id).join(),
+  });
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const memo = {};
+  const queue = [];
+  let applied = 0, wrong = 0, firstWrong = '', bytes = 0, sent = 0, mapped = 0;
+  for (let i = 0; i < 60 * 240; i++) {
+    if (i % 30 === 0) for (const pid of [0, 1]) { const e = w.enemies.find((x) => !x.dead); if (e) w.command({ type: 'attackMove', x: e.x, z: e.z, pid }); }
+    for (const h of w.heroes) h.player.hp = h.player.maxHp;
+    if (i === 60 * 120) { w.loadMap('fen', 'ridge'); mapped++; } // a map change part way
+    w.step(CONFIG.TICK);
+    if (i % 3) continue;
+    const str = JSON.stringify(makeSnapshot(w, 1, memo));
+    bytes += str.length; sent++;
+    const snap = JSON.parse(str);
+    const h = w.heroByPid(1).player;
+    snap.want = look(w.enemies, w.loot.filter((l) => l.owner === undefined || l.owner === 1).map((l) => ({ ...l, x: r2(l.x), z: r2(l.z) })), h);
+    receiveSnapshot(friend, snap);
+    queue.push(snap);
+    // Play back: usually one at a time, now and then a hitch that skips a few (as the game does).
+    const hitch = i % 97 === 0;
+    while (queue.length > (hitch ? 0 : 1)) {
+      const msg = queue.shift();
+      if (hitch && queue.length) {
+        if (msg.heavy) queue[0].heavy = { ...msg.heavy, ...(queue[0].heavy || {}) };
+        if (msg.map === queue[0].map) continue;
+      }
+      applySnapshot(friend, msg, 1);
+      applied++;
+      const got = look(friend.enemies, friend.loot, friend.player);
+      if (got !== msg.want) { wrong++; if (!firstWrong) { let k = 0; while (got[k] === msg.want[k]) k++; firstWrong = `update ${applied}: ...${got.slice(k - 60, k + 80)} vs ...${msg.want.slice(k - 60, k + 80)}`; } }
+    }
+  }
+  check('co-op updates: after thousands of updates, skips and a map change, the friend sees exactly what the host has', wrong === 0 && applied > 1000 && friend.map.id === 'fen', `${wrong} wrong of ${applied}; ${firstWrong}`);
+  check('co-op updates: about a kilobyte each at world tier III', bytes / sent < 1500, Math.round(bytes / sent) + ' bytes');
+  // A lost update (say, one that came while the friend was still joining): the friend notices and asks for a full one.
+  makeSnapshot(w, 1, memo); // never arrives
+  const after = JSON.parse(JSON.stringify(makeSnapshot(w, 1, memo)));
+  check('co-op updates: a missing update is noticed, not pieced together wrongly', receiveSnapshot(friend, after) === false && applySnapshot(friend, after) === false);
+  const reset = {}; // what the host does when asked
+  const fresh = JSON.parse(JSON.stringify(makeSnapshot(w, 1, reset)));
+  check('co-op updates: ...and the full one that follows puts the friend right', fresh.full && receiveSnapshot(friend, fresh) && (applySnapshot(friend, fresh, 1), look(friend.enemies, friend.loot, friend.player) === look(w.enemies, w.loot.filter((l) => l.owner === undefined || l.owner === 1).map((l) => ({ ...l, x: r2(l.x), z: r2(l.z) })), w.heroByPid(1).player)));
+}
 process.exit(failed ? 1 : 0);

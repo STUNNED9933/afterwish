@@ -150,6 +150,41 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### New traits and ultimates, Combat Power (0.24)
+
+- **Windrunner** gets a trait, **Tailwind**: after Evasive Roll, for as long as
+  its attack speed bonus lasts, every basic attack (Barrage arrows too) deals
+  extra damage on hit (30% attack damage + 2 per level) and takes 0.3 s off
+  Evasive Roll's cooldown: attack fast, roll often. New R, **Hurricane**
+  (cooldown 55 s): 6 seconds of +40% attack speed and Tailwind, every basic
+  attack looses 2 more arrows at enemies nearby for 45%, and Evasive Roll is
+  ready at once. Capstone is now Eye of the Storm.
+- **Sharpshooter** new R, **Deadeye**: for 8 seconds, R fires a shot across
+  the whole map at your cursor, up to 3 times. Each stops in the first enemy
+  it meets and always crits; the third deals 50% more. Long Watch makes the
+  far ones hurt most. The cooldown starts after the last shot.
+- **Berserker**, Blood Rage now also gives 15% less damage taken while
+  Bloodied; lifesteal stops just below half health so it keeps you Bloodied;
+  and once every 30 seconds a killing blow while Bloodied leaves you at
+  1 health (Last Breath). New R, **Crimson Oath**: drop to 40% health at once
+  with a roar, then for 6 seconds you cannot fall below 1 health and your
+  lifesteal is doubled.
+- **Bulwark**, **Iron Answer**: your parry also blocks red attacks no one else
+  can parry. A blocked red attack does no harm, and its attacker is Broken:
+  stunned 1.5 s (bosses take two posture hits) and 20% more damage taken for
+  4 s. With Shield Wall it covers friends too. New R, **Hold the Line**: drag
+  everything within 8 m to you, stun it for a moment (not bosses) and make it
+  fight you for 4 seconds; for 5 seconds you and friends within 8 m take 35%
+  less damage.
+- **Combat Power** (HUD, gear screen, item tooltips): a number to watch grow
+  with levels, gear, talents, a subclass and Immortal effects. It balances
+  **Might** (how hard you hit) and **Resolve** (how much you can take): Combat
+  Power is the geometric mean of the two, so tanks and damage dealers with
+  gear of the same quality score about the same. Item tooltips show how much
+  Combat Power, Might and Resolve change if you wear the item. It is only
+  shown: nothing in the game asks for it, and the Weekly Echo boards still
+  rank by floor. ("power" on items is now called gear score.)
+
 ### Safer saves, Frostbinder rework, treasure chests (0.23)
 
 - **Your progress is much harder to lose.**

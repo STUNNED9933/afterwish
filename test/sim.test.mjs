@@ -71,6 +71,7 @@ function runBot({ seed, parrySkill, maxSeconds = 900, preset = 'relaxed', save =
 }
 
 let failed = 0;
+const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? '  ' + extra : '')); if (!ok) failed++; };
 
 for (const [label, skill] of [['no parry', 0], ['average', 0.6], ['good', 0.95]]) {
@@ -1490,5 +1491,146 @@ import { makeRng } from '../src/sim/rng.js';
   check('co-op: a friend sees the chests and Hoarfrost stacks', friend.chests.length === host.chests.length && fe && fe.frostStacks === 3);
 }
 
+}
+
+// --- 0.24: Windrunner, Sharpshooter, Berserker and Bulwark ------------------------
+{
+  console.log('--- 0.24: new traits and ultimates');
+  const { SPECS } = await import('../src/sim/talents.js');
+  const { geared } = await import('./balance.mjs');
+  const run = (w, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) w.step(CONFIG.TICK); };
+  const setup = (cls, spec, level = 40) => {
+    const w = new World({ seed: 41, cls, save: Object.assign(geared(cls, level, 2), { spec, talents: {} }) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0, type = 'grunt') => { const e = w.spawnEnemy(type, { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+
+  // Windrunner: Tailwind
+  {
+    const { w, p } = setup('archer', 'windrunner');
+    check('Windrunner: has a trait (Tailwind) and R is Hurricane', SPECS.windrunner.perk && SPECS.windrunner.perk.name === 'Tailwind' && w.kit.r.name === 'Hurricane');
+    const e = dummy(w, 6);
+    const hit = () => { w.events.length = 0; w.hitEnemy(e, 100, { basic: true, canCrit: false }); return w.events.find((ev) => ev.type === 'damage' && ev.id === e.id).amount; };
+    const plain = hit();
+    p.rushT = 3; p.cd.e = 5;
+    const windy = hit();
+    const extra = p.stats.ad * 0.3 + 2 * p.level;
+    check('Tailwind: after a roll, basic attacks deal 30% attack damage + 2 per level more on hit', Math.abs(windy - plain - extra * w.gapScale(e.level).dealt) <= 2, `${plain} -> ${windy}`);
+    check("Tailwind: each hit takes 0.3 s off Evasive Roll's cooldown", Math.abs(p.cd.e - 4.7) < 1e-9, String(p.cd.e));
+    p.rushT = 0;
+    const others = [dummy(w, 7, 2), dummy(w, 7, -2), dummy(w, 30, 0)];
+    p.cd.e = 5; p.cd.r = 0;
+    cast(w, 'r', 6, 0);
+    check('Hurricane: attack speed up, Tailwind on, Evasive Roll ready', p.hurricaneT > 5 && p.cd.e === 0 && p.stats.as > 0);
+    w.projectiles = [];
+    w.basicAttack(e);
+    const arrows = w.projectiles.filter((pr) => pr.basic);
+    check('Hurricane: every basic attack also looses 2 arrows at other enemies nearby', arrows.length === 3 && arrows.filter((a) => a.gust).every((a) => a.targetId === others[0].id || a.targetId === others[1].id));
+    const as0 = p.stats.as;
+    run(w, 6.2);
+    check('Hurricane: ends after 6 seconds', !(p.hurricaneT > 0) && p.stats.as < as0);
+  }
+  // Sharpshooter: Deadeye
+  {
+    const { w, p } = setup('archer', 'sharpshooter');
+    check('Sharpshooter: R is Deadeye', w.kit.r.name === 'Deadeye');
+    const near = dummy(w, 6), far = dummy(w, 30), side = dummy(w, 15, 6);
+    p.cd.r = 0;
+    cast(w, 'r', 40, 0);
+    const hits = () => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy');
+    check('Deadeye: the shot stops in the first enemy on the line, and crits', near.hp < 1e9 && far.hp === 1e9 && side.hp === 1e9 && hits()[0].crit);
+    check('Deadeye: the cooldown waits while shots are left', p.cd.r < 1 && p.deadeye && p.deadeye.left === 2);
+    w.enemies = [far]; w.events.length = 0;
+    run(w, 0.5); cast(w, 'r', 40, 0);
+    const second = hits()[0].amount;
+    run(w, 0.5); w.events.length = 0; cast(w, 'r', 40, 0);
+    const third = hits()[0].amount;
+    check('Deadeye: three shots, the third deals 50% more, then the full cooldown', Math.abs(third / second - 1.5) < 0.05 && !p.deadeye && p.cd.r > 15, `${second} -> ${third}, cd ${p.cd.r.toFixed(1)}`);
+    run(w, 0.3); p.cd.r = 0; cast(w, 'r', 40, 0); run(w, 8.2);
+    check('Deadeye: unused shots run out after 8 seconds and the cooldown starts', !p.deadeye && p.cd.r > 15);
+  }
+  // Berserker
+  {
+    const { w, p } = setup('warrior', 'berserker');
+    check('Berserker: R is Crimson Oath', w.kit.r.name === 'Crimson Oath');
+    const e = dummy(w, 2);
+    p.hp = p.stats.maxHp * 0.4; run(w, 0.05);
+    check('Blood Rage: Bloodied below half', p.bloodied);
+    const dmgAt = () => { const hp = p.hp; w.hitPlayer(100, { parryable: false, src: e }); const d = hp - p.hp; p.hp = hp; return d; };
+    const bloodiedHit = dmgAt();
+    p.hp = p.stats.maxHp * 0.9; run(w, 0.05);
+    const healthyHit = dmgAt();
+    check('Blood Rage: 15% less damage taken while Bloodied', Math.abs(bloodiedHit / healthyHit - 0.85) < 0.03, `${healthyHit} -> ${bloodiedHit}`);
+    p.hp = p.stats.maxHp * 0.45; run(w, 0.05);
+    p.stats.lifesteal = 25;
+    for (let i = 0; i < 40; i++) w.hitEnemy(e, 5000, { basic: true, canCrit: false });
+    check('Blood Rage: lifesteal stops just below half health while Bloodied', p.hp < p.stats.maxHp * 0.5 && p.hp > p.stats.maxHp * 0.49 && p.bloodied, (p.hp / p.stats.maxHp).toFixed(3));
+    p.hp = 20; run(w, 0.05);
+    w.hitPlayer(1e6, { parryable: false, src: e });
+    check('Blood Rage: a killing blow while Bloodied leaves you at 1 health', !p.dead && p.hp === 1);
+    w.hitPlayer(1e6, { parryable: false, src: e });
+    check('...but only once every 30 seconds', p.dead || p.hp <= 0);
+    const b = setup('warrior', 'berserker');
+    const e2 = dummy(b.w, 2);
+    b.p.cd.r = 0; cast(b.w, 'r', 2, 0);
+    check('Crimson Oath: drops you to 40% health at once and roars (its lifesteal stops below half)', b.p.hp / b.p.stats.maxHp >= 0.39 && b.p.hp / b.p.stats.maxHp < 0.5 && b.p.bloodied && e2.hp < 1e9, (b.p.hp / b.p.stats.maxHp).toFixed(3));
+    run(b.w, 0.05);
+    b.w.hitPlayer(1e6, { parryable: false, src: e2 });
+    b.w.hitPlayer(1e6, { parryable: false, src: e2 });
+    check('Crimson Oath: you cannot fall while it lasts', !b.p.dead && b.p.hp >= 1);
+  }
+  // Combat Power
+  {
+    const { steadyRatings, ratingsWith } = await import('../src/power.js');
+    const { rollItem } = await import('../src/sim/items.js');
+    const { makeRng } = await import('../src/sim/rng.js');
+    const at = (cls, lv, spec = null) => steadyRatings(new World({ seed: 1, cls, save: Object.assign(geared(cls, lv, 2), spec ? { spec, talents: {} } : {}) }));
+    check('Combat Power: grows with level', at('archer', 1).cp < at('archer', 30).cp && at('archer', 30).cp < at('archer', 80).cp);
+    check('Combat Power: choosing a subclass raises it', at('warrior', 40, 'bulwark').cp > at('warrior', 40).cp);
+    const tank = at('warrior', 70, 'bulwark'), glass = at('archer', 70, 'sharpshooter');
+    check('Combat Power: the tank leads on Resolve, the sharpshooter on Might', tank.resolve > glass.resolve && glass.might > tank.might);
+    const all = ['warrior', 'archer', 'rogue', 'mage'].map((c) => at(c, 70).cp);
+    check('Combat Power: no class is left far behind (within 35% of each other at level 70)', Math.min(...all) / Math.max(...all) > 0.65, all.join(' '));
+    const { w, p } = setup('archer', 'windrunner');
+    const steady = steadyRatings(w);
+    p.rushT = 3; p.rushAs = 0.5; w.recalcStats(); p.hp = 77;
+    const stats = JSON.stringify(p.stats);
+    check('Combat Power: a burst of speed from a roll does not change it', steadyRatings(w).cp === steady.cp);
+    const big = rollItem(makeRng(3), 80, { minRarity: 5, cls: 'archer', slot: 'weapon' });
+    const r = ratingsWith(w, big);
+    check('Combat Power: a better weapon shows a rise, and nothing in the world changes', r.cp > steady.cp && p.equipped.weapon !== big && JSON.stringify(p.stats) === stats && p.hp === 77);
+  }
+  // Bulwark
+  {
+    const { w, p } = setup('warrior', 'bulwark');
+    check('Bulwark: R is Hold the Line', w.kit.r.name === 'Hold the Line');
+    const e = dummy(w, 2);
+    const hp = p.hp;
+    p.parryT = 0.2; p.parryAge = 0.05;
+    const res = w.hitPlayer(300, { parryable: false, src: e });
+    check('Iron Answer: a red attack is blocked by the parry, no harm done', res === 'parried' && p.hp === hp);
+    check('Iron Answer: its attacker is Broken (stunned and takes 20% more)', e.state === 'stunned' && e.vulnT > 3 && e.vuln >= 0.2);
+    const plainWarrior = setup('warrior', 'berserker');
+    plainWarrior.p.parryT = 0.2;
+    check('...only the Bulwark can do it', plainWarrior.w.hitPlayer(300, { parryable: false, src: dummy(plainWarrior.w, 2) }) !== 'parried');
+    w.enemies = [];
+    const a = dummy(w, 6, 0), b2 = dummy(w, -5, 3), far = dummy(w, 20, 0);
+    a.state = b2.state = far.state = 'chase';
+    p.parryT = 0;
+    p.cd.r = 0; cast(w, 'r', 0, 0);
+    check('Hold the Line: enemies within 8 m are taunted and stunned, the far one is not', a.tauntT > 3 && b2.tauntT > 3 && !(far.tauntT > 0) && a.state === 'stunned');
+    run(w, 0.4);
+    check('Hold the Line: and dragged in close', dist2(a, p) < 3 && dist2(b2, p) < 3, `${dist2(a, p).toFixed(1)} ${dist2(b2, p).toFixed(1)}`);
+    const taken = () => { p.hp = p.stats.maxHp * 0.8; const h0 = p.hp; w.hitPlayer(100, { parryable: false, src: far }); return h0 - p.hp; };
+    const shielded = taken();
+    run(w, 5.2);
+    const open = taken();
+    check('Hold the Line: 35% less damage taken while it lasts', Math.abs(shielded / open - 0.65) < 0.03, `${open} -> ${shielded}`);
+  }
 }
 process.exit(failed ? 1 : 0);

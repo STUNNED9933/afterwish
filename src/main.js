@@ -1435,6 +1435,21 @@ function start(hot = {}) {
       case 'postureHit':
         hud.float(renderer, ev.x, 4.2, ev.z, 'Guard cracked', 'word stun');
         break;
+      case 'buff':
+        hud.float(renderer, ev.x, 3.2, ev.z, ev.name, 'word perfect');
+        sfx.cast('r');
+        break;
+      case 'ironAnswer':
+        hud.float(renderer, ev.x, 3.0, ev.z, 'Iron Answer', 'word perfect');
+        sfx.parry(true);
+        hud.screenFlash(0.3);
+        freeze = Math.max(freeze, 0.08);
+        break;
+      case 'lastBreath':
+        hud.float(renderer, ev.x, 3.0, ev.z, 'Last Breath', 'word perfect');
+        sfx.levelUp();
+        hud.screenFlash(0.45);
+        break;
       case 'frostShatter':
         hud.float(renderer, ev.x, 3.0, ev.z, 'Shatter', 'word');
         sfx.shatter();

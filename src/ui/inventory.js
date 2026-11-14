@@ -2,6 +2,10 @@
 import { CONFIG } from '../config.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat } from '../sim/items.js';
 import { svg, gearIcon, gearClassNow } from './hud.js';
+import { steadyRatings, ratingsWith, signed } from '../power.js';
+
+// Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
+let powerProbe = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -10,7 +14,7 @@ export function itemTooltip(item, compareTo) {
   const rarity = RARITIES[item.rarity];
   const stats = itemStats(item);
   const keys = Object.keys(stats);
-  let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; power ${Math.round(itemScore(item))}</div>`;
+  let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; gear score ${Math.round(itemScore(item))}</div>`;
   keys.forEach((k, i) => {
     html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${formatStat(k, stats[k])}</div>`;
   });
@@ -27,10 +31,22 @@ export function itemTooltip(item, compareTo) {
     }
     if (compareTo.effect && compareTo.effect !== item.effect) diff += `<div class="minus">Loses ${effectFor(compareTo.effect, compareTo.cls || gearClassNow()).name}</div>`;
     const dp = Math.round(itemScore(item) - itemScore(compareTo));
-    html += `<div class="tt-diff"><b>Compared with what you are wearing</b>${diff || '<div>No change</div>'}<div class="${dp >= 0 ? 'plus' : 'minus'}">${dp >= 0 ? '+' : ''}${dp} power overall</div></div>`;
+    html += `<div class="tt-diff"><b>Compared with what you are wearing</b>${diff || '<div>No change</div>'}<div class="${dp >= 0 ? 'plus' : 'minus'}">${dp >= 0 ? '+' : ''}${dp} gear score</div>${cpLine(item)}</div>`;
+  } else if (!compareTo && powerProbe && powerProbe.empty(item)) {
+    html += `<div class="tt-diff">${cpLine(item)}</div>`;
   }
   html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap</div>`;
   return html;
+}
+
+/** "Combat Power +123 (Might +200, Resolve −77)" for wearing this item, when the gear drawer can work it out. */
+function cpLine(item) {
+  if (!powerProbe) return '';
+  const r = powerProbe.with(item);
+  if (!r) return '';
+  const now = powerProbe.now;
+  const d = r.cp - now.cp;
+  return `<div class="tt-cp ${d >= 0 ? 'plus' : 'minus'}">Combat Power ${signed(d)} <span style="opacity:.75;font-weight:400">(Might ${signed(r.might - now.might)}, Resolve ${signed(r.resolve - now.resolve)})</span></div>`;
 }
 
 /** A square item tile. */
@@ -104,10 +120,15 @@ export class Inventory {
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');
-      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · power ' + Math.round(itemScore(item)) : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
+      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
       row.append(cell, text);
       eq.appendChild(row);
     }
+
+    // Combat Power, worked out once per render; item tooltips compare against it.
+    const now = steadyRatings(world);
+    powerProbe = { now, with: (item) => (world.player === p ? ratingsWith(world, item) : null), empty: (item) => !p.equipped[item.slot] };
+    $('power-card').innerHTML = `<div class="cp">${now.cp.toLocaleString()}<small>Combat Power</small></div><div class="sub">Might <b>${now.might.toLocaleString()}</b> · Resolve <b>${now.resolve.toLocaleString()}</b></div>`;
 
     const s = p.stats;
     const reduction = Math.round((1 - 100 / (100 + s.armor)) * 100);

@@ -49,7 +49,7 @@
     <div id="abilities"></div>
   </div>
   <div id="hud-buttons">
-    <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b></div>
+    <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b> · <span title="Combat Power: how strong your hero is, from level, gear, talents and subclass. It balances how hard you hit (Might) with how much you can take (Resolve).">Power <b id="hud-cp">0</b></span><span id="cp-pop" class="hidden"></span></div>
     <button type="button" id="btn-talents" class="hud-btn">Talents <kbd>T</kbd><span id="talent-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-journal" class="hud-btn">Journal <kbd>J</kbd></button>
     <button type="button" id="btn-gear" class="hud-btn">Gear <kbd>Tab</kbd><span id="gear-badge" class="badge hidden"></span></button>
@@ -67,6 +67,7 @@
     <div class="inv-left">
       <h3>Equipped</h3>
       <div id="equipped"></div>
+      <div id="power-card" title="Combat Power balances how hard you hit (Might) with how much you can take (Resolve), so a tank and a glass cannon with gear of the same quality score about the same. It is only a number to watch grow: nothing in the game asks for it."></div>
       <h3>Stats</h3>
       <dl id="stats"></dl>
     </div>
@@ -189,7 +190,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.23</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.24</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>

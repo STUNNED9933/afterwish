@@ -1,6 +1,7 @@
 // The heads-up display: health and EXP bars, ability bar with ranks, wave and
 // boss status, enemy health bars, floating combat text, banners and hints.
 // Plain DOM on top of the 3D canvas.
+import { steadyRatings, signed } from '../power.js';
 import { CONFIG } from '../config.js';
 import { ABILITIES, ABILITY_SLOTS, expToNext } from '../sim/defs.js';
 import { RARITIES, itemName } from '../sim/items.js';
@@ -46,6 +47,10 @@ export const ICONS = {
   kunai: '<path d="M20 4l-9 4-3 3 5 5 3-3 4-9z"/><path d="M8 11l-1.5 1.5M13 16l-1.5 1.5M9.5 14.5L4 20"/><circle cx="3.5" cy="20.5" r="1.5"/>',
   orb: '<circle cx="12" cy="12" r="5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
+  hurricane: '<path d="M4 8c4-3 12-3 16 0"/><path d="M6 12c3-2 9-2 12 0"/><path d="M8 16c2-1.4 6-1.4 8 0"/><path d="M10 20h4"/>',
+  deadeye: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+  frenzy: '<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M9 14l2 2 4-5"/>',
+  bastion: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8 12h8M12 8v8"/>',
   icebolt: '<path d="M12 2l3 7-3 13-3-13z"/><path d="M5 7l3 3M19 7l-3 3M4 14h4M20 14h-4"/>',
 };
 // Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
@@ -227,6 +232,7 @@ export class Hud {
       $('hud-gold').textContent = p.gold;
       $('hud-tickets').textContent = p.tickets;
     }
+    this.updatePower(world);
     this.drawMinimap(world);
     $('vignette').style.opacity = p.dead ? 0.9 : p.hurtT > 0 ? 0.8 : hpFrac < 0.3 ? 0.35 + Math.sin(performance.now() / 180) * 0.12 : 0;
     document.body.classList.toggle('slowmo', world.slowT > 0);
@@ -407,6 +413,25 @@ export class Hud {
   }
 
   /** Exploration only: a small map of where you are, with enemies and portals. */
+  /** Combat Power in the purse line, with a little "+123" when it goes up. */
+  updatePower(world) {
+    this.cpFrame = (this.cpFrame || 0) + 1;
+    if (this.cpFrame % 20 !== 1 && this.cpWorld === world) return;
+    const r = steadyRatings(world);
+    if (this.cpWorld === world && this.cpShown != null && r.cp > this.cpShown && !world.trial) {
+      const pop = $('cp-pop');
+      pop.classList.add('hidden');
+      void pop.offsetWidth; // restart the animation
+      pop.textContent = `Power ${signed(r.cp - this.cpShown)}`;
+      pop.classList.remove('hidden');
+      clearTimeout(this.cpPopT);
+      this.cpPopT = setTimeout(() => pop.classList.add('hidden'), 1900);
+    }
+    if (r.cp !== this.cpShown) $('hud-cp').textContent = r.cp.toLocaleString();
+    this.cpShown = r.cp;
+    this.cpWorld = world;
+  }
+
   drawMinimap(world) {
     const cv = $('minimap');
     const on = world.mode === 'explore';

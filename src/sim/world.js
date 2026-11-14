@@ -399,7 +399,7 @@ export class World {
       // `ad` is the hero's power for every damage formula. Spell Power (staves) feeds it for the Mage.
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
-      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
+      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.hurricaneT > 0 ? p.hurricaneAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
       ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
@@ -980,6 +980,22 @@ export class World {
     } else {
       this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
     }
+    if (b.shot && p.hurricaneT > 0 && dmgOverride === null) {
+      // Hurricane (Windrunner): every real basic attack also looses arrows at other enemies nearby.
+      const def = this.kit.r;
+      const reach = this.basicRange() + 1.5;
+      const others = this.enemies.filter((e) => e !== target && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= reach + e.radius)
+        .sort((a, c) => dist(a.x, a.z, p.x, p.z) - dist(c.x, c.z, p.x, p.z)).slice(0, def.extra || 2);
+      for (const o of others) {
+        const a2 = dAtan2(o.z - p.z, o.x - p.x);
+        this.projectiles.push({
+          id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: o.id, critBonus: 0, gust: true,
+          x: p.x + dCos(a2) * 0.7, z: p.z + dSin(a2) * 0.7, px: p.x, pz: p.z,
+          vx: dCos(a2) * b.speed, vz: dSin(a2) * b.speed, speed: b.speed,
+          radius: 0.3, dmg: dmg * (def.extraMult || 0.45), parryable: false, reflected: false, life: 1.2, dead: false,
+        });
+      }
+    }
     if (this.mods.stormcaller && this.cls === 'archer' && p.swingCount % 4 === 0) this.lightning(target); // Stormstring
   }
 
@@ -1307,6 +1323,87 @@ export class World {
         this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius });
         break;
       }
+      case 'hurricane': {
+        // Hurricane (Windrunner): a burst of speed, arrows at everything nearby, and the roll is ready.
+        p.hurricaneT = def.duration + (m.rDuration || 0);
+        p.hurricaneAs = def.as;
+        p.cd.e = 0;
+        p.castLock = 0.1;
+        this.recalcStats();
+        this.emit('cast', { slot, fx: 'hurricane', x: p.x, z: p.z });
+        this.emit('buff', { name: 'Hurricane', x: p.x, z: p.z });
+        break;
+      }
+      case 'deadeye': {
+        // Deadeye (Sharpshooter): up to 3 shots across the map within the window; the cooldown starts after.
+        if (!p.deadeye) p.deadeye = { left: def.shots, t: def.window + (m.rDuration || 0) };
+        p.deadeye.left--;
+        const last = p.deadeye.left <= 0;
+        let best = null, bestAlong = Infinity;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          const rx = e.x - p.x, rz = e.z - p.z;
+          const along = rx * cos + rz * sin;
+          if (along < -e.radius || along > range + e.radius || along >= bestAlong) continue;
+          if (Math.abs(rz * cos - rx * sin) > def.width / 2 + e.radius) continue;
+          best = e;
+          bestAlong = along;
+        }
+        if (best) this.hitEnemy(best, dmg * (last ? def.lastMult : 1), { source: slot, forceCrit: true });
+        p.facing = a;
+        p.castLock = 0.2;
+        this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: best ? Math.max(1, bestAlong) : range, width: def.width, last });
+        if (last) p.deadeye = null;
+        else p.cd[slot] = 0.45; // a moment between shots; the full cooldown comes after the last
+        break;
+      }
+      case 'frenzy': {
+        // Crimson Oath (Berserker): pay in blood, then you cannot fall for a while.
+        const floor = p.stats.maxHp * def.hpTo;
+        if (p.hp > floor) {
+          const cost = p.hp - floor;
+          p.hp = floor;
+          this.emit('bloodCost', { x: p.x, z: p.z, amount: Math.round(cost) });
+        }
+        if (m.bloodRage && !p.bloodied) {
+          p.bloodied = true; // Bloodied from this moment, so the roar's lifesteal already stops below half
+          this.recalcStats();
+          this.emit('bloodied', { on: true, x: p.x, z: p.z });
+        }
+        p.frenzyT = def.duration + (m.rDuration || 0);
+        p.castLock = 0.15;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          if (dist(e.x, e.z, p.x, p.z) <= radius + e.radius) this.hitEnemy(e, dmg, { source: slot });
+        }
+        this.emit('cast', { slot, fx: 'frenzy', x: p.x, z: p.z, radius });
+        this.emit('buff', { name: 'Crimson Oath', x: p.x, z: p.z });
+        break;
+      }
+      case 'bastion': {
+        // Hold the Line (Bulwark): drag everything in, make it fight you, and shield everyone close.
+        p.castLock = 0.18;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          const de = dist(e.x, e.z, p.x, p.z);
+          if (de > radius + e.radius) continue;
+          this.hitEnemy(e, dmg, { source: slot });
+          if (e.dead) continue;
+          e.tauntPid = this.cur.pid;
+          e.tauntT = def.taunt;
+          if (!e.def.boss) {
+            const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
+            const de1 = Math.max(de, 0.01);
+            e.kx = ((p.x - e.x) / de1) * gap * 9;
+            e.kz = ((p.z - e.z) / de1) * gap * 9;
+            if (!e.def.heavy) this.stun(e, def.stun);
+          } else this.addPosture(e, 1, false);
+        }
+        p.bastionT = def.duration + (m.rDuration || 0);
+        this.emit('cast', { slot, fx: 'bastion', x: p.x, z: p.z, radius });
+        this.emit('buff', { name: 'Hold the Line', x: p.x, z: p.z });
+        break;
+      }
       case 'meteor': {
         const c = aimPoint();
         const delay = def.delay * (m[slot + 'Delay'] || 1);
@@ -1482,6 +1579,24 @@ export class World {
         this.recalcStats();
       }
     }
+    if (p.hurricaneT > 0) {
+      p.hurricaneT -= dt;
+      if (p.hurricaneT <= 0) {
+        p.hurricaneT = 0;
+        this.recalcStats();
+        this.emit('buffEnd', { name: 'Hurricane' });
+      }
+    }
+    if (p.deadeye) {
+      p.deadeye.t -= dt;
+      if (p.deadeye.t <= 0) {
+        p.deadeye = null; // the chance is gone: now the real cooldown
+        p.cd.r = this.abilityCooldown('r');
+      }
+    }
+    if (p.frenzyT > 0) p.frenzyT -= dt;
+    if (p.bastionT > 0) p.bastionT -= dt;
+    if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
     if (p.barrage) {
       // Barrage: the next arrow when its moment comes, at the same target if it still stands, else the nearest.
       const bg = p.barrage;
@@ -1712,12 +1827,16 @@ export class World {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
-    if (parryable && this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
-      // Shield Wall: a parrying Bulwark standing close catches the hit instead.
-      const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
+    if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
+      // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
+      const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && (parryable || h.mods.blockRed) && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
       if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj }));
     }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
+    // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
+    const holder = this.heroes.find((h) => h.player.bastionT > 0 && !h.player.dead && dist(h.player.x, h.player.z, p.x, p.z) <= 8);
+    if (holder) rawDamage *= 1 - (holder.kit.r.dr || 0.35);
+    if (p.bloodied && m.bloodGuard > 0) rawDamage *= 1 - m.bloodGuard; // Blood Rage
     const chiller = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
     if (chiller && chiller.chillWeak > 0 && (chiller.slowT > 0 || chiller.state === 'stunned')) rawDamage *= 1 - chiller.chillWeak; // Deep Winter
     if (p.dash || p.leap) {
@@ -1792,12 +1911,35 @@ export class World {
         }
         return 'parried';
       }
+      if (m.blockRed) {
+        // Iron Answer (Bulwark): the shield takes the red attack, and whoever threw it is Broken.
+        p.parryHit = true;
+        p.parryT = Math.max(p.parryT, 0.15);
+        this.stats.parries++;
+        const who = src && !src.dead ? src : proj && proj.srcId != null ? this.enemyById(proj.srcId) : null;
+        if (proj) proj.dead = true;
+        if (who) {
+          if (who.def.boss) this.addPosture(who, 2, true);
+          else this.stun(who, 1.5);
+          who.vulnT = Math.max(who.vulnT, 4);
+          who.vuln = Math.max(who.vuln || 0, 0.2);
+        }
+        this.emit('ironAnswer', { x: p.x, z: p.z, srcId: who ? who.id : null });
+        return 'parried';
+      }
       this.emit('unparryable', { x: p.x, z: p.z });
     }
     const dmg = Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken)));
     p.hp -= dmg;
     p.hurtT = 0.25;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg });
+    if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
+    if (p.hp <= 0 && m.bloodSave > 0 && p.hp + dmg < p.stats.maxHp * 0.5 && !(p.bloodSaveT > 0)) {
+      // Blood Rage: a Bloodied Berserker shrugs off one killing blow every 30 seconds.
+      p.hp = 1;
+      p.bloodSaveT = m.bloodSave;
+      this.emit('lastBreath', { x: p.x, z: p.z });
+    }
     if (p.hp <= 0) {
       if (m.undying && !p.undyingUsed) {
         p.undyingUsed = true;
@@ -2357,8 +2499,8 @@ export class World {
       if (a.spec && a.spec !== this.player.spec) return false; // another subclass's augment
       if (a.notSpec && a.notSpec.includes(this.player.spec)) return false;
       // An augment for an ability the subclass has swapped for a different one (Frozen Orb for a Pyromancer).
-      if (a.cls && !a.spec && 'qwer'.includes(a.slot) && a.slot.length === 1) {
-        const base = CLASSES[a.cls].abilities[a.slot];
+      if (!a.spec && 'qwer'.includes(a.slot) && a.slot.length === 1) {
+        const base = CLASSES[a.cls || this.cls].abilities[a.slot];
         if (this.kit[a.slot] !== base && this.kit[a.slot].type !== base.type) return false;
       }
       return a.slot === 'parry' || a.slot === 'hero' || id === 'r_early' || this.abilityUnlocked(a.slot);
@@ -2683,6 +2825,11 @@ export class World {
       dmg *= this.critMultiplier(opts.critBonus || 0);
       crit = true;
     }
+    if (opts.basic && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0)) {
+      // Tailwind (Windrunner): on-hit damage, and the next roll comes sooner.
+      dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
+      if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr);
+    }
     const stunned = e.state === 'stunned';
     let far = false;
     if (!opts.raw) {
@@ -2727,7 +2874,11 @@ export class World {
       // Lifesteal: full from basic attacks, a third from abilities, capped (see CONFIG).
       let ls = Math.min(p.stats.lifesteal, CONFIG.LIFESTEAL_CAP) + (p.bloodied ? this.mods.bloodLeech : 0);
       if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
-      if (ls > 0) this.healPlayer((dmg * ls) / 100, false);
+      if (p.frenzyT > 0) ls *= 2; // Crimson Oath
+      let heal = (dmg * ls) / 100;
+      // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.
+      if (this.mods.bloodCap && p.bloodied) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
+      if (heal > 0) this.healPlayer(heal, false);
     }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
     if (e.def.boss && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.4) {

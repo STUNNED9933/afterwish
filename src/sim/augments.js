@@ -40,6 +40,8 @@ export function defaultMods() {
     // Frostbinder (Deep Winter): chilled enemies deal less damage; Rimewall size and time
     chillWeak: 0, wallLen: 1, wallDur: 0,
     // Frostbinder Hoarfrost (0.23): stacks that Shatter at frostMax. See addFrost in world.js.
+    // 0.24: Windrunner Tailwind, Berserker Blood Rage rules, Bulwark Iron Answer and Hold the Line.
+    tailwind: 0, tailwindCdr: 0, bloodGuard: 0, bloodCap: false, bloodSave: 0, blockRed: false,
     frostMax: 0, frostDmg: 1, frostFreeze: 1, frostReach: 3, basicFrost: 0, qFrost: 0, qSplashFrost: 1, orbFrost: 0, moteFrost: 0, brittle: 0.15, smoulderStacks: 2,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,

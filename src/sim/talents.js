@@ -27,8 +27,15 @@ export const SPECS = {
     blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
     perk: {
       name: 'Blood Rage',
-      desc: 'Below half health you are Bloodied: +15% damage and +20% attack speed. Cleave and Whirlwind cost 4% of your maximum health (they never take you below 10%).',
-      apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); },
+      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Skyfall becomes Crimson Oath.',
+      apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
+    },
+    kit: {
+      r: {
+        key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
+        dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
+        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds you cannot fall below 1 health and your lifesteal is doubled.',
+      },
     },
     talents: [
       { id: 'bz_haste', row: 'minor', name: 'Red Haze', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
@@ -44,8 +51,15 @@ export const SPECS = {
     blurb: 'The wall the party stands behind. Drags enemies into one place for the others to hit, makes them look only at you, and parries for the whole group.',
     perk: {
       name: "The Warden's Call",
-      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds.',
-      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); },
+      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds. Iron Answer: your parry also blocks red attacks no one else can parry. A blocked red attack does no harm, and whoever threw it is Broken: stunned for 1.5 seconds (bosses take two posture hits) and 20% more damage taken for 4 seconds. Skyfall becomes Hold the Line.',
+      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); m.blockRed = true; },
+    },
+    kit: {
+      r: {
+        key: 'R', name: 'Hold the Line', type: 'bastion', icon: 'bastion', unlock: 6, cd: 45, radius: 8, duration: 5, dr: 0.35, taunt: 4, stun: 0.75,
+        dmg: (s, lvl) => 1.4 * s.ad + 30 + 8 * lvl,
+        desc: 'Slam your shield down: everything within 8 m is dragged to you, stunned for a moment (not bosses) and must fight you for 4 seconds. For 5 seconds you and every friend within 8 m of you take 35% less damage.',
+      },
     },
     talents: [
       { id: 'bw_armor', row: 'minor', name: 'Iron Skin', max: 5, desc: (r) => `+${4 * r}% armor.`, apply: (m, r) => { m.armorPct += 0.04 * r; } },
@@ -66,6 +80,13 @@ export const SPECS = {
       desc: 'Your hits deal 4% more for every metre between you and the target past the first 2, up to 40% more (about 30% at your normal range). Damage numbers turn gold at long range.',
       apply: (m) => { m.farShot = Math.max(m.farShot, 0.04); m.farShotMax = Math.max(m.farShotMax, 0.4); },
     },
+    kit: {
+      r: {
+        key: 'R', name: 'Deadeye', type: 'deadeye', icon: 'deadeye', unlock: 6, cd: 40, range: 40, width: 1.3, shots: 3, window: 8, lastMult: 1.5,
+        dmg: (s, lvl) => 1.5 * s.ad + 25 + 7 * lvl,
+        desc: 'Take aim: for 8 seconds, R fires a shot across the whole map at your cursor (up to 3 shots). Each stops in the first enemy it meets and always crits; the third deals 50% more. Long Watch makes the far ones hurt most.',
+      },
+    },
     talents: [
       { id: 'ss_eye', row: 'minor', name: 'Keen Eye', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'ss_draw', row: 'minor', name: 'Longbow', max: 5, desc: (r) => `Your basic attacks reach ${5 * r}% further.`, apply: (m, r) => { m.rangePct += 0.05 * r; } },
@@ -77,14 +98,26 @@ export const SPECS = {
   },
   windrunner: {
     cls: 'archer', name: 'Windrunner',
-    blurb: 'Never where the blow lands. Quicker feet, a Evasive Roll that turns into a flurry, a bigger Barrage and a longer storm of arrows.',
+    blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane turns every shot into three.',
+    perk: {
+      name: 'Tailwind',
+      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Arrow Storm becomes Hurricane.",
+      apply: (m) => { m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); },
+    },
+    kit: {
+      r: {
+        key: 'R', name: 'Hurricane', type: 'hurricane', icon: 'hurricane', unlock: 6, cd: 55, duration: 6, as: 0.4, extra: 2, extraMult: 0.45,
+        dmg: () => 0,
+        desc: 'Call up a gale for 6 seconds: you attack 40% faster, have Tailwind the whole time, and every basic attack also looses 2 arrows at other enemies nearby for 45% damage. Evasive Roll is ready again at once.',
+      },
+    },
     talents: [
       { id: 'wr_fleet', row: 'minor', name: 'Fleet', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'wr_hands', row: 'minor', name: 'Quick Hands', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
       { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Evasive Roll cooldown is ${4 * r}% shorter.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; } },
       { id: 'wr_volley', row: 'major', name: 'Rolling Barrage', max: 3, desc: (r) => `Barrage looses ${r} more arrow${r > 1 ? 's' : ''}, and each deals ${5 * r}% more.`, apply: (m, r) => { m.wExtra += r; m.wDmg *= 1 + 0.05 * r; } },
       { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Evasive Roll's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
-      { id: 'wr_cap', row: 'capstone', name: 'Gale', max: 1, desc: () => 'Arrow Storm lasts 1.5 seconds longer and its cooldown is 25% shorter.', apply: (m) => { m.rDuration += 1.5; m.rCd *= 0.75; } },
+      { id: 'wr_cap', row: 'capstone', name: 'Eye of the Storm', max: 1, desc: () => 'Hurricane lasts 2 seconds longer and its cooldown is 20% shorter, and Tailwind adds a further 10% attack damage on hit.', apply: (m) => { m.rDuration += 2; m.rCd *= 0.8; m.tailwind += 0.1; } },
     ],
   },
 

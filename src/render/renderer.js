@@ -696,6 +696,25 @@ export class Renderer {
           this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.5, dir: ev.dir, color: 0x9fe8ff, sx: len, sz: 1.3, dur: 0.35, opacity: 0.7 });
         } else if (fx === 'leap') {
           this.burst(ev.x, 0.3, ev.z, { count: 14, color: 0x9fe8ff, speed: 5, up: 6 });
+        } else if (fx === 'deadeye') {
+          // A shot across the map: a long bright streak, gold on the third.
+          this.heroAnim.swing = 0;
+          this.heroAnim.swingDur = 0.2;
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir: ev.dir, color: ev.last ? 0xffd27a : 0xfff6d8, sx: ev.range, sz: ev.width * 0.5, dur: 0.35, opacity: 1 });
+          this.shake = Math.max(this.shake, ev.last ? 0.3 : 0.15);
+        } else if (fx === 'hurricane') {
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: 0xd9fff1, from: 0.5, to: 6, dur: 0.5, opacity: 0.9 });
+          this.burst(ev.x, 1, ev.z, { count: 40, color: 0xe6fff6, speed: 10, up: 3, gravity: 0, life: 0.7 });
+        } else if (fx === 'frenzy') {
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: 0xff3b3b, from: 0.6, to: ev.radius, dur: 0.4, opacity: 1 });
+          this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xa80f1e, from: 0.5, to: ev.radius, dur: 0.35, opacity: 0.55 });
+          this.burst(ev.x, 1.2, ev.z, { count: 30, color: 0xff4a4a, speed: 7, up: 5, life: 0.6 });
+          this.shake = Math.max(this.shake, 0.3);
+        } else if (fx === 'bastion') {
+          this.heroAnim.spin = 1;
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffd27a, from: ev.radius, to: 0.8, dur: 0.45, opacity: 1 });
+          this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffe2a0, from: 0.5, to: ev.radius, dur: 0.4, opacity: 0.35 });
+          this.shake = Math.max(this.shake, 0.35);
         } else if (fx === 'line') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.2;

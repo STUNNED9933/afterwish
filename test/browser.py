@@ -440,6 +440,14 @@ with sync_playwright() as pw:
     page.keyboard.press('Escape'); page.wait_for_timeout(200)
     if ev("() => game.mode") != 'title': page.click('#btn-transfer-close'); page.wait_for_timeout(200)
     page.click('#btn-explore'); page.wait_for_timeout(1500)
+    # --- Combat Power (0.24) ---------------------------------------------------------------------
+    page.wait_for_timeout(600)
+    cp = ev("() => Number(document.getElementById('hud-cp').textContent.replace(/[^0-9]/g, ''))")
+    check('the HUD shows Combat Power', cp > 0, cp)
+    page.keyboard.press('Tab'); page.wait_for_timeout(400)
+    card = ev("() => document.getElementById('power-card').textContent")
+    check('the gear screen shows Combat Power with Might and Resolve', 'combat power' in card.lower() and 'Might' in card and 'Resolve' in card, card)
+    page.keyboard.press('Tab'); page.wait_for_timeout(300)
     # --- Weekly Echo (0.22) -------------------------------------------------------------------
     page.keyboard.press('Escape'); page.wait_for_timeout(300)
     if ev("() => game.mode") == 'pause': page.keyboard.press('Escape'); page.wait_for_timeout(300)

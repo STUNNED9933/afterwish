@@ -178,7 +178,16 @@ body.slowmo #slowtint { opacity: 1; }
 }
 .rankup:hover { background: #fff; }
 @keyframes nudge { 50% { transform: translateX(-50%) translateY(-3px); } }
-#purse { font-size: 15px; color: var(--muted); text-shadow: 0 1px 3px #000; }
+#purse { font-size: 15px; color: var(--muted); text-shadow: 0 1px 3px #000; position: relative; }
+#cp-pop { position: absolute; right: 0; bottom: 100%; margin-bottom: 4px; color: #7ff5a0; font-weight: 700; font-size: 15px; white-space: nowrap; text-shadow: 0 1px 4px #000; animation: cp-rise 1.8s ease-out forwards; pointer-events: none; }
+#cp-pop.hidden { display: none; }
+@keyframes cp-rise { 0% { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; transform: translateY(0); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+#power-card { margin: 4px 0 10px; padding: 10px 12px; border-radius: 10px; background: linear-gradient(135deg, rgba(240, 196, 90, 0.12), rgba(127, 245, 225, 0.06)); border: 1px solid rgba(240, 196, 90, 0.3); }
+#power-card .cp { font-size: 26px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; line-height: 1.1; }
+#power-card .cp small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
+#power-card .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+#power-card .sub b { color: #e8e4dc; font-weight: 600; }
+.tt-cp { margin-top: 4px; font-weight: 600; }
 #purse b, .town-res b { color: var(--gold); font-weight: 600; font-variant-numeric: tabular-nums; }
 .slot {
   position: relative; width: 58px; height: 58px; display: grid; place-items: center;

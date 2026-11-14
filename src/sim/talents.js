@@ -129,26 +129,56 @@ export const SPECS = {
   // --------------------------------------------------------------------- Mage
   pyromancer: {
     cls: 'mage', name: 'Pyromancer',
-    blurb: 'Everything burns. Bigger Fire Bolts that leave enemies alight, and a Meteor that lands twice.',
+    blurb: 'Everything burns, and keeps burning. Stack fire on your enemies, make the burns bite harder, and leave the ground itself on fire.',
+    perk: {
+      name: 'Everything Burns',
+      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
+      apply: (m) => { m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
+    },
+    kit: {
+      w: {
+        key: 'W', name: 'Smoulder', type: 'smoulder', icon: 'smoulder', unlock: 2, cd: 8, range: 12, radius: 3.5,
+        dmg: (s, lvl) => 0.7 * s.ad + 10 + 4 * lvl,
+        desc: 'Throw a cinder at your cursor. Everything in the burst catches 2 stacks of burn and Smoulders for 5 seconds: burns on a Smouldering enemy deal 50% more.',
+      },
+      r: {
+        key: 'R', name: 'Cinderfall', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 13, radius: 5.5, delay: 0.9, stun: 0.5,
+        burnZone: { time: 4, tick: 0.5, stacks: 1 },
+        dmg: (s, lvl) => 3.2 * s.ad + 70 + 16 * lvl,
+        desc: 'Call down a burning star on your cursor. It lands after a moment for heavy damage, and leaves the ground on fire for 4 seconds: everything standing in it gains a burn stack every half second.',
+      },
+    },
     talents: [
       { id: 'py_power', row: 'minor', name: 'Kindling', max: 5, desc: (r) => `+${2 * r}% spell power.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
-      { id: 'py_crit', row: 'minor', name: 'Flashpoint', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
+      { id: 'py_crit', row: 'minor', name: 'Slow Burn', max: 5, desc: (r) => `Burns last ${(0.3 * r).toFixed(1)} seconds longer and deal ${4 * r}% more.`, apply: (m, r) => { m.burnTime += 0.3 * r; m.burnMult *= 1 + 0.04 * r; } },
       { id: 'py_haste', row: 'minor', name: 'Quick Burn', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'py_ball', row: 'major', name: 'Fireball', max: 3, desc: (r) => `Fire Bolt deals ${8 * r}% more damage and bursts ${15 * r}% wider.`, apply: (m, r) => { m.qDmg *= 1 + 0.08 * r; m.qRadius *= 1 + 0.15 * r; } },
-      { id: 'py_burn', row: 'major', name: 'Ignite', max: 3, desc: (r) => `Fire Bolt sets its target burning for ${30 * r}% spell power over 3 seconds.`, apply: (m, r) => { m.qBleed = Math.max(m.qBleed, 0.3 * r); } },
-      { id: 'py_cap', row: 'capstone', name: 'Second Sun', max: 1, desc: () => 'One second after Meteor lands, the ground erupts again for 50% damage. Meteor is 15% wider.', apply: (m) => { m.rAftershock = Math.max(m.rAftershock, 0.5); m.rRadius *= 1.15; } },
+      { id: 'py_burn', row: 'major', name: 'Wildfire', max: 3, desc: (r) => `When a burning enemy dies, its burn jumps to the ${r} nearest enem${r > 1 ? 'ies' : 'y'} within 5 m, every stack of it.`, apply: (m, r) => { m.burnSpread = Math.max(m.burnSpread, r); } },
+      { id: 'py_cap', row: 'capstone', name: 'Second Sun', max: 1, desc: () => 'One second after Cinderfall lands, the ground erupts again for 50% damage. Cinderfall is 15% wider, and Fire Bolt adds 2 burn stacks instead of 1.', apply: (m) => { m.rAftershock = Math.max(m.rAftershock, 0.5); m.rRadius *= 1.15; m.qBurn = Math.max(m.qBurn, 2); } },
     ],
   },
   frostbinder: {
     cls: 'mage', name: 'Frostbinder',
-    blurb: 'Nothing reaches you. A bigger Frozen Orb that freezes solid, a tougher body, and a Blink that bites.',
+    blurb: 'Nothing reaches you. Chilled enemies hit softer, Frozen Orb freezes them solid, and a wall of ice holds the line and throws their shots back at them.',
+    perk: {
+      name: 'Deep Winter',
+      desc: "Enemies you chill with Frozen Orb or Rimewall deal 20% less damage while they are slowed or frozen. Frozen Orb deals 40% more, comes back 20% sooner, and its shatter freezes normal enemies solid for 0.6 seconds. Meteor becomes Rimewall.",
+      apply: (m) => { m.chillWeak = Math.max(m.chillWeak, 0.2); m.wStun = Math.max(m.wStun, 0.6); m.wCd *= 0.8; m.wDmg *= 1.4; },
+    },
+    kit: {
+      r: {
+        key: 'R', name: 'Rimewall', type: 'wall', icon: 'wall', unlock: 6, cd: 32, range: 10, length: 8, duration: 5, stun: 1.2,
+        dmg: (s, lvl) => 2.4 * s.ad + 40 + 10 * lvl,
+        desc: 'Raise a wall of ice across your cursor for 5 seconds. Nothing can walk through it, and enemy shots that hit it fly back at them and freeze what they hit. When it melts it shatters, damaging and freezing everything beside it.',
+      },
+    },
     talents: [
       { id: 'fb_vigor', row: 'minor', name: 'Cold Blood', max: 5, desc: (r) => `+${2 * r}% maximum health.`, apply: (m, r) => { m.hpPct += 0.02 * r; } },
-      { id: 'fb_armor', row: 'minor', name: 'Rime Coat', max: 5, desc: (r) => `+${4 * r}% armor.`, apply: (m, r) => { m.armorPct += 0.04 * r; } },
+      { id: 'fb_armor', row: 'minor', name: 'Numbing Cold', max: 5, desc: (r) => `Chilled enemies deal a further ${2 * r}% less damage.`, apply: (m, r) => { m.chillWeak += 0.02 * r; } },
       { id: 'fb_haste', row: 'minor', name: 'Clear Mind', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'fb_nova', row: 'major', name: 'Wide Winter', max: 3, desc: (r) => `Frozen Orb is ${8 * r}% bigger and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.wRadius *= 1 + 0.08 * r; m.wCd *= 1 - 0.08 * r; } },
-      { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frozen Orb's shatter freezes normal enemies solid for ${(0.4 * r).toFixed(1)} seconds.`, apply: (m, r) => { m.wStun = Math.max(m.wStun, 0.4 * r); } },
-      { id: 'fb_cap', row: 'capstone', name: 'Heart of Frostfall', max: 1, desc: () => 'Take 12% less damage. Blink leaves a blast where you stood for 120% spell power.', apply: (m) => { m.dmgTaken += 0.12; m.eBlast = Math.max(m.eBlast, 1.2); } },
+      { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frozen Orb's shatter freezes ${(0.3 * r).toFixed(1)} seconds longer.`, apply: (m, r) => { m.wStun += 0.3 * r; } },
+      { id: 'fb_cap', row: 'capstone', name: 'Heart of Frostfall', max: 1, desc: () => 'Take 10% less damage. Rimewall is 40% longer and stands 2 seconds longer.', apply: (m) => { m.dmgTaken += 0.1; m.wallLen *= 1.4; m.wallDur += 2; } },
     ],
   },
 };

@@ -150,6 +150,38 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Mage rework and a scrap filter (0.21)
+
+- **Mage E is now Starwake:** blink, then loose 3 homing motes of starlight
+  at the nearest enemies (a different one each when there are three). They
+  cannot be parried or sent back. Cooldown 8 s. New arena augment
+  Constellation adds 2 motes.
+- **Mage base:** more spell power and a little more move speed.
+- **Pyromancer, Everything Burns:** Fire Bolt and basic attacks set enemies
+  burning. Burns stack to 5, last 4 s and renew on each new stack; each stack
+  burns for 15% spell power + 1.5 per level a second and grows with Fire
+  Bolt's rank. **W becomes Smoulder** (2 stacks in an area, and burns on a
+  Smouldering enemy deal 50% more for 5 s). **R becomes Cinderfall** (a
+  burning star that leaves the ground on fire for 4 s, a stack every half
+  second). Talents: Slow Burn (longer, stronger burns), Wildfire (a burning
+  enemy's death passes all its stacks to the nearest enemies), Second Sun.
+- **Frostbinder, Deep Winter:** no more armor. Enemies you chill or freeze
+  deal 20% less damage (Numbing Cold adds more); Frozen Orb hits 40% harder,
+  comes back 20% sooner, and its shatter freezes normal enemies. **R becomes
+  Rimewall:** a wall of ice across your aim for 5 s that nothing can walk
+  through; enemy shots that hit it fly back at them and freeze what they
+  hit, and when it melts it shatters, damaging and freezing everything
+  beside it. Capstone Heart of Frostfall: a longer wall that stands longer,
+  and 10% less damage taken.
+- **Never scrap:** under the bag, tick rarities (Rare to Immortal) that
+  "Scrap everything that is not an upgrade" must leave alone, however their
+  stats compare. Immortal is ticked by default. Shift-click still scraps one
+  item on purpose.
+- Balance (bot tests, rare gear): final boss in Pyromancer 21 s,
+  Shadowdancer 20 s, Sharpshooter 22 s, Frostbinder 25 s. Farming kills over
+  three maps: Pyromancer 221, Sharpshooter 222, Assassin 213, Frostbinder
+  183, Bulwark 190; unspecced mage 186, archer 191, rogue 192, warrior 181.
+
 ### Attack-move, auto-attack switch, Long Watch, new names (0.20)
 
 - **Attack-move: Shift + right-click.** Attacks the enemy nearest you or
@@ -174,7 +206,7 @@ tickets, and your settings, and replaces whatever was there.
   | Slot | Warrior | Archer | Rogue | Mage |
   | --- | --- | --- | --- | --- |
   | Weapon | **Stormcaller**: Cleave and Whirlwind call lightning on every enemy hit (up to 6) | **Stormstring**: every 4th basic attack calls lightning | **Nightfang**: ability crits deal 40% more and take 1 s off Nightstep | **Wishfall**: every 3rd ability drops a star shard on the cursor |
-  | Helm | Crown of the Undying: survive a killing blow at 35%, and your escape (Breakthrough, Evasive Roll, Nightstep, Blink) is ready at once. Recharges each wave, in Haven, or after 2 minutes | same | same | same |
+  | Helm | Crown of the Undying: survive a killing blow at 35%, and your escape (Breakthrough, Evasive Roll, Nightstep, Starwake) is ready at once. Recharges each wave, in Haven, or after 2 minutes | same | same | same |
   | Chest | Aegis of Retribution: parries send a shockwave around you | parries shoot starlight at the nearest enemy | shockwave | starlight |
   | Boots | Slipstream: +move and attack speed after a perfect parry or dodge | same | +move speed, cooldowns run 60% faster | same as Rogue |
   | Ring | The Timekeeper: kills, and every 4% of a boss's health, take 0.5 s off cooldowns | same | same | same |
@@ -308,8 +340,8 @@ At level 15 press **T** and choose one of two subclasses for your class:
 | Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Evasive Roll flurry, longer Arrow Storm |
 | Rogue | **Assassin** | Farming: crits, brutal Mercy Strokes, Last Rites that resets on a kill |
 | Rogue | **Shadowdancer** | Boss killer: afterimages to trade places with, Starglass Kunai thrown from every afterimage, Last Rites that makes the target die twice |
-| Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
-| Mage | **Frostbinder** | Health, armor, a bigger Frozen Orb that freezes, damage reduction |
+| Mage | **Pyromancer** | Stacking burns, Smoulder to make them bite harder, Cinderfall that leaves the ground on fire |
+| Mage | **Frostbinder** | Chilled enemies hit softer, Frozen Orb freezes, Rimewall blocks enemies and throws their shots back |
 
 From level 16 you earn a talent point every 4 levels: 22 by level 100, which
 is exactly one full tree. Each tree has three rows: three small stat talents
@@ -360,7 +392,7 @@ load). Gold and arena tickets are shared by every class. Everyone can parry.
 | Warrior | Melee, the toughest; every enemy Cleave or Whirlwind hits takes time off the other cooldowns | Cleave | Whirlwind | Breakthrough | Skyfall |
 | Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Evasive Roll (then +50% attack speed for 4 s) | Arrow Storm |
 | Rogue | Fast melee burst; Mercy Stroke hits 60% harder from behind or on a stunned enemy | Mercy Stroke | Fan of Knives | Nightstep (next ability +35%) | Last Rites |
-| Mage | Weak basics, strong ranged spells, +25 ability haste | Fire Bolt | Frozen Orb (recast to shatter early) | Blink | Meteor |
+| Mage | Weak basics, strong ranged spells, +25 ability haste | Fire Bolt | Frozen Orb (recast to shatter early) | Starwake (blink + 3 homing motes) | Meteor |
 
 Changes in 0.5:
 

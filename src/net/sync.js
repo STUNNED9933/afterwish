@@ -14,7 +14,7 @@ export const NET_VERSION = 1; // host and friends must run the same build of the
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
@@ -24,7 +24,7 @@ export function eventFor(ev, pid) {
 }
 
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
-const ENEMY_KEYS = ['id', 'type', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
+const ENEMY_KEYS = ['id', 'type', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue'];
 const pack = (o, keys) => keys.map((k) => r2(o[k]));
@@ -66,6 +66,7 @@ export function makeSnapshot(world, pid, memo) {
       enemies: world.enemies.map((e) => pack({ ...e, atkName: e.atk ? e.atk.name : 0 }, ENEMY_KEYS)),
       proj: world.projectiles.filter((pr) => pr.owner === 'enemy' || pr.kind).map((pr) => pack(pr, PROJ_KEYS)),
       tele: world.telegraphs.map((t) => pack(t, TELE_KEYS)),
+      walls: world.walls.map((wl) => ({ id: wl.id, x: r2(wl.x), z: r2(wl.z), rot: r2(wl.rot), hw: r2(wl.hw), hd: wl.hd, t: r2(wl.t), dur: wl.dur })),
       shadows: world.shadows.map((s) => ({ id: s.id, pid: s.pid, src: s.src, swapped: !!s.swapped, x: r2(s.x), z: r2(s.z), t: r2(s.t), dur: s.dur, facing: r2(s.facing), cls: s.cls, throwT: r2(s.throwT) })),
       loot: world.loot.filter((l) => l.owner === undefined || l.owner === pid).map((l) => ({ id: l.id, x: r2(l.x), z: r2(l.z), item: l.item, age: l.age, magnet: l.magnet })),
     };
@@ -135,6 +136,7 @@ export function applySnapshot(world, snap) {
   });
   world.telegraphs = snap.tele.map((arr) => unpack(arr, TELE_KEYS));
   world.shadows = snap.shadows || [];
+  world.walls = snap.walls || [];
   world.loot = snap.loot;
   return mapChanged;
 }

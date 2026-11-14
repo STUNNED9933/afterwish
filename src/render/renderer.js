@@ -765,7 +765,7 @@ export class Renderer {
       case 'impact': {
         // Skyfall lands hard; its aftershock and the Retribution shockwave are lighter.
         const big = ev.kind === 'skyfall';
-        const tint = ev.kind === 'retribution' ? COLORS.immortal : ev.kind === 'aftershock' ? 0xffe2a0 : ev.kind === 'starfall' ? 0xfff0a0 : 0x7fd8ff;
+        const tint = ev.kind === 'retribution' ? COLORS.immortal : ev.kind === 'aftershock' ? 0xffe2a0 : ev.kind === 'starfall' ? 0xfff0a0 : ev.kind === 'cinderfall' ? 0xff7a2a : 0x7fd8ff;
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffffff, from: 1, to: ev.radius * 1.15, dur: 0.45, opacity: 1 });
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: tint, from: ev.radius, to: ev.radius, dur: 0.5, opacity: big ? 0.45 : 0.3 });
         this.burst(ev.x, 0.3, ev.z, { count: big ? 46 : 24, color: tint, speed: big ? 13 : 9, up: big ? 9 : 6, size: 1.5, life: 0.7 });
@@ -778,6 +778,42 @@ export class Renderer {
       case 'perfectDodge':
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: COLORS.parry, from: 0.5, to: 3.2, dur: 0.3, opacity: 1 });
         this.burst(ev.x, 1, ev.z, { count: 20, color: COLORS.parry, speed: 8, up: 4, life: 0.45 });
+        break;
+      case 'smoulder':
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff6a1a, from: 0.5, to: ev.radius, dur: 0.35, opacity: 0.7 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffb060, from: ev.radius * 0.6, to: ev.radius * 1.1, dur: 0.4, opacity: 0.9 });
+        this.burst(ev.x, 0.6, ev.z, { count: 30, color: 0xff8a3a, speed: 7, up: 6, life: 0.6 });
+        this.shake = Math.max(this.shake, 0.2);
+        break;
+      case 'emberTick':
+        for (let n = 0; n < 8; n++) {
+          const a = Math.random() * 6.283;
+          const r = Math.sqrt(Math.random()) * ev.radius;
+          this.burst(ev.x + Math.cos(a) * r, 0.2, ev.z + Math.sin(a) * r, { count: 2, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc060, speed: 1.5, up: 4, gravity: -2, life: 0.6 });
+        }
+        break;
+      case 'burnSpread': {
+        const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir, color: 0xff7a2a, sx: Math.hypot(ev.tx - ev.x, ev.tz - ev.z), sz: 0.35, dur: 0.3, opacity: 0.9 });
+        this.burst(ev.tx, 1.2, ev.tz, { count: 12, color: 0xff8a3a, speed: 5, up: 4, life: 0.45 });
+        break;
+      }
+      case 'wallRise':
+        for (let n = -3; n <= 3; n++) {
+          const k = (n / 3) * ev.hw;
+          this.burst(ev.x + Math.cos(ev.rot) * k, 0.3, ev.z + Math.sin(ev.rot) * k, { count: 6, color: 0xdff6ff, speed: 4, up: 6, life: 0.5 });
+        }
+        this.shake = Math.max(this.shake, 0.3);
+        break;
+      case 'wallShatter':
+        for (let n = -4; n <= 4; n++) {
+          const k = (n / 4) * ev.hw;
+          this.burst(ev.x + Math.cos(ev.rot) * k, 1, ev.z + Math.sin(ev.rot) * k, { count: 10, color: 0xc8f0ff, speed: 9, up: 6, size: 1.3, life: 0.6 });
+        }
+        this.shake = Math.max(this.shake, 0.4);
+        break;
+      case 'motes':
+        this.burst(ev.x, 1.2, ev.z, { count: 20, color: 0xfff3b0, speed: 6, up: 3, life: 0.4 });
         break;
       case 'starBolt': {
         const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
@@ -1024,6 +1060,7 @@ export class Renderer {
         const k = e.t / e.dur;
         this.setEmissive(mats, 0.25 * k, 0.2 * k, 0.08 * k);
       } else if (e.vulnT > 0) this.setEmissive(mats, 0.2, 0.03, 0.28); // Sunder: purple
+      else if (e.burnT > 0) this.setEmissive(mats, 0.38 + 0.08 * Math.sin(this.time * 14), 0.13, 0.0); // burning: orange flicker
       else if (e.bleedT > 0) this.setEmissive(mats, 0.28, 0.02, 0.04); // bleeding: dark red
       else if (e.slowT > 0 || world.slowT > 0) this.setEmissive(mats, 0.03, 0.12, 0.26); // slowed: cold blue
       else if (e.enraged) this.setEmissive(mats, 0.22, 0.03, 0.02);
@@ -1087,11 +1124,15 @@ export class Renderer {
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff }[pr.kind]; // the hero's own shots
+      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0 }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
       m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      if (pr.kind === 'mote') {
+        m.scale.setScalar(0.8);
+        if (Math.random() < 0.9) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: 0xfff3b0, speed: 0.4, up: 0.3, gravity: 0, life: 0.4, size: 1 });
+      }
       if (pr.kind === 'kunai') {
         // A thin blade pointing where it flies.
         m.scale.set(0.45, 0.45, 2.4);
@@ -1218,6 +1259,7 @@ export class Renderer {
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
     this.syncShadows(world, dt);
+    this.syncWalls(world);
     this.syncEnemies(world, alpha, dt);
     this.syncProjectiles(world, alpha);
     this.syncLoot(world);
@@ -1265,6 +1307,42 @@ export class Renderer {
 
   /** Remove every enemy / projectile / loot view (used when a new run starts). */
   /** Party members: their hero model, walking or lying down. */
+  /** Frostbinder Rimewalls: a row of ice blocks that sinks as it runs out. */
+  syncWalls(world) {
+    if (!this.wallViews) this.wallViews = new Map();
+    const seen = new Set();
+    for (const wl of world.walls || []) {
+      seen.add(wl.id);
+      let v = this.wallViews.get(wl.id);
+      if (!v) {
+        const group = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: 0xbfeeff, emissive: 0x3a8fc0, emissiveIntensity: 0.5, transparent: true, opacity: 0.82, roughness: 0.2 });
+        const n = Math.max(2, Math.round((wl.hw * 2) / 1.1));
+        for (let i = 0; i < n; i++) {
+          const h = 1.5 + ((i * 37) % 7) * 0.12;
+          const b = new THREE.Mesh(new THREE.BoxGeometry((wl.hw * 2) / n - 0.06, h, wl.hd * 2), mat);
+          b.position.set(-wl.hw + (wl.hw * 2 * (i + 0.5)) / n, h / 2, 0);
+          b.rotation.z = (((i * 13) % 5) - 2) * 0.03;
+          b.castShadow = true;
+          group.add(b);
+        }
+        group.position.set(wl.x, 0, wl.z);
+        group.rotation.y = -wl.rot;
+        this.scene.add(group);
+        v = { group, mat };
+        this.wallViews.set(wl.id, v);
+      }
+      const rise = Math.min(1, (wl.dur - wl.t) / 0.2);
+      const sink = Math.min(1, wl.t / 0.4);
+      v.group.scale.y = Math.max(0.05, Math.min(rise, sink));
+    }
+    for (const [id, v] of this.wallViews) {
+      if (seen.has(id)) continue;
+      this.disposeGroup(v.group);
+      this.wallViews.delete(id);
+    }
+  }
+
   /** Shadowdancer Shadows: dark, see-through copies of the hero that fade as they run out. */
   syncShadows(world, dt) {
     if (!this.shadowViews) this.shadowViews = new Map();
@@ -1357,6 +1435,10 @@ export class Renderer {
     if (this.shadowViews) {
       for (const v of this.shadowViews.values()) this.disposeGroup(v.model.group);
       this.shadowViews.clear();
+    }
+    if (this.wallViews) {
+      for (const v of this.wallViews.values()) this.disposeGroup(v.group);
+      this.wallViews.clear();
     }
     for (const v of this.lootViews.values()) this.disposeGroup(v.group);
     this.lootViews.clear();

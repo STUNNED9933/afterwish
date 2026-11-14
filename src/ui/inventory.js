@@ -54,15 +54,41 @@ export class Inventory {
    * @param {object} tooltip   shared Tooltip
    * @param {function} send    send(command) -> applies a command to the world
    */
-  constructor(tooltip, send) {
+  /**
+   * @param {object} keep  { get: () => rarity indices never to bulk-scrap, set: (list) => void }
+   */
+  constructor(tooltip, send, keep) {
     this.tooltip = tooltip;
     this.send = send;
-    $('btn-scrap').addEventListener('click', () => this.send({ type: 'scrap' }));
+    this.keep = keep || { get: () => [], set: () => {} };
+    $('btn-scrap').addEventListener('click', () => this.send({ type: 'scrap', keep: this.keep.get() }));
+    // One toggle per rarity from Rare up: kept items stay in the bag even when they are worse.
+    const root = $('keep-rarities');
+    RARITIES.forEach((r, i) => {
+      if (i < 2) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'keep-chip';
+      b.dataset.rarity = i;
+      b.textContent = r.name;
+      b.style.setProperty('--rc', r.color);
+      b.addEventListener('click', () => {
+        const list = new Set(this.keep.get());
+        if (list.has(i)) list.delete(i);
+        else list.add(i);
+        this.keep.set([...list].sort());
+        if (this.world) this.render(this.world);
+      });
+      root.appendChild(b);
+    });
   }
 
   /** Rebuild the whole drawer from the current world state. */
   render(world) {
+    this.world = world;
     const p = world.player;
+    const keep = new Set(this.keep.get());
+    for (const b of $('keep-rarities').children) b.setAttribute('aria-pressed', keep.has(Number(b.dataset.rarity)) ? 'true' : 'false');
     this.tooltip.hide();
     $('inv-res').textContent = `Gold ${p.gold} · Scrap ${p.scrap} · Warden keys ${p.keys}`;
 
@@ -107,7 +133,7 @@ export class Inventory {
       const item = p.bag[i] || null;
       const current = item ? p.equipped[item.slot] : null;
       const upgrade = item ? itemScore(item) > itemScore(current) : false;
-      if (item && !upgrade) scrapTotal += scrapValue(item);
+      if (item && !upgrade && !keep.has(item.rarity)) scrapTotal += scrapValue(item);
       const el = itemCell(this.tooltip, item, { button: !!item, compareTo: current, upgrade });
       if (item) {
         el.addEventListener('click', (ev) => {
@@ -120,6 +146,7 @@ export class Inventory {
     $('bag-count').textContent = `${p.bag.length} / ${CONFIG.BAG_SIZE}`;
     const btn = $('btn-scrap');
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
+    btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';
     btn.disabled = !scrapTotal;
   }
 

@@ -16,6 +16,9 @@
 //   zone    an area at the cursor that keeps hurting        (range, radius, duration)
 //   meteor  a delayed blast at the cursor                   (range, radius, delay)
 //   orb     drifts to the cursor hurting what it passes, then shatters (range, speed, radius, burst)
+//   smoulder  a fire burst at the cursor that sets enemies burning and makes burns hurt more (Pyromancer)
+//   wall    a wall of ice that blocks enemies and sends their shots back (Frostbinder)
+// A dash can also loose homing motes when it ends (motes: { count, range, speed }).
 // Optional extras on any ability: slow, bleed, stun, knockback, empower.
 import { ABILITIES } from './defs.js';
 
@@ -103,7 +106,7 @@ export const CLASSES = {
     name: 'Mage',
     role: 'Ranged · abilities',
     blurb: 'Weak basic attacks, strong spells on short cooldowns. Keep your distance and aim.',
-    stats: { hp: 0.82, ad: 1.22, as: 0.85, armor: 0.65, ms: 1, crit: 0, haste: 25 },
+    stats: { hp: 0.82, ad: 1.32, as: 0.85, armor: 0.65, ms: 1.06, crit: 0, haste: 25 },
     basic: { range: 8.5, mult: 0.6, shot: 'spark', speed: 26 },
     passive: { name: 'Attunement', desc: '+25 ability haste. Basic attacks deal 60% damage.' },
     abilities: {
@@ -119,9 +122,10 @@ export const CLASSES = {
         desc: 'Send a slow orb of ice drifting to your cursor. Everything it passes is cut by shards and chilled, then it shatters for heavy damage, slowing by 50% and interrupting normal enemies. Press W again to shatter it early.',
       },
       e: {
-        key: 'E', name: 'Blink', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 7.5, minRange: 2, duration: 0.08, width: 0,
-        dmg: () => 0,
-        desc: 'Teleport toward your cursor.',
+        key: 'E', name: 'Starwake', type: 'dash', icon: 'e', unlock: 3, cd: 8, range: 7.5, minRange: 2, duration: 0.08, width: 0,
+        motes: { count: 3, range: 10, speed: 19 },
+        dmg: (s, lvl) => 0.65 * s.ad + 10 + 4 * lvl, // per mote
+        desc: 'Blink toward your cursor and loose 3 motes of starlight that seek out the nearest enemies (a different one each, when there are three). They cannot be parried or sent back.',
       },
       r: {
         key: 'R', name: 'Meteor', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 13, radius: 5.5, delay: 0.9, stun: 1,

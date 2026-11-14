@@ -57,7 +57,7 @@ export const IMMORTAL = RARITIES.length - 1;
 // daggers and staves reward abilities, and so on. `byClass` overrides the plain
 // name, item name and text for one class. The game logic lives in sim/world.js
 // (search for `mods.<key>`); effectFor() below picks the right text.
-const ESCAPE = { warrior: 'Breakthrough', archer: 'Evasive Roll', rogue: 'Nightstep', mage: 'Blink' };
+const ESCAPE = { warrior: 'Breakthrough', archer: 'Evasive Roll', rogue: 'Nightstep', mage: 'Starwake' };
 export const EFFECTS = {
   stormcaller: {
     slot: 'weapon',

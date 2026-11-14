@@ -88,6 +88,7 @@ export class World {
     this.basic = CLASSES[this.cls].basic;
     this.zones = [];
     this.shadows = []; // Shadowdancer shadows: { id, pid, src, x, z, t, dur, facing, cls }
+    this.walls = []; // Frostbinder Rimewalls: { id, pid, x, z, rot, hw, hd, t, dur, dmg, stun, ob }
 
     const save = opts.save || null;
     this.questStamp = 0; // goes up whenever quests or signs change, so the UI knows to redraw
@@ -199,6 +200,8 @@ export class World {
     this.projectiles = this.projectiles.filter((pr) => pr.pid !== pid);
     this.zones = this.zones.filter((z) => z.pid !== pid);
     this.shadows = this.shadows.filter((s) => s.pid !== pid);
+    for (const wl of this.walls) if (wl.pid === pid) this.obstacles = this.obstacles.filter((o) => o !== wl.ob);
+    this.walls = this.walls.filter((wl) => wl.pid !== pid);
     this.delayed = this.delayed.filter((d) => d.pid !== pid);
     this.emit('partyLeave', { pid, name: h.name });
   }
@@ -428,7 +431,7 @@ export class World {
       // Inventory commands work even while dead or between waves.
       if (c.type === 'equip') this.equip(c.index);
       else if (c.type === 'discard') this.discard(c.index);
-      else if (c.type === 'scrap') this.scrapNonUpgrades();
+      else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
       else if (c.type === 'openCache') this.openCache(c.tier);
       else if (c.type === 'buyTome') this.buyTome();
@@ -638,6 +641,78 @@ export class World {
     this.shadows.push({ id: this.nextId++, pid, src, x, z, t: dur, dur, facing, cls: this.cls, throwT: 0 });
   }
 
+  /** Pyromancer burns: stacks (up to burnMax) that all renew when a new one lands. */
+  addBurn(e, stacks) {
+    const m = this.mods;
+    if (!(m.burnPerStack > 0) || e.dead) return;
+    const p = this.player;
+    // Like an ability: spell power plus a bit per level, and it grows with Fire Bolt's rank.
+    const per = (p.stats.ad * m.burnPerStack + p.level * (m.burnPerLevel || 0)) * (m.burnMult || 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1));
+    const live = e.burnT > 0;
+    e.burnStacks = Math.min(m.burnMax || 5, (live ? e.burnStacks : 0) + stacks);
+    e.burnDps = Math.max(live ? e.burnDps : 0, per);
+    e.burnT = m.burnTime || 4;
+    e.burnPid = this.cur.pid;
+    if (!live) e.burnAcc = 0;
+  }
+
+  /** Starwake: homing motes from where the Mage lands, one per enemy while there are enough. */
+  fireMotes(ds) {
+    const p = this.player;
+    const mo = ds.motes;
+    const count = mo.count + (this.mods.eMotes || 0);
+    const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= mo.range + e.radius)
+      .sort((a, b) => dist(a.x, a.z, p.x, p.z) - dist(b.x, b.z, p.x, p.z));
+    if (!near.length) return;
+    for (let i = 0; i < count; i++) {
+      const t = near[i % near.length];
+      const a = Math.atan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.5; // fan out, then curve in
+      this.projectiles.push({
+        id: this.nextId++, owner: 'player', kind: 'mote', slot: ds.slot, pid: this.cur.pid, targetId: t.id,
+        x: p.x + Math.cos(a) * 0.6, z: p.z + Math.sin(a) * 0.6, px: p.x, pz: p.z,
+        vx: Math.cos(a) * mo.speed, vz: Math.sin(a) * mo.speed, speed: mo.speed,
+        radius: 0.4, dmg: ds.dmg, parryable: false, reflected: false, life: 1.6, dead: false,
+      });
+    }
+    this.emit('motes', { x: p.x, z: p.z, count });
+  }
+
+  /** Rimewalls: stand, then shatter, freezing what is beside them. */
+  stepWalls(dt) {
+    if (!this.walls.length) return;
+    for (const wl of this.walls) {
+      wl.t -= dt;
+      if (wl.t > 0) continue;
+      wl.done = true;
+      this.obstacles = this.obstacles.filter((o) => o !== wl.ob);
+      const h = this.heroByPid(wl.pid);
+      if (!h) continue;
+      this.as(h, () => {
+        const m = this.mods;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn' || this.wallDist(wl, e.x, e.z) > 1.8 + e.radius) continue;
+          e.slowT = 2;
+          e.slow = 0.5;
+          if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
+          this.hitEnemy(e, wl.dmg, { source: 'r' });
+          if (e.dead) continue;
+          if (e.def.boss) this.addPosture(e, 1, false);
+          else this.stun(e, wl.stun);
+        }
+        this.emit('wallShatter', { x: wl.x, z: wl.z, rot: wl.rot, hw: wl.hw });
+      });
+    }
+    this.walls = this.walls.filter((wl) => !wl.done);
+  }
+
+  /** Distance from a point to a Rimewall's box (0 inside it). */
+  wallDist(wl, x, z) {
+    const c = Math.cos(wl.rot), s = Math.sin(wl.rot);
+    const dx = x - wl.x, dz = z - wl.z;
+    const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+    return Math.hypot(Math.max(0, Math.abs(lx) - wl.hw), Math.max(0, Math.abs(lz) - wl.hd));
+  }
+
   stepShadows(dt) {
     if (!this.shadows.length) return;
     for (const s of this.shadows) {
@@ -704,6 +779,7 @@ export class World {
           e.slow = pr.chill;
           e.slowT = Math.max(e.slowT || 0, 1);
         }
+        if (this.mods.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, this.mods.chillWeak);
         this.hitEnemy(e, pr.dmg * pr.shard, { source: 'w' });
       }
       this.emit('orbTick', { x: pr.x, z: pr.z, radius: pr.aura });
@@ -720,6 +796,7 @@ export class World {
       if (dist(e.x, e.z, pr.x, pr.z) > pr.burst + e.radius) continue;
       e.slowT = pr.slowDur;
       e.slow = pr.slow;
+      if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
       this.hitEnemy(e, pr.dmg, { source: 'w' });
       if (e.dead || e.def.heavy) continue;
       if (m.wStun > 0) this.stun(e, m.wStun);
@@ -984,7 +1061,7 @@ export class World {
         const len = clamp(d, def.minRange || 0, range);
         const end = this.clampToArena(p.x + cos * len, p.z + sin * len, p.radius);
         if (slot === 'e' && m.shadowStep) this.addShadow('e', p.x, p.z, a);
-        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null };
+        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null };
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
         break;
@@ -1036,6 +1113,41 @@ export class World {
           });
         }
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        break;
+      }
+      case 'smoulder': {
+        // Smoulder (Pyromancer): burn stacks and a mark that makes burns bite harder.
+        const c = aimPoint();
+        p.facing = a;
+        p.castLock = 0.14;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          if (dist(e.x, e.z, c.x, c.z) > radius + e.radius) continue;
+          this.addBurn(e, 2);
+          e.smoulderT = 5;
+          e.smoulderAmp = m.smoulderAmp || 0.5;
+          this.hitEnemy(e, dmg, { source: slot });
+        }
+        this.emit('smoulder', { x: c.x, z: c.z, radius });
+        this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        break;
+      }
+      case 'wall': {
+        // Rimewall (Frostbinder): a box of ice across the aim line. See stepWalls.
+        const c = aimPoint();
+        p.facing = a;
+        p.castLock = 0.18;
+        const rot = a + Math.PI / 2;
+        const hw = (def.length * (m.wallLen || 1)) / 2;
+        const dur = def.duration + (m.wallDur || 0);
+        const ob = { shape: 'box', x: c.x, z: c.z, hw, hd: 0.45, rot, kind: 'icewall' };
+        this.obstacles = this.obstacles.concat([ob]); // a new array: the map's own list is never changed
+        this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: def.stun || 1, ob });
+        // Anyone standing where it rises is pushed aside.
+        for (const e of this.enemies) if (!e.dead) this.pushOut(e, e.radius);
+        for (const h of this.heroes) if (!h.player.dead) this.pushOut(h.player, h.player.radius);
+        this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        this.emit('wallRise', { x: c.x, z: c.z, rot, hw });
         break;
       }
       case 'kunai': {
@@ -1126,7 +1238,7 @@ export class World {
         const delay = def.delay * (m[slot + 'Delay'] || 1);
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: delay, parryable: false };
         this.telegraphs.push(tele);
-        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: 'skyfall' });
+        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null });
         p.facing = a;
         p.castLock = 0.2;
         this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius });
@@ -1162,9 +1274,10 @@ export class World {
             e.slowT = zn.slowDur;
             e.slow = zn.slow;
           }
-          this.hitEnemy(e, zn.dmg, { source: zn.slot });
+          if (zn.burn) this.addBurn(e, zn.burn);
+          if (zn.dmg > 0) this.hitEnemy(e, zn.dmg, { source: zn.slot });
         }
-        this.emit('zoneTick', { x: zn.x, z: zn.z, radius: zn.radius });
+        this.emit(zn.fire ? 'emberTick' : 'zoneTick', { x: zn.x, z: zn.z, radius: zn.radius });
       }
       if (zn.left <= 0) {
         zn.done = true;
@@ -1198,7 +1311,14 @@ export class World {
           }
         }
         this.emit('impact', { x: d.x, z: d.z, radius: d.radius, kind: d.fx || 'aftershock' });
-        if (d.fx === 'skyfall' && !d.echo && this.mods.rAftershock > 0) {
+        if (d.burnZone) {
+          // Cinderfall: the ground stays on fire, adding burn stacks to whatever stands in it.
+          const bz = d.burnZone;
+          const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: d.x, z: d.z, dir: 0, radius: d.radius, t: 0, dur: bz.time, parryable: false };
+          this.telegraphs.push(tele);
+          this.zones.push({ x: d.x, z: d.z, radius: d.radius, left: bz.time, dur: bz.time, next: 0, tick: bz.tick, dmg: 0, burn: bz.stacks, slow: 0, slowDur: 0, slot: 'r', tele, fire: true });
+        }
+        if ((d.fx === 'skyfall' || d.fx === 'cinderfall') && !d.echo && this.mods.rAftershock > 0) {
           // Second Impact: the Mage's Meteor erupts again a second later.
           const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: d.x, z: d.z, dir: 0, radius: d.radius, t: 0, dur: 1, parryable: false };
           this.telegraphs.push(tele);
@@ -1346,6 +1466,7 @@ export class World {
           this.recalcStats();
           this.emit('rush', { time: p.rushT });
         }
+        if (ds.motes) this.fireMotes(ds);
         if (ds.empower) {
           p.empowerT = ds.empower.time;
           p.empowerMult = ds.empower.mult + (this.mods[ds.slot + 'Empower'] || 0);
@@ -1523,6 +1644,8 @@ export class World {
       if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj }));
     }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
+    const chiller = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
+    if (chiller && chiller.chillWeak > 0 && (chiller.slowT > 0 || chiller.state === 'stunned')) rawDamage *= 1 - chiller.chillWeak; // Deep Winter
     if (p.dash || p.leap) {
       if (p.dash && !p.dash.refunded) {
         // Perfect dodge: Breakthrough carried you through an attack, so most of its cooldown comes back.
@@ -1962,11 +2085,14 @@ export class World {
   }
 
   /** Scrap every bag item that scores lower than what is equipped in its slot. */
-  scrapNonUpgrades() {
+  /** Scrap every bag item that is not an upgrade, except rarities in `keep` (indices into RARITIES). */
+  scrapNonUpgrades(keep = []) {
     const p = this.player;
+    const kept = new Set(Array.isArray(keep) ? keep.map(Number) : []);
     let scrap = 0;
     let count = 0;
     p.bag = p.bag.filter((it) => {
+      if (kept.has(it.rarity)) return true;
       if (itemScore(it) > itemScore(p.equipped[it.slot])) return true;
       scrap += scrapValue(it);
       count++;
@@ -2444,6 +2570,21 @@ export class World {
     const m = this.mods;
     e.hp = 0;
     e.dead = true;
+    if (e.burnT > 0 && e.burnStacks > 0) {
+      // Wildfire (Pyromancer): the burn jumps to the nearest enemies.
+      const h = this.heroByPid(e.burnPid);
+      const n = h ? (h === this.cur ? this.mods : h.mods).burnSpread : 0;
+      if (h && n > 0) {
+        const near = this.enemies.filter((o) => !o.dead && o !== e && o.state !== 'spawn' && dist(o.x, o.z, e.x, e.z) <= 5 + o.radius)
+          .sort((a, b) => dist(a.x, a.z, e.x, e.z) - dist(b.x, b.z, e.x, e.z)).slice(0, n);
+        if (near.length) this.as(h, () => {
+          for (const o of near) {
+            this.addBurn(o, e.burnStacks);
+            this.emit('burnSpread', { x: e.x, z: e.z, tx: o.x, tz: o.z });
+          }
+        });
+      }
+    }
     this.removeTelegraph(e);
     this.stats.kills++;
     if (this.mode === 'explore') {
@@ -2525,6 +2666,19 @@ export class World {
           if (e.dead) continue;
         }
       }
+      if (e.burnT > 0) {
+        e.burnT -= dt;
+        e.burnAcc = (e.burnAcc || 0) + dt;
+        if (e.burnAcc >= 0.5) {
+          e.burnAcc -= 0.5;
+          const h = this.heroByPid(e.burnPid) || this.heroes[0];
+          const amount = e.burnDps * e.burnStacks * 0.5 * (e.smoulderT > 0 ? 1 + e.smoulderAmp : 1);
+          this.as(h, () => this.hitEnemy(e, amount, { canCrit: false, source: 'burn', dot: true, burn: true }));
+          if (e.dead) continue;
+        }
+        if (e.burnT <= 0) e.burnStacks = 0;
+      }
+      if (e.smoulderT > 0) e.smoulderT -= dt;
       if (e.bleedT > 0) {
         e.bleedT -= dt;
         e.bleedAcc += dt;
@@ -2743,6 +2897,26 @@ export class World {
         pr.dead = true;
         continue;
       }
+      if (pr.owner === 'enemy' && this.walls.length) {
+        const wl = this.walls.find((x) => this.wallDist(x, pr.x, pr.z) <= pr.radius);
+        if (wl) {
+          // Rimewall: the shot flies back, belonging to the Frostbinder who raised the wall.
+          const h = this.heroByPid(wl.pid) || this.heroes[0];
+          const nx = -Math.sin(wl.rot), nz = Math.cos(wl.rot); // the wall's face
+          const dot = pr.vx * nx + pr.vz * nz;
+          pr.vx = (pr.vx - 2 * dot * nx) * 1.5;
+          pr.vz = (pr.vz - 2 * dot * nz) * 1.5;
+          pr.x += pr.vx * d;
+          pr.z += pr.vz * d;
+          pr.owner = 'player';
+          pr.reflected = true;
+          pr.pid = h.pid;
+          pr.life = 3;
+          pr.dmg = pr.dmg * 2.5 + h.player.stats.ad;
+          this.emit('reflect', { x: pr.x, z: pr.z });
+          continue;
+        }
+      }
       if (pr.owner === 'enemy') {
         if (party) {
           // Whoever it reaches first.
@@ -2771,11 +2945,15 @@ export class World {
                 e.bleedT = 3;
                 e.bleedDps = (p.stats.ad * pr.bleed) / 3;
               }
+              if (pr.slot === 'q' && this.mods.qBurn > 0 && !e.dead) this.addBurn(e, this.mods.qBurn); // Everything Burns
+              if (pr.basic && this.mods.basicBurn > 0 && !e.dead) this.addBurn(e, this.mods.basicBurn);
               this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
               if (pr.splash) {
                 for (const o of this.enemies) {
                   if (o === e || o.dead || o.state === 'spawn') continue;
-                  if (dist(o.x, o.z, pr.x, pr.z) <= pr.splash + o.radius) this.hitEnemy(o, pr.dmg * pr.splashMult, { source: pr.slot });
+                  if (dist(o.x, o.z, pr.x, pr.z) > pr.splash + o.radius) continue;
+                  if (pr.slot === 'q' && this.mods.qBurn > 0) this.addBurn(o, 1);
+                  this.hitEnemy(o, pr.dmg * pr.splashMult, { source: pr.slot });
                 }
                 this.emit('burst', { x: pr.x, z: pr.z, radius: pr.splash });
               }
@@ -2876,6 +3054,7 @@ inTown() {
     this.telegraphs = [];
     this.zones = [];
     this.shadows = [];
+    this.walls = [];
     this.delayed = [];
     this.slowT = 0;
     const gate = map.portals.find((g) => g.to === from);
@@ -2942,6 +3121,7 @@ inTown() {
     this.telegraphs = [];
     this.zones = [];
     this.shadows = [];
+    this.walls = [];
     this.delayed = [];
     this.camps = [];
   }
@@ -3191,6 +3371,7 @@ inTown() {
       this.stepDelayed(dt);
       this.stepZones(dt);
       this.stepShadows(dt);
+      this.stepWalls(dt);
       this.stepEnemies(edt);
       this.collide(dt);
       this.stepProjectiles(dt, edt);
@@ -3215,6 +3396,7 @@ inTown() {
     this.byOwner(this.delayed, (list) => { this.delayed = list; this.stepDelayed(dt); return this.delayed; }, (all) => (this.delayed = all));
     this.byOwner(this.zones, (list) => { this.zones = list; this.stepZones(dt); return this.zones; }, (all) => (this.zones = all));
     this.stepShadows(dt);
+    this.stepWalls(dt);
     this.stepEnemies(edt);
     this.use(lead);
     each(() => this.collide(dt));

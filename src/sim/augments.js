@@ -35,6 +35,10 @@ export function defaultMods() {
     shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false,
     // Sharpshooter (Long Watch): more damage per metre to the target
     farShot: 0, farShotMax: 0,
+    // Pyromancer (Everything Burns): stacking burns. burnPerStack = spell power per second per stack
+    qBurn: 0, burnPerStack: 0, burnPerLevel: 0, burnMult: 1, burnMax: 0, burnTime: 0, burnSpread: 0, smoulderAmp: 0, basicBurn: 0,
+    // Frostbinder (Deep Winter): chilled enemies deal less damage; Rimewall size and time
+    chillWeak: 0, wallLen: 1, wallDur: 0,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };
@@ -99,7 +103,8 @@ const CLASS_AUGMENTS = {
   mage_q_twin: { name: 'Twin Bolt', slot: 'q', cls: 'mage', tier: 2, desc: 'Fire Bolt fires two bolts, each dealing 65% damage.', apply: (m) => { m.qBolts = 2; } },
   mage_w_freeze: { name: 'Deep Freeze', slot: 'w', cls: 'mage', tier: 1, desc: "Frozen Orb's shatter freezes normal enemies solid for 1.2 seconds.", apply: (m) => { m.wStun = 1.2; } },
   mage_w_big: { name: 'Glacier', slot: 'w', cls: 'mage', tier: 1, desc: 'Frozen Orb is 30% bigger: a wider trail of shards and a wider shatter.', apply: (m) => { m.wRadius *= 1.3; } },
-  mage_e_rift: { name: 'Rift', slot: 'e', cls: 'mage', tier: 1, desc: 'Blink leaves a blast where you were standing for 120% spell power.', apply: (m) => { m.eBlast = 1.2; } },
+  mage_e_rift: { name: 'Rift', slot: 'e', cls: 'mage', tier: 1, desc: 'Starwake leaves a blast where you were standing for 120% spell power.', apply: (m) => { m.eBlast = 1.2; } },
+  mage_e_motes: { name: 'Constellation', slot: 'e', cls: 'mage', tier: 1, desc: 'Starwake looses 2 more motes.', apply: (m) => { m.eMotes = (m.eMotes || 0) + 2; } },
   mage_r_fast: { name: 'Falling Star', slot: 'r', cls: 'mage', tier: 1, desc: 'Meteor lands twice as fast and its cooldown is 20% shorter.', apply: (m) => { m.rDelay *= 0.5; m.rCd *= 0.8; } },
   mage_r_twin: { name: 'Second Impact', slot: 'r', cls: 'mage', tier: 2, desc: 'One second after Meteor lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },
 };

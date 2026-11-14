@@ -122,7 +122,14 @@ function start(hot = {}) {
   }
 
   const hud = new Hud(tooltip, (cmd) => world.command(cmd));
-  const inventory = new Inventory(tooltip, applyNow);
+  if (!Array.isArray(settings.keepRarities)) settings.keepRarities = [6]; // Immortal items are safe from bulk scrapping unless you say so
+  const inventory = new Inventory(tooltip, applyNow, {
+    get: () => settings.keepRarities,
+    set: (list) => {
+      settings.keepRarities = list;
+      storeSettings(settings);
+    },
+  });
   const town = new Town(tooltip, applyNow, (startWave) => startRun(save, startWave));
 
   /** Pick the music for where the player is right now. */
@@ -1186,6 +1193,12 @@ function start(hot = {}) {
         break;
       case 'shadowSwap':
         sfx.cast('e');
+        break;
+      case 'wallShatter':
+        sfx.impact();
+        break;
+      case 'wallRise':
+        sfx.slam();
         break;
       case 'swing':
         sfx.swing();

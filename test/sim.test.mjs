@@ -1236,6 +1236,112 @@ import { makeRng } from '../src/sim/rng.js';
     check('Windrunners do not get it', w2.events.find((ev) => ev.type === 'damage').amount === 1000);
   }
 }
+// --- 0.21: Mage rework (Starwake, Pyromancer burns, Frostbinder Rimewall), scrap filter ------
+{
+  const { geared } = await import('./balance.mjs');
+  const { CLASSES } = await import('../src/sim/classes.js');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (spec = null, talents = {}, cls = 'mage') => {
+    const w = new World({ seed: 41, cls, save: Object.assign(geared(cls, 50, 2), spec ? { spec, talents } : {}) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0, type = 'grunt') => { const e = w.spawnEnemy(type, { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+  const hitsOn = (w, e, src) => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === e.id);
+
+  // Starwake
+  {
+    const { w, p } = setup();
+    check('Mage E is Starwake', w.kit.e.name === 'Starwake' && CLASSES.mage.abilities.e.motes.count === 3);
+    const a = dummy(w, 9, 3), b = dummy(w, 9, -3), c = dummy(w, 12, 0);
+    cast(w, 'e', 5, 0); run(w, 0.2);
+    const motes = w.projectiles.filter((pr) => pr.kind === 'mote');
+    check('Starwake: lands and looses 3 motes, one at each of the nearest enemies', motes.length === 3 && new Set(motes.map((m) => m.targetId)).size === 3);
+    run(w, 1.2);
+    check('Starwake: the motes find their targets', [a, b, c].every((e) => e.hp < 1e9) && !w.projectiles.some((pr) => pr.kind === 'mote'));
+  }
+  // Pyromancer
+  {
+    const { w, p } = setup('pyromancer', { py_power: 5, py_burn: 3 });
+    check('Pyromancer: W is Smoulder and R is Cinderfall', w.kit.w.name === 'Smoulder' && w.kit.r.name === 'Cinderfall' && w.kit.q.name === 'Fire Bolt');
+    const e = dummy(w, 6);
+    for (let i = 0; i < 7; i++) { p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4); }
+    check('Everything Burns: Fire Bolt stacks burns, up to 5', e.burnT > 0 && e.burnStacks === 5, String(e.burnStacks));
+    w.events.length = 0; run(w, 1.01);
+    const plain = hitsOn(w, e).filter((ev) => ev.dot).map((ev) => ev.amount);
+    const per = (p.stats.ad * 0.15 + p.level * 1.5) * (1 + CONFIG.RANK_DAMAGE * (p.ranks.q - 1));
+    check('Everything Burns: 5 stacks burn for 5 x (15% spell power + 1.5 per level) a second, growing with Fire Bolt rank', plain.length === 2 && Math.abs(plain[0] - per * 5 * 0.5) <= 1, `${plain} vs ${Math.round(per * 2.5)}`);
+    cast(w, 'w', 6, 0);
+    check('Smoulder: marks for 5 s', e.smoulderT > 4.9);
+    w.events.length = 0; run(w, 1.01);
+    const hot = hitsOn(w, e).filter((ev) => ev.dot).map((ev) => ev.amount);
+    check('Smoulder: burns on a Smouldering enemy deal 50% more', Math.abs(hot[0] / plain[0] - 1.5) < 0.02, `${plain[0]} -> ${hot[0]}`);
+    // Wildfire: a burning enemy's death passes its burn on
+    const n1 = dummy(w, 7, 1), n2 = dummy(w, 7, -1), n3 = dummy(w, 7, 2.5), far = dummy(w, 30);
+    w.hitEnemy(e, 1e10, { canCrit: false });
+    check('Wildfire (3 ranks): the burn jumps to the 3 nearest enemies, every stack', [n1, n2, n3].every((o) => o.burnStacks === 5) && !(far.burnT > 0));
+    // Cinderfall
+    w.enemies = []; const f = dummy(w, 8);
+    p.cd.r = 0; cast(w, 'r', 8, 0); run(w, 1.0);
+    check('Cinderfall: the ground stays on fire and adds burn stacks', w.zones.some((z) => z.fire) && f.burnStacks >= 1);
+    run(w, 1.6);
+    check('Cinderfall: ...a stack every half second while you stand in it', f.burnStacks >= 4, String(f.burnStacks));
+  }
+  // Frostbinder
+  {
+    const { w, p } = setup('frostbinder');
+    check('Frostbinder: R is Rimewall, W stays Frozen Orb', w.kit.r.name === 'Rimewall' && w.kit.w.name === 'Frozen Orb');
+    check('Frostbinder: no armor talent any more', !Object.values((await import('../src/sim/talents.js')).SPECS.frostbinder.talents).some((t) => /armor/i.test(t.desc(1))));
+    // Deep Winter: a chilled enemy hits softer
+    const e = dummy(w, 3);
+    const hit = () => { p.hp = p.stats.maxHp; w.hitPlayer(200, { parryable: false, src: e }); return p.stats.maxHp - p.hp; };
+    const plain = hit();
+    e.slowT = 2; e.chillWeak = w.mods.chillWeak;
+    const chilled = hit();
+    check('Deep Winter: chilled enemies deal 20% less damage', Math.abs(chilled / plain - 0.8) < 0.02, `${plain} -> ${chilled}`);
+    // Frozen Orb's shatter freezes normal enemies even without talents
+    e.slowT = 0; e.state = 'chase';
+    cast(w, 'w', 3, 0); run(w, 0.5);
+    check("Deep Winter: Frozen Orb's shatter freezes", e.state === 'stunned' || e.stunT > 0);
+    // Rimewall: blocks, reflects, shatters
+    w.enemies = []; run(w, 1);
+    p.cd.r = 0; cast(w, 'r', 6, 0);
+    const wl = w.walls[0];
+    check('Rimewall: rises across your aim, as something solid', !!wl && w.obstacles.some((o) => o.kind === 'icewall') && Math.abs(Math.abs(Math.cos(wl.rot))) < 0.01, wl ? String(wl.rot) : 'none');
+    const walker = dummy(w, 12, 0); walker.state = 'chase'; walker.t = 0;
+    w.enemies = [walker];
+    let crossed = false;
+    for (let i = 0; i < 120; i++) { walker.x -= 0.2; walker.px = walker.x + 0.2; w.collide(CONFIG.TICK); if (walker.x < 5) crossed = true; }
+    check('Rimewall: enemies cannot walk through it', !crossed, walker.x.toFixed(2));
+    w.projectiles.push({ id: 999, owner: 'enemy', x: 9, z: 0, px: 9, pz: 0, vx: -12, vz: 0, speed: 12, radius: 0.4, dmg: 50, parryable: true, reflected: false, life: 3, dead: false, srcId: walker.id });
+    run(w, 0.4);
+    const pr = w.projectiles.find((x) => x.id === 999);
+    check('Rimewall: an enemy shot that hits it flies back as yours', !pr || (pr.owner === 'player' && pr.reflected && pr.vx > 0));
+    const beside = dummy(w, 6.8, 1);
+    beside.state = 'chase';
+    run(w, 5);
+    check('Rimewall: when it melts it shatters, freezing what is beside it', w.walls.length === 0 && !w.obstacles.some((o) => o.kind === 'icewall') && beside.hp < 1e9 && (beside.state === 'stunned' || beside.stunT > 0));
+    check('the map\'s own obstacle list is never changed by a wall', !w.map || !w.map.obstacles || !w.map.obstacles.some((o) => o.kind === 'icewall'));
+  }
+  // Scrap filter
+  {
+    const { w, p } = setup(null, {}, 'warrior');
+    const junk = (rarity) => ({ id: 'j' + rarity, name: 'x', slot: 'boots', rarity, ilvl: 1, stats: { ms: 1 }, plus: 0 });
+    p.bag = [junk(1), junk(5), junk(6)];
+    w.scrapNonUpgrades([6]);
+    check('scrap filter: Immortal items are kept, the rest goes', p.bag.length === 1 && p.bag[0].rarity === 6);
+    p.bag = [junk(1), junk(5), junk(6)];
+    w.scrapNonUpgrades([5, 6]);
+    check('scrap filter: keep Mythic too', p.bag.length === 2);
+    p.bag = [junk(6)];
+    w.scrapNonUpgrades([]);
+    check('scrap filter: nothing kept when nothing is ticked', p.bag.length === 0);
+  }
+}
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---
 {
   const { SONGS, MAP_SONG, arrange, parseBar, BAR } = await import('../src/music/songs.js');

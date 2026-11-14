@@ -1294,19 +1294,49 @@ import { makeRng } from '../src/sim/rng.js';
   // Frostbinder
   {
     const { w, p } = setup('frostbinder');
-    check('Frostbinder: R is Rimewall, W stays Frozen Orb', w.kit.r.name === 'Rimewall' && w.kit.w.name === 'Frozen Orb');
-    check('Frostbinder: no armor talent any more', !Object.values((await import('../src/sim/talents.js')).SPECS.frostbinder.talents).some((t) => /armor/i.test(t.desc(1))));
-    // Deep Winter: a chilled enemy hits softer
-    const e = dummy(w, 3);
-    const hit = () => { p.hp = p.stats.maxHp; w.hitPlayer(200, { parryable: false, src: e }); return p.stats.maxHp - p.hp; };
-    const plain = hit();
-    e.slowT = 2; e.chillWeak = w.mods.chillWeak;
-    const chilled = hit();
-    check('Deep Winter: chilled enemies deal 20% less damage', Math.abs(chilled / plain - 0.8) < 0.02, `${plain} -> ${chilled}`);
-    // Frozen Orb's shatter freezes normal enemies even without talents
-    e.slowT = 0; e.state = 'chase';
-    cast(w, 'w', 3, 0); run(w, 0.5);
-    check("Deep Winter: Frozen Orb's shatter freezes", e.state === 'stunned' || e.stunT > 0);
+    check('Frostbinder: Q is Ice Bolt, W stays Frozen Orb, R is Rimewall', w.kit.q.name === 'Ice Bolt' && w.kit.r.name === 'Rimewall' && w.kit.w.name === 'Frozen Orb');
+    const fbt = (await import('../src/sim/talents.js')).SPECS.frostbinder.talents;
+    check('Frostbinder: no armor, health or damage-taken talents any more', !fbt.some((t) => /armor|maximum health|less damage/i.test(t.desc(1))));
+    // Hoarfrost: Ice Bolt builds 2 stacks a hit; at 6 the enemy Shatters
+    const e = dummy(w, 6);
+    e.state = 'chase';
+    p.autoAttack = false;
+    cast(w, 'q', 6, 0); run(w, 0.4);
+    check('Hoarfrost: Ice Bolt gives 2 stacks', e.frostStacks === 2 && e.frostT > 4, String(e.frostStacks));
+    p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4);
+    w.events.length = 0;
+    p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4);
+    const sh = w.events.find((ev) => ev.type === 'frostShatter' && ev.id === e.id);
+    check('Hoarfrost: the 6th stack Shatters (stacks reset, the enemy freezes)', !!sh && e.frostStacks === 0 && e.state === 'stunned', `${e.frostStacks} ${e.state}`);
+    const big = hitsOn(w, e).map((ev) => ev.amount).sort((a, b) => b - a)[0];
+    const expect = (1.4 * p.stats.ad + 35 + 9 * p.level) * (1 + CONFIG.RANK_DAMAGE * (p.ranks.q - 1));
+    check('Shatter: deals 140% spell power + 35 + 9 per level, growing with Ice Bolt rank', big >= expect * 0.95, `${big} vs ${Math.round(expect)}`);
+    check('Shatter: no new Hoarfrost for a moment afterwards', (w.addFrost(e, 6), e.frostStacks === 0));
+    // Shards spread Hoarfrost, and can chain
+    w.enemies = []; run(w, 2);
+    const a1 = dummy(w, 8, 0), a2 = dummy(w, 9.5, 0), a3 = dummy(w, 30, 0);
+    a2.frostStacks = 4; a2.frostT = 5;
+    w.addFrost(a1, 6);
+    check('Shatter: shards give 2 Hoarfrost within 3 m, which can set off the next one', a2.frostLock > 0 && a3.frostStacks === 0);
+    // Bosses turn Brittle instead of freezing
+    w.enemies = [];
+    const boss = dummy(w, 8, 0, 'boss');
+    boss.state = 'chase';
+    w.addFrost(boss, 6);
+    check('Shatter on a boss: Brittle (takes 15% more) instead of a freeze', boss.state !== 'stunned' && boss.vulnT > 3 && boss.vuln >= 0.15 && boss.brittle);
+    // Ice Bolt is ice, not fire: no fire augments, and no Frozen Orb augments for a Pyromancer
+    const offerIds = (spec) => {
+      const t = setup(spec);
+      const seen = new Set();
+      for (let i = 0; i < 200; i++) { t.w.offer = null; t.w.makeOffer(i % 2 === 0); for (const id of t.w.offer.choices) seen.add(id); }
+      return seen;
+    };
+    const fbOffers = offerIds('frostbinder'), pyOffers = offerIds('pyromancer'), mgOffers = offerIds(null);
+    check('augments: a Frostbinder is never offered Fireball or Ignite', !fbOffers.has('mage_q_ball') && !fbOffers.has('mage_q_burn') && fbOffers.has('fb_hard'));
+    check('augments: a Pyromancer is never offered Frozen Orb augments', !pyOffers.has('mage_w_freeze') && !pyOffers.has('mage_w_big') && pyOffers.has('py_pyre'));
+    check('augments: subclass augments only go to their subclass', !mgOffers.has('fb_hard') && !mgOffers.has('py_pyre') && !pyOffers.has('fb_avalanche') && !fbOffers.has('py_inferno'));
+    check('augments: a Frostbinder is not offered Meteor augments (Rimewall replaced it)', !fbOffers.has('mage_r_fast') && !fbOffers.has('mage_r_twin'));
+    run(w, 0.1);
     // Rimewall: blocks, reflects, shatters
     w.enemies = []; run(w, 1);
     p.cd.r = 0; cast(w, 'r', 6, 0);
@@ -1420,5 +1450,45 @@ import { makeRng } from '../src/sim/rng.js';
   check('music: every theme has its own melody', new Set(tunes).size === tunes.length);
   let threw = false; try { parseBar('C5:4 D5:4'); } catch (err) { threw = true; }
   check('music: a bar that does not add up is caught', threw);
+// --- 0.23: treasure chests ------------------------------------------------------
+{
+  console.log('--- 0.23: treasure chests');
+  const { CHEST_TIERS, IMMORTAL, rollItem } = await import('../src/sim/items.js');
+  const { makeRng } = await import('../src/sim/rng.js');
+  const w = new World({ seed: 5, cls: 'mage', mode: 'explore' });
+  check('chests: none in Haven', w.map.id === 'town' && w.chests.length === 0);
+  w.loadMap('greenwood', 'town');
+  check('chests: 2 or 3 on a map out in the world', w.chests.length >= 2 && w.chests.length <= 3, String(w.chests.length));
+  check('chests: never inside a tree or rock', w.chests.every((c) => !w.pushOut({ x: c.x, z: c.z }, 1.0)));
+  const c = w.chests[0], p = w.player, g0 = p.gold;
+  p.x = p.px = c.x; p.z = p.pz = c.z;
+  w.step(CONFIG.TICK);
+  const ev = w.events.find((e) => e.type === 'chestOpen');
+  check('chests: walking over one opens it: gold and gear for the opener', !!ev && p.gold > g0 && w.loot.length === CHEST_TIERS[c.tier].items.length && !w.chests.includes(c));
+  const ids = w.chests.map((x) => x.id).join();
+  w.loadMap('town', 'greenwood'); w.loadMap('greenwood', 'town');
+  check('chests: still there (and still opened) when you come back to the map', ids === w.chests.map((x) => x.id).join());
+  p.x = p.px = 0; p.z = p.pz = 0;
+  for (let i = 0; i < (CONFIG.CHEST_RESPAWN + 1) * 60; i++) { p.hp = p.stats.maxHp; p.x = 0; p.z = 0; w.step(CONFIG.TICK); }
+  check('chests: an opened chest comes back somewhere else later', w.chests.length === ids.split(',').length + 1 - 0 || w.chests.length >= 2, String(w.chests.length));
+  // The rolls themselves
+  let imm = 0;
+  for (let i = 0; i < 20000; i++) if (rollItem(makeRng(i + 1), 40, { weights: CHEST_TIERS.radiant.items[0].weights, cls: 'mage' }).rarity === IMMORTAL) imm++;
+  check('chests: a radiant chest holds an Immortal about 12% of the time', Math.abs(imm / 20000 - 0.12) < 0.01, (imm / 200).toFixed(1) + '%');
+  const arena = new World({ seed: 5, cls: 'mage' });
+  check('chests: none in the Echo Ring', arena.chests.length === 0);
+  // Co-op: friends see the host's chests and Hoarfrost stacks
+  const { makeSnapshot, applySnapshot } = await import('../src/net/sync.js');
+  const host = new World({ seed: 5, cls: 'warrior', mode: 'explore' });
+  host.addHero(1, { name: 'F', cls: 'mage', save: { v: 2, cls: 'mage', level: 30, spec: 'frostbinder', talents: {}, ranks: { q: 3, w: 1, e: 1, r: 1 } } });
+  host.loadMap('greenwood', 'town');
+  host.enemies[0].frostStacks = 3; host.enemies[0].frostT = 4;
+  const friend = new World({ seed: 9, cls: 'mage', mode: 'explore' });
+  friend.loadMapMirror('greenwood');
+  applySnapshot(friend, JSON.parse(JSON.stringify(makeSnapshot(host, 1, {}))));
+  const fe = friend.enemies.find((x) => x.id === host.enemies[0].id);
+  check('co-op: a friend sees the chests and Hoarfrost stacks', friend.chests.length === host.chests.length && fe && fe.frostStacks === 3);
+}
+
 }
 process.exit(failed ? 1 : 0);

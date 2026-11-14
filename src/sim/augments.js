@@ -39,6 +39,8 @@ export function defaultMods() {
     qBurn: 0, burnPerStack: 0, burnPerLevel: 0, burnMult: 1, burnMax: 0, burnTime: 0, burnSpread: 0, smoulderAmp: 0, basicBurn: 0,
     // Frostbinder (Deep Winter): chilled enemies deal less damage; Rimewall size and time
     chillWeak: 0, wallLen: 1, wallDur: 0,
+    // Frostbinder Hoarfrost (0.23): stacks that Shatter at frostMax. See addFrost in world.js.
+    frostMax: 0, frostDmg: 1, frostFreeze: 1, frostReach: 3, basicFrost: 0, qFrost: 0, qSplashFrost: 1, orbFrost: 0, moteFrost: 0, brittle: 0.15, smoulderStacks: 2,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };
@@ -98,14 +100,19 @@ const CLASS_AUGMENTS = {
   rogue_r_daze: { name: 'Dazing Blow', slot: 'r', cls: 'rogue', tier: 1, desc: 'Last Rites stuns its target for 1.5 seconds.', apply: (m) => { m.rStun = 1.5; } },
   rogue_r_chain: { name: 'Chain Kill', slot: 'r', cls: 'rogue', tier: 2, desc: 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
   // --- Mage ------------------------------------------------------------------
-  mage_q_ball: { name: 'Fireball', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt bursts 60% wider and the burst deals full damage.', apply: (m) => { m.qRadius *= 1.6; m.qSplashFull = true; } },
-  mage_q_burn: { name: 'Ignite', slot: 'q', cls: 'mage', tier: 1, desc: 'Fire Bolt sets its target burning for 90% spell power over 3 seconds.', apply: (m) => { m.qBleed = 0.9; } },
-  mage_q_twin: { name: 'Twin Bolt', slot: 'q', cls: 'mage', tier: 2, desc: 'Fire Bolt fires two bolts, each dealing 65% damage.', apply: (m) => { m.qBolts = 2; } },
+  mage_q_ball: { name: 'Fireball', slot: 'q', cls: 'mage', notSpec: ['frostbinder'], tier: 1, desc: 'Fire Bolt bursts 60% wider and the burst deals full damage.', apply: (m) => { m.qRadius *= 1.6; m.qSplashFull = true; } },
+  mage_q_burn: { name: 'Ignite', slot: 'q', cls: 'mage', notSpec: ['frostbinder', 'pyromancer'], tier: 1, desc: 'Fire Bolt sets its target burning for 90% spell power over 3 seconds.', apply: (m) => { m.qBleed = 0.9; } },
+  mage_q_twin: { name: 'Twin Bolt', slot: 'q', cls: 'mage', tier: 2, desc: 'Your Q fires two bolts, each dealing 65% damage.', apply: (m) => { m.qBolts = 2; } },
   mage_w_freeze: { name: 'Deep Freeze', slot: 'w', cls: 'mage', tier: 1, desc: "Frozen Orb's shatter freezes normal enemies solid for 1.2 seconds.", apply: (m) => { m.wStun = 1.2; } },
   mage_w_big: { name: 'Glacier', slot: 'w', cls: 'mage', tier: 1, desc: 'Frozen Orb is 30% bigger: a wider trail of shards and a wider shatter.', apply: (m) => { m.wRadius *= 1.3; } },
   mage_e_rift: { name: 'Rift', slot: 'e', cls: 'mage', tier: 1, desc: 'Starwake leaves a blast where you were standing for 120% spell power.', apply: (m) => { m.eBlast = 1.2; } },
   mage_e_motes: { name: 'Constellation', slot: 'e', cls: 'mage', tier: 1, desc: 'Starwake looses 2 more motes.', apply: (m) => { m.eMotes = (m.eMotes || 0) + 2; } },
   mage_r_fast: { name: 'Falling Star', slot: 'r', cls: 'mage', tier: 1, desc: 'Meteor lands twice as fast and its cooldown is 20% shorter.', apply: (m) => { m.rDelay *= 0.5; m.rCd *= 0.8; } },
+  // Subclass augments (offered only to that subclass).
+  py_pyre: { name: 'Pyre', slot: 'w', cls: 'mage', spec: 'pyromancer', tier: 1, desc: 'Smoulder bursts 30% wider and adds 3 burn stacks instead of 2.', apply: (m) => { m.wRadius *= 1.3; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
+  py_inferno: { name: 'Inferno', slot: 'hero', cls: 'mage', spec: 'pyromancer', tier: 2, desc: 'Burns stack up to 3 more times.', apply: (m) => { m.burnMax += 3; } },
+  fb_hard: { name: 'Hard Frost', slot: 'q', cls: 'mage', spec: 'frostbinder', tier: 1, desc: 'Ice Bolt gives 1 more Hoarfrost, and its splinters give 2 instead of 1.', apply: (m) => { m.qFrost += 1; m.qSplashFrost = Math.max(m.qSplashFrost, 2); } },
+  fb_avalanche: { name: 'Avalanche', slot: 'hero', cls: 'mage', spec: 'frostbinder', tier: 2, desc: 'Shatter deals 40% more, and its shards reach 1.5 m further.', apply: (m) => { m.frostDmg *= 1.4; m.frostReach += 1.5; } },
   mage_r_twin: { name: 'Second Impact', slot: 'r', cls: 'mage', tier: 2, desc: 'One second after Meteor lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },
 };
 Object.assign(AUGMENTS, CLASS_AUGMENTS);

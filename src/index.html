@@ -189,7 +189,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.22</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.23</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>
@@ -204,6 +204,7 @@
       <button type="button" id="btn-new" class="ghost">Wake the Echo Ring</button>
     </div>
     <p id="title-save" class="save-line"></p>
+    <p id="title-restore" class="save-line restore-hint hidden"></p>
     <button type="button" id="btn-mp" class="ghost">Play with friends</button>
     <button type="button" id="btn-transfer" class="link-btn">Move saves to another browser</button>
     <p id="touch-note" class="save-line hidden">This prototype needs a mouse and keyboard.</p>
@@ -290,6 +291,14 @@
   </div>
 </section>
 
+<div id="stale-tab" class="hidden" role="alertdialog" aria-labelledby="stale-title">
+  <div class="menu-card">
+    <h2 id="stale-title">Afterwish is open in another tab</h2>
+    <p class="setting-desc">This tab has stopped saving so it cannot write older progress over the newer tab. Carry on in the other tab, or reload this one to play here.</p>
+    <button type="button" id="btn-stale-reload" class="primary">Reload this tab</button>
+  </div>
+</div>
+
 <section id="transfer" class="screen hidden">
   <div class="menu-card story-card">
     <p class="eyebrow">Your saves</p>
@@ -310,6 +319,9 @@
     <div class="transfer-row">
       <button type="button" id="btn-import-code" class="ghost">Import pasted code</button>
     </div>
+    <h3 class="transfer-h">Backups in this browser</h3>
+    <p class="setting-desc">The game keeps copies of your saves on its own: when it starts, every ten minutes of play, and before anything is deleted or replaced. The copy with the most progress is always kept. Restoring one keeps a copy of what is here now, so it can be undone.</p>
+    <div id="backup-list"></div>
     <p id="transfer-msg" class="setting-desc"></p>
     <button type="button" id="btn-transfer-close" class="ghost">Back <kbd>Esc</kbd></button>
   </div>

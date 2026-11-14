@@ -150,6 +150,47 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Safer saves, Frostbinder rework, treasure chests (0.23)
+
+- **Your progress is much harder to lose.**
+  - **One tab saves at a time.** Opening the game in a new tab (say, after an
+    update) tells any older tab to stop saving, so an old tab can no longer
+    write out-of-date progress over the new one when it is closed or hidden.
+    This was the most likely way progress went missing.
+  - **Automatic backups** in this browser: when the game starts, every ten
+    minutes of play, and before anything deletes or replaces a save. The four
+    most recent are kept, plus the backup with the most progress ever. Restore
+    one from **Move saves to another browser**; restoring backs up what is
+    there first, so it can be undone. If a backup has clearly more progress
+    than you have now, the title screen says so.
+  - **A double-click never deletes a character:** the second click of "Start
+    a new ..." must come a moment after the first.
+  - The game asks the browser to keep its storage even when the disk fills up
+    (Chrome, Edge, Safari; Firefox would show a pop-up, so it is not asked).
+- **Frostbinder rework: Hoarfrost.** Fire Bolt becomes **Ice Bolt**. Ice Bolt,
+  Frozen Orb, Starwake's motes and basic attacks build **Hoarfrost**; at 6
+  stacks the enemy **Shatters**: heavy damage (grows with Ice Bolt's rank), a
+  1 second freeze (0.4 s for heavy enemies; bosses turn **Brittle** and take
+  15% more for 4 s), and shards that give 2 Hoarfrost to enemies within 3 m,
+  which can chain through a pack. Rimewall's thrown-back shots Shatter what
+  they hit, and its melt gives 3 Hoarfrost. The tanky talents are gone (no
+  more damage reduction or health): Bitter Cold, Biting Wind, Splintering
+  Cold, and Heart of Frostfall now Shatters at 5 stacks.
+- **Subclass augments:** Pyre and Inferno (Pyromancer), Hard Frost and
+  Avalanche (Frostbinder). Augments for an ability your subclass replaced are
+  no longer offered (no Frozen Orb augments for a Pyromancer, no Fireball or
+  Ignite for a Frostbinder).
+- **Treasure chests** on every map out in the world (not in Haven): 2 or 3
+  per map, gold dots on the minimap. Walk over one to open it. Plain chests
+  hold gold and a piece of gear; **gilded** ones (about 1 in 4) two better
+  pieces and refill your potions; **radiant** ones (about 1 in 20) a
+  Legendary or better, with a 12% chance of an **Immortal**, plus a starglass
+  shard. An opened chest comes back somewhere else on the map after 2.5
+  minutes. In a party, the opener gets the gear.
+- **Fixes:** burns show as BURNING ×stacks (not "bleeding"), with Hoarfrost,
+  Brittle and Frozen shown too; the Weekly Echo no longer shows a talent
+  point badge, and T explains that the build is set before the run.
+
 ### Weekly Echo, boards and the Hall of Echoes (0.22)
 
 - **Weekly Echo** (the Weekly Echo card at camp): once a week, everyone plays

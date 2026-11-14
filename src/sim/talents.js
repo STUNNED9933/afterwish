@@ -159,26 +159,31 @@ export const SPECS = {
   },
   frostbinder: {
     cls: 'mage', name: 'Frostbinder',
-    blurb: 'Nothing reaches you. Chilled enemies hit softer, Frozen Orb freezes them solid, and a wall of ice holds the line and throws their shots back at them.',
+    blurb: 'Pile Hoarfrost on everything, then watch it Shatter: frozen solid, cut open, and the shards spread the cold to whatever stands nearby. A wall of ice keeps the rest away.',
     perk: {
-      name: 'Deep Winter',
-      desc: "Enemies you chill with Frozen Orb or Rimewall deal 20% less damage while they are slowed or frozen. Frozen Orb deals 40% more, comes back 20% sooner, and its shatter freezes normal enemies solid for 0.6 seconds. Meteor becomes Rimewall.",
-      apply: (m) => { m.chillWeak = Math.max(m.chillWeak, 0.2); m.wStun = Math.max(m.wStun, 0.6); m.wCd *= 0.8; m.wDmg *= 1.4; },
+      name: 'Hoarfrost',
+      desc: "Ice Bolt, Frozen Orb, Starwake's motes and your basic attacks build Hoarfrost on enemies. At 6 stacks the enemy Shatters: it takes heavy damage that grows with Ice Bolt's rank, freezes solid for 1 second (heavy enemies 0.4 s; bosses turn Brittle instead and take 15% more damage for 4 s), and the shards give 2 Hoarfrost to enemies within 3 m. Frozen Orb comes back 20% sooner. Fire Bolt becomes Ice Bolt and Meteor becomes Rimewall.",
+      apply: (m) => { m.frostMax = 6; m.basicFrost = 1; m.qFrost = Math.max(m.qFrost, 2); m.orbFrost = 1; m.moteFrost = 1; m.wCd *= 0.8; },
     },
     kit: {
+      q: {
+        key: 'Q', name: 'Ice Bolt', type: 'bolt', icon: 'icebolt', ice: true, unlock: 1, cd: 2.6, range: 14, speed: 26, splash: 1.8, splashMult: 0.5,
+        dmg: (s, lvl) => 1.45 * s.ad + 16 + 5 * lvl,
+        desc: 'Hurl a shard of ice at your cursor. It gives the first enemy 2 Hoarfrost and splinters into those nearby for 50% damage and 1 Hoarfrost.',
+      },
       r: {
         key: 'R', name: 'Rimewall', type: 'wall', icon: 'wall', unlock: 6, cd: 32, range: 10, length: 8, duration: 5, stun: 1.2,
         dmg: (s, lvl) => 2.4 * s.ad + 40 + 10 * lvl,
-        desc: 'Raise a wall of ice across your cursor for 5 seconds. Nothing can walk through it, and enemy shots that hit it fly back at them and freeze what they hit. When it melts it shatters, damaging and freezing everything beside it.',
+        desc: 'Raise a wall of ice across your cursor for 5 seconds. Nothing can walk through it, and enemy shots that hit it fly back and Shatter what they hit. When it melts it bursts, damaging everything beside it and giving it 3 Hoarfrost.',
       },
     },
     talents: [
-      { id: 'fb_vigor', row: 'minor', name: 'Cold Blood', max: 5, desc: (r) => `+${2 * r}% maximum health.`, apply: (m, r) => { m.hpPct += 0.02 * r; } },
-      { id: 'fb_armor', row: 'minor', name: 'Numbing Cold', max: 5, desc: (r) => `Chilled enemies deal a further ${2 * r}% less damage.`, apply: (m, r) => { m.chillWeak += 0.02 * r; } },
+      { id: 'fb_vigor', row: 'minor', name: 'Bitter Cold', max: 5, desc: (r) => `Shatter deals ${6 * r}% more damage.`, apply: (m, r) => { m.frostDmg *= 1 + 0.06 * r; } },
+      { id: 'fb_armor', row: 'minor', name: 'Biting Wind', max: 5, desc: (r) => `+${2 * r}% spell power.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
       { id: 'fb_haste', row: 'minor', name: 'Clear Mind', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'fb_nova', row: 'major', name: 'Wide Winter', max: 3, desc: (r) => `Frozen Orb is ${8 * r}% bigger and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.wRadius *= 1 + 0.08 * r; m.wCd *= 1 - 0.08 * r; } },
-      { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frozen Orb's shatter freezes ${(0.3 * r).toFixed(1)} seconds longer.`, apply: (m, r) => { m.wStun += 0.3 * r; } },
-      { id: 'fb_cap', row: 'capstone', name: 'Heart of Frostfall', max: 1, desc: () => 'Take 10% less damage. Rimewall is 40% longer and stands 2 seconds longer.', apply: (m) => { m.dmgTaken += 0.1; m.wallLen *= 1.4; m.wallDur += 2; } },
+      { id: 'fb_freeze', row: 'major', name: 'Splintering Cold', max: 3, desc: (r) => `Shatter freezes ${15 * r}% longer and its shards reach ${(0.5 * r).toFixed(1)} m further.`, apply: (m, r) => { m.frostFreeze *= 1 + 0.15 * r; m.frostReach += 0.5 * r; } },
+      { id: 'fb_cap', row: 'capstone', name: 'Heart of Frostfall', max: 1, desc: () => 'Enemies Shatter at 5 Hoarfrost instead of 6. Rimewall is 40% longer and stands 2 seconds longer.', apply: (m) => { m.frostMax = Math.min(m.frostMax || 5, 5); m.wallLen *= 1.4; m.wallDur += 2; } },
     ],
   },
 };

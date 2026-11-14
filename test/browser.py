@@ -412,15 +412,34 @@ with sync_playwright() as pw:
     page.click('#btn-town'); page.wait_for_timeout(800)
     check('back on the title screen with a saved character', ev("() => game.mode") == 'title' and 'Start a new' in page.inner_text('#btn-new'))
     tk = ev("() => game.account.tickets")
-    # Both clicks in one go: this test browser is slow enough that the 4-second confirmation could expire between them.
+    # A double-click must not delete: the second click has to come a moment after the first.
     armed = ev("() => { const b = document.getElementById('btn-new'); b.click(); const t = b.textContent; b.click(); return t; }")
     check('deleting asks for a second click', 'Click again' in armed, armed)
+    check('a quick double-click does not delete the character', ev("() => game.mode") == 'title' and 'Click again' in page.inner_text('#btn-new'))
+    # The real second click, a moment later (in one go, as this test browser is slow enough for the 4-second confirmation to run out).
+    ev("() => new Promise((done) => { const b = document.getElementById('btn-new'); b.dataset.armed = ''; b.click(); setTimeout(() => { b.click(); done(); }, 800); })")
     for _ in range(40):
         if ev("() => game.mode") != 'title': break
         page.wait_for_timeout(100)
     page.wait_for_timeout(1000)
     check('a new character starts exploring in Haven, level 1, without spending a shard', ev("() => game.world.mode") == 'explore' and ev("() => game.world.map.id") == 'town' and ev("() => game.world.player.level") == 1 and ev("() => game.account.tickets") == tk, f"{ev('() => game.world.mode')} {ev('() => game.world.map.id')} level {ev('() => game.world.player.level')}")
     check('the opening keeps the story a mystery', 'queen' not in page.evaluate("() => document.querySelector('#title .lede').textContent.toLowerCase()") and 'wish' not in page.evaluate("() => document.querySelector('#title .tagline').textContent.toLowerCase()"))
+    # --- Backups and the second-tab guard (0.23) -------------------------------------------------
+    check('a backup of the deleted character was kept', ev("() => (JSON.parse(localStorage.getItem('stunned-backups-v1') || '{}').best || {}).progress || 0") >= 2)
+    check('...and a deliberate fresh start does not show "Missing progress?"', not page.is_visible('#title-restore'))
+    # Another tab opening the game: the browser tells this tab through a storage event.
+    ev("() => window.dispatchEvent(new StorageEvent('storage', { key: 'stunned-session-v1', newValue: 'another-tab' }))")
+    page.wait_for_timeout(300)
+    check('opening the game in a second tab makes the first stop saving', page.is_visible('#stale-tab'))
+    before = ev("() => localStorage.getItem('stunned-account-v1')")
+    ev("() => { game.world.player.gold += 12345; window.dispatchEvent(new Event('pagehide')); }")
+    check('...so the old tab cannot write over the new one', ev("() => localStorage.getItem('stunned-account-v1')") == before)
+    page.reload(); page.wait_for_timeout(1500)
+    page.click('#btn-transfer'); page.wait_for_timeout(300)
+    check('the save screen lists backups with a Restore button', len(page.query_selector_all('#backup-list .backup-row button')) >= 1, page.inner_text('#backup-list')[:120])
+    page.keyboard.press('Escape'); page.wait_for_timeout(200)
+    if ev("() => game.mode") != 'title': page.click('#btn-transfer-close'); page.wait_for_timeout(200)
+    page.click('#btn-explore'); page.wait_for_timeout(1500)
     # --- Weekly Echo (0.22) -------------------------------------------------------------------
     page.keyboard.press('Escape'); page.wait_for_timeout(300)
     if ev("() => game.mode") == 'pause': page.keyboard.press('Escape'); page.wait_for_timeout(300)

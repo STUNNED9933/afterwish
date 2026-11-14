@@ -23,7 +23,7 @@ import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName } from './sim/items.js';
-import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves } from './save.js';
+import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { makeSnapshot, applySnapshot, eventFor } from './net/sync.js';
@@ -63,7 +63,20 @@ function start(hot = {}) {
 
   // One character per class, used in both exploration and the arena.
   if (!CLASSES[settings.cls]) settings.cls = 'warrior';
+  // Only the newest tab saves. An older tab left open (say, from before an update) would
+  // otherwise write its out-of-date progress over everything when it is closed or hidden.
+  claimSession();
+  let stale = false;
+  onSessionTaken(() => {
+    stale = true;
+    if (mode === 'play') setMode('pause');
+    $('stale-tab').classList.remove('hidden');
+  });
+  $('btn-stale-reload').addEventListener('click', () => location.reload());
+  backupNow('when the game started');
+  let lastBackup = Date.now();
   let save = hot.save || loadSave(settings.cls);
+  if (save) askPersistentStorage();
   // Gold and arena tickets belong to the account, so both characters share them.
   const account = hot.account || loadAccount() || { gold: save?.gold || 0, tickets: CONFIG.START_TICKETS };
   function makeWorld(opts) {
@@ -96,6 +109,7 @@ function start(hot = {}) {
 
   // ---------------------------------------------------------------- saving
   function persist() {
+    if (stale) return; // a newer tab of the game is open: it does the saving now
     if (net && net.role === 'client') return; // the host sends this player's save (see onNetMessage)
     if (world.trial) return; // a Weekly Echo (or a replay of one) never touches the character's save
     account.gold = world.player.gold;
@@ -103,6 +117,10 @@ function start(hot = {}) {
     storeAccount(account);
     save = world.toSave();
     storeSave(save, world.cls);
+    if (Date.now() - lastBackup > 10 * 60 * 1000) {
+      lastBackup = Date.now();
+      backupNow('while playing');
+    }
   }
   window.claude?.hot?.snapshot?.(() => {
     if (mode !== 'title') persist();
@@ -191,6 +209,29 @@ function start(hot = {}) {
     const fresh = $('btn-new');
     fresh.textContent = has ? `Start a new ${c.name}` : 'Wake the Echo Ring · 1 shard';
     fresh.dataset.armed = '';
+    const found = missingProgress();
+    const lost = found && found.t !== settings.backupSeen ? found : null; // not after a deliberate fresh start
+    const hint = $('title-restore');
+    hint.classList.toggle('hidden', !lost);
+    if (lost) {
+      hint.innerHTML = '';
+      hint.append(`Missing progress? A backup from ${new Date(lost.t).toLocaleDateString()} has ${describeSaves(lost)}.`);
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'link-btn';
+      go.textContent = 'See backups';
+      go.addEventListener('click', openTransfer);
+      const hide = document.createElement('button');
+      hide.type = 'button';
+      hide.className = 'link-btn';
+      hide.textContent = 'Hide';
+      hide.addEventListener('click', () => {
+        settings.backupSeen = lost.t;
+        storeSettings(settings);
+        refreshTitle();
+      });
+      hint.append(go, hide);
+    }
     $('title-save').textContent = `${account.gold} gold · ${account.tickets} starglass shard${account.tickets === 1 ? '' : 's'}. Each class is one character, used both on the road and in the Echo Ring. Gold and shards are shared by every class. Progress is saved in this browser.`;
   }
 
@@ -281,7 +322,7 @@ function start(hot = {}) {
     const score = trialScore(world);
     const packed = await trialApi.packInputs(world.recorder || []);
     const payload = { week: run.week.index, version: SIM_VERSION, build: run.build, endTick: score.ticks, claim: { floor: score.floor, clearTick: score.clearTick }, inputs: packed };
-    const best = keepTrialRun(run.week.index, run.build.spec, score, payload);
+    const best = !stale && keepTrialRun(run.week.index, run.build.spec, score, payload);
     trialRun = null;
     enterTown();
     const result = { floor: score.floor, clearTick: score.clearTick, spec: run.build.spec, note: best ? 'Your best run with this subclass this week.' : 'Not better than your best this week.' };
@@ -552,7 +593,8 @@ function start(hot = {}) {
   // --------------------------------------------------------- subclasses and talents
   function talentBadge() {
     const p = world.player;
-    const n = !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : p.spec ? world.talentPoints() : 0;
+    // A Weekly Echo build is set on its own screen before the run, so nothing to spend here.
+    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : p.spec ? world.talentPoints() : 0;
     const b = $('talent-badge');
     b.textContent = n;
     b.classList.toggle('hidden', !n);
@@ -852,7 +894,7 @@ function start(hot = {}) {
   // Ctrl + W ranks up W (as in League), but in Chrome it also closes the tab and a page
   // cannot stop that. So once you are in the game, leaving asks first.
   window.addEventListener('beforeunload', (e) => {
-    if (mode === 'title') return;
+    if (mode === 'title' || stale) return;
     e.preventDefault();
     e.returnValue = '';
   });
@@ -922,6 +964,10 @@ function start(hot = {}) {
       sfx.ui();
     },
     toggleTalents() {
+      if (mode === 'play' && world.trial) {
+        hud.hint('Your Weekly Echo build is set before the run, on the Weekly Echo screen.', 4);
+        return;
+      }
       if (mode === 'play') setMode('talents');
       else if (mode === 'talents') setMode('play');
       else return;
@@ -1022,10 +1068,13 @@ function start(hot = {}) {
   // --------------------------------------------------------------- buttons
   const armThenRun = (btn, armedText, run) => {
     if (btn.dataset.armed === '1') {
+      // A double-click must never count as "yes, delete": the second click has to come a moment later.
+      if (performance.now() - (btn._armedAt || 0) < 700) return;
       btn.dataset.armed = '';
       run();
     } else {
       btn.dataset.armed = '1';
+      btn._armedAt = performance.now();
       btn.dataset.label = btn.textContent;
       btn.textContent = armedText;
       // One timer per button, so an old one cannot cancel a fresh confirmation early.
@@ -1040,7 +1089,9 @@ function start(hot = {}) {
   };
   // A new character always starts at the beginning of the story, in Haven.
   const wipe = () => {
-    clearSave(world.cls);
+    clearSave(world.cls); // keeps a backup first
+    settings.backupSeen = (loadBackups().best || {}).t; // a deliberate fresh start: no "missing progress?" note for it
+    storeSettings(settings);
     save = null;
     startExplore(true);
   };
@@ -1078,12 +1129,62 @@ function start(hot = {}) {
     el.textContent = text;
     el.className = 'setting-desc ' + (ok ? 'ok' : 'bad');
   };
-  $('btn-transfer').addEventListener('click', () => {
+  const whenText = (t) => {
+    const d = new Date(t);
+    const today = new Date().toDateString() === d.toDateString();
+    return (today ? 'Today' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  };
+  function renderBackups() {
+    const list = $('backup-list');
+    list.innerHTML = '';
+    const b = loadBackups();
+    const rows = b.recent.map((x) => ({ x, best: false }));
+    if (b.best && !b.recent.some((x) => x.t === b.best.t)) rows.push({ x: b.best, best: true });
+    if (!rows.length) {
+      list.innerHTML = '<p class="setting-desc">No backups yet. One is made once you have a character.</p>';
+      return;
+    }
+    for (const { x, best } of rows) {
+      const row = document.createElement('div');
+      row.className = 'backup-row' + (best || (b.best && x.t === b.best.t) ? ' best' : '');
+      const info = document.createElement('div');
+      info.innerHTML = `<div></div><div class="when"></div>`;
+      info.firstChild.textContent = describeSaves(x);
+      info.lastChild.textContent = `${whenText(x.t)} · ${x.why}${b.best && x.t === b.best.t ? ' · most progress' : ''}`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ghost tiny';
+      btn.textContent = 'Restore';
+      btn.addEventListener('click', () => armThenRun(btn, 'Click again to restore', () => restoreFrom(x)));
+      row.append(info, btn);
+      list.appendChild(row);
+    }
+  }
+  function restoreFrom(backup) {
+    persist();
+    if (!restoreBackup(backup)) {
+      transferMsg('This browser would not let the game save (private window?). Nothing was changed.', false);
+      return;
+    }
+    Object.assign(settings, loadSettings());
+    const acc = loadAccount();
+    if (acc) Object.assign(account, acc);
+    if (!CLASS_IDS.includes(settings.cls)) settings.cls = 'warrior';
+    save = loadSave(settings.cls);
+    world = makeWorld({ save });
+    resetViews();
+    transferMsg(`Restored: ${describeSaves(backup)}. What was here before is in the backup list, in case you want it back.`, true);
+    renderBackups();
+    refreshTitle();
+  }
+  function openTransfer() {
     persist();
     transferMsg('', true);
     $('import-code').value = '';
+    renderBackups();
     setMode('transfer');
-  });
+  }
+  $('btn-transfer').addEventListener('click', openTransfer);
   $('btn-transfer-close').addEventListener('click', () => setMode('title'));
   $('btn-export-file').addEventListener('click', () => {
     persist();
@@ -1281,7 +1382,7 @@ function start(hot = {}) {
           sfx.clear();
           break;
         }
-        const record = world.mode === 'arena' && !net && recordWave(world.cls, world.player.spec, ev.n);
+        const record = world.mode === 'arena' && !net && !stale && recordWave(world.cls, world.player.spec, ev.n);
         hud.banner(ev.boss ? 'The Warden falls' : 'Wave cleared', `+${ev.gold} gold${ev.boss ? ' · checkpoint saved' : ''}${record ? ' · a new record in the Hall of Echoes' : ''}`);
         sfx.clear();
         persist();
@@ -1333,6 +1434,10 @@ function start(hot = {}) {
         break;
       case 'postureHit':
         hud.float(renderer, ev.x, 4.2, ev.z, 'Guard cracked', 'word stun');
+        break;
+      case 'frostShatter':
+        hud.float(renderer, ev.x, 3.0, ev.z, 'Shatter', 'word');
+        sfx.shatter();
         break;
       case 'reflect':
         hud.float(renderer, ev.x, 2.6, ev.z, 'Returned', 'word');
@@ -1422,6 +1527,15 @@ function start(hot = {}) {
         hud.feedText(`${ev.name} left the party`);
         updateRoomBadge();
         break;
+      case 'chestOpen': {
+        const name = { wooden: 'Chest', gilded: 'Gilded chest', radiant: 'Radiant chest' }[ev.tier] || 'Chest';
+        hud.float(renderer, ev.x, 2.6, ev.z, name, ev.tier === 'radiant' ? 'word perfect' : 'word');
+        sfx.pickup(ev.tier === 'radiant' ? 6 : ev.tier === 'gilded' ? 4 : 2);
+        if (ev.tier === 'radiant') hud.screenFlash(0.35);
+        if (ev.gold) hud.feedText(`${name}: ${ev.gold.toLocaleString()} gold${ev.tickets ? `, ${ev.tickets} starglass shard` : ''}${ev.tier !== 'wooden' ? ', potions refilled' : ''}`);
+        if (world.mode === 'explore') persist();
+        break;
+      }
       case 'bossFall':
         hud.banner(`${ev.name} falls`, ev.first ? 'First victory: a guaranteed prize, and 2 skill points' : 'It will rise again in two minutes');
         hud.feedText(`${ev.name}: ${ev.gold.toLocaleString()} gold, ${ev.keys} Warden key${ev.keys > 1 ? 's' : ''}, ${ev.items} pieces of gear`);
@@ -1532,6 +1646,7 @@ function start(hot = {}) {
         hud.screenFlash(0.5);
         sfx.cast('e');
         if (ev.from === 'town') hintOnce('maps', 'Each map is ten levels tougher than the last, and enemies get stronger the deeper in you go. Stand in a portal to travel on.', 9);
+        else if (world.chests && world.chests.length) hintOnce('chests', 'Treasure chests lie around every map (gold dots on the minimap). Walk over one to open it. Gilded and radiant chests hold better gear, and a radiant one can even hold an Immortal.', 9);
         persist();
         break;
       case 'playerDown':

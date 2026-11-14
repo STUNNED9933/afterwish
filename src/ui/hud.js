@@ -46,6 +46,7 @@ export const ICONS = {
   kunai: '<path d="M20 4l-9 4-3 3 5 5 3-3 4-9z"/><path d="M8 11l-1.5 1.5M13 16l-1.5 1.5M9.5 14.5L4 20"/><circle cx="3.5" cy="20.5" r="1.5"/>',
   orb: '<circle cx="12" cy="12" r="5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
+  icebolt: '<path d="M12 2l3 7-3 13-3-13z"/><path d="M5 7l3 3M19 7l-3 3M4 14h4M20 14h-4"/>',
 };
 // Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
 // Line art on a 24x24 grid, drawn with the same stroke style as the ability icons.
@@ -377,12 +378,24 @@ export class Hud {
         bar.lvl.className = 'lvl ' + (gap >= 10 ? 'skull' : gap >= 5 ? 'red' : gap >= 2 ? 'orange' : gap <= -10 ? 'grey' : gap <= -3 ? 'green' : '');
       }
       // One status word above the bar: the most important one wins.
-      const status = e.state === 'stunned' ? 'stunned' : e.vulnT > 0 ? 'sundered' : e.bleedT > 0 ? 'bleeding' : e.slowT > 0 ? 'slowed' : '';
+      // Burns and Hoarfrost show their stacks; a mage's Ignite is a burn, not a bleed.
+      const burning = e.burnT > 0 || (e.bleedT > 0 && e.bleedFire);
+      const frostMax = world.mods.frostMax || 6;
+      const status = e.state === 'stunned' ? (e.frostLock > 0.3 ? 'frozen' : 'stunned')
+        : e.vulnT > 0 ? (e.brittle ? 'brittle' : 'sundered')
+        : burning ? 'burning'
+        : e.frostT > 0 && e.frostStacks > 0 ? 'hoarfrost'
+        : e.bleedT > 0 ? 'bleeding'
+        : e.slowT > 0 ? 'slowed' : '';
+      const label = status === 'burning' && e.burnStacks > 1 ? `burning ×${e.burnStacks}` : status === 'hoarfrost' ? `hoarfrost ${e.frostStacks}/${frostMax}` : status;
       if (bar.status !== status) {
-        bar.el.classList.remove('stunned', 'sundered', 'bleeding', 'slowed');
+        bar.el.classList.remove('stunned', 'sundered', 'bleeding', 'slowed', 'burning', 'hoarfrost', 'brittle', 'frozen');
         if (status) bar.el.classList.add(status);
-        bar.tag.textContent = status.toUpperCase();
         bar.status = status;
+      }
+      if (bar.label !== label) {
+        bar.tag.textContent = label.toUpperCase();
+        bar.label = label;
       }
     }
     for (const [id, bar] of this.bars) {
@@ -431,6 +444,7 @@ export class Hud {
       dot(gate.x, gate.z, 2.5, '#0a0d16');
     }
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
+    for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
     for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : 2, e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
     if (world.allies) for (const a of world.allies()) dot(a.x, a.z, 3, a.dead ? '#8a8f9c' : '#7fd0ff');

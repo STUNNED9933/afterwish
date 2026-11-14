@@ -117,4 +117,10 @@ export const CONFIG = {
   MAX_ATTACKERS: 2, // how many normal enemies may wind up an attack at once
   ATTACK_STAGGER: 0.4, // minimum gap between two enemies starting an attack
   WAVE_CLEAR_HEAL: 0.2,
+
+  // --- Treasure chests out in the world (0.23) --------------------------
+  CHESTS_PER_MAP: 2, // plus one more half the time
+  CHEST_GILDED: 0.24, // chance a chest is gilded
+  CHEST_RADIANT: 0.05, // chance a chest is radiant (12% of those hold an Immortal)
+  CHEST_RESPAWN: 150, // seconds before an opened chest comes back somewhere else on the map
 };

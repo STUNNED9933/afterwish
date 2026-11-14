@@ -273,3 +273,14 @@ export const CACHES = {
   gilded: { name: 'Gilded Cache', cost: { gold: 600 }, odds: [0, 0, 45, 33, 15, 5.5, 1.5] },
   warden: { name: "Warden's Cache", cost: { keys: 1 }, odds: [0, 0, 0, 50, 32, 14, 4] },
 };
+
+/**
+ * Treasure chests out in the world (world.js openChest). Gold is (12 + 3 per level) times `gold`.
+ * Each entry in `items` is one piece of gear: at least rarity `min`, or rolled on `weights`
+ * (one weight per rarity, Common to Immortal). A radiant chest has a 12% chance of an Immortal.
+ */
+export const CHEST_TIERS = {
+  wooden: { name: 'Chest', gold: 1, items: [{ min: 1 }] },
+  gilded: { name: 'Gilded chest', gold: 3, potions: true, items: [{ min: 3 }, { min: 2 }] },
+  radiant: { name: 'Radiant chest', gold: 6, tickets: 1, potions: true, items: [{ weights: [0, 0, 0, 0, 55, 33, 12] }, { min: 3 }] },
+};

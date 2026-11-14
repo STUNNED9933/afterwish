@@ -65,7 +65,11 @@ body.slowmo #slowtint { opacity: 1; }
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
   font: 600 11px var(--body); letter-spacing: 0.14em; color: #ffe27a; text-shadow: 0 1px 2px #000; display: none;
 }
-.ebar.stunned .tag, .ebar.sundered .tag, .ebar.bleeding .tag, .ebar.slowed .tag { display: block; }
+.ebar.stunned .tag, .ebar.sundered .tag, .ebar.bleeding .tag, .ebar.slowed .tag, .ebar.burning .tag, .ebar.hoarfrost .tag, .ebar.brittle .tag, .ebar.frozen .tag { display: block; }
+.ebar.burning .tag { color: #ffab5c; }
+.ebar.hoarfrost .tag { color: #a9e8ff; }
+.ebar.brittle .tag { color: #c9f2ff; }
+.ebar.frozen .tag { color: #e6fbff; }
 .ebar.stunned .fill { background: #ffc94d; }
 .ebar.sundered .tag { color: #d9a6ff; }
 .ebar.bleeding .tag { color: #ff7a85; }
@@ -538,3 +542,14 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .hall-row .hall-sub { padding-left: 12px; color: var(--muted); }
 .hall-row b { font-variant-numeric: tabular-nums; }
 #watch-badge { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; background: rgba(10, 12, 20, 0.85); border: 1px solid rgba(255, 210, 122, 0.5); color: var(--gold); font-size: 14px; z-index: 20; }
+
+/* 0.23: a newer tab took over saving; backups */
+#stale-tab { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(6, 8, 14, 0.82); backdrop-filter: blur(3px); }
+#stale-tab.hidden { display: none; }
+#stale-tab .menu-card { max-width: 440px; }
+#backup-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.backup-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 6px 10px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 13px; }
+.backup-row .when { opacity: 0.7; font-size: 12px; }
+.backup-row.best { border-color: rgba(240, 196, 90, 0.45); }
+.restore-hint { color: #f0c45a; }
+.restore-hint button { margin-left: 6px; }

@@ -714,8 +714,15 @@ export class Renderer {
         break;
       }
       case 'burst':
-        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff9a3a, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
-        this.burst(ev.x, 1, ev.z, { count: 18, color: 0xffb060, speed: 8, up: 5, life: 0.45 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.ice ? 0x9fe6ff : 0xff9a3a, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
+        this.burst(ev.x, 1, ev.z, { count: 18, color: ev.ice ? 0xd8f6ff : 0xffb060, speed: 8, up: 5, life: 0.45 });
+        break;
+      case 'frostShatter':
+        // Hoarfrost Shatter: a ring of ice and a spray of shards.
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xbff2ff, from: 0.6, to: ev.radius, dur: 0.35, opacity: 0.95 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x9fe6ff, from: 0.3, to: 1.6, dur: 0.25, opacity: 0.6 });
+        this.burst(ev.x, 1.3, ev.z, { count: 26, color: 0xe6fbff, speed: 10, up: 5, life: 0.5, size: 1.2 });
+        this.shake = Math.max(this.shake, 0.15);
         break;
       case 'orbTick':
         for (let n = 0; n < 5; n++) {
@@ -1060,7 +1067,12 @@ export class Renderer {
         const k = e.t / e.dur;
         this.setEmissive(mats, 0.25 * k, 0.2 * k, 0.08 * k);
       } else if (e.vulnT > 0) this.setEmissive(mats, 0.2, 0.03, 0.28); // Sunder: purple
+      else if (e.state === 'stunned' && e.frostLock > 0.3) this.setEmissive(mats, 0.35, 0.6, 0.8); // frozen solid
       else if (e.burnT > 0) this.setEmissive(mats, 0.38 + 0.08 * Math.sin(this.time * 14), 0.13, 0.0); // burning: orange flicker
+      else if (e.frostT > 0 && e.frostStacks > 0) {
+        const k = e.frostStacks / (world.mods.frostMax || 6); // whiter the closer it is to shattering
+        this.setEmissive(mats, 0.06 + 0.25 * k, 0.15 + 0.35 * k, 0.3 + 0.4 * k);
+      }
       else if (e.bleedT > 0) this.setEmissive(mats, 0.28, 0.02, 0.04); // bleeding: dark red
       else if (e.slowT > 0 || world.slowT > 0) this.setEmissive(mats, 0.03, 0.12, 0.26); // slowed: cold blue
       else if (e.enraged) this.setEmissive(mats, 0.22, 0.03, 0.02);
@@ -1124,7 +1136,7 @@ export class Renderer {
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0 }[pr.kind]; // the hero's own shots
+      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0 }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
@@ -1263,6 +1275,7 @@ export class Renderer {
     this.syncEnemies(world, alpha, dt);
     this.syncProjectiles(world, alpha);
     this.syncLoot(world);
+    this.syncChests(world);
     this.syncTelegraphs(world);
     this.syncMarkers(world);
     this.updateParticles(dt);
@@ -1308,6 +1321,50 @@ export class Renderer {
   /** Remove every enemy / projectile / loot view (used when a new run starts). */
   /** Party members: their hero model, walking or lying down. */
   /** Frostbinder Rimewalls: a row of ice blocks that sinks as it runs out. */
+  /** Treasure chests: a box and a lid, tinted by how good the chest is; radiant ones glow. */
+  syncChests(world) {
+    if (!this.chestViews) this.chestViews = new Map();
+    const seen = new Set();
+    for (const c of world.chests || []) {
+      seen.add(c.id);
+      let v = this.chestViews.get(c.id);
+      if (!v) {
+        const look = { wooden: [0x8a5a2b, 0x5b3a1c, 0], gilded: [0xd9a441, 0x8a5a2b, 0.25], radiant: [0x7ff5e1, 0x3b6f8f, 0.9] }[c.tier] || [0x8a5a2b, 0x5b3a1c, 0];
+        const group = new THREE.Group();
+        const body = new THREE.MeshStandardMaterial({ color: look[1], roughness: 0.7, emissive: look[0], emissiveIntensity: look[2] * 0.3 });
+        const trim = new THREE.MeshStandardMaterial({ color: look[0], roughness: 0.4, metalness: 0.5, emissive: look[0], emissiveIntensity: look[2] });
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.75), body);
+        base.position.y = 0.3;
+        const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.375, 0.375, 1.1, 10, 1, false, 0, Math.PI), trim);
+        lid.rotation.z = Math.PI / 2;
+        lid.position.y = 0.6;
+        const band = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 0.78), trim);
+        band.position.y = 0.31;
+        base.castShadow = lid.castShadow = true;
+        group.add(base, lid, band);
+        if (c.tier !== 'wooden') {
+          const color = new THREE.Color(look[0]);
+          const h = c.tier === 'radiant' ? 7 : 3.5;
+          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.3, h, 8, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: c.tier === 'radiant' ? 0.5 : 0.25, blending: THREE.AdditiveBlending, depthWrite: false }));
+          beam.position.y = h / 2;
+          group.add(beam);
+        }
+        group.position.set(c.x, 0, c.z);
+        group.rotation.y = (c.id * 1.7) % 6.28;
+        this.scene.add(group);
+        v = { group, tier: c.tier };
+        this.chestViews.set(c.id, v);
+      }
+      if (v.tier === 'radiant' && Math.random() < 0.25) this.burst(c.x, 1 + Math.random(), c.z, { count: 1, color: 0x7ff5e1, speed: 0.6, up: 1.2, gravity: 0, life: 0.9, size: 1 });
+    }
+    for (const [id, v] of this.chestViews) {
+      if (!seen.has(id)) {
+        this.disposeGroup(v.group);
+        this.chestViews.delete(id);
+      }
+    }
+  }
+
   syncWalls(world) {
     if (!this.wallViews) this.wallViews = new Map();
     const seen = new Set();
@@ -1442,6 +1499,10 @@ export class Renderer {
     }
     for (const v of this.lootViews.values()) this.disposeGroup(v.group);
     this.lootViews.clear();
+    if (this.chestViews) {
+      for (const v of this.chestViews.values()) this.disposeGroup(v.group);
+      this.chestViews.clear();
+    }
     for (const v of this.teleViews.values()) this.scene.remove(v.group);
     this.teleViews.clear();
     this.camTarget.set(0, 0, 0);

@@ -11,7 +11,7 @@
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES } from './items.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS } from './items.js';
 import { CLASSES } from './classes.js';
 import { buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
@@ -82,6 +82,10 @@ export class World {
     this.enemies = [];
     this.projectiles = [];
     this.loot = [];
+    this.chests = []; // treasure chests out in the world (explore maps)
+    this.chestRefill = []; // ticks at which an opened chest comes back
+    this.chestMaps = {}; // map id -> { chests, refill }: kept while you are away, for this session
+    this.chestCount = 0;
     this.telegraphs = [];
     this.events = [];
     this.commands = [];
@@ -683,6 +687,44 @@ export class World {
     if (!live) e.burnAcc = 0;
   }
 
+  /**
+   * Hoarfrost (Frostbinder): stacks that last 5 seconds (each new one renews them). At frostMax the
+   * enemy Shatters: heavy damage, a freeze (bosses turn Brittle instead), and shards that give
+   * Hoarfrost to enemies nearby, which can set off a chain through a pack.
+   */
+  addFrost(e, n, depth = 0) {
+    const m = this.mods;
+    if (!(m.frostMax > 0) || e.dead || e.state === 'spawn' || e.frostLock > 0) return;
+    e.frostStacks = (e.frostT > 0 ? e.frostStacks : 0) + n;
+    e.frostT = 5;
+    if (e.frostStacks >= m.frostMax) this.shatterFrost(e, depth);
+  }
+
+  shatterFrost(e, depth = 0) {
+    const m = this.mods;
+    const p = this.player;
+    e.frostStacks = 0;
+    e.frostT = 0;
+    e.frostLock = 1.5; // a moment before it can build Hoarfrost again, so nothing stays frozen forever
+    const dmg = (1.4 * p.stats.ad + 35 + 9 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1);
+    const reach = m.frostReach || 3;
+    this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
+    this.hitEnemy(e, dmg, { source: 'shatter' });
+    if (!e.dead) {
+      if (e.def.boss) {
+        e.vulnT = Math.max(e.vulnT, 4);
+        e.vuln = Math.max(e.vuln || 0, m.brittle || 0.15);
+        e.brittle = true;
+      } else this.stun(e, (e.def.heavy ? 0.4 : 1) * (m.frostFreeze || 1));
+    }
+    if (depth >= 3) return; // a chain stops after a few jumps
+    for (const o of this.enemies) {
+      if (o === e || o.dead || o.state === 'spawn') continue;
+      if (dist(o.x, o.z, e.x, e.z) > reach + o.radius) continue;
+      this.addFrost(o, 2, depth + 1);
+    }
+  }
+
   /** Starwake: homing motes from where the Mage lands, one per enemy while there are enough. */
   fireMotes(ds) {
     const p = this.player;
@@ -722,6 +764,8 @@ export class World {
           e.slow = 0.5;
           if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
           this.hitEnemy(e, wl.dmg, { source: 'r' });
+          if (e.dead) continue;
+          if (m.frostMax > 0) this.addFrost(e, 3);
           if (e.dead) continue;
           if (e.def.boss) this.addPosture(e, 1, false);
           else this.stun(e, wl.stun);
@@ -808,7 +852,9 @@ export class World {
         }
         if (this.mods.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, this.mods.chillWeak);
         this.hitEnemy(e, pr.dmg * pr.shard, { source: 'w' });
+        if (this.mods.orbFrost > 0 && pr.ticks % 2 === 0 && !e.dead) this.addFrost(e, this.mods.orbFrost);
       }
+      pr.ticks = (pr.ticks || 0) + 1;
       this.emit('orbTick', { x: pr.x, z: pr.z, radius: pr.aura });
     }
     if (pr.left <= 0) this.shatterOrb(pr);
@@ -825,6 +871,7 @@ export class World {
       e.slow = pr.slow;
       if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
       this.hitEnemy(e, pr.dmg, { source: 'w' });
+      if (m.orbFrost > 0 && !e.dead) this.addFrost(e, 2);
       if (e.dead || e.def.heavy) continue;
       if (m.wStun > 0) this.stun(e, m.wStun);
       else if (e.state === 'windup' || e.state === 'chase') {
@@ -1135,7 +1182,7 @@ export class World {
             vx: dCos(ba) * def.speed, vz: dSin(ba) * def.speed, speed: def.speed,
             radius: 0.5, dmg: dmg * (bolts > 1 ? 0.65 : 1),
             splash: (def.splash || 0) * (m[slot + 'Radius'] || 1), splashMult: slot === 'q' && m.qSplashFull ? 1 : def.splashMult || 0,
-            bleed: m[slot + 'Bleed'] || 0,
+            bleed: m[slot + 'Bleed'] || 0, ice: !!def.ice,
             parryable: false, reflected: false, life: range / def.speed, dead: false,
           });
         }
@@ -1150,7 +1197,7 @@ export class World {
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
           if (dist(e.x, e.z, c.x, c.z) > radius + e.radius) continue;
-          this.addBurn(e, 2);
+          this.addBurn(e, m.smoulderStacks || 2);
           e.smoulderT = 5;
           e.smoulderAmp = m.smoulderAmp || 0.5;
           this.hitEnemy(e, dmg, { source: slot });
@@ -2047,6 +2094,93 @@ export class World {
     this.emit('respec');
   }
 
+  // =========================================================================
+  // Treasure chests (0.23): a few lie around every map out in the world. Most hold
+  // a little gold and gear, some are gilded, and a rare radiant one can hold an Immortal.
+  // An opened chest comes back somewhere else on the map a few minutes later.
+  // =========================================================================
+  placeChests() {
+    const kept = this.chestMaps[this.map.id];
+    if (kept) {
+      this.chests = kept.chests;
+      this.chestRefill = kept.refill;
+      return;
+    }
+    this.chests = [];
+    this.chestRefill = [];
+    if (this.mode !== 'explore' || this.map.safe || this.trial || !this.map.portals || !this.map.portals.length) return;
+    const rng = this.streamRng('chest', this.chestCount);
+    const n = CONFIG.CHESTS_PER_MAP + (rng() < 0.5 ? 1 : 0);
+    for (let i = 0; i < n; i++) this.addChest();
+  }
+
+  addChest() {
+    const rng = this.streamRng('chest', ++this.chestCount); // its own dice: chests never change any other roll
+    const map = this.map;
+    for (let tries = 0; tries < 80; tries++) {
+      const a = rng() * TAU;
+      const r = 6 + Math.sqrt(rng()) * (this.radius - 10);
+      const x = dCos(a) * r, z = dSin(a) * r;
+      const probe = { x, z };
+      if (this.pushOut(probe, 1.1)) continue; // inside or touching a tree, rock or house
+      if (map.portals.some((g) => dist(g.x, g.z, x, z) < 8)) continue;
+      if (this.chests.some((c) => dist(c.x, c.z, x, z) < 12)) continue;
+      if (this.heroes.some((h) => dist(h.player.x, h.player.z, x, z) < 8)) continue; // never appear right under you
+      const roll = rng();
+      const tier = roll < CONFIG.CHEST_RADIANT ? 'radiant' : roll < CONFIG.CHEST_RADIANT + CONFIG.CHEST_GILDED ? 'gilded' : 'wooden';
+      // Deeper into the map (further from the entrance) means stronger gear, like the enemies there.
+      const depth = Math.min(1, dist(x, z, map.portals[0].x, map.portals[0].z) / (2 * this.radius - 12));
+      const level = Math.max(1, (map.level || 1) + Math.round((map.levelSpan || 0) * depth));
+      const chest = { id: this.nextId++, x, z, tier, level, seed: Math.floor(rng() * 1e9) };
+      this.chests.push(chest);
+      return chest;
+    }
+    return null;
+  }
+
+  stepChests() {
+    if (!this.chests.length && !this.chestRefill.length) return;
+    let opened = false;
+    for (const c of this.chests) {
+      const h = this.heroes.find((x) => !x.player.dead && dist(x.player.x, x.player.z, c.x, c.z) < 1.7);
+      if (!h) continue;
+      const was = this.cur;
+      this.use(h);
+      this.openChest(c);
+      this.use(was);
+      opened = true;
+    }
+    if (opened) {
+      for (const c of this.chests) if (c.opened) this.chestRefill.push(this.ticks + Math.round(CONFIG.CHEST_RESPAWN / CONFIG.TICK));
+      this.chests = this.chests.filter((c) => !c.opened);
+    }
+    if (this.chestRefill.length && this.chestRefill[0] <= this.ticks) {
+      this.chestRefill.shift();
+      this.addChest();
+    }
+  }
+
+  openChest(c) {
+    c.opened = true;
+    const p = this.player;
+    const rng = makeRng(c.seed);
+    const T = CHEST_TIERS[c.tier];
+    const gold = Math.round((12 + c.level * 3) * T.gold);
+    p.gold += gold;
+    if (T.tickets) p.tickets += T.tickets;
+    if (T.potions) p.potions = CONFIG.MAX_POTIONS;
+    const items = T.items.map((o) => rollItem(rng, c.level, o.weights ? { weights: o.weights, cls: this.cls } : { minRarity: o.min, cls: this.cls }));
+    items.forEach((item, i) => {
+      const a = (i / items.length) * TAU + 0.6;
+      const at = this.clampToArena(c.x + dCos(a) * 1.1, c.z + dSin(a) * 1.1, 1);
+      const drop = { id: this.nextId++, x: at.x, z: at.z, item, age: 0, magnet: false, owner: this.cur.pid }; // in a party, the opener's
+      this.loot.push(drop);
+      this.emit('lootDrop', { id: drop.id, x: at.x, z: at.z, rarity: item.rarity });
+    });
+    const best = items.reduce((m, it) => Math.max(m, it.rarity), 0);
+    this.emit('chestOpen', { id: c.id, x: c.x, z: c.z, tier: c.tier, gold, tickets: T.tickets || 0, best });
+  }
+
   stepLoot(dt) {
     const p = this.player;
     if (p.dead) return;
@@ -2220,6 +2354,13 @@ export class World {
       const a = AUGMENTS[id];
       if (this.augments.includes(id) || exclude.includes(id)) return false;
       if (a.cls && a.cls !== this.cls) return false; // another class's augment
+      if (a.spec && a.spec !== this.player.spec) return false; // another subclass's augment
+      if (a.notSpec && a.notSpec.includes(this.player.spec)) return false;
+      // An augment for an ability the subclass has swapped for a different one (Frozen Orb for a Pyromancer).
+      if (a.cls && !a.spec && 'qwer'.includes(a.slot) && a.slot.length === 1) {
+        const base = CLASSES[a.cls].abilities[a.slot];
+        if (this.kit[a.slot] !== base && this.kit[a.slot].type !== base.type) return false;
+      }
       return a.slot === 'parry' || a.slot === 'hero' || id === 'r_early' || this.abilityUnlocked(a.slot);
     });
     const t1 = pool.filter((id) => AUGMENTS[id].tier === 1);
@@ -2323,6 +2464,9 @@ export class World {
       bleedT: 0,
       bleedDps: 0,
       bleedAcc: 0,
+      frostStacks: 0, // Hoarfrost (Frostbinder)
+      frostT: 0,
+      frostLock: 0,
       slowT: 0, // Hamstring: moves `slow` slower while > 0
       slow: 0,
       state: 'spawn',
@@ -2707,6 +2851,12 @@ export class World {
         if (e.burnT <= 0) e.burnStacks = 0;
       }
       if (e.smoulderT > 0) e.smoulderT -= dt;
+      if (e.frostT > 0) {
+        e.frostT -= dt;
+        if (e.frostT <= 0) e.frostStacks = 0;
+      }
+      if (e.frostLock > 0) e.frostLock -= dt;
+      if (e.brittle && !(e.vulnT > 0)) e.brittle = false;
       if (e.bleedT > 0) {
         e.bleedT -= dt;
         e.bleedAcc += dt;
@@ -2938,6 +3088,7 @@ export class World {
           pr.z += pr.vz * d;
           pr.owner = 'player';
           pr.reflected = true;
+          pr.walled = true;
           pr.pid = h.pid;
           pr.life = 3;
           pr.dmg = pr.dmg * 2.5 + h.player.stats.ad;
@@ -2972,22 +3123,31 @@ export class World {
               if (pr.bleed > 0) {
                 e.bleedT = 3;
                 e.bleedDps = (p.stats.ad * pr.bleed) / 3;
+                e.bleedFire = this.cls === 'mage'; // a mage's Ignite burns rather than bleeds
               }
               if (pr.slot === 'q' && this.mods.qBurn > 0 && !e.dead) this.addBurn(e, this.mods.qBurn); // Everything Burns
               if (pr.basic && this.mods.basicBurn > 0 && !e.dead) this.addBurn(e, this.mods.basicBurn);
               this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
+              const m = this.mods;
+              if (m.frostMax > 0 && !e.dead) {
+                // Hoarfrost (Frostbinder)
+                const n = pr.basic ? m.basicFrost : pr.kind === 'mote' ? m.moteFrost : pr.slot === 'q' && pr.ice ? m.qFrost : 0;
+                if (n > 0) this.addFrost(e, n);
+              }
               if (pr.splash) {
                 for (const o of this.enemies) {
                   if (o === e || o.dead || o.state === 'spawn') continue;
                   if (dist(o.x, o.z, pr.x, pr.z) > pr.splash + o.radius) continue;
                   if (pr.slot === 'q' && this.mods.qBurn > 0) this.addBurn(o, 1);
                   this.hitEnemy(o, pr.dmg * pr.splashMult, { source: pr.slot });
+                  if (pr.ice && m.frostMax > 0 && !o.dead) this.addFrost(o, m.qSplashFrost || 1);
                 }
-                this.emit('burst', { x: pr.x, z: pr.z, radius: pr.splash });
+                this.emit('burst', { x: pr.x, z: pr.z, radius: pr.splash, ice: !!pr.ice });
               }
             } else {
-              // An enemy projectile you parried back.
+              // An enemy projectile you parried back (or a Rimewall threw back).
               this.hitEnemy(e, pr.dmg, { canCrit: false });
+              if (pr.walled && this.mods.frostMax > 0 && !e.dead) this.addFrost(e, this.mods.frostMax);
               if (!e.dead) {
                 if (e.def.boss) this.addPosture(e, 1, false);
                 else this.stun(e, 1.2);
@@ -3072,6 +3232,7 @@ inTown() {
    * arrive at the portal that leads back to it (or in the middle if there is none).
    */
   loadMap(id, from = null) {
+    if (this.map && this.mode === 'explore' && !this.trial) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     const map = (this.map = buildMap(id));
     const actor = this.cur;
     const p = this.player;
@@ -3131,6 +3292,7 @@ inTown() {
     // Every spawn point is a "camp" of one enemy that comes back after a while.
     this.camps = map.spawns.map((def) => ({ def, slots: [{ type: def.type, id: null, timer: 0, respawn: def.respawn || CONFIG.RESPAWN_TIME }] }));
     for (const camp of this.camps) for (const slot of camp.slots) slot.id = this.spawnEnemy(slot.type, camp.def).id;
+    this.placeChests();
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
       this.use(h);
@@ -3407,7 +3569,10 @@ inTown() {
       this.stepProjectiles(dt, edt);
       this.enemies = this.enemies.filter((e) => !e.dead);
       this.stepLoot(dt);
-      if (this.mode === 'explore') this.stepExplore(dt);
+      if (this.mode === 'explore') {
+        this.stepChests();
+        this.stepExplore(dt);
+      }
       else this.stepWave(dt);
       return;
     }
@@ -3434,7 +3599,10 @@ inTown() {
     this.use(lead);
     this.enemies = this.enemies.filter((e) => !e.dead);
     each(() => this.stepLoot(dt));
-    if (this.mode === 'explore') this.stepPartyExplore(dt);
+    if (this.mode === 'explore') {
+      this.stepChests();
+      this.stepPartyExplore(dt);
+    }
     this.use(lead);
   }
 

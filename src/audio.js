@@ -167,6 +167,12 @@ export class Sfx {
     this.noise(0.18, { vol: 0.22, freq: 1200, type: 'bandpass', slide: 3200, q: 1.5 });
     this.tone(1320, 0.25, { type: 'sine', vol: 0.14, delay: 0.04 });
   }
+  shatter() {
+    // Breaking ice: a bright crack and a glassy chime.
+    this.noise(0.12, { vol: 0.22, freq: 4200, type: 'highpass' });
+    this.tone(1760, 0.18, { type: 'triangle', vol: 0.09, slide: -400 });
+    this.tone(2640, 0.12, { type: 'sine', vol: 0.05, delay: 0.03 });
+  }
   lightning() {
     this.noise(0.3, { vol: 0.5, freq: 6000, slide: -5200 });
     this.tone(110, 0.3, { type: 'sawtooth', vol: 0.2, slide: -60 });

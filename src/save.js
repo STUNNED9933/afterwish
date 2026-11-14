@@ -62,6 +62,7 @@ export function storeSave(save, cls) {
   return write(keyFor(SAVE_KEY, cls), save);
 }
 export function clearSave(cls) {
+  backupNow('before a character was deleted');
   try {
     localStorage.removeItem(keyFor(SAVE_KEY, cls));
   } catch (err) {
@@ -93,12 +94,15 @@ export function storeAccount(account) {
 const PREFIX = 'stunned-';
 const TAG = 'stunned-games-save';
 
+// Keys that belong to this browser only and never travel in an export.
+const LOCAL_ONLY = new Set(['stunned-backups-v1', 'stunned-session-v1']);
+
 export function exportSaves() {
   const data = {};
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)) data[k] = localStorage.getItem(k);
+      if (k && k.startsWith(PREFIX) && !LOCAL_ONLY.has(k)) data[k] = localStorage.getItem(k);
     }
   } catch (err) {
     /* storage unavailable: export what we have (nothing) */
@@ -130,14 +134,15 @@ export function parseSaves(text) {
   return obj;
 }
 
-/** Replace this browser's saves with the bundle's. */
+/** Replace this browser's saves with the bundle's (a backup of what was here is kept first). */
 export function importSaves(obj) {
+  backupNow('before an import');
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)) localStorage.removeItem(k);
+      if (k && k.startsWith(PREFIX) && !LOCAL_ONLY.has(k)) localStorage.removeItem(k);
     }
-    for (const k in obj.data) if (k.startsWith(PREFIX) && typeof obj.data[k] === 'string') localStorage.setItem(k, obj.data[k]);
+    for (const k in obj.data) if (k.startsWith(PREFIX) && !LOCAL_ONLY.has(k) && typeof obj.data[k] === 'string') localStorage.setItem(k, obj.data[k]);
     return true;
   } catch (err) {
     return false;
@@ -158,4 +163,108 @@ export function describeSaves(obj) {
     }
   }
   return heroes.length ? heroes.join(', ') : 'settings only, no characters';
+}
+
+// --- Automatic backups -------------------------------------------------------
+// Copies of every save, kept in this browser: when the game starts, every so often
+// while playing, and before anything that deletes or replaces a save. Besides the
+// most recent few, the backup with the most progress ever is always kept, so a
+// lost or overwritten character can be brought back from the title screen.
+const BACKUP_KEY = 'stunned-backups-v1';
+const RECENT = 4;
+
+/** Total character levels in a bundle's data: a simple measure of progress. */
+export function progressOf(data) {
+  let n = 0;
+  for (const k in data) {
+    if (!k.startsWith('stunned-arena-save-v1')) continue;
+    try {
+      n += JSON.parse(data[k]).level || 0;
+    } catch (err) {
+      /* skip a broken entry */
+    }
+  }
+  return n;
+}
+
+/** { recent: [backup], best: backup|null }; a backup is { t, why, data, progress }. */
+export function loadBackups() {
+  const b = read(BACKUP_KEY);
+  return { recent: Array.isArray(b?.recent) ? b.recent : [], best: b?.best && b.best.data ? b.best : null };
+}
+
+function storeBackups(b) {
+  // If storage is full, drop the oldest recent copies until it fits (the best one stays).
+  while (!write(BACKUP_KEY, b)) {
+    if (!b.recent.length) return false;
+    b.recent.pop();
+  }
+  return true;
+}
+
+/** Back up the current saves. Returns true if a new copy was kept. */
+export function backupNow(why, now = Date.now()) {
+  const data = exportSaves().data;
+  const progress = progressOf(data);
+  if (!progress) return false; // nothing worth keeping yet
+  const b = loadBackups();
+  const same = (x) => x && JSON.stringify(x.data) === JSON.stringify(data);
+  let changed = false;
+  if (!same(b.recent[0])) {
+    b.recent.unshift({ t: now, why, data, progress });
+    b.recent = b.recent.slice(0, RECENT);
+    changed = true;
+  }
+  if (!b.best || progress >= b.best.progress) {
+    if (!same(b.best)) {
+      b.best = { t: now, why, data, progress };
+      changed = true;
+    }
+  }
+  return changed ? storeBackups(b) : false;
+}
+
+/** Put a backup back (keeping a backup of what is here now, so this can be undone too). */
+export function restoreBackup(backup) {
+  if (!backup || !backup.data) return false;
+  return importSaves({ data: backup.data });
+}
+
+/** A newer-looking backup with clearly more progress than now, if there is one (for a hint on the title screen). */
+export function missingProgress() {
+  const now = progressOf(exportSaves().data);
+  const b = loadBackups();
+  return b.best && b.best.progress >= now + 3 ? b.best : null;
+}
+
+// --- One tab at a time -------------------------------------------------------
+// Every time the game starts it writes a fresh id here. A tab that sees another id
+// appear knows a newer tab has opened, and stops saving so it cannot overwrite it.
+const SESSION_KEY = 'stunned-session-v1';
+export function claimSession() {
+  const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try {
+    localStorage.setItem(SESSION_KEY, id);
+  } catch (err) {
+    /* storage unavailable */
+  }
+  return id;
+}
+export function onSessionTaken(callback) {
+  window.addEventListener('storage', (e) => {
+    if (e.key === SESSION_KEY && e.newValue) callback();
+  });
+}
+
+/** Ask the browser to keep this site's storage even when the disk fills up. */
+export function askPersistentStorage() {
+  try {
+    // Firefox asks the player with a pop-up; Chrome, Edge and Safari decide quietly.
+    if (!navigator.storage || !navigator.storage.persist || /firefox/i.test(navigator.userAgent)) return;
+    navigator.storage.persisted().then((yes) => {
+      if (!yes) navigator.storage.persist();
+    });
+  } catch (err) {
+    /* not supported */
+  }
 }

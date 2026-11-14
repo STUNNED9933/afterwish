@@ -176,6 +176,8 @@ body.slowmo #slowtint { opacity: 1; }
 .bar.hp .fill { background: linear-gradient(#6fdc9c, #3aa66c); }
 .bar.hp .hp-half { display: none; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: linear-gradient(rgba(255, 255, 255, 0.8) 0 4px, transparent 4px calc(100% - 4px), rgba(255, 255, 255, 0.8) calc(100% - 4px)); }
 .bar.hp.berserk .hp-half { display: block; }
+/* Arcane Ward (Mage): a pale blue layer over the health it guards */
+.bar.hp .ward { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(rgba(170, 220, 255, 0.85), rgba(110, 170, 255, 0.75)); box-shadow: inset 0 0 0 1px rgba(220, 240, 255, 0.9); transition: transform 0.12s linear; pointer-events: none; }
 .bar.hp.bloodied { border-color: #ff4a55; box-shadow: 0 0 10px rgba(255, 60, 70, 0.7); animation: bloodpulse 0.9s ease-in-out infinite alternate; }
 .bar.hp.bloodied .fill { background: linear-gradient(#ff6a6a, #b5172b); }
 @keyframes bloodpulse { to { box-shadow: 0 0 18px rgba(255, 60, 70, 0.95); } }
@@ -467,6 +469,8 @@ button:disabled:hover { border-color: var(--line); }
 .plabel.npc { border-color: #ffd27a; color: #fff3d6; }
 .plabel.sign { border-color: #8a8f9c; color: #d8dce6; font-size: 12px; padding: 1px 7px; }
 .plabel .mark { display: inline-block; vertical-align: -2px; margin-right: 6px; color: #ffd27a; font: 800 18px var(--body); text-shadow: 0 0 6px rgba(255, 210, 122, 0.7); }
+/* Reckoning (Bulwark): stacks waiting for the next Whirlwind */
+#abilities [data-stacks]::after { content: attr(data-stacks); position: absolute; right: 3px; top: 2px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #ffd27a; color: #1a1408; font: 700 11px var(--body); text-align: center; }
 #abilities .empowered { box-shadow: 0 0 0 2px #ffd27a, 0 0 12px rgba(255, 210, 122, 0.75); }
 #abilities .recast { box-shadow: 0 0 0 2px #b98cff, 0 0 14px rgba(185, 140, 255, 0.8); }
 .keep-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--muted); }

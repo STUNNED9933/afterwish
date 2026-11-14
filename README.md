@@ -150,6 +150,43 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### High stakes: Doom, warriors and mages, rewards for the fight in front of you (0.28)
+
+- **Doom.** A violet circle under your feet that takes a share of your *max*
+  health: no armor, parry or block reduces it (not even Iron Answer). Walk out
+  or dash through. From tier II every boss casts one now and then (25% / 35% /
+  45% / 60% on tiers II to V; The Unmade casts two, the second wherever you
+  went). On every tier, a boss Dooms anyone who stands near it for 4 seconds
+  without any input, and each one in a row takes 15% more until you touch the
+  keys. Rift guardians: 20% plus 2% a rift tier, up to 60%.
+- **Away from the keys:** out in the world, after 30 seconds with no input,
+  kills give no EXP, gold or loot until you act again.
+- **Outgrown bosses** pay 10% less for every level you are above them, down to
+  10% (EXP, gold, gear; keys and shards only some of the time). First kills
+  always pay in full.
+- **Streak:** every tier boss (tier II and up) beaten without being knocked out
+  in between adds 10% loot on that tier, up to +50%. Being knocked out ends it.
+- **Bosses fight over more ground** now that Doom keeps you moving: patience
+  starts draining 22 m from home (was 12) over 8 seconds, hard leash 45 m.
+- **Warrior: Momentum.** Cleave and Whirlwind deal 6% more for every enemy hit
+  after the first, up to 48% more.
+  - **Berserker:** Whirlwind is a 2-second spin you can run with: four beats of
+    45% (180% in all), the first interrupts.
+  - **Bulwark: Reckoning.** Every parry or block, and every 10% of your health
+    lost, is a stack (up to 5); the next Whirlwind deals 25% more per stack.
+- **Mage: Arcane Ward.** A barrier worth 15% of your health soaks damage first
+  and comes back 5 seconds after you were last hurt.
+  - **Pyromancer:** a dying enemy's burn always jumps to the nearest enemy;
+    Wildfire adds more.
+  - **Frostbinder:** Shatter's shards reach half a metre further per Ice Bolt
+    rank (5 m at rank 5).
+- Checked in simulation (level 100, Immortal gear, The Unmade, no input at
+  all): before, every subclass won on tiers I to III and warriors and archers
+  on tier V; now every subclass is knocked out on tiers II to V (only a tier I
+  Sharpshooter or Windrunner still wins, killing it in 20 seconds). A bot that
+  plays (parries half the time, walks out of Doom) beats it with every
+  subclass on tiers III and V, and is almost never hit by Doom.
+
 ### Rogue subclasses get their own Q, W and E (0.27)
 
 - **Shadowdancer** (the boss killer, never standing still):

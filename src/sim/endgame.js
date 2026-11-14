@@ -12,13 +12,35 @@ import { expToNext } from './defs.js';
  */
 export const TIERS = [
   null,
-  { n: 1, numeral: 'I', name: 'The Road', hp: 1, dmg: 1, exp: 1, loot: 1, elite: 0.03, affixes: 1, minRarity: 0 },
-  { n: 2, numeral: 'II', name: 'The Unwished', hp: 2.2, dmg: 1.5, exp: 1.6, loot: 1.5, elite: 0.1, affixes: 1, minRarity: 1 },
-  { n: 3, numeral: 'III', name: 'Hollow Stars', hp: 3.6, dmg: 1.9, exp: 2.4, loot: 2, elite: 0.14, affixes: 2, minRarity: 2 },
-  { n: 4, numeral: 'IV', name: 'The Unmaking', hp: 6, dmg: 2.5, exp: 3.4, loot: 2.6, elite: 0.18, affixes: 2, minRarity: 3 },
-  { n: 5, numeral: 'V', name: 'Afterwish', hp: 9.5, dmg: 3.2, exp: 4.6, loot: 3.2, elite: 0.22, affixes: 3, minRarity: 3 },
+  // doom: how much of your max health a boss's Doom takes (0.28); none on tier I, except on someone idle
+  { n: 1, numeral: 'I', name: 'The Road', hp: 1, dmg: 1, exp: 1, loot: 1, elite: 0.03, affixes: 1, minRarity: 0, doom: 0 },
+  { n: 2, numeral: 'II', name: 'The Unwished', hp: 2.2, dmg: 1.5, exp: 1.6, loot: 1.5, elite: 0.1, affixes: 1, minRarity: 1, doom: 0.25 },
+  { n: 3, numeral: 'III', name: 'Hollow Stars', hp: 3.6, dmg: 1.9, exp: 2.4, loot: 2, elite: 0.14, affixes: 2, minRarity: 2, doom: 0.35 },
+  { n: 4, numeral: 'IV', name: 'The Unmaking', hp: 6, dmg: 2.5, exp: 3.4, loot: 2.6, elite: 0.18, affixes: 2, minRarity: 3, doom: 0.45 },
+  { n: 5, numeral: 'V', name: 'Afterwish', hp: 9.5, dmg: 3.2, exp: 4.6, loot: 3.2, elite: 0.22, affixes: 3, minRarity: 3, doom: 0.6 },
 ];
 export const MAX_TIER = TIERS.length - 1;
+
+/**
+ * Doom (0.28): a violet circle under a hero's feet that takes a share of max health, which
+ * no armor, parry or block reduces; only walking out or dashing through avoids it. Every boss
+ * out in the world casts one now and then from tier II (The Unmade casts two in a row), and
+ * any boss casts one on a hero who has stood idle near it for a few seconds, on every tier.
+ */
+export const DOOM = {
+  radius: 3, // m
+  warn: 1.6, // seconds from the circle appearing to the hit
+  first: 8, // seconds into a fight before the first one
+  every: 14, // seconds between them (The Unmade: 11)
+  finalEvery: 11,
+  second: 0.9, // The Unmade's second circle, at wherever you went
+  idle: 4, // seconds without any input near a boss before it Dooms you
+  idleAgain: 2.5, // ...and again while you stay idle
+  idlePct: 0.15, // the least an idle Doom takes, even on tier I
+  idleStep: 0.15, // ...and each idle Doom in a row takes this much more
+  range: 26, // a boss only Dooms heroes this close
+  rift: (tier) => Math.min(0.6, 0.2 + 0.02 * tier), // rift guardians
+};
 /** Elites only start showing up on tier I from this map level (the first maps stay gentle). */
 export const ELITE_FROM_LEVEL = 20;
 

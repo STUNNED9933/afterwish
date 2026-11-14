@@ -43,7 +43,7 @@
   <div id="hero-box">
     <div id="level-badge" title="Level">1</div>
     <div id="bars">
-      <div class="bar hp" id="hp-bar"><div id="hp-fill" class="fill"></div><i class="hp-half" title="Below this line a Berserker is Bloodied"></i><span id="hp-text" class="bar-text"></span></div>
+      <div class="bar hp" id="hp-bar"><div id="hp-fill" class="fill"></div><div id="ward-fill" class="ward" title="Arcane Ward"></div><i class="hp-half" title="Below this line a Berserker is Bloodied"></i><span id="hp-text" class="bar-text"></span></div>
       <div class="bar xp"><div id="xp-fill" class="fill"></div><span id="xp-text" class="bar-text"></span></div>
     </div>
   </div>
@@ -52,7 +52,7 @@
     <div id="abilities"></div>
   </div>
   <div id="hud-buttons">
-    <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b> · <span title="Combat Power: how strong your hero is, from level, gear, talents and subclass. It balances how hard you hit (Might) with how much you can take (Resolve).">Power <b id="hud-cp">0</b></span><span id="cp-pop" class="hidden"></span></div>
+    <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b> · <span id="hud-streak" class="hidden" title="Tier bosses beaten in a row without being knocked out: more loot on tier II and up. Being knocked out ends it.">Streak <b id="hud-streak-n">0</b> · </span><span title="Combat Power: how strong your hero is, from level, gear, talents and subclass. It balances how hard you hit (Might) with how much you can take (Resolve).">Power <b id="hud-cp">0</b></span><span id="cp-pop" class="hidden"></span></div>
     <button type="button" id="btn-talents" class="hud-btn">Talents <kbd>T</kbd><span id="talent-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-journal" class="hud-btn">Journal <kbd>J</kbd></button>
     <button type="button" id="btn-gear" class="hud-btn">Gear <kbd>Tab</kbd><span id="gear-badge" class="badge hidden"></span></button>
@@ -203,7 +203,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.27</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.28</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>

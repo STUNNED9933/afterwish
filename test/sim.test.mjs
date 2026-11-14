@@ -2035,6 +2035,165 @@ import { makeRng } from '../src/sim/rng.js';
     check('Clean Kill: only the Assassin has it', c.dead && p2.cd.w > 4);
   }
 }
+// --- 0.28: warrior and mage, Doom, rewards for the fight in front of you ----------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { DOOM, TIERS } = await import('../src/sim/endgame.js');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (cls, spec, extra = {}) => {
+    const w = new World({ seed: 12, cls, save: Object.assign(geared(cls, 60, 2), { spec, talents: {} }, extra) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0) => { const e = w.spawnEnemy('grunt', { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; e.facing = Math.PI; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+  const noCrit = (w) => { w.player.stats.crit = -1000; };
+  // Momentum
+  {
+    const { w } = setup('warrior', 'bulwark'); noCrit(w);
+    const one = dummy(w, 2, 0);
+    cast(w, 'q', 3, 0);
+    const solo = 1e9 - one.hp;
+    const { w: w2 } = setup('warrior', 'bulwark'); noCrit(w2);
+    const many = [0, 0.3, -0.3, 0.6, -0.6].map((a) => dummy(w2, 2.5 * Math.cos(a), 2.5 * Math.sin(a)));
+    cast(w2, 'q', 3, 0);
+    const each = 1e9 - many[0].hp;
+    check('Momentum: a Cleave through five enemies hits each 24% harder than one alone', Math.abs(each / solo - 1.24) < 0.02, (each / solo).toFixed(3));
+  }
+  // Berserker: a spin you can run with
+  {
+    const { w, p } = setup('warrior', 'berserker'); noCrit(w);
+    const e = dummy(w, 2, 0);
+    cast(w, 'w', 0, 0);
+    w.command({ type: 'move', x: 6, z: 0 }); w.runCommands();
+    let beats = 0;
+    for (let i = 0; i < 150; i++) { w.step(CONFIG.TICK); beats += w.events.filter((ev) => ev.type === 'spinTick').length; w.events.length = 0; }
+    check('Berserker: Whirlwind is a 2-second spin of four beats', beats === 4 && !p.spin);
+    check('Berserker: ...and you keep moving while it spins', p.x > 3);
+  }
+  // Bulwark: Reckoning
+  {
+    const { w, p } = setup('warrior', 'bulwark'); noCrit(w);
+    const e = dummy(w, 2, 0);
+    p.parryT = 0.3; p.parryAge = 0;
+    w.hitPlayer(10, { parryable: true, src: e });
+    w.hitPlayer(10, { parryable: false, src: e }); // a red one, blocked by Iron Answer
+    check('Reckoning: every parry and block is a stack', p.reck === 2, p.reck);
+    p.parryT = 0;
+    const before = p.reck;
+    w.takeDamage(Math.ceil(p.stats.maxHp * 0.21), null, false);
+    check('Reckoning: and so is every 10% of your health lost', p.reck === before + 2, p.reck);
+    p.hp = p.stats.maxHp;
+    const { w: w2 } = setup('warrior', 'bulwark'); noCrit(w2);
+    const plain = dummy(w2, 2, 0);
+    cast(w2, 'w', 0, 0);
+    const base = 1e9 - plain.hp;
+    p.parryT = 0; run(w, 0.3); e.hp = 1e9; e.x = e.px = 2; e.z = e.pz = 0; e.vulnT = 0; e.state = 'recover'; e.t = 999; // not Broken any more
+    cast(w, 'w', 0, 0);
+    check('Reckoning: the next Whirlwind deals 25% more per stack, and uses them up', Math.abs((1e9 - e.hp) / base - 2) < 0.05 && p.reck === 0, ((1e9 - e.hp) / base).toFixed(2));
+  }
+  // Mage: Arcane Ward
+  {
+    const { w, p } = setup('mage', 'pyromancer');
+    run(w, 1.2);
+    check('Arcane Ward: a barrier worth 15% of your health', Math.abs(p.ward - p.stats.maxHp * 0.15) < 1);
+    const hp = p.hp;
+    w.takeDamage(Math.round(p.stats.maxHp * 0.1), null, false);
+    check('Arcane Ward: takes damage before your health does', p.hp === hp && p.ward < p.stats.maxHp * 0.06);
+    run(w, 4);
+    check('Arcane Ward: stays down while you were hurt recently...', p.ward < p.stats.maxHp * 0.06);
+    run(w, 2.2);
+    check('Arcane Ward: ...and comes back 5 seconds after', Math.abs(p.ward - p.stats.maxHp * 0.15) < 1);
+    const { w: w2, p: p2 } = setup('warrior', 'bulwark'); run(w2, 2);
+    check('Arcane Ward: only mages have it', !p2.ward);
+  }
+  // Pyromancer and Frostbinder
+  {
+    const { w } = setup('mage', 'pyromancer');
+    check('Pyromancer: burns spread on death without Wildfire', w.mods.burnSpread === 1);
+    const { w: w2, p: p2 } = setup('mage', 'pyromancer', { talents: { py_burn: 2 } });
+    check('Pyromancer: Wildfire adds to it', w2.mods.burnSpread === 3, w2.mods.burnSpread);
+    const { w: w3, p: p3 } = setup('mage', 'frostbinder');
+    p3.ranks.q = 5;
+    const e = dummy(w3, 2, 0);
+    w3.shatterFrost(e);
+    const ev = w3.events.find((x) => x.type === 'frostShatter');
+    check('Frostbinder: Shatter reaches half a metre further per Ice Bolt rank', ev && Math.abs(ev.radius - 5) < 1e-9, ev && ev.radius);
+  }
+  // Doom
+  {
+    const mk = (tier, extra = {}) => {
+      const w = new World({ seed: 7, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 4), { spec: 'sharpshooter', tierMax: 5, worldTier: tier, bossKills: { boss: 1, boss2: 1, boss3: 1 } }, extra) });
+      const p = w.player;
+      w.loadMap('sanctum', 'spire');
+      const b = w.enemies.find((e) => e.def.boss);
+      w.enemies = [b];
+      p.x = p.px = b.x - 10; p.z = p.pz = b.z;
+      b.aggro = true; b.state = 'recover'; b.t = 999; // it stands there: only Doom matters here
+      return { w, p, b };
+    };
+    const t3 = mk(3);
+    let cast3 = null, t = 0;
+    for (; t < 600 && !cast3; t++) { t3.w.command({ type: 'stop' }); t3.w.runCommands(); t3.w.step(CONFIG.TICK); cast3 = t3.w.events.find((ev) => ev.type === 'doomCast'); t3.w.events.length = 0; }
+    check('Doom: on tier III a boss casts it about 8 seconds into the fight, under your feet', cast3 && Math.abs(t / 60 - DOOM.first) < 0.2 && Math.hypot(cast3.x - t3.p.x, cast3.z - t3.p.z) < 0.5 && Math.abs(cast3.pct - 0.35) < 1e-9, cast3 && `${(t / 60).toFixed(2)}s ${cast3.pct}`);
+    const hp0 = t3.p.hp;
+    t3.p.stats.armor = 1e6;
+    for (let i = 0; i < 110; i++) { t3.w.command({ type: 'stop' }); t3.w.runCommands(); t3.w.step(CONFIG.TICK); }
+    check('Doom: takes 35% of your max health on tier III, whatever your armor', Math.abs(hp0 - t3.p.hp - Math.round(t3.p.stats.maxHp * 0.35)) <= t3.p.stats.maxHp * 0.02, `${Math.round(hp0 - t3.p.hp)} of ${t3.p.stats.maxHp}`);
+    const t3b = mk(3);
+    t3b.p.parryT = 99; t3b.p.parryAge = 0;
+    t3b.w.castDoom(t3b.b, t3b.w.heroes[0], 0.35, false);
+    const hpb = t3b.p.hp;
+    for (let i = 0; i < 110; i++) { t3b.p.parryT = 99; t3b.w.step(CONFIG.TICK); }
+    check('Doom: cannot be parried', t3b.p.hp < hpb - t3b.p.stats.maxHp * 0.3);
+    const t3c = mk(3);
+    t3c.w.castDoom(t3c.b, t3c.w.heroes[0], 0.35, false);
+    t3c.w.command({ type: 'move', x: t3c.p.x - 8, z: t3c.p.z }); t3c.w.runCommands();
+    const hpc = t3c.p.hp;
+    for (let i = 0; i < 110; i++) t3c.w.step(CONFIG.TICK);
+    check('Doom: walking out of the circle avoids it', t3c.p.hp >= hpc);
+    const t1 = mk(1);
+    let first = null; t = 0;
+    for (; t < 900 && !first; t++) { t1.w.step(CONFIG.TICK); first = t1.w.events.find((ev) => ev.type === 'doomCast'); t1.w.events.length = 0; }
+    check('Doom: on tier I only someone idle near a boss gets one, after 4 seconds', first && first.idle && Math.abs(t / 60 - DOOM.idle) < 0.2, first && (t / 60).toFixed(2));
+    let pcts = [first.pct];
+    for (let i = 0; i < 400 && pcts.length < 3; i++) { t1.w.step(CONFIG.TICK); for (const ev of t1.w.events) if (ev.type === 'doomCast') pcts.push(ev.pct); t1.w.events.length = 0; t1.p.hp = t1.p.stats.maxHp; }
+    check('Doom: ...and each one in a row while you stay idle hits harder', pcts.length === 3 && pcts[1] > pcts[0] && pcts[2] > pcts[1], pcts.join(','));
+    t1.w.command({ type: 'move', x: t1.p.x, z: t1.p.z + 1 }); t1.w.runCommands();
+    check('Doom: any input resets it', t1.p.idleT === 0 && t1.p.idleDooms === 0);
+    check('Doom: tier numbers', TIERS[1].doom === 0 && TIERS[2].doom === 0.25 && TIERS[5].doom === 0.6);
+  }
+  // Rewards for the fight in front of you
+  {
+    const w = new World({ seed: 7, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 60, 2), { bossKills: { boss: 1 } }) });
+    const p = w.player;
+    w.loadMap('keep', 'town');
+    const b = w.enemies.find((e) => e.def.boss);
+    check('Outgrown bosses: 10% less per level you are above it, down to 10%', Math.abs(w.bossFalloff(b) - Math.max(0.1, 1 - 0.1 * (60 - b.level))) < 1e-9, `level ${b.level}: ${w.bossFalloff(b)}`);
+    p.bossKills = {};
+    check('Outgrown bosses: a first kill always pays in full', w.bossFalloff(b) === 1);
+    const exp0 = p.exp + p.level * 1e6;
+    p.bossKills = { boss: 1 };
+    p.idleT = 31;
+    const lvl = p.level, ex = p.exp, gold = p.gold;
+    w.killEnemy(b, 'basic');
+    check('Idle: after 30 seconds with no input, kills pay nothing', p.level === lvl && p.exp === ex && p.gold === gold);
+  }
+  {
+    const w = new World({ seed: 7, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 4), { tierMax: 3, worldTier: 2, bossKills: { boss: 1, boss2: 1, boss3: 1 } }) });
+    const p = w.player;
+    w.loadMap('keep', 'town');
+    const b = w.enemies.find((e) => e.def.boss);
+    w.killEnemy(b, 'basic');
+    check('Streak: a tier boss beaten adds to it', p.streak === 1);
+    p.streak = 4;
+    w.takeDamage(p.hp + 10, null, false);
+    check('Streak: being knocked out ends it', p.streak === 0 && p.dead);
+  }
+}
 // --- 0.26.1: lighter co-op updates --------------------------------------------------
 // The host sends what changed; the friend rebuilds the whole picture as updates arrive,
 // even when it skips some to catch up. Its world must match the host's at every step.

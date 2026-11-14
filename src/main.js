@@ -1907,7 +1907,8 @@ function start(hot = {}) {
       }
       case 'bossFall':
         hud.banner(`${ev.name} falls`, ev.first ? 'First victory: a guaranteed prize, and 2 skill points' : 'It will rise again in two minutes');
-        hud.feedText(`${ev.name}: ${ev.gold.toLocaleString()} gold, ${ev.keys} Warden key${ev.keys > 1 ? 's' : ''}, ${ev.items} pieces of gear`);
+        hud.feedText(`${ev.name}: ${ev.gold.toLocaleString()} gold, ${ev.keys} Warden key${ev.keys === 1 ? '' : 's'}, ${ev.items} piece${ev.items === 1 ? '' : 's'} of gear`);
+        if (ev.falloff < 100) hud.feedText(`You have outgrown ${ev.name}: it pays ${ev.falloff}% (10% less for every level you are above it).`);
         hud.screenFlash(0.6);
         persist();
         break;
@@ -1952,6 +1953,35 @@ function start(hot = {}) {
         break;
       case 'starImpact':
         sfx.impact();
+        break;
+      case 'doomCast': {
+        // Doom (0.28): violet means nothing you wear or do will soften it; only moving does.
+        const mine = (ev.hero ?? 0) === (net ? net.pid : 0);
+        sfx.denied();
+        if (!mine) break;
+        hud.float(renderer, ev.x, 3, ev.z, ev.idle ? 'Doom · you stood idle' : 'Doom', 'word warn');
+        if (ev.idle) hintOnce('doomIdle', `${ev.name || 'The boss'} noticed you standing idle. Bosses Doom anyone who stands near them without doing anything for a few seconds: move!`, 8);
+        else hintOnce('doom', `Violet circle: Doom. It takes ${Math.round(ev.pct * 100)}% of your health whatever your armor, and cannot be parried or blocked. Walk out, or dash through it.`, 9);
+        break;
+      }
+      case 'idleNoReward':
+        hud.banner('Away from the keys?', `After ${ev.secs} seconds without any input, kills give no EXP, gold or loot until you act again.`);
+        break;
+      case 'streak':
+        hud.feedText(`Streak ${ev.n}: +${ev.pct}% loot on this tier until you are knocked out.`);
+        break;
+      case 'streakLost':
+        hud.feedText(`Streak of ${ev.n} lost.`);
+        break;
+      case 'doomImpact':
+        sfx.slam();
+        break;
+      case 'wardBreak':
+        if ((ev.hero ?? 0) === (net ? net.pid : 0)) sfx.whiff();
+        break;
+      case 'reckoning':
+        sfx.slam();
+        hud.float(renderer, ev.x, 3.2, ev.z, `Reckoning ×${ev.stacks}`, 'word perfect');
         break;
       case 'bossLeap':
         sfx.slam();

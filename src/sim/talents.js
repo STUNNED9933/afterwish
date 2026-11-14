@@ -27,10 +27,15 @@ export const SPECS = {
     blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
     perk: {
       name: 'Blood Rage',
-      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Skyfall becomes Crimson Oath.',
+      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Whirlwind becomes a spin you can run with, and Skyfall becomes Crimson Oath.',
       apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
     },
     kit: {
+      w: {
+        key: 'W', name: 'Whirlwind', type: 'spin', icon: 'w', unlock: 2, cd: 9, radius: 4.2, duration: 2, tick: 0.5, tickMult: 0.45, interrupt: true,
+        dmg: (s, lvl) => 1.1 * s.ad + 15 + 5 * lvl,
+        desc: 'Spin for 2 seconds while you keep moving: every half second you hit everything around you for 45% (four hits, 180% in all). The first hit interrupts normal enemies. Plough through a pack.',
+      },
       r: {
         key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
         dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
@@ -51,8 +56,8 @@ export const SPECS = {
     blurb: 'The wall the party stands behind. Drags enemies into one place for the others to hit, makes them look only at you, and parries for the whole group.',
     perk: {
       name: "The Warden's Call",
-      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds. Iron Answer: your parry also blocks red attacks no one else can parry. A blocked red attack does no harm, and whoever threw it is Broken: stunned for 1.5 seconds (bosses take two posture hits) and 20% more damage taken for 4 seconds. Skyfall becomes Hold the Line.',
-      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); m.blockRed = true; },
+      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds. Iron Answer: your parry also blocks red attacks no one else can parry. A blocked red attack does no harm, and whoever threw it is Broken: stunned for 1.5 seconds (bosses take two posture hits) and 20% more damage taken for 4 seconds. Reckoning: every attack you parry or block, and every 10% of your health you lose, is a stack (up to 5); your next Whirlwind deals 25% more per stack. Skyfall becomes Hold the Line.',
+      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); m.blockRed = true; m.reckoning = true; },
     },
     kit: {
       r: {
@@ -193,8 +198,8 @@ export const SPECS = {
     blurb: 'Everything burns, and keeps burning. Stack fire on your enemies, make the burns bite harder, and leave the ground itself on fire.',
     perk: {
       name: 'Everything Burns',
-      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
-      apply: (m) => { m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
+      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. When a burning enemy dies, its burn jumps to the nearest enemy within 5 m, every stack of it. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
+      apply: (m) => { m.burnSpread = Math.max(m.burnSpread, 1); m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
     },
     kit: {
       w: {
@@ -214,7 +219,7 @@ export const SPECS = {
       { id: 'py_crit', row: 'minor', name: 'Slow Burn', max: 5, desc: (r) => `Burns last ${(0.3 * r).toFixed(1)} seconds longer and deal ${4 * r}% more.`, apply: (m, r) => { m.burnTime += 0.3 * r; m.burnMult *= 1 + 0.04 * r; } },
       { id: 'py_haste', row: 'minor', name: 'Quick Burn', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'py_ball', row: 'major', name: 'Fireball', max: 3, desc: (r) => `Fire Bolt deals ${8 * r}% more damage and bursts ${15 * r}% wider.`, apply: (m, r) => { m.qDmg *= 1 + 0.08 * r; m.qRadius *= 1 + 0.15 * r; } },
-      { id: 'py_burn', row: 'major', name: 'Wildfire', max: 3, desc: (r) => `When a burning enemy dies, its burn jumps to the ${r} nearest enem${r > 1 ? 'ies' : 'y'} within 5 m, every stack of it.`, apply: (m, r) => { m.burnSpread = Math.max(m.burnSpread, r); } },
+      { id: 'py_burn', row: 'major', name: 'Wildfire', max: 3, desc: (r) => `A dying enemy's burn jumps to ${r} more enem${r > 1 ? 'ies' : 'y'} (${r + 1} in all).`, apply: (m, r) => { m.burnSpread += r; } },
       { id: 'py_cap', row: 'capstone', name: 'Second Sun', max: 1, desc: () => 'One second after Cinderfall lands, the ground erupts again for 50% damage. Cinderfall is 15% wider, and Fire Bolt adds 2 burn stacks instead of 1.', apply: (m) => { m.rAftershock = Math.max(m.rAftershock, 0.5); m.rRadius *= 1.15; m.qBurn = Math.max(m.qBurn, 2); } },
     ],
   },
@@ -223,7 +228,7 @@ export const SPECS = {
     blurb: 'Pile Hoarfrost on everything, then watch it Shatter: frozen solid, cut open, and the shards spread the cold to whatever stands nearby. A wall of ice keeps the rest away.',
     perk: {
       name: 'Hoarfrost',
-      desc: "Ice Bolt, Frozen Orb, Starwake's motes and your basic attacks build Hoarfrost on enemies. At 6 stacks the enemy Shatters: it takes heavy damage that grows with Ice Bolt's rank, freezes solid for 1 second (heavy enemies 0.4 s; bosses turn Brittle instead and take 15% more damage for 4 s), and the shards give 2 Hoarfrost to enemies within 3 m. Frozen Orb comes back 20% sooner. Fire Bolt becomes Ice Bolt and Meteor becomes Rimewall.",
+      desc: "Ice Bolt, Frozen Orb, Starwake's motes and your basic attacks build Hoarfrost on enemies. At 6 stacks the enemy Shatters: it takes heavy damage that grows with Ice Bolt's rank, freezes solid for 1 second (heavy enemies 0.4 s; bosses turn Brittle instead and take 15% more damage for 4 s), and the shards give 2 Hoarfrost to enemies within 3 m (half a metre further for each rank of Ice Bolt past the first). Frozen Orb comes back 20% sooner. Fire Bolt becomes Ice Bolt and Meteor becomes Rimewall.",
       apply: (m) => { m.frostMax = 6; m.basicFrost = 1; m.qFrost = Math.max(m.qFrost, 2); m.orbFrost = 1; m.moteFrost = 1; m.wCd *= 0.8; },
     },
     kit: {

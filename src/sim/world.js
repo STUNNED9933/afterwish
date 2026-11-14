@@ -8,7 +8,10 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed } from './endgame.js';
+import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
+
+/** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
+const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'parry', 'potion', 'warp', 'travel']);
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
@@ -361,11 +364,17 @@ export class World {
       wishExp: save?.wishExp ?? 0,
       wishPts: save?.wishPts ?? 0,
       wishStats: Object.assign({}, save?.wishStats),
+      streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       chillT: 0, // Frostbound elites: slower while > 0
       swingCount: 0,
       empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
       empowerMult: 1,
       veilT: 0, // > 0 while Veiled (Shadowdancer's Veilstep)
+      spin: null, // a Berserker's moving Whirlwind
+      reck: 0, // Reckoning stacks (Bulwark)
+      reckAcc: 0,
+      ward: 0, // Arcane Ward (Mage): a barrier that soaks damage first
+      wardT: 0, // > 0: hurt recently, the ward waits
       slipT: 0,
       rushT: 0, // > 0 while Evasive Roll's attack speed bonus lasts
       rushAs: 0,
@@ -461,6 +470,7 @@ export class World {
       wishExp: p.wishExp,
       wishPts: p.wishPts,
       wishStats: p.wishStats,
+      streak: p.streak,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -488,6 +498,10 @@ export class World {
     const p = this.player;
     for (const c of cmds) {
       if (this.recorder) this.recorder.push([this.ticks, c]);
+      if (ACTIVE_CMDS.has(c.type)) {
+        p.idleT = 0; // someone is at the keys (see Doom)
+        p.idleDooms = 0;
+      }
       if (this.trial && TRIAL_LOCKED.has(c.type)) continue; // the week fixes gear and build
       // Inventory commands work even while dead or between waves.
       if (c.type === 'equip') this.equip(c.index);
@@ -695,12 +709,16 @@ export class World {
     const m = this.mods;
     let hits = 0;
     const struck = [];
-    for (const e of this.enemies) {
-      if (e.dead || e.state === 'spawn') continue;
+    const inCone = (e) => {
+      if (e.dead || e.state === 'spawn') return false;
       const de = dist(e.x, e.z, p.x, p.z);
-      if (de > range + e.radius) continue;
+      if (de > range + e.radius) return false;
       const ae = dAtan2(e.z - p.z, e.x - p.x);
-      if (de > e.radius + 0.8 && Math.abs(angDiff(ae, dir)) > angle / 2 + 0.1) continue;
+      return !(de > e.radius + 0.8 && Math.abs(angDiff(ae, dir)) > angle / 2 + 0.1);
+    };
+    const caught = this.enemies.filter(inCone);
+    dmg *= this.momentum(slot === 'cleave' ? 'q' : slot, caught.length); // Momentum (Warrior)
+    for (const e of caught) {
       if (slot === 'q' && m.qSunder > 0) {
         e.vulnT = 4;
         e.vuln = m.qSunder;
@@ -716,6 +734,84 @@ export class World {
     }
     if (struck.length) this.warriorStorm(struck);
     return hits;
+  }
+
+  /**
+   * Hit everything around the hero (Fan of Knives, Whirlwind, each beat of a Berserker's spin).
+   * `interrupt`: knock back / interrupt as the ability says (a spin only does it on its first beat).
+   */
+  novaHit(slot, def, dmg, radius, interrupt = true, storm = true) {
+    const p = this.player;
+    const m = this.mods;
+    const pull = slot === 'w' && m.wPull;
+    const bleed = (slot === 'w' ? m.wBleed : 0) || def.bleed || 0;
+    const slow = (slot === 'w' ? m.wSlow : 0) || def.slow || 0;
+    const knock = def.knockback || 0;
+    const knockOn = interrupt;
+    // Momentum (Warrior): more for every enemy caught after the first.
+    let caught = 0;
+    for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= radius + e.radius) caught++;
+    dmg *= this.momentum(slot, caught);
+    let hits = 0;
+    const struck = [];
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      const de = dist(e.x, e.z, p.x, p.z);
+      if (de > radius + e.radius) continue;
+      hits++;
+      if (slot === 'w') struck.push(e);
+      // Gravity Well: heavy enemies (never bosses) get dragged and stunned too.
+      const heavy = e.def.heavy && !(pull && m.wPullHeavy && !e.def.boss);
+      if (bleed > 0) {
+        e.bleedT = 3;
+        e.bleedDps = (p.stats.ad * bleed) / 3;
+      }
+      if (slow > 0) {
+        e.slowT = def.slowDur || 3;
+        e.slow = slow;
+      }
+      if (def.expose > 0) {
+        // Death Lotus (Assassin): Exposed takes more from you, and every side of it is its back.
+        e.exposedT = def.expose;
+        e.exposedPid = this.cur.pid;
+      }
+      this.hitEnemy(e, dmg, { source: slot });
+      if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
+        // The Warden's Call: whatever it hits fights you for a while.
+        e.tauntPid = this.cur.pid;
+        e.tauntT = m.wTaunt;
+      }
+      if (m[slot + 'Stun'] > 0 && !e.dead && !heavy) this.stun(e, m[slot + 'Stun']);
+      if (e.dead || heavy || !interrupt || !(knock || def.interrupt)) continue;
+      if (!knock) {
+        // (a Berserker's spin: no push, but its first beat interrupts)
+      } else if (pull) {
+        // Drag it to just in front of you (knockback slows at 9/s, so speed = 9 x distance).
+        const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
+        const de1 = Math.max(de, 0.01);
+        e.kx = ((p.x - e.x) / de1) * gap * 9;
+        e.kz = ((p.z - e.z) / de1) * gap * 9;
+      } else {
+        const k = knock / Math.max(de, 0.4);
+        e.kx = (e.x - p.x) * k;
+        e.kz = (e.z - p.z) * k;
+      }
+      if (e.state === 'windup' || e.state === 'chase') {
+        this.removeTelegraph(e);
+        e.state = 'recover';
+        e.t = 0.6;
+        e.cue = 0;
+      }
+    }
+    if (storm) this.warriorStorm(struck);
+    return hits;
+  }
+
+  /** Momentum (Warrior): Cleave and Whirlwind deal more for every enemy they catch after the first. */
+  momentum(slot, n) {
+    const ps = CLASSES[this.cls].passive;
+    if (!ps || !ps.momentum || (slot !== 'q' && slot !== 'w') || n < 2) return 1;
+    return 1 + Math.min(ps.momentumMax, ps.momentum * (n - 1));
   }
 
   /** Stormcaller (Warrior): lightning on every enemy a Cleave or Whirlwind hit, up to 6. */
@@ -783,7 +879,8 @@ export class World {
     e.frostT = 0;
     e.frostLock = 1.5; // a moment before it can build Hoarfrost again, so nothing stays frozen forever
     const dmg = (1.4 * p.stats.ad + 35 + 9 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1);
-    const reach = m.frostReach || 3;
+    // Shards fly further as Ice Bolt grows (0.28): 3 m, plus half a metre a rank.
+    const reach = (m.frostReach || 3) + 0.5 * ((p.ranks.q || 1) - 1);
     this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
     this.hitEnemy(e, dmg, { source: 'shatter' });
     if (!e.dead) {
@@ -1186,63 +1283,24 @@ export class World {
         break;
       }
       case 'nova': {
-        const pull = slot === 'w' && m.wPull;
-        const bleed = (slot === 'w' ? m.wBleed : 0) || def.bleed || 0;
-        const slow = (slot === 'w' ? m.wSlow : 0) || def.slow || 0;
-        const knock = def.knockback || 0;
         p.castLock = 0.12;
-        let hits = 0;
-        const struck = [];
-        for (const e of this.enemies) {
-          if (e.dead || e.state === 'spawn') continue;
-          const de = dist(e.x, e.z, p.x, p.z);
-          if (de > radius + e.radius) continue;
-          hits++;
-          if (slot === 'w') struck.push(e);
-          // Gravity Well: heavy enemies (never bosses) get dragged and stunned too.
-          const heavy = e.def.heavy && !(pull && m.wPullHeavy && !e.def.boss);
-          if (bleed > 0) {
-            e.bleedT = 3;
-            e.bleedDps = (p.stats.ad * bleed) / 3;
-          }
-          if (slow > 0) {
-            e.slowT = def.slowDur || 3;
-            e.slow = slow;
-          }
-          if (def.expose > 0) {
-            // Death Lotus (Assassin): Exposed takes more from you, and every side of it is its back.
-            e.exposedT = def.expose;
-            e.exposedPid = this.cur.pid;
-          }
-          this.hitEnemy(e, dmg, { source: slot });
-          if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
-            // The Warden's Call: whatever it hits fights you for a while.
-            e.tauntPid = this.cur.pid;
-            e.tauntT = m.wTaunt;
-          }
-          if (m[slot + 'Stun'] > 0 && !e.dead && !heavy) this.stun(e, m[slot + 'Stun']);
-          if (e.dead || heavy || !knock) continue;
-          if (pull) {
-            // Drag it to just in front of you (knockback slows at 9/s, so speed = 9 x distance).
-            const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
-            const de1 = Math.max(de, 0.01);
-            e.kx = ((p.x - e.x) / de1) * gap * 9;
-            e.kz = ((p.z - e.z) / de1) * gap * 9;
-          } else {
-            const k = knock / Math.max(de, 0.4);
-            e.kx = (e.x - p.x) * k;
-            e.kz = (e.z - p.z) * k;
-          }
-          if (e.state === 'windup' || e.state === 'chase') {
-            this.removeTelegraph(e);
-            e.state = 'recover';
-            e.t = 0.6;
-            e.cue = 0;
-          }
+        if (slot === 'w' && m.reckoning && p.reck > 0) {
+          // Reckoning (Bulwark): every blow you took or turned aside comes back in this Whirlwind.
+          dmg *= 1 + CONFIG.RECKON_PER * p.reck;
+          this.emit('reckoning', { x: p.x, z: p.z, stacks: p.reck });
+          p.reck = 0;
+          p.reckAcc = 0;
         }
-        this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull });
+        const hits = this.novaHit(slot, def, dmg, radius, true, true);
+        this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull: slot === 'w' && m.wPull });
         this.battleRhythm(slot, hits);
-        this.warriorStorm(struck);
+        break;
+      }
+      case 'spin': {
+        // Whirlwind (Berserker): a spin you can move in, hitting all around every half second.
+        const ticks = Math.max(1, Math.round(def.duration / def.tick));
+        p.spin = { left: ticks, next: 0, tick: def.tick, dmg: dmg * def.tickMult, radius, slot, first: true };
+        this.emit('cast', { slot, fx: 'spin', x: p.x, z: p.z, radius, dur: def.duration });
         break;
       }
       case 'dash': {
@@ -1673,6 +1731,33 @@ export class World {
     const cdRate = p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1.6 : 1;
     for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
     if (p.fangT > 0) p.fangT -= dt;
+    p.idleT = (p.idleT || 0) + dt; // reset by any input (applyCommands)
+    const cps = CLASSES[this.cls].passive;
+    if (cps && cps.ward) {
+      // Arcane Ward: back to full a few seconds after the last hit.
+      const max = p.stats.maxHp * cps.ward;
+      if (p.wardT > 0) p.wardT -= dt;
+      else if (p.ward < max) {
+        p.ward = Math.min(max, p.ward + (max * dt) / CONFIG.WARD_REFILL);
+        if (p.ward >= max) this.emit('wardUp', { x: p.x, z: p.z });
+      }
+      if (p.ward > max) p.ward = max;
+    }
+    if (p.spin) {
+      // Whirlwind (Berserker): a beat every half second while you move.
+      const sp = p.spin;
+      sp.next -= dt;
+      if (sp.next <= 0) {
+        const def = this.kit[sp.slot];
+        const hits = this.novaHit(sp.slot, def, sp.dmg, sp.radius, sp.first, sp.first);
+        this.battleRhythm(sp.slot, hits * 0.5); // four beats: half the usual Battle Rhythm each
+        this.emit('spinTick', { x: p.x, z: p.z, radius: sp.radius, first: sp.first });
+        sp.first = false;
+        sp.left--;
+        sp.next += sp.tick;
+        if (sp.left <= 0) p.spin = null;
+      }
+    }
     if (p.undyingUsed && p.undyingT > 0) {
       // Crown of the Undying recharges 2 minutes after it saves you.
       p.undyingT -= dt;
@@ -1973,10 +2058,18 @@ export class World {
     return CONFIG.CRIT_MULT + this.mods.critMult + Math.max(0, this.player.stats.crit + bonus - 100) * CONFIG.CRIT_OVERFLOW;
   }
 
-  hitPlayer(rawDamage, { parryable = true, src = null, proj = null } = {}) {
+  hitPlayer(rawDamage, { parryable = true, src = null, proj = null, doom = 0 } = {}) {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
+    if (doom > 0) {
+      // Doom (0.28): a share of your max health that nothing reduces. Only dodging helps.
+      if (p.dash || p.leap) {
+        this.emit('dodge', { x: p.x, z: p.z });
+        return 'dodged';
+      }
+      return this.takeDamage(Math.round(p.stats.maxHp * doom), src, true);
+    }
     if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
       // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
       const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && (parryable || h.mods.blockRed) && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
@@ -2023,6 +2116,7 @@ export class World {
           this.triggerSlipstream();
         }
         this.emit('parry', { perfect, x: p.x, z: p.z, srcId: src ? src.id : null, projectile: !!proj });
+        this.addReckoning(1);
         if (proj) {
           // Send the projectile back where it came from (it now belongs to whoever parried it).
           proj.pid = this.cur.pid;
@@ -2080,19 +2174,54 @@ export class World {
           who.vuln = Math.max(who.vuln || 0, 0.2);
         }
         this.emit('ironAnswer', { x: p.x, z: p.z, srcId: who ? who.id : null });
+        this.addReckoning(1);
         return 'parried';
       }
       this.emit('unparryable', { x: p.x, z: p.z });
     }
-    const dmg = Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken)));
+    return this.takeDamage(Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken))), src, false);
+  }
+
+  /** Reckoning (Bulwark): stacks for the next Whirlwind. */
+  addReckoning(n) {
+    if (!this.mods.reckoning) return;
+    const p = this.player;
+    const was = p.reck;
+    p.reck = Math.min(CONFIG.RECKON_MAX, p.reck + n);
+    if (p.reck > was) this.emit('reckonStack', { stacks: p.reck });
+  }
+
+  /** Damage that got through: the Arcane Ward first, then health (and what follows from that). */
+  takeDamage(dmg, src, doom) {
+    const p = this.player;
+    const m = this.mods;
+    const cps = CLASSES[this.cls].passive;
+    let warded = 0;
+    if (cps && cps.ward) {
+      p.wardT = CONFIG.WARD_DELAY;
+      if (p.ward > 0) {
+        warded = Math.min(p.ward, dmg);
+        p.ward -= warded;
+        dmg -= warded;
+        if (p.ward <= 0) this.emit('wardBreak', { x: p.x, z: p.z });
+      }
+    }
+    if (m.reckoning && dmg > 0) {
+      p.reckAcc += dmg;
+      const step = p.stats.maxHp * CONFIG.RECKON_HP;
+      while (p.reckAcc >= step) {
+        p.reckAcc -= step;
+        this.addReckoning(1);
+      }
+    }
     p.hp -= dmg;
-    if (this.mode === 'arena' && rawDamage > 0) this.wave.hurt = true; // no Flawless bonus this floor
+    if (this.mode === 'arena' && dmg + warded > 0) this.wave.hurt = true; // no Flawless bonus this floor
     if (src && src.elite && !src.dead) {
       if (src.elite.includes('vampiric')) src.hp = Math.min(src.maxHp, src.hp + src.maxHp * 0.04);
       if (src.elite.includes('frostbound')) p.chillT = 2;
     }
     p.hurtT = 0.25;
-    this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg });
+    this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg, warded, doom });
     if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
     if (p.hp <= 0 && m.bloodSave > 0 && p.hp + dmg < p.stats.maxHp * 0.5 && !(p.bloodSaveT > 0)) {
       // Blood Rage: a Bloodied Berserker shrugs off one killing blow every 30 seconds.
@@ -2112,10 +2241,15 @@ export class World {
       p.hp = 0;
       p.dead = true;
       p.parryT = 0;
+      p.spin = null;
       if (this.mode === 'explore') {
         // Out in the wilds you are only knocked out: you wake up in town (in a party, at the map's entrance).
         this.respawnT = CONFIG.EXPLORE_RESPAWN_DELAY * (this.party ? 2 : 1);
         this.emit('playerDown', { x: p.x, z: p.z });
+        if (p.streak > 0) {
+          this.emit('streakLost', { n: p.streak });
+          p.streak = 0;
+        }
         return 'hit';
       }
       this.gameOver = true;
@@ -2157,14 +2291,18 @@ export class World {
     if (p.level >= CONFIG.MAX_LEVEL) p.exp = 0;
   }
 
-  dropLoot(e) {
+  dropLoot(e, fall = 1) {
     const def = e.def;
+    const p = this.player;
     const hoard = this.mode === 'explore' && def.boss && !e.riftGuardian ? BOSS_LOOT[e.type] : null; // world bosses drop a pile
     // World tiers drop more, and nothing below their rarity floor; elites always drop a good extra piece.
     const T = this.mode === 'explore' && this.map.id !== 'rift' ? TIERS[this.worldTier()] : TIERS[1];
     const riftFloor = this.mode === 'explore' && this.map.id === 'rift' && this.rift ? Math.min(3, Math.floor(this.rift.tier / 5)) : 0;
     const floor = Math.max(T.minRarity, riftFloor);
-    const count = this.trial ? 0 : (hoard ? hoard.items : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
+    // A streak (tier II and up) means more; a boss you have outgrown, less (bossFalloff).
+    const streak = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
+    const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * streak)) : 0;
+    const count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
     const ilvl = Math.max(1, Math.round(e.level || this.wave.n));
     for (let i = 0; i < count; i++) {
       let opts = { minRarity: Math.max(floor, def.boss ? 2 : 0, e.elite && i === count - 1 ? 3 : 0), cls: this.cls };
@@ -2183,11 +2321,12 @@ export class World {
   }
 
   /** A boss beaten out in the world: keys, tickets, a pile of gold, and (in dropLoot) a pile of gear. */
-  bossRewards(e) {
+  bossRewards(e, fall = 1) {
     const p = this.player;
     const loot = BOSS_LOOT[e.type];
     if (!loot) return;
     const first = !p.bossKills[e.type];
+    e.falloff = fall;
     e.firstKill = first;
     if (e.type === 'boss3') {
       // Beating The Unmade opens the next world tier.
@@ -2198,10 +2337,13 @@ export class World {
       }
     }
     p.bossKills[e.type] = (p.bossKills[e.type] || 0) + 1;
-    p.keys += loot.keys;
-    p.tickets += loot.tickets;
+    // Keys and shards from a boss you have outgrown come only some of the time.
+    const keys = fall >= 1 || this.rng() < fall ? loot.keys : 0;
+    const tickets = fall >= 1 || this.rng() < fall ? loot.tickets : 0;
+    p.keys += keys;
+    p.tickets += tickets;
     if (first) p.skillPoints += 2;
-    this.emit('bossFall', { boss: e.type, name: e.def.name, first, keys: loot.keys, tickets: loot.tickets, gold: e.goldValue, items: loot.items, x: e.x, z: e.z });
+    this.emit('bossFall', { boss: e.type, name: e.def.name, first, keys, tickets, gold: Math.round(e.goldValue * fall), items: Math.max(1, Math.round(loot.items * fall)), falloff: Math.round(fall * 100), x: e.x, z: e.z });
   }
 
   // =========================================================================
@@ -3177,13 +3319,66 @@ export class World {
   }
 
   /** The final boss's falling stars: a warning circle each, then a hit on anyone still inside. */
+  /** How much a Doom takes here (0 = bosses here do not cast it, except on the idle). */
+  doomPct() {
+    if (this.mode !== 'explore' || this.trial) return 0;
+    if (this.map.id === 'rift' && this.rift) return DOOM.rift(this.rift.tier);
+    return TIERS[this.worldTier()].doom || 0;
+  }
+
+  /** Bosses cast Doom on a timer (tier II+), and on any hero idle near them (every tier). */
+  stepDoom(dt) {
+    if (this.mode !== 'explore' || this.trial) return;
+    const pct = this.doomPct();
+    for (const e of this.enemies) {
+      if (!e.def.boss || e.dead || e.state === 'spawn' || !e.aggro || e.returning) continue;
+      const near = this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) <= DOOM.range);
+      if (!near.length) continue;
+      // Idle heroes first: standing still with no input near a boss is never safe.
+      for (const h of near) {
+        if (h.player.idleT < DOOM.idle) continue;
+        h.player.idleT = DOOM.idle - DOOM.idleAgain;
+        // Each one in a row hits harder, until someone touches the keys again.
+        const n = h.player.idleDooms = (h.player.idleDooms || 0) + 1;
+        this.castDoom(e, h, Math.min(1, Math.max(DOOM.idlePct, pct) + DOOM.idleStep * (n - 1)), true);
+      }
+      if (!(pct > 0)) continue;
+      if (e.doomT == null) e.doomT = DOOM.first;
+      e.doomT -= dt;
+      if (e.doomT > 0) continue;
+      e.doomT = e.def.final ? DOOM.finalEvery : DOOM.every;
+      // At the hero it is fighting (the nearest), and The Unmade follows with a second one.
+      let h = near[0], hd = 1e9;
+      for (const x of near) {
+        const d = dist(x.player.x, x.player.z, e.x, e.z);
+        if (d < hd) { hd = d; h = x; }
+      }
+      this.castDoom(e, h, pct, false);
+      if (e.def.final) this.falls.push({ follow: h.pid, r: DOOM.radius, t: -DOOM.second, dur: DOOM.warn, dmg: 0, doom: pct, level: e.level, srcId: e.id, tele: null });
+    }
+  }
+
+  castDoom(e, h, pct, idle) {
+    this.falls.push({ x: h.player.x, z: h.player.z, r: DOOM.radius, t: 0, dur: DOOM.warn, dmg: 0, doom: pct, level: e.level, srcId: e.id, tele: null });
+    this.emit('doomCast', { id: e.id, x: h.player.x, z: h.player.z, radius: DOOM.radius, pct, idle, hero: h.pid, name: e.def.name });
+  }
+
   stepFalls(dt) {
     if (!this.falls.length) return;
     for (const f of this.falls) {
       f.t += dt;
       if (f.t < 0) continue;
+      if (f.follow != null) {
+        // The Unmade's second Doom: wherever that hero went.
+        const h = this.heroByPid(f.follow);
+        if (!h) { f.done = true; continue; }
+        f.x = h.player.x;
+        f.z = h.player.z;
+        f.follow = null;
+        this.emit('doomCast', { id: f.srcId, x: f.x, z: f.z, radius: f.r, pct: f.doom, idle: false, hero: h.pid });
+      }
       if (!f.tele) {
-        f.tele = { id: this.nextId++, owner: null, kind: 'circle', x: f.x, z: f.z, dir: 0, radius: f.r, offset: 0, t: 0, dur: f.dur, parryable: false, cue: false };
+        f.tele = { id: this.nextId++, owner: null, kind: 'circle', x: f.x, z: f.z, dir: 0, radius: f.r, offset: 0, t: 0, dur: f.dur, parryable: false, cue: false, doom: !!f.doom };
         this.telegraphs.push(f.tele);
       }
       f.tele.t = f.t;
@@ -3195,9 +3390,14 @@ export class World {
       for (const h of this.heroes) {
         if (h.player.dead || dist(h.player.x, h.player.z, f.x, f.z) > f.r + h.player.radius * 0.4) continue;
         this.use(h);
-        this.hitPlayer(f.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: f.level, srcId: f.srcId } });
+        if (f.doom) this.hitPlayer(0, { doom: f.doom, src });
+        else this.hitPlayer(f.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: f.level, srcId: f.srcId } });
       }
       this.use(was);
+      if (f.doom) {
+        this.emit('doomImpact', { x: f.x, z: f.z, radius: f.r });
+        continue;
+      }
       this.emit('strike', { id: f.srcId, shape: 'circle', x: f.x, z: f.z, radius: f.r, parryable: false });
       this.emit('starImpact', { x: f.x, z: f.z, radius: f.r });
     }
@@ -3510,10 +3710,32 @@ export class World {
     for (const h of this.heroes) if (h.player.targetId === e.id) h.player.targetId = null;
   }
 
+  /**
+   * A boss you have outgrown pays less: 10% less for every level you are above it, down to 10%
+   * (first kills always pay in full). Rift guardians are your own level.
+   */
+  bossFalloff(e) {
+    if (!e.def.boss || this.mode !== 'explore' || e.riftGuardian) return 1;
+    if (!this.player.bossKills[e.type]) return 1;
+    const over = this.player.level - (e.level || 1);
+    return over <= 0 ? 1 : Math.max(CONFIG.BOSS_FALLOFF_MIN, 1 - CONFIG.BOSS_FALLOFF * over);
+  }
+
   /** What the acting hero gets for a kill. */
   killRewards(e, partySize) {
     const p = this.player;
-    p.gold += e.goldValue;
+    if (this.mode === 'explore' && (p.idleT || 0) >= CONFIG.IDLE_NO_REWARD) {
+      // Away from the keys: whatever your auto-attacks kill pays nothing until you are back.
+      if (!p.idleWarned) {
+        p.idleWarned = true;
+        this.emit('idleNoReward', { secs: CONFIG.IDLE_NO_REWARD });
+      }
+      this.questEvent('kill', e);
+      return;
+    }
+    p.idleWarned = false;
+    const fall = this.bossFalloff(e);
+    p.gold += Math.round(e.goldValue * fall);
     if (this.mode === 'explore' && (e.def.heavy || this.rng() < CONFIG.TICKET_CHANCE)) {
       p.tickets++;
       this.emit('ticket', { x: e.x, z: e.z });
@@ -3526,10 +3748,17 @@ export class World {
           p.skillPoints++; // bosses out in the world can be farmed, so they pay in loot instead
           this.emit('bossReward');
         }
-      } else if (!e.riftGuardian) this.bossRewards(e);
+      } else if (!e.riftGuardian) this.bossRewards(e, fall);
     }
-    this.gainExp(e.expValue * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
-    this.dropLoot(e);
+    this.gainExp(e.expValue * fall * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
+    this.dropLoot(e, fall);
+    if (e.def.boss && this.mode === 'explore' && !e.riftGuardian && this.worldTier() >= 2 && !this.trial) {
+      // A streak: tier bosses beaten without being knocked out in between drop more.
+      if (p.streak < CONFIG.STREAK_MAX) {
+        p.streak++;
+        this.emit('streak', { n: p.streak, pct: Math.round(p.streak * CONFIG.STREAK_LOOT * 100) });
+      }
+    }
     this.questEvent('kill', e);
   }
 
@@ -4223,9 +4452,10 @@ inTown() {
     const p = this.player;
     const dh = dist(e.x, e.z, e.home.x, e.home.z);
     // Patience, like a jungle camp: dragged out past PATIENCE_RANGE it loses patience; back near home it recovers.
-    if (e.aggro && dh > CONFIG.PATIENCE_RANGE) e.patience = Math.max(0, e.patience - dt / CONFIG.PATIENCE_TIME);
+    const boss = !!e.def.boss;
+    if (e.aggro && dh > (boss ? CONFIG.PATIENCE_RANGE_BOSS : CONFIG.PATIENCE_RANGE)) e.patience = Math.max(0, e.patience - dt / (boss ? CONFIG.PATIENCE_TIME_BOSS : CONFIG.PATIENCE_TIME));
     else if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
-    if (e.aggro && (p.dead || this.inTown(p) || dh > CONFIG.LEASH_RANGE || e.patience <= 0)) {
+    if (e.aggro && (p.dead || this.inTown(p) || dh > (boss ? CONFIG.LEASH_RANGE_BOSS : CONFIG.LEASH_RANGE) || e.patience <= 0)) {
       e.aggro = false;
       e.returning = true;
     }
@@ -4372,6 +4602,7 @@ inTown() {
       this.stepShadows(dt);
       this.stepWalls(dt);
       this.stepEnemies(edt);
+      this.stepDoom(edt);
       this.stepFalls(edt);
       this.collide(dt);
       this.stepProjectiles(dt, edt);
@@ -4401,6 +4632,7 @@ inTown() {
     this.stepShadows(dt);
     this.stepWalls(dt);
     this.stepEnemies(edt);
+    this.stepDoom(edt);
     this.stepFalls(edt);
     this.use(lead);
     each(() => this.collide(dt));

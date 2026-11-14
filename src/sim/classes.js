@@ -34,7 +34,7 @@ export const CLASSES = {
     blurb: 'Fights up close with wide swings and a leaping finisher. The toughest class, and the more enemies around it the faster its abilities come back.',
     stats: { hp: 1.05, ad: 1.45, as: 1.2, armor: 1, ms: 1.12, crit: 0, haste: 10 },
     basic: { range: 2.1, mult: 1 },
-    passive: { name: 'Battle Rhythm', desc: 'Every enemy hit by Cleave or Whirlwind takes 0.3 seconds off your other cooldowns (up to 1.5 seconds per swing). Wade into a crowd and Skyfall comes round again.', rhythm: 0.3, rhythmMax: 1.5 },
+    passive: { name: 'Battle Rhythm', desc: 'Every enemy hit by Cleave or Whirlwind takes 0.3 seconds off your other cooldowns (up to 1.5 seconds per swing). Momentum: Cleave and Whirlwind deal 6% more for every enemy they hit after the first (up to 48% more). Wade into a crowd and Skyfall comes round again.', rhythm: 0.3, rhythmMax: 1.5, momentum: 0.06, momentumMax: 0.48 },
     abilities: ABILITIES,
   },
 
@@ -108,7 +108,7 @@ export const CLASSES = {
     blurb: 'Weak basic attacks, strong spells on short cooldowns. Keep your distance and aim.',
     stats: { hp: 0.82, ad: 1.32, as: 0.85, armor: 0.65, ms: 1.06, crit: 0, haste: 25 },
     basic: { range: 8.5, mult: 0.6, shot: 'spark', speed: 26 },
-    passive: { name: 'Attunement', desc: '+25 ability haste. Basic attacks deal 60% damage.' },
+    passive: { name: 'Attunement', desc: '+25 ability haste. Basic attacks deal 60% damage. Arcane Ward: a barrier worth 15% of your health takes damage before you do, and comes back 5 seconds after you were last hurt.', ward: 0.15 },
     abilities: {
       q: {
         key: 'Q', name: 'Fire Bolt', type: 'bolt', icon: 'bolt', unlock: 1, cd: 3, range: 14, speed: 24, splash: 2.2, splashMult: 0.6,

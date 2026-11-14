@@ -16,6 +16,7 @@ const COLORS = {
   parryable: 0xffe2a0, // attacks you can parry are drawn in pale gold
   cue: 0xffffff, // ... and turn white at the moment to press parry
   danger: 0xff3b4a, // attacks you must avoid are red
+  doom: 0xa64bff, // Doom: a share of your health that nothing reduces (0.28)
   friendly: 0x7fd8ff,
   ember: 0xff8a3a,
   immortal: 0x7ff5e1, // matches the Immortal rarity colour
@@ -792,6 +793,26 @@ export class Renderer {
         this.burst(ev.tx, 1.2, ev.tz, { count: ev.veil ? 4 : 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.3 });
         break;
       }
+      case 'doomImpact':
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: COLORS.doom, from: ev.radius, to: ev.radius * 1.3, dur: 0.4, opacity: 0.7 });
+        this.burst(ev.x, 1, ev.z, { count: 30, color: 0xd2a0ff, speed: 9, up: 7, size: 1.3, life: 0.6 });
+        this.shake = Math.max(this.shake, 0.4);
+        break;
+      case 'spinTick':
+        // Whirlwind (Berserker): a beat of the spin.
+        this.heroAnim.spin = 1;
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.6, color: ev.first ? 0xff6a6a : 0xffb0a0, from: ev.radius * 0.5, to: ev.radius, dur: 0.3, opacity: 0.8 });
+        this.burst(ev.x, 1, ev.z, { count: 10, color: 0xff7a7a, speed: 9, up: 2, life: 0.3 });
+        break;
+      case 'reckoning':
+        // Reckoning (Bulwark): the stored blows come back.
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffd27a, from: 1, to: 5 + ev.stacks * 0.4, dur: 0.35, opacity: 0.45 });
+        this.burst(ev.x, 1.2, ev.z, { count: 10 + ev.stacks * 6, color: 0xffd27a, speed: 10, up: 4, life: 0.45 });
+        this.shake = Math.max(this.shake, 0.15 + ev.stacks * 0.05);
+        break;
+      case 'wardBreak':
+        this.burst(ev.x, 1.3, ev.z, { count: 16, color: 0xaadcff, speed: 7, up: 3, life: 0.4 });
+        break;
       case 'veil':
         // Veilstep: a swirl of violet as you come out of it.
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: 0xb07cff, from: 0.5, to: 2.4, dur: 0.35, opacity: 0.9 });
@@ -1302,10 +1323,10 @@ export class Renderer {
       const k = Math.min(1, t.t / t.dur);
       v.group.position.set(t.x, 0, t.z);
       v.group.rotation.y = -t.dir;
-      const color = t.friendly ? COLORS.friendly : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
+      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
       v.base.material.color.set(color);
       v.fill.material.color.set(color);
-      v.fill.material.opacity = t.cue && t.parryable ? 0.7 : 0.4;
+      v.fill.material.opacity = t.doom ? 0.55 : t.cue && t.parryable ? 0.7 : 0.4;
       if (t.kind === 'rect') {
         v.base.scale.set(t.length, 1, t.width);
         v.fill.scale.set(t.length * k, 1, t.width);

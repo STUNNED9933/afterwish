@@ -33,6 +33,18 @@ export const CONFIG = {
   PARRY_BUFFER: 0.2, // pressing parry slightly early (during cooldown) still counts
   PARRY_MOVE_MULT: 0.45, // movement speed while the parry stance is up
   PERFECT_HEAL: 0.04, // fraction of max HP restored by a perfect parry
+  // 0.28: warrior and mage
+  RECKON_PER: 0.25, // Reckoning (Bulwark): Whirlwind deals this much more per stack
+  RECKON_MAX: 5,
+  RECKON_HP: 0.1, // a stack for every this much of your max health taken
+  WARD_DELAY: 5, // Arcane Ward (Mage): seconds without being hurt before it comes back
+  WARD_REFILL: 1, // ...and how long it takes to fill
+  // 0.28: rewards for the fight in front of you, not the one you have outgrown
+  BOSS_FALLOFF: 0.1, // a boss pays this much less for every level you are above it
+  BOSS_FALLOFF_MIN: 0.1, // ...down to this
+  STREAK_MAX: 5, // tier bosses in a row without being knocked out
+  STREAK_LOOT: 0.1, // more loot per streak, on tier II and up
+  IDLE_NO_REWARD: 30, // out in the world, after this many seconds with no input your kills pay nothing
   PERFECT_CD_REFUND: 1.0, // seconds shaved off ability cooldowns by a perfect parry
   STUN_DAMAGE_BONUS: 1.5, // damage multiplier against stunned enemies
 
@@ -106,6 +118,9 @@ export const CONFIG = {
   LEASH_RANGE: 30, // ... and give up at once this far from where they live
   PATIENCE_RANGE: 12, // past this far from home, an enemy starts losing patience...
   PATIENCE_TIME: 5, // ...and gives up after this many seconds out there (it heals on the walk home)
+  PATIENCE_RANGE_BOSS: 22, // bosses fight over more ground (Doom keeps you moving, 0.28)...
+  PATIENCE_TIME_BOSS: 8, // ...and give it longer
+  LEASH_RANGE_BOSS: 45, // a boss's hard leash
   RESPAWN_TIME: 25, // seconds before a killed enemy returns
   PORTAL_TIME: 0.9, // seconds you must stand in a portal before it takes you
   WANDER_RANGE: 4, // idle enemies drift this far from their spot

@@ -218,6 +218,12 @@ export class Hud {
     const hpFrac = Math.max(0, p.hp / p.stats.maxHp);
     $('hp-fill').style.transform = `scaleX(${hpFrac})`;
     $('hp-text').textContent = `${Math.ceil(p.hp)} / ${p.stats.maxHp}`;
+    // Arcane Ward (Mage): drawn over the start of the bar, as a share of max health.
+    const wardFrac = Math.min(1, (p.ward || 0) / p.stats.maxHp);
+    if (wardFrac !== this.lastWard) {
+      this.lastWard = wardFrac;
+      $('ward-fill').style.transform = `scaleX(${wardFrac})`;
+    }
     // Berserker: a mark at half health, and the bar burns red while Bloodied.
     const bar = $('hp-bar');
     const zerk = p.spec === 'berserker';
@@ -235,6 +241,11 @@ export class Hud {
       this.lastTickets = p.tickets;
       $('hud-gold').textContent = p.gold;
       $('hud-tickets').textContent = p.tickets;
+    }
+    if ((p.streak || 0) !== this.lastStreak) {
+      this.lastStreak = p.streak || 0;
+      $('hud-streak').classList.toggle('hidden', !this.lastStreak);
+      $('hud-streak-n').textContent = `+${Math.round(this.lastStreak * CONFIG.STREAK_LOOT * 100)}%`;
     }
     this.updatePower(world);
     this.drawMinimap(world);
@@ -266,6 +277,12 @@ export class Hud {
         || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
       slot.el.classList.toggle('recast', !!again);
       slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Nightstep: the next ability hits harder
+      // Reckoning (Bulwark): stacks for the next Whirlwind, shown on W.
+      const stacks = s === 'w' && p.reck > 0 ? String(p.reck) : '';
+      if ((slot.el.dataset.stacks || '') !== stacks) {
+        if (stacks) slot.el.dataset.stacks = stacks;
+        else delete slot.el.dataset.stacks;
+      }
       const rank = p.ranks[s];
       if (rank !== slot.rank) {
         slot.rank = rank;

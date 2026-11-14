@@ -150,6 +150,29 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Weekly Echo, boards and the Hall of Echoes (0.22)
+
+- **Weekly Echo** (the Weekly Echo card at camp): once a week, everyone plays
+  the same arena run with the same seed, at a fixed level (30, 60 or 90,
+  rotating), with the same Epic gear plus one Immortal in a featured slot. You
+  pick a subclass and spend that level's talent and rank points however you
+  like. No experience or loot drops during a run, and your character's save is
+  never touched. The trial uses the Standard parry window.
+- **Score:** the highest floor cleared, then the game time it took (not the
+  clock, so a slow computer or a pause does not cost you). Play as often as you
+  like; your best run per subclass counts.
+- **Boards per subclass,** never one overall ranking, plus a **Champions** view
+  with the top three of every subclass side by side. Watch the top three runs
+  of any board in the game (press 2 to speed up). Percentiles appear once 20
+  people have played a board.
+- **Honest scores:** the game records only your commands. The server plays
+  the run again from them and only puts it on the board if it reaches the same
+  floor at the same moment.
+- **Offline first:** without the server (or before you join the boards with a
+  display name), runs are kept in this browser and sent later.
+- **Hall of Echoes** (camp): your own best arena waves per class and subclass,
+  in this browser only.
+
 ### Mage rework and a scrap filter (0.21)
 
 - **Mage E is now Starwake:** blink, then loose 3 homing motes of starlight
@@ -444,6 +467,33 @@ the link and friends play in their browser with nothing to download. Saves
 belong to the site's address, so use **Move saves to another browser** to bring
 progress from a downloaded copy.
 
+## Weekly Echo server
+
+The boards run on a small Cloudflare Worker with a D1 database, in `server/`.
+`.github/workflows/trial-api.yml` deploys it whenever the server or the game
+rules change, so the server always replays runs with the same rules as the
+live game. Until it is set up, the game simply keeps runs in the browser.
+
+**API:** `GET /trial/current`, `POST /players`, `POST /players/rename`,
+`POST /runs`, `GET /boards/:week/:spec?me=`, `GET /champions/:week`,
+`GET /runs/:id/replay`. Players get a random secret token when they join;
+only its hash is stored. Only a display name is kept, no email or account.
+
+**Spending safety.** Replaying runs is the only real cost, and it is capped:
+
+- A run is replayed at most once, and only when it beats that player's best.
+- 20 runs an hour per player; 5 new names an hour per network address.
+- A daily budget (`CHECKS_PER_DAY`, `TICKS_PER_DAY` in `server/wrangler.toml`)
+  keeps CPU inside the 30 million CPU milliseconds the Workers Paid plan
+  includes. Runs over the budget are not lost: they wait as "pending" and the
+  hourly scheduled job checks them once the next day's budget opens.
+- Old recordings are pruned after four weeks (the top 10 of each board stay).
+
+**Test it:** `npm test` includes `test/server.test.mjs`, which runs the server
+against SQLite in Node. `node test/determinism.mjs` plays the same runs in
+Chromium, Firefox and WebKit and compares them with Node (the
+`determinism.yml` workflow does this on every rules change).
+
 ## Share it with friends
 
 Two options, neither of which triggers a virus warning:
@@ -457,7 +507,7 @@ Saves live in each player's own browser.
 
 ## Change the game
 
-You need [Node.js](https://nodejs.org) 18 or newer.
+You need [Node.js](https://nodejs.org) 22 or newer (the server tests use its built-in SQLite).
 
 ```
 npm install       # once

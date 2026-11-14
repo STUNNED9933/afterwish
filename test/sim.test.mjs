@@ -1342,6 +1342,59 @@ import { makeRng } from '../src/sim/rng.js';
     check('scrap filter: nothing kept when nothing is ticked', p.bag.length === 0);
   }
 }
+// --- 0.22: Weekly Echo (rules, deterministic maths, record and replay) ---------------
+{
+  const T = await import('../src/sim/trial.js');
+  const { playTrialBot } = await import('./trialbot.mjs');
+  const { simVersion } = await import('../scripts/sim-version.mjs');
+  const { SIM_VERSION } = await import('../src/sim/version.js');
+  const fs = await import('node:fs');
+  check('sim version file is up to date (run npm run build after changing src/sim or config.js)', simVersion() === SIM_VERSION, `${simVersion()} vs ${SIM_VERSION}`);
+  const banned = [];
+  for (const f of fs.readdirSync('src/sim')) {
+    if (f === 'dmath.js') continue;
+    const m = fs.readFileSync('src/sim/' + f, 'utf8').match(/Math\.(sin|cos|tan|atan2?|asin|acos|exp|expm1|log\w*|pow|hypot|cbrt|sinh|cosh|tanh)\(/g);
+    if (m) banned.push(f + ': ' + m.join(' '));
+  }
+  check('the simulation uses no browser-rounded maths (only sim/dmath.js)', banned.length === 0, banned.join('; '));
+  const { dSin, dCos, dAtan2, dExp } = await import('../src/sim/dmath.js');
+  let worst = 0;
+  for (let i = -3000; i <= 3000; i++) {
+    const x = i * 0.137;
+    worst = Math.max(worst, Math.abs(dSin(x) - Math.sin(x)), Math.abs(dCos(x) - Math.cos(x)), Math.abs(dAtan2(x, 7 - i * 0.01) - Math.atan2(x, 7 - i * 0.01)), Math.abs(dExp(x / 100) / Math.exp(x / 100) - 1));
+  }
+  check('deterministic maths agrees with Math.* to 1e-15', worst < 1e-15, String(worst));
+
+  check('weeks: Saturday 14 November 2026 is in week 0, Monday the 16th starts week 1', T.weekIndexAt(Date.UTC(2026, 10, 14, 5)) === 0 && T.weekIndexAt(Date.UTC(2026, 10, 16, 0, 0, 1)) === 1);
+  const wk = T.trialWeek(0), wk1 = T.trialWeek(1);
+  check('weeks: the level and the featured Immortal rotate', wk.level === 30 && wk1.level === 60 && wk.featured !== wk1.featured && wk.seed !== wk1.seed);
+  const g1 = T.trialGear(wk, 'rogue'), g2 = T.trialGear(wk, 'rogue');
+  check('standard gear: Epic everywhere, Immortal in the featured slot, the same for everyone', JSON.stringify(g1) === JSON.stringify(g2) && g1[wk.featured].rarity === 6 && Object.values(g1).filter((i) => i.rarity === 3).length === 4);
+  const b = T.defaultBuild(wk, 'mage');
+  check('default build is valid', T.validateBuild(wk, b) === null, T.validateBuild(wk, b));
+  check('a build with too many talent points is refused', T.validateBuild(wk, Object.assign({}, b, { talents: { py_power: 5, py_crit: 5, py_haste: 5, py_ball: 3, py_burn: 3, py_cap: 1 } })) !== null);
+  check('a build with another class\'s subclass is refused', T.validateBuild(wk, Object.assign({}, b, { spec: 'bulwark' })) !== null);
+  check('a build with too many ranks is refused', T.validateBuild(wk, Object.assign({}, b, { ranks: { q: 20, w: 20, e: 1, r: 1 } })) !== null);
+  const tw = T.buildTrialWorld(wk, b);
+  check('the trial world: level 30, standard parry, no EXP, gear locked', tw.player.level === 30 && tw.parryPreset === 'standard' && tw.trial && (() => { const before = tw.player.exp; tw.gainExp(1e6); return tw.player.exp === before; })());
+  const eq = JSON.stringify(tw.player.equipped);
+  tw.player.bag = [Object.assign({}, g1.weapon, { id: 'x' })]; tw.command({ type: 'equip', index: 0 }); tw.runCommands();
+  check('the trial ignores gear changes', JSON.stringify(tw.player.equipped) === eq);
+  // Record a bot run, replay it from the recording: same score, same final state.
+  for (const [cls, spec] of [['warrior', 'bulwark'], ['mage', 'pyromancer'], ['rogue', 'shadowdancer'], ['archer', 'sharpshooter']]) {
+    const build = T.defaultBuild(wk, cls, spec);
+    const live = playTrialBot(wk, build, 60 * 90, 11);
+    const again = T.replayTrial(wk, build, JSON.parse(JSON.stringify(live.record)), live.endTick);
+    check(`replay: a recorded ${spec} run replays to the same floor, tick and state`, again.ok && again.floor === live.score.floor && again.clearTick === live.score.clearTick && again.hash === live.hash && live.record.length > 50, `${JSON.stringify(live.score)} ${live.hash} vs ${JSON.stringify(again)} (${live.record.length} commands)`);
+    if (spec === 'pyromancer') {
+      const tampered = JSON.parse(JSON.stringify(live.record)).filter((_, i) => i % 3);
+      const forged = T.replayTrial(wk, build, tampered, live.endTick);
+      check('replay: a tampered recording does not reach the same state', forged.hash !== live.hash);
+      const sameSeed = T.trialWeek(0);
+      check('replay: waves and offers come from their own streams (same week, same first wave)', JSON.stringify(T.buildTrialWorld(sameSeed, build).streamRng('wave', 3)()) === JSON.stringify(T.buildTrialWorld(wk, T.defaultBuild(wk, 'rogue')).streamRng('wave', 3)()));
+    }
+  }
+}
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---
 {
   const { SONGS, MAP_SONG, arrange, parseBar, BAR } = await import('../src/music/songs.js');

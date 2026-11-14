@@ -134,12 +134,62 @@
       <div id="trainer-list"></div>
       <button type="button" id="btn-tome" class="ghost">Buy a skill point</button>
     </article>
+    <article class="town-card" id="card-weekly">
+      <h3>The Weekly Echo</h3>
+      <p class="setting-desc" id="weekly-blurb">Each week the starglass settles on one memory and replays it for anyone who presses a hand to the stones. Everyone meets the same echo, with the same gear. No shard needed.</p>
+      <button type="button" id="btn-weekly" class="primary">Open the Weekly Echo</button>
+    </article>
+    <article class="town-card" id="card-hall">
+      <h3>Hall of Echoes</h3>
+      <p class="setting-desc">Sister Odile keeps a tally on the stone: your best wave in the Ring with each class and subclass. It stays in this browser.</p>
+      <div id="hall-list" class="hall-list"></div>
+    </article>
+  </div>
+</section>
+
+<div id="watch-badge" class="hidden"></div>
+<section id="trial" class="screen hidden">
+  <div class="menu-card trial-card">
+    <p class="eyebrow" id="trial-week">The Weekly Echo</p>
+    <h2 id="trial-title">The Weekly Echo</h2>
+    <p class="setting-desc" id="trial-rules"></p>
+    <div id="trial-result" class="trial-result hidden"></div>
+    <div class="trial-cols">
+      <div class="trial-col">
+        <h3>Your build</h3>
+        <div id="trial-spec" class="segmented" role="group" aria-label="Subclass"></div>
+        <p class="setting-desc" id="trial-points"></p>
+        <div id="trial-talents" class="trial-list"></div>
+        <p class="setting-desc" id="trial-rank-points"></p>
+        <div id="trial-ranks" class="trial-list"></div>
+        <button type="button" id="trial-reset" class="ghost">Use the usual build</button>
+        <p class="setting-desc" id="trial-mybest"></p>
+        <button type="button" id="trial-enter" class="primary">Enter the Weekly Echo</button>
+      </div>
+      <div class="trial-col">
+        <h3>The boards</h3>
+        <div id="trial-offline">
+          <p class="setting-desc">The online boards are not open yet. Your best run each week is kept in this browser and sent when they open.</p>
+        </div>
+        <div id="trial-online" class="hidden">
+          <p class="setting-desc" id="trial-who"></p>
+          <div class="trial-join"><input type="text" id="trial-name" maxlength="16" placeholder="Display name" autocomplete="off" aria-label="Display name"><button type="button" id="trial-join" class="ghost">Join the boards</button></div>
+          <p class="setting-desc" id="trial-msg" role="status"></p>
+          <div class="segmented" role="group" aria-label="Board view">
+            <button type="button" id="trial-view-board">Board</button>
+            <button type="button" id="trial-view-champions">Champions</button>
+          </div>
+          <div id="trial-board"></div>
+        </div>
+      </div>
+    </div>
+    <button type="button" id="trial-back" class="ghost">Back to the Ring</button>
   </div>
 </section>
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.21</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.22</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>

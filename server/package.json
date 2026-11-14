@@ -1,0 +1,11 @@
+{
+  "name": "afterwish-trial-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "node scripts/prepare.mjs && wrangler d1 migrations apply afterwish --remote --config wrangler.generated.toml && wrangler deploy --config wrangler.generated.toml"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

@@ -1,0 +1,28 @@
+# The Weekly Echo replays runs on the server, so the game rules must give identical
+# results in every browser engine. This plays the same runs in Chromium, Firefox and Safari's
+# WebKit and compares them with Node. Runs when the rules change.
+name: Determinism across browsers
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/sim/**', 'src/config.js', 'test/determinism*.mjs', 'test/trialbot.mjs', '.github/workflows/determinism.yml']
+  pull_request:
+    paths: ['src/sim/**', 'src/config.js']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: node test/determinism.mjs

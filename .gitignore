@@ -1,2 +1,5 @@
 node_modules
 dist/
+server/node_modules
+server/.wrangler
+server/wrangler.generated.toml

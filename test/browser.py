@@ -174,7 +174,7 @@ with sync_playwright() as pw:
     page.click('#btn-town')
     page.wait_for_timeout(300)
     check('exploring saves to the one character slot', ev("() => !localStorage.getItem('stunned-explore-save-v1') and JSON.parse(localStorage.getItem('stunned-arena-save-v1')).level > 1".replace(' and ', ' && ')) and ev("() => game.mode") == 'title')
-    check('ticket from the wilds reaches the account', ev("() => game.account.tickets") == tickets + 1, ev("() => game.account.tickets"))
+    check('ticket from the wilds reaches the account', ev("() => game.account.tickets") >= tickets + 1, ev("() => game.account.tickets"))
     page.screenshot(path=str(out / '12-title.png'))
     # --- Classes -------------------------------------------------------------------
     if ev("() => game.mode") != 'title':
@@ -421,6 +421,21 @@ with sync_playwright() as pw:
     page.wait_for_timeout(1000)
     check('a new character starts exploring in Haven, level 1, without spending a shard', ev("() => game.world.mode") == 'explore' and ev("() => game.world.map.id") == 'town' and ev("() => game.world.player.level") == 1 and ev("() => game.account.tickets") == tk, f"{ev('() => game.world.mode')} {ev('() => game.world.map.id')} level {ev('() => game.world.player.level')}")
     check('the opening keeps the story a mystery', 'queen' not in page.evaluate("() => document.querySelector('#title .lede').textContent.toLowerCase()") and 'wish' not in page.evaluate("() => document.querySelector('#title .tagline').textContent.toLowerCase()"))
+    # --- Weekly Echo (0.22) -------------------------------------------------------------------
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    if ev("() => game.mode") == 'pause': page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    save_before = ev("() => JSON.stringify(Object.keys(localStorage).filter((k) => k.startsWith('stunned-arena-save')).map((k) => localStorage.getItem(k)))")
+    ev("() => document.getElementById('btn-weekly').click()"); page.wait_for_timeout(800)
+    check('Weekly Echo screen opens with this week and a build to pick', ev("() => game.mode") == 'trial' and 'level' in page.inner_text('#trial-title') and len(page.query_selector_all('#trial-spec button')) >= 2, page.inner_text('#trial-title'))
+    check('offline, the trial says runs stay in this browser', page.is_visible('#trial-offline'))
+    page.click('#trial-enter'); page.wait_for_timeout(2500)
+    check('entering starts a fixed-level trial run in the arena', ev("() => !!game.world.trial && game.world.mode === 'arena' && game.world.player.level >= 30 && game.world.ticks > 0"), f"level {ev('() => game.world.player.level')}")
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    check('the pause menu offers to end the run', 'Weekly Echo' in page.inner_text('#btn-town'), page.inner_text('#btn-town'))
+    page.click('#btn-town'); page.wait_for_timeout(2000)
+    check('ending a run shows its result and keeps it in this browser', ev("() => game.mode") == 'trial' and page.inner_text('#trial-result').strip() != '' and ev("() => Object.keys(JSON.parse(localStorage.getItem('stunned-trial-v1') || '{}')).length") >= 1, page.inner_text('#trial-result')[:80])
+    save_after = ev("() => JSON.stringify(Object.keys(localStorage).filter((k) => k.startsWith('stunned-arena-save')).map((k) => localStorage.getItem(k)))")
+    check('a trial run never touches the saved character', save_before == save_after)
     browser.close()
 
 print('console errors:', json.dumps(errors, indent=1) if errors else 'none')

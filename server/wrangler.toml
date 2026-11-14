@@ -1,0 +1,31 @@
+# The Weekly Echo server. Deployed by .github/workflows/trial-api.yml, which fills in
+# database_id (scripts/prepare.mjs) and writes wrangler.generated.toml.
+name = "afterwish-trial"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Replaying a run is quick (about 0.01 ms per step, so a full 40-minute run is a
+# second or two). This is the most one request may use.
+[limits]
+cpu_ms = 60000
+
+# Every hour: check runs that waited for budget (a slice at a time), tidy old data.
+[triggers]
+crons = ["17 * * * *"]
+
+# Spending cap: replays per day, and simulation steps per day (60 steps = 1 second of play).
+# 20,000,000 steps is roughly 200 to 600 seconds of server CPU a day, about 6 to 18 million
+# CPU milliseconds a month: inside the 30 million the Workers Paid plan includes.
+# Runs over the cap are not lost; they wait and are checked by the daily job.
+[vars]
+CHECKS_PER_DAY = "1000"
+TICKS_PER_DAY = "20000000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "afterwish"
+database_id = "__D1_DATABASE_ID__"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

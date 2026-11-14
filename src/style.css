@@ -286,9 +286,9 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 .swatch.gold { background: #ffe2a0; }
 .swatch.red { background: var(--danger); }
 
-#pause, #defeat, #augment { justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.78); }
+#pause, #defeat, #augment, #trial { justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.78); }
 /* auto margins centre the card but, unlike align-items: center, let a tall one scroll instead of cutting its top off */
-#pause > *, #defeat > *, #augment > * { margin-block: auto; }
+#pause > *, #defeat > *, #augment > *, #trial > * { margin-block: auto; }
 .menu-card { width: min(460px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--slate); border: 1px solid var(--line); border-radius: 8px; }
 .menu-card h2 { font: italic 600 44px/1 var(--display); text-wrap: balance; }
 .setting { display: flex; flex-direction: column; gap: 6px; }
@@ -504,3 +504,37 @@ body[data-mode="title"] #room-badge, body[data-mode="mp"] #room-badge { display:
 .ally-tag .abar { width: 46px; height: 5px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(127, 208, 255, 0.6); }
 .ally-tag .afill { height: 100%; background: #7fd0ff; transform-origin: left; }
 .ally-tag.down b { color: #8a8f9c; }
+
+/* --- Weekly Echo and Hall of Echoes ------------------------------------------ */
+.trial-card { width: min(1040px, 100%); }
+.trial-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px; align-items: start; }
+.trial-col { display: flex; flex-direction: column; gap: 10px; }
+.trial-col h3 { font: italic 600 26px/1 var(--display); color: var(--gold); margin: 0; }
+.trial-list { display: flex; flex-direction: column; gap: 4px; }
+.trial-talent { display: grid; grid-template-columns: 28px 1fr 44px auto; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 14px; }
+.trial-talent .tt-row { color: var(--muted); font-size: 12px; text-align: center; }
+.trial-talent .tt-rank { color: var(--gold); text-align: right; font-variant-numeric: tabular-nums; }
+.trial-talent .tt-step { display: flex; gap: 4px; }
+.trial-talent .tt-step button { width: 28px; height: 26px; padding: 0; }
+.trial-result { padding: 12px 16px; border: 1px solid rgba(255, 210, 122, 0.4); border-radius: 6px; background: rgba(255, 210, 122, 0.06); }
+.trial-score { display: flex; align-items: baseline; gap: 14px; }
+.trial-score b { font: italic 600 34px/1 var(--display); color: var(--gold); }
+.trial-join { display: flex; gap: 8px; }
+.trial-join input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 4px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.25); color: inherit; font: inherit; }
+.trial-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.trial-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.trial-table td { padding: 5px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.trial-table tr.me td { color: var(--gold); background: rgba(255, 210, 122, 0.08); }
+.trial-table tr.gap td { text-align: center; color: var(--muted); }
+button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
+.champ-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.champ { padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; }
+.champ h4 { margin: 0 0 4px; color: var(--gold); font-size: 14px; }
+.champ ol { margin: 0; padding-left: 18px; font-size: 13px; }
+.champ .muted { color: var(--muted); list-style: none; margin-left: -18px; }
+.hall-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 14px; font-size: 14px; }
+.hall-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding: 3px 0; }
+.hall-row .hall-cls { color: var(--gold); font-weight: 600; }
+.hall-row .hall-sub { padding-left: 12px; color: var(--muted); }
+.hall-row b { font-variant-numeric: tabular-nums; }
+#watch-badge { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; background: rgba(10, 12, 20, 0.85); border: 1px solid rgba(255, 210, 122, 0.5); color: var(--gold); font-size: 14px; z-index: 20; }

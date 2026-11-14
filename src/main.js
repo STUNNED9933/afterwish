@@ -2,6 +2,11 @@
 // together, and runs the main loop.
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
+import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand } from './sim/trial.js';
+import { SIM_VERSION } from './sim/version.js';
+import { TrialScreen, clock as trialClock } from './ui/trial.js';
+import { loadHall, recordWave, keepTrialRun, markTrialSent, loadTrialRuns } from './hall.js';
+import * as trialApi from './net/trial-api.js';
 import { CLASSES, CLASS_IDS } from './sim/classes.js';
 import { AUGMENTS } from './sim/augments.js';
 import { Renderer } from './render/renderer.js';
@@ -92,6 +97,7 @@ function start(hot = {}) {
   // ---------------------------------------------------------------- saving
   function persist() {
     if (net && net.role === 'client') return; // the host sends this player's save (see onNetMessage)
+    if (world.trial) return; // a Weekly Echo (or a replay of one) never touches the character's save
     account.gold = world.player.gold;
     account.tickets = world.player.tickets;
     storeAccount(account);
@@ -150,11 +156,15 @@ function start(hot = {}) {
     document.body.dataset.from = mode === 'gear' ? gearReturn : '';
     // Drop keyboard focus from buttons so Space parries instead of re-clicking one.
     if (mode === 'play' && document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-    for (const id of ['title', 'town', 'pause', 'defeat', 'augment', 'travel', 'talk', 'read', 'journal', 'talents', 'transfer', 'mp']) $(id).classList.toggle('hidden', mode !== id);
+    for (const id of ['title', 'town', 'pause', 'defeat', 'augment', 'travel', 'talk', 'read', 'journal', 'talents', 'transfer', 'mp', 'trial']) $(id).classList.toggle('hidden', mode !== id);
+    $('watch-badge').classList.toggle('hidden', mode !== 'watch');
     $('inventory').classList.toggle('hidden', mode !== 'gear');
     tooltip.hide();
     if (mode === 'gear') inventory.render(world);
-    if (mode === 'town') town.render(world);
+    if (mode === 'town') {
+      town.render(world);
+      renderHall();
+    }
     if (mode === 'augment') renderOffer();
     if (mode === 'travel') renderTravel();
     if (mode === 'talk') renderTalk();
@@ -164,7 +174,8 @@ function start(hot = {}) {
     talentBadge();
     if (mode === 'title') refreshTitle();
     tune();
-    if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
+    if (mode === 'pause' && trialRun) $('btn-town').textContent = 'End this Weekly Echo run';
+    else if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
     last = performance.now();
   }
@@ -217,6 +228,171 @@ function start(hot = {}) {
     sfx.unlock();
     town.lastCache = null;
     setMode('town');
+  }
+
+  // ------------------------------------------------------- the Weekly Echo
+  let trialRun = null; // { week, build, done } while a Weekly Echo run is being played
+  let watching = null; // { inputs, i, endTick, name } while a top run is being watched
+  const currentWeek = () => trialWeek(weekIndexAt(Date.now()));
+  if (!settings.trialBuilds || typeof settings.trialBuilds !== 'object') settings.trialBuilds = {};
+  const trialScreen = new TrialScreen({
+    getBuild(cls) {
+      const wk = currentWeek();
+      const b = settings.trialBuilds[cls];
+      return b && b.week === wk.index && !validateBuild(wk, b) ? b : Object.assign(defaultBuild(wk, cls), { week: wk.index });
+    },
+    setBuild(cls, b) {
+      settings.trialBuilds[cls] = Object.assign({}, b, { week: currentWeek().index });
+      storeSettings(settings);
+    },
+    enter: (b) => enterTrial(b),
+    back: () => enterTown(),
+    watch: (id) => watchRun(id),
+    submitPending: () => submitPending(),
+  });
+
+  function openTrial(result = null) {
+    trialScreen.open(currentWeek(), world.cls, result);
+    setMode('trial');
+    submitPending();
+  }
+
+  function enterTrial(build) {
+    const wk = currentWeek();
+    const b = { cls: build.cls, spec: build.spec, talents: build.talents, ranks: build.ranks, autoAttack: settings.autoAttack !== false };
+    world = buildTrialWorld(wk, b);
+    world.recorder = [];
+    renderer.setHeroClass(world.cls);
+    setGearClass(world.cls);
+    trialRun = { week: wk, build: b, done: false };
+    renderer.setEnvironment('arena');
+    resetViews();
+    sfx.unlock();
+    setMode('play');
+    hud.banner('The Weekly Echo', `Week ${wk.index + 1} · level ${wk.level}`);
+  }
+
+  /** The run is over (fell, finished, out of time, or ended from the menu): keep it, send it, show it. */
+  async function finishTrial() {
+    if (!trialRun || trialRun.done) return;
+    clearTimeout(defeatTimer);
+    trialRun.done = true;
+    const run = trialRun;
+    const score = trialScore(world);
+    const packed = await trialApi.packInputs(world.recorder || []);
+    const payload = { week: run.week.index, version: SIM_VERSION, build: run.build, endTick: score.ticks, claim: { floor: score.floor, clearTick: score.clearTick }, inputs: packed };
+    const best = keepTrialRun(run.week.index, run.build.spec, score, payload);
+    trialRun = null;
+    enterTown();
+    const result = { floor: score.floor, clearTick: score.clearTick, spec: run.build.spec, note: best ? 'Your best run with this subclass this week.' : 'Not better than your best this week.' };
+    if (best && trialApi.online() && trialApi.identity()) {
+      result.note = 'Checking your run…';
+      openTrial(result);
+      const r = await trialApi.submitRun(payload);
+      result.note = submitNote(r);
+      if (r.ok || [400, 409, 413, 422].includes(r.http)) markTrialSent(run.week.index, run.build.spec);
+      trialScreen.render();
+      trialScreen.refreshBoards();
+    } else {
+      if (best && trialApi.online()) result.note += ' Join the boards to put it on them.';
+      openTrial(result);
+    }
+  }
+
+  function submitNote(r) {
+    if (!r.ok) return r.error || 'The boards could not be reached. Your run is kept here and will be sent next time.';
+    if (r.status === 'verified') return `Checked and on the board: ${r.rank} of ${r.total}${r.total >= 20 ? `, better than ${r.better}% of them` : ''}.`;
+    if (r.status === 'pending') return 'Received. It is queued to be checked and will appear on the board soon.';
+    if (r.status === 'not-better') return 'Your best run this week is already on the board.';
+    return r.message || 'Sent.';
+  }
+
+  /** Send any best runs that did not reach the boards yet (offline, or before joining). */
+  let sending = false;
+  async function submitPending() {
+    if (sending || !trialApi.online() || !trialApi.identity()) return;
+    sending = true;
+    const wk = currentWeek().index;
+    const runs = loadTrialRuns()[wk] || {};
+    for (const spec of Object.keys(runs)) {
+      const r = runs[spec];
+      if (r.sent || !r.payload) continue;
+      const res = await trialApi.submitRun(r.payload);
+      if (res.ok || [400, 409, 413, 422].includes(res.http)) markTrialSent(wk, spec); // sent, or never acceptable: stop retrying
+    }
+    sending = false;
+    if (mode === 'trial') {
+      trialScreen.render();
+      trialScreen.refreshBoards();
+    }
+  }
+
+  /** Watch one of the week's top runs, replayed from its recording. */
+  async function watchRun(id) {
+    const r = await trialApi.fetchReplay(id);
+    if (!r.ok) {
+      hud.feedText(r.error || 'That run cannot be watched right now.');
+      return;
+    }
+    const inputs = await trialApi.unpackInputs(r.inputs);
+    world = buildTrialWorld(trialWeek(r.week), r.build);
+    renderer.setHeroClass(world.cls);
+    setGearClass(world.cls);
+    watching = { inputs, i: 0, endTick: r.endTick, name: r.name, ended: false };
+    $('watch-badge').textContent = `Watching ${r.name}: floor ${r.floor} · Esc to stop · 2 to change speed`;
+    renderer.setEnvironment('arena');
+    resetViews();
+    setMode('watch');
+  }
+
+  function stepWatch(dt) {
+    const speed = watching.fast ? 2 : 1;
+    acc += dt * speed;
+    let steps = 0;
+    while (acc >= CONFIG.TICK && steps < 12) {
+      const w = watching;
+      while (w.i < w.inputs.length && w.inputs[w.i][0] <= world.ticks) {
+        const c = w.inputs[w.i][0] === world.ticks ? cleanCommand(w.inputs[w.i][1]) : null;
+        if (c) world.command(c);
+        w.i++;
+      }
+      world.step(CONFIG.TICK);
+      acc -= CONFIG.TICK;
+      steps++;
+      drainEvents();
+      if (!w.ended && (trialFinished(world) || world.ticks >= w.endTick)) {
+        w.ended = true;
+        hud.banner(`${w.name}: floor ${world.wave.cleared || 0}`, 'End of the run');
+        setTimeout(() => mode === 'watch' && stopWatch(), 2500);
+        break;
+      }
+    }
+    if (steps >= 12) acc = 0;
+  }
+
+  function stopWatch() {
+    watching = null;
+    enterTown();
+    openTrial();
+  }
+
+  /** The Hall of Echoes card in the Ring camp: best waves per class and subclass. */
+  function renderHall() {
+    const hall = loadHall();
+    const root = $('hall-list');
+    root.innerHTML = '';
+    for (const cls of Object.keys(CLASSES)) {
+      const rows = [[cls, CLASSES[cls].name, 'hall-cls']];
+      for (const k of Object.keys(SPECS)) if (SPECS[k].cls === cls) rows.push([`${cls}/${k}`, SPECS[k].name, 'hall-sub']);
+      for (const [key, name, cl] of rows) {
+        const rec = hall[key];
+        const d = document.createElement('div');
+        d.className = 'hall-row';
+        d.innerHTML = `<span class="${cl}">${name}</span><b>${rec ? `wave ${rec.wave}` : '—'}</b>`;
+        if (rec) d.title = `Set ${rec.at}`;
+        root.appendChild(d);
+      }
+    }
   }
 
   /** Exploration: the open map, played by the explorer character. */
@@ -762,6 +938,8 @@ function start(hot = {}) {
       }
     },
     togglePause() {
+      if (mode === 'watch') return stopWatch();
+      if (mode === 'trial') return enterTown();
       if (mode === 'play') setMode('pause');
       else if (['pause', 'travel', 'talk', 'read', 'journal', 'talents'].includes(mode)) setMode('play');
       else if (mode === 'transfer' || mode === 'mp') setMode('title');
@@ -777,6 +955,10 @@ function start(hot = {}) {
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
+      if (mode === 'watch' && watching && key === '2') {
+        watching.fast = !watching.fast;
+        return true;
+      }
       if (mode === 'talk') {
         if (key === 'enter') return quickQuest(null) || true;
         if (/^[1-9]$/.test(key)) return quickQuest(Number(key));
@@ -972,6 +1154,10 @@ function start(hot = {}) {
   $('btn-talents').addEventListener('click', () => actions.toggleTalents());
   $('btn-respec').addEventListener('click', (e) => armThenRun(e.currentTarget, 'Click again to reset your talents', () => applyNow({ type: 'respec' })));
   $('btn-town').addEventListener('click', () => {
+    if (trialRun) {
+      finishTrial();
+      return;
+    }
     if (net) {
       leaveRoom(net.role === 'host' ? 'You closed the room.' : 'You left the room.');
       return;
@@ -989,6 +1175,7 @@ function start(hot = {}) {
   $('btn-menu').addEventListener('click', () => actions.togglePause());
   $('inv-close').addEventListener('click', () => actions.toggleInventory());
   $('town-gear').addEventListener('click', () => actions.toggleInventory());
+  $('btn-weekly').addEventListener('click', () => openTrial());
   $('town-title').addEventListener('click', () => {
     persist();
     setMode('title');
@@ -1087,12 +1274,19 @@ function start(hot = {}) {
         if (ev.n === 1) hintOnce('move', 'Right-click the ground to move. Right-click an enemy to attack it.', 7);
         if (ev.boss) hintOnce('boss', 'Parry the boss three times to break its guard. Get clear of the red slam.', 9);
         break;
-      case 'waveClear':
+      case 'waveClear': {
         tune();
-        hud.banner(ev.boss ? 'The Warden falls' : 'Wave cleared', `+${ev.gold} gold${ev.boss ? ' · checkpoint saved' : ''}`);
+        if (world.trial) {
+          hud.banner(`Floor ${ev.n} cleared`, watching ? `${watching.name}'s run` : `The Weekly Echo · ${trialClock(world.ticks)}`);
+          sfx.clear();
+          break;
+        }
+        const record = world.mode === 'arena' && !net && recordWave(world.cls, world.player.spec, ev.n);
+        hud.banner(ev.boss ? 'The Warden falls' : 'Wave cleared', `+${ev.gold} gold${ev.boss ? ' · checkpoint saved' : ''}${record ? ' · a new record in the Hall of Echoes' : ''}`);
         sfx.clear();
         persist();
         break;
+      }
       case 'noTarget':
         sfx.denied();
         hud.float(renderer, ev.x, 3.0, ev.z, 'No enemy in reach', 'word warn');
@@ -1352,6 +1546,11 @@ function start(hot = {}) {
         break;
       case 'playerDeath':
         sfx.defeat();
+        if (world.trial) {
+          // A Weekly Echo run (or a replay being watched) ends here; nothing is saved to the character.
+          if (trialRun && !trialRun.done) defeatTimer = setTimeout(finishTrial, 1600);
+          break;
+        }
         persist();
         defeatTimer = setTimeout(() => {
           $('defeat-title').textContent = `You fell on wave ${ev.wave}`;
@@ -1405,8 +1604,13 @@ function start(hot = {}) {
     } else if (net && mode !== 'title' && mode !== 'mp') {
       hostAdvance(dt);
       alpha = Math.min(1, acc / CONFIG.TICK);
+    } else if (mode === 'watch' && watching) {
+      stepWatch(dt);
+      alpha = Math.min(1, acc / CONFIG.TICK);
     } else if (mode === 'play') {
-      if (world.offer && !world.gameOver && now >= offerAt) {
+      if (trialRun && !trialRun.done && trialFinished(world) && !world.gameOver) {
+        finishTrial(); // last floor, or out of time
+      } else if (world.offer && !world.gameOver && now >= offerAt) {
         setMode('augment');
       } else if (freeze > 0) {
         freeze -= dt;

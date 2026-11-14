@@ -16,6 +16,7 @@
 // walking through them, and the renderer draws them, from this one list.
 import { NPCS, SIGNS } from './story.js';
 import { makeRng } from './rng.js';
+import { dAtan2, dCos, dHypot, dSin } from './dmath.js';
 
 // roster:  enemy types and how common each is on this map
 // spawns:  how many enemies live here (each returns a while after it is killed)
@@ -95,11 +96,11 @@ export function buildMap(id) {
   if (!MAPS[id]) id = 'town';
   const rng = makeRng(hash(id));
   const R = def.radius;
-  const far = (x, z, list, pad = 0) => list.every((o) => Math.hypot(o.x - x, o.z - z) >= o.r + pad);
+  const far = (x, z, list, pad = 0) => list.every((o) => dHypot(o.x - x, o.z - z) >= o.r + pad);
 
   const portals = def.portals.map((g) => ({
     to: g.to, name: MAPS[g.to].name, angle: g.angle,
-    x: Math.cos(g.angle) * (R - 4.5), z: Math.sin(g.angle) * (R - 4.5), r: 2.2,
+    x: dCos(g.angle) * (R - 4.5), z: dSin(g.angle) * (R - 4.5), r: 2.2,
   }));
 
   // Areas that must stay open: around portals, the town plaza, enemy spawn points.
@@ -110,15 +111,15 @@ export function buildMap(id) {
     keepClear.push({ x: 0, z: 0, r: 9 });
     for (let i = 0; i < def.houses; i++) {
       const a = (i / def.houses) * Math.PI * 2 + 0.52;
-      if (portals.some((g) => Math.abs(Math.atan2(Math.sin(a - g.angle), Math.cos(a - g.angle))) < 0.45)) continue; // leave the road to a portal open
-      const x = Math.cos(a) * 15;
-      const z = Math.sin(a) * 15;
+      if (portals.some((g) => Math.abs(dAtan2(dSin(a - g.angle), dCos(a - g.angle))) < 0.45)) continue; // leave the road to a portal open
+      const x = dCos(a) * 15;
+      const z = dSin(a) * 15;
       // A box: `rot` turns it to face the plaza; hw / hd are half the width and depth.
       obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 2.6, hd: 2.2, rot: a + Math.PI / 2, height: 3 + (i % 2) * 0.8, r: 3.4 });
     }
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      obstacles.push({ kind: 'brazier', shape: 'circle', x: Math.cos(a) * 8, z: Math.sin(a) * 8, r: 0.5, lit: i % 2 === 0 });
+      obstacles.push({ kind: 'brazier', shape: 'circle', x: dCos(a) * 8, z: dSin(a) * 8, r: 0.5, lit: i % 2 === 0 });
     }
     obstacles.push({ kind: 'well', shape: 'circle', x: 0, z: -4.5, r: 1.3 });
   }
@@ -136,12 +137,12 @@ export function buildMap(id) {
       // portal, or on the far side of the middle when the road ends here.
       const gate = sg.spot === 'in' ? portals[0] : portals[1];
       if (gate) {
-        const d = Math.hypot(gate.x, gate.z);
+        const d = dHypot(gate.x, gate.z);
         const side = sg.spot === 'in' ? 1 : -1;
         x = gate.x * (1 - 8 / d) + (-gate.z / d) * 3.6 * side;
         z = gate.z * (1 - 8 / d) + (gate.x / d) * 3.6 * side;
       } else {
-        const d = Math.hypot(portals[0].x, portals[0].z);
+        const d = dHypot(portals[0].x, portals[0].z);
         x = (-portals[0].x / d) * 17;
         z = (-portals[0].z / d) * 17;
       }
@@ -163,9 +164,9 @@ export function buildMap(id) {
   for (let tries = 0; spawns.length < def.spawns + (def.boss ? 1 : 0) && tries < 4000; tries++) {
     const a = rng() * Math.PI * 2;
     const r = 7 + Math.sqrt(rng()) * (R - 13);
-    const x = Math.cos(a) * r;
-    const z = Math.sin(a) * r;
-    if (!far(x, z, spawns, -1) || portals.some((g) => Math.hypot(g.x - x, g.z - z) < 11) || !far(x, z, obstacles, 3)) continue;
+    const x = dCos(a) * r;
+    const z = dSin(a) * r;
+    if (!far(x, z, spawns, -1) || portals.some((g) => dHypot(g.x - x, g.z - z) < 11) || !far(x, z, obstacles, 3)) continue;
     let roll = rng() * total;
     let type = types[0];
     for (const t of types) {
@@ -176,7 +177,7 @@ export function buildMap(id) {
       }
     }
     // Enemies get tougher the further you are from the entrance (the first portal).
-    const depth = Math.min(1, Math.hypot(x - portals[0].x, z - portals[0].z) / (2 * R - 12));
+    const depth = Math.min(1, dHypot(x - portals[0].x, z - portals[0].z) / (2 * R - 12));
     spawns.push({ x, z, type, level: def.level + Math.round(def.levelSpan * depth), r: 6.5 });
   }
   for (const s of spawns) keepClear.push({ x: s.x, z: s.z, r: 2.5 });
@@ -186,7 +187,7 @@ export function buildMap(id) {
     for (let n = 0, tries = 0; n < count && tries < count * 40; tries++) {
       const a = rng() * Math.PI * 2;
       const r = (def.theme === 'town' ? 11 : 3) + Math.sqrt(rng()) * (R - (def.theme === 'town' ? 12 : 4.5));
-      const ob = make(Math.cos(a) * r, Math.sin(a) * r);
+      const ob = make(dCos(a) * r, dSin(a) * r);
       if (!far(ob.x, ob.z, keepClear, ob.r) || !far(ob.x, ob.z, obstacles, ob.r + 1.6)) continue;
       obstacles.push(ob);
       n++;

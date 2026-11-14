@@ -25,6 +25,8 @@ const options = {
   target: 'es2020',
   outfile: 'dist/game.js',
   legalComments: 'eof',
+  // Where the Weekly Echo server lives (set by the Pages workflow from the TRIAL_API_URL variable).
+  define: { __TRIAL_API__: JSON.stringify(process.env.TRIAL_API_URL || '') },
   logLevel: 'info',
 };
 

@@ -28,10 +28,11 @@ function migrateTalents(saved) {
   return out;
 }
 import { QUESTS, QUEST_IDS, SIGNS, NPCS, BOSS_LOOT } from './story.js';
+import { dAtan2, dCos, dExp, dHypot, dSin } from './dmath.js';
 
 const TAU = Math.PI * 2;
 const MAPS_START = 'town'; // exploration always begins, and you always wake up, in town
-const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+const dist = (ax, az, bx, bz) => dHypot(ax - bx, az - bz);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Signed smallest difference between two angles. */
@@ -56,6 +57,8 @@ function turnToward(current, target, maxStep) {
 const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
 
 /** Rarity weights that allow exactly one rarity. */
+/** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
+const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -66,7 +69,13 @@ export class World {
    * @param {string} [opts.parryPreset]  key of CONFIG.PARRY_PRESETS
    */
   constructor(opts = {}) {
-    this.rng = makeRng(opts.seed ?? (Date.now() & 0xffffffff));
+    this.seed = (opts.seed ?? (Date.now() & 0xffffffff)) >>> 0;
+    this.rng = makeRng(this.seed);
+    this.ticks = 0; // simulation steps taken; replays put each command back on the step it came in
+    this.recorder = null; // an array while a run is being recorded: [tick, command] pairs
+    // Weekly Echo: fixed rules (see sim/trial.js). Normal play leaves this null.
+    this.trial = opts.trial || null;
+    this.offerCount = 0;
     this.parryPreset = opts.parryPreset || CONFIG.DEFAULT_PARRY_PRESET;
     this.time = 0;
     this.nextId = 1;
@@ -180,8 +189,8 @@ export class World {
     // Arrive next to the host.
     const lead = back.player;
     const a = this.rng() * TAU;
-    p.x = p.px = lead.x + Math.cos(a) * 2;
-    p.z = p.pz = lead.z + Math.sin(a) * 2;
+    p.x = p.px = lead.x + dCos(a) * 2;
+    p.z = p.pz = lead.z + dSin(a) * 2;
     this.pushOut(p, p.radius);
     if (this.map && !p.visited.includes(this.map.id)) p.visited.push(this.map.id);
     for (const k of HERO_KEYS) h[k] = this[k];
@@ -260,7 +269,23 @@ export class World {
 
   /** Queue a command. It is applied at the start of the next step. */
   command(cmd) {
+    if (this.trial) {
+      // Weekly Echo: positions to the centimetre, so a recorded run stays small and replays exactly.
+      if (typeof cmd.x === 'number') cmd = Object.assign({}, cmd, { x: Math.round(cmd.x * 100) / 100 });
+      if (typeof cmd.z === 'number') cmd = Object.assign({}, cmd, { z: Math.round(cmd.z * 100) / 100 });
+    }
     this.commands.push(cmd);
+  }
+
+  /**
+   * A random stream of its own for one purpose (waves, augment offers), seeded from the run's seed.
+   * Everyone with the same seed then meets the same waves and offers, however their fights went.
+   */
+  streamRng(tag, n) {
+    let h = (this.seed ^ 0x9e3779b9) >>> 0;
+    const s = `${tag}:${n}`;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+    return makeRng(h);
   }
 
   // =========================================================================
@@ -428,6 +453,8 @@ export class World {
   applyCommands(cmds) {
     const p = this.player;
     for (const c of cmds) {
+      if (this.recorder) this.recorder.push([this.ticks, c]);
+      if (this.trial && TRIAL_LOCKED.has(c.type)) continue; // the week fixes gear and build
       // Inventory commands work even while dead or between waves.
       if (c.type === 'equip') this.equip(c.index);
       else if (c.type === 'discard') this.discard(c.index);
@@ -444,7 +471,7 @@ export class World {
       if (p.dead) continue;
       switch (c.type) {
         case 'move': {
-          const r = Math.hypot(c.x, c.z);
+          const r = dHypot(c.x, c.z);
           const max = this.radius - p.radius;
           const k = r > max ? max / r : 1;
           p.moveTarget = { x: c.x * k, z: c.z * k };
@@ -458,7 +485,7 @@ export class World {
         case 'attackMove': {
           // Shift + right-click: attack the enemy nearest you (or your cursor) if one is in reach,
           // else walk to the spot and attack the first enemy that comes into reach on the way.
-          const r = Math.hypot(c.x, c.z);
+          const r = dHypot(c.x, c.z);
           const max = this.radius - p.radius;
           const k = r > max ? max / r : 1;
           const am = { x: c.x * k, z: c.z * k, near: c.near === 'hero' ? 'hero' : 'cursor' };
@@ -592,7 +619,7 @@ export class World {
       if (e.dead || e.state === 'spawn') continue;
       const de = dist(e.x, e.z, p.x, p.z);
       if (de > range + e.radius) continue;
-      const ae = Math.atan2(e.z - p.z, e.x - p.x);
+      const ae = dAtan2(e.z - p.z, e.x - p.x);
       if (de > e.radius + 0.8 && Math.abs(angDiff(ae, dir)) > angle / 2 + 0.1) continue;
       if (slot === 'q' && m.qSunder > 0) {
         e.vulnT = 4;
@@ -666,11 +693,11 @@ export class World {
     if (!near.length) return;
     for (let i = 0; i < count; i++) {
       const t = near[i % near.length];
-      const a = Math.atan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.5; // fan out, then curve in
+      const a = dAtan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.5; // fan out, then curve in
       this.projectiles.push({
         id: this.nextId++, owner: 'player', kind: 'mote', slot: ds.slot, pid: this.cur.pid, targetId: t.id,
-        x: p.x + Math.cos(a) * 0.6, z: p.z + Math.sin(a) * 0.6, px: p.x, pz: p.z,
-        vx: Math.cos(a) * mo.speed, vz: Math.sin(a) * mo.speed, speed: mo.speed,
+        x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z,
+        vx: dCos(a) * mo.speed, vz: dSin(a) * mo.speed, speed: mo.speed,
         radius: 0.4, dmg: ds.dmg, parryable: false, reflected: false, life: 1.6, dead: false,
       });
     }
@@ -707,10 +734,10 @@ export class World {
 
   /** Distance from a point to a Rimewall's box (0 inside it). */
   wallDist(wl, x, z) {
-    const c = Math.cos(wl.rot), s = Math.sin(wl.rot);
+    const c = dCos(wl.rot), s = dSin(wl.rot);
     const dx = x - wl.x, dz = z - wl.z;
     const lx = dx * c + dz * s, lz = -dx * s + dz * c;
-    return Math.hypot(Math.max(0, Math.abs(lx) - wl.hw), Math.max(0, Math.abs(lz) - wl.hd));
+    return dHypot(Math.max(0, Math.abs(lx) - wl.hw), Math.max(0, Math.abs(lz) - wl.hd));
   }
 
   stepShadows(dt) {
@@ -729,7 +756,7 @@ export class World {
     pr.x += pr.vx * dt;
     pr.z += pr.vz * dt;
     pr.life -= dt;
-    if (pr.life <= 0 || Math.hypot(pr.x, pr.z) > this.radius + 4) {
+    if (pr.life <= 0 || dHypot(pr.x, pr.z) > this.radius + 4) {
       pr.dead = true;
       return;
     }
@@ -831,7 +858,7 @@ export class World {
   strike(target, slot, dmg) {
     const p = this.player;
     const def = this.kit[slot];
-    const toHero = Math.atan2(p.z - target.z, p.x - target.x);
+    const toHero = dAtan2(p.z - target.z, p.x - target.x);
     // "Exposed" = you are behind it, or it is stunned (a parry sets this up).
     const exposed = target.state === 'stunned' || Math.abs(angDiff(target.facing, toHero)) > 1.9;
     const m = this.mods;
@@ -840,7 +867,7 @@ export class World {
       target.bleedT = 3;
       target.bleedDps = (p.stats.ad * m[slot + 'Bleed']) / 3;
     }
-    p.facing = Math.atan2(target.z - p.z, target.x - p.x);
+    p.facing = dAtan2(target.z - p.z, target.x - p.x);
     this.emit('cast', { slot, fx: 'strike', x: target.x, z: target.z, exposed: bonus > 1 });
     if (slot === 'r' && m.rMark > 0) {
       // Second Death: count everything this hero deals it for 3 seconds (this strike included).
@@ -862,7 +889,7 @@ export class World {
           if (de < bd) { bd = de; best = e; }
         }
         if (!best) continue;
-        s.facing = Math.atan2(best.z - s.z, best.x - s.x);
+        s.facing = dAtan2(best.z - s.z, best.x - s.x);
         s.throwT = 0.25;
         this.emit('shadowSlash', { x: s.x, z: s.z, tx: best.x, tz: best.z });
         this.hitEnemy(best, dmg * m.shadowSlash, { source: 'q' });
@@ -896,11 +923,11 @@ export class World {
     const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
     const forceCrit = false;
     if (b.shot) {
-      const a = Math.atan2(target.z - p.z, target.x - p.x);
+      const a = dAtan2(target.z - p.z, target.x - p.x);
       this.projectiles.push({
         id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit, critBonus,
-        x: p.x + Math.cos(a) * 0.7, z: p.z + Math.sin(a) * 0.7, px: p.x, pz: p.z,
-        vx: Math.cos(a) * b.speed, vz: Math.sin(a) * b.speed, speed: b.speed,
+        x: p.x + dCos(a) * 0.7, z: p.z + dSin(a) * 0.7, px: p.x, pz: p.z,
+        vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed,
         radius: 0.3, dmg, parryable: false, reflected: false, life: 1.2, dead: false,
       });
     } else {
@@ -941,11 +968,11 @@ export class World {
       }
     }
     if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05) return;
-    let a = Math.atan2(z - p.z, x - p.x);
+    let a = dAtan2(z - p.z, x - p.x);
     if (!Number.isFinite(a)) a = p.facing;
     const d = dist(x, z, p.x, p.z);
-    const cos = Math.cos(a);
-    const sin = Math.sin(a);
+    const cos = dCos(a);
+    const sin = dSin(a);
     const range = (def.range || 0) * (m[slot + 'Range'] || 1);
     const radius = (def.radius || 0) * (m[slot + 'Radius'] || 1);
 
@@ -1104,8 +1131,8 @@ export class World {
           const ba = a + (i - (bolts - 1) / 2) * 0.16;
           this.projectiles.push({
             id: this.nextId++, owner: 'player', kind: 'bolt', slot,
-            x: p.x + Math.cos(ba) * 0.8, z: p.z + Math.sin(ba) * 0.8, px: p.x, pz: p.z,
-            vx: Math.cos(ba) * def.speed, vz: Math.sin(ba) * def.speed, speed: def.speed,
+            x: p.x + dCos(ba) * 0.8, z: p.z + dSin(ba) * 0.8, px: p.x, pz: p.z,
+            vx: dCos(ba) * def.speed, vz: dSin(ba) * def.speed, speed: def.speed,
             radius: 0.5, dmg: dmg * (bolts > 1 ? 0.65 : 1),
             splash: (def.splash || 0) * (m[slot + 'Radius'] || 1), splashMult: slot === 'q' && m.qSplashFull ? 1 : def.splashMult || 0,
             bleed: m[slot + 'Bleed'] || 0,
@@ -1158,7 +1185,7 @@ export class World {
         const from = [{ x: p.x, z: p.z, ang: a }];
         for (const s of this.shadows) {
           if (s.pid !== this.cur.pid) continue;
-          let sa = Math.atan2(z - s.z, x - s.x);
+          let sa = dAtan2(z - s.z, x - s.x);
           if (!Number.isFinite(sa) || dist(x, z, s.x, s.z) < 0.3) sa = a;
           s.facing = sa;
           s.throwT = 0.25;
@@ -1166,7 +1193,7 @@ export class World {
         }
         const width = (def.width || 1) * (m[slot + 'Radius'] || 1);
         for (const f of from) {
-          const c = Math.cos(f.ang), sn = Math.sin(f.ang);
+          const c = dCos(f.ang), sn = dSin(f.ang);
           this.projectiles.push({
             id: this.nextId++, owner: 'player', kind: 'kunai', slot, pid: this.cur.pid,
             x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
@@ -1188,7 +1215,7 @@ export class World {
         this.projectiles.push({
           id: this.nextId++, owner: 'player', kind: 'orb', slot, pid: this.cur.pid,
           x: sx, z: sz, px: p.x, pz: p.z, vx: cos * def.speed, vz: sin * def.speed, speed: def.speed,
-          radius: 0.6, dmg, left: Math.max(0, Math.hypot(end.x - sx, end.z - sz)), next: 0.05, tick: def.tick,
+          radius: 0.6, dmg, left: Math.max(0, dHypot(end.x - sx, end.z - sz)), next: 0.05, tick: def.tick,
           aura: radius, burst: def.burst * (m[slot + 'Radius'] || 1), shard: def.shard, chill: def.chill,
           slow: def.slow, slowDur: def.slowDur, parryable: false, reflected: false, life: 99, dead: false,
         });
@@ -1197,7 +1224,7 @@ export class World {
       }
       case 'barrage': {
         // Arrows leave one after another (see stepPlayer); each is a basic attack.
-        p.facing = Math.atan2(target.z - p.z, target.x - p.x);
+        p.facing = dAtan2(target.z - p.z, target.x - p.x);
         p.barrage = { id: target.id, left: def.count + (m.wExtra || 0), t: 0, gap: def.gap, dmg: this.abilityDamage(slot), range: range + 2 };
         p.targetId = target.id;
         this.emit('cast', { slot, fx: 'barrage', x: target.x, z: target.z });
@@ -1208,13 +1235,13 @@ export class World {
         p.moveTarget = null;
         p.autoAcquire = true;
         if (def.gap) {
-          if (slot === 'r' && m.rShadow) this.addShadow('r', p.x, p.z, Math.atan2(target.z - p.z, target.x - p.x));
+          if (slot === 'r' && m.rShadow) this.addShadow('r', p.x, p.z, dAtan2(target.z - p.z, target.x - p.x));
           // Jump next to the target, then strike on arrival.
-          const ta = Math.atan2(p.z - target.z, p.x - target.x);
+          const ta = dAtan2(p.z - target.z, p.x - target.x);
           const stand = target.radius + p.radius + 0.4;
-          const end = this.clampToArena(target.x + Math.cos(ta) * stand, target.z + Math.sin(ta) * stand, p.radius);
+          const end = this.clampToArena(target.x + dCos(ta) * stand, target.z + dSin(ta) * stand, p.radius);
           p.dash = { t: 0, dur: 0.14, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg: 0, refunded: true, slot, width: 0, strike: { id: target.id, dmg } };
-          this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: Math.atan2(end.z - p.z, end.x - p.x), ex: end.x, ez: end.z });
+          this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: dAtan2(end.z - p.z, end.x - p.x), ex: end.x, ez: end.z });
         } else {
           p.castLock = 0.12;
           this.strike(target, slot, dmg);
@@ -1355,7 +1382,7 @@ export class World {
   }
 
   clampToArena(x, z, radius) {
-    const r = Math.hypot(x, z);
+    const r = dHypot(x, z);
     const max = this.radius - radius;
     if (r > max) {
       x *= max / r;
@@ -1418,7 +1445,7 @@ export class World {
         if (!t) p.barrage = null;
         else {
           bg.id = t.id;
-          p.facing = Math.atan2(t.z - p.z, t.x - p.x);
+          p.facing = dAtan2(t.z - p.z, t.x - p.x);
           this.basicAttack(t, bg.dmg);
           this.emit('swing', { dur: 0.08 });
           bg.left--;
@@ -1546,10 +1573,10 @@ export class World {
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
-      const a = Math.atan2(target.z - p.z, target.x - p.x);
+      const a = dAtan2(target.z - p.z, target.x - p.x);
       if (d > this.basicRange()) {
         p.atkWind = 0;
-        this.movePlayer(Math.cos(a), Math.sin(a), speed * dt);
+        this.movePlayer(dCos(a), dSin(a), speed * dt);
         p.facing = turnToward(p.facing, a, 14 * dt);
       } else {
         p.facing = turnToward(p.facing, a, 14 * dt);
@@ -1571,7 +1598,7 @@ export class World {
     } else if (p.moveTarget) {
       const dx = p.moveTarget.x - p.x;
       const dz = p.moveTarget.z - p.z;
-      const d = Math.hypot(dx, dz);
+      const d = dHypot(dx, dz);
       const stepLen = speed * dt;
       if (d <= stepLen) {
         p.x = p.moveTarget.x;
@@ -1580,7 +1607,7 @@ export class World {
         p.attackMove = null;
         p.autoAcquire = true;
       } else {
-        p.facing = turnToward(p.facing, Math.atan2(dz, dx), 14 * dt);
+        p.facing = turnToward(p.facing, dAtan2(dz, dx), 14 * dt);
         this.movePlayer(dx / d, dz / d, stepLen);
       }
     }
@@ -1685,11 +1712,11 @@ export class World {
           proj.pid = this.cur.pid;
           proj.owner = 'player';
           proj.reflected = true;
-          let a = Math.atan2(-proj.vz, -proj.vx);
-          if (src && !src.dead) a = Math.atan2(src.z - proj.z, src.x - proj.x);
-          const sp = Math.hypot(proj.vx, proj.vz) * 1.7;
-          proj.vx = Math.cos(a) * sp;
-          proj.vz = Math.sin(a) * sp;
+          let a = dAtan2(-proj.vz, -proj.vx);
+          if (src && !src.dead) a = dAtan2(src.z - proj.z, src.x - proj.x);
+          const sp = dHypot(proj.vx, proj.vz) * 1.7;
+          proj.vx = dCos(a) * sp;
+          proj.vz = dSin(a) * sp;
           proj.dmg = (proj.dmg * 2.5 + p.stats.ad) * m.reflectDmg;
           proj.life = 3;
         } else if (src && !src.dead) {
@@ -1755,7 +1782,7 @@ export class World {
   // =========================================================================
   gainExp(amount) {
     const p = this.player;
-    if (p.level >= CONFIG.MAX_LEVEL) return;
+    if (p.level >= CONFIG.MAX_LEVEL || this.trial) return; // the Weekly Echo fixes your level
     p.exp += Math.round(amount);
     while (p.level < CONFIG.MAX_LEVEL && p.exp >= expToNext(p.level)) {
       p.exp -= expToNext(p.level);
@@ -1772,7 +1799,7 @@ export class World {
   dropLoot(e) {
     const def = e.def;
     const hoard = this.mode === 'explore' && def.boss ? BOSS_LOOT[e.type] : null; // world bosses drop a pile
-    const count = hoard ? hoard.items : def.boss ? 2 : this.rng() < def.drop ? 1 : 0;
+    const count = this.trial ? 0 : hoard ? hoard.items : def.boss ? 2 : this.rng() < def.drop ? 1 : 0; // the Weekly Echo drops no gear
     const ilvl = Math.max(1, Math.round(e.level || this.wave.n));
     for (let i = 0; i < count; i++) {
       let opts = { minRarity: def.boss ? 2 : 0, cls: this.cls };
@@ -1783,7 +1810,7 @@ export class World {
       }
       const item = rollItem(this.rng, ilvl, opts);
       const a = this.rng() * TAU;
-      const c = this.clampToArena(e.x + Math.cos(a) * (0.8 + i), e.z + Math.sin(a) * (0.8 + i), 1);
+      const c = this.clampToArena(e.x + dCos(a) * (0.8 + i), e.z + dSin(a) * (0.8 + i), 1);
       const drop = { id: this.nextId++, x: c.x, z: c.z, item, age: 0, magnet: false, owner: this.cur.pid }; // in a party, only its owner sees and takes it
       this.loot.push(drop);
       this.emit('lootDrop', { id: drop.id, x: c.x, z: c.z, rarity: item.rarity });
@@ -2188,6 +2215,7 @@ export class World {
   // --- Augments --------------------------------------------------------------
   /** Put three augments on offer. The next wave waits until one is taken. */
   makeOffer(boss, exclude = []) {
+    const rng = this.streamRng('offer', this.offerCount++); // the same offers for everyone on the same seed
     const pool = AUGMENT_IDS.filter((id) => {
       const a = AUGMENTS[id];
       if (this.augments.includes(id) || exclude.includes(id)) return false;
@@ -2198,10 +2226,10 @@ export class World {
     const t2 = pool.filter((id) => AUGMENTS[id].tier === 2);
     const choices = [];
     for (let i = 0; i < 3; i++) {
-      const strong = boss || this.rng() < 0.12;
+      const strong = boss || rng() < 0.12;
       const src = strong && t2.length ? t2 : t1.length ? t1 : t2;
       if (!src.length) break;
-      choices.push(src.splice(Math.floor(this.rng() * src.length), 1)[0]);
+      choices.push(src.splice(Math.floor(rng() * src.length), 1)[0]);
     }
     if (!choices.length) return;
     this.offer = { choices, boss: !!boss };
@@ -2259,15 +2287,15 @@ export class World {
     for (let i = 0; i < 12; i++) {
       const a = this.rng() * TAU;
       const r = this.radius - 2.5 - this.rng() * 3;
-      x = Math.cos(a) * r;
-      z = Math.sin(a) * r;
+      x = dCos(a) * r;
+      z = dSin(a) * r;
       if (dist(x, z, p.x, p.z) > 10) break;
     }
     if (at) {
       const a = this.rng() * TAU;
       const r = 1.5 + this.rng() * 4.5;
-      x = at.x + Math.cos(a) * r;
-      z = at.z + Math.sin(a) * r;
+      x = at.x + dCos(a) * r;
+      z = at.z + dSin(a) * r;
     }
     const e = {
       id: this.nextId++,
@@ -2277,7 +2305,7 @@ export class World {
       z,
       px: x,
       pz: z,
-      facing: Math.atan2(p.z - z, p.x - x),
+      facing: dAtan2(p.z - z, p.x - x),
       aim: 0,
       radius: def.radius,
       hp: Math.round(def.hp * scale.hp),
@@ -2360,7 +2388,7 @@ export class World {
     e.t = 0;
     e.dur = atk.windup * (e.enraged ? 0.82 : 1);
     e.chaseT = 0;
-    e.aim = Math.atan2(p.z - e.z, p.x - e.x);
+    e.aim = dAtan2(p.z - e.z, p.x - e.x);
     e.facing = e.aim;
     e.moving = false;
     if (!isChain) this.lastWindupAt = this.time;
@@ -2393,8 +2421,8 @@ export class World {
 
   positionTelegraph(e, tele) {
     const off = tele.offset || 0;
-    tele.x = e.x + Math.cos(e.aim) * off;
-    tele.z = e.z + Math.sin(e.aim) * off;
+    tele.x = e.x + dCos(e.aim) * off;
+    tele.z = e.z + dSin(e.aim) * off;
     tele.dir = e.aim;
   }
 
@@ -2414,12 +2442,12 @@ export class World {
 
     if (atk.shape === 'arc') {
       const d = dist(p.x, p.z, e.x, e.z);
-      const ap = Math.atan2(p.z - e.z, p.x - e.x);
+      const ap = dAtan2(p.z - e.z, p.x - e.x);
       hit = d <= atk.range + p.radius * 0.5 && (d < e.radius + p.radius || Math.abs(angDiff(ap, a)) <= atk.angle / 2 + 0.15);
       this.emit('strike', { id: e.id, shape: 'arc', x: e.x, z: e.z, dir: a, range: atk.range, angle: atk.angle, parryable: atk.parryable });
     } else if (atk.shape === 'circle') {
-      const cx = e.x + Math.cos(a) * atk.offset;
-      const cz = e.z + Math.sin(a) * atk.offset;
+      const cx = e.x + dCos(a) * atk.offset;
+      const cz = e.z + dSin(a) * atk.offset;
       hit = dist(p.x, p.z, cx, cz) <= atk.radius + p.radius * 0.4;
       this.emit('strike', { id: e.id, shape: 'circle', x: cx, z: cz, radius: atk.radius, parryable: atk.parryable });
     } else if (atk.shape === 'rect') {
@@ -2437,12 +2465,12 @@ export class World {
           id: this.nextId++,
           owner: 'enemy',
           srcId: e.id,
-          x: e.x + Math.cos(pa) * (e.radius + 0.3),
-          z: e.z + Math.sin(pa) * (e.radius + 0.3),
+          x: e.x + dCos(pa) * (e.radius + 0.3),
+          z: e.z + dSin(pa) * (e.radius + 0.3),
           px: e.x,
           pz: e.z,
-          vx: Math.cos(pa) * atk.speed,
-          vz: Math.sin(pa) * atk.speed,
+          vx: dCos(pa) * atk.speed,
+          vz: dSin(pa) * atk.speed,
           radius: 0.35,
           dmg: atk.dmg * e.dmgMult,
           level: e.level,
@@ -2465,8 +2493,8 @@ export class World {
         let also;
         if (atk.shape === 'arc') {
           const d = dist(q.x, q.z, e.x, e.z);
-          also = d <= atk.range + q.radius * 0.5 && (d < e.radius + q.radius || Math.abs(angDiff(Math.atan2(q.z - e.z, q.x - e.x), a)) <= atk.angle / 2 + 0.15);
-        } else also = dist(q.x, q.z, e.x + Math.cos(a) * atk.offset, e.z + Math.sin(a) * atk.offset) <= atk.radius + q.radius * 0.4;
+          also = d <= atk.range + q.radius * 0.5 && (d < e.radius + q.radius || Math.abs(angDiff(dAtan2(q.z - e.z, q.x - e.x), a)) <= atk.angle / 2 + 0.15);
+        } else also = dist(q.x, q.z, e.x + dCos(a) * atk.offset, e.z + dSin(a) * atk.offset) <= atk.radius + q.radius * 0.4;
         if (also) this.as(h, () => this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e }));
       }
     }
@@ -2691,15 +2719,15 @@ export class World {
       if (e.kx || e.kz) {
         e.x += e.kx * dt;
         e.z += e.kz * dt;
-        const f = Math.exp(-9 * dt);
+        const f = dExp(-9 * dt);
         e.kx *= f;
         e.kz *= f;
         if (Math.abs(e.kx) + Math.abs(e.kz) < 0.2) e.kx = e.kz = 0;
       }
       const dx = p.x - e.x;
       const dz = p.z - e.z;
-      const d = Math.hypot(dx, dz) || 0.001;
-      const toPlayer = Math.atan2(dz, dx);
+      const d = dHypot(dx, dz) || 0.001;
+      const toPlayer = dAtan2(dz, dx);
 
       switch (e.state) {
         case 'spawn':
@@ -2795,14 +2823,14 @@ export class World {
           const atk = e.atk;
           e.t += dt;
           const sp = atk.length / atk.chargeDur;
-          e.x += Math.cos(e.aim) * sp * dt;
-          e.z += Math.sin(e.aim) * sp * dt;
+          e.x += dCos(e.aim) * sp * dt;
+          e.z += dSin(e.aim) * sp * dt;
           e.moving = true;
           if (!e.chargeHit && d < e.radius + p.radius + 0.45) {
             e.chargeHit = true;
             this.hitPlayer(atk.dmg * e.dmgMult, { parryable: false, src: e });
           }
-          const edge = Math.hypot(e.x, e.z) > this.radius - e.radius;
+          const edge = dHypot(e.x, e.z) > this.radius - e.radius;
           if (e.t >= e.dur || edge) {
             e.state = 'recover';
             e.t = atk.recover;
@@ -2823,7 +2851,7 @@ export class World {
         if (b.dead) continue;
         const dx = b.x - a.x;
         const dz = b.z - a.z;
-        const d = Math.hypot(dx, dz) || 0.001;
+        const d = dHypot(dx, dz) || 0.001;
         const overlap = a.radius + b.radius - d;
         if (overlap > 0) {
           const wa = a.def.heavy ? 0.15 : 0.5;
@@ -2838,7 +2866,7 @@ export class World {
       if (!p.dead && !p.dash && !p.leap && a.state !== 'charge') {
         const dx = a.x - p.x;
         const dz = a.z - p.z;
-        const d = Math.hypot(dx, dz) || 0.001;
+        const d = dHypot(dx, dz) || 0.001;
         const overlap = a.radius + p.radius - d;
         if (overlap > 0) {
           if (a.def.heavy) {
@@ -2883,9 +2911,9 @@ export class World {
         // Basic-attack shots curve toward their target so they do not miss.
         const t = this.enemyById(pr.targetId);
         if (t) {
-          const a = Math.atan2(t.z - pr.z, t.x - pr.x);
-          pr.vx = Math.cos(a) * pr.speed;
-          pr.vz = Math.sin(a) * pr.speed;
+          const a = dAtan2(t.z - pr.z, t.x - pr.x);
+          pr.vx = dCos(a) * pr.speed;
+          pr.vz = dSin(a) * pr.speed;
         }
       }
       pr.px = pr.x;
@@ -2893,7 +2921,7 @@ export class World {
       pr.x += pr.vx * d;
       pr.z += pr.vz * d;
       pr.life -= d;
-      if (pr.life <= 0 || Math.hypot(pr.x, pr.z) > this.radius + 4) {
+      if (pr.life <= 0 || dHypot(pr.x, pr.z) > this.radius + 4) {
         pr.dead = true;
         continue;
       }
@@ -2902,7 +2930,7 @@ export class World {
         if (wl) {
           // Rimewall: the shot flies back, belonging to the Frostbinder who raised the wall.
           const h = this.heroByPid(wl.pid) || this.heroes[0];
-          const nx = -Math.sin(wl.rot), nz = Math.cos(wl.rot); // the wall's face
+          const nx = -dSin(wl.rot), nz = dCos(wl.rot); // the wall's face
           const dot = pr.vx * nx + pr.vz * nz;
           pr.vx = (pr.vx - 2 * dot * nx) * 1.5;
           pr.vz = (pr.vz - 2 * dot * nz) * 1.5;
@@ -2979,7 +3007,7 @@ export class World {
   startWave() {
     const w = this.wave;
     w.n++;
-    w.queue = buildWave(w.n, this.rng);
+    w.queue = buildWave(w.n, this.streamRng('wave', w.n));
     w.total = w.queue.length;
     w.phase = 'active';
     w.spawnT = 0;
@@ -3006,6 +3034,7 @@ export class World {
     }
     if (!w.queue.length && this.enemies.length === 0) {
       w.cleared = w.n;
+      this.clearTick = this.ticks; // Weekly Echo tie-break: how soon this floor fell
       w.phase = 'intermission';
       w.timer = CONFIG.INTERMISSION;
       this.bestWave = Math.max(this.bestWave, w.n);
@@ -3058,10 +3087,10 @@ inTown() {
     this.delayed = [];
     this.slowT = 0;
     const gate = map.portals.find((g) => g.to === from);
-    const k = gate ? 1 - 5.5 / Math.hypot(gate.x, gate.z) : 0; // a few steps inside the portal
+    const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
     p.x = p.px = gate ? gate.x * k : 0;
     p.z = p.pz = gate ? gate.z * k : 0;
-    if (gate) p.facing = Math.atan2(-gate.z, -gate.x);
+    if (gate) p.facing = dAtan2(-gate.z, -gate.x);
     p.moveTarget = null;
     p.targetId = null;
     p.dash = null;
@@ -3070,8 +3099,8 @@ inTown() {
     const arrive = (q, i) => {
       // The party arrives in a little cluster.
       const a = (i / Math.max(1, this.heroes.length)) * TAU;
-      q.x = q.px = p.x + (i ? Math.cos(a) * 1.6 : 0);
-      q.z = q.pz = p.z + (i ? Math.sin(a) * 1.6 : 0);
+      q.x = q.px = p.x + (i ? dCos(a) * 1.6 : 0);
+      q.z = q.pz = p.z + (i ? dSin(a) * 1.6 : 0);
       q.facing = p.facing;
       q.moveTarget = null;
       q.targetId = null;
@@ -3134,15 +3163,15 @@ inTown() {
       const dz = o.z - ob.z;
       if (ob.shape === 'box') {
         if (Math.abs(dx) + Math.abs(dz) > ob.hw + ob.hd + rad + 2) continue; // far away, skip the maths
-        const c = Math.cos(ob.rot);
-        const s = Math.sin(ob.rot);
+        const c = dCos(ob.rot);
+        const s = dSin(ob.rot);
         const lx = dx * c + dz * s; // the body's position in the box's own frame
         const lz = -dx * s + dz * c;
         const cx = clamp(lx, -ob.hw, ob.hw);
         const cz = clamp(lz, -ob.hd, ob.hd);
         let nx = lx - cx;
         let nz = lz - cz;
-        let d = Math.hypot(nx, nz);
+        let d = dHypot(nx, nz);
         if (d >= rad) continue;
         if (d < 1e-6) {
           // The centre is inside the box: leave through the nearest wall.
@@ -3170,7 +3199,7 @@ inTown() {
       } else {
         const min = ob.r + rad;
         if (Math.abs(dx) > min || Math.abs(dz) > min) continue;
-        const d = Math.hypot(dx, dz);
+        const d = dHypot(dx, dz);
         if (d >= min) continue;
         this.hitNx = d < 1e-6 ? 1 : dx / d;
         this.hitNz = d < 1e-6 ? 0 : dz / d;
@@ -3194,8 +3223,8 @@ inTown() {
       o.slideSide = 0;
       return false;
     }
-    const want = Math.hypot(wantX, wantZ);
-    const got = Math.hypot(o.x - o.px, o.z - o.pz);
+    const want = dHypot(wantX, wantZ);
+    const got = dHypot(o.x - o.px, o.z - o.pz);
     if (want > 1e-4 && got < want * 0.7) {
       const tx = -this.hitNz; // along the surface
       const tz = this.hitNx;
@@ -3265,7 +3294,7 @@ inTown() {
         e.wanderT = 2 + this.rng() * 4;
         const a = this.rng() * TAU;
         const r = this.rng() * CONFIG.WANDER_RANGE;
-        e.wander = this.rng() < 0.6 ? { x: e.home.x + Math.cos(a) * r, z: e.home.z + Math.sin(a) * r } : null;
+        e.wander = this.rng() < 0.6 ? { x: e.home.x + dCos(a) * r, z: e.home.z + dSin(a) * r } : null;
       }
       if (e.wander) {
         const wd = dist(e.x, e.z, e.wander.x, e.wander.z);
@@ -3274,7 +3303,7 @@ inTown() {
           const sp = e.def.speed * 0.35 * dt;
           e.x += ((e.wander.x - e.x) / wd) * sp;
           e.z += ((e.wander.z - e.z) / wd) * sp;
-          e.facing = Math.atan2(e.wander.z - e.z, e.wander.x - e.x);
+          e.facing = dAtan2(e.wander.z - e.z, e.wander.x - e.x);
           e.moving = true;
         }
       }
@@ -3287,7 +3316,7 @@ inTown() {
         const sp = e.def.speed * 1.4 * dt;
         e.x += ((e.home.x - e.x) / dh) * sp;
         e.z += ((e.home.z - e.z) / dh) * sp;
-        e.facing = Math.atan2(e.home.z - e.z, e.home.x - e.x);
+        e.facing = dAtan2(e.home.z - e.z, e.home.x - e.x);
         e.moving = true;
       }
     }
@@ -3356,6 +3385,7 @@ inTown() {
   step(dt) {
     this.runCommands();
     if (this.gameOver) return;
+    this.ticks++;
     this.time += dt;
     // While a perfect parry is slowing time, enemies and their projectiles get a shorter step.
     const edt = this.slowT > 0 ? dt * CONFIG.SLOW_FACTOR : dt;
@@ -3455,7 +3485,7 @@ inTown() {
           p.dead = false;
           p.hp = p.stats.maxHp;
           const g = this.map.portals[0];
-          const k = g ? 1 - 5.5 / Math.hypot(g.x, g.z) : 0;
+          const k = g ? 1 - 5.5 / dHypot(g.x, g.z) : 0;
           p.x = p.px = g ? g.x * k : 0;
           p.z = p.pz = g ? g.z * k : 0;
           p.moveTarget = null;

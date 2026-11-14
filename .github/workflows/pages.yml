@@ -23,11 +23,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test # the rules must still pass before anything goes live
       - run: npm run build
+        env:
+          # Where the Weekly Echo server lives (Settings > Secrets and variables > Actions > Variables).
+          # Empty until the server is set up; the game then keeps runs in the browser only.
+          TRIAL_API_URL: ${{ vars.TRIAL_API_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

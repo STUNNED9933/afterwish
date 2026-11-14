@@ -3,15 +3,15 @@
 //
 //   Might    how hard you hit: attack damage, attack speed, crits and ability haste.
 //   Resolve  how much you can take: health, armor, damage reduction and lifesteal.
-//   Combat Power = the geometric mean of the two, so a tank and a glass cannon with
-//   gear of the same quality land close together: neither kind of class is left behind.
+//   Combat Power = Might^0.85 x Resolve^0.15: mostly how hard you hit, with toughness
+//   counting too. Tanks shine in their own rating, Resolve.
 import { CONFIG } from './config.js';
 
 // How each subclass's trait shows up in the two ratings (on top of the stats it changes).
 // Tanky traits count toward Resolve, damage traits toward Might.
 const TRAIT = {
   berserker: [1.1, 1.1], // more damage while Bloodied, but also less taken and a Last Breath
-  bulwark: [1.0, 1.2], // red attacks blocked, Hold the Line
+  bulwark: [1.0, 1.25], // red attacks blocked, Hold the Line: a tank, so its pride is Resolve
   windrunner: [1.12, 1.04],
   sharpshooter: [1.14, 1.0],
   assassin: [1.12, 1.02],
@@ -22,7 +22,7 @@ const TRAIT = {
 
 // Classes that do most of their damage with abilities rather than basic attacks (the Mage's
 // basic attacks only deal 60%) would look weaker than they play without this.
-const CLASS_MIGHT = { warrior: 1, archer: 1, rogue: 1.05, mage: 1.25 };
+const CLASS_MIGHT = { warrior: 1, archer: 1, rogue: 1.05, mage: 1.32 };
 
 /**
  * Ratings without anything temporary (Evasive Roll's burst of speed, Hurricane, Blood Rage's
@@ -68,7 +68,9 @@ export function ratings(world) {
   for (const slot in p.equipped) if (p.equipped[slot] && p.equipped[slot].effect) imm *= 1.05; // Immortal effects
   const might = Math.round(offense * 16 * tm * imm * (CLASS_MIGHT[world.cls] || 1));
   const resolve = Math.round((ehp / 2) * tr * imm);
-  return { cp: Math.round(Math.sqrt(might * resolve)), might, resolve };
+  // Combat Power leans toward Might (how fast you clear things); Resolve still counts,
+  // and tanks show it off in their own Resolve rating.
+  return { cp: Math.round(Math.pow(might, 0.85) * Math.pow(resolve, 0.15)), might, resolve };
 }
 
 /** The ratings if `item` were worn instead of what is in its slot now (the world is left as it was). */

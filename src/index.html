@@ -22,8 +22,10 @@
     <span id="wave-sub"></span>
   </div>
   <div id="boss-box" class="hidden">
+    <div id="boss-title"></div>
     <div id="boss-head"><span id="boss-name">The Warden</span><span id="boss-posture" title="Parry its attacks to break its guard"></span></div>
-    <div class="bar boss"><div id="boss-fill" class="fill"></div></div>
+    <div class="bar boss"><div id="boss-fill" class="fill"></div><i class="phase-mark" style="left:33.3%"></i><i class="phase-mark" style="left:66.6%"></i></div>
+    <div id="boss-phase"></div>
   </div>
 </header>
 
@@ -67,22 +69,32 @@
     <div class="inv-left">
       <h3>Equipped</h3>
       <div id="equipped"></div>
-      <div id="power-card" title="Combat Power balances how hard you hit (Might) with how much you can take (Resolve), so a tank and a glass cannon with gear of the same quality score about the same. It is only a number to watch grow: nothing in the game asks for it."></div>
+      <div id="power-card" title="Combat Power is mostly how hard you hit (Might), with how much you can take (Resolve) counting too. Tanks shine in their Resolve. It is only a number to watch grow: nothing in the game asks for it."></div>
       <h3>Stats</h3>
       <dl id="stats"></dl>
     </div>
     <div class="inv-right">
+      <div id="party-trade" class="hidden"></div>
+      <div id="trade-panel" class="hidden">
+        <h3 id="trade-title">Trading</h3>
+        <div class="trade-side"><span class="trade-label">Your offer</span><div id="trade-mine" class="trade-items"></div>
+          <label class="trade-gold">Gold <input type="number" id="trade-gold" min="0" step="1" value="0" /></label></div>
+        <div class="trade-side"><span class="trade-label" id="trade-their-label">Their offer</span><div id="trade-theirs" class="trade-items"></div><span id="trade-their-gold" class="trade-gold"></span></div>
+        <p id="trade-status" class="setting-desc"></p>
+        <div class="trade-buttons"><button type="button" id="btn-trade-ok" class="primary">Accept</button><button type="button" id="btn-trade-cancel" class="ghost">Cancel</button></div>
+      </div>
       <h3>Bag <span id="bag-count"></span></h3>
       <div id="bag"></div>
       <div class="inv-actions">
         <button type="button" id="btn-scrap" class="ghost">Scrap everything that is not an upgrade</button>
       </div>
       <div class="keep-row"><span>Never scrap:</span><span id="keep-rarities"></span></div>
-      <p class="inv-help">Click an item to equip it. Shift-click to break it down into scrap for the blacksmith. A green arrow marks an upgrade. The fight is paused while this is open.</p>
+      <p class="inv-help" id="inv-help">Click an item to equip it. Shift-click to break it down into scrap for the blacksmith. A green arrow marks an upgrade. The fight is paused while this is open.</p>
     </div>
   </div>
 </section>
 <div id="tooltip" class="hidden"></div>
+<div id="trade-ask" class="hidden" role="alertdialog"><span id="trade-ask-text"></span><button type="button" id="btn-trade-yes" class="primary tiny">Trade</button><button type="button" id="btn-trade-no" class="ghost tiny">No thanks</button></div>
 
 <section id="augment" class="screen hidden">
   <div class="augment-wrap">
@@ -190,7 +202,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.24</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.25</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>
@@ -370,11 +382,12 @@
 
 <section id="travel" class="screen hidden">
   <div class="menu-card travel-card">
-    <p class="eyebrow">Waygate</p>
+    <p class="eyebrow" id="travel-eyebrow">Waygate</p>
     <h2>Where to?</h2>
-    <p class="setting-desc">The Waygate reaches any map you have walked into. Maps you have not found yet stay locked: get there on foot through the portals first.</p>
+    <p class="setting-desc" id="travel-desc">The Waygate reaches any map you have walked into. Maps you have not found yet stay locked: get there on foot through the portals first.</p>
+    <div id="travel-here"></div>
     <div id="travel-list"></div>
-    <button type="button" id="btn-travel-close" class="ghost">Stay in Haven <kbd>Esc</kbd></button>
+    <button type="button" id="btn-travel-close" class="ghost">Stay here <kbd>Esc</kbd></button>
   </div>
 </section>
 

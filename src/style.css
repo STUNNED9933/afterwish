@@ -60,7 +60,31 @@ body.slowmo #slowtint { opacity: 1; }
   background: rgba(8, 10, 16, 0.8); border: 1px solid rgba(0, 0, 0, 0.8); border-radius: 2px;
   will-change: transform;
 }
+.plabel.way.stone { color: #bff2ff; }
+/* Trading (0.25) */
+#party-trade { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+#party-trade.hidden, #trade-panel.hidden, #trade-ask.hidden { display: none; }
+#trade-panel { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(240, 196, 90, 0.4); background: rgba(240, 196, 90, 0.06); }
+#trade-panel h3 { margin-top: 0; }
+.trade-side { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
+.trade-label { width: 92px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.trade-items { display: flex; gap: 6px; min-height: 52px; flex: 1; flex-wrap: wrap; }
+.trade-items .empty-note { font-size: 13px; color: var(--muted); align-self: center; }
+.trade-gold { font-size: 13px; color: var(--gold); }
+.trade-gold input { width: 90px; margin-left: 4px; }
+.trade-side.ok { outline: 1px solid rgba(127, 245, 160, 0.6); border-radius: 8px; }
+.trade-buttons { display: flex; gap: 8px; }
+#bag .cell.offered { outline: 2px solid var(--gold); outline-offset: -2px; opacity: 0.75; }
+#trade-ask { position: fixed; right: 18px; top: 90px; z-index: 60; display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(14, 16, 24, 0.95); border: 1px solid rgba(240, 196, 90, 0.5); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); font-size: 14px; }
+.travel-sub { margin: 10px 0 4px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .ebar .fill { height: 100%; width: 100%; background: var(--danger); transform-origin: left; }
+/* Patience: a thin amber bar under the health bar while an enemy is losing patience (0.25) */
+.ebar .patience { position: absolute; left: -1px; right: -1px; top: 7px; height: 3px; background: rgba(8, 10, 16, 0.75); border-radius: 2px; display: none; overflow: hidden; }
+.ebar .patience i { display: block; height: 100%; background: #f0b14a; transform-origin: left; }
+.ebar.impatient .patience { display: block; }
+.ebar.leashed .patience { display: block; animation: leash-blink 0.6s steps(2) infinite; }
+.ebar.leashed .patience i { background: #7a7f8a; }
+@keyframes leash-blink { 50% { opacity: 0.35; } }
 .ebar .tag {
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
   font: 600 11px var(--body); letter-spacing: 0.14em; color: #ffe27a; text-shadow: 0 1px 2px #000; display: none;
@@ -108,6 +132,19 @@ body.slowmo #slowtint { opacity: 1; }
 #wave-label { font: italic 600 30px var(--display); letter-spacing: 0.02em; }
 #wave-sub { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
 #boss-box { width: min(560px, 80vw); }
+/* The final boss (0.25): a wider, starlit bar with phase marks and a title. */
+#boss-title { display: none; text-align: center; font: 600 11px var(--body); letter-spacing: 0.32em; text-transform: uppercase; color: #9fe6ff; text-shadow: 0 1px 4px #000; margin-bottom: 2px; }
+#boss-phase { display: none; text-align: center; margin-top: 5px; font: 600 12px var(--body); letter-spacing: 0.2em; text-transform: uppercase; color: #bff2ff; text-shadow: 0 1px 4px #000; }
+.bar.boss { position: relative; }
+.bar.boss .phase-mark { display: none; position: absolute; top: -2px; bottom: -2px; width: 2px; background: rgba(230, 251, 255, 0.85); box-shadow: 0 0 6px #7ff5e1; }
+#boss-box.final { width: min(720px, 88vw); }
+#boss-box.final #boss-title, #boss-box.final #boss-phase, #boss-box.final .phase-mark { display: block; }
+#boss-box.final #boss-name { font-size: 28px; color: #e6fbff; text-shadow: 0 0 14px rgba(127, 245, 225, 0.6), 0 2px 4px #000; }
+#boss-box.final .bar.boss { height: 14px; border-color: rgba(127, 245, 225, 0.55); box-shadow: 0 0 18px rgba(127, 245, 225, 0.25); }
+#boss-box.final #boss-fill { background: linear-gradient(90deg, #3a2a8a, #7ff5e1); }
+#boss-box.final.phase-2 #boss-fill { background: linear-gradient(90deg, #6a2a8a, #c9a2ff); }
+#boss-box.final.phase-3 #boss-fill { background: linear-gradient(90deg, #8a1a3a, #ff7aa8); animation: boss-pulse 0.9s ease-in-out infinite; }
+@keyframes boss-pulse { 50% { filter: brightness(1.35); } }
 #boss-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px; text-shadow: 0 2px 4px #000; }
 #boss-name { font: italic 600 22px var(--display); color: var(--gold); }
 #boss-posture { display: flex; gap: 5px; pointer-events: auto; }

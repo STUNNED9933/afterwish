@@ -150,6 +150,46 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Co-op fixes, trading, waystones, shorter arena runs, boss rework (0.25)
+
+- **Co-op:**
+  - Smoother for friends: host updates are played back at an even pace
+    (bunched-up updates no longer make things jump), and each glide starts
+    from where things are drawn.
+  - The host only sees their own drops (and anything dropped for the party).
+  - Rewards dropped at your feet (full bag) are yours only. This was how a
+    rogue could pick up an archer's weapon.
+  - A teammate who fell still gets EXP and their own loot from kills nearby,
+    and from a boss anywhere on the map.
+  - A beaten world boss stays beaten for its timer even if the party leaves
+    and comes back (the timer is saved, so reloading does not reset it
+    either). World bosses now return after 1 minute (the final boss: 2).
+- **Trading** (in a party): in Gear, press **Trade with <friend>**. Both of
+  you put in items (click them in your bag) and gold, and both press Accept;
+  any change un-readies both, and everything is checked again at the swap.
+  Or **Ctrl-click** a bag item to drop it on the ground for anyone in the
+  party (you cannot pick it straight back up).
+- **Patience:** an enemy dragged more than 12 m from home loses patience
+  (a thin amber bar under its health bar) and after about 5 seconds walks
+  home and heals. The bar shows only while it is running out.
+- **Waystones:** every map out in the world has one by the entrance (where
+  fallen teammates wake up) and one on the far side. Stand on one to jump to
+  the other (just you), go back to Haven, or travel on like the Waygate.
+- **Arena: shorter, harder runs.** Floors ramp about twice as fast, are
+  denser, every enemy type shows up by floor 10, and the break between
+  floors is 5 seconds. **Flawless** (nobody hurt): double gold, a potion and
+  an augment reroll. **Swift** (under par time): +50% gold.
+- **Bosses no longer let you kite them:** from range they **lunge** at you or
+  **leap** onto where you stand. **The Unmade**, the final boss, has its own
+  bar (title, phase marks) and three phases: **Starfall** (stars fall on you
+  and where you are heading) from two thirds health, and **Collapse** (it
+  drags you in, then bursts: dash out) from one third. It fights alone in
+  the arena, and its ground in Starfall Sanctum is clear of small fry.
+- **Combat Power** leans toward damage now (Might^0.85 x Resolve^0.15), so
+  damage dealers top it while tanks shine in Resolve.
+- **Fix:** the Weekly Echo no longer gives a skill point (and a rank-up
+  marker) for beating a boss.
+
 ### New traits and ultimates, Combat Power (0.24)
 
 - **Windrunner** gets a trait, **Tailwind**: after Evasive Roll, for as long as
@@ -177,10 +217,9 @@ tickets, and your settings, and replaces whatever was there.
   fight you for 4 seconds; for 5 seconds you and friends within 8 m take 35%
   less damage.
 - **Combat Power** (HUD, gear screen, item tooltips): a number to watch grow
-  with levels, gear, talents, a subclass and Immortal effects. It balances
-  **Might** (how hard you hit) and **Resolve** (how much you can take): Combat
-  Power is the geometric mean of the two, so tanks and damage dealers with
-  gear of the same quality score about the same. Item tooltips show how much
+  with levels, gear, talents, a subclass and Immortal effects. It combines
+  **Might** (how hard you hit) and **Resolve** (how much you can take); see
+  0.25 for the current weighting. Item tooltips show how much
   Combat Power, Might and Resolve change if you wear the item. It is only
   shown: nothing in the game asks for it, and the Weekly Echo boards still
   rank by floor. ("power" on items is now called gear score.)

@@ -8,13 +8,13 @@
 
 import { ENEMIES } from '../sim/defs.js';
 
-export const NET_VERSION = 1; // host and friends must run the same build of the rules
+export const NET_VERSION = 2; // host and friends must run the same build of the rules (2: 0.25 playback, trading)
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
@@ -24,7 +24,7 @@ export function eventFor(ev, pid) {
 }
 
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
-const ENEMY_KEYS = ['id', 'type', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
+const ENEMY_KEYS = ['id', 'type', 'phase', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue'];
 const pack = (o, keys) => keys.map((k) => r2(o[k]));
@@ -70,6 +70,7 @@ export function makeSnapshot(world, pid, memo) {
       shadows: world.shadows.map((s) => ({ id: s.id, pid: s.pid, src: s.src, swapped: !!s.swapped, x: r2(s.x), z: r2(s.z), t: r2(s.t), dur: s.dur, facing: r2(s.facing), cls: s.cls, throwT: r2(s.throwT) })),
       loot: world.loot.filter((l) => l.owner === undefined || l.owner === pid).map((l) => ({ id: l.id, x: r2(l.x), z: r2(l.z), item: l.item, age: l.age, magnet: l.magnet })),
       chests: world.chests.map((c) => ({ id: c.id, x: r2(c.x), z: r2(c.z), tier: c.tier })),
+      tick: world.ticks, // the host's clock, so the friend can play updates back at an even pace
     };
     const heavy = JSON.stringify(heavyPlayer(p));
     if (memo.heavy !== heavy) {
@@ -85,7 +86,10 @@ export function makeSnapshot(world, pid, memo) {
  * used to draw the screen and answer menu questions (it never steps).
  * Returns true if the map changed.
  */
-export function applySnapshot(world, snap) {
+export function applySnapshot(world, snap, alpha = 1) {
+  // Each glide starts from where things are drawn right now (part way along the last glide),
+  // so an update that arrives early never makes anything jump.
+  const at = (o, k) => (o['p' + k] === undefined ? o[k] : o['p' + k] + (o[k] - o['p' + k]) * alpha);
   let mapChanged = false;
   if (!world.map || world.map.id !== snap.map) {
     world.loadMapMirror(snap.map);
@@ -94,7 +98,7 @@ export function applySnapshot(world, snap) {
   world.slowT = snap.slowT;
   const p = world.player;
   // Keep the last position as the starting point of the glide to the new one.
-  const ox = p.x, oz = p.z;
+  const ox = at(p, 'x'), oz = at(p, 'z');
   Object.assign(p, snap.me);
   p.px = mapChanged ? p.x : ox;
   p.pz = mapChanged ? p.z : oz;
@@ -115,7 +119,7 @@ export function applySnapshot(world, snap) {
   const oldAllies = new Map((world.alliesList || []).map((a) => [a.pid, a]));
   world.alliesList = snap.allies.map((a) => {
     const o = oldAllies.get(a.pid);
-    return { ...a, px: o && !mapChanged ? o.x : a.x, pz: o && !mapChanged ? o.z : a.z };
+    return { ...a, px: o && !mapChanged ? at(o, 'x') : a.x, pz: o && !mapChanged ? at(o, 'z') : a.z };
   });
   const oldEnemies = new Map(world.enemies.map((e) => [e.id, e]));
   world.enemies = snap.enemies.map((arr) => {
@@ -123,16 +127,16 @@ export function applySnapshot(world, snap) {
     const o = oldEnemies.get(e.id);
     e.def = ENEMIES[e.type];
     e.atk = e.atkName ? e.def.attackByName[e.atkName] : null;
-    e.px = o ? o.x : e.x;
-    e.pz = o ? o.z : e.z;
+    e.px = o && !mapChanged ? at(o, 'x') : e.x;
+    e.pz = o && !mapChanged ? at(o, 'z') : e.z;
     return e;
   });
   const oldShots = new Map(world.projectiles.map((pr) => [pr.id, pr]));
   world.projectiles = snap.proj.map((arr) => {
     const pr = unpack(arr, PROJ_KEYS);
     const o = oldShots.get(pr.id);
-    pr.px = o ? o.x : pr.px ?? pr.x;
-    pr.pz = o ? o.z : pr.pz ?? pr.z;
+    pr.px = o ? at(o, 'x') : pr.px ?? pr.x;
+    pr.pz = o ? at(o, 'z') : pr.pz ?? pr.z;
     return pr;
   });
   world.telegraphs = snap.tele.map((arr) => unpack(arr, TELE_KEYS));

@@ -54,7 +54,7 @@ function turnToward(current, target, maxStep) {
  * so all the single-hero code below works unchanged for whichever hero is
  * acting (casting, being attacked, picking up loot ...).
  */
-const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
+const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'stoneT', 'stoneArmed', 'stoneOn', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
@@ -85,6 +85,8 @@ export class World {
     this.chests = []; // treasure chests out in the world (explore maps)
     this.chestRefill = []; // ticks at which an opened chest comes back
     this.chestMaps = {}; // map id -> { chests, refill }: kept while you are away, for this session
+    this.campDown = {}; // 'map:camp' -> tick when a beaten boss comes back (see loadMap)
+    for (const k in opts.save?.campDown || {}) this.campDown[k] = Math.round(opts.save.campDown[k] / CONFIG.TICK);
     this.chestCount = 0;
     this.telegraphs = [];
     this.events = [];
@@ -111,6 +113,7 @@ export class World {
     const startWave = Math.max(1, Math.min(opts.startWave ?? this.maxCheckpoint, this.maxCheckpoint));
     this.slowT = 0; // > 0 while a perfect parry is slowing time
     this.delayed = [];
+    this.falls = []; // the final boss's falling stars (stepFalls)
     this.augments = []; // ids of augments taken this run
     this.offer = null; // { choices: [augment ids], boss } while a pick is waiting
     this.rerolls = CONFIG.AUGMENT_REROLLS;
@@ -119,8 +122,9 @@ export class World {
     this.player = this.makePlayer(save);
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
     this.respawnT = 0;
-    this.portalT = this.wayT = 0;
-    this.portalArmed = this.wayArmed = false;
+    this.portalT = this.wayT = this.stoneT = 0;
+    this.portalArmed = this.wayArmed = this.stoneArmed = false;
+    this.stoneOn = null;
     this.portalOn = null;
     // The heroes in this world. Alone, there is one and nothing ever switches.
     this.cur = { pid: 0, name: opts.name || 'Player' };
@@ -178,8 +182,9 @@ export class World {
     this.augments = [];
     this.offer = null;
     this.rerolls = CONFIG.AUGMENT_REROLLS;
-    this.portalT = this.wayT = this.respawnT = 0;
-    this.portalArmed = this.wayArmed = false;
+    this.portalT = this.wayT = this.stoneT = this.respawnT = 0;
+    this.portalArmed = this.wayArmed = this.stoneArmed = false;
+    this.stoneOn = null;
     this.portalOn = null;
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
     this.bestWave = save?.bestWave ?? 0;
@@ -207,6 +212,7 @@ export class World {
   removeHero(pid) {
     const h = this.heroByPid(pid);
     if (!h || h === this.heroes[0]) return;
+    if (this.tradeFor(pid)) this.as(h, () => this.tradeCancel('gone'));
     this.use(this.heroes[0]);
     this.heroes = this.heroes.filter((x) => x !== h);
     this.loot = this.loot.filter((l) => l.owner !== pid);
@@ -436,6 +442,8 @@ export class World {
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
+      // Beaten world bosses still on their way back: seconds left, by camp.
+      campDown: Object.fromEntries(Object.entries(this.campDown || {}).map(([k, t]) => [k, Math.round((t - this.ticks) * CONFIG.TICK)]).filter(([, s]) => s > 0)),
     };
   }
 
@@ -556,8 +564,41 @@ export class World {
           break;
         case 'travel':
           // Waygate: jump to a discovered map, arriving at its entrance.
-          if (this.mode === 'explore' && MAPS[c.to] && p.visited.includes(c.to)) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+          if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town')) this.loadMap(c.to, MAPS[c.to].portals[0].to);
           break;
+        case 'dropItem':
+          this.dropItem(c.index);
+          break;
+        case 'tradeAsk':
+          this.tradeAsk(c.to);
+          break;
+        case 'tradeAnswer':
+          this.tradeAnswer(!!c.yes);
+          break;
+        case 'tradeSet':
+          this.tradeSet(c.items, c.gold);
+          break;
+        case 'tradeOk':
+          this.tradeOk();
+          break;
+        case 'tradeCancel':
+          this.tradeCancel('cancelled');
+          break;
+        case 'warp': {
+          // Waystone to waystone on the same map: only this hero moves.
+          const to = this.map.waystones && this.map.waystones[c.to];
+          if (this.mode !== 'explore' || !to || this.stoneOn == null || this.stoneOn === c.to || p.dead) break;
+          const d = dHypot(to.x, to.z) || 1;
+          p.x = p.px = to.x - (to.x / d) * 2.2; // step off the stone, toward the middle
+          p.z = p.pz = to.z - (to.z / d) * 2.2;
+          p.moveTarget = null;
+          p.targetId = null;
+          this.pushOut(p, p.radius);
+          this.stoneOn = null;
+          this.stoneArmed = false;
+          this.emit('warp', { x: p.x, z: p.z, name: to.name });
+          break;
+        }
       }
     }
   }
@@ -592,6 +633,7 @@ export class World {
 
   healPlayer(amount, show) {
     const p = this.player;
+    if (p.dead) return 0; // a fallen teammate's level-up waits until they are back up
     const before = p.hp;
     p.hp = Math.min(p.stats.maxHp, p.hp + amount);
     const healed = Math.round(p.hp - before);
@@ -1931,6 +1973,7 @@ export class World {
     }
     const dmg = Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken)));
     p.hp -= dmg;
+    if (this.mode === 'arena' && rawDamage > 0) this.wave.hurt = true; // no Flawless bonus this floor
     p.hurtT = 0.25;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg });
     if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
@@ -1961,6 +2004,7 @@ export class World {
       this.gameOver = true;
       this.telegraphs = [];
       this.delayed = [];
+      this.falls = []; // the final boss's falling stars (stepFalls)
       this.emit('playerDeath', { wave: this.wave.n });
     }
     return 'hit';
@@ -2131,7 +2175,7 @@ export class World {
       p.equipped[item.slot] = item;
       this.recalcStats();
     } else if (p.bag.length < CONFIG.BAG_SIZE) p.bag.push(item);
-    else this.loot.push({ id: this.nextId++, x: p.x, z: p.z, item, age: 0, magnet: false });
+    else this.loot.push({ id: this.nextId++, x: p.x, z: p.z, item, age: 0, magnet: false, owner: this.cur.pid }); // only theirs, even in a party
   }
 
   /** The person or sign close enough to interact with, or null. */
@@ -2328,6 +2372,7 @@ export class World {
     if (p.dead) return;
     for (const l of this.loot) {
       if (l.owner !== undefined && l.owner !== this.cur.pid) continue;
+      if (l.droppedBy === this.cur.pid && this.ticks - l.dropTick < 4 / CONFIG.TICK) continue; // dropped for a friend: not straight back up
       l.age += dt;
       const d = dist(l.x, l.z, p.x, p.z);
       if (l.magnet && d > 0.01) {
@@ -2360,6 +2405,117 @@ export class World {
     this.loot = this.loot.filter((l) => !l.taken);
   }
 
+  // =========================================================================
+  // Trading (0.25, in a party): drop an item for a friend, or trade through a
+  // window where both sides put in items and gold and both must accept.
+  // Everything is checked again at the moment of the swap.
+  // =========================================================================
+  dropItem(index) {
+    const p = this.player;
+    const item = p.bag[index];
+    if (!item || !this.party || this.mode !== 'explore' || p.dead) return;
+    p.bag.splice(index, 1);
+    this.tradeItemGone(item.id);
+    const a = this.rng() * TAU;
+    const at = this.clampToArena(p.x + dCos(a) * 1.4, p.z + dSin(a) * 1.4, 1);
+    const drop = { id: this.nextId++, x: at.x, z: at.z, item, age: 0, magnet: false, droppedBy: this.cur.pid, dropTick: this.ticks }; // anyone in the party can take it
+    this.loot.push(drop);
+    this.emit('itemDropped', { id: drop.id, x: at.x, z: at.z, rarity: item.rarity, name: item.name, by: this.cur.name });
+  }
+
+  tradeFor(pid) {
+    return (this.trades || []).find((t) => t.a === pid || t.b === pid) || null;
+  }
+
+  /** Tell both sides how the trade stands (each sees their own side as "mine"). */
+  tradeTell(t, state, reason = '') {
+    for (const pid of [t.a, t.b]) {
+      const h = this.heroByPid(pid);
+      if (!h) continue;
+      const other = pid === t.a ? t.b : t.a;
+      const oh = this.heroByPid(other);
+      const side = (q) => {
+        const bag = this.heroByPid(q)?.player.bag || [];
+        return { items: t.items[q].map((id) => bag.find((it) => it.id === id)).filter(Boolean), ids: t.items[q].slice(), gold: t.gold[q], ok: t.ok[q] };
+      };
+      this.as(h, () => this.emit('trade', { state, reason, asker: t.a === pid, with: oh ? oh.name : 'your friend', withPid: other, mine: side(pid), theirs: side(other) }));
+    }
+  }
+
+  tradeAsk(to) {
+    const me = this.cur.pid;
+    const other = this.heroByPid(to);
+    if (!this.party || !other || to === me || this.mode !== 'explore') return;
+    if (this.tradeFor(me) || this.tradeFor(to)) {
+      this.emit('tradeBusy', { name: other.name });
+      return;
+    }
+    if (!this.trades) this.trades = [];
+    const t = { a: me, b: to, open: false, items: { [me]: [], [to]: [] }, gold: { [me]: 0, [to]: 0 }, ok: { [me]: false, [to]: false } };
+    this.trades.push(t);
+    this.tradeTell(t, 'asked');
+  }
+
+  tradeAnswer(yes) {
+    const t = this.tradeFor(this.cur.pid);
+    if (!t || t.open || t.b !== this.cur.pid) return;
+    if (!yes) return this.tradeCancel('declined');
+    t.open = true;
+    this.tradeTell(t, 'open');
+  }
+
+  /** Put items (by id, from your bag) and gold into your side of the trade. Either side changing anything un-readies both. */
+  tradeSet(ids, gold) {
+    const me = this.cur.pid;
+    const t = this.tradeFor(me);
+    if (!t || !t.open) return;
+    const p = this.player;
+    const list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => p.bag.some((it) => it.id === id)).slice(0, 8) : [];
+    t.items[me] = list;
+    t.gold[me] = Math.max(0, Math.min(p.gold, Math.floor(Number(gold) || 0)));
+    t.ok[t.a] = t.ok[t.b] = false;
+    this.tradeTell(t, 'open');
+  }
+
+  tradeOk() {
+    const t = this.tradeFor(this.cur.pid);
+    if (!t || !t.open) return;
+    t.ok[this.cur.pid] = true;
+    if (!(t.ok[t.a] && t.ok[t.b])) return this.tradeTell(t, 'open');
+    // Both accepted: check everything once more, then swap.
+    const ha = this.heroByPid(t.a), hb = this.heroByPid(t.b);
+    if (!ha || !hb) return this.tradeCancel('gone');
+    const pa = ha.player, pb = hb.player;
+    const take = (p, ids) => ids.map((id) => p.bag.find((it) => it.id === id));
+    const ia = take(pa, t.items[t.a]), ib = take(pb, t.items[t.b]);
+    if (ia.some((x) => !x) || ib.some((x) => !x) || pa.gold < t.gold[t.a] || pb.gold < t.gold[t.b]) return this.tradeCancel('changed');
+    if (pa.bag.length - ia.length + ib.length > CONFIG.BAG_SIZE || pb.bag.length - ib.length + ia.length > CONFIG.BAG_SIZE) return this.tradeCancel('full');
+    pa.bag = pa.bag.filter((it) => !ia.includes(it)).concat(ib);
+    pb.bag = pb.bag.filter((it) => !ib.includes(it)).concat(ia);
+    pa.gold += t.gold[t.b] - t.gold[t.a];
+    pb.gold += t.gold[t.a] - t.gold[t.b];
+    this.trades = this.trades.filter((x) => x !== t);
+    for (const [h, got, gave, goldIn] of [[ha, ib, ia, t.gold[t.b] - t.gold[t.a]], [hb, ia, ib, t.gold[t.a] - t.gold[t.b]]]) {
+      this.as(h, () => this.emit('trade', { state: 'done', with: (h === ha ? hb : ha).name, got: got.map((it) => it.name), gave: gave.map((it) => it.name), gold: goldIn }));
+    }
+  }
+
+  tradeCancel(reason) {
+    const t = this.tradeFor(this.cur.pid);
+    if (!t) return;
+    this.trades = this.trades.filter((x) => x !== t);
+    this.tradeTell(t, 'closed', reason);
+  }
+
+  /** An item left your bag some other way (equipped, scrapped, dropped): take it out of any trade. */
+  tradeItemGone(id) {
+    const t = this.tradeFor(this.cur.pid);
+    if (!t || !t.items[this.cur.pid].includes(id)) return;
+    t.items[this.cur.pid] = t.items[this.cur.pid].filter((x) => x !== id);
+    t.ok[t.a] = t.ok[t.b] = false;
+    this.tradeTell(t, 'open');
+  }
+
   equip(index) {
     const p = this.player;
     const item = p.bag[index];
@@ -2368,6 +2524,7 @@ export class World {
       this.emit('cantEquip', { item }); // another class's weapon
       return;
     }
+    this.tradeItemGone(item.id);
     const old = p.equipped[item.slot];
     p.equipped[item.slot] = item;
     if (old) p.bag[index] = old;
@@ -2381,6 +2538,7 @@ export class World {
     const p = this.player;
     const item = p.bag[index];
     if (!item) return;
+    this.tradeItemGone(item.id);
     p.bag.splice(index, 1);
     const scrap = scrapValue(item);
     p.scrap += scrap;
@@ -2394,8 +2552,9 @@ export class World {
     const kept = new Set(Array.isArray(keep) ? keep.map(Number) : []);
     let scrap = 0;
     let count = 0;
+    const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
     p.bag = p.bag.filter((it) => {
-      if (kept.has(it.rarity)) return true;
+      if (kept.has(it.rarity) || trading.has(it.id)) return true; // never scrap what is on offer in a trade
       if (itemScore(it) > itemScore(p.equipped[it.slot])) return true;
       scrap += scrapValue(it);
       count++;
@@ -2601,6 +2760,7 @@ export class World {
       home: at ? { x: at.x, z: at.z } : null, // camp enemies stay near home
       aggro: !at,
       returning: false,
+      patience: 1, // drains while dragged far from home (see stepLeash)
       vulnT: 0, // Sunder: takes `vuln` more damage while > 0
       vuln: 0,
       bleedT: 0,
@@ -2656,12 +2816,28 @@ export class World {
       return d <= atk.trigger ? atk : null;
     }
     const A = def.attackByName;
+    // The final boss's own attacks, by phase (see bossPhase).
+    if (def.final) {
+      const phase = e.phase || 1;
+      if (phase >= 3 && A.collapse && !(e.collapseCd > 0) && d < 13 && this.rng() < 0.4) {
+        e.collapseCd = 10;
+        return A.collapse;
+      }
+      if (phase >= 2 && A.starfall && !(e.rainCd > 0) && this.rng() < 0.45) {
+        e.rainCd = 7;
+        return A.starfall;
+      }
+    }
     if (d <= A.combo1.trigger) {
       const comboChance = e.lastAtk === 'slam' ? 0.92 : 0.62;
       return this.rng() < comboChance ? A.combo1 : A.slam;
     }
     if (e.farT > 1.1) {
+      // From range: a charge or a leap onto you as often as the fan of shots, so it cannot be kited.
       e.farT = 0;
+      const r = this.rng();
+      if (A.lunge && d > 7 && d < 16 && r < 0.35) return A.lunge;
+      if (A.leap && d > 8 && r < 0.7) return A.leap;
       return A.fan;
     }
     return null;
@@ -2685,6 +2861,15 @@ export class World {
     } else if (atk.shape === 'circle') {
       tele.radius = atk.radius;
       tele.offset = atk.offset;
+      if (atk.leap) {
+        tele.leap = true; // drawn where it will land, on you
+        e.leapX = p.x;
+        e.leapZ = p.z;
+      }
+    } else if (atk.shape === 'rain') {
+      tele.kind = 'circle';
+      tele.radius = 1.4;
+      tele.offset = 0;
     } else if (atk.shape === 'rect') {
       tele.length = atk.length;
       tele.width = atk.width;
@@ -2705,7 +2890,41 @@ export class World {
     this.emit('windup', { id: e.id, enemyType: e.type, attack: atk.name, parryable: atk.parryable });
   }
 
+  /** The final boss's falling stars: a warning circle each, then a hit on anyone still inside. */
+  stepFalls(dt) {
+    if (!this.falls.length) return;
+    for (const f of this.falls) {
+      f.t += dt;
+      if (f.t < 0) continue;
+      if (!f.tele) {
+        f.tele = { id: this.nextId++, owner: null, kind: 'circle', x: f.x, z: f.z, dir: 0, radius: f.r, offset: 0, t: 0, dur: f.dur, parryable: false, cue: false };
+        this.telegraphs.push(f.tele);
+      }
+      f.tele.t = f.t;
+      if (f.t < f.dur) continue;
+      f.done = true;
+      this.telegraphs = this.telegraphs.filter((x) => x !== f.tele);
+      const src = this.enemyById(f.srcId);
+      const was = this.cur;
+      for (const h of this.heroes) {
+        if (h.player.dead || dist(h.player.x, h.player.z, f.x, f.z) > f.r + h.player.radius * 0.4) continue;
+        this.use(h);
+        this.hitPlayer(f.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: f.level, srcId: f.srcId } });
+      }
+      this.use(was);
+      this.emit('strike', { id: f.srcId, shape: 'circle', x: f.x, z: f.z, radius: f.r, parryable: false });
+      this.emit('starImpact', { x: f.x, z: f.z, radius: f.r });
+    }
+    this.falls = this.falls.filter((f) => !f.done);
+  }
+
   positionTelegraph(e, tele) {
+    if (tele.leap) {
+      tele.x = e.leapX;
+      tele.z = e.leapZ;
+      tele.dir = e.aim;
+      return;
+    }
     const off = tele.offset || 0;
     tele.x = e.x + dCos(e.aim) * off;
     tele.z = e.z + dSin(e.aim) * off;
@@ -2731,7 +2950,24 @@ export class World {
       const ap = dAtan2(p.z - e.z, p.x - e.x);
       hit = d <= atk.range + p.radius * 0.5 && (d < e.radius + p.radius || Math.abs(angDiff(ap, a)) <= atk.angle / 2 + 0.15);
       this.emit('strike', { id: e.id, shape: 'arc', x: e.x, z: e.z, dir: a, range: atk.range, angle: atk.angle, parryable: atk.parryable });
+    } else if (atk.shape === 'rain') {
+      // Starfall: stars land on you and on where you are heading, one after another.
+      const vx = (p.x - p.px) / CONFIG.TICK, vz = (p.z - p.pz) / CONFIG.TICK;
+      for (let i = 0; i < atk.count; i++) {
+        const lead = i * 0.35;
+        const s = i === 0 ? 0 : 1 + this.rng() * 3;
+        const ang = this.rng() * TAU;
+        const c = this.clampToArena(p.x + vx * lead + dCos(ang) * s, p.z + vz * lead + dSin(ang) * s, 1);
+        this.falls.push({ x: c.x, z: c.z, r: atk.radius, t: -i * atk.gap, dur: atk.fall, dmg: atk.dmg * e.dmgMult, level: e.level, srcId: e.id, tele: null });
+      }
+      this.emit('starfall', { id: e.id, x: e.x, z: e.z });
     } else if (atk.shape === 'circle') {
+      if (atk.leap) {
+        const c = this.clampToArena(e.leapX, e.leapZ, e.radius);
+        e.x = e.px = c.x; // it lands where the circle was
+        e.z = e.pz = c.z;
+        this.emit('bossLeap', { id: e.id, x: e.x, z: e.z, radius: atk.radius });
+      }
       const cx = e.x + dCos(a) * atk.offset;
       const cz = e.z + dSin(a) * atk.offset;
       hit = dist(p.x, p.z, cx, cz) <= atk.radius + p.radius * 0.4;
@@ -2881,6 +3117,16 @@ export class World {
       if (heal > 0) this.healPlayer(heal, false);
     }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
+    if (e.def.final && e.hp > 0) {
+      // The final boss fights in three phases: new attacks at two thirds and one third health.
+      const phase = e.hp < e.maxHp / 3 ? 3 : e.hp < (2 * e.maxHp) / 3 ? 2 : 1;
+      if (phase > (e.phase || 1)) {
+        e.phase = phase;
+        e.rainCd = 0;
+        e.collapseCd = 2;
+        this.emit('bossPhase', { id: e.id, phase, name: e.def.name, x: e.x, z: e.z });
+      }
+    }
     if (e.def.boss && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.4) {
       e.enraged = true;
       this.emit('enrage', { id: e.id });
@@ -2916,6 +3162,7 @@ export class World {
           if (slot.id === e.id) {
             slot.id = null;
             slot.timer = slot.respawn;
+            if (e.def.boss) this.campDown[camp.key] = this.ticks + Math.round(slot.respawn / CONFIG.TICK);
           }
         }
       }
@@ -2937,7 +3184,8 @@ export class World {
     // Everyone in the party who is up and close by gets the rewards: their own gold,
     // their own loot roll, quest credit and a share of the EXP.
     const killer = this.cur;
-    const share = this.party ? this.heroes.filter((h) => h === killer || (!h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) < CONFIG.PARTY_SHARE_RANGE)) : [killer];
+    // A teammate who fell in the fight still shares in it; a boss is shared with the whole party on the map.
+    const share = this.party ? this.heroes.filter((h) => h === killer || e.def.boss || dist(h.player.x, h.player.z, e.x, e.z) < CONFIG.PARTY_SHARE_RANGE) : [killer];
     for (const h of share) {
       this.use(h);
       this.killRewards(e, share.length);
@@ -2956,9 +3204,12 @@ export class World {
     }
     if (e.def.boss) {
       if (this.mode === 'arena') {
-        p.keys++;
-        p.skillPoints++; // bosses out in the world can be farmed, so they pay in loot instead
-        this.emit('bossReward');
+        if (!this.trial) {
+          // (The Weekly Echo's build is fixed for the run: no skill point or key there.)
+          p.keys++;
+          p.skillPoints++; // bosses out in the world can be farmed, so they pay in loot instead
+          this.emit('bossReward');
+        }
       } else this.bossRewards(e);
     }
     this.gainExp(e.expValue * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
@@ -3056,7 +3307,11 @@ export class World {
           e.facing = turnToward(e.facing, toPlayer, 7 * dt);
           e.atkCd -= dt;
           if (p.dead) break;
-          if (e.def.boss) e.farT = d > 5.5 ? e.farT + dt : 0;
+          if (e.def.boss) {
+            e.farT = d > 5.5 ? e.farT + dt : 0;
+            if (e.rainCd > 0) e.rainCd -= dt;
+            if (e.collapseCd > 0) e.collapseCd -= dt;
+          }
           if (e.atkCd <= 0) {
             const atk = this.chooseAttack(e, d);
             if (atk && this.canStartAttack(e)) {
@@ -3110,6 +3365,23 @@ export class World {
           const remain = e.dur - e.t;
           if (remain > atk.lockAt) e.aim = turnToward(e.aim, toPlayer, 5 * dt);
           e.facing = e.aim;
+          if (atk.leap && remain > atk.lockAt) {
+            // The landing spot follows you until the last moment.
+            const c = this.clampToArena(p.x, p.z, e.radius);
+            e.leapX = c.x;
+            e.leapZ = c.z;
+          }
+          if (atk.pull) {
+            // Collapse: everything near is dragged in toward the coming burst. Dash out!
+            for (const h of this.heroes) {
+              const hp = h.player;
+              if (hp.dead || hp.dash || hp.leap) continue;
+              const dd = dist(hp.x, hp.z, e.x, e.z);
+              if (dd > 16 || dd < e.radius + 0.6) continue;
+              hp.x += ((e.x - hp.x) / dd) * atk.pull * dt;
+              hp.z += ((e.z - hp.z) / dd) * atk.pull * dt;
+            }
+          }
           if (e.tele) {
             this.positionTelegraph(e, e.tele);
             e.tele.t = e.t;
@@ -3322,7 +3594,9 @@ export class World {
     w.total = w.queue.length;
     w.phase = 'active';
     w.spawnT = 0;
-    w.maxAlive = Math.min(9, 4 + Math.floor(w.n / 3));
+    w.maxAlive = Math.min(10, 5 + Math.floor(w.n / 2));
+    w.hurt = false; // any hero hurt on this floor (no Flawless bonus)
+    w.startTick = this.ticks;
     this.player.undyingUsed = false;
     const boss = w.n % CONFIG.BOSS_EVERY === 0;
     this.emit('waveStart', { n: w.n, boss, bossName: boss ? ENEMIES[w.queue[0]].name : '' });
@@ -3354,9 +3628,24 @@ export class World {
       p.potions = Math.min(CONFIG.MAX_POTIONS, p.potions + 1);
       for (const l of this.loot) l.magnet = true;
       const boss = w.n % CONFIG.BOSS_EVERY === 0;
-      const gold = 10 + 4 * w.n + (boss ? 80 : 0);
-      p.gold += gold;
-      this.emit('waveClear', { n: w.n, boss, gold });
+      const base = 10 + 4 * w.n + (boss ? 80 : 0);
+      // Skill bonuses: Flawless (nobody took damage) and Swift (cleared under par time).
+      const secs = (this.ticks - (w.startTick || this.ticks)) * CONFIG.TICK;
+      const par = boss ? CONFIG.PAR_BOSS : CONFIG.PAR_BASE + CONFIG.PAR_PER_ENEMY * w.total;
+      const flawless = !w.hurt;
+      const swift = secs <= par;
+      const gold = base + (flawless ? base : 0) + (swift ? Math.round(base * 0.5) : 0);
+      for (const h of this.heroes) {
+        const was = this.cur;
+        this.use(h);
+        this.player.gold += gold;
+        if (flawless) {
+          this.player.potions = Math.min(CONFIG.MAX_POTIONS, this.player.potions + 1);
+          this.rerolls++;
+        }
+        this.use(was);
+      }
+      this.emit('waveClear', { n: w.n, boss, gold, flawless, swift, secs: Math.round(secs), par: Math.round(par) });
       this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.
       if (w.n % 2 === 1 || boss) this.makeOffer(boss);
@@ -3397,6 +3686,7 @@ inTown() {
     this.shadows = [];
     this.walls = [];
     this.delayed = [];
+    this.falls = []; // the final boss's falling stars (stepFalls)
     this.slowT = 0;
     const gate = map.portals.find((g) => g.to === from);
     const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
@@ -3440,9 +3730,17 @@ inTown() {
       }
       this.use(actor);
     }
-    // Every spawn point is a "camp" of one enemy that comes back after a while.
-    this.camps = map.spawns.map((def) => ({ def, slots: [{ type: def.type, id: null, timer: 0, respawn: def.respawn || CONFIG.RESPAWN_TIME }] }));
-    for (const camp of this.camps) for (const slot of camp.slots) slot.id = this.spawnEnemy(slot.type, camp.def).id;
+    // Every spawn point is a "camp" of one enemy that comes back after a while. A camp beaten
+    // before you left stays beaten until its timer runs out: leaving and coming back does not
+    // bring a boss back early (campDown is kept in the save, so reloading does not either).
+    this.camps = map.spawns.map((def, i) => ({ def, key: `${map.id}:${i}`, slots: [{ type: def.type, id: null, timer: 0, respawn: def.respawn || CONFIG.RESPAWN_TIME }] }));
+    for (const camp of this.camps) {
+      const left = (this.campDown[camp.key] || 0) - this.ticks;
+      for (const slot of camp.slots) {
+        if (left > 0) slot.timer = left * CONFIG.TICK;
+        else slot.id = this.spawnEnemy(slot.type, camp.def).id;
+      }
+    }
     this.placeChests();
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
@@ -3465,6 +3763,7 @@ inTown() {
     this.shadows = [];
     this.walls = [];
     this.delayed = [];
+    this.falls = []; // the final boss's falling stars (stepFalls)
     this.camps = [];
   }
 
@@ -3593,10 +3892,14 @@ inTown() {
   stepLeash(e, d, dt) {
     const p = this.player;
     const dh = dist(e.x, e.z, e.home.x, e.home.z);
-    if (e.aggro && (p.dead || this.inTown(p) || dh > CONFIG.LEASH_RANGE)) {
+    // Patience, like a jungle camp: dragged out past PATIENCE_RANGE it loses patience; back near home it recovers.
+    if (e.aggro && dh > CONFIG.PATIENCE_RANGE) e.patience = Math.max(0, e.patience - dt / CONFIG.PATIENCE_TIME);
+    else if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
+    if (e.aggro && (p.dead || this.inTown(p) || dh > CONFIG.LEASH_RANGE || e.patience <= 0)) {
       e.aggro = false;
       e.returning = true;
     }
+    if (e.returning && dh < 3) e.patience = 1;
     if (!e.aggro && !e.returning && !p.dead && d < CONFIG.AGGRO_RANGE && !this.inTown(p)) e.aggro = true;
     if (e.aggro) return true;
     e.chaseT = 0;
@@ -3634,6 +3937,28 @@ inTown() {
       }
     }
     return false;
+  }
+
+  /** Waystones: stand on one for a moment to open the travel menu (see the 'warp' command). */
+  stepWaystones(dt) {
+    const p = this.player;
+    const stones = this.map.waystones || [];
+    let on = null;
+    stones.forEach((w, i) => {
+      if (dist(p.x, p.z, w.x, w.z) < w.r) on = i;
+    });
+    if (on == null) {
+      this.stoneArmed = true;
+      this.stoneT = 0;
+      this.stoneOn = null;
+    } else if (this.stoneArmed) {
+      this.stoneT += dt;
+      this.stoneOn = on;
+      if (this.stoneT >= CONFIG.PORTAL_TIME) {
+        this.stoneArmed = false;
+        this.emit('waystone', { index: on, name: stones[on].name });
+      }
+    }
   }
 
   stepExplore(dt) {
@@ -3676,6 +4001,7 @@ inTown() {
         }
       }
     }
+    this.stepWaystones(dt);
     // Portals: stand in one for a moment to travel to the next map.
     let on = null;
     for (const g of this.map.portals) if (dist(p.x, p.z, g.x, g.z) < g.r) on = g;
@@ -3716,6 +4042,7 @@ inTown() {
       this.stepShadows(dt);
       this.stepWalls(dt);
       this.stepEnemies(edt);
+      this.stepFalls(edt);
       this.collide(dt);
       this.stepProjectiles(dt, edt);
       this.enemies = this.enemies.filter((e) => !e.dead);
@@ -3744,6 +4071,7 @@ inTown() {
     this.stepShadows(dt);
     this.stepWalls(dt);
     this.stepEnemies(edt);
+    this.stepFalls(edt);
     this.use(lead);
     each(() => this.collide(dt));
     this.stepProjectiles(dt, edt);
@@ -3832,6 +4160,7 @@ inTown() {
           }
         }
       }
+      this.stepWaystones(dt);
       let on = null;
       for (const g of this.map.portals) if (dist(p.x, p.z, g.x, g.z) < g.r) on = g;
       this.portalOn = on;

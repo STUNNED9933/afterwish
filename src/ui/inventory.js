@@ -73,7 +73,8 @@ export class Inventory {
   /**
    * @param {object} keep  { get: () => rarity indices never to bulk-scrap, set: (list) => void }
    */
-  constructor(tooltip, send, keep) {
+  constructor(tooltip, send, keep, trade = {}) {
+    this.trade = trade; // { offered(): Set of item ids | null, toggle(id), party(): bool } (0.25)
     this.tooltip = tooltip;
     this.send = send;
     this.keep = keep || { get: () => [], set: () => {} };
@@ -156,8 +157,12 @@ export class Inventory {
       const upgrade = item ? itemScore(item) > itemScore(current) : false;
       if (item && !upgrade && !keep.has(item.rarity)) scrapTotal += scrapValue(item);
       const el = itemCell(this.tooltip, item, { button: !!item, compareTo: current, upgrade });
+      const offered = this.trade.offered ? this.trade.offered() : null;
+      if (item && offered && offered.has(item.id)) el.classList.add('offered');
       if (item) {
         el.addEventListener('click', (ev) => {
+          if (offered) return this.trade.toggle(item.id); // trading: a click puts it in (or takes it out of) your offer
+          if ((ev.ctrlKey || ev.metaKey) && this.trade.party && this.trade.party()) return this.send({ type: 'dropItem', index: i });
           this.send({ type: ev.shiftKey ? 'discard' : 'equip', index: i });
         });
         el.addEventListener('contextmenu', (ev) => ev.preventDefault());

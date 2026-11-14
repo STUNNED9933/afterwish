@@ -1594,6 +1594,7 @@ import { makeRng } from '../src/sim/rng.js';
     check('Combat Power: choosing a subclass raises it', at('warrior', 40, 'bulwark').cp > at('warrior', 40).cp);
     const tank = at('warrior', 70, 'bulwark'), glass = at('archer', 70, 'sharpshooter');
     check('Combat Power: the tank leads on Resolve, the sharpshooter on Might', tank.resolve > glass.resolve && glass.might > tank.might);
+    check('Combat Power: a damage dealer outranks the tank overall (the tank shines in Resolve)', glass.cp > tank.cp, `${glass.cp} vs ${tank.cp}`);
     const all = ['warrior', 'archer', 'rogue', 'mage'].map((c) => at(c, 70).cp);
     check('Combat Power: no class is left far behind (within 35% of each other at level 70)', Math.min(...all) / Math.max(...all) > 0.65, all.join(' '));
     const { w, p } = setup('archer', 'windrunner');
@@ -1631,6 +1632,197 @@ import { makeRng } from '../src/sim/rng.js';
     run(w, 5.2);
     const open = taken();
     check('Hold the Line: 35% less damage taken while it lasts', Math.abs(shielded / open - 0.65) < 0.03, `${open} -> ${shielded}`);
+  }
+}
+
+// --- 0.25: co-op fixes, patience, waystones, arena pace, bosses, trading -------------
+{
+  console.log('--- 0.25');
+  const { makeSnapshot, applySnapshot } = await import('../src/net/sync.js');
+  const { buildMap } = await import('../src/sim/maps.js');
+  const { trialWeek, defaultBuild, buildTrialWorld } = await import('../src/sim/trial.js');
+  const run = (w, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) w.step(CONFIG.TICK); };
+  const party = () => {
+    const w = new World({ seed: 7, cls: 'archer', mode: 'explore', save: { v: 2, cls: 'archer', level: 30 } });
+    w.addHero(1, { name: 'Friend', cls: 'rogue', save: { v: 2, cls: 'rogue', level: 6 } });
+    w.loadMap('greenwood', 'town');
+    return { w, host: w.heroes[0], friend: w.heroByPid(1) };
+  };
+
+  // Ownerless drops: a full-bag reward lands at your feet, and only you can take it.
+  {
+    const { w, host, friend } = party();
+    w.use(host);
+    w.player.bag = Array.from({ length: CONFIG.BAG_SIZE }, (_, i) => ({ id: 'x' + i, slot: 'ring', rarity: 0, stats: {} }));
+    w.player.equipped.ring = { id: 'r0', slot: 'ring', rarity: 0, stats: {} };
+    w.giveItem({ id: 'prize', slot: 'ring', cls: 'archer', rarity: 5, stats: {} });
+    const drop = w.loot.find((l) => l.item.id === 'prize');
+    check('a reward dropped at your feet belongs to you (a friend cannot pick it up)', drop && drop.owner === host.pid);
+    friend.player.x = drop.x; friend.player.z = drop.z;
+    run(w, 0.6);
+    check('...so a low-level rogue friend never gets the archer weapon', !friend.player.bag.some((it) => it.id === 'prize'));
+  }
+  // Beaten bosses stay beaten for their timer, even if you leave and come back.
+  {
+    const w = new World({ seed: 7, cls: 'warrior', mode: 'explore', save: { v: 2, cls: 'warrior', level: 40 } });
+    w.loadMap('greenwood', 'town');
+    const id = 'keep'; // The Warden's map
+    w.loadMap(id, null);
+    const boss = w.enemies.find((e) => e.def.boss);
+    check('a world boss respawns after a minute now (not two)', w.camps.find((c) => c.slots[0].id === boss.id).slots[0].respawn === (boss.type === 'boss3' ? 120 : 60));
+    w.killEnemy(boss, 'basic');
+    w.loadMap('town', id); w.loadMap(id, 'town');
+    check('leaving and coming straight back does not bring the boss back', !w.enemies.some((e) => e.def.boss));
+    const saved = w.toSave();
+    check('...and the timer is in the save (so reloading does not either)', Object.values(saved.campDown || {}).some((s) => s > 50));
+    const again = new World({ seed: 7, cls: 'warrior', mode: 'explore', save: saved });
+    again.loadMap(id, 'town');
+    check('...after a reload too', !again.enemies.some((e) => e.def.boss));
+    for (let i = 0; i < 61 * 60; i++) { w.player.hp = w.player.stats.maxHp; w.player.x = w.player.px = 30; w.player.z = w.player.pz = 0; w.step(CONFIG.TICK); }
+    check('the boss is back once its minute is up', w.enemies.some((e) => e.def.boss));
+  }
+  // A fallen teammate still gets the boss's EXP and loot.
+  {
+    const { w, host, friend } = party();
+    const boss = w.spawnEnemy('boss', { x: 5, z: 5, level: 10 });
+    friend.player.dead = true; friend.player.x = 40; friend.player.z = 40;
+    const exp0 = friend.player.exp + friend.player.level * 1e6;
+    w.use(host);
+    w.killEnemy(boss, 'basic');
+    check('a fallen teammate still gets EXP and their own loot when the party kills a boss', friend.player.exp + friend.player.level * 1e6 > exp0 && w.loot.some((l) => l.owner === friend.pid));
+  }
+  // Weekly Echo: arena bosses give no skill point there (the level-up marker).
+  {
+    const wk = trialWeek(1);
+    const w = buildTrialWorld(wk, defaultBuild(wk, 'rogue', 'assassin'));
+    const b = w.spawnEnemy('boss');
+    w.killEnemy(b, 'basic');
+    check('Weekly Echo: beating a boss gives no skill point (no rank-up marker)', w.player.skillPoints === 0);
+  }
+  // Patience
+  {
+    const w = new World({ seed: 7, cls: 'archer', mode: 'explore', save: { v: 2, cls: 'archer', level: 20 } });
+    w.loadMap('greenwood', 'town');
+    const e = w.enemies.find((x) => !x.def.boss && x.home);
+    const p = w.player;
+    p.autoAttack = false;
+    e.maxHp = 1e9; e.hp = 5e8;
+    e.aggro = true; e.state = 'chase';
+    e.x = e.home.x + 15; e.z = e.home.z; p.x = e.x + 4; p.z = e.z;
+    run(w, 1);
+    check('patience: drains while dragged far from home', e.aggro && e.patience < 0.95);
+    for (let i = 0; i < 6 * 60 && e.aggro; i++) { p.x = e.x + 4; p.z = e.z; p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+    check('patience: when it runs out the enemy gives up and walks home', !e.aggro && e.returning);
+    run(w, 8);
+    check('...healing on the way, then ready again with full patience', e.hp > e.maxHp * 0.9 && e.patience === 1);
+  }
+  // Waystones
+  {
+    const m = buildMap('greenwood');
+    check('waystones: two on a world map (entrance and far side), none in Haven', m.waystones.length === 2 && buildMap('town').waystones.length === 0);
+    const { w, host, friend } = party();
+    const [a, b] = w.map.waystones;
+    friend.player.x = a.x + 4; friend.player.z = a.z;
+    run(w, 0.1);
+    friend.player.x = friend.player.px = a.x; friend.player.z = friend.player.pz = a.z; friend.player.moveTarget = null;
+    const hx = host.player.x;
+    const ev = [];
+    for (let i = 0; i < (CONFIG.PORTAL_TIME + 0.3) * 60; i++) { w.step(CONFIG.TICK); ev.push(...w.events.filter((x) => x.type === 'waystone' && x.hero === friend.pid)); }
+    check('waystones: standing on one for a moment opens the travel menu', ev.length >= 1);
+    w.command({ type: 'warp', to: 1, pid: friend.pid });
+    w.runCommands();
+    check('waystones: standing on one opens the menu, and warping moves only that hero', dist2(friend.player, b) < 3.5 && host.player.x === hx, `${dist2(friend.player, b).toFixed(1)}`);
+  }
+  // Arena: Flawless and Swift
+  {
+    const w = new World({ seed: 7, cls: 'warrior', save: { v: 2, cls: 'warrior', level: 20 } });
+    w.startWave();
+    w.wave.queue = []; w.enemies = [];
+    run(w, 0.1);
+    const clear = w.events.find((e) => e.type === 'waveClear');
+    check('arena: a floor cleared quickly without a scratch is Flawless and Swift (double gold and more)', clear && clear.flawless && clear.swift && clear.gold >= 2.5 * (10 + 4 * clear.n));
+    w.startWave();
+    w.hitPlayer(10, { parryable: false, src: w.spawnEnemy('grunt') });
+    w.wave.queue = []; w.enemies = [];
+    run(w, 0.1);
+    const clear2 = w.events.filter((e) => e.type === 'waveClear').pop();
+    check('arena: taking a hit loses Flawless', clear2 && !clear2.flawless);
+  }
+  // Bosses chase now
+  {
+    const w = new World({ seed: 9, cls: 'archer', save: { v: 2, cls: 'archer', level: 30 } });
+    w.wave.phase = 'explore';
+    const b = w.spawnEnemy('boss2', { x: 0, z: 0, level: 30 });
+    b.state = 'chase'; b.atkCd = 0;
+    const seen = new Set();
+    for (let i = 0; i < 400; i++) { b.farT = 2; const a = w.chooseAttack(b, 12); if (a) seen.add(a.name); }
+    check('bosses: from range they lunge or leap at you, not only shoot', seen.has('lunge') && seen.has('leap') && seen.has('fan'));
+    const p = w.player; p.x = 12; p.z = 0;
+    w.startWindup(b, b.def.attackByName.leap, false);
+    for (let i = 0; i < 200 && b.state === 'windup'; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+    check('bosses: a leap lands where you stood when it locked on', dist2(b, p) < 4);
+    const f = w.spawnEnemy('boss3', { x: -10, z: 0, level: 30 });
+    w.hitEnemy(f, f.maxHp * 0.4, { canCrit: false, raw: true });
+    check('the final boss: phase two at two thirds health', f.phase === 2 && w.events.some((e) => e.type === 'bossPhase' && e.phase === 2));
+    f.state = 'chase';
+    w.startWindup(f, f.def.attackByName.starfall, false);
+    for (let i = 0; i < 300 && !w.events.some((e) => e.type === 'starImpact'); i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+    check('the final boss: Starfall drops stars on you', w.events.some((e) => e.type === 'starImpact'));
+  }
+  // Trading and dropping
+  {
+    const { w, host, friend } = party();
+    const sword = { id: 'sw1', slot: 'weapon', cls: 'rogue', name: 'Rogue Blade', rarity: 5, stats: { ad: 10 } };
+    host.player.bag.push(sword);
+    host.player.gold = 500; friend.player.gold = 100;
+    const ring = { id: 'rg1', slot: 'ring', name: 'Plain Ring', rarity: 1, stats: { hp: 5 } };
+    friend.player.bag.push(ring);
+    const cmd = (h, c) => { w.command(Object.assign({ pid: h.pid }, c)); w.runCommands(); };
+    cmd(host, { type: 'tradeAsk', to: 1 });
+    check('trade: the friend is asked', w.events.some((e) => e.type === 'trade' && e.state === 'asked' && e.hero === 1));
+    cmd(friend, { type: 'tradeAnswer', yes: true });
+    cmd(host, { type: 'tradeSet', items: ['sw1'], gold: 50 });
+    cmd(friend, { type: 'tradeSet', items: ['rg1'], gold: 0 });
+    cmd(host, { type: 'tradeOk' });
+    cmd(friend, { type: 'tradeSet', items: ['rg1'], gold: 10 });
+    check('trade: any change un-readies both', !w.trades[0].ok[0]);
+    cmd(host, { type: 'tradeOk' }); cmd(friend, { type: 'tradeOk' });
+    check('trade: once both accept, items and gold swap', friend.player.bag.some((i) => i.id === 'sw1') && host.player.bag.some((i) => i.id === 'rg1') && host.player.gold === 460 && friend.player.gold === 140, `${host.player.gold} ${friend.player.gold}`);
+    // A trade is called off if an offered item leaves the bag
+    cmd(friend, { type: 'tradeAsk', to: 0 }); cmd(host, { type: 'tradeAnswer', yes: true });
+    cmd(friend, { type: 'tradeSet', items: ['sw1'], gold: 0 });
+    cmd(host, { type: 'tradeOk' });
+    cmd(friend, { type: 'discard', index: friend.player.bag.findIndex((i) => i.id === 'sw1') });
+    cmd(friend, { type: 'tradeOk' });
+    check('trade: an item scrapped mid-trade comes off the offer (nothing swaps by surprise)', !host.player.bag.some((i) => i.id === 'sw1'));
+    cmd(host, { type: 'tradeCancel' });
+    // Dropping for a friend
+    const idx = host.player.bag.findIndex((i) => i.id === 'rg1');
+    cmd(host, { type: 'dropItem', index: idx });
+    const drop = w.loot.find((l) => l.item.id === 'rg1');
+    check('drop: Ctrl-click drops a bag item on the ground for anyone in the party', drop && drop.owner === undefined);
+    host.player.x = drop.x; host.player.z = drop.z;
+    run(w, 1);
+    check('drop: the one who dropped it does not snatch it straight back', !host.player.bag.some((i) => i.id === 'rg1'));
+    host.player.x = 30; friend.player.x = drop.x; friend.player.z = drop.z; friend.player.dead = false;
+    run(w, 1);
+    check('drop: the friend picks it up', friend.player.bag.some((i) => i.id === 'rg1') || (friend.player.equipped.ring && friend.player.equipped.ring.id === 'rg1'));
+  }
+  // Co-op playback: updates carry the host's clock, and a glide starts from where things are drawn
+  {
+    const { w } = party();
+    const snap = JSON.parse(JSON.stringify(makeSnapshot(w, 1, {})));
+    check('co-op: each update carries the host tick', typeof snap.tick === 'number');
+    const friend = new World({ seed: 9, cls: 'rogue', mode: 'explore' });
+    friend.loadMapMirror('greenwood');
+    applySnapshot(friend, snap, 1);
+    const e = friend.enemies[0];
+    e.px = e.x - 2;
+    const drawn = e.px + (e.x - e.px) * 0.5;
+    const moved = JSON.parse(JSON.stringify(snap));
+    applySnapshot(friend, moved, 0.5);
+    const e2 = friend.enemies.find((x) => x.id === e.id);
+    check('co-op: an early update glides on from the drawn spot (no jump back)', Math.abs(e2.px - drawn) < 1e-9);
   }
 }
 process.exit(failed ? 1 : 0);

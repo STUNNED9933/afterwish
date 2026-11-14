@@ -330,6 +330,18 @@ export class Hud {
     const boss = world.enemies.find((e) => e.def.boss && !e.dead);
     $('boss-box').classList.toggle('hidden', !boss);
     if (boss) {
+      const fin = !!boss.def.final;
+      const phase = boss.phase || 1;
+      const fk = fin + ':' + phase;
+      if (fk !== this.lastFinal) {
+        this.lastFinal = fk;
+        const box = $('boss-box');
+        box.classList.toggle('final', fin);
+        box.classList.toggle('phase-2', fin && phase === 2);
+        box.classList.toggle('phase-3', fin && phase === 3);
+        $('boss-title').textContent = fin ? boss.def.title || '' : '';
+        $('boss-phase').textContent = fin ? ['', 'Phase one', 'Phase two · stars fall', 'Phase three · it pulls you in'][phase] : '';
+      }
       $('boss-fill').style.transform = `scaleX(${Math.max(0, boss.hp / boss.maxHp)})`;
       const pk = boss.posture + ':' + boss.state;
       if (pk !== this.lastPosture) {
@@ -364,9 +376,9 @@ export class Hud {
         el.className = 'ebar';
         const width = e.def.boss ? 90 : Math.round(34 + e.radius * 28);
         el.style.width = width + 'px';
-        el.innerHTML = '<div class="fill"></div><div class="tag"></div><div class="lvl"></div>';
+        el.innerHTML = '<div class="fill"></div><div class="tag"></div><div class="lvl"></div><div class="patience"><i></i></div>';
         this.worldUi.appendChild(el);
-        bar = { el, fill: el.firstChild, tag: el.children[1], lvl: el.lastChild, width, hp: -1, status: null, gap: null };
+        bar = { el, fill: el.firstChild, tag: el.children[1], lvl: el.children[2], pat: el.children[3], width, hp: -1, status: null, gap: null, patience: 1 };
         this.bars.set(e.id, bar);
       }
       const pos = view.model.group.position;
@@ -375,6 +387,14 @@ export class Hud {
       if (bar.hp !== e.hp) {
         bar.hp = e.hp;
         bar.fill.style.transform = `scaleX(${Math.max(0, e.hp / e.maxHp)})`;
+      }
+      // Patience: shown only while it is running out (and while it walks home to heal).
+      const pat = e.returning ? 0 : e.patience ?? 1;
+      if (Math.abs(bar.patience - pat) > 0.005 || (pat >= 1) !== (bar.patience >= 1)) {
+        bar.patience = pat;
+        bar.el.classList.toggle('impatient', pat < 0.999);
+        bar.el.classList.toggle('leashed', !!e.returning);
+        bar.pat.firstChild.style.transform = `scaleX(${pat})`;
       }
       // The level, coloured by how dangerous the gap is.
       const gap = (e.level || world.player.level) - world.player.level;
@@ -469,6 +489,7 @@ export class Hud {
       dot(gate.x, gate.z, 2.5, '#0a0d16');
     }
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
+    for (const ws of world.map.waystones || []) dot(ws.x, ws.z, 3.5, '#9fe6ff');
     for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
     for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : 2, e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
@@ -498,6 +519,13 @@ export class Hud {
           this.worldUi.appendChild(el);
           this.portalLabels.push({ el, gate: world.map.waygate });
         }
+        for (const ws of world.map.waystones || []) {
+          const el = document.createElement('div');
+          el.className = 'plabel way stone';
+          el.textContent = 'Waystone';
+          this.worldUi.appendChild(el);
+          this.portalLabels.push({ el, gate: ws, stone: true });
+        }
         // People (with a quest marker) and signs you have not read yet.
         for (const ob of world.map.obstacles) {
           if (ob.kind !== 'npc' && ob.kind !== 'sign') continue;
@@ -525,7 +553,7 @@ export class Hud {
     if (!id && this.trackOn) this.drawQuestTracker(world);
     this.updatePrompt(world);
     for (const l of this.portalLabels || []) {
-      const s = renderer.project(l.gate.x, l.story ? 2.5 : l.gate === world.map.waygate ? 2.8 : 4.4, l.gate.z);
+      const s = renderer.project(l.gate.x, l.story ? 2.5 : l.gate === world.map.waygate || l.stone ? 2.8 : 4.4, l.gate.z);
       l.el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -50%)`;
     }
   }

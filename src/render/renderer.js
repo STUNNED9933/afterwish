@@ -403,6 +403,23 @@ export class Renderer {
       g.add(gate);
       this.wayView = { gate, pad, disc, wg };
     }
+    // Waystones out in the world: a pale pad with one tall, glowing stone.
+    for (const ws of map.waystones || []) {
+      const stone = new THREE.Group();
+      const pad = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.75, depthWrite: false }));
+      pad.scale.setScalar(ws.r);
+      pad.position.y = 0.06;
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(ws.r * 0.85, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+      disc.position.y = 0.05;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x5c6a7a, roughness: 0.8, emissive: 0x3aa9ff, emissiveIntensity: 0.25 }));
+      pillar.position.set(ws.r + 0.5, 1.2, 0);
+      pillar.castShadow = true;
+      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0xbff2ff }));
+      rune.position.set(ws.r + 0.5, 2.7, 0);
+      stone.add(pad, disc, pillar, rune);
+      stone.position.set(ws.x, 0, ws.z);
+      g.add(stone);
+    }
     this.setEnvironment('explore');
   }
 
@@ -902,6 +919,21 @@ export class Renderer {
       case 'dodge':
         this.burst(ev.x, 1, ev.z, { count: 6, color: 0x9fe8ff, speed: 3, up: 2 });
         break;
+      case 'starImpact':
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xbff2ff, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.85 });
+        this.burst(ev.x, 0.6, ev.z, { count: 22, color: 0xe6fbff, speed: 9, up: 7, life: 0.55 });
+        this.shake = Math.max(this.shake, 0.25);
+        break;
+      case 'bossLeap':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffe8c0, from: 0.8, to: ev.radius * 1.4, dur: 0.4, opacity: 0.9 });
+        this.burst(ev.x, 0.4, ev.z, { count: 30, color: 0xb8a68a, speed: 8, up: 4, life: 0.6 });
+        this.shake = Math.max(this.shake, 0.45);
+        break;
+      case 'bossPhase':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.5, color: 0x7ff5e1, from: 1, to: 16, dur: 0.8, opacity: 1 });
+        this.burst(ev.x, 2.5, ev.z, { count: 60, color: 0xbff2ff, speed: 12, up: 6, gravity: 0, life: 0.9 });
+        this.shake = Math.max(this.shake, 0.6);
+        break;
       case 'strike': {
         const v = this.views.get(ev.id);
         if (v) v.strikeT = 0.25;
@@ -1189,7 +1221,9 @@ export class Renderer {
 
   syncLoot(world) {
     const seen = new Set();
+    const me = world.cur ? world.cur.pid : undefined;
     for (const l of world.loot) {
+      if (l.owner !== undefined && me !== undefined && l.owner !== me) continue; // a party friend's drop: only they see it
       seen.add(l.id);
       let v = this.lootViews.get(l.id);
       if (!v) {

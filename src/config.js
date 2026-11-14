@@ -8,8 +8,9 @@ export const CONFIG = {
   // fighting in at any level. What makes later waves harder is this extra
   // health and damage per wave. Arena EXP is reduced: it is the place to farm
   // gold, and exploration is the place to level.
-  ARENA_WAVE_HP: 0.12,
-  ARENA_WAVE_DMG: 0.08,
+  // (0.25: arena runs are shorter and harder: they ramp about twice as fast as before.)
+  ARENA_WAVE_HP: 0.22,
+  ARENA_WAVE_DMG: 0.14,
   ARENA_EXP: 0.5,
   // Melee enemies that are close but cannot catch you speed up, so ranged
   // classes cannot kite them forever. Delay in seconds, then +RATE per second up to +MAX.
@@ -102,7 +103,9 @@ export const CONFIG = {
   // --- Exploration mode -------------------------------------------------
   TOWN_HEAL: 0.08, // fraction of max health restored per second in town
   AGGRO_RANGE: 11, // enemies notice you this close
-  LEASH_RANGE: 24, // ... and give up this far from where they live
+  LEASH_RANGE: 30, // ... and give up at once this far from where they live
+  PATIENCE_RANGE: 12, // past this far from home, an enemy starts losing patience...
+  PATIENCE_TIME: 5, // ...and gives up after this many seconds out there (it heals on the walk home)
   RESPAWN_TIME: 25, // seconds before a killed enemy returns
   PORTAL_TIME: 0.9, // seconds you must stand in a portal before it takes you
   WANDER_RANGE: 4, // idle enemies drift this far from their spot
@@ -112,7 +115,12 @@ export const CONFIG = {
 
   // --- Waves -----------------------------------------------------------
   FIRST_WAVE_DELAY: 3.5,
-  INTERMISSION: 8,
+  INTERMISSION: 5,
+  // Skill bonuses for a cleared floor: Flawless (no damage taken) and Swift (under par time).
+  // Par is PAR_BASE seconds plus PAR_PER_ENEMY for each enemy on the floor (bosses: PAR_BOSS).
+  PAR_BASE: 10,
+  PAR_PER_ENEMY: 1.6,
+  PAR_BOSS: 40,
   BOSS_EVERY: 5,
   MAX_ATTACKERS: 2, // how many normal enemies may wind up an attack at once
   ATTACK_STAGGER: 0.4, // minimum gap between two enemies starting an attack

@@ -11,7 +11,7 @@ import { CLASSES, CLASS_IDS } from './sim/classes.js';
 import { AUGMENTS } from './sim/augments.js';
 import { Renderer } from './render/renderer.js';
 import { Hud, Tooltip, svg } from './ui/hud.js';
-import { Inventory } from './ui/inventory.js';
+import { Inventory, itemCell } from './ui/inventory.js';
 import { Town } from './ui/town.js';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
@@ -147,12 +147,77 @@ function start(hot = {}) {
 
   const hud = new Hud(tooltip, (cmd) => world.command(cmd));
   if (!Array.isArray(settings.keepRarities)) settings.keepRarities = [6]; // Immortal items are safe from bulk scrapping unless you say so
+  let trade = null; // the trade window's latest state (from 'trade' events), while one is open
+  const inParty = () => !!(world.party || (net && net.role === 'client'));
   const inventory = new Inventory(tooltip, applyNow, {
     get: () => settings.keepRarities,
     set: (list) => {
       settings.keepRarities = list;
       storeSettings(settings);
     },
+  }, {
+    offered: () => (trade && trade.state === 'open' ? new Set(trade.mine.ids) : null),
+    toggle: (id) => {
+      const ids = new Set(trade.mine.ids);
+      if (ids.has(id)) ids.delete(id);
+      else ids.add(id);
+      applyNow({ type: 'tradeSet', items: [...ids], gold: Number($('trade-gold').value) || 0 });
+    },
+    party: () => inParty(),
+  });
+
+  /** The trade part of the gear drawer: who you can trade with, and the open trade. */
+  function renderTrade() {
+    const allies = inParty() && world.mode === 'explore' ? world.allies() : [];
+    const pt = $('party-trade');
+    pt.classList.toggle('hidden', !allies.length || !!trade);
+    if (allies.length && !trade) {
+      pt.innerHTML = '<span>Trade with</span>';
+      for (const a of allies) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny';
+        b.textContent = a.name;
+        b.addEventListener('click', () => applyNow({ type: 'tradeAsk', to: a.pid }));
+        pt.appendChild(b);
+      }
+    }
+    $('inv-help').textContent = trade && trade.state === 'open'
+      ? 'Click items in your bag to add them to your offer (or take them out). Both of you must press Accept; any change un-readies both.'
+      : inParty()
+        ? 'Click an item to equip it. Shift-click to scrap it. Ctrl-click to drop it on the ground for a friend. A green arrow marks an upgrade.'
+        : 'Click an item to equip it. Shift-click to break it down into scrap for the blacksmith. A green arrow marks an upgrade. The fight is paused while this is open.';
+    const panel = $('trade-panel');
+    panel.classList.toggle('hidden', !trade || trade.state !== 'open');
+    if (!trade || trade.state !== 'open') return;
+    $('trade-title').textContent = `Trading with ${trade.with}`;
+    $('trade-their-label').textContent = `${trade.with}'s offer`;
+    const fill = (el, items) => {
+      el.innerHTML = '';
+      if (!items.length) el.innerHTML = '<span class="empty-note">Nothing yet</span>';
+      for (const it of items) el.appendChild(itemCell(tooltip, it, { compareTo: world.player.equipped[it.slot] }));
+    };
+    fill($('trade-mine'), trade.mine.items);
+    fill($('trade-theirs'), trade.theirs.items);
+    const g = $('trade-gold');
+    if (document.activeElement !== g) g.value = trade.mine.gold;
+    g.max = world.player.gold;
+    $('trade-their-gold').textContent = trade.theirs.gold ? `+ ${trade.theirs.gold.toLocaleString()} gold` : '';
+    $('trade-mine').parentElement.classList.toggle('ok', trade.mine.ok);
+    $('trade-theirs').parentElement.classList.toggle('ok', trade.theirs.ok);
+    $('trade-status').textContent = trade.mine.ok && trade.theirs.ok ? 'Swapping…' : trade.mine.ok ? `Waiting for ${trade.with} to accept.` : trade.theirs.ok ? `${trade.with} has accepted. Accept to swap.` : 'Neither of you has accepted yet.';
+    $('btn-trade-ok').disabled = trade.mine.ok;
+  }
+  $('trade-gold').addEventListener('change', () => trade && applyNow({ type: 'tradeSet', items: trade.mine.ids, gold: Number($('trade-gold').value) || 0 }));
+  $('btn-trade-ok').addEventListener('click', () => applyNow({ type: 'tradeOk' }));
+  $('btn-trade-cancel').addEventListener('click', () => applyNow({ type: 'tradeCancel' }));
+  $('btn-trade-yes').addEventListener('click', () => {
+    $('trade-ask').classList.add('hidden');
+    applyNow({ type: 'tradeAnswer', yes: true });
+  });
+  $('btn-trade-no').addEventListener('click', () => {
+    $('trade-ask').classList.add('hidden');
+    applyNow({ type: 'tradeAnswer', yes: false });
   });
   const town = new Town(tooltip, applyNow, (startWave) => startRun(save, startWave));
 
@@ -179,6 +244,7 @@ function start(hot = {}) {
     $('inventory').classList.toggle('hidden', mode !== 'gear');
     tooltip.hide();
     if (mode === 'gear') inventory.render(world);
+    if (mode === 'gear') renderTrade();
     if (mode === 'town') {
       town.render(world);
       renderHall();
@@ -470,13 +536,55 @@ function start(hot = {}) {
   }
 
   /** The Waygate's list: every map in order, with the ones not yet reached locked. */
+  let travelStone = null; // the waystone the travel menu was opened from (null: the town Waygate)
   function renderTravel() {
     const list = $('travel-list');
     list.innerHTML = '';
     const p = world.player;
+    // From a waystone: the other waystones on this map come first (only you go there).
+    const here = $('travel-here');
+    here.innerHTML = '';
+    const stones = travelStone != null ? world.map.waystones || [] : [];
+    $('travel-eyebrow').textContent = travelStone != null ? 'Waystone' : 'Waygate';
+    $('travel-desc').textContent = travelStone != null
+      ? (world.party || (net && net.role === 'client') ? 'Jump to another waystone on this map (just you), or take the whole party to another map.' : 'Jump to another waystone on this map, or travel to another map.')
+      : 'The Waygate reaches any map you have walked into. Maps you have not found yet stay locked: get there on foot through the portals first.';
+    if (stones.length) {
+      const h = document.createElement('p');
+      h.className = 'travel-sub';
+      h.textContent = 'On this map';
+      here.appendChild(h);
+      stones.forEach((ws, i) => {
+        if (i === travelStone) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'travel-row fit';
+        btn.innerHTML = `<b>${esc(ws.name)}</b><span>${i === 0 ? 'By the way in, where fallen friends wake up' : 'On the far side of the map'}</span>`;
+        btn.addEventListener('click', () => {
+          setMode('play');
+          applyNow({ type: 'warp', to: i });
+        });
+        here.appendChild(btn);
+      });
+      const h2 = document.createElement('p');
+      h2.className = 'travel-sub';
+      h2.textContent = 'Other maps';
+      here.appendChild(h2);
+      if (world.map.id !== 'town') {
+        const home = document.createElement('button');
+        home.type = 'button';
+        home.className = 'travel-row';
+        home.innerHTML = '<b>Haven</b><span>Back to town: heal, shop, and the Waygate</span>';
+        home.addEventListener('click', () => {
+          setMode('play');
+          applyNow({ type: 'travel', to: 'town' });
+        });
+        here.appendChild(home);
+      }
+    }
     for (const id of MAP_IDS) {
       const m = MAPS[id];
-      if (m.safe) continue;
+      if (m.safe || id === world.map.id) continue;
       const known = p.visited.includes(id);
       const top = m.level + m.levelSpan + (m.boss ? 1 : 0);
       const btn = document.createElement('button');
@@ -698,7 +806,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'attackMove', 'setAutoAttack']);
+  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel']);
 
   async function hostGame() {
     const name = playerName();
@@ -790,7 +898,7 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50 };
+    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
@@ -826,14 +934,9 @@ function start(hot = {}) {
   function onNetMessage(msg) {
     if (!net || net.role !== 'client') return;
     if (msg.t === 'snap') {
-      const now = performance.now();
-      net.snapGap = Math.max(30, Math.min(200, net.snapGap * 0.8 + (now - net.snapAt) * 0.2));
-      net.snapAt = now;
-      const allies = world.alliesList ? world.alliesList.length : 0;
-      if (applySnapshot(world, msg)) world.events.push({ type: 'mapChange', id: world.map.id, name: world.map.name, from: null, hero: net.pid });
-      for (const ev of msg.ev || []) world.events.push(ev);
-      if (world.alliesList.length !== allies) updateRoomBadge();
-      if (msg.heavy) refreshMenus();
+      // Updates can arrive in bunches (the host's frame ran long, or the network hiccuped).
+      // They wait here and are played back at the pace the host made them (see playSnapshots).
+      net.queue.push(msg);
     } else if (msg.t === 'save') {
       save = msg.save;
       storeSave(save, world.cls);
@@ -841,6 +944,35 @@ function start(hot = {}) {
       account.tickets = msg.tickets;
       storeAccount(account);
     } else if (msg.t === 'closed') leaveRoom('The host closed the room.');
+  }
+
+  /** Friend side: play queued host updates back at an even pace, a little behind, so movement glides. */
+  function playSnapshots(now) {
+    const q = net.queue;
+    if (!q.length || now < net.nextAt) return;
+    // Running far behind (a long hitch): skip ahead, keeping the events of the skipped updates.
+    while (q.length > 4) {
+      const old = q.shift();
+      for (const ev of old.ev || []) world.events.push(ev);
+      if (old.heavy) Object.assign(q[0], { heavy: q[0].heavy || old.heavy });
+      if (old.map !== q[0].map) {
+        q.unshift(old);
+        break;
+      }
+    }
+    const msg = q.shift();
+    const alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
+    const gapTicks = net.lastTick == null || msg.tick == null ? 3 : Math.max(1, msg.tick - net.lastTick);
+    net.lastTick = msg.tick;
+    net.snapGap = Math.max(16, Math.min(250, gapTicks * CONFIG.TICK * 1000));
+    net.snapAt = now;
+    // With more waiting, play a little faster to catch up; with none, at the host's pace.
+    net.nextAt = now + net.snapGap * (q.length >= 2 ? 0.7 : q.length === 1 ? 0.9 : 1);
+    const allies = world.alliesList ? world.alliesList.length : 0;
+    if (applySnapshot(world, msg, alpha)) world.events.push({ type: 'mapChange', id: world.map.id, name: world.map.name, from: null, hero: net.pid });
+    for (const ev of msg.ev || []) world.events.push(ev);
+    if (world.alliesList.length !== allies) updateRoomBadge();
+    if (msg.heavy) refreshMenus();
   }
 
   /** Leave (or close) the room. Progress is already saved. */
@@ -865,7 +997,10 @@ function start(hot = {}) {
   }
 
   function refreshMenus() {
-    if (mode === 'gear') inventory.render(world);
+    if (mode === 'gear') {
+      inventory.render(world);
+      renderTrade();
+    }
     else if (mode === 'talk') renderTalk();
     else if (mode === 'talents') renderTalents();
     else if (mode === 'journal') renderJournal();
@@ -1383,7 +1518,9 @@ function start(hot = {}) {
           break;
         }
         const record = world.mode === 'arena' && !net && !stale && recordWave(world.cls, world.player.spec, ev.n);
-        hud.banner(ev.boss ? 'The Warden falls' : 'Wave cleared', `+${ev.gold} gold${ev.boss ? ' · checkpoint saved' : ''}${record ? ' · a new record in the Hall of Echoes' : ''}`);
+        const skill = [ev.flawless ? 'Flawless: double gold, a potion and an augment reroll' : '', ev.swift ? `Swift (${ev.secs}s, par ${ev.par}s): +50% gold` : ''].filter(Boolean).join(' · ');
+        hud.banner(ev.flawless && ev.swift ? 'Flawless and Swift' : ev.flawless ? 'Flawless' : ev.swift ? 'Swift' : ev.boss ? 'The Warden falls' : 'Wave cleared', `+${ev.gold} gold${skill ? ' · ' + skill : ''}${ev.boss ? ' · checkpoint saved' : ''}${record ? ' · a new record in the Hall of Echoes' : ''}`);
+        if (ev.flawless) sfx.levelUp();
         sfx.clear();
         persist();
         break;
@@ -1542,6 +1679,50 @@ function start(hot = {}) {
         hud.feedText(`${ev.name} left the party`);
         updateRoomBadge();
         break;
+      case 'trade': {
+        const why = { declined: `${ev.with} said no to the trade.`, cancelled: 'The trade was called off.', changed: 'Something on offer changed hands, so the trade was called off.', full: 'A bag was too full for the swap, so the trade was called off.', gone: `${ev.with} left, so the trade was called off.` };
+        const redraw = () => {
+          if (mode !== 'gear') return;
+          inventory.render(world);
+          renderTrade();
+        };
+        if (ev.state === 'asked') {
+          trade = null;
+          if (ev.asker) hud.feedText(`Asked ${ev.with} to trade…`);
+          else {
+            $('trade-ask-text').textContent = `${ev.with} wants to trade`;
+            $('trade-ask').classList.remove('hidden');
+            sfx.ui();
+          }
+        } else if (ev.state === 'open') {
+          const first = !trade;
+          trade = ev;
+          $('trade-ask').classList.add('hidden');
+          if (first && mode === 'play') setMode('gear'); // open the drawer when the trade starts, not on every change
+          else redraw();
+          if (!first && mode !== 'gear') hud.feedText(`${ev.with} changed the trade · open Gear (Tab) to see it`);
+        } else if (ev.state === 'closed') {
+          trade = null;
+          $('trade-ask').classList.add('hidden');
+          hud.feedText(why[ev.reason] || 'The trade was called off.');
+          redraw();
+        } else if (ev.state === 'done') {
+          trade = null;
+          sfx.upgrade();
+          const parts = [ev.got.length ? `got ${ev.got.join(', ')}` : '', ev.gave.length ? `gave ${ev.gave.join(', ')}` : '', ev.gold ? `${ev.gold > 0 ? 'got' : 'paid'} ${Math.abs(ev.gold).toLocaleString()} gold` : ''].filter(Boolean);
+          hud.banner('Traded', `With ${ev.with}${parts.length ? ': ' + parts.join(' · ') : ''}`);
+          redraw();
+        }
+        break;
+      }
+      case 'tradeBusy':
+        hud.feedText(`${ev.name} is already in a trade.`);
+        sfx.denied();
+        break;
+      case 'itemDropped':
+        hud.float(renderer, ev.x, 2.2, ev.z, ev.name, 'word');
+        if (ev.hero !== (net ? net.pid : world.cur.pid)) hud.feedText(`${ev.by} dropped ${ev.name} for the party`);
+        break;
       case 'chestOpen': {
         const name = { wooden: 'Chest', gilded: 'Gilded chest', radiant: 'Radiant chest' }[ev.tier] || 'Chest';
         hud.float(renderer, ev.x, 2.6, ev.z, name, ev.tier === 'radiant' ? 'word perfect' : 'word');
@@ -1586,7 +1767,21 @@ function start(hot = {}) {
         hud.feedText('Warden key and a skill point earned');
         break;
       case 'enrage':
-        hud.banner('Enraged', 'The Warden attacks faster');
+        hud.banner('Enraged', `${world.enemies.find((e) => e.id === ev.id)?.def.name || 'The boss'} attacks faster`);
+        break;
+      case 'bossPhase':
+        hud.banner(ev.phase === 2 ? `${ev.name} unravels` : `${ev.name} collapses inward`, ev.phase === 2 ? 'Stars begin to fall: keep moving' : 'It drags you in before it bursts: dash away');
+        hud.screenFlash(0.5);
+        sfx.wave(true);
+        break;
+      case 'starfall':
+        sfx.cast('r');
+        break;
+      case 'starImpact':
+        sfx.impact();
+        break;
+      case 'bossLeap':
+        sfx.slam();
         break;
       case 'levelUp': {
         const unlocked = ev.unlocked.map((k) => `${world.kit[k].name} unlocked · press ${world.kit[k].key}`);
@@ -1644,8 +1839,20 @@ function start(hot = {}) {
       case 'waygate':
         if (mode === 'play') {
           sfx.ui();
+          travelStone = null;
           setMode('travel');
         }
+        break;
+      case 'waystone':
+        if (mode === 'play') {
+          sfx.ui();
+          travelStone = ev.index;
+          setMode('travel');
+        }
+        break;
+      case 'warp':
+        sfx.portal?.();
+        hud.feedText(`To the ${ev.name.toLowerCase()}`);
         break;
       case 'discovered':
         if (ev.id !== 'town') hud.feedText(`Discovered ${ev.name}. The Waygate in Haven can take you back here.`);
@@ -1706,7 +1913,7 @@ function start(hot = {}) {
     world.events = [];
     const me = net ? net.pid : 0;
     for (const ev of events) {
-      if (net && !(eventFor(ev, me) || (net.role === 'host' && ev.type === 'mapChange'))) continue;
+      if ((net || world.party) && !(eventFor(ev, me) || ((!net || net.role === 'host') && ev.type === 'mapChange'))) continue; // in a party: only this player's own events, and everyone's public ones
       handleEvent(ev);
     }
   }
@@ -1729,6 +1936,7 @@ function start(hot = {}) {
     let alpha = Math.min(1, acc / CONFIG.TICK);
     if (net && net.role === 'client') {
       // A joiner never runs the rules: it shows what the host sends, gliding between updates.
+      playSnapshots(now);
       drainEvents();
       alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
     } else if (net && mode !== 'title' && mode !== 'mp') {

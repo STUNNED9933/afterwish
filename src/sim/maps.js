@@ -46,7 +46,7 @@ export const MAPS = {
   keep: {
     name: "Warden's Keep", theme: 'keep', radius: 44, level: 30, levelSpan: 9,
     roster: { knight: 4, brute: 2, stalker: 2, spitter: 2 }, spawns: 15, trees: 6, rocks: 34,
-    boss: 'boss', // The Warden waits in the middle and returns two minutes after it falls
+    boss: 'boss', // The Warden waits in the middle and returns a minute after it falls
     portals: [{ to: 'ridge', angle: Math.PI + 0.9 }, { to: 'frost', angle: -0.5 }],
   },
   frost: {
@@ -153,12 +153,23 @@ export function buildMap(id) {
   // The Waygate: fast travel to maps you have discovered. Stand on it like a portal.
   const waygate = def.theme === 'town' ? { x: 0, z: 5.5, r: 1.8 } : null;
 
+  // Waystones (out in the world): one by the entrance, where fallen teammates wake up, and one
+  // on the far side. Stand on one to jump to the other (just you), or travel on like the Waygate.
+  const waystones = [];
+  if (def.theme !== 'town' && portals.length) {
+    const g = portals[0];
+    const d = dHypot(g.x, g.z);
+    waystones.push({ x: g.x * (1 - 10 / d) + (g.z / d) * 4, z: g.z * (1 - 10 / d) - (g.x / d) * 4, r: 1.5, name: 'Entrance waystone' });
+    waystones.push({ x: (-g.x / d) * R * 0.62, z: (-g.z / d) * R * 0.62, r: 1.5, name: 'Far waystone' });
+    for (const w of waystones) keepClear.push({ x: w.x, z: w.z, r: 3.5 });
+  }
+
   // Enemy spawn points, spread over the whole map.
   const spawns = [];
   const types = Object.keys(def.roster);
   const total = types.reduce((n, t) => n + def.roster[t], 0);
   if (def.boss) {
-    spawns.push({ x: 0, z: 0, type: def.boss, level: def.level + def.levelSpan + 1, respawn: 120, r: 12 });
+    spawns.push({ x: 0, z: 0, type: def.boss, level: def.level + def.levelSpan + 1, respawn: def.boss === 'boss3' ? 120 : 60, r: 12 }); // the final boss takes longer
     keepClear.push({ x: 0, z: 0, r: 9 });
   }
   for (let tries = 0; spawns.length < def.spawns + (def.boss ? 1 : 0) && tries < 4000; tries++) {
@@ -166,7 +177,8 @@ export function buildMap(id) {
     const r = 7 + Math.sqrt(rng()) * (R - 13);
     const x = dCos(a) * r;
     const z = dSin(a) * r;
-    if (!far(x, z, spawns, -1) || portals.some((g) => dHypot(g.x - x, g.z - z) < 11) || !far(x, z, obstacles, 3)) continue;
+    if (def.boss === 'boss3' && dHypot(x, z) < 24) continue; // the final boss's ground stays clear of small fry
+    if (!far(x, z, spawns, -1) || portals.some((g) => dHypot(g.x - x, g.z - z) < 11) || waystones.some((w) => dHypot(w.x - x, w.z - z) < 9) || !far(x, z, obstacles, 3)) continue;
     let roll = rng() * total;
     let type = types[0];
     for (const t of types) {
@@ -205,6 +217,6 @@ export function buildMap(id) {
   return {
     id, name: def.name, theme: def.theme, safe: !!def.safe, radius: R,
     level: def.level, levelMax: def.level + def.levelSpan,
-    portals, obstacles, spawns, waygate,
+    portals, obstacles, spawns, waygate, waystones,
   };
 }

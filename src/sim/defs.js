@@ -65,6 +65,12 @@ export const ABILITY_SLOTS = ['q', 'w', 'e', 'r'];
 // windup:  seconds of telegraph before the hit lands
 // lockAt:  the enemy stops turning to track you this long before the hit
 // chain:   name of an attack that follows immediately (boss combos)
+// 0.25: bosses no longer let you kite them. From range they charge at you or leap onto where you stand.
+const CHASE_ATTACKS = (o) => [
+  { name: 'lunge', shape: 'rect', trigger: 22, length: 15 * o.size, width: 2.6 * o.size, windup: 0.8 * o.pace, recover: 1.0, dmg: o.dmg * 1.4, parryable: false, lockAt: 0.25, chargeDur: 0.38 },
+  { name: 'leap', shape: 'circle', leap: true, trigger: 22, radius: 3.6 * o.size, offset: 0, windup: 1.1 * o.pace, recover: 1.2, dmg: o.dmg * 1.6, parryable: false, lockAt: 0.3 },
+];
+
 export const ENEMIES = {
   grunt: {
     name: 'Husk',
@@ -161,6 +167,7 @@ export const ENEMIES = {
     ],
   },
 };
+ENEMIES.boss.attacks.push(...CHASE_ATTACKS({ size: 1, pace: 1, dmg: 28 }));
 // --- Enemies of the later maps ------------------------------------------------
 // They reuse the five body shapes above (`model`), recoloured and resized by `look`,
 // with their own numbers and attacks. colors are applied to the model's materials in order.
@@ -170,6 +177,7 @@ const BOSS_ATTACKS = (o) => [
   { name: 'combo3', shape: 'circle', trigger: 99, radius: 3.4 * o.size, offset: 2.8 * o.size, windup: 0.8 * o.pace, recover: 1.5, dmg: o.dmg * 1.5, parryable: true, lockAt: 0.3 },
   { name: 'slam', shape: 'circle', trigger: 4.4 * o.size, radius: o.slam, offset: 0, windup: 1.5 * o.pace, recover: 1.6, dmg: o.dmg * 2.1, parryable: false, lockAt: 0 },
   { name: 'fan', shape: 'shot', trigger: 16, windup: 0.9 * o.pace, recover: 1.3, dmg: o.dmg * 0.7, parryable: true, lockAt: 0.15, speed: o.shotSpeed, count: o.shots, spread: o.spread },
+  ...CHASE_ATTACKS(o),
 ];
 Object.assign(ENEMIES, {
   imp: {
@@ -223,7 +231,14 @@ Object.assign(ENEMIES, {
   boss3: {
     name: 'The Unmade', model: 'boss', look: { scale: 1.25, colors: [0x2a1c5a, 0x7ff5e1, 0x0c0c1c] },
     hp: 2400, speed: 3.4, radius: 1.6, height: 4.2, heavy: true, boss: true, exp: 340, poise: 4, parryStun: 4, drop: 1, cost: 0, ai: 'boss', atkCd: [0.6, 1.1],
-    attacks: BOSS_ATTACKS({ size: 1.2, pace: 0.88, dmg: 30, slam: 8, shots: 9, spread: 1.6, shotSpeed: 14 }),
+    final: true, // the last boss: three phases, its own bar (see world.js bossPhase)
+    title: 'What the wish left behind',
+    attacks: [
+      ...BOSS_ATTACKS({ size: 1.2, pace: 0.88, dmg: 30, slam: 8, shots: 9, spread: 1.6, shotSpeed: 14 }),
+      // Phase two: stars fall on you and on where you are heading. Phase three: it drags you in and bursts.
+      { name: 'starfall', shape: 'rain', trigger: 30, windup: 0.7, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 6, gap: 0.28, fall: 0.85, radius: 2.6, phase: 2 },
+      { name: 'collapse', shape: 'circle', trigger: 30, radius: 7.5, offset: 0, windup: 1.8, recover: 1.8, dmg: 70, parryable: false, lockAt: 0, pull: 4.2, phase: 3 },
+    ],
   },
 });
 /** The arena's bosses take turns: wave 5 The Warden, 10 The Mycelord, 15 The Unmade, 20 The Warden ... */
@@ -281,14 +296,14 @@ export function checkpointFor(wave) {
 export function buildWave(n, rng) {
   if (n % CONFIG.BOSS_EVERY === 0) {
     const list = [BOSSES[(n / CONFIG.BOSS_EVERY - 1) % BOSSES.length]];
-    const adds = Math.min(4, Math.floor(n / CONFIG.BOSS_EVERY) - 1);
+    const adds = list[0] === 'boss3' ? 0 : Math.min(4, Math.floor(n / CONFIG.BOSS_EVERY) - 1); // the final boss fights alone
     for (let i = 0; i < adds; i++) list.push(i % 2 ? 'spitter' : 'grunt');
     return list;
   }
   if (n === 1) return ['grunt', 'grunt'];
 
   const list = [];
-  let budget = 2.5 + n * 1.3;
+  let budget = 3 + n * 2; // dense floors that ramp quickly (0.25)
   const add = (type) => {
     list.push(type);
     budget -= ENEMIES[type].cost;
@@ -303,7 +318,7 @@ export function buildWave(n, rng) {
   if (n >= 3) pool.push('brute');
   if (n >= 4) pool.push('stalker');
   // Enemies from the later exploration maps join in on deeper waves.
-  for (const [type, from] of [['imp', 6], ['wolf', 8], ['knight', 10], ['shaman', 12], ['scarab', 14], ['wraith', 16], ['sporecap', 18], ['golem', 20]]) {
+  for (const [type, from] of [['imp', 3], ['wolf', 4], ['knight', 6], ['shaman', 6], ['scarab', 7], ['wraith', 8], ['sporecap', 9], ['golem', 10]]) {
     if (n >= from) pool.push(type);
   }
   let guard = 0;

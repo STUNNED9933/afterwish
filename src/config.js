@@ -41,7 +41,7 @@ export const CONFIG = {
   SLOW_FACTOR: 0.3, // slowed things move at 30% speed
 
   // --- Perfect dodge ---------------------------------------------------
-  // Dodging an attack with Lunge (E) drops its cooldown to this many seconds.
+  // Dodging an attack with Breakthrough (E) drops its cooldown to this many seconds.
   DODGE_REFUND_CD: 0.5,
 
   // --- Ability ranks and augments --------------------------------------

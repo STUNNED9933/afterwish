@@ -18,7 +18,7 @@ Double-click `dist/index.html`. It opens in your browser and works offline.
 | --- | --- |
 | Right-click | Move. Right-click an enemy to attack it (left-click on an enemy works too) |
 | Space (or F) | Parry. Press it when an enemy flashes white |
-| Q W E R | Cleave, Whirlwind (level 2), Lunge (level 3), Skyfall (level 6) |
+| Q W E R | Cleave, Whirlwind (level 2), Breakthrough (level 3), Skyfall (level 6) |
 | Ctrl or Shift + Q/W/E/R | Spend a skill point to rank that ability up (or click the + above it) |
 | 1 2 3 | Pick an augment when three are offered |
 | 1 (or D) | Health potion |
@@ -150,20 +150,37 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Attack-move, auto-attack switch, Long Watch, new names (0.20)
+
+- **Attack-move: Shift + right-click.** Attacks the enemy nearest you or
+  nearest your cursor (choose in the pause menu). If none is in reach, you
+  walk to the spot and attack the first enemy you meet on the way.
+- **Auto-attack can be switched off** in the pause menu. Then you only attack
+  what you click or attack-move onto, and stop when it falls: ready for
+  enemies that punish every hit. In co-op the setting goes to the host.
+- **Sharpshooter trait, Long Watch:** +4% damage for every metre between you
+  and the target past the first 2 (about +30% at normal range, at most +40%),
+  with gold damage numbers at long range. Strongest behind a front line.
+- **No more League ability names.** Backstab is **Mercy Stroke**, Shadowstep
+  **Nightstep**, Tumble **Evasive Roll**, Lunge **Breakthrough**, Undertow
+  **The Warden's Call**, Riposte **Counterstroke**, Savagery **Ash Fever**,
+  Bloodlust **Red Haze**, Absolute Zero **Heart of Frostfall**.
+- The pause menu scrolls on short screens instead of cutting off its top.
+
 ### Immortals that fit your class, kunai, new names (0.19)
 
 - **Every Immortal effect now plays to the class wearing it.**
 
   | Slot | Warrior | Archer | Rogue | Mage |
   | --- | --- | --- | --- | --- |
-  | Weapon | **Stormcaller**: Cleave and Whirlwind call lightning on every enemy hit (up to 6) | **Stormstring**: every 4th basic attack calls lightning | **Nightfang**: ability crits deal 40% more and take 1 s off Shadowstep | **Wishfall**: every 3rd ability drops a star shard on the cursor |
-  | Helm | Crown of the Undying: survive a killing blow at 35%, and your escape (Lunge, Tumble, Shadowstep, Blink) is ready at once. Recharges each wave, in Haven, or after 2 minutes | same | same | same |
+  | Weapon | **Stormcaller**: Cleave and Whirlwind call lightning on every enemy hit (up to 6) | **Stormstring**: every 4th basic attack calls lightning | **Nightfang**: ability crits deal 40% more and take 1 s off Nightstep | **Wishfall**: every 3rd ability drops a star shard on the cursor |
+  | Helm | Crown of the Undying: survive a killing blow at 35%, and your escape (Breakthrough, Evasive Roll, Nightstep, Blink) is ready at once. Recharges each wave, in Haven, or after 2 minutes | same | same | same |
   | Chest | Aegis of Retribution: parries send a shockwave around you | parries shoot starlight at the nearest enemy | shockwave | starlight |
   | Boots | Slipstream: +move and attack speed after a perfect parry or dodge | same | +move speed, cooldowns run 60% faster | same as Rogue |
   | Ring | The Timekeeper: kills, and every 4% of a boss's health, take 0.5 s off cooldowns | same | same | same |
 
   Old Stormcaller daggers and staves take their new names automatically.
-- **Shadowstep empowers your next ability** (35% more within 3 s; the
+- **Nightstep empowers your next ability** (35% more within 3 s; the
   ability buttons glow gold) instead of your next basic attack. From Nowhere
   (was Ambush) makes it 100%.
 - **Shadowdancer:** the shurikens are now **Starglass Kunai**, which stop in
@@ -207,12 +224,12 @@ Last Rites, Second Death).
     half). Cleave and Whirlwind cost 4% of your maximum health (never below
     10%), so you can choose to drop into it, then stay there. Red Thirst now
     gives lifesteal only while Bloodied; Reckless adds attack speed too.
-  - **Bulwark, Undertow**: Whirlwind drags enemies to you, stuns normal ones
+  - **Bulwark, The Warden's Call**: Whirlwind drags enemies to you, stuns normal ones
     for a moment and taunts everything it hits for 3 s. New talents: Gravity
     Well (wider, longer stun, drags heavy enemies too), Shield Wall (your
     parry also catches hits aimed at friends within 3 to 5 m, plus riposte)
     and Bastion (a perfect parry heals nearby friends too). Points in the old
-    Riposte and Mirror Guard talents move over by themselves.
+    Counterstroke and Mirror Guard talents move over by themselves.
 - **Ctrl + Q/W/E/R ranks up an ability**, as in League (Shift still works).
   Chrome closes the tab on Ctrl+W and pages cannot stop that, so leaving the
   page mid-game now asks first.
@@ -288,8 +305,8 @@ At level 15 press **T** and choose one of two subclasses for your class:
 | Warrior | **Berserker** | Bloodied below half health (more damage and attack speed), Cleave and Whirlwind cost health, a Cleave that resets on kills |
 | Warrior | **Bulwark** | Whirlwind drags, stuns and taunts; parries that cover friends; heals the party on perfect parries |
 | Archer | **Sharpshooter** | Longer attack range, crit chance and crit damage, a harder Piercing Shot that marks targets |
-| Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Tumble flurry, longer Arrow Storm |
-| Rogue | **Assassin** | Farming: crits, brutal Backstabs, Last Rites that resets on a kill |
+| Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Evasive Roll flurry, longer Arrow Storm |
+| Rogue | **Assassin** | Farming: crits, brutal Mercy Strokes, Last Rites that resets on a kill |
 | Rogue | **Shadowdancer** | Boss killer: afterimages to trade places with, Starglass Kunai thrown from every afterimage, Last Rites that makes the target die twice |
 | Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
 | Mage | **Frostbinder** | Health, armor, a bigger Frozen Orb that freezes, damage reduction |
@@ -340,9 +357,9 @@ load). Gold and arena tickets are shared by every class. Everyone can parry.
 
 | Class | Plays like | Q | W | E | R |
 | --- | --- | --- | --- | --- | --- |
-| Warrior | Melee, the toughest; every enemy Cleave or Whirlwind hits takes time off the other cooldowns | Cleave | Whirlwind | Lunge | Skyfall |
-| Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Tumble (then +50% attack speed for 4 s) | Arrow Storm |
-| Rogue | Fast melee burst; Backstab hits 60% harder from behind or on a stunned enemy | Backstab | Fan of Knives | Shadowstep (next ability +35%) | Last Rites |
+| Warrior | Melee, the toughest; every enemy Cleave or Whirlwind hits takes time off the other cooldowns | Cleave | Whirlwind | Breakthrough | Skyfall |
+| Archer | Ranged basic attacks; every third gets +100% crit chance, the overflow becoming crit damage | Piercing Shot | Barrage (5 arrows that count as basic attacks) | Evasive Roll (then +50% attack speed for 4 s) | Arrow Storm |
+| Rogue | Fast melee burst; Mercy Stroke hits 60% harder from behind or on a stunned enemy | Mercy Stroke | Fan of Knives | Nightstep (next ability +35%) | Last Rites |
 | Mage | Weak basics, strong ranged spells, +25 ability haste | Fire Bolt | Frozen Orb (recast to shatter early) | Blink | Meteor |
 
 Changes in 0.5:
@@ -371,8 +388,8 @@ ability) plus the shared parry and hero augments.
 
 - **Perfect parry** slows every enemy and enemy projectile to 30% speed for
   1.2 seconds. You keep full speed.
-- **Perfect dodge**: Lunge through an attack and its cooldown drops to half a
-  second. Lunge's base cooldown is 9 seconds, so dodging well is what makes it
+- **Perfect dodge**: Breakthrough through an attack and its cooldown drops to half a
+  second. Breakthrough's base cooldown is 9 seconds, so dodging well is what makes it
   frequent.
 - **Ability ranks**: one skill point per level and per boss. Each rank is +15%
   damage and 5% less cooldown, up to rank 5.

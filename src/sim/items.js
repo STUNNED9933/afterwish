@@ -57,7 +57,7 @@ export const IMMORTAL = RARITIES.length - 1;
 // daggers and staves reward abilities, and so on. `byClass` overrides the plain
 // name, item name and text for one class. The game logic lives in sim/world.js
 // (search for `mods.<key>`); effectFor() below picks the right text.
-const ESCAPE = { warrior: 'Lunge', archer: 'Tumble', rogue: 'Shadowstep', mage: 'Blink' };
+const ESCAPE = { warrior: 'Breakthrough', archer: 'Evasive Roll', rogue: 'Nightstep', mage: 'Blink' };
 export const EFFECTS = {
   stormcaller: {
     slot: 'weapon',
@@ -67,7 +67,7 @@ export const EFFECTS = {
     byClass: {
       warrior: { name: 'Stormcaller', itemName: 'Stormcaller', desc: 'Cleave and Whirlwind call lightning down on every enemy they hit (up to 6), for 60% attack damage each. The bigger the crowd, the bigger the storm.' },
       archer: { name: 'Stormstring', itemName: 'Stormstring', desc: 'Every 4th basic attack calls lightning for 150% attack damage on your target and enemies near it. Barrage arrows count.' },
-      rogue: { name: 'Nightfang', itemName: 'Nightfang', desc: 'Your abilities deal 40% more when they crit, and every ability crit takes 1 second off Shadowstep.' },
+      rogue: { name: 'Nightfang', itemName: 'Nightfang', desc: 'Your abilities deal 40% more when they crit, and every ability crit takes 1 second off Nightstep.' },
       mage: { name: 'Wishfall', itemName: 'Wishfall', desc: 'Every third ability you cast calls a shard of the fallen star down on your cursor a moment later, for 160% spell power around it.' },
     },
   },

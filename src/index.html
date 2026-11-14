@@ -138,7 +138,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.19</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.20</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>
@@ -161,6 +161,7 @@
     <h2>Controls</h2>
     <dl class="controls">
       <dt><kbd>Right-click</kbd></dt><dd>Move. Right-click an enemy to attack it.</dd>
+      <dt><kbd>Shift</kbd> + <kbd>Right-click</kbd></dt><dd>Attack-move: attack the nearest enemy (to you or your cursor: set it in the pause menu), or walk there and attack the first one you meet.</dd>
       <dt><kbd>Space</kbd></dt><dd>Parry. Press it when an enemy flashes white.</dd>
       <dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd></dt><dd>Abilities, aimed at your cursor.</dd>
       <dt><kbd>Ctrl</kbd> or <kbd>Shift</kbd> + <kbd>Q</kbd></dt><dd>Spend a skill point to rank that ability up.</dd>
@@ -184,6 +185,19 @@
       <div class="setting-label">Parry timing</div>
       <div id="parry-presets" class="segmented" role="group" aria-label="Parry timing"></div>
       <p id="parry-desc" class="setting-desc"></p>
+    </div>
+    <div class="setting">
+      <div class="setting-label">Attack-move (<kbd>Shift</kbd> + right-click) goes for the enemy</div>
+      <div id="am-near" class="segmented" role="group" aria-label="Attack-move target">
+        <button type="button" data-key="hero">Nearest to me</button>
+        <button type="button" data-key="cursor">Nearest to my cursor</button>
+      </div>
+      <p class="setting-desc">If none is in reach, you walk to the spot and attack the first enemy you meet on the way.</p>
+    </div>
+    <div class="setting row">
+      <label class="setting-label" for="auto-attack">Auto-attack</label>
+      <input type="checkbox" id="auto-attack" checked>
+      <span class="setting-desc">Off: you only attack what you click or attack-move onto, and stop when it falls. For enemies that punish every hit.</span>
     </div>
     <div class="setting">
       <label class="setting-label" for="volume">Sound volume</label>

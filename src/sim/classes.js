@@ -54,7 +54,7 @@ export const CLASSES = {
         desc: 'Loose 5 arrows at one target in quick succession. Each arrow counts as a basic attack: it advances Steady Aim, can be its guaranteed crit, and steals life.',
       },
       e: {
-        key: 'E', name: 'Tumble', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.18, width: 0,
+        key: 'E', name: 'Evasive Roll', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.18, width: 0,
         rush: { as: 0.5, time: 4 },
         dmg: () => 0,
         desc: 'Roll toward your cursor, then attack 50% faster for 4 seconds. Nothing can hit you mid-roll.',
@@ -73,10 +73,10 @@ export const CLASSES = {
     blurb: 'Fast and fragile. Gets behind enemies, or stuns them with a parry, then bursts them down.',
     stats: { hp: 0.85, ad: 1.05, as: 1.2, armor: 0.75, ms: 1.15, crit: 15, haste: 0 },
     basic: { range: 2.1, mult: 1 },
-    passive: { name: 'Opportunist', desc: '+15% crit chance. Backstab hits far harder from behind or on a stunned enemy.' },
+    passive: { name: 'Opportunist', desc: '+15% crit chance. Mercy Stroke hits far harder from behind or on a stunned enemy.' },
     abilities: {
       q: {
-        key: 'Q', name: 'Backstab', type: 'strike', icon: 'strike', unlock: 1, cd: 3.5, range: 3.4, behind: 0.6,
+        key: 'Q', name: 'Mercy Stroke', type: 'strike', icon: 'strike', unlock: 1, cd: 3.5, range: 3.4, behind: 0.6,
         dmg: (s, lvl) => 1.9 * s.ad + 12 + 5 * lvl,
         desc: 'Stab the enemy nearest your cursor. 60% more damage from behind or against a stunned enemy.',
       },
@@ -86,7 +86,7 @@ export const CLASSES = {
         desc: 'Throw knives all around you. Enemies hit bleed for 80% attack damage over 3 seconds.',
       },
       e: {
-        key: 'E', name: 'Shadowstep', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 8.5, minRange: 2, duration: 0.1, width: 0,
+        key: 'E', name: 'Nightstep', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 8.5, minRange: 2, duration: 0.1, width: 0,
         empower: { mult: 1.35, time: 3 },
         dmg: () => 0,
         desc: 'Blink a long way toward your cursor. The next ability you use within 3 seconds deals 35% more.',

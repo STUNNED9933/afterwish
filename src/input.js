@@ -55,6 +55,18 @@ export class Input {
     const world = this.getWorld();
     this.mouse.x = e.clientX;
     this.mouse.y = e.clientY;
+    if (e.button === 2 && e.shiftKey) {
+      // Shift + right-click: attack-move (nearest to you or to the cursor: a pause-menu setting).
+      e.preventDefault();
+      const g = this.ground();
+      if (g) {
+        if (this.actions.cancelInteract) this.actions.cancelInteract();
+        world.command({ type: 'attackMove', x: g.x, z: g.z, near: this.actions.attackMoveNear ? this.actions.attackMoveNear() : 'cursor' });
+        this.renderer.moveMarker(g.x, g.z, true);
+      }
+      this.mouse.right = false;
+      return;
+    }
     const enemy = this.renderer.pickEnemy(e.clientX, e.clientY, world);
     if (e.button === 2) {
       e.preventDefault();

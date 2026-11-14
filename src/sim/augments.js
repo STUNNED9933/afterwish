@@ -19,7 +19,7 @@ export function defaultMods() {
     wResetOnKill: false, rResetOnKill: false, qSplashFull: false, qBolts: 1, eBlast: 0, rDelay: 1, qResetOnKill: false, qSunder: 0, qEcho: 0,
     // Whirlwind (W)
     wRadius: 1, wDmg: 1, wCd: 1, wPull: false, wBleed: 0, wSlow: 0,
-    // Lunge (E)
+    // Breakthrough (E)
     eRange: 1, eDmg: 1, eCd: 1, eResetOnKill: false,
     // Skyfall (R)
     rRadius: 1, rDmg: 1, rCd: 1, rAftershock: 0, rUnlock: false,
@@ -29,10 +29,12 @@ export function defaultMods() {
     hpPct: 0, adPct: 0, asPct: 0, msPct: 0, crit: 0, lifesteal: 0, haste: 0,
     // Used by talents (sim/talents.js)
     armorPct: 0, asMult: 1, critMult: 0, dmgTaken: 0, lowHpDmg: 0, parryHeal: 0,
-    // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (Undertow, Shield Wall, Bastion)
+    // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (The Warden's Call, Shield Wall, Bastion)
     bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
     // Shadowdancer (Afterimage and its talents)
     shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false,
+    // Sharpshooter (Long Watch): more damage per metre to the target
+    farShot: 0, farShotMax: 0,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };
@@ -52,15 +54,15 @@ export const AUGMENTS = {
   w_slow: { name: 'Hamstring', slot: 'w', tier: 1, desc: 'Whirlwind slows enemies by 45% for 3 seconds.', apply: (m) => { m.wSlow = 0.45; } },
   w_cyclone: { name: 'Cyclone', slot: 'w', tier: 2, desc: 'Whirlwind cooldown is 40% shorter and it deals 30% more damage.', apply: (m) => { m.wCd *= 0.6; m.wDmg *= 1.3; } },
 
-  e_reset: { name: "Killer's Rush", slot: 'e', tier: 1, desc: 'Lunge kills reset its cooldown.', apply: (m) => { m.eResetOnKill = true; } },
-  e_pierce: { name: 'Piercing Lunge', slot: 'e', tier: 1, desc: 'Lunge travels 30% further and deals 80% more damage.', apply: (m) => { m.eRange *= 1.3; m.eDmg *= 1.8; } },
-  e_quick: { name: 'Fleet Foot', slot: 'e', tier: 1, desc: 'Lunge cooldown is 30% shorter.', apply: (m) => { m.eCd *= 0.7; } },
+  e_reset: { name: "Killer's Rush", slot: 'e', tier: 1, desc: 'Breakthrough kills reset its cooldown.', apply: (m) => { m.eResetOnKill = true; } },
+  e_pierce: { name: 'Piercing Breakthrough', slot: 'e', tier: 1, desc: 'Breakthrough travels 30% further and deals 80% more damage.', apply: (m) => { m.eRange *= 1.3; m.eDmg *= 1.8; } },
+  e_quick: { name: 'Fleet Foot', slot: 'e', tier: 1, desc: 'Breakthrough cooldown is 30% shorter.', apply: (m) => { m.eCd *= 0.7; } },
 
   r_early: { name: 'Early Descent', slot: 'r', tier: 2, desc: 'Skyfall is unlocked now, whatever your level, and its cooldown is 35% shorter.', apply: (m) => { m.rUnlock = true; m.rCd *= 0.65; } },
   r_meteor: { name: 'Meteor', slot: 'r', tier: 1, desc: 'Skyfall is 30% wider and deals 40% more damage.', apply: (m) => { m.rRadius *= 1.3; m.rDmg *= 1.4; } },
   r_aftershock: { name: 'Aftershock', slot: 'r', tier: 2, desc: 'One second after Skyfall lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },
 
-  p_riposte: { name: 'Riposte', slot: 'parry', tier: 1, desc: 'Parrying a melee hit strikes the attacker for 150% attack damage.', apply: (m) => { m.riposte = 1.5; } },
+  p_riposte: { name: 'Counterstroke', slot: 'parry', tier: 1, desc: 'Parrying a melee hit strikes the attacker for 150% attack damage.', apply: (m) => { m.riposte = 1.5; } },
   p_wide: { name: 'Steady Guard', slot: 'parry', tier: 1, desc: 'Your parry window is 25% longer.', apply: (m) => { m.parryWindow *= 1.25; } },
   p_mirror: { name: 'Mirror Guard', slot: 'parry', tier: 1, desc: 'Projectiles you send back deal double damage.', apply: (m) => { m.reflectDmg *= 2; } },
   p_time: { name: 'Stopped Clock', slot: 'parry', tier: 2, desc: 'Time stays slowed 75% longer after a perfect parry.', apply: (m) => { m.slowDur *= 1.75; } },
@@ -79,16 +81,16 @@ const CLASS_AUGMENTS = {
   archer_q_mark: { name: 'Marked Prey', slot: 'q', cls: 'archer', tier: 1, desc: 'Enemies hit by Piercing Shot take 20% more damage for 4 seconds.', apply: (m) => { m.qSunder = 0.2; } },
   archer_w_more: { name: 'Endless Barrage', slot: 'w', cls: 'archer', tier: 1, desc: 'Barrage looses 3 more arrows.', apply: (m) => { m.wExtra += 3; } },
   archer_w_fast: { name: 'Quick Draw', slot: 'w', cls: 'archer', tier: 1, desc: 'Barrage comes back 35% sooner.', apply: (m) => { m.wCd *= 0.65; } },
-  archer_e_rush: { name: 'Second Wind', slot: 'e', cls: 'archer', tier: 1, desc: 'Tumble makes you attack 100% faster instead of 50%, for 2 seconds longer.', apply: (m) => { m.eRush += 0.5; m.eRushTime += 2; } },
+  archer_e_rush: { name: 'Second Wind', slot: 'e', cls: 'archer', tier: 1, desc: 'Evasive Roll makes you attack 100% faster instead of 50%, for 2 seconds longer.', apply: (m) => { m.eRush += 0.5; m.eRushTime += 2; } },
   archer_range: { name: 'Eagle Eye', slot: 'hero', cls: 'archer', tier: 1, desc: 'Your basic attacks reach 25% further.', apply: (m) => { m.rangePct += 0.25; } },
   archer_r_rain: { name: 'Endless Rain', slot: 'r', cls: 'archer', tier: 2, desc: 'Arrow Storm lasts 2 seconds longer and covers a 25% wider area.', apply: (m) => { m.rDuration += 2; m.rRadius *= 1.25; } },
   archer_rapid: { name: 'Rapid Aim', slot: 'hero', cls: 'archer', tier: 2, desc: 'Steady Aim works on every second basic attack, instead of every third.', apply: (m) => { m.critEvery = 2; } },
   // --- Rogue -----------------------------------------------------------------
-  rogue_q_reset: { name: 'Assassinate', slot: 'q', cls: 'rogue', tier: 1, desc: 'Backstab kills reset its cooldown.', apply: (m) => { m.qResetOnKill = true; } },
-  rogue_q_bleed: { name: 'Serrated Blade', slot: 'q', cls: 'rogue', tier: 1, desc: 'Backstab makes its target bleed for 100% attack damage over 3 seconds.', apply: (m) => { m.qBleed = 1; } },
-  rogue_q_cheap: { name: 'Cheap Shot', slot: 'q', cls: 'rogue', tier: 2, desc: 'Backstab deals 120% more from behind or on a stunned enemy, instead of 60%.', apply: (m) => { m.qBehind += 0.6; } },
+  rogue_q_reset: { name: 'Assassinate', slot: 'q', cls: 'rogue', tier: 1, desc: 'Mercy Stroke kills reset its cooldown.', apply: (m) => { m.qResetOnKill = true; } },
+  rogue_q_bleed: { name: 'Serrated Blade', slot: 'q', cls: 'rogue', tier: 1, desc: 'Mercy Stroke makes its target bleed for 100% attack damage over 3 seconds.', apply: (m) => { m.qBleed = 1; } },
+  rogue_q_cheap: { name: 'Cheap Shot', slot: 'q', cls: 'rogue', tier: 2, desc: 'Mercy Stroke deals 120% more from behind or on a stunned enemy, instead of 60%.', apply: (m) => { m.qBehind += 0.6; } },
   rogue_w_venom: { name: 'Venom', slot: 'w', cls: 'rogue', tier: 1, desc: 'Fan of Knives is 25% wider and slows enemies by 45% for 3 seconds.', apply: (m) => { m.wSlow = 0.45; m.wRadius *= 1.25; } },
-  rogue_e_ambush: { name: 'From Nowhere', slot: 'e', cls: 'rogue', tier: 1, desc: 'The ability after Shadowstep deals 100% more damage instead of 35%.', apply: (m) => { m.eEmpower += 0.65; } },
+  rogue_e_ambush: { name: 'From Nowhere', slot: 'e', cls: 'rogue', tier: 1, desc: 'The ability after Nightstep deals 100% more damage instead of 35%.', apply: (m) => { m.eEmpower += 0.65; } },
   rogue_r_daze: { name: 'Dazing Blow', slot: 'r', cls: 'rogue', tier: 1, desc: 'Last Rites stuns its target for 1.5 seconds.', apply: (m) => { m.rStun = 1.5; } },
   rogue_r_chain: { name: 'Chain Kill', slot: 'r', cls: 'rogue', tier: 2, desc: 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
   // --- Mage ------------------------------------------------------------------

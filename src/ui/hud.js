@@ -252,7 +252,7 @@ export class Hud {
       const again = (s === 'e' && world.mods.shadowStep && (world.shadows || []).some((x) => x.pid === me && x.src === 'e' && !x.swapped))
         || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
       slot.el.classList.toggle('recast', !!again);
-      slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Shadowstep: the next ability hits harder
+      slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Nightstep: the next ability hits harder
       const rank = p.ranks[s];
       if (rank !== slot.rank) {
         slot.rank = rank;

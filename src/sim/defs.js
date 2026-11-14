@@ -29,7 +29,7 @@ export const ABILITIES = {
   },
   e: {
     key: 'E',
-    name: 'Lunge',
+    name: 'Breakthrough',
     unlock: 3,
     cd: 9,
     range: 7.5,

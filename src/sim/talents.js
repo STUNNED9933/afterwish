@@ -31,8 +31,8 @@ export const SPECS = {
       apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); },
     },
     talents: [
-      { id: 'bz_haste', row: 'minor', name: 'Bloodlust', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
-      { id: 'bz_might', row: 'minor', name: 'Savagery', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
+      { id: 'bz_haste', row: 'minor', name: 'Red Haze', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
+      { id: 'bz_might', row: 'minor', name: 'Ash Fever', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
       { id: 'bz_leech', row: 'minor', name: 'Red Thirst', max: 5, desc: (r) => `While Bloodied, +${r}% lifesteal (over the usual cap).`, apply: (m, r) => { m.bloodLeech += r; } },
       { id: 'bz_whirl', row: 'major', name: 'Rampage', max: 3, desc: (r) => `Whirlwind deals ${10 * r}% more damage and its cooldown is ${6 * r}% shorter.`, apply: (m, r) => { m.wDmg *= 1 + 0.1 * r; m.wCd *= 1 - 0.06 * r; } },
       { id: 'bz_reckless', row: 'major', name: 'Reckless', max: 3, desc: (r) => `While Bloodied, deal a further ${8 * r}% damage and attack ${5 * r}% faster.`, apply: (m, r) => { m.lowHpDmg += 0.08 * r; m.bloodAs += 0.05 * r; } },
@@ -43,7 +43,7 @@ export const SPECS = {
     cls: 'warrior', name: 'Bulwark',
     blurb: 'The wall the party stands behind. Drags enemies into one place for the others to hit, makes them look only at you, and parries for the whole group.',
     perk: {
-      name: 'Undertow',
+      name: "The Warden's Call",
       desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds.',
       apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); },
     },
@@ -60,7 +60,12 @@ export const SPECS = {
   // ------------------------------------------------------------------- Archer
   sharpshooter: {
     cls: 'archer', name: 'Sharpshooter',
-    blurb: 'One arrow, one problem solved, from further away than anyone else. Longer range, crits that hit harder, and a Piercing Shot that marks what it touches.',
+    blurb: 'One arrow, one problem solved, from further away than anyone else. The further the target, the harder it hits: stay behind your front line, or keep your distance on your own.',
+    perk: {
+      name: 'Long Watch',
+      desc: 'Your hits deal 4% more for every metre between you and the target past the first 2, up to 40% more (about 30% at your normal range). Damage numbers turn gold at long range.',
+      apply: (m) => { m.farShot = Math.max(m.farShot, 0.04); m.farShotMax = Math.max(m.farShotMax, 0.4); },
+    },
     talents: [
       { id: 'ss_eye', row: 'minor', name: 'Keen Eye', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'ss_draw', row: 'minor', name: 'Longbow', max: 5, desc: (r) => `Your basic attacks reach ${5 * r}% further.`, apply: (m, r) => { m.rangePct += 0.05 * r; } },
@@ -72,13 +77,13 @@ export const SPECS = {
   },
   windrunner: {
     cls: 'archer', name: 'Windrunner',
-    blurb: 'Never where the blow lands. Quicker feet, a Tumble that turns into a flurry, a bigger Barrage and a longer storm of arrows.',
+    blurb: 'Never where the blow lands. Quicker feet, a Evasive Roll that turns into a flurry, a bigger Barrage and a longer storm of arrows.',
     talents: [
       { id: 'wr_fleet', row: 'minor', name: 'Fleet', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'wr_hands', row: 'minor', name: 'Quick Hands', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
-      { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Tumble cooldown is ${4 * r}% shorter.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; } },
+      { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Evasive Roll cooldown is ${4 * r}% shorter.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; } },
       { id: 'wr_volley', row: 'major', name: 'Rolling Barrage', max: 3, desc: (r) => `Barrage looses ${r} more arrow${r > 1 ? 's' : ''}, and each deals ${5 * r}% more.`, apply: (m, r) => { m.wExtra += r; m.wDmg *= 1 + 0.05 * r; } },
-      { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Tumble's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
+      { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Evasive Roll's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
       { id: 'wr_cap', row: 'capstone', name: 'Gale', max: 1, desc: () => 'Arrow Storm lasts 1.5 seconds longer and its cooldown is 25% shorter.', apply: (m) => { m.rDuration += 1.5; m.rCd *= 0.75; } },
     ],
   },
@@ -86,22 +91,22 @@ export const SPECS = {
   // -------------------------------------------------------------------- Rogue
   assassin: {
     cls: 'rogue', name: 'Assassin',
-    blurb: 'Clears the road one throat at a time. Brutal Backstabs, heavier crits, and Last Rites that chains from kill to kill: the subclass for farming.',
+    blurb: 'Clears the road one throat at a time. Brutal Mercy Strokes, heavier crits, and Last Rites that chains from kill to kill: the subclass for farming.',
     talents: [
       { id: 'as_eye', row: 'minor', name: 'Find the Gap', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'as_deadly', row: 'minor', name: 'Twist the Knife', max: 5, desc: (r) => `Crits deal a further ${4 * r}% damage.`, apply: (m, r) => { m.critMult += 0.04 * r; } },
       { id: 'as_might', row: 'minor', name: 'Honed Edge', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
-      { id: 'as_back', row: 'major', name: 'Cheap Shot', max: 3, desc: (r) => `Backstab deals a further ${20 * r}% from behind or on a stunned enemy.`, apply: (m, r) => { m.qBehind += 0.2 * r; } },
+      { id: 'as_back', row: 'major', name: 'Cheap Shot', max: 3, desc: (r) => `Mercy Stroke deals a further ${20 * r}% from behind or on a stunned enemy.`, apply: (m, r) => { m.qBehind += 0.2 * r; } },
       { id: 'as_mark', row: 'major', name: 'Contract', max: 3, desc: (r) => `Last Rites deals ${10 * r}% more damage and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.rDmg *= 1 + 0.1 * r; m.rCd *= 1 - 0.08 * r; } },
       { id: 'as_cap', row: 'capstone', name: 'Chain Kill', max: 1, desc: () => 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
     ],
   },
   shadowdancer: {
     cls: 'rogue', name: 'Shadowdancer',
-    blurb: 'Fights from two places at once. Shadowstep leaves an afterimage you can trade places with, every afterimage throws your kunai, and Last Rites makes a boss die twice over. Built for long fights against one big enemy.',
+    blurb: 'Fights from two places at once. Nightstep leaves an afterimage you can trade places with, every afterimage throws your kunai, and Last Rites makes a boss die twice over. Built for long fights against one big enemy.',
     perk: {
       name: 'Afterimage',
-      desc: 'Shadowstep leaves an afterimage of you where you stood for 5 seconds: press E again to trade places with it. Fan of Knives becomes Starglass Kunai, and every afterimage throws one too, aimed at your cursor. A kunai stops at the first enemy it hits; a second one on the same enemy deals 60%.',
+      desc: 'Nightstep leaves an afterimage of you where you stood for 5 seconds: press E again to trade places with it. Fan of Knives becomes Starglass Kunai, and every afterimage throws one too, aimed at your cursor. A kunai stops at the first enemy it hits; a second one on the same enemy deals 60%.',
       apply: (m) => { m.shadowStep = true; m.shadowDur = Math.max(m.shadowDur, 5); },
     },
     kit: {
@@ -115,9 +120,9 @@ export const SPECS = {
       { id: 'sd_fleet', row: 'minor', name: 'Soft Shoes', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'sd_hands', row: 'minor', name: 'Flurry', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
       { id: 'sd_leech', row: 'minor', name: 'Slow to Fade', max: 5, desc: (r) => `Afterimages last ${(0.4 * r).toFixed(1)} seconds longer and Starglass Kunai deals ${4 * r}% more.`, apply: (m, r) => { m.shadowDur += 0.4 * r; m.wDmg *= 1 + 0.04 * r; } },
-      { id: 'sd_fan', row: 'major', name: 'Mirrored Cut', max: 3, desc: (r) => `When you Backstab, each afterimage cuts the enemy nearest it for ${15 * r + 15}% of Backstab's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
+      { id: 'sd_fan', row: 'major', name: 'Mirrored Cut', max: 3, desc: (r) => `When you Mercy Stroke, each afterimage cuts the enemy nearest it for ${15 * r + 15}% of Mercy Stroke's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
       { id: 'sd_bleed', row: 'major', name: 'Second Death', max: 3, desc: (r) => `Nothing here stays down, so make it fall twice. Last Rites marks its target, and 3 seconds later it takes ${10 * r + 5}% of all the damage you dealt it in that time, again.`, apply: (m, r) => { m.rMark = Math.max(m.rMark, 0.1 * r + 0.05); } },
-      { id: 'sd_cap', row: 'capstone', name: 'Crowd of One', max: 1, desc: () => 'Last Rites leaves an afterimage where you leapt from, Second Death repeats a further 15%, and Shadowstep comes back 20% sooner.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
+      { id: 'sd_cap', row: 'capstone', name: 'Crowd of One', max: 1, desc: () => 'Last Rites leaves an afterimage where you leapt from, Second Death repeats a further 15%, and Nightstep comes back 20% sooner.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
     ],
   },
 
@@ -143,7 +148,7 @@ export const SPECS = {
       { id: 'fb_haste', row: 'minor', name: 'Clear Mind', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'fb_nova', row: 'major', name: 'Wide Winter', max: 3, desc: (r) => `Frozen Orb is ${8 * r}% bigger and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.wRadius *= 1 + 0.08 * r; m.wCd *= 1 - 0.08 * r; } },
       { id: 'fb_freeze', row: 'major', name: 'Deep Freeze', max: 3, desc: (r) => `Frozen Orb's shatter freezes normal enemies solid for ${(0.4 * r).toFixed(1)} seconds.`, apply: (m, r) => { m.wStun = Math.max(m.wStun, 0.4 * r); } },
-      { id: 'fb_cap', row: 'capstone', name: 'Absolute Zero', max: 1, desc: () => 'Take 12% less damage. Blink leaves a blast where you stood for 120% spell power.', apply: (m) => { m.dmgTaken += 0.12; m.eBlast = Math.max(m.eBlast, 1.2); } },
+      { id: 'fb_cap', row: 'capstone', name: 'Heart of Frostfall', max: 1, desc: () => 'Take 12% less damage. Blink leaves a blast where you stood for 120% spell power.', apply: (m) => { m.dmgTaken += 0.12; m.eBlast = Math.max(m.eBlast, 1.2); } },
     ],
   },
 };

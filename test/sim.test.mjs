@@ -156,14 +156,14 @@ import { makeRng } from '../src/sim/rng.js';
     check('enemies move at 30% speed during slow time', moved < other.def.speed * CONFIG.TICK * 0.5 && before > 0, 'moved ' + moved.toFixed(4));
   }
 }
-// Perfect dodge refunds Lunge.
+// Perfect dodge refunds Breakthrough.
 {
   const w = new World({ seed: 3 }); const p = w.player;
   p.level = 3; w.recalcStats();
   w.command({ type: 'cast', slot: 'e', x: 5, z: 0 }); w.step(CONFIG.TICK);
   const full = p.cd.e;
   const res = w.hitPlayer(50, { parryable: false });
-  check('dash dodges and refunds Lunge', res === 'dodged' && p.cd.e <= CONFIG.DODGE_REFUND_CD && full > 8, `cd ${full.toFixed(1)} -> ${p.cd.e.toFixed(1)}`);
+  check('dash dodges and refunds Breakthrough', res === 'dodged' && p.cd.e <= CONFIG.DODGE_REFUND_CD && full > 8, `cd ${full.toFixed(1)} -> ${p.cd.e.toFixed(1)}`);
 }
 // Augments change abilities; ranks raise damage and cut cooldowns.
 {
@@ -424,20 +424,20 @@ import { makeRng } from '../src/sim/rng.js';
     const x0 = p.x; w.events.length = 0;
     const as0 = p.stats.as;
     w.command({ type: 'cast', slot: 'e', x: -10, z: 0 }); run(w, 0.4);
-    check('archer: Tumble moves, then attacks 50% faster for a while', p.x < x0 - 2 && p.rushT > 3 && Math.abs(p.stats.as / as0 - (1 + 0.015 * (p.level - 1) + 0.5) / (1 + 0.015 * (p.level - 1))) < 0.05, `${as0.toFixed(2)} -> ${p.stats.as.toFixed(2)} attacks per second`);
+    check('archer: Evasive Roll moves, then attacks 50% faster for a while', p.x < x0 - 2 && p.rushT > 3 && Math.abs(p.stats.as / as0 - (1 + 0.015 * (p.level - 1) + 0.5) / (1 + 0.015 * (p.level - 1))) < 0.05, `${as0.toFixed(2)} -> ${p.stats.as.toFixed(2)} attacks per second`);
     run(w, 4.5);
     check('archer: ...and the bonus wears off', p.rushT === 0 && Math.abs(p.stats.as - as0) < 1e-9);
   }
-  // Rogue: Backstab is far stronger on an exposed enemy; Death Mark closes the gap.
+  // Rogue: Mercy Stroke is far stronger on an exposed enemy; Death Mark closes the gap.
   {
     const a = duel('rogue', 2.5); a.w.command({ type: 'cast', slot: 'q', x: a.e.x, z: a.e.z }); run(a.w, 0.1);
     const front = damageOf(a.w);
     const b = duel('rogue', 2.5); b.e.facing = 0; // its back is to the hero
     b.w.command({ type: 'cast', slot: 'q', x: b.e.x, z: b.e.z }); run(b.w, 0.1);
     const behind = damageOf(b.w);
-    check('rogue: Backstab hits harder from behind', front > 0 && behind > front * 1.3, `${front} from the front, ${behind} from behind`);
+    check('rogue: Mercy Stroke hits harder from behind', front > 0 && behind > front * 1.3, `${front} from the front, ${behind} from behind`);
     const c = duel('rogue', 30); c.w.command({ type: 'cast', slot: 'q', x: 30, z: 0 }); run(c.w, 0.1);
-    check('rogue: Backstab with nobody in reach does not go on cooldown', c.p.cd.q === 0);
+    check('rogue: Mercy Stroke with nobody in reach does not go on cooldown', c.p.cd.q === 0);
     const d = duel('rogue', 8); d.w.command({ type: 'cast', slot: 'r', x: d.e.x, z: d.e.z }); run(d.w, 0.4);
     check('rogue: Death Mark jumps to the target and strikes', Math.hypot(d.p.x - d.e.x, d.p.z - d.e.z) < 3.2 && damageOf(d.w) > 0);
   }
@@ -534,7 +534,7 @@ import { makeRng } from '../src/sim/rng.js';
     const a = withAug('rogue', 'rogue_r_chain', 6); a.e.hp = 1; a.w.command({ type: 'cast', slot: 'r', x: 6, z: 0 }); run(a.w, 0.4);
     check('rogue Chain Kill: a Death Mark kill resets it', a.e.dead && a.p.cd.r === 0, 'cd ' + a.p.cd.r);
     const b = withAug('rogue', 'rogue_q_bleed', 2.5); b.w.command({ type: 'cast', slot: 'q', x: 2.5, z: 0 }); run(b.w, 2);
-    check('rogue Serrated Blade: Backstab bleeds', hits(b.w).some((h) => h.dot));
+    check('rogue Serrated Blade: Mercy Stroke bleeds', hits(b.w).some((h) => h.dot));
     const c = withAug('rogue', 'rogue_r_daze', 6); c.e.state = 'chase'; c.w.command({ type: 'cast', slot: 'r', x: 6, z: 0 }); run(c.w, 0.4);
     check('rogue Dazing Mark: Death Mark stuns', c.e.state === 'stunned');
   }
@@ -940,7 +940,7 @@ import { makeRng } from '../src/sim/rng.js';
     w2.command({ type: 'cast', slot: 'q', x: 3, z: 0 }); w2.runCommands();
     check('Bulwark pays nothing for Cleave', p2.hp === hp2);
   }
-  // Bulwark: Undertow, Gravity Well, Shield Wall, Bastion
+  // Bulwark: The Warden's Call, Gravity Well, Shield Wall, Bastion
   {
     const { w, p } = setup('warrior', 'bulwark');
     const e = dummy(w, 4), brute = dummy(w, -3.9, 0, 'brute');
@@ -1000,10 +1000,10 @@ import { makeRng } from '../src/sim/rng.js';
   check('Shadowdancer: W becomes Starglass Kunai', w.kit.w.name === 'Starglass Kunai' && CLASSES.rogue.abilities.w.name === 'Fan of Knives');
   check('Last Rites (no more League names on the Rogue R)', CLASSES.rogue.abilities.r.name === 'Last Rites');
   check('Assassin keeps Fan of Knives', setup({}, 'assassin').w.kit.w.name === 'Fan of Knives');
-  // Shadowstep leaves a Shadow; E again swaps with it, once.
+  // Nightstep leaves a Shadow; E again swaps with it, once.
   cast(w, 'e', 7, 0); run(w, 0.3);
   const sh = w.shadows.find((x) => x.src === 'e');
-  check('Shadowstep leaves a Shadow where you stood', !!sh && Math.hypot(sh.x, sh.z) < 0.5 && p.x > 5, sh ? `${sh.x.toFixed(1)}, hero at ${p.x.toFixed(1)}` : 'none');
+  check('Nightstep leaves a Shadow where you stood', !!sh && Math.hypot(sh.x, sh.z) < 0.5 && p.x > 5, sh ? `${sh.x.toFixed(1)}, hero at ${p.x.toFixed(1)}` : 'none');
   const hx = p.x;
   cast(w, 'e', 7, 0);
   check('E again swaps places with the Shadow', Math.hypot(p.x, p.z) < 0.5 && Math.abs(sh.x - hx) < 0.01 && sh.swapped && w.events.some((ev) => ev.type === 'shadowSwap'));
@@ -1048,19 +1048,19 @@ import { makeRng } from '../src/sim/rng.js';
     w3.addShadow('e', -7, 4, 0);
     w3.events.length = 0;
     cast(w3, 'q', 2, 0);
-    check('Shadow Slash: a Backstab is copied by your Shadow on the enemy nearest it', e2.hp < 1e9 && w3.events.some((ev) => ev.type === 'shadowSlash'));
-    run(w3, 0.2); // let Backstab's cast finish
+    check('Shadow Slash: a Mercy Stroke is copied by your Shadow on the enemy nearest it', e2.hp < 1e9 && w3.events.some((ev) => ev.type === 'shadowSlash'));
+    run(w3, 0.2); // let Mercy Stroke's cast finish
     p3.x = -3; p3.z = 0;
     cast(w3, 'r', 2, 0);
     check('Lord of Shadows: Death Mark leaves a Shadow where you leapt from', w3.shadows.some((x) => x.src === 'r' && Math.abs(x.x + 3) < 0.5));
-    check('Lord of Shadows: the mark repeats 50%, and Shadowstep comes back sooner', Math.abs(w3.mods.rMark - 0.5) < 1e-9 && w3.mods.eCd < 1);
+    check('Lord of Shadows: the mark repeats 50%, and Nightstep comes back sooner', Math.abs(w3.mods.rMark - 0.5) < 1e-9 && w3.mods.eCd < 1);
     const w4 = new World({ seed: 3, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 30, 2), { spec: 'shadowdancer' }) });
     w4.addShadow('e', 1, 1, 0);
     const snap = makeSnapshot(w4, 0, {});
     check('Shadows are sent to friends in co-op', snap.shadows.length === 1 && snap.shadows[0].src === 'e');
   }
 }
-// --- 0.19: Shadowstep empowers abilities, Immortal effects that fit each class ----------
+// --- 0.19: Nightstep empowers abilities, Immortal effects that fit each class ----------
 {
   const { geared } = await import('./balance.mjs');
   const { effectFor, itemName } = await import('../src/sim/items.js');
@@ -1079,7 +1079,7 @@ import { makeRng } from '../src/sim/rng.js';
   const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
   const dealt = (w, id, src) => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === id && !ev.basic).map((ev) => ev.amount);
 
-  // Shadowstep: the next ability, not the next basic attack.
+  // Nightstep: the next ability, not the next basic attack.
   {
     const { w, p } = setup('rogue');
     p.stats.crit = 0;
@@ -1087,11 +1087,11 @@ import { makeRng } from '../src/sim/rng.js';
     cast(w, 'q', 2, 0); const plain = dealt(w, e.id)[0];
     run(w, 0.3); w.events.length = 0; p.cd.q = 0; p.stats.crit = 0;
     cast(w, 'e', -6, 0); run(w, 0.3); p.x = 0; p.z = 0;
-    check('Shadowstep empowers the next ability (the button bar glows)', p.empowerT > 0);
+    check('Nightstep empowers the next ability (the button bar glows)', p.empowerT > 0);
     p.stats.crit = 0; e.facing = 0; // (the dummy turned to watch the rogue; face it away again, as for the first stab)
     cast(w, 'q', 2, 0);
     const boosted = dealt(w, e.id)[0];
-    check('Shadowstep: that ability deals 35% more', Math.abs(boosted / plain - 1.35) < 0.02 && p.empowerT === 0, `${plain} -> ${boosted}`);
+    check('Nightstep: that ability deals 35% more', Math.abs(boosted / plain - 1.35) < 0.02 && p.empowerT === 0, `${plain} -> ${boosted}`);
   }
   // Names follow the class.
   {
@@ -1122,7 +1122,7 @@ import { makeRng } from '../src/sim/rng.js';
     const plainCrit = Math.round(w.abilityDamage('q') * w.critMultiplier() * w.gapScale(e.level).dealt);
     w.hitEnemy(e, w.abilityDamage('q'), { source: 'q', forceCrit: true });
     const got = dealt(w, e.id)[0];
-    check('Nightfang (Rogue): ability crits deal 40% more and take 1 s off Shadowstep', Math.abs(got / plainCrit - 1.4) < 0.01 && Math.abs(p.cd.e - 4) < 1e-9, `${plainCrit} -> ${got}, E ${p.cd.e}`);
+    check('Nightfang (Rogue): ability crits deal 40% more and take 1 s off Nightstep', Math.abs(got / plainCrit - 1.4) < 0.01 && Math.abs(p.cd.e - 4) < 1e-9, `${plainCrit} -> ${got}, E ${p.cd.e}`);
     w.events.length = 0;
     w.hitEnemy(e, 100, { basic: true, source: 'basic', forceCrit: true });
     check('Nightfang: basic attack crits are not boosted', Math.abs(w.events.find((ev) => ev.type === 'damage').amount - Math.round(100 * w.critMultiplier())) <= 1);
@@ -1172,6 +1172,68 @@ import { makeRng } from '../src/sim/rng.js';
     p.cd.r = 20;
     w.hitEnemy(boss, 800 / w.gapScale(boss.level).dealt, { canCrit: false, source: 'q' });
     check('The Timekeeper: every 4% of a boss\'s health takes 0.5 s off cooldowns', Math.abs(p.cd.r - 19) < 0.01, String(p.cd.r));
+  }
+}
+// --- 0.20: attack-move, auto-attack off, Sharpshooter's Long Watch ------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (cls, spec = null) => {
+    const w = new World({ seed: 31, cls, save: Object.assign(geared(cls, 40, 2), spec ? { spec } : {}) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0) => { const e = w.spawnEnemy('grunt', { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; return e; };
+  const cmd = (w, c) => { w.command(c); w.runCommands(); };
+  {
+    const { w, p } = setup('warrior');
+    const near = dummy(w, 3, 0), byCursor = dummy(w, -5, 0);
+    cmd(w, { type: 'attackMove', x: -6, z: 0, near: 'hero' });
+    check('attack-move (nearest to me): goes for the enemy closest to the hero', p.targetId === near.id);
+    cmd(w, { type: 'attackMove', x: -6, z: 0, near: 'cursor' });
+    check('attack-move (nearest to cursor): goes for the enemy closest to the cursor', p.targetId === byCursor.id);
+    w.enemies = [];
+    const ahead = dummy(w, 16, 0);
+    cmd(w, { type: 'attackMove', x: 30, z: 0, near: 'hero' });
+    check('attack-move with nothing in reach: walks toward the spot', !p.targetId && !!p.moveTarget && !!p.attackMove);
+    run(w, 2.5);
+    check('...and attacks the first enemy that comes into reach on the way', p.targetId === ahead.id && !p.attackMove && p.x < 20, `x ${p.x.toFixed(1)}`);
+    cmd(w, { type: 'move', x: 0, z: 5 });
+    check('a plain move cancels attack-move', !p.attackMove && !p.targetId);
+  }
+  {
+    const { w, p } = setup('warrior');
+    cmd(w, { type: 'setAutoAttack', on: false });
+    const e = dummy(w, 2);
+    run(w, 1.5);
+    check('auto-attack off: an idle hero leaves a nearby enemy alone', !p.targetId && e.hp === 1e9);
+    cmd(w, { type: 'attack', id: e.id });
+    run(w, 1.5);
+    check('auto-attack off: you still attack what you click', e.hp < 1e9);
+    const other = dummy(w, -2);
+    e.hp = 1; w.hitEnemy(e, 10, { canCrit: false });
+    run(w, 1.5);
+    check('auto-attack off: when the target falls you do not pick another', !p.targetId && other.hp === 1e9);
+    cmd(w, { type: 'setAutoAttack', on: true });
+    run(w, 1.5);
+    check('auto-attack on again: the idle hero attacks', other.hp < 1e9);
+  }
+  {
+    const { w, p } = setup('archer', 'sharpshooter');
+    p.stats.crit = 0;
+    const close = dummy(w, 2.2), far = dummy(w, 10);
+    const hit = (e) => { w.events.length = 0; w.hitEnemy(e, 1000, { canCrit: false, basic: true }); return w.events.find((ev) => ev.type === 'damage'); };
+    const c = hit(close), f = hit(far);
+    const expect = 1 + Math.min(0.4, (10 - far.radius - 2) * 0.04);
+    check('Long Watch: point-blank shots get no bonus', c.amount === 1000 && !c.far, String(c.amount));
+    check('Long Watch: +4% per metre past 2 m (about 30% at 10 m), shown in gold', Math.abs(f.amount / 1000 - expect) < 0.002 && f.far, `${f.amount} (x${expect.toFixed(2)})`);
+    const veryFar = dummy(w, 30);
+    check('Long Watch: capped at +40%', hit(veryFar).amount === 1400);
+    const { w: w2 } = setup('archer', 'windrunner');
+    const f2 = dummy(w2, 10); w2.events.length = 0; w2.hitEnemy(f2, 1000, { canCrit: false });
+    check('Windrunners do not get it', w2.events.find((ev) => ev.type === 'damage').amount === 1000);
   }
 }
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---

@@ -24,7 +24,7 @@ import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { makeSnapshot, applySnapshot, eventFor } from './net/sync.js';
 
 const $ = (id) => document.getElementById(id);
-const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Lunge', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
+const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Breakthrough', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
 
 function start(hot = {}) {
   const canvas = $('game');
@@ -65,6 +65,7 @@ function start(hot = {}) {
     const w = new World(Object.assign({ parryPreset: settings.parryPreset, cls: settings.cls }, opts));
     renderer.setHeroClass(w.cls);
     setGearClass(w.cls);
+    w.player.autoAttack = settings.autoAttack !== false;
     w.player.gold = account.gold;
     w.player.tickets = account.tickets;
     return w;
@@ -472,7 +473,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel']);
+  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'attackMove', 'setAutoAttack']);
 
   async function hostGame() {
     const name = playerName();
@@ -550,7 +551,7 @@ function start(hot = {}) {
     const room = new JoinRoom({ onMessage: onNetMessage, onClose: (why) => leaveRoom(why) });
     let welcome;
     try {
-      welcome = await room.join(code, { name, save, cls: settings.cls, parry: settings.parryPreset, gold: account.gold, tickets: account.tickets });
+      welcome = await room.join(code, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets });
     } catch (err) {
       $('btn-join').disabled = false;
       mpMsg(err.message, false);
@@ -766,6 +767,7 @@ function start(hot = {}) {
       storeSettings(settings);
       hud.feedText(settings.muted ? 'Sound off' : 'Sound on');
     },
+    attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
       if (mode === 'talk') {
@@ -1020,6 +1022,26 @@ function start(hot = {}) {
     music.setVolume(settings.musicVolume);
     storeSettings(settings);
   });
+  // Attack-move target and auto-attack
+  const amRoot = $('am-near');
+  const refreshAm = () => {
+    for (const b of amRoot.children) b.setAttribute('aria-pressed', b.dataset.key === actions.attackMoveNear() ? 'true' : 'false');
+  };
+  for (const b of amRoot.children) {
+    b.addEventListener('click', () => {
+      settings.attackMoveNear = b.dataset.key;
+      storeSettings(settings);
+      refreshAm();
+    });
+  }
+  refreshAm();
+  $('auto-attack').checked = settings.autoAttack !== false;
+  $('auto-attack').addEventListener('change', (e) => {
+    settings.autoAttack = e.target.checked;
+    storeSettings(settings);
+    if (!net || net.role === 'host') world.player.autoAttack = settings.autoAttack; // a joiner's goes to the host below
+    world.command({ type: 'setAutoAttack', on: settings.autoAttack });
+  });
   $('shadows').checked = settings.shadows;
   $('shadows').addEventListener('change', (e) => {
     settings.shadows = e.target.checked;
@@ -1118,7 +1140,7 @@ function start(hot = {}) {
         sfx.dodge();
         hud.float(renderer, ev.x, 3.0, ev.z, 'Perfect dodge', 'word perfect');
         hud.flashSlot('e');
-        hintOnce('dodge', 'Dodging an attack with Lunge gives you Lunge back almost at once.', 5);
+        hintOnce('dodge', `Dodging an attack with ${world.kit.e.name} gives you ${world.kit.e.name} back almost at once.`, 5);
         break;
       case 'dodge':
         hud.float(renderer, ev.x, 2.8, ev.z, 'Dodged', 'word');
@@ -1137,7 +1159,7 @@ function start(hot = {}) {
       case 'damage':
         if (ev.who === 'enemy') {
           if (!ev.dot) sfx.hit(ev.crit);
-          hud.float(renderer, ev.x, 2.3, ev.z, ev.amount, ev.crit ? 'crit' : ev.dot ? 'dot' : '');
+          hud.float(renderer, ev.x, 2.3, ev.z, ev.amount, (ev.crit ? 'crit' : ev.dot ? 'dot' : '') + (ev.far ? ' far' : ''));
         } else {
           sfx.hurt();
           hud.float(renderer, ev.x, 2.6, ev.z, '-' + ev.amount, 'hurt');

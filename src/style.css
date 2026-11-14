@@ -83,6 +83,7 @@ body.slowmo #slowtint { opacity: 1; }
 .float.hurt { color: var(--danger); font-size: 22px; }
 .float.heal { color: var(--life); }
 .float.dot { color: #ff9aa2; font-size: 14px; }
+.float.far { color: #ffe27a; text-shadow: 0 0 10px rgba(255, 200, 80, 0.8), 0 2px 3px #000; }
 .float.crit.mark { font-size: 34px; color: #d7b8ff; text-shadow: 0 0 16px #7a3cff, 0 2px 3px #000; }
 .float.word.mark { color: #c9a2ff; font-size: 22px; }
 .float.blood { color: #b5172b; font-size: 17px; }
@@ -285,7 +286,9 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 .swatch.gold { background: #ffe2a0; }
 .swatch.red { background: var(--danger); }
 
-#pause, #defeat, #augment { align-items: center; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.78); }
+#pause, #defeat, #augment { justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.78); }
+/* auto margins centre the card but, unlike align-items: center, let a tall one scroll instead of cutting its top off */
+#pause > *, #defeat > *, #augment > * { margin-block: auto; }
 .menu-card { width: min(460px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--slate); border: 1px solid var(--line); border-radius: 8px; }
 .menu-card h2 { font: italic 600 44px/1 var(--display); text-wrap: balance; }
 .setting { display: flex; flex-direction: column; gap: 6px; }

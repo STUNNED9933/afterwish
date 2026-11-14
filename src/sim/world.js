@@ -173,6 +173,7 @@ export class World {
     this.parryPreset = CONFIG.PARRY_PRESETS[parryPreset] ? parryPreset : CONFIG.DEFAULT_PARRY_PRESET;
     const p = this.makePlayer(save);
     p.id = pid;
+    p.autoAttack = hello.autoAttack !== false;
     p.gold = Math.max(0, Number(hello.gold) || 0);
     p.tickets = Math.max(0, Number(hello.tickets) || 0);
     // Arrive next to the host.
@@ -217,7 +218,7 @@ export class World {
   /** Who this enemy goes for: its current target if still fair game, else the nearest standing hero. */
   targetFor(e) {
     if (e.tauntT > 0) {
-      // Taunted (Bulwark's Undertow): it goes for the hero who taunted it.
+      // Taunted (Bulwark's The Warden's Call): it goes for the hero who taunted it.
       const t = this.heroByPid(e.tauntPid);
       if (t && !t.player.dead) {
         e.targetPid = t.pid;
@@ -282,6 +283,8 @@ export class World {
       moveTarget: null,
       targetId: null,
       autoAcquire: true,
+      autoAttack: true, // false: only attack what you click or attack-move onto (pause menu setting)
+      attackMove: null, // { x, z, near } while walking somewhere ready to attack (Shift + right-click)
       atkWind: 0, // > 0 while a basic attack is winding up
       attackCd: 0,
       cd: { q: 0, w: 0, e: 0, r: 0 },
@@ -311,10 +314,10 @@ export class World {
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       swingCount: 0,
-      empowerT: 0, // > 0 while the next ability is empowered (after Shadowstep)
+      empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
       empowerMult: 1,
       slipT: 0,
-      rushT: 0, // > 0 while Tumble's attack speed bonus lasts
+      rushT: 0, // > 0 while Evasive Roll's attack speed bonus lasts
       rushAs: 0,
       barrage: null, // Barrage arrows still to come
       undyingUsed: false,
@@ -445,13 +448,41 @@ export class World {
           p.bestLeft = null;
           p.targetId = null;
           p.autoAcquire = false;
+          p.attackMove = null;
           p.atkWind = 0;
           break;
         }
+        case 'attackMove': {
+          // Shift + right-click: attack the enemy nearest you (or your cursor) if one is in reach,
+          // else walk to the spot and attack the first enemy that comes into reach on the way.
+          const r = Math.hypot(c.x, c.z);
+          const max = this.radius - p.radius;
+          const k = r > max ? max / r : 1;
+          const am = { x: c.x * k, z: c.z * k, near: c.near === 'hero' ? 'hero' : 'cursor' };
+          p.targetId = null;
+          p.atkWind = 0;
+          p.bestLeft = null;
+          const t = this.attackMoveTarget(am, true);
+          if (t) {
+            p.targetId = t.id;
+            p.moveTarget = null;
+            p.attackMove = null;
+            p.autoAcquire = true;
+          } else {
+            p.moveTarget = { x: am.x, z: am.z };
+            p.attackMove = am;
+            p.autoAcquire = false;
+          }
+          break;
+        }
+        case 'setAutoAttack':
+          p.autoAttack = c.on !== false;
+          break;
         case 'attack':
           if (this.enemyById(c.id)) {
             p.targetId = c.id;
             p.moveTarget = null;
+            p.attackMove = null;
             p.autoAcquire = true;
           }
           break;
@@ -459,6 +490,7 @@ export class World {
           p.moveTarget = null;
           p.targetId = null;
           p.autoAcquire = false;
+          p.attackMove = null;
           p.atkWind = 0;
           break;
         case 'cast':
@@ -598,7 +630,7 @@ export class World {
     for (const k of ['q', 'w', 'e', 'r']) if (k !== slot && p.cd[k] > 0) p.cd[k] = Math.max(0, p.cd[k] - cut);
   }
 
-  /** A Shadowdancer afterimage (one from Shadowstep, one from Last Rites with Crowd of One). */
+  /** A Shadowdancer afterimage (one from Nightstep, one from Last Rites with Crowd of One). */
   addShadow(src, x, z, facing) {
     const pid = this.cur.pid;
     this.shadows = this.shadows.filter((s) => !(s.pid === pid && s.src === src));
@@ -718,7 +750,7 @@ export class World {
     return best;
   }
 
-  /** One heavy single-target hit (Backstab, Last Rites). */
+  /** One heavy single-target hit (Mercy Stroke, Last Rites). */
   strike(target, slot, dmg) {
     const p = this.player;
     const def = this.kit[slot];
@@ -743,7 +775,7 @@ export class World {
     }
     this.hitEnemy(target, dmg * bonus, { source: slot });
     if (slot === 'q' && m.shadowSlash > 0) {
-      // Mirrored Cut: each afterimage copies the Backstab on whatever is nearest it.
+      // Mirrored Cut: each afterimage copies the Mercy Stroke on whatever is nearest it.
       for (const s of this.shadows) {
         if (s.pid !== this.cur.pid) continue;
         let best = null, bd = 4;
@@ -817,7 +849,7 @@ export class World {
       }
     }
     if (slot === 'e' && m.shadowStep && !p.dash && !p.leap) {
-      // Afterimage: E again trades places with the afterimage Shadowstep left.
+      // Afterimage: E again trades places with the afterimage Nightstep left.
       const sh = this.shadows.find((s) => s.pid === this.cur.pid && s.src === 'e' && !s.swapped);
       if (sh) {
         const ox = p.x, oz = p.z;
@@ -863,7 +895,7 @@ export class World {
     p.parryT = 0; // casting drops the parry stance
     let dmg = this.abilityDamage(slot);
     if (p.empowerT > 0 && slot !== 'e') {
-      // Shadowstep: the next ability hits harder.
+      // Nightstep: the next ability hits harder.
       dmg *= p.empowerMult;
       p.empowerT = 0;
       this.emit('empowered', { slot, x: p.x, z: p.z });
@@ -910,7 +942,7 @@ export class World {
           }
           this.hitEnemy(e, dmg, { source: slot });
           if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
-            // Undertow: whatever it hits fights you for a while.
+            // The Warden's Call: whatever it hits fights you for a while.
             e.tauntPid = this.cur.pid;
             e.tauntT = m.wTaunt;
           }
@@ -1291,7 +1323,7 @@ export class World {
       if (p.parryCd <= 0 && p.parryT <= 0) this.tryParry();
     }
 
-    // Lunge (E)
+    // Breakthrough (E)
     if (p.dash) {
       const ds = p.dash;
       ds.t += dt;
@@ -1359,7 +1391,19 @@ export class World {
     // Targeting
     let target = p.targetId != null ? this.enemyById(p.targetId) : null;
     if (p.targetId != null && !target) p.targetId = null;
-    if (!target && !p.moveTarget && p.autoAcquire && p.parryT <= 0) {
+    if (!target && p.attackMove) {
+      // Attack-move: the first enemy that comes into reach on the way.
+      const t = this.attackMoveTarget(p.attackMove, false);
+      if (t) {
+        target = t;
+        p.targetId = t.id;
+        p.moveTarget = null;
+        p.attackMove = null;
+        p.autoAcquire = true;
+      }
+    }
+    // Auto-attack (can be switched off in the pause menu): an idle hero picks the nearest enemy.
+    if (!target && !p.moveTarget && p.autoAcquire && p.autoAttack !== false && p.parryT <= 0) {
       let best = null;
       let bestD = Math.max(CONFIG.ACQUIRE_RANGE, this.basicRange());
       for (const e of this.enemies) {
@@ -1412,12 +1456,36 @@ export class World {
         p.x = p.moveTarget.x;
         p.z = p.moveTarget.z;
         p.moveTarget = null;
+        p.attackMove = null;
         p.autoAcquire = true;
       } else {
         p.facing = turnToward(p.facing, Math.atan2(dz, dx), 14 * dt);
         this.movePlayer(dx / d, dz / d, stepLen);
       }
     }
+  }
+
+  /**
+   * The enemy an attack-move goes for: in reach of the hero, nearest the hero or nearest the
+   * clicked spot. On the click itself, an enemy right under the cursor counts even if it is further.
+   */
+  attackMoveTarget(am, click) {
+    const p = this.player;
+    const reach = Math.max(CONFIG.ACQUIRE_RANGE, this.basicRange()) + 1;
+    let best = null;
+    let bd = Infinity;
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      const dh = dist(e.x, e.z, p.x, p.z) - e.radius;
+      const dc = dist(e.x, e.z, am.x, am.z) - e.radius;
+      if (dh > reach && !(click && am.near === 'cursor' && dc < 1.5)) continue;
+      const score = am.near === 'cursor' ? dc : dh;
+      if (score < bd) {
+        bd = score;
+        best = e;
+      }
+    }
+    return best;
   }
 
   movePlayer(dx, dz, len) {
@@ -1457,7 +1525,7 @@ export class World {
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     if (p.dash || p.leap) {
       if (p.dash && !p.dash.refunded) {
-        // Perfect dodge: Lunge carried you through an attack, so most of its cooldown comes back.
+        // Perfect dodge: Breakthrough carried you through an attack, so most of its cooldown comes back.
         p.dash.refunded = true;
         p.cd[p.dash.slot] = Math.min(p.cd[p.dash.slot], CONFIG.DODGE_REFUND_CD);
         this.stats.dodges++;
@@ -2318,15 +2386,22 @@ export class World {
       crit = true;
     }
     const stunned = e.state === 'stunned';
+    let far = false;
     if (!opts.raw) {
       // (raw: already-final damage, like Second Death going off, is not scaled again)
       dmg *= this.gapScale(e.level).dealt;
+      if (this.mods.farShot > 0 && !opts.dot) {
+        // Long Watch (Sharpshooter): the further the target, the harder the hit.
+        const bonus = Math.min(this.mods.farShotMax, Math.max(0, dist(p.x, p.z, e.x, e.z) - e.radius - 2) * this.mods.farShot);
+        dmg *= 1 + bonus;
+        far = bonus >= 0.25;
+      }
       if (this.mods.lowHpDmg > 0 && p.hp < p.stats.maxHp * 0.5) dmg *= 1 + this.mods.lowHpDmg;
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
-      // Nightfang: ability crits cut deeper and bring Shadowstep back sooner.
+      // Nightfang: ability crits cut deeper and bring Nightstep back sooner.
       dmg *= 1.4;
       if (!(p.fangT > 0)) {
         p.cd.e = Math.max(0, p.cd.e - 1);
@@ -2356,7 +2431,7 @@ export class World {
       if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
       if (ls > 0) this.healPlayer((dmg * ls) / 100, false);
     }
-    this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, basic: !!opts.basic, dot: !!opts.dot });
+    this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
     if (e.def.boss && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.4) {
       e.enraged = true;
       this.emit('enrage', { id: e.id });
@@ -2976,6 +3051,7 @@ inTown() {
           p.stuckT += dt;
           if (p.stuckT > 1.8 && p.castLock <= 0 && p.parryT <= 0) {
             p.moveTarget = null;
+            p.attackMove = null;
             p.autoAcquire = true;
           }
         }

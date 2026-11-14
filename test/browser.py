@@ -24,7 +24,12 @@ with sync_playwright() as pw:
     page.wait_for_timeout(1200)
     page.screenshot(path=str(out / '1-title.png'))
 
-    # --- New character goes straight into the arena --------------------------
+    check('a brand-new account has no shards, so the title offers only Explore', ev("() => game.account ? game.account.tickets : JSON.parse(localStorage.getItem('stunned-account-v1') || '{\"tickets\":0}').tickets") == 0 and not page.is_visible('#btn-new') and page.is_visible('#btn-explore'))
+    # The rest of these tests start in the arena: give this browser a few shards first.
+    ev("() => localStorage.setItem('stunned-account-v1', JSON.stringify({ gold: 0, tickets: 3 }))")
+    page.reload(); page.wait_for_timeout(1200)
+
+    # --- A new character in the arena -----------------------------------------
     page.click('#btn-new')
     page.wait_for_timeout(4500)
     check('new run starts in play mode', ev("() => game.mode") == 'play')

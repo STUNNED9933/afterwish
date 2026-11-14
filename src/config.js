@@ -111,7 +111,7 @@ export const CONFIG = {
   WANDER_RANGE: 4, // idle enemies drift this far from their spot
   EXPLORE_RESPAWN_DELAY: 3, // seconds knocked out before you wake up in town
   TICKET_CHANCE: 0.06, // chance a kill in the wilds drops an arena ticket (big enemies always do)
-  START_TICKETS: 3, // arena tickets a new account starts with
+  START_TICKETS: 0, // a new account starts with no shards: the road first, the Echo Ring once you have found some
 
   // --- Waves -----------------------------------------------------------
   FIRST_WAVE_DELAY: 3.5,

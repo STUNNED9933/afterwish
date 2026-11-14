@@ -189,6 +189,8 @@ tickets, and your settings, and replaces whatever was there.
   damage dealers top it while tanks shine in Resolve.
 - **Fix:** the Weekly Echo no longer gives a skill point (and a rank-up
   marker) for beating a boss.
+- A new account starts with **no starglass shards**, so new players begin on
+  the road; the Echo Ring button appears once you have found a shard.
 
 ### New traits and ultimates, Combat Power (0.24)
 

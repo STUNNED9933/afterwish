@@ -274,6 +274,8 @@ function start(hot = {}) {
     if (has) $('btn-continue').textContent = 'The Echo Ring';
     const fresh = $('btn-new');
     fresh.textContent = has ? `Start a new ${c.name}` : 'Wake the Echo Ring · 1 shard';
+    // A brand-new character starts on the road: the Echo Ring button only shows once there are shards to spend.
+    fresh.classList.toggle('hidden', !has && account.tickets < 1);
     fresh.dataset.armed = '';
     const found = missingProgress();
     const lost = found && found.t !== settings.backupSeen ? found : null; // not after a deliberate fresh start

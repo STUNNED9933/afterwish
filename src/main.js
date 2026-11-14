@@ -1155,6 +1155,16 @@ function start(hot = {}) {
       case 'shatter':
         sfx.cast('w');
         break;
+      case 'markPop':
+        sfx.impact();
+        hud.float(renderer, ev.x, 3.0, ev.z, ev.amount, 'crit mark');
+        break;
+      case 'mark':
+        hud.float(renderer, ev.x, 3.4, ev.z, 'Marked', 'word mark');
+        break;
+      case 'shadowSwap':
+        sfx.cast('e');
+        break;
       case 'swing':
         sfx.swing();
         break;

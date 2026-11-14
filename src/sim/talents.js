@@ -98,14 +98,26 @@ export const SPECS = {
   },
   shadowdancer: {
     cls: 'rogue', name: 'Shadowdancer',
-    blurb: 'In, out, and everything is bleeding. Speed, stolen health, and a Shadowstep that is nearly always ready.',
+    blurb: 'Fights from two places at once. Shadowstep leaves a shadow you can swap back to, every shadow throws your shurikens, and Death Mark makes a boss pay twice. Built for long fights against one big enemy.',
+    perk: {
+      name: 'Living Shadow',
+      desc: 'Shadowstep leaves a Shadow where you stood for 5 seconds: press E again to swap places with it. Fan of Knives becomes Razor Shuriken, a throw that pierces in a line, and every Shadow throws one too, aimed at your cursor. A shuriken after the first deals 60% to the same enemy.',
+      apply: (m) => { m.shadowStep = true; m.shadowDur = Math.max(m.shadowDur, 5); },
+    },
+    kit: {
+      w: {
+        key: 'W', name: 'Razor Shuriken', type: 'shuriken', icon: 'shuriken', unlock: 2, cd: 6, range: 11, speed: 24, width: 1.1, repeat: 0.6,
+        dmg: (s, lvl) => 1.25 * s.ad + 12 + 5 * lvl,
+        desc: 'Throw a shuriken toward your cursor that cuts through every enemy in its path. Each of your Shadows throws one too, at the same spot. A shuriken after the first deals 60% to the same enemy.',
+      },
+    },
     talents: [
       { id: 'sd_fleet', row: 'minor', name: 'Soft Shoes', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'sd_hands', row: 'minor', name: 'Flurry', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
-      { id: 'sd_leech', row: 'minor', name: 'Bloodletter', max: 5, desc: (r) => `+${r}% lifesteal.`, apply: (m, r) => { m.lifesteal += r; } },
-      { id: 'sd_fan', row: 'major', name: 'Wide Fan', max: 3, desc: (r) => `Fan of Knives deals ${10 * r}% more damage in an ${8 * r}% wider circle.`, apply: (m, r) => { m.wDmg *= 1 + 0.1 * r; m.wRadius *= 1 + 0.08 * r; } },
-      { id: 'sd_bleed', row: 'major', name: 'Serrated Blade', max: 3, desc: (r) => `Backstab makes its target bleed for ${30 * r}% attack damage over 3 seconds.`, apply: (m, r) => { m.qBleed = Math.max(m.qBleed, 0.3 * r); } },
-      { id: 'sd_cap', row: 'capstone', name: 'Dance of Shadows', max: 1, desc: () => 'Shadowstep cooldown is 30% shorter, and the attack after it deals a further 100% damage.', apply: (m) => { m.eCd *= 0.7; m.eEmpower += 1; } },
+      { id: 'sd_leech', row: 'minor', name: 'Long Shadow', max: 5, desc: (r) => `Shadows last ${(0.4 * r).toFixed(1)} seconds longer and Razor Shuriken deals ${4 * r}% more.`, apply: (m, r) => { m.shadowDur += 0.4 * r; m.wDmg *= 1 + 0.04 * r; } },
+      { id: 'sd_fan', row: 'major', name: 'Shadow Slash', max: 3, desc: (r) => `When you Backstab, each Shadow slashes the enemy nearest it for ${15 * r + 15}% of Backstab's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
+      { id: 'sd_bleed', row: 'major', name: 'Marked for Death', max: 3, desc: (r) => `Death Mark marks its target. 3 seconds later it takes ${10 * r + 5}% of all the damage you dealt it in that time, again.`, apply: (m, r) => { m.rMark = Math.max(m.rMark, 0.1 * r + 0.05); } },
+      { id: 'sd_cap', row: 'capstone', name: 'Lord of Shadows', max: 1, desc: () => 'Death Mark leaves a Shadow where you leapt from, its mark repeats a further 15%, and Shadowstep cooldown is 20% shorter.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
     ],
   },
 

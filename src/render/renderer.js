@@ -706,7 +706,7 @@ export class Renderer {
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.exposed ? 0xffe27a : 0xdff4ff, from: 2.2, to: 0.4, dur: 0.22, opacity: 1 });
           this.burst(ev.x, 1.2, ev.z, { count: ev.exposed ? 22 : 10, color: ev.exposed ? 0xffe27a : 0xdff4ff, speed: 8, up: 4, life: 0.4 });
           if (ev.exposed) this.shake = Math.max(this.shake, 0.3);
-        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb') {
+        } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb' || fx === 'shuriken') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.22;
         }
@@ -725,6 +725,27 @@ export class Renderer {
         }
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0x9fe8ff, from: ev.radius * 0.8, to: ev.radius, dur: 0.25, opacity: 0.35 });
         break;
+      case 'mark':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: 0xb07cff, from: 3, to: 0.8, dur: 0.35, opacity: 1 });
+        break;
+      case 'markPop':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.6, color: 0xffffff, from: 0.5, to: 4.5, dur: 0.4, opacity: 1 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7a3cff, from: 3, to: 3, dur: 0.5, opacity: 0.4 });
+        this.burst(ev.x, 1.4, ev.z, { count: 44, color: 0xb07cff, speed: 12, up: 7, size: 1.4, life: 0.6 });
+        this.shake = Math.max(this.shake, 0.55);
+        break;
+      case 'shadowSwap':
+        this.burst(ev.fx, 1, ev.fz, { count: 18, color: 0x7a3cff, speed: 5, up: 3, life: 0.4 });
+        this.burst(ev.x, 1, ev.z, { count: 18, color: 0xd7b8ff, speed: 5, up: 3, life: 0.4 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.5, color: 0xb07cff, from: 2.5, to: 0.6, dur: 0.3, opacity: 1 });
+        break;
+      case 'shadowSlash': {
+        const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
+        const len = Math.hypot(ev.tx - ev.x, ev.tz - ev.z);
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir, color: 0xb07cff, sx: Math.max(1, len), sz: 0.5, dur: 0.25, opacity: 0.9 });
+        this.burst(ev.tx, 1.2, ev.tz, { count: 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.35 });
+        break;
+      }
       case 'shatter':
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xffffff, from: 0.6, to: ev.radius * 1.1, dur: 0.35, opacity: 1 });
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fd8ff, from: ev.radius, to: ev.radius, dur: 0.45, opacity: 0.35 });
@@ -990,6 +1011,18 @@ export class Renderer {
       else if (e.slowT > 0 || world.slowT > 0) this.setEmissive(mats, 0.03, 0.12, 0.26); // slowed: cold blue
       else if (e.enraged) this.setEmissive(mats, 0.22, 0.03, 0.02);
       else this.setEmissive(mats, 0, 0, 0);
+
+      // Death Mark (Marked for Death): a broken purple ring that closes in until it goes off.
+      if (e.markT > 0) {
+        if (!v.markRing) {
+          v.markRing = new THREE.Mesh(this.sectorGeo(5.2, 0.8), new THREE.MeshBasicMaterial({ color: 0xb07cff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
+          v.markRing.position.y = 0.08;
+          group.add(v.markRing);
+        }
+        v.markRing.visible = true;
+        v.markRing.rotation.y = this.time * 4;
+        v.markRing.scale.setScalar((e.radius + 0.6) * (0.55 + 0.5 * Math.min(1, e.markT / 3)));
+      } else if (v.markRing) v.markRing.visible = false;
     }
     for (const [id, v] of this.views) {
       if (!seen.has(id)) {
@@ -997,6 +1030,7 @@ export class Renderer {
         v.deathT = 0;
         this.setEmissive(v.model.mats, 0.6, 0.6, 0.6);
         if (v.model.parts.stars) v.model.parts.stars.visible = false;
+        if (v.markRing) v.markRing.visible = false;
         this.corpses.push(v);
       }
     }
@@ -1036,11 +1070,15 @@ export class Renderer {
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff }[pr.kind]; // the hero's own shots
+      const own = { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, shuriken: 0xe4d6ff }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
       m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      if (pr.kind === 'shuriken') {
+        m.scale.set(2.1, 0.4, 2.1);
+        m.rotation.y += 0.6;
+      }
       if (pr.kind === 'orb') {
         m.rotation.y += 0.12;
         m.rotation.x += 0.07;
@@ -1161,6 +1199,7 @@ export class Renderer {
     this.time += dt;
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
+    this.syncShadows(world, dt);
     this.syncEnemies(world, alpha, dt);
     this.syncProjectiles(world, alpha);
     this.syncLoot(world);
@@ -1208,6 +1247,49 @@ export class Renderer {
 
   /** Remove every enemy / projectile / loot view (used when a new run starts). */
   /** Party members: their hero model, walking or lying down. */
+  /** Shadowdancer Shadows: dark, see-through copies of the hero that fade as they run out. */
+  syncShadows(world, dt) {
+    if (!this.shadowViews) this.shadowViews = new Map();
+    const seen = new Set();
+    for (const s of world.shadows || []) {
+      seen.add(s.id);
+      let v = this.shadowViews.get(s.id);
+      if (!v) {
+        const model = buildHero(s.cls);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x4a2a88, transparent: true, opacity: 0.7, depthWrite: false });
+        model.group.traverse((o) => {
+          if (o.isMesh) {
+            o.material = mat;
+            o.castShadow = false;
+          }
+        });
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x9a6cff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(this.ringGeo(), ringMat);
+        ring.position.y = 0.05;
+        model.group.add(ring);
+        this.scene.add(model.group);
+        v = { model, mat, ring, ringMat };
+        this.shadowViews.set(s.id, v);
+        this.burst(s.x, 1, s.z, { count: 16, color: 0x7a3cff, speed: 4, up: 3, life: 0.5 });
+      }
+      const g = v.model.group;
+      g.position.set(s.x, s.throwT > 0 ? 0.15 : 0, s.z);
+      g.rotation.y = Math.PI / 2 - s.facing;
+      const fade = Math.min(1, s.t / 0.8);
+      v.mat.opacity = (0.55 + 0.12 * Math.sin(this.time * 5)) * fade;
+      v.ringMat.opacity = 0.55 * fade;
+      v.ring.scale.setScalar(0.9 + 0.5 * (s.t / s.dur));
+      if (Math.random() < 0.25) this.burst(s.x, 0.4 + Math.random() * 1.4, s.z, { count: 1, color: 0x5a2aa0, speed: 0.6, up: 1.2, gravity: 0, life: 0.6 });
+    }
+    for (const [id, v] of this.shadowViews) {
+      if (seen.has(id)) continue;
+      const pos = v.model.group.position;
+      this.burst(pos.x, 1, pos.z, { count: 14, color: 0x7a3cff, speed: 3, up: 3, life: 0.45 });
+      this.disposeGroup(v.model.group);
+      this.shadowViews.delete(id);
+    }
+  }
+
   syncAllies(world, alpha, dt) {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies() : [];
@@ -1254,6 +1336,10 @@ export class Renderer {
     this.corpses = [];
     for (const m of this.projViews.values()) this.scene.remove(m);
     this.projViews.clear();
+    if (this.shadowViews) {
+      for (const v of this.shadowViews.values()) this.disposeGroup(v.model.group);
+      this.shadowViews.clear();
+    }
     for (const v of this.lootViews.values()) this.disposeGroup(v.group);
     this.lootViews.clear();
     for (const v of this.teleViews.values()) this.scene.remove(v.group);

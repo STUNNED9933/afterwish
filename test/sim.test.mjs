@@ -979,6 +979,82 @@ import { makeRng } from '../src/sim/rng.js';
     check('...and back to the nearest hero when it wears off', pw.targetFor(foe).pid === 0);
   }
 }
+// --- 0.18: Shadowdancer (shadows, Razor Shuriken, Death Mark) ------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { CLASSES } = await import('../src/sim/classes.js');
+  const { makeSnapshot } = await import('../src/net/sync.js');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (talents = {}, spec = 'shadowdancer') => {
+    const w = new World({ seed: 12, cls: 'rogue', save: Object.assign(geared('rogue', 60, 2), { spec, talents }) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0) => { const e = w.spawnEnemy('grunt', { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; e.x = e.px = x; e.z = e.pz = z; e.facing = Math.PI; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+
+  const { w, p } = setup();
+  check('Shadowdancer: W becomes Razor Shuriken', w.kit.w.name === 'Razor Shuriken' && CLASSES.rogue.abilities.w.name === 'Fan of Knives');
+  check('Assassin keeps Fan of Knives', setup({}, 'assassin').w.kit.w.name === 'Fan of Knives');
+  // Shadowstep leaves a Shadow; E again swaps with it, once.
+  cast(w, 'e', 7, 0); run(w, 0.3);
+  const sh = w.shadows.find((x) => x.src === 'e');
+  check('Shadowstep leaves a Shadow where you stood', !!sh && Math.hypot(sh.x, sh.z) < 0.5 && p.x > 5, sh ? `${sh.x.toFixed(1)}, hero at ${p.x.toFixed(1)}` : 'none');
+  const hx = p.x;
+  cast(w, 'e', 7, 0);
+  check('E again swaps places with the Shadow', Math.hypot(p.x, p.z) < 0.5 && Math.abs(sh.x - hx) < 0.01 && sh.swapped && w.events.some((ev) => ev.type === 'shadowSwap'));
+  cast(w, 'e', 7, 0);
+  check('...only once per Shadow (then E is just on cooldown)', Math.hypot(p.x, p.z) < 0.5 && !p.dash);
+  // Shurikens: one from you, one from the Shadow, both at the cursor; a second one on the same enemy deals 60%.
+  const a = dummy(w, 3, 0), b = dummy(w, 6, 0);
+  sh.x = 4.5; sh.z = 6; // a Shadow off to the side, so its throw crosses b
+  w.events.length = 0;
+  p.stats.crit = 0; // no crits, so the numbers can be compared
+  cast(w, 'w', 6, 0);
+  const sh2 = w.projectiles.filter((pr) => pr.kind === 'shuriken');
+  check('Razor Shuriken: one from you and one from each Shadow', sh2.length === 2, String(sh2.length));
+  run(w, 0.8);
+  // (only the shuriken hits: the rogue also auto-attacks the dummy next to it)
+  const dmgs = (e) => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === e.id && !ev.basic).map((ev) => ev.amount);
+  const da = dmgs(a), db = dmgs(b);
+  check('Razor Shuriken: it cuts through every enemy in its path', da.length === 1 && db.length >= 1 && da[0] === db[0], `${da} / ${db}`);
+  check('Razor Shuriken: two land on the enemy where they cross, the second for 60%', db.length === 2 && Math.abs(db[1] / db[0] - 0.6) < 0.01, `${db}`);
+  run(w, 5);
+  check('Shadows fade after 5 seconds', w.shadows.length === 0);
+  // Marked for Death
+  {
+    const { w: w2, p: p2 } = setup({ sd_fleet: 5, sd_bleed: 3 });
+    const e = dummy(w2, 3);
+    cast(w2, 'r', 3, 0); run(w2, 0.3);
+    check('Marked for Death: Death Mark marks its target', e.markT > 2 && e.markAcc > 0);
+    for (let i = 0; i < 5; i++) w2.hitEnemy(e, 1000, { canCrit: false, source: 'basic', basic: true });
+    w2.events.length = 0;
+    let acc = 0, pop = null;
+    for (let i = 0; i < 200 && !pop; i++) { acc = e.markAcc; w2.step(CONFIG.TICK); pop = w2.events.find((ev) => ev.type === 'markPop'); }
+    check('Marked for Death: 3 seconds later it takes 35% of everything again', !!pop && Math.abs(pop.amount - acc * 0.35) <= 2 && e.markT <= 0, pop ? `${pop.amount} of ${Math.round(acc)}` : 'no pop');
+  }
+  // Shadow Slash and Lord of Shadows
+  {
+    const { w: w3, p: p3 } = setup({ sd_fleet: 5, sd_fan: 3, sd_bleed: 3, sd_hands: 1, sd_cap: 1 });
+    const e1 = dummy(w3, 2), e2 = dummy(w3, -8, 5);
+    w3.addShadow('e', -7, 4, 0);
+    w3.events.length = 0;
+    cast(w3, 'q', 2, 0);
+    check('Shadow Slash: a Backstab is copied by your Shadow on the enemy nearest it', e2.hp < 1e9 && w3.events.some((ev) => ev.type === 'shadowSlash'));
+    run(w3, 0.2); // let Backstab's cast finish
+    p3.x = -3; p3.z = 0;
+    cast(w3, 'r', 2, 0);
+    check('Lord of Shadows: Death Mark leaves a Shadow where you leapt from', w3.shadows.some((x) => x.src === 'r' && Math.abs(x.x + 3) < 0.5));
+    check('Lord of Shadows: the mark repeats 50%, and Shadowstep comes back sooner', Math.abs(w3.mods.rMark - 0.5) < 1e-9 && w3.mods.eCd < 1);
+    const w4 = new World({ seed: 3, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 30, 2), { spec: 'shadowdancer' }) });
+    w4.addShadow('e', 1, 1, 0);
+    const snap = makeSnapshot(w4, 0, {});
+    check('Shadows are sent to friends in co-op', snap.shadows.length === 1 && snap.shadows[0].src === 'e');
+  }
+}
 // --- Music: the songs are data, so check every bar adds up and every note is playable ---
 {
   const { SONGS, MAP_SONG, arrange, parseBar, BAR } = await import('../src/music/songs.js');

@@ -31,6 +31,8 @@ export function defaultMods() {
     armorPct: 0, asMult: 1, critMult: 0, dmgTaken: 0, lowHpDmg: 0, parryHeal: 0,
     // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (Undertow, Shield Wall, Bastion)
     bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
+    // Shadowdancer (Living Shadow and its talents)
+    shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };

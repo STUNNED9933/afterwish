@@ -150,6 +150,30 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Shadowdancer rework: the boss killer (0.18)
+
+The Rogue's two subclasses now split the work: the **Assassin** chains kills
+and farms fastest, the **Shadowdancer** fights from two places at once and
+kills bosses fastest (no kill resets; its power is in long fights).
+
+- **Trait, Living Shadow** (from level 15): Shadowstep leaves a **Shadow**
+  where you stood for 5 s. Press **E again** to swap places with it (the E
+  button glows while you can). **W becomes Razor Shuriken**, a throw that
+  cuts through every enemy in a line, and every Shadow throws one too, at the
+  same spot. Aim so the throws cross on a boss: the second shuriken on the
+  same enemy deals 60%.
+- **Long Shadow** (minor): Shadows last longer, shurikens hit harder.
+- **Shadow Slash** (major): when you Backstab, each Shadow slashes the enemy
+  nearest it.
+- **Marked for Death** (major): Death Mark marks its target, and 3 s later it
+  takes 15 to 35% of everything you dealt it in that time, again (a closing
+  purple ring shows the timer).
+- **Lord of Shadows** (capstone): Death Mark leaves a Shadow too, the mark
+  repeats a further 15%, and Shadowstep comes back 20% sooner.
+- Boss test (level 100, The Unmade, rare gear): Shadowdancer 20 s,
+  Sharpshooter 23 s, Windrunner 24 s, Assassin 30 s. Farming: Assassin 215
+  kills in 3 maps, Shadowdancer 205, no subclass 194.
+
 ### Higher stakes, Frozen Orb, warrior subclasses (0.17)
 
 - **Lifesteal no longer refills you.** It heals in full only from basic
@@ -257,7 +281,7 @@ At level 15 press **T** and choose one of two subclasses for your class:
 | Archer | **Sharpshooter** | Longer attack range, crit chance and crit damage, a harder Piercing Shot that marks targets |
 | Archer | **Windrunner** | Move and attack speed, a bigger Barrage, a longer and faster Tumble flurry, longer Arrow Storm |
 | Rogue | **Assassin** | Crits, brutal Backstabs, a Death Mark that resets on a kill |
-| Rogue | **Shadowdancer** | Speed, lifesteal, bleeds, a Shadowstep that is nearly always ready |
+| Rogue | **Shadowdancer** | Boss killer: Shadows to swap with, Razor Shurikens thrown from every Shadow, a Death Mark that hits again |
 | Mage | **Pyromancer** | Bigger burning Fire Bolts, a Meteor that erupts twice |
 | Mage | **Frostbinder** | Health, armor, a bigger Frozen Orb that freezes, damage reduction |
 

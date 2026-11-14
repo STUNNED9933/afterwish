@@ -83,6 +83,8 @@ body.slowmo #slowtint { opacity: 1; }
 .float.hurt { color: var(--danger); font-size: 22px; }
 .float.heal { color: var(--life); }
 .float.dot { color: #ff9aa2; font-size: 14px; }
+.float.crit.mark { font-size: 34px; color: #d7b8ff; text-shadow: 0 0 16px #7a3cff, 0 2px 3px #000; }
+.float.word.mark { color: #c9a2ff; font-size: 22px; }
 .float.blood { color: #b5172b; font-size: 17px; }
 .float.word.blood { color: #ff4a55; font-size: 24px; text-shadow: 0 0 14px #b5172b, 0 2px 3px #000; }
 .float.word { font: italic 600 26px var(--display); letter-spacing: 0.04em; color: var(--steel); animation-duration: 1.1s; }
@@ -394,9 +396,10 @@ button:disabled:hover { border-color: var(--line); }
 .plabel.npc { border-color: #ffd27a; color: #fff3d6; }
 .plabel.sign { border-color: #8a8f9c; color: #d8dce6; font-size: 12px; padding: 1px 7px; }
 .plabel .mark { display: inline-block; vertical-align: -2px; margin-right: 6px; color: #ffd27a; font: 800 18px var(--body); text-shadow: 0 0 6px rgba(255, 210, 122, 0.7); }
-.plabel .spec-trait { margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(255, 210, 122, 0.35); border-radius: 6px; background: rgba(255, 210, 122, 0.06); font-size: 14px; line-height: 1.45; }
+#abilities .recast { box-shadow: 0 0 0 2px #b98cff, 0 0 14px rgba(185, 140, 255, 0.8); }
+.spec-trait { margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(255, 210, 122, 0.35); border-radius: 6px; background: rgba(255, 210, 122, 0.06); font-size: 14px; line-height: 1.45; }
 .spec-trait b { color: #ffd27a; margin-right: 4px; }
-.mark.progress { color: #b9bfcc; text-shadow: none; }
+.plabel .mark.progress { color: #b9bfcc; text-shadow: none; }
 .plabel .mark.ready svg { width: 18px; height: 18px; fill: rgba(127, 224, 160, 0.25); stroke: #7fe0a0; stroke-width: 2; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(127, 224, 160, 0.8)); }
 .quest .primary kbd, .quest .ghost kbd { margin-left: 6px; }
 .talk-keys { font-size: 13px; color: var(--muted); }

@@ -41,6 +41,7 @@ export const ICONS = {
   line: '<path d="M3 12h17"/><path d="M16 8l4 4-4 4"/><path d="M6 9l-3 3 3 3"/>',
   zone: '<circle cx="12" cy="16" r="5.5"/><path d="M8 3v6M12 2v8M16 3v6"/>',
   strike: '<path d="M21 3l-1 6-8 8-5-5 8-8z"/><path d="M6 13l5 5"/><path d="M3 21l4-4"/>',
+  shuriken: '<path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/><circle cx="12" cy="12" r="2"/>',
   orb: '<circle cx="12" cy="12" r="5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
   bolt: '<path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 2-5 0 2 1 3 2 3 0-3 0-6 2-9z"/>',
 };
@@ -226,8 +227,10 @@ export class Hud {
     document.body.classList.toggle('slowmo', world.slowT > 0);
 
     // Abilities
-    if (world.cls !== this.cls) {
-      // A different class is being played: swap the ability icons.
+    const kitKey = world.cls + ABILITY_SLOTS.map((s) => world.kit[s].name).join('|');
+    if (kitKey !== this.kitKey) {
+      // A different class (or a subclass that swaps an ability) is being played: swap the ability icons.
+      this.kitKey = kitKey;
       this.cls = world.cls;
       for (const s of ABILITY_SLOTS) {
         this.slots[s].el.querySelector('svg').outerHTML = svg(world.kit[s].icon || s);
@@ -242,6 +245,11 @@ export class Hud {
       slot.el.classList.toggle('locked', locked);
       if (locked) slot.lock.textContent = 'Lv ' + def.unlock;
       this.setCooldown(slot, locked ? 0 : p.cd[s], world.abilityCooldown(s));
+      // Glows while pressing the key again does something (swap with a Shadow, shatter the orb).
+      const me = p.id || 0;
+      const again = (s === 'e' && world.mods.shadowStep && (world.shadows || []).some((x) => x.pid === me && x.src === 'e' && !x.swapped))
+        || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
+      slot.el.classList.toggle('recast', !!again);
       const rank = p.ranks[s];
       if (rank !== slot.rank) {
         slot.rank = rank;

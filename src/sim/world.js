@@ -87,6 +87,7 @@ export class World {
     this.kit = CLASSES[this.cls].abilities;
     this.basic = CLASSES[this.cls].basic;
     this.zones = [];
+    this.shadows = []; // Shadowdancer shadows: { id, pid, src, x, z, t, dur, facing, cls }
 
     const save = opts.save || null;
     this.questStamp = 0; // goes up whenever quests or signs change, so the UI knows to redraw
@@ -196,6 +197,7 @@ export class World {
     this.loot = this.loot.filter((l) => l.owner !== pid);
     this.projectiles = this.projectiles.filter((pr) => pr.pid !== pid);
     this.zones = this.zones.filter((z) => z.pid !== pid);
+    this.shadows = this.shadows.filter((s) => s.pid !== pid);
     this.delayed = this.delayed.filter((d) => d.pid !== pid);
     this.emit('partyLeave', { pid, name: h.name });
   }
@@ -335,6 +337,9 @@ export class World {
     // Talents first, so an augment that sets the same thing higher wins for the run.
     const spec = SPECS[this.player.spec];
     if (spec && spec.perk) spec.perk.apply(m); // the subclass trait, from the moment it is chosen
+    // A subclass can swap out an ability (the Shadowdancer's Razor Shuriken).
+    const base = CLASSES[this.cls].abilities;
+    this.kit = spec && spec.kit && spec.cls === this.cls ? Object.assign({}, base, spec.kit) : base;
     if (spec) for (const t of spec.talents) if (this.player.talents[t.id] > 0) t.apply(m, this.player.talents[t.id]);
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
     for (const slot of SLOTS) {
@@ -577,6 +582,61 @@ export class World {
     for (const k of ['q', 'w', 'e', 'r']) if (k !== slot && p.cd[k] > 0) p.cd[k] = Math.max(0, p.cd[k] - cut);
   }
 
+  /** A Shadowdancer Shadow (one from Shadowstep, one from Death Mark with Lord of Shadows). */
+  addShadow(src, x, z, facing) {
+    const pid = this.cur.pid;
+    this.shadows = this.shadows.filter((s) => !(s.pid === pid && s.src === src));
+    const dur = this.mods.shadowDur || 5;
+    this.shadows.push({ id: this.nextId++, pid, src, x, z, t: dur, dur, facing, cls: this.cls, throwT: 0 });
+  }
+
+  stepShadows(dt) {
+    if (!this.shadows.length) return;
+    for (const s of this.shadows) {
+      s.t -= dt;
+      if (s.throwT > 0) s.throwT -= dt;
+    }
+    this.shadows = this.shadows.filter((s) => s.t > 0);
+  }
+
+  /** Razor Shuriken: flies straight, cutting each enemy once; a second shuriken of the same throw deals less. */
+  stepShuriken(pr, dt) {
+    pr.px = pr.x;
+    pr.pz = pr.z;
+    pr.x += pr.vx * dt;
+    pr.z += pr.vz * dt;
+    pr.life -= dt;
+    if (pr.life <= 0 || Math.hypot(pr.x, pr.z) > this.radius + 4) {
+      pr.dead = true;
+      return;
+    }
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn' || pr.hitSet.has(e.id)) continue;
+      if (dist(pr.x, pr.z, e.x, e.z) > pr.radius + e.radius) continue;
+      pr.hitSet.add(e.id);
+      const again = pr.group.hit.has(e.id);
+      pr.group.hit.add(e.id);
+      if (pr.slow > 0) {
+        e.slowT = 3;
+        e.slow = pr.slow;
+      }
+      this.hitEnemy(e, pr.dmg * (again ? pr.repeat : 1), { source: 'w' });
+    }
+  }
+
+  /** Marked for Death: the mark goes off and the target takes a share of what it took meanwhile. */
+  popMark(e) {
+    const h = this.heroByPid(e.markPid);
+    const amount = e.markAcc * e.markPct;
+    e.markT = 0;
+    e.markAcc = 0;
+    if (!h || amount < 1 || e.dead) return;
+    this.as(h, () => {
+      this.emit('markPop', { id: e.id, x: e.x, z: e.z, amount: Math.round(amount) });
+      this.hitEnemy(e, amount, { raw: true, canCrit: false, source: 'mark' });
+    });
+  }
+
   /** Frozen Orb: drift toward the target point, chilling and cutting what it passes, then shatter. */
   stepOrb(pr, dt) {
     pr.px = pr.x;
@@ -656,7 +716,32 @@ export class World {
     }
     p.facing = Math.atan2(target.z - p.z, target.x - p.x);
     this.emit('cast', { slot, fx: 'strike', x: target.x, z: target.z, exposed: bonus > 1 });
+    if (slot === 'r' && m.rMark > 0) {
+      // Marked for Death: count everything this hero deals it for 3 seconds (this strike included).
+      target.markT = 3;
+      target.markPid = this.cur.pid;
+      target.markAcc = 0;
+      target.markPct = m.rMark;
+      this.emit('mark', { id: target.id, x: target.x, z: target.z });
+    }
     this.hitEnemy(target, dmg * bonus, { source: slot });
+    if (slot === 'q' && m.shadowSlash > 0) {
+      // Shadow Slash: each Shadow copies the Backstab on whatever is nearest it.
+      for (const s of this.shadows) {
+        if (s.pid !== this.cur.pid) continue;
+        let best = null, bd = 4;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          const de = dist(e.x, e.z, s.x, s.z) - e.radius;
+          if (de < bd) { bd = de; best = e; }
+        }
+        if (!best) continue;
+        s.facing = Math.atan2(best.z - s.z, best.x - s.x);
+        s.throwT = 0.25;
+        this.emit('shadowSlash', { x: s.x, z: s.z, tx: best.x, tz: best.z });
+        this.hitEnemy(best, dmg * m.shadowSlash, { source: 'q' });
+      }
+    }
     if (!target.dead && m[slot + 'Stun'] > 0) {
       if (target.def.boss) this.addPosture(target, 1, false);
       else this.stun(target, m[slot + 'Stun']);
@@ -715,6 +800,21 @@ export class World {
       const mine = this.projectiles.find((pr) => pr.kind === 'orb' && !pr.dead && pr.pid === this.cur.pid);
       if (mine) {
         this.shatterOrb(mine);
+        return;
+      }
+    }
+    if (slot === 'e' && m.shadowStep && !p.dash && !p.leap) {
+      // Living Shadow: E again swaps places with the Shadow Shadowstep left.
+      const sh = this.shadows.find((s) => s.pid === this.cur.pid && s.src === 'e' && !s.swapped);
+      if (sh) {
+        const ox = p.x, oz = p.z;
+        p.x = p.px = sh.x;
+        p.z = p.pz = sh.z;
+        sh.x = ox;
+        sh.z = oz;
+        sh.swapped = true;
+        p.moveTarget = null;
+        this.emit('shadowSwap', { x: p.x, z: p.z, fx: ox, fz: oz });
         return;
       }
     }
@@ -829,6 +929,7 @@ export class World {
         }
         const len = clamp(d, def.minRange || 0, range);
         const end = this.clampToArena(p.x + cos * len, p.z + sin * len, p.radius);
+        if (slot === 'e' && m.shadowStep) this.addShadow('e', p.x, p.z, a);
         p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null };
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
@@ -883,6 +984,33 @@ export class World {
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
         break;
       }
+      case 'shuriken': {
+        // Razor Shuriken: one from you and one from each of your Shadows, all at the cursor.
+        p.facing = a;
+        p.castLock = 0.12;
+        const group = { hit: new Set() };
+        const from = [{ x: p.x, z: p.z, ang: a }];
+        for (const s of this.shadows) {
+          if (s.pid !== this.cur.pid) continue;
+          let sa = Math.atan2(z - s.z, x - s.x);
+          if (!Number.isFinite(sa) || dist(x, z, s.x, s.z) < 0.3) sa = a;
+          s.facing = sa;
+          s.throwT = 0.25;
+          from.push({ x: s.x, z: s.z, ang: sa });
+        }
+        const width = (def.width || 1) * (m[slot + 'Radius'] || 1);
+        for (const f of from) {
+          const c = Math.cos(f.ang), sn = Math.sin(f.ang);
+          this.projectiles.push({
+            id: this.nextId++, owner: 'player', kind: 'shuriken', slot, pid: this.cur.pid,
+            x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
+            radius: width / 2, dmg, group, hitSet: new Set(), repeat: def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
+            parryable: false, reflected: false, life: range / def.speed, dead: false,
+          });
+        }
+        this.emit('cast', { slot, fx: 'shuriken', x: p.x, z: p.z, dir: a, count: from.length });
+        break;
+      }
       case 'orb': {
         // Frozen Orb: drifts to the cursor (see stepOrb), then shatters.
         p.facing = a;
@@ -914,6 +1042,7 @@ export class World {
         p.moveTarget = null;
         p.autoAcquire = true;
         if (def.gap) {
+          if (slot === 'r' && m.rShadow) this.addShadow('r', p.x, p.z, Math.atan2(target.z - p.z, target.x - p.x));
           // Jump next to the target, then strike on arrival.
           const ta = Math.atan2(p.z - target.z, p.x - target.x);
           const stand = target.radius + p.radius + 0.4;
@@ -2133,12 +2262,16 @@ export class World {
       dmg *= this.critMultiplier(opts.critBonus || 0);
       crit = true;
     }
-    dmg *= this.gapScale(e.level).dealt;
-    if (this.mods.lowHpDmg > 0 && p.hp < p.stats.maxHp * 0.5) dmg *= 1 + this.mods.lowHpDmg;
     const stunned = e.state === 'stunned';
-    if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
-    if (e.vulnT > 0) dmg *= 1 + e.vuln;
+    if (!opts.raw) {
+      // (raw: already-final damage, like a Death Mark going off, is not scaled again)
+      dmg *= this.gapScale(e.level).dealt;
+      if (this.mods.lowHpDmg > 0 && p.hp < p.stats.maxHp * 0.5) dmg *= 1 + this.mods.lowHpDmg;
+      if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
+      if (e.vulnT > 0) dmg *= 1 + e.vuln;
+    }
     dmg = Math.max(1, Math.round(dmg));
+    if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
     if (e.home && !e.aggro && dist(e.x, e.z, e.home.x, e.home.z) < CONFIG.LEASH_RANGE) {
@@ -2238,6 +2371,13 @@ export class World {
       if (e.vulnT > 0) e.vulnT -= dt;
       if (e.slowT > 0) e.slowT -= dt;
       if (e.tauntT > 0) e.tauntT -= dt;
+      if (e.markT > 0) {
+        e.markT -= dt;
+        if (e.markT <= 0) {
+          this.popMark(e);
+          if (e.dead) continue;
+        }
+      }
       if (e.bleedT > 0) {
         e.bleedT -= dt;
         e.bleedAcc += dt;
@@ -2434,6 +2574,10 @@ export class World {
         this.stepOrb(pr, d);
         continue;
       }
+      if (pr.kind === 'shuriken') {
+        this.stepShuriken(pr, d);
+        continue;
+      }
       if (pr.targetId != null) {
         // Basic-attack shots curve toward their target so they do not miss.
         const t = this.enemyById(pr.targetId);
@@ -2584,6 +2728,7 @@ inTown() {
     this.loot = [];
     this.telegraphs = [];
     this.zones = [];
+    this.shadows = [];
     this.delayed = [];
     this.slowT = 0;
     const gate = map.portals.find((g) => g.to === from);
@@ -2649,6 +2794,7 @@ inTown() {
     this.loot = [];
     this.telegraphs = [];
     this.zones = [];
+    this.shadows = [];
     this.delayed = [];
     this.camps = [];
   }
@@ -2896,6 +3042,7 @@ inTown() {
       this.stepPlayer(dt);
       this.stepDelayed(dt);
       this.stepZones(dt);
+      this.stepShadows(dt);
       this.stepEnemies(edt);
       this.collide(dt);
       this.stepProjectiles(dt, edt);
@@ -2919,6 +3066,7 @@ inTown() {
     each(() => this.stepPlayer(dt));
     this.byOwner(this.delayed, (list) => { this.delayed = list; this.stepDelayed(dt); return this.delayed; }, (all) => (this.delayed = all));
     this.byOwner(this.zones, (list) => { this.zones = list; this.stepZones(dt); return this.zones; }, (all) => (this.zones = all));
+    this.stepShadows(dt);
     this.stepEnemies(edt);
     this.use(lead);
     each(() => this.collide(dt));

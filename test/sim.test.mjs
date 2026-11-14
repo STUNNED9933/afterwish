@@ -1000,7 +1000,7 @@ import { makeRng } from '../src/sim/rng.js';
   const { w, p } = setup();
   check('Shadowdancer: W becomes Starglass Kunai', w.kit.w.name === 'Starglass Kunai' && CLASSES.rogue.abilities.w.name === 'Fan of Knives');
   check('Last Rites (no more League names on the Rogue R)', CLASSES.rogue.abilities.r.name === 'Last Rites');
-  check('Assassin keeps Fan of Knives', setup({}, 'assassin').w.kit.w.name === 'Fan of Knives');
+  { const k = setup({}, 'assassin').w.kit; check('Assassin: Q, W and E become Shadowstrike, Death Lotus and Ambush', k.q.name === 'Shadowstrike' && k.w.name === 'Death Lotus' && k.e.name === 'Ambush' && k.r.name === 'Last Rites'); }
   // Nightstep leaves a Shadow; E again swaps with it, once.
   cast(w, 'e', 7, 0); run(w, 0.3);
   const sh = w.shadows.find((x) => x.src === 'e');
@@ -1048,9 +1048,13 @@ import { makeRng } from '../src/sim/rng.js';
     const e1 = dummy(w3, 2), e2 = dummy(w3, -8, 5);
     w3.addShadow('e', -7, 4, 0);
     w3.events.length = 0;
-    cast(w3, 'q', 2, 0);
-    check('Shadow Slash: a Mercy Stroke is copied by your Shadow on the enemy nearest it', e2.hp < 1e9 && w3.events.some((ev) => ev.type === 'shadowSlash'));
-    run(w3, 0.2); // let Mercy Stroke's cast finish
+    cast(w3, 'q', 4, 0); run(w3, 0.2); // Veilstep toward the dummy
+    check('Veilstep: a short untouchable slip that leaves an afterimage and Veils you', w3.shadows.some((x) => x.src === 'q' && Math.abs(x.x) < 0.5) && p3.x > 2.5 && p3.veilT > 4);
+    w3.events.length = 0;
+    w3.basicAttack(e1);
+    const knives = w3.events.filter((ev) => ev.type === 'shadowSlash' && ev.veil);
+    check('Veiled: each afterimage throws a knife at your target with every basic attack', knives.length === 2 && knives.every((k) => k.tx === e1.x), knives.length + ' knives');
+    p3.veilT = 0;
     p3.x = -3; p3.z = 0;
     cast(w3, 'r', 2, 0);
     check('Lord of Shadows: Death Mark leaves a Shadow where you leapt from', w3.shadows.some((x) => x.src === 'r' && Math.abs(x.x + 3) < 0.5));
@@ -1949,6 +1953,86 @@ import { makeRng } from '../src/sim/rng.js';
     friend.loadMapMirror('town');
     applySnapshot(friend, JSON.parse(JSON.stringify(makeSnapshot(w, 1, {}))));
     check('co-op: a friend gets the same rift map and its progress', friend.map.id === 'rift' && friend.map.riftTheme === w.rift.theme && friend.obstacles.length === w.obstacles.length && friend.rift.need === w.rift.need);
+  }
+}
+// --- 0.27: rogue subclasses get their own Q, W and E -----------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const setup = (spec, talents = {}) => {
+    const w = new World({ seed: 12, cls: 'rogue', save: Object.assign(geared('rogue', 60, 2), { spec, talents }) });
+    const p = w.player; w.wave.phase = 'explore';
+    w.recalcStats(); p.hp = p.stats.maxHp; p.x = p.px = 0; p.z = p.pz = 0;
+    for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+    w.enemies = []; w.events.length = 0;
+    return { w, p };
+  };
+  const dummy = (w, x, z = 0, hp = 1e9) => { const e = w.spawnEnemy('grunt', { x, z, level: w.player.level }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = hp; e.x = e.px = x; e.z = e.pz = z; e.facing = Math.PI; return e; };
+  const cast = (w, slot, x, z) => { w.command({ type: 'cast', slot, x, z }); w.runCommands(); };
+  const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+  const angDiff = (a, b) => { let d = (a - b) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; };
+  // Shadowdancer: Starglass Kunai reach much further and seek the enemy nearest the cursor.
+  {
+    const { w } = setup('shadowdancer');
+    const far = dummy(w, 14, 3);
+    cast(w, 'w', 12, -1); // the cursor is near it, not on it
+    run(w, 1);
+    check('Starglass Kunai: seeks the enemy nearest your cursor, 14 m away', far.hp < far.maxHp);
+    const { w: w2 } = setup('shadowdancer');
+    const e = dummy(w2, 9, 0);
+    w2.addShadow('e', 0, 9, 0);
+    w2.player.veilT = 3;
+    cast(w2, 'w', 9, 0); run(w2, 1);
+    const hits = w2.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === e.id).map((ev) => ev.amount);
+    check('Starglass Kunai: while Veiled, the second kunai deals full damage', hits.length === 2 && Math.abs(hits[1] / hits[0] - 1) < 0.02, `${hits}`);
+  }
+  // Assassin: Shadowstrike, Death Lotus, Ambush and Clean Kill.
+  {
+    const { w, p } = setup('assassin');
+    const e = dummy(w, 6, 0);
+    cast(w, 'q', 6, 0); run(w, 0.3);
+    check('Shadowstrike: leaps to an enemy 6 m away and stabs it', dist(p.x, p.z, e.x, e.z) < 2 && e.hp < e.maxHp);
+    const plain = e.maxHp - e.hp;
+    const { w: w2 } = setup('assassin');
+    const low = dummy(w2, 6, 0);
+    low.hp = low.maxHp * 0.25;
+    const before = low.hp;
+    w2.mods.critMult = 0; w2.player.stats.crit = 0;
+    w.mods.critMult = 0;
+    cast(w2, 'q', 6, 0); run(w2, 0.3);
+    const exec = w2.events.find((ev) => ev.type === 'cast' && ev.fx === 'strike');
+    check('Shadowstrike: double damage on an enemy below 30% health', exec && exec.execute && before - low.hp > 0);
+  }
+  {
+    const { w, p } = setup('assassin');
+    const e = dummy(w, 3, 0); // facing the hero (it faces -x): we are in front of it
+    cast(w, 'w', 0, 0);
+    check('Death Lotus: Exposes everything it hits', e.exposedT > 3.5);
+    run(w, 0.2); // let the spin finish
+    w.events.length = 0;
+    cast(w, 'q', 3, 0); run(w, 0.3);
+    const st = w.events.find((ev) => ev.type === 'cast' && ev.fx === 'strike');
+    check('Death Lotus: an Exposed enemy takes the from-behind bonus from the front', st && st.exposed);
+  }
+  {
+    const { w, p } = setup('assassin');
+    const e = dummy(w, 6, 0); // faces -x, toward the hero; its back is at +x
+    cast(w, 'e', 6, 0); run(w, 0.3);
+    check('Ambush: lands behind the enemy nearest the cursor, facing it', p.x > e.x && Math.abs(p.z) < 0.5 && Math.abs(angDiff(p.facing, Math.PI)) < 0.2 && p.empowerT > 0, `${p.x.toFixed(2)} vs ${e.x}`);
+  }
+  {
+    const { w, p } = setup('assassin');
+    const a = dummy(w, 2, 0, 10), b = dummy(w, -2, 0, 10);
+    p.cd.w = 5; p.cd.e = 5; p.cd.r = 20;
+    cast(w, 'q', 2, 0); run(w, 0.2);
+    check('Clean Kill: a kill brings Q, W and E straight back, but not R', a.dead && p.cd.q === 0 && p.cd.w === 0 && p.cd.e === 0 && p.cd.r > 10);
+    cast(w, 'q', -2, 0); run(w, 0.3);
+    check('Clean Kill: ...so Shadowstrike goes again at once', b.dead);
+    const { w: w2, p: p2 } = setup('shadowdancer');
+    const c = dummy(w2, 2, 0, 10);
+    p2.cd.w = 5;
+    w2.hitEnemy(c, 100, { canCrit: false, source: 'basic' });
+    check('Clean Kill: only the Assassin has it', c.dead && p2.cd.w > 4);
   }
 }
 // --- 0.26.1: lighter co-op updates --------------------------------------------------

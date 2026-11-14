@@ -52,6 +52,7 @@ export const ICONS = {
   deadeye: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
   frenzy: '<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M9 14l2 2 4-5"/>',
   bastion: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8 12h8M12 8v8"/>',
+  veil: '<path d="M5 19c2-7 5-11 9-13"/><path d="M10 20c1.5-5 4-8 8-10" opacity="0.55"/><circle cx="16" cy="6" r="2"/><path d="M3 12h4M4 16h3" opacity="0.55"/>',
   icebolt: '<path d="M12 2l3 7-3 13-3-13z"/><path d="M5 7l3 3M19 7l-3 3M4 14h4M20 14h-4"/>',
 };
 // Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
@@ -431,13 +432,14 @@ export class Hud {
       const frostMax = world.mods.frostMax || 6;
       const status = e.state === 'stunned' ? (e.frostLock > 0.3 ? 'frozen' : 'stunned')
         : e.vulnT > 0 ? (e.brittle ? 'brittle' : 'sundered')
+        : e.exposedT > 0 ? 'exposed'
         : burning ? 'burning'
         : e.frostT > 0 && e.frostStacks > 0 ? 'hoarfrost'
         : e.bleedT > 0 ? 'bleeding'
         : e.slowT > 0 ? 'slowed' : '';
       const label = status === 'burning' && e.burnStacks > 1 ? `burning ×${e.burnStacks}` : status === 'hoarfrost' ? `hoarfrost ${e.frostStacks}/${frostMax}` : status;
       if (bar.status !== status) {
-        bar.el.classList.remove('stunned', 'sundered', 'bleeding', 'slowed', 'burning', 'hoarfrost', 'brittle', 'frozen');
+        bar.el.classList.remove('stunned', 'sundered', 'bleeding', 'slowed', 'burning', 'hoarfrost', 'brittle', 'frozen', 'exposed');
         if (status) bar.el.classList.add(status);
         bar.status = status;
       }

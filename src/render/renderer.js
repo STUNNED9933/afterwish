@@ -740,7 +740,8 @@ export class Renderer {
         } else if (fx === 'strike') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.14;
-          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.exposed ? 0xffe27a : 0xdff4ff, from: 2.2, to: 0.4, dur: 0.22, opacity: 1 });
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.execute ? 0xff4a5c : ev.exposed ? 0xffe27a : 0xdff4ff, from: ev.execute ? 3 : 2.2, to: 0.4, dur: 0.22, opacity: 1 });
+          if (ev.execute) this.burst(ev.x, 1.2, ev.z, { count: 18, color: 0xff4a5c, speed: 9, up: 4, life: 0.4 });
           this.burst(ev.x, 1.2, ev.z, { count: ev.exposed ? 22 : 10, color: ev.exposed ? 0xffe27a : 0xdff4ff, speed: 8, up: 4, life: 0.4 });
           if (ev.exposed) this.shake = Math.max(this.shake, 0.3);
         } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb' || fx === 'kunai') {
@@ -786,10 +787,21 @@ export class Renderer {
       case 'shadowSlash': {
         const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
         const len = Math.hypot(ev.tx - ev.x, ev.tz - ev.z);
-        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir, color: 0xb07cff, sx: Math.max(1, len), sz: 0.5, dur: 0.25, opacity: 0.9 });
-        this.burst(ev.tx, 1.2, ev.tz, { count: 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.35 });
+        // Veiled knives are thin and quick (they come with every basic attack); a Mirrored Cut is broad.
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir, color: 0xb07cff, sx: Math.max(1, len), sz: ev.veil ? 0.18 : 0.5, dur: ev.veil ? 0.14 : 0.25, opacity: 0.9 });
+        this.burst(ev.tx, 1.2, ev.tz, { count: ev.veil ? 4 : 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.3 });
         break;
       }
+      case 'veil':
+        // Veilstep: a swirl of violet as you come out of it.
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: 0xb07cff, from: 0.5, to: 2.4, dur: 0.35, opacity: 0.9 });
+        this.burst(ev.x, 1.1, ev.z, { count: 16, color: 0xd7b8ff, speed: 5, up: 3, life: 0.45 });
+        break;
+      case 'ambush':
+        // Ambush: arriving at its back.
+        this.burst(ev.x, 1.1, ev.z, { count: 14, color: 0x2a1840, speed: 6, up: 2, life: 0.4 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffe27a, from: 1.8, to: 0.5, dur: 0.25, opacity: 0.9 });
+        break;
       case 'shatter':
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xffffff, from: 0.6, to: ev.radius * 1.1, dur: 0.35, opacity: 1 });
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fd8ff, from: ev.radius, to: ev.radius, dur: 0.45, opacity: 0.35 });

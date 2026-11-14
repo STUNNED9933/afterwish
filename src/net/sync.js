@@ -27,7 +27,7 @@ export function eventFor(ev, pid) {
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
 // What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
 const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius'];
-const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead'];
+const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue'];
 const pack = (o, keys) => keys.map((k) => r2(o[k]));

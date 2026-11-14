@@ -365,6 +365,7 @@ export class World {
       swingCount: 0,
       empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
       empowerMult: 1,
+      veilT: 0, // > 0 while Veiled (Shadowdancer's Veilstep)
       slipT: 0,
       rushT: 0, // > 0 while Evasive Roll's attack speed bonus lasts
       rushAs: 0,
@@ -872,6 +873,17 @@ export class World {
   stepKunai(pr, dt) {
     pr.px = pr.x;
     pr.pz = pr.z;
+    if (pr.targetId != null) {
+      // Follows its target (aimed at the enemy nearest the cursor when thrown).
+      const t = this.enemyById(pr.targetId);
+      if (t && !t.dead) {
+        const d = dist(t.x, t.z, pr.x, pr.z);
+        if (d > 0.05) {
+          pr.vx = ((t.x - pr.x) / d) * pr.speed;
+          pr.vz = ((t.z - pr.z) / d) * pr.speed;
+        }
+      } else pr.targetId = null;
+    }
     pr.x += pr.vx * dt;
     pr.z += pr.vz * dt;
     pr.life -= dt;
@@ -982,15 +994,19 @@ export class World {
     const def = this.kit[slot];
     const toHero = dAtan2(p.z - target.z, p.x - target.x);
     // "Exposed" = you are behind it, or it is stunned (a parry sets this up).
-    const exposed = target.state === 'stunned' || Math.abs(angDiff(target.facing, toHero)) > 1.9;
+    const marked = target.exposedT > 0 && target.exposedPid === this.cur.pid && !target.def.boss; // Death Lotus (a boss keeps its guard)
+    const exposed = target.state === 'stunned' || marked || Math.abs(angDiff(target.facing, toHero)) > 1.9;
     const m = this.mods;
-    const bonus = def.behind && exposed ? 1 + def.behind + (m[slot + 'Behind'] || 0) : 1;
+    let bonus = def.behind && exposed ? 1 + def.behind + (m[slot + 'Behind'] || 0) : 1;
+    // Shadowstrike (Assassin): double damage on an enemy already below 30% health.
+    const execute = def.execute > 0 && !target.def.boss && target.hp < target.maxHp * def.execute;
+    if (execute) bonus *= 2;
     if (m[slot + 'Bleed'] > 0) {
       target.bleedT = 3;
       target.bleedDps = (p.stats.ad * m[slot + 'Bleed']) / 3;
     }
     p.facing = dAtan2(target.z - p.z, target.x - p.x);
-    this.emit('cast', { slot, fx: 'strike', x: target.x, z: target.z, exposed: bonus > 1 });
+    this.emit('cast', { slot, fx: 'strike', x: target.x, z: target.z, exposed: bonus > 1, execute });
     if (slot === 'r' && m.rMark > 0) {
       // Second Death: count everything this hero deals it for 3 seconds (this strike included).
       target.markT = 3;
@@ -1054,6 +1070,17 @@ export class World {
       });
     } else {
       this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
+      if (p.veilT > 0 && this.mods.veilCopy > 0) {
+        // Veiled (Shadowdancer): every afterimage throws a knife at the same target.
+        for (const s of this.shadows) {
+          if (s.pid !== this.cur.pid || target.dead) continue;
+          if (dist(s.x, s.z, target.x, target.z) > 18) continue;
+          s.facing = dAtan2(target.z - s.z, target.x - s.x);
+          s.throwT = 0.25;
+          this.emit('shadowSlash', { x: s.x, z: s.z, tx: target.x, tz: target.z, veil: true });
+          this.hitEnemy(target, dmg * this.mods.veilCopy, { source: 'veil' });
+        }
+      }
     }
     if (b.shot && p.hurricaneT > 0 && dmgOverride === null) {
       // Hurricane (Windrunner): every real basic attack also looses arrows at other enemies nearby.
@@ -1136,7 +1163,7 @@ export class World {
     p.atkWind = 0;
     p.parryT = 0; // casting drops the parry stance
     let dmg = this.abilityDamage(slot);
-    if (p.empowerT > 0 && slot !== 'e') {
+    if (p.empowerT > 0 && slot !== 'e' && dmg > 0) {
       // Nightstep: the next ability hits harder.
       dmg *= p.empowerMult;
       p.empowerT = 0;
@@ -1182,6 +1209,11 @@ export class World {
             e.slowT = def.slowDur || 3;
             e.slow = slow;
           }
+          if (def.expose > 0) {
+            // Death Lotus (Assassin): Exposed takes more from you, and every side of it is its back.
+            e.exposedT = def.expose;
+            e.exposedPid = this.cur.pid;
+          }
           this.hitEnemy(e, dmg, { source: slot });
           if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
             // The Warden's Call: whatever it hits fights you for a while.
@@ -1224,9 +1256,21 @@ export class World {
           this.emit('burst', { x: p.x, z: p.z, radius: 3.5 });
         }
         const len = clamp(d, def.minRange || 0, range);
-        const end = this.clampToArena(p.x + cos * len, p.z + sin * len, p.radius);
+        let end = this.clampToArena(p.x + cos * len, p.z + sin * len, p.radius);
+        let faceId = null;
+        if (def.ambush) {
+          // Ambush (Assassin): land behind the enemy nearest the cursor, facing its back.
+          const t = this.enemyNear(x, z, 3.5, range + 1);
+          if (t) {
+            const back = t.facing + Math.PI;
+            const stand = t.radius + p.radius + 0.3;
+            end = this.clampToArena(t.x + dCos(back) * stand, t.z + dSin(back) * stand, p.radius);
+            faceId = t.id;
+          }
+        }
         if (slot === 'e' && m.shadowStep) this.addShadow('e', p.x, p.z, a);
-        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null };
+        if (def.veil) this.addShadow(slot, p.x, p.z, a); // Veilstep leaves one too
+        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null, veil: def.veil || 0, faceId };
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
         break;
@@ -1316,15 +1360,22 @@ export class World {
         break;
       }
       case 'kunai': {
-        // Starglass Kunai: one from you and one from each of your afterimages, all at the cursor.
+        // Starglass Kunai: one from you and one from each of your afterimages, all at the
+        // enemy nearest the cursor (they follow it), or at the cursor with no one near it.
+        const seek = def.seek ? this.enemyNear(x, z, def.seek, range) : null;
+        const tx = seek ? seek.x : x, tz = seek ? seek.z : z;
+        if (seek) {
+          a = dAtan2(tz - p.z, tx - p.x);
+          if (!Number.isFinite(a)) a = p.facing;
+        }
         p.facing = a;
         p.castLock = 0.12;
         const group = { hit: new Set() };
         const from = [{ x: p.x, z: p.z, ang: a }];
         for (const s of this.shadows) {
           if (s.pid !== this.cur.pid) continue;
-          let sa = dAtan2(z - s.z, x - s.x);
-          if (!Number.isFinite(sa) || dist(x, z, s.x, s.z) < 0.3) sa = a;
+          let sa = dAtan2(tz - s.z, tx - s.x);
+          if (!Number.isFinite(sa) || dist(tx, tz, s.x, s.z) < 0.3) sa = a;
           s.facing = sa;
           s.throwT = 0.25;
           from.push({ x: s.x, z: s.z, ang: sa });
@@ -1335,8 +1386,9 @@ export class World {
           this.projectiles.push({
             id: this.nextId++, owner: 'player', kind: 'kunai', slot, pid: this.cur.pid,
             x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
-            radius: width / 2, dmg, group, repeat: def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
-            parryable: false, reflected: false, life: range / def.speed, dead: false,
+            radius: width / 2, dmg, group, repeat: p.veilT > 0 ? 1 : def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
+            targetId: seek ? seek.id : null, // afterimages may be further off: a homing kunai flies a little longer
+            parryable: false, reflected: false, life: (range / def.speed) * (seek ? 1.6 : 1), dead: false,
           });
         }
         this.emit('cast', { slot, fx: 'kunai', x: p.x, z: p.z, dir: a, count: from.length });
@@ -1632,6 +1684,7 @@ export class World {
     p.castLock = Math.max(0, p.castLock - dt);
     p.hurtT = Math.max(0, p.hurtT - dt);
     p.empowerT = Math.max(0, p.empowerT - dt);
+    p.veilT = Math.max(0, p.veilT - dt);
     p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
     // Berserker: Bloodied while below half health (attack speed needs a stat rebuild when it flips).
     const bloodied = !!this.mods.bloodRage && p.hp < p.stats.maxHp * 0.5;
@@ -1744,6 +1797,18 @@ export class World {
         if (ds.empower) {
           p.empowerT = ds.empower.time;
           p.empowerMult = ds.empower.mult + (this.mods[ds.slot + 'Empower'] || 0);
+        }
+        if (ds.veil) {
+          p.veilT = ds.veil + (this.mods.veilTime || 0);
+          this.emit('veil', { x: p.x, z: p.z, time: p.veilT });
+        }
+        if (ds.faceId != null) {
+          const t = this.enemyById(ds.faceId);
+          if (t) {
+            p.facing = dAtan2(t.z - p.z, t.x - p.x);
+            p.targetId = t.id;
+            this.emit('ambush', { x: p.x, z: p.z, id: t.id });
+          }
         }
         if (ds.strike) {
           const t = this.enemyById(ds.strike.id);
@@ -3301,6 +3366,7 @@ export class World {
       if (this.mods.lowHpDmg > 0 && p.hp < p.stats.maxHp * 0.5) dmg *= 1 + this.mods.lowHpDmg;
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
+      if (e.exposedT > 0 && e.exposedPid === this.cur.pid) dmg *= 1.15;
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
       // Nightfang: ability crits cut deeper and bring Nightstep back sooner.
@@ -3415,6 +3481,15 @@ export class World {
       p.cd[source] = 0;
       this.emit('cdReset', { slot: source });
     }
+    if (m.killReset && source !== 'bleed' && source !== 'burn' && source !== 'mark') {
+      // Clean Kill (Assassin): a kill brings Q, W and E straight back (not R).
+      for (const k of ['q', 'w', 'e']) {
+        if (p.cd[k] > 0) {
+          p.cd[k] = 0;
+          this.emit('cdReset', { slot: k });
+        }
+      }
+    }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
     if (e.elite && e.elite.includes('volatile')) {
@@ -3474,6 +3549,7 @@ export class World {
       if (e.vulnT > 0) e.vulnT -= dt;
       if (e.slowT > 0) e.slowT -= dt;
       if (e.tauntT > 0) e.tauntT -= dt;
+      if (e.exposedT > 0) e.exposedT -= dt;
       if (e.markT > 0) {
         e.markT -= dt;
         if (e.markT <= 0) {

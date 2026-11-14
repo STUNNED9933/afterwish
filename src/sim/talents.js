@@ -124,36 +124,64 @@ export const SPECS = {
   // -------------------------------------------------------------------- Rogue
   assassin: {
     cls: 'rogue', name: 'Assassin',
-    blurb: 'Clears the road one throat at a time. Brutal Mercy Strokes, heavier crits, and Last Rites that chains from kill to kill: the subclass for farming.',
+    blurb: 'Clears the road one throat at a time. Every kill brings Q, W and E straight back, so you jump from enemy to enemy faster than they can turn round: the subclass for farming. Weaker on a boss, where nothing dies until the end.',
+    perk: {
+      name: 'Clean Kill',
+      desc: 'Killing an enemy resets Shadowstrike, Death Lotus and Ambush (not Last Rites). Mercy Stroke becomes Shadowstrike, Fan of Knives becomes Death Lotus and Nightstep becomes Ambush.',
+      apply: (m) => { m.killReset = true; },
+    },
+    kit: {
+      q: {
+        key: 'Q', name: 'Shadowstrike', type: 'strike', icon: 'strike', unlock: 1, cd: 4, range: 7.5, gap: true, behind: 0.6, execute: 0.3,
+        dmg: (s, lvl) => 1.9 * s.ad + 12 + 5 * lvl,
+        desc: 'Leap to the enemy nearest your cursor and stab it. 60% more damage from behind, on a stunned enemy or on one Death Lotus has Exposed, and double damage on an enemy below 30% health (not bosses).',
+      },
+      w: {
+        key: 'W', name: 'Death Lotus', type: 'nova', icon: 'w', unlock: 2, cd: 7, radius: 5.5, knockback: 0, bleed: 0.8, expose: 4,
+        dmg: (s, lvl) => 1.0 * s.ad + 10 + 4 * lvl,
+        desc: 'Spin a ring of knives around you. Everything hit bleeds for 80% attack damage over 3 seconds and is Exposed for 4 seconds: it takes 15% more damage from you, and every side of it counts as its back (bosses keep their guard: only the 15%).',
+      },
+      e: {
+        key: 'E', name: 'Ambush', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 9, minRange: 2, duration: 0.1, width: 0, ambush: true,
+        empower: { mult: 1.35, time: 3 },
+        dmg: () => 0,
+        desc: 'Blink behind the enemy nearest your cursor (or toward your cursor, with no one there), facing its back. The next ability you use within 3 seconds deals 35% more.',
+      },
+    },
     talents: [
       { id: 'as_eye', row: 'minor', name: 'Find the Gap', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'as_deadly', row: 'minor', name: 'Twist the Knife', max: 5, desc: (r) => `Crits deal a further ${4 * r}% damage.`, apply: (m, r) => { m.critMult += 0.04 * r; } },
       { id: 'as_might', row: 'minor', name: 'Honed Edge', max: 5, desc: (r) => `+${2 * r}% attack damage.`, apply: (m, r) => { m.adPct += 0.02 * r; } },
-      { id: 'as_back', row: 'major', name: 'Cheap Shot', max: 3, desc: (r) => `Mercy Stroke deals a further ${20 * r}% from behind or on a stunned enemy.`, apply: (m, r) => { m.qBehind += 0.2 * r; } },
+      { id: 'as_back', row: 'major', name: 'Cheap Shot', max: 3, desc: (r) => `Shadowstrike deals a further ${20 * r}% from behind, on a stunned enemy or on an Exposed one.`, apply: (m, r) => { m.qBehind += 0.2 * r; } },
       { id: 'as_mark', row: 'major', name: 'Contract', max: 3, desc: (r) => `Last Rites deals ${10 * r}% more damage and its cooldown is ${8 * r}% shorter.`, apply: (m, r) => { m.rDmg *= 1 + 0.1 * r; m.rCd *= 1 - 0.08 * r; } },
       { id: 'as_cap', row: 'capstone', name: 'Chain Kill', max: 1, desc: () => 'A Last Rites kill resets its cooldown completely.', apply: (m) => { m.rResetOnKill = true; } },
     ],
   },
   shadowdancer: {
     cls: 'rogue', name: 'Shadowdancer',
-    blurb: 'Fights from two places at once. Nightstep leaves an afterimage you can trade places with, every afterimage throws your kunai, and Last Rites makes a boss die twice over. Built for long fights against one big enemy.',
+    blurb: 'Fights from three places at once. Slip about leaving afterimages, and every one of them throws your kunai and copies your attacks. Never still, never where the blow lands: built for long fights against one big enemy.',
     perk: {
       name: 'Afterimage',
-      desc: 'Nightstep leaves an afterimage of you where you stood for 5 seconds: press E again to trade places with it. Fan of Knives becomes Starglass Kunai, and every afterimage throws one too, aimed at your cursor. A kunai stops at the first enemy it hits; a second one on the same enemy deals 60%.',
-      apply: (m) => { m.shadowStep = true; m.shadowDur = Math.max(m.shadowDur, 5); },
+      desc: 'Veilstep and Nightstep leave an afterimage of you where you stood for 5 seconds; press E again to trade places with Nightstep\'s. Mercy Stroke becomes Veilstep and Fan of Knives becomes Starglass Kunai: every afterimage throws one too, at the same enemy.',
+      apply: (m) => { m.shadowStep = true; m.shadowDur = Math.max(m.shadowDur, 5); m.veilCopy = Math.max(m.veilCopy, 0.5); },
     },
     kit: {
+      q: {
+        key: 'Q', name: 'Veilstep', type: 'dash', icon: 'veil', unlock: 1, cd: 6, range: 5, minRange: 3, duration: 0.09, width: 1.2, veil: 4,
+        dmg: (s, lvl) => 1.2 * s.ad + 10 + 4 * lvl,
+        desc: 'Slip a short way toward your cursor, untouchable, cutting whatever you pass through and leaving an afterimage where you stood. For 4 seconds you are Veiled: each afterimage throws a knife at your target whenever you land a basic attack (50% of its damage), and Starglass Kunai thrown while Veiled lose their 60% limit on a second hit.',
+      },
       w: {
-        key: 'W', name: 'Starglass Kunai', type: 'kunai', icon: 'kunai', unlock: 2, cd: 7, range: 11, speed: 26, width: 1.1, repeat: 0.6,
-        dmg: (s, lvl) => 1.05 * s.ad + 10 + 4 * lvl,
-        desc: 'Throw a kunai of starglass toward your cursor. It stops in the first enemy it hits. Each of your afterimages throws one too, at the same spot, so aim where they cross: a second kunai on the same enemy deals 60%.',
+        key: 'W', name: 'Starglass Kunai', type: 'kunai', icon: 'kunai', unlock: 2, cd: 7, range: 16, speed: 34, width: 1.1, repeat: 0.6, seek: 7,
+        dmg: (s, lvl) => 1.35 * s.ad + 12 + 5 * lvl,
+        desc: 'Throw a kunai of starglass at the enemy nearest your cursor (up to 16 m away); it follows its target and stops in the first enemy it hits. Each of your afterimages throws one too, at the same enemy: a second kunai on it deals 60% (100% while Veiled).',
       },
     },
     talents: [
       { id: 'sd_fleet', row: 'minor', name: 'Soft Shoes', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'sd_hands', row: 'minor', name: 'Flurry', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
       { id: 'sd_leech', row: 'minor', name: 'Slow to Fade', max: 5, desc: (r) => `Afterimages last ${(0.4 * r).toFixed(1)} seconds longer and Starglass Kunai deals ${4 * r}% more.`, apply: (m, r) => { m.shadowDur += 0.4 * r; m.wDmg *= 1 + 0.04 * r; } },
-      { id: 'sd_fan', row: 'major', name: 'Mirrored Cut', max: 3, desc: (r) => `When you Mercy Stroke, each afterimage cuts the enemy nearest it for ${15 * r + 15}% of Mercy Stroke's damage.`, apply: (m, r) => { m.shadowSlash = Math.max(m.shadowSlash, 0.15 * r + 0.15); } },
+      { id: 'sd_fan', row: 'major', name: 'Mirrored Cut', max: 3, desc: (r) => `While Veiled, afterimages' knives deal a further ${10 * r}% of your basic attack, and Veil lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.veilCopy += 0.1 * r; m.veilTime += 0.5 * r; } },
       { id: 'sd_bleed', row: 'major', name: 'Second Death', max: 3, desc: (r) => `Nothing here stays down, so make it fall twice. Last Rites marks its target, and 3 seconds later it takes ${10 * r + 5}% of all the damage you dealt it in that time, again.`, apply: (m, r) => { m.rMark = Math.max(m.rMark, 0.1 * r + 0.05); } },
       { id: 'sd_cap', row: 'capstone', name: 'Crowd of One', max: 1, desc: () => 'Last Rites leaves an afterimage where you leapt from, Second Death repeats a further 15%, and Nightstep comes back 20% sooner.', apply: (m) => { m.rShadow = true; m.rMark += 0.15; m.eCd *= 0.8; } },
     ],

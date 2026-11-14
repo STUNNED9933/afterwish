@@ -106,7 +106,8 @@ body.slowmo #slowtint { opacity: 1; }
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
   font: 600 11px var(--body); letter-spacing: 0.14em; color: #ffe27a; text-shadow: 0 1px 2px #000; display: none;
 }
-.ebar.stunned .tag, .ebar.sundered .tag, .ebar.bleeding .tag, .ebar.slowed .tag, .ebar.burning .tag, .ebar.hoarfrost .tag, .ebar.brittle .tag, .ebar.frozen .tag { display: block; }
+.ebar.stunned .tag, .ebar.sundered .tag, .ebar.bleeding .tag, .ebar.slowed .tag, .ebar.burning .tag, .ebar.hoarfrost .tag, .ebar.brittle .tag, .ebar.frozen .tag, .ebar.exposed .tag { display: block; }
+.ebar.exposed .tag { color: #ffe27a; }
 .ebar.burning .tag { color: #ffab5c; }
 .ebar.hoarfrost .tag { color: #a9e8ff; }
 .ebar.brittle .tag { color: #c9f2ff; }

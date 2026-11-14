@@ -150,6 +150,33 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Rogue subclasses get their own Q, W and E (0.27)
+
+- **Shadowdancer** (the boss killer, never standing still):
+  - **Veilstep** (Q, replaces Mercy Stroke): slip 3 to 5 m toward the cursor,
+    untouchable, cutting whatever you pass through, and leave an afterimage.
+    For 4 seconds you are **Veiled**: every basic attack you land makes each
+    afterimage throw a knife at your target for 50% of it, and Starglass
+    Kunai lose their 60% limit on a second hit.
+  - **Starglass Kunai** reach 16 m (was 11), fly faster, and seek the enemy
+    nearest your cursor; your afterimages' kunai go for the same enemy.
+  - **Mirrored Cut** now adds 10% per rank to the afterimages' knives and
+    half a second of Veil.
+- **Assassin** (the farmer, enemy to enemy):
+  - **Clean Kill** (trait): a kill resets Q, W and E (not R).
+  - **Shadowstrike** (Q): leap up to 7.5 m to the enemy nearest the cursor;
+    60% more from behind, on a stunned or Exposed enemy; double damage below
+    30% health (not bosses).
+  - **Death Lotus** (W): bleed and Expose everything around you for 4 s:
+    +15% damage from you, and every side counts as its back (bosses keep
+    their guard: only the 15%).
+  - **Ambush** (E): blink behind the enemy nearest the cursor, facing its
+    back; the next ability deals 35% more.
+- Balance (simulated, level 40 to 100, bosses with 6x health): boss kill
+  times are within about 10% of 0.26 for both; Shadowdancer still kills
+  bosses about a quarter faster, and the Assassin now farms about 15%
+  faster than before (a bot that does not even chase resets).
+
 ### After The Unmade: world tiers, elites, Echo Rifts, Wishborne (0.26)
 
 - **0.26.1, smoother co-op:** the host now sends each friend only what changed

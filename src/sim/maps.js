@@ -91,10 +91,11 @@ function hash(text) {
 }
 
 /** Build the full layout of a map. */
-export function buildMap(id) {
-  const def = MAPS[id] || MAPS.town;
-  if (!MAPS[id]) id = 'town';
-  const rng = makeRng(hash(id));
+export function buildMap(id, custom = null) {
+  // `custom` (Echo Rifts): { def, key } builds a map from a made-up description instead.
+  const def = custom ? custom.def : MAPS[id] || MAPS.town;
+  if (!custom && !MAPS[id]) id = 'town';
+  const rng = makeRng(hash(custom ? custom.key : id));
   const R = def.radius;
   const far = (x, z, list, pad = 0) => list.every((o) => dHypot(o.x - x, o.z - z) >= o.r + pad);
 
@@ -156,7 +157,7 @@ export function buildMap(id) {
   // Waystones (out in the world): one by the entrance, where fallen teammates wake up, and one
   // on the far side. Stand on one to jump to the other (just you), or travel on like the Waygate.
   const waystones = [];
-  if (def.theme !== 'town' && portals.length) {
+  if (def.theme !== 'town' && portals.length && !custom) {
     const g = portals[0];
     const d = dHypot(g.x, g.z);
     waystones.push({ x: g.x * (1 - 10 / d) + (g.z / d) * 4, z: g.z * (1 - 10 / d) - (g.x / d) * 4, r: 1.5, name: 'Entrance waystone' });
@@ -219,4 +220,23 @@ export function buildMap(id) {
     level: def.level, levelMax: def.level + def.levelSpan,
     portals, obstacles, spawns, waygate, waystones,
   };
+}
+
+/**
+ * An Echo Rift (0.26): one of the maps out in the world, rearranged by `seed`, with about twice
+ * as many enemies, no boss of its own (the rift's guardian comes when enough have fallen) and a
+ * single way out, back to Haven.
+ */
+export function buildRiftMap(theme, seed) {
+  const base = MAPS[theme] || MAPS.greenwood;
+  const def = Object.assign({}, base, {
+    name: 'Echo Rift',
+    spawns: Math.round(base.spawns * 1.9),
+    boss: null,
+    portals: [{ to: 'town', angle: base.portals[0].angle }],
+  });
+  const map = buildMap('rift', { def, key: `rift:${theme}:${seed}` });
+  map.id = 'rift';
+  map.riftTheme = theme;
+  return map;
 }

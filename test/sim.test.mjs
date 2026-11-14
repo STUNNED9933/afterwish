@@ -1825,4 +1825,130 @@ import { makeRng } from '../src/sim/rng.js';
     check('co-op: an early update glides on from the drawn spot (no jump back)', Math.abs(e2.px - drawn) < 1e-9);
   }
 }
+
+// --- 0.26: world tiers, elites, Echo Rifts, Wishborne ------------------------------
+{
+  console.log('--- 0.26');
+  const { TIERS, AFFIXES, riftScale, wishNeed } = await import('../src/sim/endgame.js');
+  const { buildRiftMap } = await import('../src/sim/maps.js');
+  const run = (w, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) w.step(CONFIG.TICK); };
+  const hero = (extra = {}) => new World({ seed: 11, cls: 'archer', mode: 'explore', save: Object.assign({ v: 2, cls: 'archer', level: 100 }, extra) });
+
+  // World tiers
+  {
+    const w = hero();
+    check('tiers: a new hero is on tier I with only tier I open', w.player.worldTier === 1 && w.player.tierMax === 1);
+    w.loadMap('sanctum', 'town');
+    const boss = w.enemies.find((e) => e.type === 'boss3');
+    w.killEnemy(boss, 'basic');
+    check('tiers: beating The Unmade opens tier II', w.player.tierMax === 2 && w.events.some((e) => e.type === 'tierUnlocked' && e.tier === 2));
+    w.command({ type: 'setTier', tier: 2 }); w.runCommands();
+    check('tiers: the tier can only be changed in Haven', w.player.worldTier === 1);
+    w.loadMap('town', 'sanctum');
+    w.command({ type: 'setTier', tier: 5 }); w.runCommands();
+    check('tiers: you cannot pick a tier you have not opened', w.player.worldTier === 2);
+    const base = hero(); base.loadMap('greenwood', 'town');
+    w.loadMap('greenwood', 'town');
+    const a = base.enemies.find((e) => e.type === 'grunt' && !e.elite), b = w.enemies.find((e) => e.type === 'grunt' && !e.elite);
+    check('tiers: on tier II every map is level 100 and much tougher', w.enemies.every((e) => e.level === 100) && b.maxHp > a.maxHp * 10, `${a.level}/${a.maxHp} -> ${b.level}/${b.maxHp}`);
+    check('tiers: the zone line says so', /Tier II/.test(w.zone().sub));
+    check('tiers: saved with the hero', w.toSave().tierMax === 2 && w.toSave().worldTier === 2);
+  }
+  // Elites
+  {
+    const w = hero({ tierMax: 5, worldTier: 5 });
+    let elites = [];
+    for (const m of ['greenwood', 'fen', 'ridge', 'frost', 'dunes']) { w.loadMap(m, 'town'); elites = elites.concat(w.enemies.filter((e) => e.elite)); }
+    check('elites: they show up on high tiers, with that tier\'s number of modifiers', elites.length >= 5 && elites.every((e) => e.elite.length === TIERS[5].affixes), String(elites.length));
+    const e = w.spawnEnemy('grunt', { x: 6, z: 0, level: 100 });
+    const hp0 = e.maxHp;
+    w.makeElite(e, 0);
+    e.elite = ['shielded', 'vampiric', 'reflective', 'frostbound'];
+    e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
+    check('elites: more health than a normal one', e.maxHp > hp0 * 2.5);
+    const p = w.player;
+    w.hitEnemy(e, 100, { canCrit: false, raw: true });
+    check('Shielded: the shield takes damage first', e.hp === e.maxHp && e.shield === e.maxShield - 100);
+    p.parryT = 0.2; p.parryAge = 0.05;
+    w.hitPlayer(50, { parryable: true, src: e });
+    check('Shielded: parrying its attack shatters the shield', e.shield === 0);
+    e.hp = e.maxHp * 0.5; p.parryT = 0; p.hp = p.stats.maxHp;
+    w.hitPlayer(50, { parryable: true, src: e });
+    check('Vampiric: it heals when it hits you; Frostbound: you are chilled', e.hp > e.maxHp * 0.5 && p.chillT > 1.5);
+    const hp1 = p.hp;
+    w.hitEnemy(e, 500, { basic: true, canCrit: false });
+    const afterBasic = p.hp;
+    w.hitEnemy(e, 500, { source: 'q', canCrit: false });
+    check('Reflective: basic attacks hurt you a little, abilities do not', afterBasic < hp1 && p.hp === afterBasic);
+    const v = w.spawnEnemy('grunt', { x: 3, z: 0, level: 100 });
+    v.elite = ['volatile'];
+    p.x = 3.5; p.z = 0; p.hp = p.stats.maxHp;
+    w.killEnemy(v, 'basic');
+    check('Volatile: a warning circle where it fell', w.falls.some((f) => Math.abs(f.x - v.x) < 0.01 && Math.abs(f.z - v.z) < 0.01));
+  }
+  // Echo Rifts
+  {
+    const w = hero({ tickets: 2 });
+    w.command({ type: 'enterRift', tier: 1 }); w.runCommands();
+    check('rifts: closed until The Warden has fallen', !w.rift && w.events.some((e) => e.type === 'riftLocked'));
+    w.player.bossKills.boss = 1;
+    w.player.tickets = 0;
+    w.command({ type: 'enterRift', tier: 1 }); w.runCommands();
+    check('rifts: cost a shard', !w.rift);
+    w.player.tickets = 2;
+    w.command({ type: 'enterRift', tier: 9 }); w.runCommands();
+    check('rifts: open at the highest tier you have reached, for a shard', w.rift && w.rift.tier === 1 && w.player.tickets === 1 && w.map.id === 'rift');
+    check('rifts: about twice the enemies of a normal map, none of them come back', w.enemies.length >= 25 && w.camps.every((c) => c.slots[0].respawn === 1e9 || c.slots[0].id));
+    const p = w.player;
+    for (let i = 0; i < 20; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+    check('rifts: the clock runs', w.rift.timeLeft < 360);
+    for (const e of w.enemies.slice()) { if (w.rift.guardianId) break; w.killEnemy(e, 'basic'); }
+    const g = w.enemies.find((e) => e.riftGuardian);
+    check('rifts: a full bar calls the guardian', !!g && w.rift.state === 'guardian' && !g.home);
+    const kills = p.bossKills.boss;
+    w.killEnemy(g, 'basic');
+    check('rifts: beating the guardian in time opens the next tier and gives the shard back', p.riftMax === 2 && p.tickets === 2 + 0 || p.tickets >= 2);
+    check('rifts: a guardian is not a world boss kill', p.bossKills.boss === kills && w.loot.length >= 3);
+    w.loadMap('town', 'rift');
+    check('rifts: leaving ends it', !w.rift && w.map.id === 'town');
+    w.command({ type: 'enterRift', tier: 2 }); w.runCommands();
+    const r2 = w.rift;
+    r2.timeLeft = 0.01;
+    run(w, 0.1);
+    check('rifts: out of time, the next tier will not open', r2.state === 'late');
+    for (const e of w.enemies.slice()) { if (r2.guardianId) break; w.killEnemy(e, 'basic'); }
+    w.killEnemy(w.enemies.find((e) => e.riftGuardian), 'basic');
+    check('...but you can still finish it', r2.state === 'done' && !r2.won && p.riftMax === 2);
+    check('rifts: each tier is tougher than the last', riftScale(10).hp > riftScale(5).hp * 2 && riftScale(1).hp === 1);
+    const m1 = buildRiftMap('frost', 5), m2 = buildRiftMap('frost', 5);
+    check('rifts: the same seed builds the same rift (so a co-op friend sees the host\'s)', JSON.stringify(m1.spawns) === JSON.stringify(m2.spawns) && m1.portals.length === 1 && m1.portals[0].to === 'town');
+  }
+  // Wishborne
+  {
+    const w = hero();
+    const p = w.player;
+    w.gainExp(wishNeed(0) + wishNeed(1) + 5);
+    check('Wishborne: past level 100, EXP fills Wishborne levels', p.level === 100 && p.wish === 2 && p.wishPts === 2 && p.wishExp === 5);
+    const ad0 = p.stats.ad;
+    w.command({ type: 'wishSpend', stat: 'might', n: 10 }); w.runCommands();
+    check('Wishborne: points go into bonuses (no more than you have)', p.wishStats.might === 2 && p.wishPts === 0 && p.stats.ad > ad0);
+    const saved = w.toSave();
+    const again = new World({ seed: 1, cls: 'archer', save: saved });
+    check('Wishborne: saved with the hero', again.player.wish === 2 && again.player.stats.ad === p.stats.ad);
+    const { trialWeek, defaultBuild, buildTrialWorld } = await import('../src/sim/trial.js');
+    const tw = buildTrialWorld(trialWeek(1), defaultBuild(trialWeek(1), 'archer', 'sharpshooter'));
+    check('Wishborne: never in the Weekly Echo', !tw.player.wish);
+  }
+  // Co-op: a friend sees the rift and the tier
+  {
+    const { makeSnapshot, applySnapshot } = await import('../src/net/sync.js');
+    const w = hero({ tickets: 2, bossKills: { boss: 1 }, tierMax: 2, worldTier: 2 });
+    w.addHero(1, { name: 'F', cls: 'rogue', save: { v: 2, cls: 'rogue', level: 60 } });
+    w.command({ type: 'enterRift', tier: 1 }); w.runCommands();
+    const friend = new World({ seed: 9, cls: 'rogue', mode: 'explore' });
+    friend.loadMapMirror('town');
+    applySnapshot(friend, JSON.parse(JSON.stringify(makeSnapshot(w, 1, {}))));
+    check('co-op: a friend gets the same rift map and its progress', friend.map.id === 'rift' && friend.map.riftTheme === w.rift.theme && friend.obstacles.length === w.obstacles.length && friend.rift.need === w.rift.need);
+  }
+}
 process.exit(failed ? 1 : 0);

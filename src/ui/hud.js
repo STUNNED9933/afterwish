@@ -2,6 +2,7 @@
 // boss status, enemy health bars, floating combat text, banners and hints.
 // Plain DOM on top of the 3D canvas.
 import { steadyRatings, signed } from '../power.js';
+import { AFFIXES, wishNeed } from '../sim/endgame.js';
 import { CONFIG } from '../config.js';
 import { ABILITIES, ABILITY_SLOTS, expToNext } from '../sim/defs.js';
 import { RARITIES, itemName } from '../sim/items.js';
@@ -223,8 +224,10 @@ export class Hud {
     bar.classList.toggle('bloodied', zerk && !p.dead && hpFrac < 0.5);
     const need = expToNext(p.level);
     const maxed = p.level >= CONFIG.MAX_LEVEL;
-    $('xp-fill').style.transform = `scaleX(${maxed ? 1 : p.exp / need})`;
-    $('xp-text').textContent = maxed ? 'MAX' : `${p.exp} / ${need} EXP`;
+    // Past 100 the bar fills Wishborne levels instead (0.26).
+    const wneed = maxed ? wishNeed(p.wish || 0) : 0;
+    $('xp-fill').style.transform = `scaleX(${maxed ? Math.min(1, (p.wishExp || 0) / wneed) : p.exp / need})`;
+    $('xp-text').textContent = maxed ? `Wishborne ${p.wish || 0} · ${p.wishExp || 0} / ${wneed}` : `${p.exp} / ${need} EXP`;
     $('level-badge').textContent = p.level;
     if (p.gold !== this.lastGold || p.tickets !== this.lastTickets) {
       this.lastGold = p.gold;
@@ -326,6 +329,15 @@ export class Hud {
       this.lastSub = sub;
     }
 
+    // Echo Rift progress (0.26)
+    const r = world.mode === 'explore' && world.map && world.map.id === 'rift' ? world.rift : null;
+    $('rift-box').classList.toggle('hidden', !r);
+    if (r) {
+      $('rift-fill').style.transform = `scaleX(${r.state === 'guardian' || r.state === 'done' ? 1 : Math.min(1, r.progress / Math.max(1, r.need))})`;
+      $('rift-box').classList.toggle('guardian', r.state === 'guardian');
+      $('rift-box').classList.toggle('late', r.state === 'late');
+    }
+
     // Boss bar
     const boss = world.enemies.find((e) => e.def.boss && !e.dead);
     $('boss-box').classList.toggle('hidden', !boss);
@@ -376,9 +388,13 @@ export class Hud {
         el.className = 'ebar';
         const width = e.def.boss ? 90 : Math.round(34 + e.radius * 28);
         el.style.width = width + 'px';
-        el.innerHTML = '<div class="fill"></div><div class="tag"></div><div class="lvl"></div><div class="patience"><i></i></div>';
+        el.innerHTML = '<div class="fill"></div><div class="tag"></div><div class="lvl"></div><div class="patience"><i></i></div><div class="shieldfill"></div><div class="affix"></div>';
         this.worldUi.appendChild(el);
-        bar = { el, fill: el.firstChild, tag: el.children[1], lvl: el.children[2], pat: el.children[3], width, hp: -1, status: null, gap: null, patience: 1 };
+        bar = { el, fill: el.firstChild, tag: el.children[1], lvl: el.children[2], pat: el.children[3], shieldEl: el.children[4], affix: el.children[5], width, hp: -1, status: null, gap: null, patience: 1, shield: -1 };
+        // Elites: a gold frame and their modifiers by name.
+        el.classList.toggle('elite', !!e.elite);
+        bar.affix.textContent = e.elite ? e.elite.map((a) => AFFIXES[a].name).join(' · ') : '';
+        bar.affix.title = e.elite ? e.elite.map((a) => `${AFFIXES[a].name}: ${AFFIXES[a].desc}`).join('\n') : '';
         this.bars.set(e.id, bar);
       }
       const pos = view.model.group.position;
@@ -387,6 +403,12 @@ export class Hud {
       if (bar.hp !== e.hp) {
         bar.hp = e.hp;
         bar.fill.style.transform = `scaleX(${Math.max(0, e.hp / e.maxHp)})`;
+      }
+      const sh = e.shield > 0 && e.maxShield ? e.shield / e.maxShield : 0;
+      if (sh !== bar.shield) {
+        bar.shield = sh;
+        bar.shieldEl.style.transform = `scaleX(${sh})`;
+        bar.shieldEl.style.display = sh > 0 ? 'block' : 'none';
       }
       // Patience: shown only while it is running out (and while it walks home to heal).
       const pat = e.returning ? 0 : e.patience ?? 1;

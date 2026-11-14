@@ -22,7 +22,7 @@ function write(key, value) {
   }
 }
 
-/** { 'mage': {wave, at}, 'mage/pyromancer': {wave, at}, ... } */
+/** { 'mage': {wave, at, rift}, 'mage/pyromancer': {wave, at, rift: {tier, secs}}, ... } */
 export function loadHall() {
   return read(HALL_KEY) || {};
 }
@@ -68,4 +68,15 @@ export function markTrialSent(week, spec) {
     all[week][spec].payload = null; // the server has it now
     write(TRIAL_KEY, all);
   }
+}
+
+/** Note an Echo Rift cleared in time (0.26). Returns true when it is a new best for that class or subclass. */
+export function recordRift(cls, spec, tier, secs) {
+  const hall = loadHall();
+  const key = spec ? `${cls}/${spec}` : cls;
+  const old = (hall[key] && hall[key].rift) || null;
+  if (old && (old.tier > tier || (old.tier === tier && old.secs <= secs))) return false;
+  hall[key] = Object.assign({}, hall[key], { rift: { tier, secs, at: new Date().toISOString().slice(0, 10) } });
+  write(HALL_KEY, hall);
+  return true;
 }

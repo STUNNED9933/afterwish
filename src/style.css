@@ -76,6 +76,23 @@ body.slowmo #slowtint { opacity: 1; }
 .trade-buttons { display: flex; gap: 8px; }
 #bag .cell.offered { outline: 2px solid var(--gold); outline-offset: -2px; opacity: 0.75; }
 #trade-ask { position: fixed; right: 18px; top: 90px; z-index: 60; display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(14, 16, 24, 0.95); border: 1px solid rgba(240, 196, 90, 0.5); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); font-size: 14px; }
+/* 0.26: world tiers, rifts, elites, Wishborne */
+.tier-row, .rift-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.tier-row button.on { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(240, 196, 90, 0.3); }
+.rift-row .rift-tier { font: 600 18px var(--display); min-width: 90px; text-align: center; color: #c9a2ff; }
+#rift-box { width: min(420px, 70vw); height: 8px; margin: 4px auto 0; border-radius: 4px; background: rgba(8, 10, 16, 0.8); border: 1px solid rgba(201, 162, 255, 0.5); overflow: hidden; }
+#rift-box.hidden { display: none; }
+#rift-fill { height: 100%; width: 100%; transform-origin: left; background: linear-gradient(90deg, #6a2a8a, #c9a2ff); transition: transform 0.25s; }
+#rift-box.guardian #rift-fill { background: linear-gradient(90deg, #8a1a3a, #ff7aa8); animation: boss-pulse 0.9s ease-in-out infinite; }
+#rift-box.late { border-color: rgba(255, 90, 90, 0.7); }
+.ebar.elite { border-color: rgba(240, 196, 90, 0.9); box-shadow: 0 0 6px rgba(240, 196, 90, 0.45); }
+.ebar .affix { position: absolute; left: 50%; top: 11px; transform: translateX(-50%); white-space: nowrap; font: 600 10px var(--body); letter-spacing: 0.08em; color: #f0c45a; text-shadow: 0 1px 2px #000; }
+.ebar .shieldfill { position: absolute; left: 0; top: 0; height: 100%; width: 100%; transform-origin: left; background: rgba(240, 240, 255, 0.75); pointer-events: none; }
+#wish-panel { margin: 4px 0 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127, 245, 225, 0.35); background: rgba(127, 245, 225, 0.05); }
+#wish-panel.hidden { display: none; }
+#wish-panel h3 { margin: 0 0 6px; color: #bff2ff; }
+.wish-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+.wish-row .v { color: var(--muted); font-variant-numeric: tabular-nums; }
 .travel-sub { margin: 10px 0 4px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .ebar .fill { height: 100%; width: 100%; background: var(--danger); transform-origin: left; }
 /* Patience: a thin amber bar under the health bar while an enemy is losing patience (0.25) */

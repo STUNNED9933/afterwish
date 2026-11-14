@@ -150,6 +150,41 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### After The Unmade: world tiers, elites, Echo Rifts, Wishborne (0.26)
+
+- **World tiers.** Beating The Unmade opens tier II; beating it again on your
+  highest tier opens the next, up to tier V. Pick the tier at the Waygate in
+  Haven (the party leader's tier applies to everyone). From tier II every map
+  out in the world is level 100, with tougher enemies and more, better loot:
+
+  | Tier | Name | Enemy health | Enemy damage | EXP | Loot | Elites | Least rarity |
+  |---|---|---|---|---|---|---|---|
+  | I | The Road | 1x | 1x | 1x | 1x | 3% (maps from level 20) | Common |
+  | II | The Unwished | 2.2x | 1.5x | 1.6x | 1.5x | 10%, 1 modifier | Uncommon |
+  | III | Hollow Stars | 3.6x | 1.9x | 2.4x | 2x | 14%, 2 modifiers | Rare |
+  | IV | The Unmaking | 6x | 2.5x | 3.4x | 2.6x | 18%, 2 modifiers | Epic |
+  | V | Afterwish | 9.5x | 3.2x | 4.6x | 3.2x | 22%, 3 modifiers | Epic |
+
+- **Elites:** bigger, a gold frame and a coloured ring, 2.6x health, three
+  times the EXP and gold, and always an extra Epic-or-better drop. Their
+  modifiers show under the health bar: **Vampiric** (heals when it hits you),
+  **Frostbound** (its hits slow you), **Reflective** (a fifth of your basic
+  attack damage comes back; abilities are safe), **Swift** (faster, quicker
+  windups), **Shielded** (a shield takes damage first; parry one of its
+  attacks to shatter it), **Volatile** (bursts a moment after it dies).
+- **Echo Rifts** (Waygate in Haven, once The Warden has fallen; 1 shard): a
+  random map with about twice the enemies, none of which come back. Clear
+  enough of it (elites count three) to call its guardian, then beat it within
+  6 minutes: the next rift tier opens, you get your shard back and a pile of
+  loot. Each tier has 17% more enemy health and 7.5% more damage than the
+  last; enemies are the party leader's level. Out of time, you can still
+  finish, but the next tier stays shut. Best rift per subclass is kept in the
+  Hall of Echoes. In a party, the leader opens it and everyone goes.
+- **Wishborne levels:** past level 100, EXP fills endless Wishborne levels.
+  Each is a Wish point for a small bonus with no limit (Talents, T): Might
+  +0.6% attack damage, Vigor +0.8% health, Swiftness +0.4% attack speed,
+  Focus +0.4 ability haste, Keen Eye +0.3% crit. Never in the Weekly Echo.
+
 ### Co-op fixes, trading, waystones, shorter arena runs, boss rework (0.25)
 
 - **Co-op:**

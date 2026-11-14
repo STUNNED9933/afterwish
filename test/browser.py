@@ -469,6 +469,41 @@ with sync_playwright() as pw:
     check('ending a run shows its result and keeps it in this browser', ev("() => game.mode") == 'trial' and page.inner_text('#trial-result').strip() != '' and ev("() => Object.keys(JSON.parse(localStorage.getItem('stunned-trial-v1') || '{}')).length") >= 1, page.inner_text('#trial-result')[:80])
     save_after = ev("() => JSON.stringify(Object.keys(localStorage).filter((k) => k.startsWith('stunned-arena-save')).map((k) => localStorage.getItem(k)))")
     check('a trial run never touches the saved character', save_before == save_after)
+    # --- After The Unmade: world tiers, Echo Rifts, Wishborne (0.26) ------------------------------
+    # A fresh browser profile with a level-100 Sharpshooter who has beaten The Unmade twice.
+    ctx = browser.new_context(viewport={'width': 1366, 'height': 768})
+    page = ctx.new_page(); ev = page.evaluate
+    page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    page.on('pageerror', lambda e: errors.append('PAGEERROR ' + str(e)))
+    page.goto(page_path.as_uri()); page.wait_for_timeout(1200)
+    ev("() => { localStorage.setItem('stunned-arena-settings-v1', JSON.stringify({cls:'archer'})); localStorage.setItem('stunned-account-v1', JSON.stringify({gold: 900, tickets: 2})); localStorage.setItem('stunned-arena-save-v1-archer', JSON.stringify({v:2, cls:'archer', level:100, exp:0, gold:900, spec:'sharpshooter', talents:{}, visited:['town','greenwood','keep','sanctum'], bossKills:{boss:2, boss3:2}, tierMax:3, worldTier:1, riftMax:2, wish:3, wishExp:0, wishPts:3, wishStats:{}})); }")
+    page.reload(); page.wait_for_timeout(1500)
+    page.click('#btn-explore'); page.wait_for_timeout(1500)
+    ev("() => { const w = game.world, wg = w.map.waygate; w.player.x = wg.x + 3; w.player.z = wg.z; }"); page.wait_for_timeout(300)
+    ev("() => { const w = game.world, wg = w.map.waygate; w.player.x = w.player.px = wg.x; w.player.z = w.player.pz = wg.z; }")
+    for _ in range(30):
+        if page.is_visible('#travel .rift-row'): break
+        page.wait_for_timeout(100)
+    check('the Waygate offers world tiers I to V, with the locked ones greyed out', len(page.query_selector_all('#travel .tier-row button')) == 5 and len(page.query_selector_all('#travel .tier-row button:disabled')) == 2, page.inner_text('#travel')[:200] if page.is_visible('#travel') else 'closed')
+    page.click('#travel .tier-row button:nth-child(3)'); page.wait_for_timeout(400)
+    check('picking tier III raises it for every map out in the world', ev("() => game.world.worldTier()") == 3 and ev("() => game.world.player.worldTier") == 3)
+    page.screenshot(path=str(out / '26-waygate.png'))
+    page.click('#travel .rift-row .primary'); page.wait_for_timeout(2500)
+    check('entering an Echo Rift costs a shard and opens a random map with a timer', ev("() => game.world.map.id") == 'rift' and ev("() => !!game.world.rift") and ev("() => game.world.player.tickets") == 1 and page.is_visible('#rift-box'), ev("() => game.world.map.id"))
+    check('rift enemies use the rift tier, not the world tier', ev("() => game.world.rift.tier") >= 1 and ev("() => game.world.enemies.length") >= 20, ev("() => game.world.enemies.length"))
+    ev("() => { const w = game.world; w.rift.progress = w.rift.need - 1; const e = w.enemies.find((x) => !x.dead && !x.riftGuardian); e.hp = 0; w.killEnemy(e, 'test'); }"); page.wait_for_timeout(1200)
+    check('clearing enough of the rift calls its guardian', ev("() => game.world.enemies.some((e) => e.riftGuardian)"))
+    ev("() => { const w = game.world; for (const e of w.enemies) if (e.riftGuardian && !e.dead) { e.hp = 0; w.killEnemy(e, 'test'); } }"); page.wait_for_timeout(1200)
+    check('beating the guardian in time opens the next rift tier and refunds the shard', ev("() => game.world.player.riftMax") >= 3 and ev("() => game.world.player.tickets") >= 2, f"riftMax {ev('() => game.world.player.riftMax')} shards {ev('() => game.world.player.tickets')}")
+    page.screenshot(path=str(out / '26-rift.png'))
+    page.keyboard.press('t'); page.wait_for_timeout(500)
+    page.screenshot(path=str(out / '26-talents.png'))
+    check('Talents shows Wishborne with points to spend', page.is_visible('#wish-panel') and 'Wishborne' in page.inner_text('#wish-panel') and 'to spend' in page.inner_text('#wish-panel'))  # the rift's kills may have added a level
+    pts = ev("() => game.world.player.wishPts")
+    page.click('#wish-panel .wish-row button'); page.wait_for_timeout(300)
+    check('a Wish point goes into Might', ev("() => game.world.player.wishStats.might") == 1 and ev("() => game.world.player.wishPts") == pts - 1)
+    page.keyboard.press('t'); page.wait_for_timeout(300)
+    ctx.close()
     browser.close()
 
 print('console errors:', json.dumps(errors, indent=1) if errors else 'none')

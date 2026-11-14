@@ -8,12 +8,13 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
+import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed } from './endgame.js';
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
 import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS } from './items.js';
 import { CLASSES } from './classes.js';
-import { buildMap, MAPS } from './maps.js';
+import { buildRiftMap, buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -351,6 +352,16 @@ export class World {
       talents: migrateTalents(save?.talents), // talent id -> rank
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
+      // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
+      tierMax: Math.max(1, Math.min(MAX_TIER, save?.tierMax ?? 1)),
+      worldTier: Math.max(1, Math.min(save?.tierMax ?? 1, save?.worldTier ?? 1)),
+      riftMax: Math.max(1, save?.riftMax ?? 1),
+      riftBest: save?.riftBest || null, // { tier, secs }
+      wish: save?.wish ?? 0,
+      wishExp: save?.wishExp ?? 0,
+      wishPts: save?.wishPts ?? 0,
+      wishStats: Object.assign({}, save?.wishStats),
+      chillT: 0, // Frostbound elites: slower while > 0
       swingCount: 0,
       empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
       empowerMult: 1,
@@ -387,6 +398,8 @@ export class World {
       const it = this.player.equipped[slot];
       if (it && it.effect && it.effect in m) m[it.effect] = true;
     }
+    // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
+    if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k]);
     this.mods = m;
   }
 
@@ -439,6 +452,14 @@ export class World {
       tomes: p.tomes,
       ranks: p.ranks,
       skillPoints: p.skillPoints,
+      tierMax: p.tierMax,
+      worldTier: p.worldTier,
+      riftMax: p.riftMax,
+      riftBest: p.riftBest,
+      wish: p.wish,
+      wishExp: p.wishExp,
+      wishPts: p.wishPts,
+      wishStats: p.wishStats,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -565,6 +586,18 @@ export class World {
         case 'travel':
           // Waygate: jump to a discovered map, arriving at its entrance.
           if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town')) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+          break;
+        case 'setTier':
+          if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
+            p.worldTier = Math.max(1, Math.min(p.tierMax, Math.floor(Number(c.tier) || 1)));
+            this.emit('tierSet', { tier: p.worldTier, numeral: TIERS[p.worldTier].numeral, name: TIERS[p.worldTier].name });
+          }
+          break;
+        case 'enterRift':
+          this.enterRift(c.tier);
+          break;
+        case 'wishSpend':
+          this.wishSpend(c.stat, c.n);
           break;
         case 'dropItem':
           this.dropItem(c.index);
@@ -1639,6 +1672,16 @@ export class World {
     if (p.frenzyT > 0) p.frenzyT -= dt;
     if (p.bastionT > 0) p.bastionT -= dt;
     if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
+    if (p.chillT > 0) p.chillT -= dt;
+    if (this.rift && this.map.id === 'rift' && (this.rift.state === 'run' || this.rift.state === 'guardian') && this.cur === this.heroes[0]) {
+      // The rift's clock (counted once, on the party leader's step).
+      this.rift.timeLeft -= dt;
+      if (this.rift.timeLeft <= 0) {
+        this.rift.timeLeft = 0;
+        this.rift.state = 'late';
+        this.emit('riftLate', { tier: this.rift.tier });
+      }
+    }
     if (p.barrage) {
       // Barrage: the next arrow when its moment comes, at the same target if it still stands, else the nearest.
       const bg = p.barrage;
@@ -1773,7 +1816,7 @@ export class World {
     }
 
     const parrying = p.parryT > 0;
-    const speed = p.stats.ms * (parrying ? CONFIG.PARRY_MOVE_MULT : 1);
+    const speed = p.stats.ms * (parrying ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1); // Frostbound elites
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
@@ -1928,6 +1971,11 @@ export class World {
           proj.dmg = (proj.dmg * 2.5 + p.stats.ad) * m.reflectDmg;
           proj.life = 3;
         } else if (src && !src.dead) {
+          if (src.shield > 0) {
+            // Shielded elites: a parried attack shatters the shield at once.
+            src.shield = 0;
+            this.emit('shieldBreak', { id: src.id, x: src.x, z: src.z });
+          }
           this.addPosture(src, perfect ? 2 : 1, perfect);
           if (m.riposte > 0 && !src.dead) this.hitEnemy(src, p.stats.ad * m.riposte, { source: 'riposte', canCrit: false });
         }
@@ -1974,6 +2022,10 @@ export class World {
     const dmg = Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken)));
     p.hp -= dmg;
     if (this.mode === 'arena' && rawDamage > 0) this.wave.hurt = true; // no Flawless bonus this floor
+    if (src && src.elite && !src.dead) {
+      if (src.elite.includes('vampiric')) src.hp = Math.min(src.maxHp, src.hp + src.maxHp * 0.04);
+      if (src.elite.includes('frostbound')) p.chillT = 2;
+    }
     p.hurtT = 0.25;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg });
     if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
@@ -2015,7 +2067,18 @@ export class World {
   // =========================================================================
   gainExp(amount) {
     const p = this.player;
-    if (p.level >= CONFIG.MAX_LEVEL || this.trial) return; // the Weekly Echo fixes your level
+    if (this.trial) return; // the Weekly Echo fixes your level
+    if (p.level >= CONFIG.MAX_LEVEL) {
+      // Wishborne: endless small levels past 100, each a Wish point.
+      p.wishExp += Math.round(amount);
+      while (p.wishExp >= wishNeed(p.wish)) {
+        p.wishExp -= wishNeed(p.wish);
+        p.wish++;
+        p.wishPts++;
+        this.emit('wishUp', { wish: p.wish, x: p.x, z: p.z });
+      }
+      return;
+    }
     p.exp += Math.round(amount);
     while (p.level < CONFIG.MAX_LEVEL && p.exp >= expToNext(p.level)) {
       p.exp -= expToNext(p.level);
@@ -2031,11 +2094,15 @@ export class World {
 
   dropLoot(e) {
     const def = e.def;
-    const hoard = this.mode === 'explore' && def.boss ? BOSS_LOOT[e.type] : null; // world bosses drop a pile
-    const count = this.trial ? 0 : hoard ? hoard.items : def.boss ? 2 : this.rng() < def.drop ? 1 : 0; // the Weekly Echo drops no gear
+    const hoard = this.mode === 'explore' && def.boss && !e.riftGuardian ? BOSS_LOOT[e.type] : null; // world bosses drop a pile
+    // World tiers drop more, and nothing below their rarity floor; elites always drop a good extra piece.
+    const T = this.mode === 'explore' && this.map.id !== 'rift' ? TIERS[this.worldTier()] : TIERS[1];
+    const riftFloor = this.mode === 'explore' && this.map.id === 'rift' && this.rift ? Math.min(3, Math.floor(this.rift.tier / 5)) : 0;
+    const floor = Math.max(T.minRarity, riftFloor);
+    const count = this.trial ? 0 : (hoard ? hoard.items : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
     const ilvl = Math.max(1, Math.round(e.level || this.wave.n));
     for (let i = 0; i < count; i++) {
-      let opts = { minRarity: def.boss ? 2 : 0, cls: this.cls };
+      let opts = { minRarity: Math.max(floor, def.boss ? 2 : 0, e.elite && i === count - 1 ? 3 : 0), cls: this.cls };
       if (hoard) {
         // The first item is the prize: guaranteed top rarity on your first kill, good odds after.
         if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoard.top, cls: this.cls };
@@ -2057,6 +2124,14 @@ export class World {
     if (!loot) return;
     const first = !p.bossKills[e.type];
     e.firstKill = first;
+    if (e.type === 'boss3') {
+      // Beating The Unmade opens the next world tier.
+      const t = this.worldTier();
+      if (t >= p.tierMax && t < MAX_TIER) {
+        p.tierMax = t + 1;
+        this.emit('tierUnlocked', { tier: t + 1, numeral: TIERS[t + 1].numeral, name: TIERS[t + 1].name });
+      }
+    }
     p.bossKills[e.type] = (p.bossKills[e.type] || 0) + 1;
     p.keys += loot.keys;
     p.tickets += loot.tickets;
@@ -2286,7 +2361,7 @@ export class World {
   // An opened chest comes back somewhere else on the map a few minutes later.
   // =========================================================================
   placeChests() {
-    const kept = this.chestMaps[this.map.id];
+    const kept = this.map.id === 'rift' ? null : this.chestMaps[this.map.id];
     if (kept) {
       this.chests = kept.chests;
       this.chestRefill = kept.refill;
@@ -2322,6 +2397,152 @@ export class World {
       return chest;
     }
     return null;
+  }
+
+  // =========================================================================
+  // After The Unmade (0.26): world tiers, elites, Echo Rifts, Wishborne
+  // =========================================================================
+  /** The world tier the party plays on (the leader's choice). */
+  worldTier() {
+    if (this.syncTier) return this.syncTier; // a joiner's copy: the host says
+    const lead = this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
+    return Math.max(1, Math.min(MAX_TIER, (lead && lead.worldTier) || 1));
+  }
+
+  /** Spawn a camp's enemy, at the world tier's level and strength (or the rift's), maybe as an elite. */
+  spawnCamp(slot, camp) {
+    const rift = this.map.id === 'rift' && this.rift ? this.rift : null;
+    const tier = rift ? 1 : this.worldTier();
+    let at = camp.def;
+    if (rift) at = Object.assign({}, camp.def, { level: Math.max(1, this.heroes[0].player.level) });
+    else if (tier >= 2) at = Object.assign({}, camp.def, { level: CONFIG.MAX_LEVEL });
+    const e = this.spawnEnemy(slot.type, at);
+    let hp = 1, dmg = 1, exp = 1;
+    if (rift) {
+      const sc = riftScale(rift.tier);
+      hp = sc.hp;
+      dmg = sc.dmg;
+      exp = 1 + 0.08 * (rift.tier - 1);
+      slot.respawn = 1e9; // nothing comes back in a rift
+    } else if (tier >= 2) {
+      hp = TIERS[tier].hp;
+      dmg = TIERS[tier].dmg;
+      exp = TIERS[tier].exp;
+    }
+    const T = TIERS[tier];
+    const chance = rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0;
+    if (!e.def.boss && this.rng() < chance) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes);
+    e.maxHp = e.hp = Math.round(e.maxHp * hp);
+    e.dmgMult *= dmg;
+    e.expValue *= exp;
+    e.goldValue = Math.round(e.goldValue * exp);
+    if (e.elite && e.elite.includes('shielded')) e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
+    return e;
+  }
+
+  /** Make an enemy an elite with `n` different modifiers. */
+  makeElite(e, n) {
+    const pool = AFFIX_IDS.slice();
+    e.elite = [];
+    for (let i = 0; i < n && pool.length; i++) e.elite.push(pool.splice(Math.floor(this.rng() * pool.length), 1)[0]);
+    e.maxHp = e.hp = Math.round(e.maxHp * ELITE.hp);
+    e.dmgMult *= ELITE.dmg;
+    e.expValue *= ELITE.reward;
+    e.goldValue = Math.round(e.goldValue * ELITE.reward);
+    e.radius *= 1.12;
+    e.swift = e.elite.includes('swift');
+  }
+
+  /** Echo Rifts: the leader spends a shard in Haven and takes the party in. */
+  enterRift(tier) {
+    const p = this.player;
+    if (this.cur !== this.heroes[0] || this.mode !== 'explore' || !this.map.safe || this.rift) return;
+    if (!(p.bossKills.boss > 0)) {
+      this.emit('riftLocked'); // rifts open once The Warden has fallen
+      return;
+    }
+    const t = Math.max(1, Math.min(p.riftMax, Math.floor(Number(tier) || 1)));
+    if (p.tickets < 1) {
+      this.emit('riftNoShard');
+      return;
+    }
+    p.tickets--;
+    this.rift = { tier: t, theme: RIFT.themes[Math.floor(this.rng() * RIFT.themes.length)], seed: Math.floor(this.rng() * 1e9), progress: 0, need: 0, timeLeft: RIFT.time, state: 'run', guardianId: null, won: false };
+    this.loadMap('rift', 'town');
+    this.rift.need = Math.max(6, Math.round(this.enemies.length * RIFT.need));
+    this.emit('riftStart', { tier: t, name: MAPS[this.rift.theme].name });
+  }
+
+  /** A kill in a rift fills the bar; a full bar calls the guardian. */
+  riftKill(e) {
+    const r = this.rift;
+    if (e.riftGuardian) return this.riftComplete(e);
+    if (r.state === 'done' || r.guardianId) return;
+    r.progress += e.elite ? 3 : 1;
+    if (r.progress < r.need) return;
+    const lead = this.heroes[0].player;
+    const d = dHypot(lead.x, lead.z) || 1;
+    const at = this.clampToArena(lead.x - (lead.x / d) * 9, lead.z - (lead.z / d) * 9, 2);
+    const type = RIFT.guardians[(r.tier - 1) % RIFT.guardians.length];
+    const g = this.spawnEnemy(type, { x: at.x, z: at.z, level: Math.max(1, lead.level) });
+    const sc = riftScale(r.tier);
+    g.x = g.px = at.x;
+    g.z = g.pz = at.z;
+    g.home = null;
+    g.aggro = true;
+    g.maxHp = g.hp = Math.round(g.maxHp * sc.hp * 0.8);
+    g.dmgMult *= sc.dmg;
+    g.riftGuardian = true;
+    r.guardianId = g.id;
+    if (r.state === 'run') r.state = 'guardian';
+    this.emit('riftGuardian', { id: g.id, name: g.def.name, x: g.x, z: g.z });
+  }
+
+  /** The guardian fell: in time, the next tier opens and everyone gets a pile of loot. */
+  riftComplete(e) {
+    const r = this.rift;
+    const won = r.state !== 'late';
+    r.state = 'done';
+    r.won = won;
+    const secs = Math.round(RIFT.time - r.timeLeft);
+    const was = this.cur;
+    for (const h of this.heroes) {
+      this.use(h);
+      const p = this.player;
+      const before = p.riftMax;
+      if (won) {
+        p.riftMax = Math.max(p.riftMax, r.tier + 1);
+        if (!p.riftBest || r.tier > p.riftBest.tier || (r.tier === p.riftBest.tier && secs < p.riftBest.secs)) p.riftBest = { tier: r.tier, secs };
+        p.tickets += 1; // your shard back, to go again
+      }
+      p.gold += Math.round((50 + 12 * r.tier) * (won ? 3 : 1));
+      const count = won ? 2 + Math.floor(r.tier / 4) : 1;
+      const min = won ? Math.min(4, 2 + Math.floor(r.tier / 6)) : 2;
+      const ilvl = Math.max(1, Math.round(e.level || p.level));
+      for (let i = 0; i < count; i++) {
+        const item = rollItem(this.rng, ilvl, { minRarity: min, cls: this.cls });
+        const a = (i / count) * TAU;
+        const c = this.clampToArena(e.x + dCos(a) * 1.6, e.z + dSin(a) * 1.6, 1);
+        const drop = { id: this.nextId++, x: c.x, z: c.z, item, age: 0, magnet: false, owner: this.cur.pid };
+        this.loot.push(drop);
+        this.emit('lootDrop', { id: drop.id, x: c.x, z: c.z, rarity: item.rarity });
+      }
+      if (won) this.gainExp(e.expValue * 2);
+      this.emit('riftDone', { tier: r.tier, won, secs, opened: p.riftMax > before ? p.riftMax : 0, cls: this.cls, spec: p.spec });
+    }
+    this.use(was);
+  }
+
+  /** Wishborne: put Wish points into a bonus. */
+  wishSpend(stat, n) {
+    const p = this.player;
+    if (!WISH_STATS[stat]) return;
+    const k = Math.max(0, Math.min(p.wishPts, Math.floor(Number(n) || 1)));
+    if (!k) return;
+    p.wishStats[stat] = (p.wishStats[stat] || 0) + k;
+    p.wishPts -= k;
+    this.recalcStats();
+    this.emit('wishSpent', { stat, n: k });
   }
 
   stepChests() {
@@ -2848,7 +3069,7 @@ export class World {
     e.state = 'windup';
     e.atk = atk;
     e.t = 0;
-    e.dur = atk.windup * (e.enraged ? 0.82 : 1);
+    e.dur = atk.windup * (e.enraged ? 0.82 : 1) * (e.swift ? 0.75 : 1);
     e.chaseT = 0;
     e.aim = dAtan2(p.z - e.z, p.x - e.x);
     e.facing = e.aim;
@@ -3099,6 +3320,21 @@ export class World {
         for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
       }
     }
+    if (e.shield > 0) {
+      // Shielded elites: the shield takes it first.
+      const soak = Math.min(e.shield, dmg);
+      e.shield -= soak;
+      dmg -= soak;
+      if (e.shield <= 0) this.emit('shieldBreak', { id: e.id, x: e.x, z: e.z });
+    }
+    if (opts.basic && e.elite && e.elite.includes('reflective') && !p.dead && dmg > 0) {
+      // Reflective elites: a fifth of a basic attack comes back (abilities are safe). Never fatal.
+      const back = Math.min(Math.round(dmg * 0.2), Math.floor(p.hp) - 1);
+      if (back > 0) {
+        p.hp -= back;
+        this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: back, reflected: true });
+      }
+    }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -3180,7 +3416,12 @@ export class World {
       this.emit('cdReset', { slot: source });
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
-    this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss });
+    this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
+    if (e.elite && e.elite.includes('volatile')) {
+      // Volatile elites burst a moment after they fall (uses the falling-star warning circles).
+      this.falls.push({ x: e.x, z: e.z, r: 3.2, t: 0, dur: 1.2, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * 2.5, level: e.level, srcId: e.id, tele: null });
+    }
+    if (this.mode === 'explore' && this.map.id === 'rift' && this.rift) this.riftKill(e);
     // Everyone in the party who is up and close by gets the rewards: their own gold,
     // their own loot roll, quest credit and a share of the EXP.
     const killer = this.cur;
@@ -3210,7 +3451,7 @@ export class World {
           p.skillPoints++; // bosses out in the world can be farmed, so they pay in loot instead
           this.emit('bossReward');
         }
-      } else this.bossRewards(e);
+      } else if (!e.riftGuardian) this.bossRewards(e);
     }
     this.gainExp(e.expValue * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
     this.dropLoot(e);
@@ -3321,7 +3562,7 @@ export class World {
           }
           let mx = 0;
           let mz = 0;
-          let sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1);
+          let sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1) * (e.swift ? 1.4 : 1);
           if (e.def.ai === 'ranged') {
             const [min, max] = e.def.band;
             if (d > max) {
@@ -3662,6 +3903,14 @@ inTown() {
   /** Where the hero is, for the HUD. */
   zone() {
     const m = this.map;
+    const r = this.rift;
+    if (m.id === 'rift' && r) {
+      const clock = `${Math.floor(r.timeLeft / 60)}:${String(Math.floor(r.timeLeft % 60)).padStart(2, '0')}`;
+      const sub = r.state === 'done' ? (r.won ? 'cleared · step into the portal to go home' : 'finished') : r.state === 'guardian' ? `the guardian has come · ${clock}` : r.state === 'late' ? 'out of time · you can still finish it' : `${Math.min(100, Math.floor((100 * r.progress) / r.need))}% · ${clock}`;
+      return { name: `Echo Rift · Tier ${r.tier}`, sub };
+    }
+    const tier = this.worldTier();
+    if (tier >= 2 && !m.safe) return { name: m.name, sub: `Tier ${TIERS[tier].numeral} · ${TIERS[tier].name} · enemy level ${CONFIG.MAX_LEVEL}` };
     if (this.portalOn && this.portalArmed) return { name: m.name, sub: `travelling to ${this.portalOn.name}…` };
     if (m.safe) return { name: m.name, sub: 'safe · you heal here' };
     return { name: m.name, sub: m.level === m.levelMax ? `enemy level ${m.level}` : `enemy levels ${m.level} to ${m.levelMax}` };
@@ -3672,8 +3921,13 @@ inTown() {
    * arrive at the portal that leads back to it (or in the middle if there is none).
    */
   loadMap(id, from = null) {
-    if (this.map && this.mode === 'explore' && !this.trial) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
-    const map = (this.map = buildMap(id));
+    if (this.map && this.mode === 'explore' && !this.trial && this.map.id !== 'rift') this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
+    if (id !== 'rift' && this.rift) {
+      // Leaving an Echo Rift ends it.
+      if (this.rift.state !== 'done') this.emit('riftEnd', { tier: this.rift.tier, won: false });
+      this.rift = null;
+    }
+    const map = (this.map = id === 'rift' && this.rift ? buildRiftMap(this.rift.theme, this.rift.seed) : buildMap(id));
     const actor = this.cur;
     const p = this.player;
     this.radius = map.radius;
@@ -3715,7 +3969,7 @@ inTown() {
       this.portalArmed = false; // must step off the arrival portal before it works again
       this.wayT = 0;
       this.wayArmed = false;
-      if (!q.visited.includes(map.id)) {
+      if (!q.visited.includes(map.id) && map.id !== 'rift') {
         q.visited.push(map.id);
         this.emit('discovered', { id: map.id, name: map.name });
       }
@@ -3738,7 +3992,7 @@ inTown() {
       const left = (this.campDown[camp.key] || 0) - this.ticks;
       for (const slot of camp.slots) {
         if (left > 0) slot.timer = left * CONFIG.TICK;
-        else slot.id = this.spawnEnemy(slot.type, camp.def).id;
+        else slot.id = this.spawnCamp(slot, camp).id;
       }
     }
     this.placeChests();
@@ -3984,7 +4238,7 @@ inTown() {
       for (const slot of camp.slots) {
         if (slot.id != null) continue;
         slot.timer -= dt;
-        if (slot.timer <= 0 && away) slot.id = this.spawnEnemy(slot.type, camp.def).id;
+        if (slot.timer <= 0 && away) slot.id = this.spawnCamp(slot, camp).id;
       }
     }
     // The Waygate in town: stand on it to choose a map you have already reached.
@@ -4118,7 +4372,7 @@ inTown() {
       for (const slot of camp.slots) {
         if (slot.id != null) continue;
         slot.timer -= dt;
-        if (slot.timer <= 0 && away) slot.id = this.spawnEnemy(slot.type, camp.def).id;
+        if (slot.timer <= 0 && away) slot.id = this.spawnCamp(slot, camp).id;
       }
     }
     const allDown = this.heroes.every((h) => h.player.dead);

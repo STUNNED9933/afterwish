@@ -1,11 +1,12 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
+import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
 import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand } from './sim/trial.js';
 import { SIM_VERSION } from './sim/version.js';
 import { TrialScreen, clock as trialClock } from './ui/trial.js';
-import { loadHall, recordWave, keepTrialRun, markTrialSent, loadTrialRuns } from './hall.js';
+import { loadHall, recordWave, recordRift, keepTrialRun, markTrialSent, loadTrialRuns } from './hall.js';
 import * as trialApi from './net/trial-api.js';
 import { CLASSES, CLASS_IDS } from './sim/classes.js';
 import { AUGMENTS } from './sim/augments.js';
@@ -226,7 +227,10 @@ function start(hot = {}) {
     let id;
     if (mode === 'defeat') id = null;
     else if (mode === 'title' || mode === 'town' || (mode === 'gear' && gearReturn === 'town')) id = 'haven';
-    else if (world.mode === 'explore') id = MAP_SONG[world.map.theme];
+    else if (world.mode === 'explore') {
+      const guardian = world.rift && world.rift.state === 'guardian' ? world.enemies.find((e) => e.riftGuardian) : null;
+      id = guardian ? BOSS_SONG[guardian.type] : MAP_SONG[world.map.theme]; // a rift's guardian brings its own theme
+    }
     else if (world.wave.phase === 'active' && world.wave.n % CONFIG.BOSS_EVERY === 0) id = BOSS_SONG[BOSSES[(world.wave.n / CONFIG.BOSS_EVERY - 1) % BOSSES.length]]; // each boss brings its own theme
     else id = 'arena';
     music.play(id);
@@ -497,7 +501,7 @@ function start(hot = {}) {
         const rec = hall[key];
         const d = document.createElement('div');
         d.className = 'hall-row';
-        d.innerHTML = `<span class="${cl}">${name}</span><b>${rec ? `wave ${rec.wave}` : '—'}</b>`;
+        d.innerHTML = `<span class="${cl}">${name}</span><b>${rec && rec.wave ? `wave ${rec.wave}` : '—'}${rec && rec.rift ? ` · rift ${rec.rift.tier}` : ''}</b>`;
         if (rec) d.title = `Set ${rec.at}`;
         root.appendChild(d);
       }
@@ -539,6 +543,78 @@ function start(hot = {}) {
 
   /** The Waygate's list: every map in order, with the ones not yet reached locked. */
   let travelStone = null; // the waystone the travel menu was opened from (null: the town Waygate)
+  let riftPick = null; // the rift tier chosen at the Waygate
+  /** The Waygate's endgame part (0.26): the world tier and Echo Rifts. */
+  function renderEndgame(root) {
+    const p = world.player;
+    const lead = !(net && net.role === 'client');
+    const sub = (text) => {
+      const h = document.createElement('p');
+      h.className = 'travel-sub';
+      h.textContent = text;
+      root.appendChild(h);
+    };
+    const note = (text) => {
+      const d = document.createElement('p');
+      d.className = 'setting-desc';
+      d.textContent = text;
+      root.appendChild(d);
+    };
+    if (p.tierMax >= 2) {
+      sub('World tier');
+      const row = document.createElement('div');
+      row.className = 'tier-row';
+      const cur = world.worldTier();
+      for (let t = 1; t <= MAX_TIER; t++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny' + (t === cur ? ' on' : '');
+        b.textContent = `${TIERS[t].numeral} · ${TIERS[t].name}`;
+        b.disabled = t > p.tierMax || !lead;
+        b.title = t > p.tierMax ? 'Beat The Unmade on the tier before to open this one' : t === 1 ? 'The world as it was' : `Every map at level 100: enemies ${TIERS[t].hp}x health, ${TIERS[t].dmg}x damage; ${TIERS[t].exp}x EXP, more and better loot, more elites`;
+        b.addEventListener('click', () => {
+          applyNow({ type: 'setTier', tier: t });
+          renderTravel();
+        });
+        row.appendChild(b);
+      }
+      root.appendChild(row);
+      note(lead ? 'Every map out in the world uses this tier. Beat The Unmade on your highest tier to open the next.' : 'The party leader picks the world tier.');
+    }
+    sub('Echo Rift');
+    if (!(p.bossKills.boss > 0)) {
+      note('Rifts open once you have beaten The Warden out in the world.');
+      return;
+    }
+    if (riftPick == null || riftPick > p.riftMax) riftPick = p.riftMax;
+    const row = document.createElement('div');
+    row.className = 'rift-row';
+    const minus = document.createElement('button');
+    minus.type = 'button';
+    minus.className = 'ghost tiny';
+    minus.textContent = '−';
+    const label = document.createElement('span');
+    label.className = 'rift-tier';
+    label.textContent = `Tier ${riftPick}`;
+    const plus = minus.cloneNode();
+    plus.textContent = '+';
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'primary';
+    go.textContent = 'Enter · 1 shard';
+    go.disabled = !lead || p.tickets < 1;
+    minus.disabled = riftPick <= 1;
+    plus.disabled = riftPick >= p.riftMax;
+    minus.addEventListener('click', () => { riftPick--; renderTravel(); });
+    plus.addEventListener('click', () => { riftPick++; renderTravel(); });
+    go.addEventListener('click', () => {
+      setMode('play');
+      applyNow({ type: 'enterRift', tier: riftPick });
+    });
+    row.append(minus, label, plus, go);
+    root.appendChild(row);
+    note(`${Math.round(RIFT.time / 60)} minutes to clear enough of a random map to call its guardian, then beat it. In time, the next tier opens, you get your shard back and a pile of loot. Highest tier so far: ${p.riftMax - 1 > 0 ? p.riftMax - 1 : 'none yet'}${p.riftBest ? ` (best ${p.riftBest.tier} in ${Math.floor(p.riftBest.secs / 60)}:${String(p.riftBest.secs % 60).padStart(2, '0')})` : ''}.${lead ? '' : ' The party leader opens rifts.'}${p.tickets < 1 ? ' You have no shards.' : ''}`);
+  }
   function renderTravel() {
     const list = $('travel-list');
     list.innerHTML = '';
@@ -584,6 +660,7 @@ function start(hot = {}) {
         here.appendChild(home);
       }
     }
+    if (travelStone == null && world.map.safe) renderEndgame(here);
     for (const id of MAP_IDS) {
       const m = MAPS[id];
       if (m.safe || id === world.map.id) continue;
@@ -704,13 +781,43 @@ function start(hot = {}) {
   function talentBadge() {
     const p = world.player;
     // A Weekly Echo build is set on its own screen before the run, so nothing to spend here.
-    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : p.spec ? world.talentPoints() : 0;
+    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : (p.spec ? world.talentPoints() : 0) + (p.wishPts || 0);
     const b = $('talent-badge');
     b.textContent = n;
     b.classList.toggle('hidden', !n);
   }
 
+  /** Wishborne (0.26): past level 100, Wish points go into small, endless bonuses. */
+  function renderWish() {
+    const p = world.player;
+    const panel = $('wish-panel');
+    const show = p.level >= CONFIG.MAX_LEVEL && !world.trial;
+    panel.classList.toggle('hidden', !show);
+    if (!show) return;
+    panel.innerHTML = `<h3>Wishborne ${p.wish}</h3><p class="setting-desc">Past level 100, EXP fills Wishborne levels: each one is a Wish point for a small bonus with no limit. ${p.wishPts ? `<b>${p.wishPts} point${p.wishPts === 1 ? '' : 's'} to spend.</b> Shift-click adds 10.` : 'No points to spend right now.'}</p>`;
+    for (const k of WISH_IDS) {
+      const st = WISH_STATS[k];
+      const n = (p.wishStats && p.wishStats[k]) || 0;
+      const row = document.createElement('div');
+      row.className = 'wish-row';
+      row.innerHTML = `<span>${st.name}</span><span class="v">+${+(st.each * n).toFixed(1)}${st.unit}</span><span class="v">${n}</span>`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ghost tiny';
+      b.textContent = '+';
+      b.disabled = !p.wishPts;
+      b.title = `+${st.each}${st.unit} per point`;
+      b.addEventListener('click', (ev) => {
+        applyNow({ type: 'wishSpend', stat: k, n: ev.shiftKey ? 10 : 1 });
+        renderTalents();
+      });
+      row.appendChild(b);
+      panel.appendChild(row);
+    }
+  }
+
   function renderTalents() {
+    renderWish();
     const p = world.player;
     const body = $('talents-body');
     const respec = $('btn-respec');
@@ -808,7 +915,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel']);
+  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -1680,6 +1787,61 @@ function start(hot = {}) {
       case 'partyLeave':
         hud.feedText(`${ev.name} left the party`);
         updateRoomBadge();
+        break;
+      case 'tierUnlocked':
+        hud.banner(`World tier ${ev.numeral} unlocked`, `${ev.name} · choose it at the Waygate in Haven`);
+        sfx.levelUp();
+        break;
+      case 'tierSet':
+        hud.feedText(`World tier ${ev.numeral}: ${ev.name}`);
+        sfx.ui();
+        break;
+      case 'riftStart':
+        hud.banner(`Echo Rift · Tier ${ev.tier}`, `An echo of ${ev.name}. Clear enough of it to call the guardian`);
+        sfx.wave(false);
+        tune();
+        break;
+      case 'riftGuardian':
+        hud.banner(`${ev.name} answers`, 'The rift guardian has come');
+        sfx.wave(true);
+        tune();
+        break;
+      case 'riftLate':
+        hud.banner('Out of time', 'You can still finish the rift, but the next tier will not open');
+        sfx.denied();
+        break;
+      case 'riftDone': {
+        const clock = `${Math.floor(ev.secs / 60)}:${String(ev.secs % 60).padStart(2, '0')}`;
+        const record = ev.won && !net && recordRift(ev.cls, ev.spec, ev.tier, ev.secs);
+        hud.banner(ev.won ? `Rift tier ${ev.tier} cleared` : 'Rift finished', ev.won ? `${clock}${ev.opened ? ` · tier ${ev.opened} opened` : ''} · your shard back${record ? ' · a new record in the Hall of Echoes' : ''}` : 'Too late for the next tier this time');
+        if (ev.won) sfx.levelUp();
+        tune();
+        persist();
+        break;
+      }
+      case 'riftEnd':
+        hud.feedText('You left the rift.');
+        break;
+      case 'riftNoShard':
+        hud.feedText('A rift costs a starglass shard. The things on the road carry them.');
+        sfx.denied();
+        break;
+      case 'riftLocked':
+        hud.feedText('Rifts open once you have beaten The Warden out in the world.');
+        sfx.denied();
+        break;
+      case 'wishUp':
+        hud.float(renderer, ev.x, 3.2, ev.z, `Wishborne ${ev.wish}`, 'word perfect');
+        sfx.levelUp();
+        talentBadge();
+        hintOnce('wish', 'Past level 100, EXP fills Wishborne levels. Each one is a Wish point: spend them in Talents (T).', 8);
+        break;
+      case 'wishSpent':
+        talentBadge();
+        break;
+      case 'shieldBreak':
+        hud.float(renderer, ev.x, 2.6, ev.z, 'Shield broken', 'word');
+        sfx.shatter();
         break;
       case 'trade': {
         const why = { declined: `${ev.with} said no to the trade.`, cancelled: 'The trade was called off.', changed: 'Something on offer changed hands, so the trade was called off.', full: 'A bag was too full for the swap, so the trade was called off.', gone: `${ev.with} left, so the trade was called off.` };

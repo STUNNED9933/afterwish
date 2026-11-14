@@ -7,14 +7,15 @@
 // the keyboard and mouse already produce). Nothing here touches the screen.
 
 import { ENEMIES } from '../sim/defs.js';
+import { buildRiftMap } from '../sim/maps.js';
 
-export const NET_VERSION = 2; // host and friends must run the same build of the rules (2: 0.25 playback, trading)
+export const NET_VERSION = 3; // host and friends must run the same build of the rules (3: 0.26 tiers and rifts)
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
@@ -24,7 +25,7 @@ export function eventFor(ev, pid) {
 }
 
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
-const ENEMY_KEYS = ['id', 'type', 'phase', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
+const ENEMY_KEYS = ['id', 'type', 'phase', 'elite', 'shield', 'maxShield', 'riftGuardian', 'x', 'z', 'px', 'pz', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'maxHp', 'level', 'aggro', 'radius', 'dead'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue'];
 const pack = (o, keys) => keys.map((k) => r2(o[k]));
@@ -71,6 +72,8 @@ export function makeSnapshot(world, pid, memo) {
       loot: world.loot.filter((l) => l.owner === undefined || l.owner === pid).map((l) => ({ id: l.id, x: r2(l.x), z: r2(l.z), item: l.item, age: l.age, magnet: l.magnet })),
       chests: world.chests.map((c) => ({ id: c.id, x: r2(c.x), z: r2(c.z), tier: c.tier })),
       tick: world.ticks, // the host's clock, so the friend can play updates back at an even pace
+      tier: world.worldTier(),
+      rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
     };
     const heavy = JSON.stringify(heavyPlayer(p));
     if (memo.heavy !== heavy) {
@@ -91,8 +94,19 @@ export function applySnapshot(world, snap, alpha = 1) {
   // so an update that arrives early never makes anything jump.
   const at = (o, k) => (o['p' + k] === undefined ? o[k] : o['p' + k] + (o[k] - o['p' + k]) * alpha);
   let mapChanged = false;
-  if (!world.map || world.map.id !== snap.map) {
+  const riftKey = snap.rift ? `${snap.rift.theme}:${snap.rift.seed}` : '';
+  world.rift = snap.rift || null;
+  world.syncTier = snap.tier || 1;
+  if (!world.map || world.map.id !== snap.map || (snap.map === 'rift' && world.riftKey !== riftKey)) {
     world.loadMapMirror(snap.map);
+    if (snap.map === 'rift' && snap.rift) {
+      // The rift's layout is built from its theme and seed, the same as on the host.
+      const m = buildRiftMap(snap.rift.theme, snap.rift.seed);
+      world.map = m;
+      world.radius = m.radius;
+      world.obstacles = m.obstacles;
+    }
+    world.riftKey = riftKey;
     mapChanged = true;
   }
   world.slowT = snap.slowT;

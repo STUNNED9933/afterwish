@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildHero, buildEnemy, buildNpc, buildSign } from './models.js';
+import { AFFIXES } from '../sim/endgame.js';
 import { NPCS } from '../sim/story.js';
 
 const R = CONFIG.ARENA_RADIUS;
@@ -1050,7 +1051,15 @@ export class Renderer {
       seen.add(e.id);
       let v = this.views.get(e.id);
       if (!v) {
-        v = { id: e.id, type: e.type, shape: e.def.model || e.type, model: buildEnemy(e.type), strikeT: 0, walk: Math.random() * 6, height: e.def.height };
+        v = { id: e.id, type: e.type, shape: e.def.model || e.type, model: buildEnemy(e.type), strikeT: 0, walk: Math.random() * 6, height: e.def.height, size: e.elite ? 1.22 : 1 };
+        if (e.elite) {
+          // Elites: bigger, with a glowing ring in their first modifier's colour.
+          const aura = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: AFFIXES[e.elite[0]].color, transparent: true, opacity: 0.8, depthWrite: false }));
+          aura.scale.setScalar(e.def.radius * 1.6);
+          aura.position.y = 0.05;
+          v.model.group.add(aura);
+          v.aura = aura;
+        }
         this.scene.add(v.model.group);
         this.views.set(e.id, v);
       }
@@ -1059,8 +1068,9 @@ export class Renderer {
       group.rotation.y = Math.PI / 2 - e.facing;
 
       // Spawn-in
-      const s = e.state === 'spawn' ? Math.max(0.01, easeOut(1 - e.t / 0.9)) : 1;
+      const s = (e.state === 'spawn' ? Math.max(0.01, easeOut(1 - e.t / 0.9)) : 1) * (v.size || 1);
       group.scale.setScalar(s);
+      if (v.aura) v.aura.rotation.y += dt * 1.5;
 
       // Walk cycle
       if (e.moving) v.walk += dt * (6 + e.def.speed * 1.6);

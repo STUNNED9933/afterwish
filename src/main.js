@@ -23,7 +23,7 @@ import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat } from './sim/items.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
@@ -915,7 +915,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['enchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -1964,6 +1964,48 @@ function start(hot = {}) {
         else hintOnce('doom', `Violet circle: Doom. It takes ${Math.round(ev.pct * 100)}% of your health whatever your armor, and cannot be parried or blocked. Walk out, or dash through it.`, 9);
         break;
       }
+      // --- Exploration surprises (0.29) ---------------------------------------------
+      case 'rareSpawn':
+        sfx.ui();
+        hud.feedText(`A Rare roams ${ev.map}: ${ev.name}.`);
+        hintOnce('rare', 'A Rare enemy: gold name, tougher than any elite, and worth it: good gear, Wishdust for enchanting, and sometimes a set piece. Look for the gold dot on the minimap.', 9);
+        break;
+      case 'rareSlain':
+        hud.banner(`${ev.name} falls`, `A Rare · +${ev.dust} Wishdust`);
+        sfx.levelUp();
+        break;
+      case 'thiefSpawn':
+        sfx.pickup(3);
+        hud.feedText(`Something glitters on ${ev.map}: a Wishthief is hiding here.`);
+        hintOnce('thief', 'A Wishthief (the gold dot on the minimap): it runs when you come near and gets away after 25 seconds. Every hit spills gold; catch it for a burst of loot, a shard and Wishdust.', 10);
+        break;
+      case 'thiefFlee':
+        hud.float(renderer, ev.x, 2.6, ev.z, 'It bolts!', 'word perfect');
+        break;
+      case 'thiefCoins':
+        sfx.pickup(1);
+        hud.float(renderer, ev.x, 2.2, ev.z, `+${ev.gold} gold`, 'word perfect');
+        break;
+      case 'thiefStumble':
+        hud.float(renderer, ev.x, 2.4, ev.z, 'Stumbles!', 'word stun');
+        break;
+      case 'thiefEscape':
+        hud.feedText('The Wishthief got away.');
+        break;
+      case 'thiefCaught':
+        hud.banner('Wishthief caught!', `+1 shard · +${ev.dust} Wishdust · and everything it stole`);
+        sfx.levelUp();
+        break;
+      case 'remnantRise':
+        hud.banner(`${ev.name} has risen`, `Tougher, with a new attack (${ev.attack}). It always drops a set piece.`);
+        sfx.wave(true);
+        break;
+      case 'remnantCast':
+        hud.float(renderer, ev.x, 3.2, ev.z, ev.name, 'word warn');
+        break;
+      case 'remnantSlain':
+        hud.feedText(`${ev.name}: +${ev.dust} Wishdust`);
+        break;
       case 'idleNoReward':
         hud.banner('Away from the keys?', `After ${ev.secs} seconds without any input, kills give no EXP, gold or loot until you act again.`);
         break;
@@ -2023,7 +2065,12 @@ function start(hot = {}) {
         break;
       case 'discard':
         sfx.ui();
-        hud.feedText(`+${ev.scrap} scrap`);
+        hud.feedText(`+${ev.scrap} scrap${ev.dust ? ` · +${ev.dust} Wishdust` : ''}`);
+        break;
+      case 'enchanted':
+        sfx.upgrade();
+        hud.feedText(`Enchanted ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}.`);
+        refreshMenus();
         break;
       case 'upgrade':
         sfx.upgrade();

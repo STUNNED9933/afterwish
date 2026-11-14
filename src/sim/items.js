@@ -206,6 +206,90 @@ export function starterWeapon(cls = 'warrior') {
   return { id: 'starter', name: w.starter, slot: 'weapon', cls, rarity: 0, ilvl: 1, stats: { [w.main]: 5, [w.bonus[0]]: 3 }, plus: 0 };
 }
 
+// --- Sets (0.29) -------------------------------------------------------------
+// One set per subclass. Set pieces are Legendary items of the set's class with a set
+// name; two pieces worn give the first bonus, four give the second as well. They drop
+// from Remnant bosses (always), Rare enemies (sometimes) and radiant chests (now and then).
+export const SETS = {
+  bloodbound: { name: 'Bloodbound', cls: 'warrior', spec: 'berserker',
+    two: { desc: 'While Bloodied, deal a further 10% damage.', apply: (m) => { m.lowHpDmg += 0.1; } },
+    four: { desc: 'Whirlwind spins 1 second longer (six beats).', apply: (m) => { m.wSpinTime += 1; } } },
+  wardstone: { name: 'Wardstone', cls: 'warrior', spec: 'bulwark',
+    two: { desc: '+15% armor.', apply: (m) => { m.armorPct += 0.15; } },
+    four: { desc: 'Reckoning holds up to 8 stacks.', apply: (m) => { m.reckonMax = Math.max(m.reckonMax, 8); } } },
+  farsight: { name: 'Farsight', cls: 'archer', spec: 'sharpshooter',
+    two: { desc: 'Crits deal a further 15% damage.', apply: (m) => { m.critMult += 0.15; } },
+    four: { desc: 'Long Watch goes up to 60% more damage (was 40%).', apply: (m) => { m.farShotMax += 0.2; } } },
+  galeborn: { name: 'Galeborn', cls: 'archer', spec: 'windrunner',
+    two: { desc: '+8% attack speed.', apply: (m) => { m.asMult *= 1.08; } },
+    four: { desc: 'Evasive Roll comes back 25% sooner.', apply: (m) => { m.eCd *= 0.75; } } },
+  nightcut: { name: 'Nightcut', cls: 'rogue', spec: 'assassin',
+    two: { desc: 'Shadowstrike deals 15% more.', apply: (m) => { m.qDmg *= 1.15; } },
+    four: { desc: 'Clean Kill also takes 4 seconds off Last Rites.', apply: (m) => { m.killResetR += 4; } } },
+  veilweave: { name: 'Veilweave', cls: 'rogue', spec: 'shadowdancer',
+    two: { desc: 'Veil lasts 1 second longer.', apply: (m) => { m.veilTime += 1; } },
+    four: { desc: "Afterimages' knives deal a further 25% of your basic attack.", apply: (m) => { m.veilCopy += 0.25; } } },
+  ashen: { name: 'Ashen', cls: 'mage', spec: 'pyromancer',
+    two: { desc: 'Burns deal 15% more.', apply: (m) => { m.burnMult *= 1.15; } },
+    four: { desc: 'Burns stack 2 higher.', apply: (m) => { m.burnMax += 2; } } },
+  rimeheart: { name: 'Rimeheart', cls: 'mage', spec: 'frostbinder',
+    two: { desc: 'Shatter deals 20% more.', apply: (m) => { m.frostDmg *= 1.2; } },
+    four: { desc: 'Enemies Shatter at 5 Hoarfrost instead of 6.', apply: (m) => { m.frostMax = Math.max(2, m.frostMax - 1); } } },
+};
+export const SET_IDS = Object.keys(SETS);
+const SET_PIECE = { helm: 'Crown', chest: 'Mantle', boots: 'Treads', ring: 'Seal' };
+const SET_WEAPON = { warrior: 'Blade', archer: 'Longbow', rogue: 'Fangs', mage: 'Staff' };
+export const SET_RARITY = 4; // Legendary
+
+/** A set piece for a class: usually of its current subclass's set, sometimes the other one. */
+export function rollSetPiece(rng, ilvl, cls, spec = null) {
+  const mine = SET_IDS.filter((id) => SETS[id].cls === cls);
+  if (!mine.length) return null;
+  const pick = spec && mine.some((id) => SETS[id].spec === spec) && rng() < 0.7 ? mine.find((id) => SETS[id].spec === spec) : mine[Math.floor(rng() * mine.length)];
+  const slot = SLOTS[Math.floor(rng() * SLOTS.length)];
+  const weights = RARITIES.map((_, i) => (i === SET_RARITY ? 1 : 0));
+  const item = rollItem(rng, ilvl, { weights, slot, cls });
+  item.set = pick;
+  item.cls = cls; // a set is for one class
+  item.name = `${SETS[pick].name} ${slot === 'weapon' ? SET_WEAPON[cls] : SET_PIECE[slot]}`;
+  return item;
+}
+
+/** How many pieces of each set are worn. */
+export function setCounts(equipped) {
+  const n = {};
+  for (const slot of SLOTS) {
+    const it = equipped[slot];
+    if (it && it.set) n[it.set] = (n[it.set] || 0) + 1;
+  }
+  return n;
+}
+
+// --- Enchanting (0.29) -------------------------------------------------------
+// Reroll one bonus stat on an item into another stat (never the main stat). Once an item
+// has been enchanted, only that same line can be enchanted again, and each time costs more.
+export const ENCHANT_POOL = ['as', 'crit', 'lifesteal', 'haste', 'armor', 'hp'];
+export function enchantCost(item) {
+  const n = item.enchants || 0;
+  const lv = 1 + 0.1 * ((item.ilvl || 1) - 1);
+  return { gold: Math.round(120 * (1 + item.rarity) * lv * (1 + n)), dust: 1 + item.rarity + n };
+}
+/** Which of an item's stats can be enchanted right now. */
+export function enchantable(item) {
+  if (!item) return [];
+  const keys = Object.keys(item.stats).slice(1); // the first is the main stat
+  if (item.enchantKey && keys.includes(item.enchantKey)) return [item.enchantKey];
+  return keys;
+}
+/** A fresh bonus-stat roll for an item (what enchanting gives). */
+export function rollBonusStat(key, item, rng) {
+  return statValue(key, item.ilvl, RARITIES[item.rarity].mult * 0.5, rng);
+}
+/** Wishdust from scrapping an item (Legendary and better only). */
+export function dustValue(item) {
+  return item.rarity >= 6 ? 4 : item.rarity === 5 ? 2 : item.rarity === 4 ? 1 : 0;
+}
+
 // --- Blacksmith upgrades ---------------------------------------------------
 export const MAX_PLUS = 10;
 export const PLUS_BONUS = 0.08; // each +1 adds 8% to every stat on the item

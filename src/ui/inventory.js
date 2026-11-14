@@ -1,11 +1,14 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue } from '../sim/items.js';
+import { SPECS } from '../sim/talents.js';
 import { svg, gearIcon, gearClassNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
+// ...and how many pieces of each set are worn (0.29).
+let setsWorn = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,8 +19,15 @@ export function itemTooltip(item, compareTo) {
   const keys = Object.keys(stats);
   let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; gear score ${Math.round(itemScore(item))}</div>`;
   keys.forEach((k, i) => {
-    html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${formatStat(k, stats[k])}</div>`;
+    const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Enchanted: only this line can be enchanted again">✦</span>' : '';
+    html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${formatStat(k, stats[k])}${ench}</div>`;
   });
+  if (item.set && SETS[item.set]) {
+    // A set piece (0.29): its set's bonuses, lit when enough pieces are worn.
+    const set = SETS[item.set];
+    const n = setsWorn[item.set] || 0;
+    html += `<div class="tt-set"><b>${set.name} set</b> &middot; ${SPECS[set.spec] ? SPECS[set.spec].name : ''} &middot; ${n} of 4 worn<div class="${n >= 2 ? 'on' : ''}">(2) ${set.two.desc}</div><div class="${n >= 4 ? 'on' : ''}">(4) ${set.four.desc}</div></div>`;
+  }
   if (item.effect && EFFECTS[item.effect]) {
     const fx = effectFor(item.effect, item.cls || gearClassNow());
     html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}</div>`;
@@ -35,7 +45,8 @@ export function itemTooltip(item, compareTo) {
   } else if (!compareTo && powerProbe && powerProbe.empty(item)) {
     html += `<div class="tt-diff">${cpLine(item)}</div>`;
   }
-  html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap</div>`;
+  const dust = dustValue(item);
+  html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ''}</div>`;
   return html;
 }
 
@@ -107,7 +118,8 @@ export class Inventory {
     const keep = new Set(this.keep.get());
     for (const b of $('keep-rarities').children) b.setAttribute('aria-pressed', keep.has(Number(b.dataset.rarity)) ? 'true' : 'false');
     this.tooltip.hide();
-    $('inv-res').textContent = `Gold ${p.gold} · Scrap ${p.scrap} · Warden keys ${p.keys}`;
+    $('inv-res').textContent = `Gold ${p.gold} · Scrap ${p.scrap} · Wishdust ${p.dust || 0} · Warden keys ${p.keys}`;
+    setsWorn = setCounts(p.equipped);
 
     const eq = $('equipped');
     eq.innerHTML = '';
@@ -121,9 +133,23 @@ export class Inventory {
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');
-      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
+      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
       row.append(cell, text);
+      if (item && Object.keys(item.stats).length > 1 && !world.trial) {
+        // Enchanting (0.29): reroll one bonus stat, for gold and Wishdust.
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny ench-btn';
+        b.textContent = this.enchantSlot === slot ? 'Close' : 'Enchant';
+        b.title = 'Turn one bonus stat into a different one, for gold and Wishdust';
+        b.addEventListener('click', () => {
+          this.enchantSlot = this.enchantSlot === slot ? null : slot;
+          this.render(world);
+        });
+        row.appendChild(b);
+      }
       eq.appendChild(row);
+      if (item && this.enchantSlot === slot) eq.appendChild(this.enchantPanel(world, slot, item));
     }
 
     // Combat Power, worked out once per render; item tooltips compare against it.
@@ -174,6 +200,34 @@ export class Inventory {
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
     btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';
     btn.disabled = !scrapTotal;
+  }
+
+  /** Enchanting (0.29): the bonus stats of one equipped item, each with a reroll button. */
+  enchantPanel(world, slot, item) {
+    const p = world.player;
+    const box = document.createElement('div');
+    box.className = 'ench-panel';
+    const cost = enchantCost(item);
+    const can = p.gold >= cost.gold && (p.dust || 0) >= cost.dust;
+    const open = enchantable(item);
+    box.innerHTML = `<p class="setting-desc">Turn one bonus stat into a different one, at a fresh roll. Once an item is enchanted, only that line can be enchanted again, and each time costs more. Cost: <b>${cost.gold} gold + ${cost.dust} Wishdust</b> (you have ${p.gold} and ${p.dust || 0}). Wishdust comes from Rares, the Wishthief, Remnants and scrapping Legendary or better.</p>`;
+    const stats = itemStats(item);
+    Object.keys(item.stats).slice(1).forEach((k) => {
+      const row = document.createElement('div');
+      row.className = 'ench-row';
+      const ok = open.includes(k);
+      row.innerHTML = `<span>${formatStat(k, stats[k])}${item.enchantKey === k ? ' ✦' : ''}</span>`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ghost tiny';
+      b.textContent = ok ? 'Reroll' : 'Locked';
+      b.disabled = !ok || !can;
+      b.title = ok ? `Becomes one of: ${['as', 'crit', 'lifesteal', 'haste', 'armor', 'hp'].filter((x) => !(x in item.stats)).map((x) => STATS[x].label).join(', ')}` : 'Only the enchanted line can be enchanted again';
+      b.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k }));
+      row.appendChild(b);
+      box.appendChild(row);
+    });
+    return box;
   }
 
   /** How many bag items are better than what is equipped (shown on the Gear button). */

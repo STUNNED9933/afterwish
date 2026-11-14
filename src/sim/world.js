@@ -15,7 +15,8 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS } from './items.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue } from './items.js';
+import { RARE, rareName, THIEF, REMNANT, remnantName } from './surprises.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
@@ -62,7 +63,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -92,6 +93,8 @@ export class World {
     this.campDown = {}; // 'map:camp' -> tick when a beaten boss comes back (see loadMap)
     for (const k in opts.save?.campDown || {}) this.campDown[k] = Math.round(opts.save.campDown[k] / CONFIG.TICK);
     this.chestCount = 0;
+    this.surpriseN = 0; // dice for Rares, the Wishthief and Remnants (their own streams)
+    this.thiefClock = 0;
     this.telegraphs = [];
     this.events = [];
     this.commands = [];
@@ -365,6 +368,7 @@ export class World {
       wishPts: save?.wishPts ?? 0,
       wishStats: Object.assign({}, save?.wishStats),
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
+      dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
       chillT: 0, // Frostbound elites: slower while > 0
       swingCount: 0,
       empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
@@ -403,6 +407,14 @@ export class World {
     const base = CLASSES[this.cls].abilities;
     this.kit = spec && spec.kit && spec.cls === this.cls ? Object.assign({}, base, spec.kit) : base;
     if (spec) for (const t of spec.talents) if (this.player.talents[t.id] > 0) t.apply(m, this.player.talents[t.id]);
+    // Sets (0.29): two pieces worn give the first bonus, four the second too.
+    const sets = setCounts(this.player.equipped);
+    for (const id in sets) {
+      const set = SETS[id];
+      if (!set || set.cls !== this.cls) continue;
+      if (sets[id] >= 2) set.two.apply(m);
+      if (sets[id] >= 4) set.four.apply(m);
+    }
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
     for (const slot of SLOTS) {
       const it = this.player.equipped[slot];
@@ -471,6 +483,7 @@ export class World {
       wishPts: p.wishPts,
       wishStats: p.wishStats,
       streak: p.streak,
+      dust: p.dust,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -508,6 +521,7 @@ export class World {
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
+      else if (c.type === 'enchant') this.enchantItem(c.slot, c.key);
       else if (c.type === 'openCache') this.openCache(c.tier);
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
@@ -1298,7 +1312,7 @@ export class World {
       }
       case 'spin': {
         // Whirlwind (Berserker): a spin you can move in, hitting all around every half second.
-        const ticks = Math.max(1, Math.round(def.duration / def.tick));
+        const ticks = Math.max(1, Math.round((def.duration + (m.wSpinTime || 0)) / def.tick)); // Bloodbound: longer
         p.spin = { left: ticks, next: 0, tick: def.tick, dmg: dmg * def.tickMult, radius, slot, first: true };
         this.emit('cast', { slot, fx: 'spin', x: p.x, z: p.z, radius, dur: def.duration });
         break;
@@ -1971,7 +1985,11 @@ export class World {
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
       const a = dAtan2(target.z - p.z, target.x - p.x);
-      if (d > this.basicRange()) {
+      // A swing that has started finishes if the target only slipped a little out of reach (0.29),
+      // so a running target cannot dance on the edge of your range and never be hit.
+      const reach = p.atkWind > 0 ? this.basicRange() * 1.25 + 1 : this.basicRange();
+      if (d > reach) {
+        if (p.atkWind > 0) p.attackCd = 0; // and a swing that never landed costs nothing
         p.atkWind = 0;
         this.movePlayer(dCos(a), dSin(a), speed * dt);
         p.facing = turnToward(p.facing, a, 14 * dt);
@@ -2187,7 +2205,7 @@ export class World {
     if (!this.mods.reckoning) return;
     const p = this.player;
     const was = p.reck;
-    p.reck = Math.min(CONFIG.RECKON_MAX, p.reck + n);
+    p.reck = Math.min(this.mods.reckonMax || CONFIG.RECKON_MAX, p.reck + n);
     if (p.reck > was) this.emit('reckonStack', { stacks: p.reck });
   }
 
@@ -2302,7 +2320,31 @@ export class World {
     // A streak (tier II and up) means more; a boss you have outgrown, less (bossFalloff).
     const streak = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
     const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * streak)) : 0;
-    const count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
+    let count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
+    if (!this.trial && this.mode === 'explore') {
+      // Exploration surprises (0.29): more and better from Rares, the Wishthief and Remnants, and set pieces.
+      const extra = [];
+      if (def.thief) {
+        count = 0;
+        for (let i = 0; i < THIEF.items; i++) extra.push(rollItem(this.rng, Math.max(1, Math.round(e.level)), { minRarity: Math.max(floor, i === 0 ? 4 : 2), cls: this.cls }));
+      }
+      if (e.rare) {
+        extra.push(rollItem(this.rng, Math.max(1, Math.round(e.level)), { minRarity: Math.max(floor, this.rng() < RARE.better ? 4 : 3), cls: this.cls }));
+        if (this.rng() < RARE.set) extra.push(rollSetPiece(this.rng, Math.max(1, Math.round(e.level)), this.cls, p.spec));
+      }
+      if (e.remnant) {
+        extra.push(rollSetPiece(this.rng, Math.max(1, Math.round(e.level)), this.cls, p.spec));
+        if (hoard) count++;
+      }
+      extra.forEach((item, i) => {
+        if (!item) return;
+        const a = (i / Math.max(1, extra.length)) * TAU + 0.6;
+        const c = this.clampToArena(e.x + dCos(a) * 2.2, e.z + dSin(a) * 2.2, 1);
+        const drop = { id: this.nextId++, x: c.x, z: c.z, item, age: 0, magnet: false, owner: this.cur.pid };
+        this.loot.push(drop);
+        this.emit('lootDrop', { id: drop.id, x: c.x, z: c.z, rarity: item.rarity, set: item.set || null });
+      });
+    }
     const ilvl = Math.max(1, Math.round(e.level || this.wave.n));
     for (let i = 0; i < count; i++) {
       let opts = { minRarity: Math.max(floor, def.boss ? 2 : 0, e.elite && i === count - 1 ? 3 : 0), cls: this.cls };
@@ -2639,12 +2681,176 @@ export class World {
     const T = TIERS[tier];
     const chance = rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0;
     if (!e.def.boss && this.rng() < chance) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes);
+    if (!rift && !this.trial) {
+      // Exploration surprises (0.29): now and then a named Rare; a boss you know well may come back as its Remnant.
+      if (!e.def.boss && !this.enemies.some((o) => o.rare && !o.dead)) {
+        const r = this.streamRng('rare', this.surpriseN++);
+        if (r() < RARE.chance) this.makeRare(e, r, Math.max(RARE.affixes, tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.affixes : 0));
+      } else if (e.def.boss && BOSS_LOOT[e.type] && (this.heroes[0].player.bossKills[e.type] || 0) >= REMNANT.after) {
+        const r = this.streamRng('remnant', this.surpriseN++);
+        if (r() < REMNANT.chance) this.makeRemnant(e);
+      }
+    }
     e.maxHp = e.hp = Math.round(e.maxHp * hp);
     e.dmgMult *= dmg;
     e.expValue *= exp;
     e.goldValue = Math.round(e.goldValue * exp);
     if (e.elite && e.elite.includes('shielded')) e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
     return e;
+  }
+
+  /** A named Rare: an elite with two modifiers, far tougher, far better paid. */
+  makeRare(e, r, affixes = RARE.affixes) {
+    if (e.elite) {
+      // Already an elite: top its modifiers up (a Rare never has fewer than an elite of its tier).
+      const pool = AFFIX_IDS.filter((a) => !e.elite.includes(a));
+      while (e.elite.length < affixes && pool.length) e.elite.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+      e.swift = e.elite.includes('swift');
+    }
+    if (!e.elite) {
+      const pool = AFFIX_IDS.slice();
+      e.elite = [];
+      for (let i = 0; i < affixes && pool.length; i++) e.elite.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+      e.swift = e.elite.includes('swift');
+      e.maxHp = e.hp = Math.round(e.maxHp * RARE.hp);
+      e.dmgMult *= RARE.dmg;
+      e.expValue *= RARE.reward;
+      e.goldValue = Math.round(e.goldValue * RARE.reward);
+      e.radius *= RARE.scale;
+    } else {
+      e.maxHp = e.hp = Math.round(e.maxHp * (RARE.hp / ELITE.hp));
+      e.dmgMult *= RARE.dmg / ELITE.dmg;
+      e.expValue *= RARE.reward / ELITE.reward;
+      e.goldValue = Math.round(e.goldValue * (RARE.reward / ELITE.reward));
+      e.radius *= RARE.scale / 1.12;
+    }
+    e.rare = rareName(r);
+    this.emit('rareSpawn', { id: e.id, name: e.rare, map: this.map.name, x: e.x, z: e.z });
+  }
+
+  /** A Remnant: the boss again, tougher, with one new attack (stepDoom) and a set piece to drop. */
+  makeRemnant(e) {
+    e.remnant = true;
+    e.maxHp = e.hp = Math.round(e.maxHp * REMNANT.hp);
+    e.dmgMult *= REMNANT.dmg;
+    e.expValue *= REMNANT.reward;
+    e.goldValue = Math.round(e.goldValue * REMNANT.reward);
+    e.remnantT = REMNANT.first;
+    this.emit('remnantRise', { id: e.id, name: remnantName(e.def), attack: REMNANT.attack[e.type] || 'Echo', map: this.map.name, x: e.x, z: e.z });
+  }
+
+  /** The Wishthief: hides on a map; bolts when someone comes near or hits it, and gets away in the end. */
+  spawnThief() {
+    if (this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    if (this.enemies.some((o) => o.def.thief && !o.dead)) return null;
+    const r = this.streamRng('thief', this.surpriseN++);
+    const lead = this.heroes[0].player;
+    const tier = this.worldTier();
+    let x = 0, z = 0;
+    for (let i = 0; i < 20; i++) {
+      const a = r() * TAU, d = 16 + r() * 8;
+      const c = this.clampToArena(lead.x + dCos(a) * d, lead.z + dSin(a) * d, 1);
+      x = c.x;
+      z = c.z;
+      if (!this.obstacles.some((o) => dist(o.x, o.z, x, z) < (o.r || 1) + 1)) break;
+    }
+    const level = tier >= 2 ? CONFIG.MAX_LEVEL : Math.max(1, (this.map.level || 1) + Math.round((this.map.levelSpan || 0) * 0.5));
+    const e = this.spawnEnemy('wishthief', { x, z, level });
+    e.x = e.px = x;
+    e.z = e.pz = z;
+    e.state = 'recover';
+    e.t = 0;
+    e.maxHp = e.hp = Math.round(e.maxHp * THIEF.hp * (tier >= 2 ? 1 + (TIERS[tier].hp - 1) * 0.5 : 1));
+    e.goldValue = Math.round(e.goldValue * 8);
+    e.home = null;
+    e.fleeing = false;
+    e.coinAcc = 0;
+    this.emit('thiefSpawn', { id: e.id, map: this.map.name, x, z });
+    return e;
+  }
+
+  /** The Wishthief runs from whoever is nearest, along the edge when it has to. */
+  stepThief(e, dt) {
+    let h = null, hd = 1e9;
+    for (const x of this.heroes) {
+      if (x.player.dead) continue;
+      const d = dist(x.player.x, x.player.z, e.x, e.z);
+      if (d < hd) {
+        hd = d;
+        h = x.player;
+      }
+    }
+    if (!e.fleeing) {
+      if (!h || (hd > THIEF.near && e.hp >= e.maxHp)) return;
+      e.fleeing = true;
+      e.lifeT = THIEF.life;
+      this.emit('thiefFlee', { id: e.id, x: e.x, z: e.z });
+    }
+    e.lifeT -= dt;
+    if (e.lifeT <= 0) {
+      e.dead = true;
+      e.escaped = true;
+      this.emit('thiefEscape', { id: e.id, x: e.x, z: e.z });
+      return;
+    }
+    if (e.state === 'stunned') {
+      e.stunT -= dt;
+      if (e.stunT <= 0) e.state = 'recover';
+      return;
+    }
+    if (!h) return;
+    // Runs, stumbles to catch its breath, runs again.
+    e.runT = (e.runT ?? THIEF.run) - dt;
+    if (e.runT < 0) {
+      if (e.runT > -THIEF.stumble) {
+        if (!e.panting) this.emit('thiefStumble', { id: e.id, x: e.x, z: e.z });
+        e.panting = true;
+        e.moving = false;
+        return;
+      }
+      e.runT = THIEF.run;
+    }
+    e.panting = false;
+    let a = dAtan2(e.z - h.z, e.x - h.x);
+    if (dHypot(e.x, e.z) > this.radius - 7) {
+      // Near the edge: run along it instead of into it (whichever way is closer to straight away).
+      const out = dAtan2(e.z, e.x);
+      const t1 = out + Math.PI / 2, t2 = out - Math.PI / 2;
+      a = Math.abs(angDiff(t1, a)) < Math.abs(angDiff(t2, a)) ? t1 : t2;
+    }
+    const speed = THIEF.speed * h.stats.ms * (e.slowT > 0 ? 1 - (e.slow || 0) : 1);
+    e.x += dCos(a) * speed * dt;
+    e.z += dSin(a) * speed * dt;
+    e.facing = a;
+    e.moving = true;
+  }
+
+  /** Enchanting (0.29): reroll one bonus stat on an equipped item into another, for gold and Wishdust. */
+  enchantItem(slot, key) {
+    const p = this.player;
+    const item = p.equipped[slot];
+    if (!item || !enchantable(item).includes(key)) return;
+    const cost = enchantCost(item);
+    if (p.gold < cost.gold || p.dust < cost.dust) {
+      this.emit('cantAfford');
+      return;
+    }
+    const pool = ENCHANT_POOL.filter((k) => !(k in item.stats));
+    if (!pool.length) return;
+    p.gold -= cost.gold;
+    p.dust -= cost.dust;
+    const next = pool[Math.floor(this.rng() * pool.length)];
+    const value = rollBonusStat(next, item, this.rng);
+    const stats = {};
+    for (const k in item.stats) {
+      if (k === key) stats[next] = value;
+      else stats[k] = item.stats[k];
+    }
+    item.stats = stats;
+    item.enchantKey = next;
+    item.enchants = (item.enchants || 0) + 1;
+    this.recalcStats();
+    this.emit('enchanted', { slot, from: key, to: next, value, name: item.name });
   }
 
   /** Make an enemy an elite with `n` different modifiers. */
@@ -2784,6 +2990,7 @@ export class World {
     if (T.tickets) p.tickets += T.tickets;
     if (T.potions) p.potions = CONFIG.MAX_POTIONS;
     const items = T.items.map((o) => rollItem(rng, c.level, o.weights ? { weights: o.weights, cls: this.cls } : { minRarity: o.min, cls: this.cls }));
+    if (c.tier === 'radiant' && !this.trial && rng() < 0.1) items.push(rollSetPiece(rng, c.level, this.cls, this.player.spec)); // a set piece, now and then (0.29)
     items.forEach((item, i) => {
       const a = (i / items.length) * TAU + 0.6;
       const at = this.clampToArena(c.x + dCos(a) * 1.1, c.z + dSin(a) * 1.1, 1);
@@ -2970,7 +3177,9 @@ export class World {
     p.bag.splice(index, 1);
     const scrap = scrapValue(item);
     p.scrap += scrap;
-    this.emit('discard', { count: 1, scrap });
+    const dust = dustValue(item);
+    p.dust += dust;
+    this.emit('discard', { count: 1, scrap, dust });
   }
 
   /** Scrap every bag item that scores lower than what is equipped in its slot. */
@@ -2979,18 +3188,21 @@ export class World {
     const p = this.player;
     const kept = new Set(Array.isArray(keep) ? keep.map(Number) : []);
     let scrap = 0;
+    let dust = 0;
     let count = 0;
     const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
     p.bag = p.bag.filter((it) => {
       if (kept.has(it.rarity) || trading.has(it.id)) return true; // never scrap what is on offer in a trade
       if (itemScore(it) > itemScore(p.equipped[it.slot])) return true;
       scrap += scrapValue(it);
+      dust += dustValue(it);
       count++;
       return false;
     });
     if (count) {
       p.scrap += scrap;
-      this.emit('discard', { count, scrap });
+      p.dust += dust;
+      this.emit('discard', { count, scrap, dust });
     }
   }
 
@@ -3334,6 +3546,21 @@ export class World {
       if (!e.def.boss || e.dead || e.state === 'spawn' || !e.aggro || e.returning) continue;
       const near = this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) <= DOOM.range);
       if (!near.length) continue;
+      if (e.remnant) {
+        // A Remnant's own attack (0.29): a ring of blows falling around whoever it fights.
+        e.remnantT -= dt;
+        if (e.remnantT <= 0) {
+          e.remnantT = REMNANT.every;
+          const h = near[Math.floor(this.rng() * near.length)].player;
+          const blow = (e.def.attacks[0].dmg || 20) * e.dmgMult * REMNANT.blow;
+          for (let i = 0; i < REMNANT.count; i++) {
+            const a = this.rng() * TAU, d = i === 0 ? 0 : 1.5 + this.rng() * REMNANT.spread;
+            const c = this.clampToArena(h.x + dCos(a) * d, h.z + dSin(a) * d, 1);
+            this.falls.push({ x: c.x, z: c.z, r: REMNANT.radius, t: -i * 0.15, dur: REMNANT.warn, dmg: blow, level: e.level, srcId: e.id, tele: null });
+          }
+          this.emit('remnantCast', { id: e.id, name: REMNANT.attack[e.type] || 'Echo', x: h.x, z: h.z });
+        }
+      }
       // Idle heroes first: standing still with no input near a boss is never safe.
       for (const h of near) {
         if (h.player.idleT < DOOM.idle) continue;
@@ -3604,6 +3831,22 @@ export class World {
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    if (e.def.thief && dmg > 0 && e.hp > 0) {
+      // The Wishthief spills gold as it is hit.
+      if (!e.fleeing) {
+        e.fleeing = true;
+        e.lifeT = THIEF.life;
+        this.emit('thiefFlee', { id: e.id, x: e.x, z: e.z });
+      }
+      e.coinAcc += dmg;
+      const step = e.maxHp * 0.1;
+      while (e.coinAcc >= step) {
+        e.coinAcc -= step;
+        const gold = Math.max(1, Math.round(e.goldValue * THIEF.coins));
+        p.gold += gold;
+        this.emit('thiefCoins', { x: e.x, z: e.z, gold });
+      }
+    }
     if (e.home && !e.aggro && dist(e.x, e.z, e.home.x, e.home.z) < CONFIG.LEASH_RANGE) {
       e.aggro = true; // hitting a camp enemy wakes it up
       e.returning = false;
@@ -3689,6 +3932,7 @@ export class World {
           this.emit('cdReset', { slot: k });
         }
       }
+      if (m.killResetR > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.killResetR); // Nightcut
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
@@ -3734,6 +3978,21 @@ export class World {
       return;
     }
     p.idleWarned = false;
+    if (this.mode === 'explore' && !this.trial) {
+      // Exploration surprises (0.29): Wishdust, and a shard from the Wishthief.
+      if (e.def.thief) {
+        p.tickets++;
+        p.dust += THIEF.dust;
+        this.emit('thiefCaught', { x: e.x, z: e.z, dust: THIEF.dust });
+      } else if (e.rare) {
+        const n = RARE.dust[0] + Math.floor(this.rng() * (RARE.dust[1] - RARE.dust[0] + 1));
+        p.dust += n;
+        this.emit('rareSlain', { name: e.rare, x: e.x, z: e.z, dust: n });
+      } else if (e.remnant) {
+        p.dust += REMNANT.dust;
+        this.emit('remnantSlain', { name: remnantName(e.def), x: e.x, z: e.z, dust: REMNANT.dust });
+      }
+    }
     const fall = this.bossFalloff(e);
     p.gold += Math.round(e.goldValue * fall);
     if (this.mode === 'explore' && (e.def.heavy || this.rng() < CONFIG.TICKET_CHANCE)) {
@@ -3821,6 +4080,10 @@ export class World {
         e.kx *= f;
         e.kz *= f;
         if (Math.abs(e.kx) + Math.abs(e.kz) < 0.2) e.kx = e.kz = 0;
+      }
+      if (e.def.thief) {
+        this.stepThief(e, dt);
+        continue;
       }
       const dx = p.x - e.x;
       const dz = p.z - e.z;
@@ -4301,6 +4564,8 @@ inTown() {
       }
     }
     this.placeChests();
+    this.thiefClock = 0;
+    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.streamRng('thiefIn', this.surpriseN++)() < THIEF.onEnter) this.spawnThief();
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
       this.use(h);
@@ -4547,6 +4812,14 @@ inTown() {
         if (slot.timer <= 0 && away) slot.id = this.spawnCamp(slot, camp).id;
       }
     }
+    // The Wishthief (0.29): every so often, another one may be hiding here.
+    if (this.map && !this.map.safe && this.map.id !== 'rift' && !this.trial) {
+      this.thiefClock += dt;
+      if (this.thiefClock >= THIEF.every) {
+        this.thiefClock = 0;
+        if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
+      }
+    }
     // The Waygate in town: stand on it to choose a map you have already reached.
     const wg = this.map.waygate;
     if (wg) {
@@ -4681,6 +4954,14 @@ inTown() {
         if (slot.id != null) continue;
         slot.timer -= dt;
         if (slot.timer <= 0 && away) slot.id = this.spawnCamp(slot, camp).id;
+      }
+    }
+    // The Wishthief (0.29): every so often, another one may be hiding here.
+    if (this.map && !this.map.safe && this.map.id !== 'rift' && !this.trial) {
+      this.thiefClock += dt;
+      if (this.thiefClock >= THIEF.every) {
+        this.thiefClock = 0;
+        if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
       }
     }
     const allDown = this.heroes.every((h) => h.player.dead);

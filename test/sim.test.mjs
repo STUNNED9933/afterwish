@@ -590,7 +590,7 @@ import { makeRng } from '../src/sim/rng.js';
   check('ranks: abilities go to rank ' + CONFIG.MAX_RANK, (() => { p.skillPoints = 99; for (let i = 0; i < 30; i++) w.command({ type: 'rankUp', slot: 'q' }); w.step(CONFIG.TICK); return p.ranks.q === CONFIG.MAX_RANK; })());
 
   // Every enemy type can fight: put one next to the hero and let it attack for a while.
-  for (const type of Object.keys(ENEMIES)) {
+  for (const type of Object.keys(ENEMIES).filter((t) => !ENEMIES[t].thief)) { // (the Wishthief never fights: it runs)
     const a = new World({ seed: 5, save: { v: 2, level: 30 } }); a.wave.phase = 'explore';
     const e = a.spawnEnemy(type); e.state = 'chase'; e.x = 5; e.z = 0; a.player.x = 0; a.player.z = 0;
     let windups = 0, bad = false;
@@ -2194,6 +2194,139 @@ import { makeRng } from '../src/sim/rng.js';
     check('Streak: being knocked out ends it', p.streak === 0 && p.dead);
   }
 }
+// --- 0.29: exploration surprises, Remnants, sets, enchanting -----------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { RARE, THIEF, REMNANT } = await import('../src/sim/surprises.js');
+  const { SETS, rollSetPiece, setCounts, enchantable, enchantCost, dustValue, rollItem: roll } = await import('../src/sim/items.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const run = (w, sec) => { for (let i = 0; i < sec * 60; i++) w.step(CONFIG.TICK); };
+  const explorer = (cls = 'warrior', extra = {}, seed = 11) => {
+    const w = new World({ seed, mode: 'explore', cls, save: Object.assign(geared(cls, 40, 2), extra) });
+    w.loadMap('frost', 'town');
+    return w;
+  };
+  // Rares
+  {
+    let spawns = 0, rares = 0;
+    for (let i = 0; i < 40; i++) { const w = explorer('warrior', {}, 200 + i); spawns += w.enemies.length; rares += w.enemies.filter((e) => e.rare).length; }
+    check('Rares: about one camp spawn in sixty, never more than one on a map', rares > 0 && Math.abs(rares / spawns - RARE.chance) < RARE.chance * 0.8, `${rares} of ${spawns}`);
+    const w = explorer();
+    const e = w.enemies.find((x) => !x.def.boss && !x.elite && !x.rare);
+    const hp = e.maxHp;
+    w.makeRare(e, mk(5));
+    check('Rares: a name, two modifiers and five times the health', typeof e.rare === 'string' && e.rare.length > 3 && e.elite.length === 2 && Math.abs(e.maxHp / hp - RARE.hp) < 0.01);
+    const p = w.player;
+    const dust = p.dust, loot = w.loot.length;
+    w.killEnemy(e, 'basic');
+    check('Rares: a kill gives Wishdust and an Epic or better', p.dust - dust >= RARE.dust[0] && w.loot.slice(loot).some((l) => l.item.rarity >= 3));
+  }
+  // The Wishthief
+  {
+    const w = explorer('archer');
+    w.enemies = [];
+    const p = w.player;
+    const t = w.spawnThief();
+    t.maxHp = t.hp = 1e9; // (so auto-attacks cannot catch it here)
+    check('Wishthief: hides out on the map, away from you', t && t.def.thief && Math.hypot(t.x - p.x, t.z - p.z) > 12 && !t.fleeing);
+    t.x = t.px = p.x + 8; t.z = t.pz = p.z;
+    run(w, 0.5);
+    check('Wishthief: bolts when you come near, away from you', t.fleeing && Math.hypot(t.x - p.x, t.z - p.z) > 8);
+    const g = p.gold;
+    w.hitEnemy(t, t.maxHp * 0.25, { canCrit: false });
+    check('Wishthief: every tenth of its health knocked off spills gold', p.gold > g && w.events.filter((ev) => ev.type === 'thiefCoins').length === 2);
+    run(w, THIEF.life);
+    check('Wishthief: and it gets away after 25 seconds', t.dead && t.escaped && !w.enemies.includes(t));
+    const w2 = explorer('archer');
+    w2.enemies = [];
+    const t2 = w2.spawnThief();
+    const tk = w2.player.tickets, dust2 = w2.player.dust, l2 = w2.loot.length;
+    w2.killEnemy(t2, 'basic');
+    check('Wishthief: caught, it gives a shard, Wishdust and three pieces of gear (one Legendary or better)', w2.player.tickets >= tk + 1 && w2.player.dust === dust2 + THIEF.dust && w2.loot.length - l2 === 3 && w2.loot.slice(l2).some((l) => l.item.rarity >= 4));
+  }
+  // Remnants
+  {
+    let rem = 0, n = 0;
+    for (let i = 0; i < 60; i++) {
+      const w = new World({ seed: 100 + i, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 45, 2), { bossKills: { boss: 5 } }) });
+      w.loadMap('keep', 'town');
+      const b = w.enemies.find((e) => e.def.boss);
+      n++;
+      if (b && b.remnant) rem++;
+    }
+    check('Remnants: once you have beaten a boss three times, about one spawn in four is its Remnant', rem > 5 && rem < 28, `${rem} of ${n}`);
+    const fresh = new World({ seed: 3, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 45, 2), { bossKills: { boss: 1 } }) });
+    let any = false;
+    for (let i = 0; i < 30; i++) { fresh.loadMap('keep', 'town'); if (fresh.enemies.some((e) => e.remnant)) any = true; }
+    check('Remnants: never before the third kill', !any);
+    const w = new World({ seed: 3, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 45, 2), { bossKills: { boss: 5 }, spec: 'berserker' }) });
+    w.loadMap('keep', 'town');
+    const b = w.enemies.find((e) => e.def.boss);
+    w.enemies = [b];
+    if (!b.remnant) w.makeRemnant(b);
+    const p = w.player;
+    p.x = p.px = b.x - 6; p.z = p.pz = b.z;
+    b.aggro = true; b.state = 'recover'; b.t = 999;
+    let cast = null;
+    for (let i = 0; i < 60 * 7 && !cast; i++) { w.command({ type: 'stop' }); w.runCommands(); w.step(CONFIG.TICK); cast = w.events.find((ev) => ev.type === 'remnantCast'); w.events.length = 0; }
+    check('Remnants: a new attack, a ring of blows around you', cast && cast.name === 'Iron Rain' && w.falls.length === REMNANT.count);
+    const l0 = w.loot.length, d0 = p.dust;
+    w.killEnemy(b, 'basic');
+    check('Remnants: always drop a set piece, and Wishdust', w.loot.slice(l0).some((l) => l.item.set) && p.dust === d0 + REMNANT.dust);
+  }
+  // Sets
+  {
+    const r = mk(9);
+    const piece = rollSetPiece(r, 60, 'warrior', 'berserker');
+    check('Sets: a set piece is a Legendary of its class, named for its set', piece.rarity === 4 && piece.cls === 'warrior' && SETS[piece.set].cls === 'warrior' && piece.name.startsWith(SETS[piece.set].name));
+    let mine = 0;
+    for (let i = 0; i < 200; i++) if (rollSetPiece(r, 60, 'warrior', 'berserker').set === 'bloodbound') mine++;
+    check('Sets: usually your own subclass\'s set', mine > 140 && mine < 190, mine);
+    const save = geared('warrior', 60, 2);
+    save.spec = 'bulwark';
+    const w = new World({ seed: 4, cls: 'warrior', save });
+    const armor0 = w.player.stats.armor;
+    for (const slot of ['helm', 'chest']) { const it = rollSetPiece(r, 60, 'warrior', 'bulwark'); it.set = 'wardstone'; it.slot = slot; it.stats = { [slot === 'helm' ? 'hp' : 'armor']: 1 }; w.player.equipped[slot] = it; }
+    w.recalcStats();
+    check('Sets: two pieces give the first bonus (Wardstone: +15% armor)', w.mods.armorPct >= 0.15 && !(w.mods.reckonMax >= 8));
+    for (const slot of ['boots', 'ring']) { const it = rollSetPiece(r, 60, 'warrior', 'bulwark'); it.set = 'wardstone'; it.slot = slot; it.stats = { ms: 1 }; w.player.equipped[slot] = it; }
+    w.recalcStats();
+    check('Sets: four give the second as well (Reckoning up to 8)', setCounts(w.player.equipped).wardstone === 4 && w.mods.reckonMax === 8);
+  }
+  // Enchanting
+  {
+    const save = geared('archer', 50, 3);
+    save.gold = 1e6; save.dust = 100;
+    const w = new World({ seed: 4, cls: 'archer', save });
+    const p = w.player;
+    const item = p.equipped.helm;
+    const keys = Object.keys(item.stats);
+    const main = keys[0], line = keys[1];
+    const cost = enchantCost(item);
+    w.command({ type: 'enchant', slot: 'helm', key: main }); w.runCommands();
+    check('Enchanting: never the main stat', Object.keys(item.stats)[0] === main && !item.enchants);
+    w.command({ type: 'enchant', slot: 'helm', key: line }); w.runCommands();
+    const after = Object.keys(item.stats);
+    check('Enchanting: turns one bonus stat into a different one, in the same place', after.length === keys.length && after[0] === main && !after.slice(1).includes(line) && item.enchantKey === after[1] && p.gold === 1e6 - cost.gold && p.dust === 100 - cost.dust, `${keys} -> ${after}`);
+    check('Enchanting: after that only the enchanted line can be enchanted again, and it costs more', enchantable(item).length === 1 && enchantable(item)[0] === item.enchantKey && enchantCost(item).dust > cost.dust);
+    const legendary = roll(mk(2), 50, { weights: [0, 0, 0, 0, 1, 0, 0] });
+    check('Wishdust: scrapping a Legendary gives one', dustValue(legendary) === 1 && dustValue(roll(mk(2), 50, { weights: [0, 0, 1, 0, 0, 0, 0] })) === 0);
+  }
+  // A started swing finishes on a target that slips a little out of reach
+  {
+    const w = new World({ seed: 4, cls: 'archer', save: geared('archer', 30, 2) });
+    const p = w.player; w.wave.phase = 'explore'; w.enemies = [];
+    p.x = p.px = 0; p.z = p.pz = 0;
+    const e = w.spawnEnemy('grunt', { x: 5, z: 0, level: 30 });
+    e.x = e.px = w.basicRange() - 0.3; e.z = e.pz = 0; e.state = 'recover'; e.t = 999;
+    w.command({ type: 'attack', id: e.id }); w.runCommands();
+    for (let i = 0; i < 4; i++) w.step(CONFIG.TICK);
+    e.x = e.px = w.basicRange() + 1.2;
+    let shot = false;
+    for (let i = 0; i < 60 && !shot; i++) { w.step(CONFIG.TICK); shot = w.projectiles.some((pr) => pr.basic); }
+    check('Swings: a shot that has started still goes if the target slips a little out of range', shot);
+  }
+}
 // --- 0.26.1: lighter co-op updates --------------------------------------------------
 // The host sends what changed; the friend rebuilds the whole picture as updates arrive,
 // even when it skips some to catch up. Its world must match the host's at every step.
@@ -2206,7 +2339,7 @@ import { makeRng } from '../src/sim/rng.js';
   const friend = new World({ seed: 9, cls: 'mage', mode: 'explore' });
   friend.loadMapMirror('town');
   const look = (enemies, loot, me) => JSON.stringify({
-    e: enemies.filter((e) => e.type).map((e) => [e.id, e.type, Math.round(e.hp), e.maxHp, e.level, e.elite || null, e.state]).sort((a, b) => a[0] - b[0]),
+    e: enemies.filter((e) => e.type).map((e) => [e.id, e.type, Math.round(Math.round(e.hp * 100) / 100), e.maxHp, e.level, e.elite || null, e.state]).sort((a, b) => a[0] - b[0]),
     l: loot.map((l) => [l.id, l.item.id, l.x, l.z]).sort((a, b) => a[0] - b[0]),
     me: [me.hp, me.gold, me.exp, me.level, me.cd && me.cd.q],
     bag: (me.bag || []).map((i) => i.id).join(),

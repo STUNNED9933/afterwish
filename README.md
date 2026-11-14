@@ -150,6 +150,42 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Exploration surprises, Remnant bosses, sets and enchanting (0.29)
+
+- **Rare enemies.** About one camp spawn in sixty (never in a rift, at most one
+  on a map) is a named Rare, like *Brand Twice-Promised*: a gold name and a gold
+  dot on the minimap, at least two modifiers (never fewer than an elite of its
+  tier), five times the health, six times the EXP and gold. It always drops an
+  Epic or better (30%: Legendary or better), 3 to 5 Wishdust, and 12% of the
+  time a set piece. Farming one map you meet about three every ten minutes.
+- **The Wishthief.** 25% of the time a map you arrive on has one hiding (and
+  every two minutes there, a 20% chance of another): a glittering little thief
+  and a gold dot on the minimap. It bolts when you come within 12 m or hit it,
+  running at 90% of your speed, stumbling to catch its breath every 3 seconds,
+  and gets away after 25 seconds. Every tenth of its health knocked off spills
+  gold; caught, it gives a shard, 5 Wishdust and three pieces of gear (one
+  Legendary or better). Simulated, every subclass catches it, in about 5 to 15
+  seconds.
+- **Remnant bosses.** Once you have beaten a boss three times, each time it
+  comes back there is a 25% chance it is its Remnant: 1.8x health, 1.25x damage,
+  1.5x rewards, and a new attack every 9 seconds, a ring of falling blows around
+  you (Iron Rain, Spore Bloom, Unwishing). It always drops a set piece and 10
+  Wishdust.
+- **Sets.** One per subclass (Bloodbound, Wardstone, Farsight, Galeborn,
+  Nightcut, Veilweave, Ashen, Rimeheart). Set pieces are Legendary items of
+  their class with a green glow on the ground; two worn give the first bonus,
+  four the second (see each piece's tooltip). From Remnants (always), Rares
+  (12%) and radiant chests (10%); usually your own subclass's set.
+- **Enchanting** (Gear, Tab: *Enchant* on an equipped item). Turn one bonus stat
+  into a different one at a fresh roll, for gold and Wishdust. After the first
+  enchant only that line can be enchanted again, and each time costs more.
+  **Wishdust** comes from Rares, the Wishthief, Remnants and scrapping
+  Legendary (1), Mythic (2) or Immortal (4) gear.
+- **Fix:** a basic attack that has started now finishes if its target only
+  slips a little out of reach (25% plus 1 m), and one that is cancelled refunds
+  its cooldown, so a running target can no longer dance on the edge of your
+  range and never be hit.
+
 ### High stakes: Doom, warriors and mages, rewards for the fight in front of you (0.28)
 
 - **Doom.** A violet circle under your feet that takes a share of your *max*

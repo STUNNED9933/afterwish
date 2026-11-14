@@ -180,6 +180,12 @@ const BOSS_ATTACKS = (o) => [
   ...CHASE_ATTACKS(o),
 ];
 Object.assign(ENEMIES, {
+  // An exploration surprise (0.29): it never fights. It runs, spilling gold when hit, and escapes after a while.
+  wishthief: {
+    name: 'Wishthief', model: 'grunt', look: { scale: 0.72, colors: [0xffcf5a, 0x5a3a12, 0xfff2c0] },
+    hp: 110, speed: 5, radius: 0.5, height: 1.2, exp: 40, poise: 99, parryStun: 0, drop: 0, cost: 0, ai: 'thief', thief: true, atkCd: [99, 99],
+    attacks: [{ name: 'none', shape: 'arc', trigger: -1, range: 0, angle: 0, windup: 1, recover: 1, dmg: 0, parryable: true, lockAt: 0 }],
+  },
   imp: {
     name: 'Cinder Imp', model: 'grunt', look: { scale: 0.7, colors: [0xc2562e, 0x3a1c14, 0xffd28a] },
     hp: 32, speed: 5.0, radius: 0.5, height: 1.3, exp: 8, poise: 1, parryStun: 1.8, drop: 0.16, cost: 0.8, ai: 'melee', atkCd: [0.4, 0.9],

@@ -11,6 +11,7 @@ import { NPCS } from '../sim/story.js';
 const R = CONFIG.ARENA_RADIUS;
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const SET_COLOR = 0x6fe08a; // set pieces (0.29)
 const COLORS = {
   parry: 0x9fe8ff,
   parryable: 0xffe2a0, // attacks you can parry are drawn in pale gold
@@ -793,6 +794,16 @@ export class Renderer {
         this.burst(ev.tx, 1.2, ev.tz, { count: ev.veil ? 4 : 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.3 });
         break;
       }
+      case 'thiefCoins':
+        this.burst(ev.x, 1.2, ev.z, { count: 8, color: 0xffd27a, speed: 6, up: 6, life: 0.6 });
+        break;
+      case 'thiefEscape':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.5, color: 0xffd27a, from: 0.4, to: 3, dur: 0.4, opacity: 1 });
+        this.burst(ev.x, 1, ev.z, { count: 24, color: 0xfff2c0, speed: 7, up: 5, life: 0.5 });
+        break;
+      case 'remnantCast':
+        this.burst(ev.x, 1.4, ev.z, { count: 14, color: 0xa64bff, speed: 5, up: 4, life: 0.5 });
+        break;
       case 'doomImpact':
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: COLORS.doom, from: ev.radius, to: ev.radius * 1.3, dur: 0.4, opacity: 0.7 });
         this.burst(ev.x, 1, ev.z, { count: 30, color: 0xd2a0ff, speed: 9, up: 7, size: 1.3, life: 0.6 });
@@ -1084,10 +1095,11 @@ export class Renderer {
       seen.add(e.id);
       let v = this.views.get(e.id);
       if (!v) {
-        v = { id: e.id, type: e.type, shape: e.def.model || e.type, model: buildEnemy(e.type), strikeT: 0, walk: Math.random() * 6, height: e.def.height, size: e.elite ? 1.22 : 1 };
-        if (e.elite) {
-          // Elites: bigger, with a glowing ring in their first modifier's colour.
-          const aura = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: AFFIXES[e.elite[0]].color, transparent: true, opacity: 0.8, depthWrite: false }));
+        v = { id: e.id, type: e.type, shape: e.def.model || e.type, model: buildEnemy(e.type), strikeT: 0, walk: Math.random() * 6, height: e.def.height, size: e.rare ? 1.4 : e.remnant ? 1.12 : e.elite ? 1.22 : 1 };
+        if (e.elite || e.def.thief || e.remnant) {
+          // Elites: bigger, with a glowing ring in their first modifier's colour (a Rare's and the Wishthief's is gold; a Remnant's violet).
+          const ringColor = e.rare || e.def.thief ? 0xffd27a : e.remnant ? 0xa64bff : AFFIXES[e.elite[0]].color;
+          const aura = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.85, depthWrite: false }));
           aura.scale.setScalar(e.def.radius * 1.6);
           aura.position.y = 0.05;
           v.model.group.add(aura);
@@ -1270,7 +1282,7 @@ export class Renderer {
       seen.add(l.id);
       let v = this.lootViews.get(l.id);
       if (!v) {
-        const color = new THREE.Color(RARITIES[l.item.rarity].color);
+        const color = new THREE.Color(l.item.set ? SET_COLOR : RARITIES[l.item.rarity].color); // set pieces glow green (0.29)
         const group = new THREE.Group();
         const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.32), new THREE.MeshBasicMaterial({ color }));
         const beamH = 2.5 + l.item.rarity * 1.5;

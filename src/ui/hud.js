@@ -3,6 +3,7 @@
 // Plain DOM on top of the 3D canvas.
 import { steadyRatings, signed } from '../power.js';
 import { AFFIXES, wishNeed } from '../sim/endgame.js';
+import { remnantName } from '../sim/surprises.js';
 import { CONFIG } from '../config.js';
 import { ABILITIES, ABILITY_SLOTS, expToNext } from '../sim/defs.js';
 import { RARITIES, itemName } from '../sim/items.js';
@@ -379,7 +380,8 @@ export class Hud {
         let html = '';
         for (let i = 0; i < boss.def.poise; i++) html += `<i class="${i < boss.posture || boss.state === 'stunned' ? 'on' : ''}"></i>`;
         $('boss-posture').innerHTML = html;
-        $('boss-name').textContent = boss.state === 'stunned' ? `${boss.def.name} — guard broken` : boss.def.name;
+        const bname = boss.remnant ? remnantName(boss.def) : boss.def.name; // a Remnant (0.29)
+        $('boss-name').textContent = boss.state === 'stunned' ? `${bname} — guard broken` : bname;
       }
     }
 
@@ -412,6 +414,18 @@ export class Hud {
         // Elites: a gold frame and their modifiers by name.
         el.classList.toggle('elite', !!e.elite);
         bar.affix.textContent = e.elite ? e.elite.map((a) => AFFIXES[a].name).join(' · ') : '';
+        // Exploration surprises (0.29): a Rare's name above its bar; the Wishthief glitters.
+        if (e.rare) {
+          el.classList.add('rare');
+          const nm = document.createElement('div');
+          nm.className = 'rarename';
+          nm.textContent = e.rare;
+          el.appendChild(nm);
+        }
+        if (e.def.thief) {
+          el.classList.add('thief');
+          bar.affix.textContent = 'Wishthief';
+        }
         bar.affix.title = e.elite ? e.elite.map((a) => `${AFFIXES[a].name}: ${AFFIXES[a].desc}`).join('\n') : '';
         this.bars.set(e.id, bar);
       }
@@ -532,7 +546,7 @@ export class Hud {
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
     for (const ws of world.map.waystones || []) dot(ws.x, ws.z, 3.5, '#9fe6ff');
     for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
-    for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : 2, e.aggro ? '#ff4d5a' : '#b0525c');
+    for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : e.rare || e.def.thief ? 3.5 : 2, e.rare || e.def.thief ? '#ffd27a' : e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
     if (world.allies) for (const a of world.allies()) dot(a.x, a.z, 3, a.dead ? '#8a8f9c' : '#7fd0ff');
     dot(p.x, p.z, 3.5, '#ffffff');

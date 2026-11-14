@@ -15,7 +15,7 @@ export const NET_VERSION = 4; // host and friends must run the same build of the
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'doomCast', 'doomImpact', 'spinTick', 'reckoning', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'doomCast', 'doomImpact', 'spinTick', 'reckoning', 'rareSpawn', 'thiefSpawn', 'thiefFlee', 'thiefEscape', 'thiefCoins', 'thiefStumble', 'remnantRise', 'remnantCast', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
@@ -26,7 +26,7 @@ export function eventFor(ev, pid) {
 
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
 // What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
-const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius'];
+const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius', 'rare', 'remnant'];
 const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue', 'doom'];

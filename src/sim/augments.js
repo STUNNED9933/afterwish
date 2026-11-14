@@ -32,7 +32,7 @@ export function defaultMods() {
     // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (The Warden's Call, Shield Wall, Bastion)
     bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
     // Shadowdancer (Afterimage and its talents)
-    shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false, veilCopy: 0, veilTime: 0, killReset: false, reckoning: false,
+    shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false, veilCopy: 0, veilTime: 0, killReset: false, reckoning: false, wSpinTime: 0, reckonMax: 0, killResetR: 0,
     // Sharpshooter (Long Watch): more damage per metre to the target
     farShot: 0, farShotMax: 0,
     // Pyromancer (Everything Burns): stacking burns. burnPerStack = spell power per second per stack

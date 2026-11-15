@@ -150,6 +150,14 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Brighter days (0.34.1)
+
+Each map now has a mood. Haven, the Greenwood, Frostfall Pass and the Sunscar
+Dunes are in bright daylight, with a strong sun and a light haze; the Fen,
+Ashen Ridge, Warden's Keep and Stormspire Cliffs are at dusk; only Gloomcap
+Hollow, Obsidian Maw, the Starfall Sanctum and the Wilds stay dark, lit mostly
+by your own light. Vignette and glow follow the mood too.
+
 ### A new look for the world (0.34)
 
 Drawing only: the rules, collisions and what co-op sends are unchanged.

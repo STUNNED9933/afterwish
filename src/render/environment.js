@@ -18,8 +18,8 @@ export const QUALITY = {
 // a: the main ground, b: darker patches, c: worn / dirt patches, top: what settles on rocks
 // (moss, ash, snow), crack: veins that glow (with strength), wet: puddles, stones: flagstones.
 export const GROUND = {
-  town: { a: '#3a4a30', b: '#232c1e', c: '#5c4d38', top: '#4a6a32', grass: ['#3f5a2a', '#6a8a3a'], debris: 'pebble', light: 0xffc890 },
-  forest: { a: '#2f4a2a', b: '#18261a', c: '#4a3e2c', top: '#3f6a30', grass: ['#2e4a22', '#5f8a34'], debris: 'pebble', light: 0xffc890 },
+  town: { a: '#4a6236', b: '#2e3e24', c: '#6a5940', top: '#5a7a3a', grass: ['#4a6a2e', '#86a848'], debris: 'pebble', light: 0xffc890 },
+  forest: { a: '#3e5e30', b: '#26381f', c: '#5a4a32', top: '#4a7a36', grass: ['#3a5a26', '#7aa840'], debris: 'pebble', light: 0xffc890 },
   swamp: { a: '#25393a', b: '#121e20', c: '#3a3a2a', top: '#3a5a3a', wet: 0.75, grass: ['#2a4438', '#5a7a4a'], tall: 1.8, debris: 'pebble', light: 0xc8ffd8 },
   ash: { a: '#463a34', b: '#241c19', c: '#625248', top: '#7a6e66', crack: ['#ff5a1a', 0.35], grass: ['#3a302a', '#6a5a48'], dry: true, debris: 'pebble', light: 0xffb070 },
   keep: { a: '#363640', b: '#1c1c24', c: '#4c4a52', top: '#55565e', stones: true, grass: ['#2e3a2a', '#4a5a3a'], sparse: 0.35, debris: 'rubble', light: 0xffc890 },
@@ -30,6 +30,16 @@ export const GROUND = {
   volcano: { a: '#3a2a26', b: '#1c1210', c: '#4c3630', top: '#5a4038', crack: ['#ff5a14', 2.2], grass: ['#2a1c18', '#4a2a20'], dry: true, sparse: 0.3, debris: 'rubble', light: 0xffa060 },
   astral: { a: '#201e44', b: '#0e0d24', c: '#2e2c5e', top: '#5a5aa8', crack: ['#6aa8ff', 1.0], grass: ['#3a3a7a', '#8fd8ff'], shards: true, sparse: 0.6, debris: 'pebble', light: 0xb8c8ff },
 };
+
+// Each map's mood (0.34.1): bright daylight for the cheerful places, dusk for the uneasy ones,
+// night only where it belongs. sky/sun/hero: light strengths; haze: how far the fog sits;
+// vignette and bloom: the High setting's grade.
+export const MOODS = {
+  day: { sky: 1.85, skyTint: 0xd0e2ff, bounce: 0x6a5a3e, sun: 3.5, sunColor: 0xfff2dc, hero: 6, haze: 0xa9bfcc, hazeMix: 0.8, near: 50, far: 140, vignette: 0.14, bloom: 0.3 },
+  dusk: { sky: 1.0, skyTint: 0xb4c4ff, bounce: 0x3a2a24, sun: 2.5, sunColor: 0xffd8b0, hero: 34, haze: 0x6a6070, hazeMix: 0.35, near: 40, far: 110, vignette: 0.24, bloom: 0.45 },
+  night: { sky: 0.75, skyTint: 0x9db4ff, bounce: 0x1a1414, sun: 2.1, sunColor: 0xffe0c0, hero: 70, haze: 0x000000, hazeMix: 0, near: 34, far: 92, vignette: 0.32, bloom: 0.55 },
+};
+export const THEME_MOOD = { town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'dusk', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night' };
 
 // --- Shared GLSL ----------------------------------------------------------------------
 const NOISE_GLSL = /* glsl */ `

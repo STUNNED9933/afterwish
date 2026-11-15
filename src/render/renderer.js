@@ -9,7 +9,7 @@ import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
-import { QUALITY, GROUND, groundMaterial, rockGeometries, pebbleGeometry, treeGeometries, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
+import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, rockGeometries, pebbleGeometry, treeGeometries, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
 
 const R = CONFIG.ARENA_RADIUS;
@@ -131,10 +131,21 @@ export class Renderer {
     this.sun.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
     if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
     this.setShadows(Q.shadows);
-    if (Q.post && !this.post) this.post = new PostFX(this.renderer, this.scene, this.camera);
+    if (Q.post && !this.post) {
+      this.post = new PostFX(this.renderer, this.scene, this.camera);
+      this.applyGrade();
+    }
     else if (!Q.post && this.post) { this.post.dispose(); this.post = null; }
     this.resize();
     if (changed && this.mapRef && this.exploreGroup && this.exploreGroup.visible) this.setMap(this.mapRef);
+  }
+
+  /** The High setting's vignette and glow, by the map's mood. */
+  applyGrade() {
+    if (!this.post) return;
+    const M = this.mood || MOODS.night;
+    this.post.grade.uniforms.uVignette.value = M.vignette;
+    this.post.bloom.strength = M.bloom;
   }
 
   setShadows(on) {
@@ -552,24 +563,26 @@ export class Renderer {
     const explore = mode === 'explore' && !!this.exploreGroup;
     this.arenaGroup.visible = !explore;
     if (this.exploreGroup) this.exploreGroup.visible = explore;
-    const sky = explore ? this.mapTheme.sky : 0x0a0d16;
+    const theme = this.mapRef && this.mapRef.theme;
+    const M = explore ? MOODS[THEME_MOOD[theme] || 'day'] : null;
+    const sky = explore ? new THREE.Color(this.mapTheme.sky).lerp(new THREE.Color(M.haze), M.hazeMix).getHex() : 0x0a0d16;
     this.scene.background.set(sky);
     this.scene.fog.color.set(sky);
-    this.scene.fog.near = explore ? 34 : 42;
-    this.scene.fog.far = explore ? 92 : 90;
-    // Moodier light out in the world (0.34): dimmer sky light tinted by the map, a lower sun,
-    // and the hero's own warm light doing more of the work.
-    const GP = explore ? GROUND[this.mapRef && this.mapRef.theme] || GROUND.forest : null;
+    this.scene.fog.near = explore ? M.near : 42;
+    this.scene.fog.far = explore ? M.far : 90;
+    this.mood = M;
+    this.applyGrade();
+    // Light by the map's mood (0.34.1): daylight for cheerful maps, dusk or night for the rest.
+    const GP = explore ? GROUND[theme] || GROUND.forest : null;
     if (explore) {
-      const skyC = new THREE.Color(sky);
-      this.hemi.color.copy(skyC).lerp(new THREE.Color(0x9db4ff), 0.55);
-      this.hemi.groundColor.set(0x1a1414);
+      this.hemi.color.copy(new THREE.Color(this.mapTheme.sky)).lerp(new THREE.Color(M.skyTint), 0.7);
+      this.hemi.groundColor.set(M.bounce);
       const k = GP.bright || 1; // pale maps (snow, sand) need less light to read
-      this.hemi.intensity = 0.75 * k;
-      this.sun.color.set(0xffe0c0).lerp(new THREE.Color(GP.light), 0.35);
-      this.sun.intensity = 2.1 * k;
+      this.hemi.intensity = M.sky * k;
+      this.sun.color.set(M.sunColor).lerp(new THREE.Color(GP.light), 0.25);
+      this.sun.intensity = M.sun * k;
       this.heroLight.color.set(GP.light);
-      this.heroLight.intensity = 70 * k;
+      this.heroLight.intensity = M.hero * k;
     } else {
       this.hemi.color.set(0x9db4ff);
       this.hemi.groundColor.set(0x241a20);

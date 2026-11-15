@@ -1,0 +1,46 @@
+# Makes animated character models with the Tripo API (tools/models/generate.mjs).
+# Started by hand only (Actions → Make character models → Run workflow, or `gh workflow run`).
+# Needs the repository secret TRIPO_API_KEY. Results are kept as a downloadable artifact for
+# review; nothing is committed automatically.
+name: Make character models
+
+on:
+  workflow_dispatch:
+    inputs:
+      characters:
+        description: 'Characters from tools/models/roster.json, space-separated'
+        required: true
+        default: 'warrior'
+      dry_run:
+        description: 'Plan only (free): no credits spent'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g tripo-cli@0.11.2
+      - name: Make models
+        env:
+          TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
+          TRIPO_ANALYTICS_ENABLED: '0'
+          TRIPO_NO_UPDATE_CHECK: '1'
+          CHARACTERS: ${{ inputs.characters }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: node tools/models/generate.mjs $DRY $CHARACTERS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: models-${{ github.run_id }}
+          path: out/models
+          if-no-files-found: ignore
+          retention-days: 14

@@ -3,3 +3,6 @@ dist/
 server/node_modules
 server/.wrangler
 server/wrangler.generated.toml
+
+# Tripo model runs (tools/models), downloaded for review
+out/

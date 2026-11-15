@@ -1,0 +1,12 @@
+{
+  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide.",
+  "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "faceLimit": 10000,
+  "characters": {
+    "warrior": {
+      "prompt": "bearded human warrior, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape",
+      "rigType": "biped",
+      "animations": ["preset:idle", "preset:run", "preset:slash", "preset:hurt", "preset:fall"]
+    }
+  }
+}

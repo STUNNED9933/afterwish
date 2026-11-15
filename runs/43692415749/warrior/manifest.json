@@ -1,0 +1,12 @@
+{
+  "id": "warrior",
+  "prompt": "bearded human warrior, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T08:00:01.563Z",
+  "creditsBefore": 0,
+  "steps": {},
+  "error": "Command failed: tripo generate text-to-model bearded human warrior, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures --model tripo-v3.1 -p face_limit=10000 -p smart_low_poly=true -o out/models/warrior/1-model --json --yes --no-open",
+  "creditsAfter": 0,
+  "creditsUsed": 0,
+  "finished": "2026-11-15T08:00:03.133Z",
+  "files": []
+}

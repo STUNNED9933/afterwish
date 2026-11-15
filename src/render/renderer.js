@@ -12,6 +12,7 @@ import { NPCS } from '../sim/story.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, rockGeometries, pebbleGeometry, treeGeometries, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
 import { upgradeHero } from './rigged.js';
+import { SlashTrail } from './slash.js';
 
 const R = CONFIG.ARENA_RADIUS;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -861,8 +862,15 @@ export class Renderer {
         if (fx === 'cone') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.2;
+          if (!ev.echo) this.heroAnim.move = 'cone';
           this.flash(this.sectorGeo(ev.angle, 0.3), { x: ev.x, z: ev.z, y: 0.9, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xbfeaff, from: ev.range * 0.7, to: ev.range, dur: 0.28, opacity: 0.85 });
-          this.shake = Math.max(this.shake, 0.12);
+          // sparks thrown off along the arc, and a wider, fainter sweep on the ground
+          this.flash(this.sectorGeo(ev.angle * 1.1, 0.15), { x: ev.x, z: ev.z, y: 0.12, dir: ev.dir, color: 0xffffff, from: ev.range * 0.4, to: ev.range * 1.05, dur: 0.35, opacity: 0.45 });
+          for (let i = -2; i <= 2; i++) {
+            const a = ev.dir + (i / 2) * ev.angle * 0.45;
+            this.burst(ev.x + Math.cos(a) * ev.range * 0.65, 1, ev.z + Math.sin(a) * ev.range * 0.65, { count: 5, color: ev.echo ? 0xffe2a0 : 0xe8f6ff, speed: 7, up: 3, life: 0.35 });
+          }
+          this.shake = Math.max(this.shake, 0.22);
         } else if (fx === 'barrage') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.12;
@@ -870,12 +878,21 @@ export class Renderer {
           this.heroAnim.spin = 1;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xbfeaff, from: ev.pull ? ev.radius : 1, to: ev.pull ? 1 : ev.radius, dur: 0.32, opacity: 0.9 });
           this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fd8ff, from: ev.radius, to: ev.radius, dur: 0.3, opacity: 0.22 });
-          this.shake = Math.max(this.shake, 0.18);
+          // a second, ground-level ring and dust kicked out by the spin
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffffff, from: 0.6, to: ev.radius * 1.12, dur: 0.42, opacity: 0.7 });
+          this.burst(ev.x, 0.4, ev.z, { count: 22, color: 0xd6e9f5, speed: 9, up: 2, life: 0.45 });
+          this.shake = Math.max(this.shake, 0.26);
         } else if (fx === 'dash') {
           const len = Math.hypot(ev.ex - ev.x, ev.ez - ev.z);
           this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.5, dir: ev.dir, color: 0x9fe8ff, sx: len, sz: 1.3, dur: 0.35, opacity: 0.7 });
+          // a bright core to the streak, dust at the start and a burst where it ends
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.15, dir: ev.dir, color: 0xffffff, sx: len, sz: 0.45, dur: 0.3, opacity: 0.6 });
+          this.burst(ev.x, 0.3, ev.z, { count: 10, color: 0xc9dbe6, speed: 5, up: 2, life: 0.4 });
+          this.burst(ev.ex, 1, ev.ez, { count: 16, color: 0xe8f6ff, speed: 8, up: 3, life: 0.35 });
+          this.shake = Math.max(this.shake, 0.2);
         } else if (fx === 'leap') {
           this.burst(ev.x, 0.3, ev.z, { count: 14, color: 0x9fe8ff, speed: 5, up: 6 });
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffffff, from: 0.4, to: 2.6, dur: 0.3, opacity: 0.6 });
         } else if (fx === 'deadeye') {
           // A shot across the map: a long bright streak, gold on the third.
           this.heroAnim.swing = 0;
@@ -1039,6 +1056,11 @@ export class Renderer {
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffffff, from: 1, to: ev.radius * 1.15, dur: 0.45, opacity: 1 });
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: tint, from: ev.radius, to: ev.radius, dur: 0.5, opacity: big ? 0.45 : 0.3 });
         this.burst(ev.x, 0.3, ev.z, { count: big ? 46 : 24, color: tint, speed: big ? 13 : 9, up: big ? 9 : 6, size: 1.5, life: 0.7 });
+        if (big) {
+          // the slam: a wide, slower shockwave along the ground and a column of light
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: tint, from: ev.radius * 0.5, to: ev.radius * 1.7, dur: 0.7, opacity: 0.6 });
+          this.burst(ev.x, 0.5, ev.z, { count: 20, color: 0xffffff, speed: 3, up: 14, size: 1.2, life: 0.55, gravity: 0 });
+        }
         this.shake = Math.max(this.shake, big ? 0.7 : 0.4);
         break;
       }
@@ -1352,8 +1374,27 @@ export class Renderer {
       h.rig.group.rotation.y = h.rig.baseTurn + an.spinAngle;
       const hitStart = p.hurtT > 0 && !(h.prevHurt > 0);
       h.prevHurt = p.hurtT;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart });
+      // Skills with their own animation (0.36): Cleave from its cast; dashes and leaps when they start.
+      let move = an.move || null;
+      let moveDur = 0;
+      if (p.dash && !h.prevDash) [move, moveDur] = ['dash', p.dash.dur];
+      if (p.leap && !h.prevLeap) [move, moveDur] = ['leap', p.leap.dur];
+      h.prevDash = !!p.dash;
+      h.prevLeap = !!p.leap;
+      an.move = null;
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur });
       g.rotation.z = 0;
+      // The blade's glowing trail.
+      if (!this.heroTrail) {
+        this.heroTrail = new SlashTrail(0xd8f2ff);
+        this.trailB = new THREE.Vector3();
+        this.trailT = new THREE.Vector3();
+        this.scene.add(this.heroTrail.mesh);
+      }
+      g.updateMatrixWorld(true);
+      const sl = h.rig.slash;
+      if (sl > 0 && h.rig.blade(this.trailB, this.trailT)) this.heroTrail.update(dt, sl, this.trailB, this.trailT);
+      else this.heroTrail.update(dt, 0);
     } else if (p.dead) {
       an.deadT = Math.min(1, an.deadT + dt * 2.5);
       g.rotation.z = easeOut(an.deadT) * 1.5;

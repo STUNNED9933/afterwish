@@ -150,6 +150,27 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Warrior skills that hit hard (0.36)
+
+- **Every Warrior skill has its own animation now**, made from motion-captured
+  sword moves (Quaternius' Universal Animation Library, CC0) moved onto his rig:
+  - **Cleave (Q):** a wind-up over the shoulder, a lunging sweep across the
+    front and a follow-through, with a split-second freeze as it connects.
+  - **Whirlwind (W):** crouched low, blade held out flat, spinning (for the
+    whole channel when a Berserker).
+  - **Breakthrough (E):** a low lunge that slashes as he arrives, then holds
+    the stance before recovering.
+  - **Skyfall (R):** the sword comes up overhead in the air and is driven into
+    the ground as he lands, with a freeze on impact; he rises from a crouch.
+  - **Falling:** he staggers back and collapses.
+- **The blade leaves a glowing trail** on every swing and spin.
+- **Bigger impacts:** sparks along Cleave's arc, a second shockwave and dust for
+  Whirlwind, a bright core and burst for Breakthrough, a wide shockwave and a
+  column of light where Skyfall lands, and more screen shake.
+- How it was done (`tools/models`): `retarget.js` copies library clips onto a
+  Tripo skeleton bone by bone; `add-clips.mjs` writes them into the model. The
+  same moves can go on any future Tripo character. The model grew by 55 KB.
+
 ### Warrior animation fixes (0.35.1)
 
 - **The sword is held properly.** It sat flat in the hand, so the idle looked

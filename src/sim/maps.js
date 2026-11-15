@@ -131,7 +131,7 @@ export function buildMap(id, custom = null) {
     }
     obstacles.push({ kind: 'well', shape: 'circle', x: 0, z: -4.5, r: 1.3 });
     // The bounty board (0.33)
-    obstacles.push({ kind: 'board', shape: 'circle', id: 'bounties', name: 'Bounty Board', x: 4.6, z: 0.4, r: 0.6 });
+    obstacles.push({ kind: 'board', shape: 'circle', id: 'bounties', name: 'Bounty Board', x: 4.6, z: 0.4, r: 0.6, pickR: 1.3 });
   }
   // People to talk to (Haven) and signs to read (two on every map). See sim/story.js.
   if (def.theme === 'town') {

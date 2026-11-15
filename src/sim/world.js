@@ -11,6 +11,8 @@
 import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
+// Map objects you can interact with (G, or right-click to walk over). New kinds go here.
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board']);
 const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'parry', 'potion', 'warp', 'travel']);
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
@@ -2631,26 +2633,31 @@ export class World {
   }
 
   /** The person or sign close enough to interact with, or null. */
+  /**
+   * Everything on this map you can interact with right now (G when close, or right-click to
+   * walk over): people, signs, the bounty board, a free boss altar, the travelling merchant.
+   * The one list both G and right-click use, so anything added here works with both.
+   * Each entry: { kind, id, name, x, z, r, reach?, pickR? } (reach: how close you must be,
+   * past r; pickR: how wide a target it is for the mouse).
+   */
+  interactables() {
+    if (this.mode !== 'explore' || !this.map) return [];
+    const list = [];
+    for (const ob of this.obstacles) if (INTERACT_KINDS.has(ob.kind)) list.push(ob);
+    const alt = this.bossAltar(); // a boss's altar, while its boss is down (0.33)
+    if (alt) list.push(Object.assign(alt, { reach: SIGIL.altar - alt.r, pickR: 1.4 }));
+    if (this.merchant) list.push({ kind: 'merchant', id: 'merchant', name: 'Travelling Merchant', x: this.merchant.x, z: this.merchant.z, r: 0.6 }); // (0.31)
+    return list;
+  }
+
+  /** The nearest thing close enough to interact with (see interactables), or null. */
   interactable() {
     if (this.mode !== 'explore' || !this.map || this.player.dead) return null;
     const p = this.player;
     let best = null, bd = 1e9;
-    for (const ob of this.obstacles) {
-      if (ob.kind !== 'npc' && ob.kind !== 'sign') continue;
+    for (const ob of this.interactables()) {
       const d = dist(p.x, p.z, ob.x, ob.z) - ob.r;
-      if (d < CONFIG.INTERACT_RANGE && d < bd) { best = ob; bd = d; }
-    }
-    for (const ob of this.obstacles) {
-      if (ob.kind !== 'board') continue; // the bounty board (0.33)
-      const d = dist(p.x, p.z, ob.x, ob.z) - ob.r;
-      if (d < CONFIG.INTERACT_RANGE && d < bd) { best = ob; bd = d; }
-    }
-    const alt = this.bossAltar(); // a boss's altar, while its boss is down (0.33)
-    if (alt && dist(p.x, p.z, alt.x, alt.z) <= SIGIL.altar && dist(p.x, p.z, alt.x, alt.z) < bd) { best = alt; bd = dist(p.x, p.z, alt.x, alt.z); }
-    if (this.merchant) {
-      // The travelling merchant (0.31)
-      const d = dist(p.x, p.z, this.merchant.x, this.merchant.z) - 0.6;
-      if (d < CONFIG.INTERACT_RANGE && d < bd) best = { kind: 'merchant', id: 'merchant', name: 'Travelling Merchant', x: this.merchant.x, z: this.merchant.z, r: 0.6 };
+      if (d <= (ob.reach ?? CONFIG.INTERACT_RANGE) && d < bd) { best = ob; bd = d; }
     }
     return best;
   }

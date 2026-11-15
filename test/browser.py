@@ -511,6 +511,18 @@ with sync_playwright() as pw:
     check('G at the board shows three bounties', page.inner_text('#talk-name') == 'Bounty Board' and len(page.query_selector_all('#talk-quests .quest')) == 3, page.inner_text('#talk-quests')[:200])
     page.screenshot(path=str(out / '33-bounties.png'))
     page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    # Right-click the board from across the plaza: walk over and open it.
+    ev("() => { const p = game.world.player; p.x = p.px = -3; p.z = p.pz = 3; p.moveTarget = null; }")
+    page.wait_for_timeout(2500)
+    xy = ev("() => { const o = game.world.map.obstacles.find((x) => x.kind === 'board'); const s = game.renderer.project(o.x, 1.4, o.z); return [s.x, s.y]; }")
+    page.mouse.move(xy[0], xy[1]); page.wait_for_timeout(1500)
+    xy = ev("() => { const o = game.world.map.obstacles.find((x) => x.kind === 'board'); const s = game.renderer.project(o.x, 1.4, o.z); return [s.x, s.y]; }")
+    page.mouse.move(xy[0], xy[1]); page.wait_for_timeout(1000)
+    check('hovering the bounty board shows a pointer cursor', ev("() => document.getElementById('game').classList.contains('hover-talk')"))
+    page.mouse.click(xy[0], xy[1], button='right')
+    page.wait_for_function("() => game.mode === 'talk'", timeout=40000)
+    check('right-clicking the bounty board walks over and opens it', page.inner_text('#talk-name') == 'Bounty Board')
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
     ev("() => { const w = game.world, wg = w.map.waygate; w.player.x = w.player.px = wg.x; w.player.z = w.player.pz = wg.z; }")
     for _ in range(30):
         if page.is_visible('#travel .rift-row'): break
@@ -521,6 +533,16 @@ with sync_playwright() as pw:
     page.wait_for_timeout(2500)
     check('the Waygate takes you to The Shattered Wilds', ev("() => game.world.map.id") == 'wilds' and ev("() => game.world.enemies.length") >= 40, ev("() => game.world.map.id"))
     page.screenshot(path=str(out / '33-wilds.png'))
+    # Right-click the travelling merchant
+    ev("() => { const w = game.world; if (!w.merchant) w.spawnMerchant(); const p = w.player; p.x = p.px = w.merchant.x + 6; p.z = p.pz = w.merchant.z; p.moveTarget = null; for (const e of w.enemies) if (Math.hypot(e.x - p.x, e.z - p.z) < 25) { e.hp = 0; w.killEnemy(e, 'test'); } }")
+    page.wait_for_timeout(2500)
+    for _ in range(2):
+        xy = ev("() => { const m = game.world.merchant; const s = game.renderer.project(m.x, 1.0, m.z); return [s.x, s.y]; }")
+        page.mouse.move(xy[0], xy[1]); page.wait_for_timeout(1200)
+    page.mouse.click(xy[0], xy[1], button='right')
+    page.wait_for_function("() => game.mode === 'talk'", timeout=40000)
+    check('right-clicking the travelling merchant walks over and opens his wares', page.inner_text('#talk-name') == 'Travelling Merchant')
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
     ev("() => { game.world.player.misc.fragment = 260; }")
     page.keyboard.press('Tab'); page.wait_for_timeout(500)
     check('the gear screen shows the Immortal craft row with fragments', page.is_visible('#craft-row') and '260 / 250' in page.inner_text('#craft-row'), page.inner_text('#craft-row') if page.is_visible('#craft-row') else 'hidden')

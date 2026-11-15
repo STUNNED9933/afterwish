@@ -534,16 +534,16 @@ export class Renderer {
   /** The enemy under the mouse, if any. Generous so targets are easy to click. */
   /** The person or sign under the mouse, if any (exploration only). */
   pickInteractable(clientX, clientY, world) {
-    if (world.mode !== 'explore' || !world.obstacles) return null;
+    if (world.mode !== 'explore' || !world.interactables) return null;
     const ray = this.setRay(clientX, clientY);
     let best = null;
     let bestD = Infinity;
-    for (const o of world.obstacles) {
-      if (o.kind !== 'npc' && o.kind !== 'sign') continue;
+    // The same list the G key uses, so anything you can interact with can be right-clicked too.
+    for (const o of world.interactables()) {
       this.tmpV.set(o.x, 0.1, o.z);
       this.tmpV2.set(o.x, 1.8, o.z);
       const d = Math.sqrt(ray.distanceSqToSegment(this.tmpV, this.tmpV2));
-      if (d < 0.95 && d < bestD) {
+      if (d < (o.pickR || 0.95) && d < bestD) {
         bestD = d;
         best = o;
       }

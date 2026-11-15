@@ -2648,6 +2648,10 @@ import { makeRng } from '../src/sim/rng.js';
       check('Bounties: ...over forty fresh boards, not one repeat', dup === 0, String(dup));
       p.bounties = []; w.fillBounties();
     }
+    check('Right-click and G share one list: the bounty board is in it', w.interactables().some((o) => o.kind === 'board'));
+    w.spawnMerchant && (w.loadMap('greenwood', 'town'), w.spawnMerchant());
+    check('Right-click and G share one list: so is the travelling merchant', !w.merchant || w.interactables().some((o) => o.kind === 'merchant'), String(!!w.merchant));
+    w.loadMap('town', 'greenwood');
     check('Bounties: the board stands in Haven, and G reads it', (() => { const ob = w.obstacles.find((o) => o.kind === 'board'); p.x = p.px = ob.x + 1.2; p.z = p.pz = ob.z; const n = w.interactable(); return n && n.kind === 'board'; })());
     // A storied job, done and claimed
     p.bounties[0] = Object.assign(w.makeBounty(), { kind: 'storied', need: 1, n: 0, done: false, text: 'Bring down a Storied enemy', reward: { fragments: 8, dust: 5, glass: 1 } });
@@ -2711,9 +2715,11 @@ import { makeRng } from '../src/sim/rng.js';
     p.x = p.px = alt.x + 1; p.z = p.pz = alt.z; p.dead = false;
     const near = w.interactable();
     check('Remnant Sigils: with the boss down, its altar can be used', alt && near && near.kind === 'altar');
+    check('Right-click and G share one list: a free altar is in it', w.interactables().some((o) => o.kind === 'altar'));
     w.command({ type: 'summonRemnant' }); w.runCommands();
     const rem = w.enemies.find((e) => e.remnant && !e.dead);
     check('Remnant Sigils: the sigil calls up the Remnant at once, and is used up', rem && p.misc.sigil === 0);
+
     const w2 = new World({ seed: 9, mode: 'explore', cls: 'warrior', save: Object.assign({}, save, { bossKills: { boss: 1, boss2: 1 }, misc: { sigil: 1 } }) });
     w2.loadMap('keep', 'ridge');
     const b2 = w2.enemies.find((e) => e.def.boss);

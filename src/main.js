@@ -1318,13 +1318,13 @@ function start(hot = {}) {
     return true;
   }
 
-  /** Right-clicked a person or sign: walk to them, and talk/read on arrival (see the frame loop). */
+  /** Right-clicked anything interactable (world.interactables): walk to it, and use it on arrival (see the frame loop). */
   function walkToInteract(o) {
     const p = world.player;
     const d = Math.hypot(p.x - o.x, p.z - o.z) || 1;
     const stand = o.r + 1.1;
     pendingTalk = { id: o.id, until: performance.now() + 9000 };
-    if (d <= o.r + CONFIG.INTERACT_RANGE - 0.2) return; // already close enough
+    if (d <= o.r + (o.reach ?? CONFIG.INTERACT_RANGE) - 0.2) return; // already close enough
     world.command({ type: 'move', x: o.x + ((p.x - o.x) / d) * stand, z: o.z + ((p.z - o.z) / d) * stand });
   }
 
@@ -1344,14 +1344,15 @@ function start(hot = {}) {
       if (!near) return;
       world.command({ type: 'stop' });
       sfx.ui();
-      if (near.kind === 'npc' || near.kind === 'merchant' || near.kind === 'board' || near.kind === 'altar') {
-        talkTo = near.id;
-        talkNote = '';
-        setMode('talk');
-      } else {
+      if (near.kind === 'sign') {
         reading = near.id;
         applyNow({ type: 'readSign', id: near.id });
         setMode('read');
+      } else {
+        // People, the board, an altar, the merchant: everything else opens the talk panel (renderTalk picks the view).
+        talkTo = near.id;
+        talkNote = '';
+        setMode('talk');
       }
     },
     toggleJournal() {

@@ -1,0 +1,94 @@
+{
+  "id": "mage",
+  "prompt": "young adult woman mage, long silver-white hair tied back, deep blue high-collared knee-length coat with gold trim over a white shirt, wide leather belt with a small book and pouches, fitted dark trousers, tall leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no staff, no weapon, no hat, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T23:08:03.380Z",
+  "creditsBefore": 590,
+  "steps": {
+    "model": {
+      "task": "b022a40e-3685-4219-8dc3-cf876ba55de0",
+      "result": {
+        "task_id": "b022a40e-3685-4219-8dc3-cf876ba55de0",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/mage/1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/mage/1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/model.glb",
+        "preview": "out/models/mage/1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/preview.png"
+      }
+    },
+    "check": {
+      "task": "1ef1357f-5252-4d02-903c-48bcb8ff70bb",
+      "result": {
+        "task_id": "1ef1357f-5252-4d02-903c-48bcb8ff70bb",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/mage/2-check/tripo-out/rig-check-2-1ef1357f",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "c1df2e0f-5202-4080-8b82-2d722465eccd",
+      "rigType": "biped",
+      "result": {
+        "task_id": "c1df2e0f-5202-4080-8b82-2d722465eccd",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/mage/3-rig/tripo-out/rig-2-c1df2e0f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/mage/3-rig/tripo-out/rig-2-c1df2e0f/model.glb",
+        "preview": "out/models/mage/3-rig/tripo-out/rig-2-c1df2e0f/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "9123f46f-7038-4713-845e-88e865487b2f",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:run",
+          "preset:biped:hit_to_body_02"
+        ],
+        "result": {
+          "task_id": "9123f46f-7038-4713-845e-88e865487b2f",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/mage/4-anim-1/tripo-out/retarget-2-9123f46f",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/mage/4-anim-1/tripo-out/retarget-2-9123f46f/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 505,
+  "creditsUsed": 85,
+  "finished": "2026-11-15T23:14:36.884Z",
+  "files": [
+    "1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/generated_image.jpeg",
+    "1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/model.glb",
+    "1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/preview.png",
+    "1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/rendered_image.webp",
+    "1-model/tripo-out/young-adult-woman-mage-long-silv-b022a40e/task.json",
+    "2-check/tripo-out/rig-check-2-1ef1357f/task.json",
+    "3-rig/tripo-out/rig-2-c1df2e0f/model.glb",
+    "3-rig/tripo-out/rig-2-c1df2e0f/preview.png",
+    "3-rig/tripo-out/rig-2-c1df2e0f/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-c1df2e0f/task.json",
+    "4-anim-1/tripo-out/retarget-2-9123f46f/model.glb",
+    "4-anim-1/tripo-out/retarget-2-9123f46f/task.json",
+    "manifest.json"
+  ]
+}

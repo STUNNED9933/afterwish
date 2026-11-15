@@ -1,0 +1,94 @@
+{
+  "id": "rogue",
+  "prompt": "lean young man rogue, short dark messy hair, charcoal fitted leather jacket with the hood down, dark scarf around the neck, leather bracers on the forearms, belts with small pouches and two empty dagger sheaths at the hips, fitted dark trousers, soft leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T23:02:29.301Z",
+  "creditsBefore": 675,
+  "steps": {
+    "model": {
+      "task": "da6d5132-c0fb-4b0b-9039-f1cd474dc519",
+      "result": {
+        "task_id": "da6d5132-c0fb-4b0b-9039-f1cd474dc519",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/rogue/1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/rogue/1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/model.glb",
+        "preview": "out/models/rogue/1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/preview.png"
+      }
+    },
+    "check": {
+      "task": "8b8cc42c-1dc1-4f20-b0d7-049e75f5dd57",
+      "result": {
+        "task_id": "8b8cc42c-1dc1-4f20-b0d7-049e75f5dd57",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/rogue/2-check/tripo-out/rig-check-8b8cc42c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "ce30f722-1607-484f-a1da-35d006e5be7b",
+      "rigType": "biped",
+      "result": {
+        "task_id": "ce30f722-1607-484f-a1da-35d006e5be7b",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/rogue/3-rig/tripo-out/rig-ce30f722",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/rogue/3-rig/tripo-out/rig-ce30f722/model.glb",
+        "preview": "out/models/rogue/3-rig/tripo-out/rig-ce30f722/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "50953426-536a-4d29-a625-b38312720dea",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:run",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "50953426-536a-4d29-a625-b38312720dea",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/rogue/4-anim-1/tripo-out/retarget-50953426",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/rogue/4-anim-1/tripo-out/retarget-50953426/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 590,
+  "creditsUsed": 85,
+  "finished": "2026-11-15T23:08:03.378Z",
+  "files": [
+    "1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/generated_image.jpeg",
+    "1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/model.glb",
+    "1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/preview.png",
+    "1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/rendered_image.webp",
+    "1-model/tripo-out/lean-young-man-rogue-short-dark-da6d5132/task.json",
+    "2-check/tripo-out/rig-check-8b8cc42c/task.json",
+    "3-rig/tripo-out/rig-ce30f722/model.glb",
+    "3-rig/tripo-out/rig-ce30f722/preview.png",
+    "3-rig/tripo-out/rig-ce30f722/rendered_image.webp",
+    "3-rig/tripo-out/rig-ce30f722/task.json",
+    "4-anim-1/tripo-out/retarget-50953426/model.glb",
+    "4-anim-1/tripo-out/retarget-50953426/task.json",
+    "manifest.json"
+  ]
+}

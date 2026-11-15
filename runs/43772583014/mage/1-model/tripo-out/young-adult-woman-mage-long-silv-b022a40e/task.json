@@ -1,0 +1,30 @@
+{
+  "task_id": "b022a40e-3685-4219-8dc3-cf876ba55de0",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "young adult woman mage, long silver-white hair tied back, deep blue high-collared knee-length coat with gold trim over a white shirt, wide leather belt with a small book and pouches, fitted dark trousers, tall leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no staff, no weapon, no hat, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-15T23:08:04.889115Z",
+  "completed_at": "2026-11-15T23:12:30.981321Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

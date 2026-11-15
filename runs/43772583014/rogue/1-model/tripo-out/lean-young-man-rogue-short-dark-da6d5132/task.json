@@ -1,0 +1,30 @@
+{
+  "task_id": "da6d5132-c0fb-4b0b-9039-f1cd474dc519",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "lean young man rogue, short dark messy hair, charcoal fitted leather jacket with the hood down, dark scarf around the neck, leather bracers on the forearms, belts with small pouches and two empty dagger sheaths at the hips, fitted dark trousers, soft leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-15T23:02:31.024265Z",
+  "completed_at": "2026-11-15T23:07:33.838070Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "id": "warrior_v1",
+  "prompt": "(re-rig of the warrior with the v1.0 rig, for its larger animation library). stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T09:09:43.804Z",
+  "creditsBefore": 895,
+  "steps": {
+    "model": {
+      "task": "908fed4d-c975-46c8-b2f6-cf04d980a4f2",
+      "result": {
+        "task_id": "908fed4d-c975-46c8-b2f6-cf04d980a4f2"
+      }
+    },
+    "check": {
+      "task": "248e9a12-0cf3-4bed-a9dc-c09d693d0c3d",
+      "result": {
+        "task_id": "248e9a12-0cf3-4bed-a9dc-c09d693d0c3d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/warrior_v1/2-check/tripo-out/rig-check-248e9a12",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "3089b7f2-6057-4d39-a5bb-061e8dd5af54",
+      "rigType": "biped",
+      "result": {
+        "task_id": "3089b7f2-6057-4d39-a5bb-061e8dd5af54",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/warrior_v1/3-rig/tripo-out/rig-3089b7f2",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/warrior_v1/3-rig/tripo-out/rig-3089b7f2/model.glb",
+        "preview": "out/models/warrior_v1/3-rig/tripo-out/rig-3089b7f2/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "531f4ff3-3e33-4a5d-8213-9a321ccd5e4e",
+        "presets": [
+          "preset:biped:standing_relax",
+          "preset:biped:idle",
+          "preset:biped:swagger",
+          "preset:biped:chop",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "531f4ff3-3e33-4a5d-8213-9a321ccd5e4e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/warrior_v1/4-anim-1/tripo-out/retarget-531f4ff3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/warrior_v1/4-anim-1/tripo-out/retarget-531f4ff3/model.glb"
+        }
+      },
+      {
+        "task": "018330d7-bfa7-4344-ab4b-be72baff8a7f",
+        "presets": [
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "018330d7-bfa7-4344-ab4b-be72baff8a7f",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/warrior_v1/4-anim-2/tripo-out/retarget-2-018330d7",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/warrior_v1/4-anim-2/tripo-out/retarget-2-018330d7/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 810,
+  "creditsUsed": 85,
+  "finished": "2026-11-15T09:10:52.779Z",
+  "files": [
+    "2-check/tripo-out/rig-check-248e9a12/task.json",
+    "3-rig/tripo-out/rig-3089b7f2/model.glb",
+    "3-rig/tripo-out/rig-3089b7f2/preview.png",
+    "3-rig/tripo-out/rig-3089b7f2/rendered_image.webp",
+    "3-rig/tripo-out/rig-3089b7f2/task.json",
+    "4-anim-1/tripo-out/retarget-531f4ff3/model.glb",
+    "4-anim-1/tripo-out/retarget-531f4ff3/task.json",
+    "4-anim-2/tripo-out/retarget-2-018330d7/model.glb",
+    "4-anim-2/tripo-out/retarget-2-018330d7/task.json",
+    "manifest.json"
+  ]
+}

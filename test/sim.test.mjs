@@ -763,6 +763,14 @@ import { makeRng } from '../src/sim/rng.js';
   const broke = p.spec === 'berserker';
   p.gold = 1e6; w.command({ type: 'respec' }); w.step(CONFIG.TICK);
   check('talents: starting over costs gold and gives every point back', broke && p.spec === null && w.talentsSpent() === 0 && p.gold === 1e6 - w.respecCost() && Math.abs(p.stats.as - as0) < 1e-9);
+  // 0.37.2: one click puts a build back after a respec, and fills points sensibly with none
+  w.command({ type: 'chooseSpec', id: 'berserker' }); w.command({ type: 'autoTalents' }); w.step(CONFIG.TICK);
+  check('talents: spending automatically puts back the build you had in that subclass', p.talents.bz_haste === 5 && p.talents.bz_whirl === 2 && w.talentPoints() === 0, JSON.stringify(p.talents));
+  const rebuilt = new World({ seed: 1, cls: 'warrior', save: JSON.parse(JSON.stringify(w.toSave())) });
+  check('talents: the remembered build is saved with the character', JSON.stringify(rebuilt.player.talentBuilds.berserker) === JSON.stringify(p.talentBuilds.berserker));
+  const fresh = new World({ seed: 4, cls: 'warrior', save: { v: 2, level: 100 } });
+  fresh.command({ type: 'chooseSpec', id: 'bastion' in SPECS ? 'bastion' : specsFor('warrior')[1] }); fresh.command({ type: 'autoTalents' }); fresh.step(CONFIG.TICK);
+  check('talents: with no build to remember, every point is spent, the capstone included', fresh.talentPoints() === 0 && fresh.talentsSpent() === 22 && SPECS[fresh.player.spec].talents.filter((t) => t.row === 'capstone').every((t) => fresh.player.talents[t.id] === t.max), JSON.stringify(fresh.player.talents));
   // A full tree makes a hero stronger, but not out of all proportion; and both trees of a class are worth having.
   for (const cls of CLASS_IDS) {
     const base = farm({ cls, map: 'spire', level: 75, minutes: 3, rarity: 2, parrySkill: 0.6 });

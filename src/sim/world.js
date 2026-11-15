@@ -35,6 +35,11 @@ function migrateTalents(saved) {
   }
   return out;
 }
+function migrateBuilds(saved) {
+  const out = {};
+  for (const spec in saved || {}) if (Array.isArray(saved[spec])) out[spec] = saved[spec].map((id) => RENAMED_TALENTS[id] || id);
+  return out;
+}
 import { QUESTS, QUEST_IDS, SIGNS, NPCS, BOSS_LOOT } from './story.js';
 import { dAtan2, dCos, dExp, dHypot, dSin } from './dmath.js';
 
@@ -66,7 +71,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -364,6 +369,9 @@ export class World {
       bossKills: Object.assign({}, save?.bossKills), // boss type -> times beaten out in the world
       spec: save?.spec && SPECS[save.spec] && SPECS[save.spec].cls === this.cls ? save.spec : null, // subclass
       talents: migrateTalents(save?.talents), // talent id -> rank
+      // 0.37.2: the order talents were learned in, per subclass, so a build comes back in one click
+      talentBuilds: migrateBuilds(save?.talentBuilds),
+      talentSeq: [], // this subclass's points, in the order spent this time
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
@@ -495,6 +503,7 @@ export class World {
       bossKills: p.bossKills,
       spec: p.spec,
       talents: p.talents,
+      talentBuilds: p.talentBuilds,
       tomes: p.tomes,
       ranks: p.ranks,
       skillPoints: p.skillPoints,
@@ -646,6 +655,9 @@ export class World {
           break;
         case 'talent':
           this.learnTalent(c.id);
+          break;
+        case 'autoTalents':
+          this.autoTalents();
           break;
         case 'respec':
           this.respec();
@@ -2708,6 +2720,7 @@ export class World {
     if (!spec || spec.cls !== this.cls || p.spec || p.level < CONFIG.SPEC_LEVEL) return;
     p.spec = id;
     p.talents = {};
+    p.talentSeq = [];
     this.recalcStats();
     this.emit('spec', { id, name: spec.name });
   }
@@ -2724,12 +2737,53 @@ export class World {
     return '';
   }
 
-  learnTalent(id) {
-    if (this.talentBlock(id)) return;
+  learnTalent(id, quiet = false) {
+    if (this.talentBlock(id)) return false;
     const p = this.player;
     p.talents[id] = (p.talents[id] || 0) + 1;
-    this.recalcStats();
-    this.emit('talent', { id, rank: p.talents[id] });
+    // remember the build (the longest one spent in this subclass)
+    p.talentSeq.push(id);
+    const kept = p.talentBuilds[p.spec];
+    if (!kept || p.talentSeq.length >= kept.length) p.talentBuilds[p.spec] = p.talentSeq.slice();
+    if (!quiet) {
+      this.recalcStats();
+      this.emit('talent', { id, rank: p.talents[id] });
+    }
+    return true;
+  }
+
+  /**
+   * Spend every free talent point at once (0.37.2): your last build in this subclass, in the
+   * order you spent it; past that (or with none), the deepest row open first, evening out ranks.
+   */
+  autoTalents() {
+    const p = this.player;
+    const spec = SPECS[p.spec];
+    if (!spec || this.talentPoints() <= 0) return;
+    const before = this.talentsSpent();
+    const plan = (p.talentBuilds[p.spec] || []).slice();
+    // replay the remembered build, skipping ranks already held
+    const held = Object.assign({}, p.talents);
+    for (const id of plan) {
+      if (this.talentPoints() <= 0) break;
+      if (held[id] > 0) {
+        held[id]--;
+        continue;
+      }
+      this.learnTalent(id, true);
+    }
+    const ROW = { capstone: 3, major: 2, minor: 1 };
+    while (this.talentPoints() > 0) {
+      const open = spec.talents.filter((t) => !this.talentBlock(t.id));
+      if (!open.length) break;
+      open.sort((a, b) => ROW[b.row] - ROW[a.row] || (p.talents[a.id] || 0) / a.max - (p.talents[b.id] || 0) / b.max);
+      this.learnTalent(open[0].id, true);
+    }
+    const n = this.talentsSpent() - before;
+    if (n > 0) {
+      this.recalcStats();
+      this.emit('talentsAuto', { n, remembered: plan.length > 0 });
+    }
   }
 
   respecCost() {

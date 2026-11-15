@@ -81,17 +81,20 @@ function arms(P, elev) {
   const chest = flat(P.axis('Spine02', FWD)); // the way her chest faces (sideways to the target)
   const bowT = sh.clone().addScaledVector(dir, 0.255 * P.H).addScaledVector(UP, 0.012 * P.H);
   P.reach('L', bowT, sh.clone().addScaledVector(UP, -0.12 * P.H).addScaledVector(chest, -0.16 * P.H));
-  const chin = P.pos('Head').addScaledVector(dir, 0.035 * P.H).addScaledVector(chest, 0.05 * P.H).addScaledVector(UP, -0.005 * P.H);
+  // anchor at the side of the jaw, on the cheek that faces out, clear of the face
+  const chin = P.pos('Head').addScaledVector(dir, 0.02 * P.H).addScaledVector(chest, 0.08 * P.H).addScaledVector(UP, -0.02 * P.H);
   const nock = bowT.clone().addScaledVector(dir, -0.035 * P.H).addScaledVector(chest, 0.02 * P.H);
   const along = (k) => {
     if (k <= 1) return nock.clone().lerp(chin, k);
     const back = chin.clone().sub(nock).normalize();
     return chin.clone().addScaledVector(back, (k - 1) * 0.28 * P.H).addScaledVector(chest, (k - 1) * 0.12 * P.H);
   };
-  const point = (a) => (a === 'quiver' ? P.at('Spine02', [-0.07, 0.19, 0.08]) : a === 'front' ? P.at('Spine02', [0.2, 0.06, 0.0]) : along(a));
+  // the way round her head and shoulder (waypoints in her chest's frame: forward, up, her right)
+  const WAY = { quiver: [-0.09, 0.2, 0.12], over: [0.02, 0.17, 0.21], side: [0.08, 0.06, 0.19], front: [0.22, 0.04, 0.03] };
+  const point = (a) => (WAY[a] ? P.at('Spine02', WAY[a]) : along(a));
   const rs = P.pos('R_Upperarm');
   // elbow: high and back behind the arrow while drawing, up and out when reaching for the quiver
-  const drawPole = rs.clone().addScaledVector(dir, -0.3 * P.H).addScaledVector(UP, 0.06 * P.H).addScaledVector(chest, -0.05 * P.H);
+  const drawPole = rs.clone().addScaledVector(dir, -0.3 * P.H).addScaledVector(UP, 0.04 * P.H).addScaledVector(chest, 0.1 * P.H);
   const reachPole = rs.clone().addScaledVector(UP, 0.12 * P.H).addScaledVector(chest, 0.2 * P.H);
   return { point, drawPole, reachPole };
 }
@@ -104,7 +107,7 @@ function drawHand(P, A, keys, t) {
   const k = t <= t0 ? 0 : t >= t1 ? 1 : (t - t0) / (t1 - t0);
   const s = k * k * (3 - 2 * k);
   const target = A.point(a0).lerp(A.point(a1), s);
-  const reaching = (a) => (a === 'quiver' ? 1 : a === 'front' ? 0.5 : 0);
+  const reaching = (a) => ({ quiver: 1, over: 1, side: 0.7, front: 0.4 })[a] || 0;
   const pole = A.drawPole.clone().lerp(A.reachPole, reaching(a0) * (1 - s) + reaching(a1) * s);
   P.reach('R', target, pole);
 }
@@ -135,9 +138,20 @@ export const ARCHER_MOVES = {
         P.rot(`${s}_Foot`, ax, -0.45 * (thigh - knee) - 18 * Math.max(0, -Math.sin(a)));
       }
       P.ground(0.022 * Math.max(0, Math.sin(2 * TAU * ph - 0.6)));
-      const sw = Math.sin(TAU * ph);
-      P.reach('L', P.at('Spine02', [0.16 + 0.04 * sw, -0.21, -0.14]), P.at('Spine02', [-0.05, -0.15, -0.3]));
-      P.reach('R', P.at('Spine02', [0.04 - 0.19 * sw, -0.14 + 0.07 * Math.abs(sw), 0.15]), P.at('Spine02', [-0.25, -0.2, 0.2]));
+      // Arms swing from the shoulder with the elbows held bent, a beat behind the legs, the
+      // hand crossing a little toward the middle as it comes forward (not pushed back and forth
+      // along a line, which read as a march). The bow arm swings less and stays out from the leg.
+      const across = P.axis('Spine02', RIGHT), ahead = P.axis('Spine02', FWD), down = P.axis('Spine02', UP).negate();
+      for (const [s, sign, amp, flex, out] of [['R', 1, 38, 88, 0.12], ['L', -1, 22, 72, 0.3]]) {
+        const a = TAU * ph * sign + (sign > 0 ? 0 : Math.PI) - 0.45; // opposite the same-side leg, lagging
+        const swing = amp * Math.sin(a);
+        const outward = sign > 0 ? across : across.clone().negate();
+        P.aim(`${s}_Upperarm`, `${s}_Forearm`, down.clone().addScaledVector(outward, out));
+        P.rot(`${s}_Upperarm`, across, swing); // forward and back
+        P.rot(`${s}_Upperarm`, ahead, -sign * Math.max(0, swing) * 0.25); // in toward the middle as it comes forward
+        P.rot(`${s}_Clavicle`, across, swing * 0.15);
+        P.rot(`${s}_Forearm`, across, flex + 18 * Math.max(0, Math.sin(a))); // bends more on the way up
+      }
     },
   },
   // Basic attack, one full cycle played over the time between shots, from a kneel: draw to the
@@ -148,7 +162,7 @@ export const ARCHER_MOVES = {
     pose(P, t) {
       kneel(P, { yaw: 74 });
       const A = arms(P, 0);
-      drawHand(P, A, [[0, 0.4], [0.3, 1], [0.35, 1.25], [0.52, 'quiver'], [0.64, 'front'], [0.78, 0], [1, 0.4]], t);
+      drawHand(P, A, [[0, 0.4], [0.3, 1], [0.35, 1.25], [0.43, 'over'], [0.52, 'quiver'], [0.6, 'side'], [0.68, 'front'], [0.8, 0], [1, 0.4]], t);
     },
   },
   // Piercing Shot: a wide, low stance, a deep draw, and a release that drives her back a step.
@@ -163,7 +177,7 @@ export const ARCHER_MOVES = {
         step: curve([[0, 0], [0.1, -0.045], [0.5, -0.02], [0.9, 0]], t),
       });
       const A = arms(P, curve([[0, 2], [0.1, 7], [0.6, 0]], t));
-      drawHand(P, A, [[0, 1.08], [0.05, 1.35], [0.32, 1.3], [0.5, 'quiver'], [0.65, 'front'], [0.8, 0], [0.9, 0]], t);
+      drawHand(P, A, [[0, 1.08], [0.05, 1.35], [0.32, 1.3], [0.42, 'over'], [0.52, 'quiver'], [0.6, 'side'], [0.7, 'front'], [0.82, 0], [0.9, 0]], t);
     },
   },
   // Barrage: five arrows 0.09 s apart from the kneel: short, hard pulls and snaps.
@@ -177,7 +191,7 @@ export const ARCHER_MOVES = {
         const t0 = i * 0.09;
         keys.push([t0, 0.92], [t0 + 0.035, 1.22], [t0 + 0.07, 0.6]);
       }
-      keys.push([0.46, 1.25], [0.62, 'front'], [0.75, 0], [0.85, 0]);
+      keys.push([0.46, 1.25], [0.56, 'side'], [0.66, 'front'], [0.76, 0], [0.85, 0]);
       drawHand(P, A, keys, t);
     },
   },
@@ -187,7 +201,7 @@ export const ARCHER_MOVES = {
     pose(P, t) {
       wideStance(P, { yaw: 66, spread: 1.05, crouch: 0.045, lean: curve([[0, 14], [0.1, 18], [0.6, 7], [1, 0]], t) });
       const A = arms(P, curve([[0, 52], [0.1, 56], [0.5, 40], [1, 8]], t));
-      drawHand(P, A, [[0, 1], [0.06, 1.25], [0.32, 1.2], [0.5, 'quiver'], [0.68, 'front'], [0.85, 0], [1, 0]], t);
+      drawHand(P, A, [[0, 1], [0.06, 1.25], [0.32, 1.2], [0.42, 'over'], [0.52, 'quiver'], [0.62, 'side'], [0.72, 'front'], [0.86, 0], [1, 0]], t);
     },
   },
   // Evasive Roll: a forward roll, low and tucked, bow held close, back on her feet.
@@ -229,13 +243,15 @@ export const ARCHER_MOVES = {
       P.rot('Hip', RIGHT, pitch); // negative pitches her forward
       P.rot('Hip', P.axis('Hip', UP), curve([[0, 0], [0.7, 6], [1.2, 14]], t)); // twisting a little as she goes
       const side = P.axis('Hip', RIGHT);
-      // knees buckle under her, then the legs trail out behind
-      const knees = curve([[0, 0], [0.14, 6], [0.42, 62], [0.72, 70], [0.95, 38], [1.2, 14], [1.6, 12]], t);
-      for (const [s, f] of [['L', 1], ['R', 0.75]]) {
-        P.rot(`${s}_Thigh`, side, knees * f * 0.9);
-        P.rot(`${s}_Calf`, side, -knees * f * 1.5);
-        P.rot(`${s}_Foot`, side, curve([[0, 0], [1.1, 35], [1.6, 40]], t)); // toes point back once down
-      }
+      // the left knee goes first; the right gives a moment later and slides back as she falls
+      const kneeL = curve([[0, 0], [0.12, 4], [0.36, 68], [0.72, 74], [0.95, 32], [1.2, 12], [1.6, 10]], t);
+      const kneeR = curve([[0, 0], [0.3, 6], [0.55, 26], [0.78, 52], [0.98, 22], [1.2, 6], [1.6, 4]], t);
+      const backR = curve([[0, 0], [0.5, 0], [0.85, 18], [1.1, 10], [1.6, 8]], t);
+      P.rot('L_Thigh', side, kneeL * 0.9).rot('L_Calf', side, -kneeL * 1.5);
+      P.rot('R_Thigh', side, kneeR * 0.7 - backR).rot('R_Calf', side, -kneeR * 1.4);
+      P.rot('L_Foot', side, curve([[0, 0], [0.9, 10], [1.15, 38], [1.6, 42]], t));
+      P.rot('R_Foot', side, curve([[0, 0], [0.7, 6], [1.05, 30], [1.6, 36]], t)); // toes point back once down
+      P.rot('Hip', P.axis('Hip', FWD), curve([[0, 0], [0.36, -7], [0.8, -4], [1.2, 3]], t)); // dips to the side that gave first
       // the back curls as she falls, then lies flat
       P.rot('Waist', side, curve([[0, 0], [0.14, 6], [0.72, -12], [1.05, -6], [1.3, 2]], t));
       P.rot('Spine01', side, curve([[0, 0], [0.72, -8], [1.1, 0]], t));

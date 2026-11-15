@@ -421,7 +421,7 @@ function makeBow(wood, stringMat, scale, root, hand, drawHand, shoulder, hip) {
   inv.copy(root.matrixWorld).invert();
   m.multiplyMatrices(inv, hip.matrixWorld).decompose(tmp, hipBind, sc);
   hipBind.invert();
-  const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.35); // carried leaning forward
+  const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.85); // carried slanting forward, not upright over her shoulder
   const local = (bone, out) => out.setFromMatrixPosition(m.multiplyMatrices(inv, bone.matrixWorld));
   const seg = (mesh, a, b) => {
     mesh.position.copy(a);

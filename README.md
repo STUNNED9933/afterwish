@@ -150,6 +150,22 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Talents in one click, a tidier gear screen, a smoother Archer (0.37.2)
+
+- **Spend talent points in one click.** The talents screen has a button that
+  spends every free point. If you have played that subclass before, it puts your
+  points back exactly as you had them (in the order you spent them), so swapping
+  subclasses no longer means clicking every talent again. With no build to go
+  on, it fills the deepest open row first and evens out the ranks.
+- **Gear screen:** "Scrap everything", "Never scrap" and the help text sit right
+  under the bag again; the pouch and Immortal crafting moved below them.
+- **Pouch tooltips** match the gear screen's dark tooltips, and say where to find
+  more of each keepsake (with the chances).
+- **The Archer:** her arms swing from the shoulder with bent elbows as she runs
+  (no more marching), and she carries the bow slanting forward. Her drawing hand
+  anchors at the outside of her jaw and goes round her head to the quiver, so it
+  never passes through her head. When she falls, one knee gives before the other.
+
 ### The Archer, with more weight behind her (0.37.1)
 
 - **She shoots from a kneel**: right knee down, left foot planted toward the

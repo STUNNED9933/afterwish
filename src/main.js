@@ -1031,6 +1031,19 @@ function start(hot = {}) {
       sec.appendChild(grid);
       body.appendChild(sec);
     }
+    if (pts > 0) {
+      // 0.37.2: spend them all in one click (your last build in this subclass, if you had one)
+      const auto = document.createElement('button');
+      auto.type = 'button';
+      auto.className = 'primary tiny tal-auto';
+      const kept = (p.talentBuilds && p.talentBuilds[p.spec]) || [];
+      auto.textContent = kept.length ? `Spend ${pts} point${pts === 1 ? '' : 's'} like last time` : `Spend ${pts} point${pts === 1 ? '' : 's'} for me`;
+      auto.title = kept.length
+        ? `Puts your points back where you had them as ${sp.name} (in the order you spent them); any left over go to the deepest open row.`
+        : 'Fills the deepest open row first, evening out the ranks. You can respec later for gold.';
+      auto.addEventListener('click', () => applyNow({ type: 'autoTalents' }));
+      body.prepend(auto);
+    }
     respec.classList.remove('hidden');
     respec.textContent = `Forget this path and choose again · ${world.respecCost().toLocaleString()} gold`;
     respec.disabled = p.gold < world.respecCost();
@@ -1061,7 +1074,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -2083,6 +2096,10 @@ function start(hot = {}) {
         break;
       case 'talent':
         sfx.ui();
+        break;
+      case 'talentsAuto':
+        sfx.ui();
+        hud.feedText(`${ev.n} talent point${ev.n === 1 ? '' : 's'} spent${ev.remembered ? ', as you had them before' : ''}.`);
         break;
       case 'respec':
         hud.feedText('Talents reset. Choose a path again.');

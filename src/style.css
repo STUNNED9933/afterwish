@@ -90,7 +90,8 @@ body.slowmo #slowtint { opacity: 1; }
 #rift-box.late { border-color: rgba(255, 90, 90, 0.7); }
 .ebar.elite { border-color: rgba(240, 196, 90, 0.9); box-shadow: 0 0 6px rgba(240, 196, 90, 0.45); }
 .wish-reset { margin-top: 8px; }
-.pouch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 2px; font-size: 13px; }
+.pouch-area { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pouch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 2px; font-size: 13px; }
 .pouch-label { font: 600 11px var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .pouch-item { padding: 2px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255, 255, 255, 0.03); cursor: help; }
 .pouch-empty { color: var(--muted); font-size: 12px; }
@@ -348,6 +349,9 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 #tooltip .tt-desc { color: var(--muted); margin-top: 4px; font-size: 14px; }
 #tooltip .tt-effect { margin-top: 8px; padding: 6px 8px; border-left: 2px solid var(--rarity, var(--steel)); background: rgba(127, 245, 225, 0.08); font-size: 14px; }
 #tooltip .tt-effect b { display: block; color: var(--rarity, var(--steel)); }
+#tooltip .tt-from { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+#tooltip .tt-from b { display: block; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+#tooltip .tt-from ul { margin: 0; padding-left: 16px; }
 
 /* ---------- Buttons ---------- */
 .primary {
@@ -557,6 +561,7 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 .spec-card ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); line-height: 1.5; }
 .spec-card ul b { color: var(--bone); font-weight: 600; }
 .spec-card .primary { align-self: flex-start; margin-top: auto; padding: 9px 18px; font-size: 16px; }
+.tal-auto { margin: 4px 0 8px; }
 .tal-row { margin-top: 10px; }
 .tal-row.locked { opacity: 0.5; }
 .tal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px; }

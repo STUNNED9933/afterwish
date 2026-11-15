@@ -3,7 +3,7 @@ import { CONFIG } from '../config.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
-import { FRAGMENTS } from '../sim/surprises.js';
+import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
 import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 
@@ -64,6 +64,37 @@ function cpLine(item) {
 }
 
 /** A square item tile. */
+const pct = (x) => `${Math.round(x * 100)}%`;
+/** Where each pouch keepsake comes from (worked out from the game's own numbers). */
+function miscSources(id) {
+  const glassAtMerchant = (MERCHANT && MERCHANT.stock || []).find((s) => s.kind === 'glass');
+  if (id === 'glass')
+    return [
+      glassAtMerchant ? `The travelling merchant, for ${glassAtMerchant.tickets} shards (on ${pct(glassAtMerchant.chance)} of his visits)` : 'The travelling merchant, sometimes',
+      `Remnants (${pct(GLASS.remnant)})`,
+      `Wishthieves (${pct(GLASS.thief)})`,
+      `Storied enemies (${pct(GLASS.storied)})`,
+      `Bounties in Haven (${pct(BOUNTY.glass)} with the reward)`,
+    ];
+  if (id === 'fragment')
+    return [
+      `Bounties in Haven (${BOUNTY.fragments[0]} to ${BOUNTY.fragments[1]})`,
+      `Remnants (${FRAGMENTS.remnant})`,
+      `World events (${FRAGMENTS.event})`,
+      `Storied enemies (${FRAGMENTS.storied})`,
+      `Wishthieves (${FRAGMENTS.thief})`,
+      `Elites on world tier IV and up (${pct(FRAGMENTS.elite)} chance of 1)`,
+    ];
+  if (id === 'sigil') return [`World events (${pct(SIGIL.event)})`, `Storied enemies (${pct(SIGIL.storied)})`, 'Some bounties in Haven'];
+  return [];
+}
+function miscTooltip(id, n) {
+  const m = MISC[id];
+  const use = id === 'fragment' ? `${m.desc} ${FRAGMENTS.craft} make one.` : m.desc;
+  return `<div class="tt-name">${m.name}</div><div class="tt-meta">Keepsake · ${n} in the pouch</div><div class="tt-desc">${use}</div>` +
+    `<div class="tt-from"><b>Where to find more</b><ul>${miscSources(id).map((s) => `<li>${s}</li>`).join('')}</ul></div>`;
+}
+
 export function itemCell(tooltip, item, { button = false, compareTo = null, upgrade = false } = {}) {
   const el = document.createElement(button ? 'button' : 'div');
   if (button) el.type = 'button';
@@ -248,8 +279,14 @@ export class Inventory {
     if (pouch) {
       const have = MISC_IDS.filter((id) => (p.misc && p.misc[id]) > 0);
       pouch.innerHTML = `<span class="pouch-label">Pouch</span>` + (have.length
-        ? have.map((id) => `<span class="pouch-item" style="border-color:${MISC[id].color}" title="${MISC[id].desc}"><b style="color:${MISC[id].color}">${p.misc[id]}×</b> ${MISC[id].name}</span>`).join('')
+        ? have.map((id) => `<span class="pouch-item" data-misc="${id}" style="border-color:${MISC[id].color}"><b style="color:${MISC[id].color}">${p.misc[id]}×</b> ${MISC[id].name}</span>`).join('')
         : '<span class="pouch-empty">Empty. Unwishing Glass and other keepsakes go here, not in the bag.</span>');
+      // the gear screen's own tooltip (it was the browser's plain white one), with where to find more
+      for (const el of pouch.querySelectorAll('.pouch-item')) {
+        const id = el.dataset.misc;
+        el.addEventListener('mouseenter', () => this.tooltip.show(miscTooltip(id, p.misc[id]), el, MISC[id].color));
+        el.addEventListener('mouseleave', () => this.tooltip.hide());
+      }
     }
     // Immortal Fragments (0.33): enough of them craft an Immortal for the slot you choose.
     const craft = $('craft-row');

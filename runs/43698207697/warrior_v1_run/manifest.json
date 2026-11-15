@@ -1,0 +1,38 @@
+{
+  "id": "warrior_v1_run",
+  "prompt": "(the run cycle for the warrior's v1.0 rig). stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T09:13:45.544Z",
+  "creditsBefore": 810,
+  "steps": {
+    "model": {
+      "result": {}
+    },
+    "animations": [
+      {
+        "task": "15b91364-c08d-4aae-8e40-fc20ee561ad5",
+        "presets": [
+          "preset:biped:run"
+        ],
+        "result": {
+          "task_id": "15b91364-c08d-4aae-8e40-fc20ee561ad5",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/warrior_v1_run/4-anim-1/tripo-out/retarget-15b91364",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/warrior_v1_run/4-anim-1/tripo-out/retarget-15b91364/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 800,
+  "creditsUsed": 10,
+  "finished": "2026-11-15T09:13:52.168Z",
+  "files": [
+    "4-anim-1/tripo-out/retarget-15b91364/model.glb",
+    "4-anim-1/tripo-out/retarget-15b91364/task.json",
+    "manifest.json"
+  ]
+}

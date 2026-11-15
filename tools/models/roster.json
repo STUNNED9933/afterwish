@@ -1,12 +1,32 @@
 {
-  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide.",
+  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:).",
   "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
   "faceLimit": 10000,
   "characters": {
     "warrior": {
       "prompt": "bearded human warrior, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape",
       "rigType": "biped",
-      "animations": ["preset:idle", "preset:run", "preset:slash", "preset:hurt", "preset:fall"]
+      "animations": [
+        "preset:idle",
+        "preset:run",
+        "preset:slash",
+        "preset:hurt",
+        "preset:fall"
+      ]
+    },
+    "warrior_v1": {
+      "fromTask": "908fed4d-c975-46c8-b2f6-cf04d980a4f2",
+      "rigModel": "v1.0",
+      "rigType": "biped",
+      "prompt": "(re-rig of the warrior with the v1.0 rig, for its larger animation library)",
+      "animations": [
+        "preset:biped:standing_relax",
+        "preset:biped:idle",
+        "preset:biped:swagger",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ]
     }
   }
 }

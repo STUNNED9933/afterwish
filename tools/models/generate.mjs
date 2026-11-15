@@ -68,7 +68,8 @@ for (const id of ids) {
   const manifest = { id, prompt, started: new Date().toISOString(), creditsBefore: credits(), steps: {} };
   const save = () => writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ ...manifest, files: listFiles(dir) }, null, 2));
   try {
-    const model = tripo([...gen, '-o', join(dir, '1-model')]);
+    // fromTask: reuse a model already generated (e.g. to re-rig it with another rig model).
+    const model = c.fromTask ? { task_id: c.fromTask } : tripo([...gen, '-o', join(dir, '1-model')]);
     manifest.steps.model = { task: taskId(model), result: model };
     save();
     const check = tripo(['anim', 'check', taskId(model), '-o', join(dir, '2-check')]);
@@ -77,12 +78,17 @@ for (const id of ids) {
     const rigType = c.rigType || check.rig_type || (check.output && check.output.rig_type);
     save();
     if (riggable === false) throw new Error(`rig-check says ${id} cannot be rigged`);
-    const rig = tripo(['anim', 'rig', taskId(model), ...(rigType ? ['--rig-type', rigType] : []), '--out-format', 'glb', '-o', join(dir, '3-rig')]);
+    const rig = tripo(['anim', 'rig', taskId(model), ...(rigType ? ['--rig-type', rigType] : []), ...(c.rigModel ? ['--model', c.rigModel] : []), '--out-format', 'glb', '-o', join(dir, '3-rig')]);
     manifest.steps.rig = { task: taskId(rig), rigType, result: rig };
     save();
-    if (c.animations && c.animations.length) {
-      const anim = tripo(['anim', 'retarget', taskId(rig), '--animation', ...c.animations.slice(0, 5), '--out-format', 'glb', '--animate-in-place', '-o', join(dir, '4-anim')]);
-      manifest.steps.animations = { task: taskId(anim), presets: c.animations.slice(0, 5), result: anim };
+    // Animations, at most 5 per request (each request returns the model with its clips).
+    const anims = c.animations || [];
+    manifest.steps.animations = [];
+    for (let i = 0; i < anims.length; i += 5) {
+      const batch = anims.slice(i, i + 5);
+      const anim = tripo(['anim', 'retarget', taskId(rig), '--animation', ...batch, '--out-format', 'glb', '--animate-in-place', '-o', join(dir, `4-anim-${i / 5 + 1}`)]);
+      manifest.steps.animations.push({ task: taskId(anim), presets: batch, result: anim });
+      save();
     }
   } catch (err) {
     manifest.error = String(err.message || err);

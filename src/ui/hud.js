@@ -109,6 +109,9 @@ export const MARKS = {
 
 /** The class whose gear is being shown (armor effects depend on who wears them). */
 export const gearClassNow = () => gearClass;
+let gearSpec = null;
+/** The subclass being played, for Immortal tooltips (0.32: an Immortal's effect follows it). */
+export const gearSpecNow = () => gearSpec;
 export const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.hero}</svg>`;
 
 /** Tooltip text for an ability, including its rank and any augments changing it. */
@@ -214,6 +217,7 @@ export class Hud {
   update(world, renderer, dt) {
     this.world = world;
     const p = world.player;
+    gearSpec = world.trial ? null : p.spec || null;
 
     // Health / EXP / gold
     const hpFrac = Math.max(0, p.hp / p.stats.maxHp);

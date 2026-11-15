@@ -1,9 +1,9 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
-import { svg, gearIcon, gearClassNow } from './hud.js';
+import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
@@ -30,8 +30,9 @@ export function itemTooltip(item, compareTo) {
     html += `<div class="tt-set"><b>${set.name} set</b> &middot; ${SPECS[set.spec] ? SPECS[set.spec].name : ''} &middot; ${n} of 4 worn<div class="${n >= 2 ? 'on' : ''}">(2) ${set.two.desc}</div><div class="${n >= 4 ? 'on' : ''}">(4) ${set.four.desc}</div></div>`;
   }
   if (item.effect && EFFECTS[item.effect]) {
-    const fx = effectFor(item.effect, item.cls || gearClassNow());
-    html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}</div>`;
+    const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow());
+    const as = fx.spec && SPECS[fx.spec] ? `<div class="tt-as">As a ${SPECS[fx.spec].name}. An Immortal's effect follows the subclass you play.</div>` : !EFFECTS[item.effect].unique && !gearSpecNow() ? '<div class="tt-as">From level 15 its effect becomes your subclass\'s own.</div>' : '';
+    html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}${as}</div>`;
   }
   if (compareTo && compareTo !== item) {
     const other = itemStats(compareTo);
@@ -40,7 +41,7 @@ export function itemTooltip(item, compareTo) {
       const d = (stats[k] || 0) - (other[k] || 0);
       if (d !== 0) diff += `<div class="${d > 0 ? 'plus' : 'minus'}">${formatStat(k, d)}</div>`;
     }
-    if (compareTo.effect && compareTo.effect !== item.effect) diff += `<div class="minus">Loses ${effectFor(compareTo.effect, compareTo.cls || gearClassNow()).name}</div>`;
+    if (compareTo.effect && compareTo.effect !== item.effect) diff += `<div class="minus">Loses ${effectFor(compareTo.effect, compareTo.cls || gearClassNow(), gearSpecNow()).name}</div>`;
     const dp = Math.round(itemScore(item) - itemScore(compareTo));
     html += `<div class="tt-diff"><b>Compared with what you are wearing</b>${diff || '<div>No change</div>'}<div class="${dp >= 0 ? 'plus' : 'minus'}">${dp >= 0 ? '+' : ''}${dp} gear score</div>${cpLine(item)}</div>`;
   } else if (!compareTo && powerProbe && powerProbe.empty(item)) {
@@ -241,6 +242,14 @@ export class Inventory {
       bag.appendChild(el);
     }
     $('bag-count').textContent = `${p.bag.length} / ${CONFIG.BAG_SIZE}`;
+    // The pouch (0.32): stackable things that do not take a bag slot.
+    const pouch = $('pouch');
+    if (pouch) {
+      const have = MISC_IDS.filter((id) => (p.misc && p.misc[id]) > 0);
+      pouch.innerHTML = `<span class="pouch-label">Pouch</span>` + (have.length
+        ? have.map((id) => `<span class="pouch-item" style="border-color:${MISC[id].color}" title="${MISC[id].desc}"><b style="color:${MISC[id].color}">${p.misc[id]}×</b> ${MISC[id].name}</span>`).join('')
+        : '<span class="pouch-empty">Empty. Unwishing Glass and other keepsakes go here, not in the bag.</span>');
+    }
     const btn = $('btn-scrap');
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
     btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';

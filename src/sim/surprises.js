@@ -90,6 +90,10 @@ export const MERCHANT = {
     { kind: 'gear', min: 4, label: 'Mystery gear (Mythic or better)', tickets: 2 },
     { kind: 'dust', n: 5, label: '5 Wishdust', gold: 350 },
     { kind: 'set', label: 'A set piece (usually your own subclass\'s)', tickets: 3 },
+    { kind: 'glass', label: 'An Unwishing Glass (resets your Wish points)', tickets: 4, chance: 0.4 }, // only on some visits
   ],
 };
+
+// Where an Unwishing Glass turns up (0.32), besides the merchant.
+export const GLASS = { remnant: 0.15, thief: 0.1, storied: 0.04 };
 export const remnantName = (def) => `Remnant of ${def.name}`;

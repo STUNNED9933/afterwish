@@ -95,6 +95,9 @@ export const CONFIG = {
   // time does not heal at all, and lifesteal above the cap does nothing.
   LIFESTEAL_CAP: 25,
   ABILITY_LIFESTEAL: 0.33,
+  // 0.32: lifesteal heals at most this share of max health per second (it fills back at that rate,
+  // holding one second's worth), so a single huge hit late in the game cannot heal you to full.
+  LIFESTEAL_RATE: 0.15,
   MAX_LEVEL: 100,
   SPEC_LEVEL: 15, // level at which you choose a subclass
   TALENT_LEVEL: 16, // first talent point; then one more every TALENT_EVERY levels

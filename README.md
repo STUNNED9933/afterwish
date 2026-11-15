@@ -150,6 +150,40 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Subclass Immortals, rarer Immortals, lifesteal budget, Unwishing Glass (0.32)
+
+- **Immortals follow your subclass.** From level 15 every Immortal's effect is
+  the one made for the subclass you play (8 subclasses x 5 slots; before that,
+  the old class effect). The item keeps its slot and name; switch subclass and
+  its effect switches too. A few: Berserker helm *Crown of the Last Breath*
+  (last breath every 15 s, with 3 s of Crimson Oath); Bulwark helm *Crown of
+  the Iron Answer* (a blocked red attack heals 10% and gives 2 Reckoning);
+  Sharpshooter chest *Rangekeeper's Coat* (25% less damage while no enemy is
+  within 6 m); Windrunner ring *Storm Sigil* (Barrage +3 arrows); Assassin chest
+  *Shroud of Last Rites* (each Clean Kill heals 5%); Shadowdancer weapon
+  *Starglass Edge* (Veiled kunai +40%, two from each afterimage); Pyromancer
+  chest *Ashen Robe* (4% less damage per burning enemy near you); Frostbinder
+  chest *Rimeguard Mantle* (each Shatter restores 30% of the Arcane Ward). Each
+  tooltip shows the version for your subclass. A Remnant's own Immortal is the
+  same for everyone.
+- **Immortals are endgame only.** No more from ordinary drops or the Iron and
+  Gilded caches. They come from The Unmade (guaranteed the first time, then 5%
+  for its best piece), the Remnants' own Immortals, the Warden's Cache (1%) and
+  radiant chests on world tier IV and up (3%).
+- **Lifesteal budget.** Lifesteal heals at most 15% of your max health a second
+  (it holds one second's worth; double during Crimson Oath). Late in the game a
+  single hit deals hundreds of times your health, so one Barrage used to heal
+  70% of it; now about a fifth. Simulated against The Unmade, a bot that plays
+  (parries half the time, walks out of Doom) wins 12 of 16 fights on tier III
+  and 9 of 16 on tier V (it won them all before); idle, everyone loses.
+- **The pouch and the Unwishing Glass.** Stackable keepsakes go in a pouch
+  under the bag, not in a bag slot. An Unwishing Glass (Wishborne panel, T)
+  takes back every Wish point you have spent to spend again. From the
+  travelling merchant (4 shards, on 40% of his visits), Remnants (15%), the
+  Wishthief (10%) and Storied enemies (4%).
+- The pause screen's "returning to town ends this run" only shows in Echo Ring
+  runs now.
+
 ### Unique Remnants, world events, the travelling merchant, ascending Immortals, glows (0.31)
 
 - **Each Remnant fights its own way** (instead of 0.29's shared ring of blows):

@@ -49,7 +49,9 @@ export const RARITIES = [
   // (0.30: Ancient, the old Legendary, moved above Mythic, just below Immortal: see migrateItem)
   { key: 'mythic', prefix: 'Mythic', name: 'Mythic', color: '#ff5d7a', mult: 2.3, affixes: 3, weight: 1.8 },
   { key: 'ancient', prefix: 'Ancient', name: 'Ancient', color: '#ffa53a', mult: 2.8, affixes: 4, weight: 0.5 },
-  { key: 'immortal', prefix: '', name: 'Immortal', color: '#7ff5e1', mult: 3.4, affixes: 4, weight: 0.1, effect: true },
+  // weight 0: since 0.32 an Immortal never comes from an ordinary roll, only from the endgame sources that ask for one
+  // (The Unmade, Remnants, the Warden's Cache, radiant chests on tier IV and up).
+  { key: 'immortal', prefix: '', name: 'Immortal', color: '#7ff5e1', mult: 3.4, affixes: 4, weight: 0, effect: true },
 ];
 export const IMMORTAL = RARITIES.length - 1;
 
@@ -125,11 +127,79 @@ export const EFFECTS = {
     desc: 'Slowed time lasts 60% longer. Every kill takes 0.5 seconds off your ability cooldowns, and so does every 4% of a boss\'s health you take away.',
   },
 };
-/** The effect as the given class gets it: { key, slot, name, itemName, desc }. */
-export function effectFor(key, cls) {
+
+// --- Subclass Immortals (0.32) ---------------------------------------------
+// From level 15, an Immortal's effect is the one for the subclass you play, made to fit how it fights
+// (before that, the class effect above). The item keeps its slot and name; only the effect follows you.
+export const SPEC_IMMORTALS = {
+  berserker: {
+    weapon: { name: 'Bloodreaver', desc: 'While Bloodied, Cleave and Whirlwind deal 25% more, and Cleave comes back twice as fast.', apply: (m) => { m.bloodQW += 0.25; m.bloodQcd = true; } },
+    helm: { name: 'Crown of the Last Breath', desc: "Blood Rage's last breath is ready every 15 seconds instead of 30, and it gives you 3 seconds of Crimson Oath.", apply: (m) => { m.bloodSave = Math.min(m.bloodSave || 30, 15); m.lastBreathOath = 3; } },
+    chest: { name: 'Scarred Hauberk', desc: 'While Bloodied, you take a further 15% less damage.', apply: (m) => { m.bloodGuard += 0.15; } },
+    boots: { name: 'Red Stride', desc: 'While Bloodied, +25% move speed; Whirlwind spins 1 second longer.', apply: (m) => { m.bloodMs += 0.25; m.wSpinTime += 1; } },
+    ring: { name: 'Oathblood Signet', desc: "Crimson Oath's cooldown is 40% shorter and it lasts 3 seconds longer.", apply: (m) => { m.rCd *= 0.6; m.rDuration += 3; } },
+  },
+  bulwark: {
+    weapon: { name: 'Wardbreaker', desc: 'Cleave strikes a second time for 60%, and enemies you have taunted take 20% more damage from everyone.', apply: (m) => { m.qEcho = Math.max(m.qEcho, 0.6); m.tauntVuln += 0.2; } },
+    helm: { name: 'Crown of the Iron Answer', desc: 'Blocking a red attack with Iron Answer heals you for 10% of your max health and gives 2 Reckoning stacks.', apply: (m) => { m.blockHeal += 0.1; m.blockReckon += 1; } },
+    chest: { name: 'Bastion Plate', desc: 'Hold the Line cuts damage by 50% instead of 35%, and lasts 3 seconds longer.', apply: (m) => { m.bastionDr += 0.15; m.rDuration += 3; } },
+    boots: { name: 'Unyielding Greaves', desc: 'Parrying no longer slows you, and every parry or block takes 1 second off Whirlwind.', apply: (m) => { m.parryFree = true; m.parryCdrW += 1; } },
+    ring: { name: "Warden's Seal", desc: 'Reckoning gains a stack for every 5% of your health lost (instead of 10%) and holds 2 more.', apply: (m) => { m.reckonHp = 0.05; m.reckonMaxAdd += 2; } },
+  },
+  sharpshooter: {
+    weapon: { name: 'Farstring', desc: 'Long Watch goes up to 70% more damage (instead of 40%).', apply: (m) => { m.farShotMax += 0.3; } },
+    helm: { name: "Hawk's Hood", desc: 'Deadeye fires 2 more shots and comes back 30% sooner.', apply: (m) => { m.rExtraShots += 2; m.rCd *= 0.7; } },
+    chest: { name: "Rangekeeper's Coat", desc: 'While no enemy is within 6 m of you, you take 25% less damage.', apply: (m) => { m.farGuard += 0.25; } },
+    boots: { name: 'Quickstep Boots', desc: 'Evasive Roll comes back 40% sooner.', apply: (m) => { m.eCd *= 0.6; } },
+    ring: { name: 'Bullseye Loop', desc: 'Piercing Shot always crits and deals 30% more to enemies more than 10 m away.', apply: (m) => { m.qCrit = true; m.qFar += 0.3; } },
+  },
+  windrunner: {
+    weapon: { name: 'Galestring', desc: "Tailwind's on-hit damage is 50% higher.", apply: (m) => { m.tailwind *= 1.5; } },
+    helm: { name: 'Eye of the Gale', desc: "Hurricane lasts 3 seconds longer, and its extra arrows deal 80% (instead of 45%).", apply: (m) => { m.rDuration += 3; m.hurricaneMult = Math.max(m.hurricaneMult, 0.8); } },
+    chest: { name: 'Windwoven Vest', desc: 'While you have Tailwind, you take 20% less damage.', apply: (m) => { m.tailGuard += 0.2; } },
+    boots: { name: 'Zephyr Treads', desc: 'Every basic attack with Tailwind takes 0.5 seconds off Evasive Roll (instead of 0.3).', apply: (m) => { m.tailwindCdr = Math.max(m.tailwindCdr, 0.5); } },
+    ring: { name: 'Storm Sigil', desc: 'Barrage looses 3 more arrows.', apply: (m) => { m.wExtra += 3; } },
+  },
+  assassin: {
+    weapon: { name: 'Nightfang', desc: "Shadowstrike's double damage works below 40% health (instead of 30%), and your crits deal a further 25%.", apply: (m) => { m.qExecute += 0.1; m.critMult += 0.25; } },
+    helm: { name: 'Mask of the Unseen', desc: "Ambush's empowered ability deals 85% more (instead of 35%).", apply: (m) => { m.eEmpower += 0.5; } },
+    chest: { name: 'Shroud of Last Rites', desc: 'Every Clean Kill heals you for 5% of your max health.', apply: (m) => { m.killHeal += 0.05; } },
+    boots: { name: 'Silent Step', desc: 'Shadowstrike leaps 50% further, and Ambush comes back 30% sooner.', apply: (m) => { m.qRange *= 1.5; m.eCd *= 0.7; } },
+    ring: { name: 'Contract Seal', desc: 'Every Clean Kill also takes 8 seconds off Last Rites.', apply: (m) => { m.killResetR += 8; } },
+  },
+  shadowdancer: {
+    weapon: { name: 'Starglass Edge', desc: 'Starglass Kunai thrown while Veiled deal 40% more, and each afterimage throws two.', apply: (m) => { m.veilKunai += 0.4; m.kunaiTwice = true; } },
+    helm: { name: 'Mirror Veil', desc: 'Afterimages last 3 seconds longer, and Veil lasts 2 seconds longer.', apply: (m) => { m.shadowDur += 3; m.veilTime += 2; } },
+    chest: { name: 'Shadowweave', desc: 'While Veiled, you take 25% less damage.', apply: (m) => { m.veilGuard += 0.25; } },
+    boots: { name: 'Twinstep', desc: 'Veilstep comes back 40% sooner.', apply: (m) => { m.qCd *= 0.6; } },
+    ring: { name: 'Loop of the Second Death', desc: 'Second Death repeats a further 25%, and Last Rites comes back 25% sooner.', apply: (m) => { m.rMark += 0.25; m.rCd *= 0.75; } },
+  },
+  pyromancer: {
+    weapon: { name: 'Emberheart', desc: 'Burns stack 3 higher, and every stack burns 20% more.', apply: (m) => { m.burnMax += 3; m.burnMult *= 1.2; } },
+    helm: { name: 'Crown of Cinders', desc: 'Smoulder bursts 50% wider and gives 3 burn stacks instead of 2.', apply: (m) => { m.wRadius *= 1.5; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
+    chest: { name: 'Ashen Robe', desc: 'For each burning enemy within 8 m, you take 4% less damage (up to 24%).', apply: (m) => { m.burnGuard += 0.04; } },
+    boots: { name: 'Cinderwalk', desc: '+15% move speed, and Fire Bolt comes back 30% sooner.', apply: (m) => { m.msPct += 0.15; m.qCd *= 0.7; } },
+    ring: { name: 'Seal of the Second Sun', desc: 'Cinderfall comes back 40% sooner and erupts again for 70%.', apply: (m) => { m.rCd *= 0.6; m.rAftershock = Math.max(m.rAftershock, 0.7); } },
+  },
+  frostbinder: {
+    weapon: { name: 'Rimecaller', desc: 'Ice Bolt gives 3 Hoarfrost instead of 2, and Shatter deals 30% more.', apply: (m) => { m.qFrost = Math.max(m.qFrost, 3); m.frostDmg *= 1.3; } },
+    helm: { name: 'Glacial Crown', desc: 'Frozen enemies stay frozen 50% longer, and Brittle bosses take 25% more (instead of 15%).', apply: (m) => { m.frostFreeze *= 1.5; m.brittle = Math.max(m.brittle, 0.25); } },
+    chest: { name: 'Rimeguard Mantle', desc: 'Every Shatter restores 30% of your Arcane Ward.', apply: (m) => { m.shatterWard += 0.3; } },
+    boots: { name: 'Frostwalkers', desc: "Starwake's motes give 2 Hoarfrost each, and Starwake comes back 30% sooner.", apply: (m) => { m.moteFrost = Math.max(m.moteFrost, 2); m.eCd *= 0.7; } },
+    ring: { name: "Winter's Loop", desc: "Frozen Orb comes back 30% sooner, and its shattering burst gives 3 Hoarfrost.", apply: (m) => { m.wCd *= 0.7; m.orbBurstFrost = Math.max(m.orbBurstFrost, 3); } },
+  },
+};
+
+/**
+ * The effect as the given class (and subclass, from level 15) gets it: { key, slot, name, itemName, desc }.
+ * Unique Immortals (a Remnant's own) are the same for everyone.
+ */
+export function effectFor(key, cls, spec = null) {
   const e = EFFECTS[key];
   if (!e) return null;
-  return Object.assign({ key, slot: e.slot, name: e.name, itemName: e.itemName, desc: e.desc }, (e.byClass && e.byClass[cls]) || {});
+  const base = Object.assign({ key, slot: e.slot, name: e.name, itemName: e.itemName, desc: e.desc }, (e.byClass && e.byClass[cls]) || {});
+  const s = !e.unique && spec && SPEC_IMMORTALS[spec] && SPEC_IMMORTALS[spec][e.slot];
+  return s ? Object.assign(base, { name: s.name, desc: s.desc, spec }) : base;
 }
 /** Classes whose Slipstream speeds up cooldowns instead of attacks. */
 export const CASTER_CLASSES = new Set(['rogue', 'mage']);
@@ -314,6 +384,12 @@ export function setCounts(equipped) {
   return n;
 }
 
+// --- Misc items (0.32): stackable things kept in the pouch, not the bag -------------
+export const MISC = {
+  glass: { name: 'Unwishing Glass', desc: 'Takes back every Wish point you have spent, to spend again (on the Wishborne panel, T).', color: '#c9a6ff' },
+};
+export const MISC_IDS = Object.keys(MISC);
+
 // --- Enchanting (0.29) -------------------------------------------------------
 // Reroll one bonus stat on an item into another stat (never the main stat). Once an item
 // has been enchanted, only that same line can be enchanted again, and each time costs more.
@@ -414,9 +490,9 @@ export function formatStat(key, value) {
 // `odds` lines up with RARITIES. They are shown to the player as percentages.
 // Caches are bought with gold earned in the arena, or with a key from a boss.
 export const CACHES = {
-  iron: { name: 'Iron Cache', cost: { gold: 150 }, odds: [0, 50, 32, 13, 4, 0.9, 0.1] },
-  gilded: { name: 'Gilded Cache', cost: { gold: 600 }, odds: [0, 0, 45, 33, 15, 5.5, 1.5] },
-  warden: { name: "Warden's Cache", cost: { keys: 1 }, odds: [0, 0, 0, 50, 32, 14, 4] },
+  iron: { name: 'Iron Cache', cost: { gold: 150 }, odds: [0, 50, 32, 13, 4, 1, 0] },
+  gilded: { name: 'Gilded Cache', cost: { gold: 600 }, odds: [0, 0, 45, 33, 15, 7, 0] },
+  warden: { name: "Warden's Cache", cost: { keys: 1 }, odds: [0, 0, 0, 50, 32, 17, 1] },
 };
 
 /**
@@ -427,5 +503,6 @@ export const CACHES = {
 export const CHEST_TIERS = {
   wooden: { name: 'Chest', gold: 1, items: [{ min: 1 }] },
   gilded: { name: 'Gilded chest', gold: 3, potions: true, items: [{ min: 3 }, { min: 2 }] },
-  radiant: { name: 'Radiant chest', gold: 6, tickets: 1, potions: true, items: [{ weights: [0, 0, 0, 0, 55, 33, 12] }, { min: 3 }] },
+  // (an Immortal only on world tier IV and up, 3%: world.js openChest)
+  radiant: { name: 'Radiant chest', gold: 6, tickets: 1, potions: true, items: [{ weights: [0, 0, 0, 0, 64, 36, 0], immortalFromTier: 4, immortal: 3 }, { min: 3 }] },
 };

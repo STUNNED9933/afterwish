@@ -880,7 +880,7 @@ import { makeRng } from '../src/sim/rng.js';
     const { w, p } = setup('warrior');
     const e = dummy(w, 3);
     p.stats.lifesteal = 60;
-    const heal = (opts) => { p.hp = 1; w.hitEnemy(e, 1000, Object.assign({ canCrit: false }, opts)); return Math.round(p.hp - 1); };
+    const heal = (opts) => { p.hp = 1; p.lsPool = 1e9; w.hitEnemy(e, 1000, Object.assign({ canCrit: false }, opts)); return Math.round(p.hp - 1); }; // (budget aside: see 0.32)
     check('lifesteal: capped at 25%', heal({ basic: true }) === 250, String(heal({ basic: true })));
     check('lifesteal: abilities heal a third as much', Math.abs(heal({}) - 250 * CONFIG.ABILITY_LIFESTEAL) <= 1, String(heal({})));
     check('lifesteal: damage over time does not heal', heal({ dot: true }) === 0);
@@ -1479,7 +1479,7 @@ import { makeRng } from '../src/sim/rng.js';
   // The rolls themselves
   let imm = 0;
   for (let i = 0; i < 20000; i++) if (rollItem(makeRng(i + 1), 40, { weights: CHEST_TIERS.radiant.items[0].weights, cls: 'mage' }).rarity === IMMORTAL) imm++;
-  check('chests: a radiant chest holds an Immortal about 12% of the time', Math.abs(imm / 20000 - 0.12) < 0.01, (imm / 200).toFixed(1) + '%');
+  check('chests: a radiant chest never holds an Immortal below world tier IV (0.32)', imm === 0, (imm / 200).toFixed(1) + '%');
   const arena = new World({ seed: 5, cls: 'mage' });
   check('chests: none in the Echo Ring', arena.chests.length === 0);
   // Co-op: friends see the host's chests and Hoarfrost stacks
@@ -2482,14 +2482,15 @@ import { makeRng } from '../src/sim/rng.js';
     w.loadMap('frost', 'town');
     const mc = w.merchant || w.spawnMerchant();
     const p = w.player;
-    check('Merchant: sets up near you, with gear, Wishdust and a set piece for sale', mc && mc.stock.length === MERCHANT.stock.length && Math.hypot(mc.x - p.x, mc.z - p.z) < 15);
+    check('Merchant: sets up near you, with gear, Wishdust and a set piece for sale', mc && mc.stock.length >= MERCHANT.stock.length - 1 && mc.stock.some((x) => x.kind === 'set') && Math.hypot(mc.x - p.x, mc.z - p.z) < 15);
     w.command({ type: 'buyMerchant', i: 0 }); w.runCommands();
     check('Merchant: you have to walk up to him to buy', !mc.stock[0].sold);
     p.x = p.px = mc.x + 1; p.z = p.pz = mc.z;
     p.bag = [];
     const gold = p.gold, tk = p.tickets, dust = p.dust;
     for (let i = 0; i < mc.stock.length; i++) { w.command({ type: 'buyMerchant', i }); w.runCommands(); }
-    check('Merchant: everything bought, paid for, and in your bag', mc.stock.every((s) => s.sold) && p.bag.length === 4 && p.bag.some((it) => it.set) && p.bag.filter((it) => !it.set).every((it) => it.rarity >= 3) && p.dust === dust + 5 && p.gold < gold && p.tickets === tk - 5);
+    const glassSold = mc.stock.some((x) => x.kind === 'glass');
+    check('Merchant: everything bought, paid for, and in your bag (an Unwishing Glass in the pouch)', mc.stock.every((s) => s.sold) && p.bag.length === 4 && p.bag.some((it) => it.set) && p.bag.filter((it) => !it.set).every((it) => it.rarity >= 3) && p.dust === dust + 5 && p.gold < gold && p.tickets === tk - 5 - (glassSold ? 4 : 0) && (!glassSold || p.misc.glass === 1));
     run(w, MERCHANT.stay + 1, () => { p.hp = p.stats.maxHp; w.enemies = []; });
     check('Merchant: and he moves on after 3 minutes', !w.merchant);
   }
@@ -2550,6 +2551,77 @@ import { makeRng } from '../src/sim/rng.js';
       run(w, 0.6);
       check('Farsight: Steady Aim\'s crits pierce through to the enemy behind', a.hp < 1e9 && b.hp < 1e9);
     }
+  }
+}
+// --- 0.32: subclass Immortals, endgame-only Immortals, lifesteal budget, Unwishing Glass --------
+{
+  const { geared } = await import('./balance.mjs');
+  const { SPEC_IMMORTALS, EFFECTS, effectFor, rollItem: roll, RARITIES: RR, IMMORTAL: IMM, CACHES: CC } = await import('../src/sim/items.js');
+  const { BOSS_LOOT: BL } = await import('../src/sim/story.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const immortal = (slot, cls) => roll(mk(slot.length + 3), 60, { weights: RR.map((_, i) => (i === IMM ? 1 : 0)), slot, cls });
+  check('Subclass Immortals: every subclass has its own effect for every slot', Object.keys(SPEC_IMMORTALS).length === 8 && Object.values(SPEC_IMMORTALS).every((s) => ['weapon', 'helm', 'chest', 'boots', 'ring'].every((k) => s[k] && s[k].name && s[k].desc && s[k].apply)));
+  {
+    const save = Object.assign(geared('warrior', 60, 3), { spec: 'berserker', talents: {} });
+    save.equipped.helm = immortal('helm', 'warrior');
+    const w = new World({ seed: 3, cls: 'warrior', save });
+    check("Subclass Immortals: a Berserker's helm is the Crown of the Last Breath, not Undying", !w.mods.undying && w.mods.bloodSave === 15 && w.mods.lastBreathOath === 3 && effectFor(save.equipped.helm.effect, 'warrior', 'berserker').name === 'Crown of the Last Breath');
+    const save2 = Object.assign(geared('warrior', 12, 3), { talents: {} });
+    save2.equipped.helm = immortal('helm', 'warrior');
+    const w2 = new World({ seed: 3, cls: 'warrior', save: save2 });
+    check('Subclass Immortals: before a subclass, the class effect (Undying)', w2.mods.undying === true);
+    const save3 = Object.assign(geared('mage', 60, 3), { spec: 'pyromancer', talents: {} });
+    save3.equipped.ring = (await import('../src/sim/items.js')).rollUnique(mk(9), 60, 'oathsignet', 'mage');
+    const w3 = new World({ seed: 3, cls: 'mage', save: save3 });
+    check("Subclass Immortals: a Remnant's own Immortal is the same for everyone", w3.mods.oathsignet === true);
+  }
+  {
+    const save = Object.assign(geared('archer', 60, 3), { spec: 'sharpshooter', talents: {} });
+    save.equipped.chest = immortal('chest', 'archer');
+    const w = new World({ seed: 3, cls: 'archer', save });
+    w.wave.phase = 'explore'; w.enemies = [];
+    const p = w.player; p.x = p.px = 0; p.z = p.pz = 0;
+    const far = w.spawnEnemy('grunt', { x: 9, z: 0, level: 60 }); far.x = far.px = 9; far.z = far.pz = 0;
+    let hp = p.hp; w.hitPlayer(100, { parryable: false, src: far }); const alone = hp - p.hp;
+    const near = w.spawnEnemy('grunt', { x: 2, z: 0, level: 60 }); near.x = near.px = 2; near.z = near.pz = 0; near.state = 'recover'; near.t = 999;
+    hp = p.hp; w.hitPlayer(100, { parryable: false, src: far }); const crowded = hp - p.hp;
+    check("Rangekeeper's Coat: 25% less damage while no enemy is within 6 m", Math.abs(alone / crowded - 0.75) < 0.03, `${alone} vs ${crowded}`);
+  }
+  // Endgame-only sources
+  {
+    let imm = 0;
+    for (let i = 0; i < 5000; i++) if (roll(mk(i + 1), 100, { minRarity: 4 }).rarity === IMM) imm++;
+    check('Immortals: never from an ordinary roll any more', imm === 0 && RR[IMM].weight === 0);
+    check('Immortals: only The Unmade among the bosses (5% for its best piece), the Warden\'s Cache 1%, no other cache', BL.boss.top[IMM] === 0 && BL.boss2.top[IMM] === 0 && BL.boss3.top[IMM] === 5 && BL.boss3.first === IMM && CC.warden.odds[IMM] === 1 && CC.iron.odds[IMM] === 0 && CC.gilded.odds[IMM] === 0);
+  }
+  // Lifesteal budget: one Barrage no longer heals to full
+  {
+    const { talentPointsAt } = await import('../src/sim/talents.js');
+    const save = Object.assign(geared('archer', 100, 5, 7), { spec: 'sharpshooter', talents: {}, tierMax: 5, worldTier: 5, bossKills: { boss: 1, boss2: 1, boss3: 1 } });
+    const w = new World({ seed: 7, mode: 'explore', cls: 'archer', save });
+    const p = w.player;
+    w.loadMap('sanctum', 'spire');
+    const b = w.enemies.find((e) => e.def.boss);
+    w.enemies = [b];
+    p.x = p.px = b.x - 9; p.z = p.pz = b.z; b.state = 'recover'; b.t = 999; b.aggro = true;
+    for (let i = 0; i < 90; i++) w.step(CONFIG.TICK); // a full budget
+    p.hp = p.stats.maxHp * 0.3;
+    const hp0 = p.hp;
+    w.command({ type: 'cast', slot: 'w', x: b.x, z: b.z }); w.runCommands();
+    for (let i = 0; i < 90; i++) w.step(CONFIG.TICK);
+    const healed = (p.hp - hp0) / p.stats.maxHp;
+    check('Lifesteal budget: one late-game Barrage heals about a fifth of your health, not 70%', healed > 0.1 && healed < 0.3, (healed * 100).toFixed(0) + '%');
+  }
+  // Unwishing Glass
+  {
+    const w = new World({ seed: 7, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 3), { wish: 20, wishPts: 4, wishStats: { might: 10, vigor: 6 }, misc: { glass: 1 } }) });
+    const p = w.player;
+    w.command({ type: 'wishReset' }); w.runCommands();
+    check('Unwishing Glass: every spent Wish point comes back, and the glass is used up', p.wishPts === 20 && Object.keys(p.wishStats).length === 0 && p.misc.glass === 0);
+    w.command({ type: 'wishSpend', stat: 'might', n: 5 }); w.runCommands();
+    w.command({ type: 'wishReset' }); w.runCommands();
+    check('Unwishing Glass: no glass, no reset', p.wishStats.might === 5 && p.wishPts === 15);
+    check('Unwishing Glass: the pouch is saved with the character', w.toSave().misc.glass === 0);
   }
 }
 // --- 0.26.1: lighter co-op updates --------------------------------------------------

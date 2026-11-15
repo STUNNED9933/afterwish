@@ -23,7 +23,7 @@ import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName, STATS, formatStat } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
@@ -262,6 +262,8 @@ function start(hot = {}) {
     talentBadge();
     if (mode === 'title') refreshTitle();
     tune();
+    // "ends this run" is only true of an Echo Ring run (exploring just saves; the Weekly Echo says so on its button).
+    if (mode === 'pause') $('pause-run-note').classList.toggle('hidden', world.mode !== 'arena' || !!trialRun);
     if (mode === 'pause' && trialRun) $('btn-town').textContent = 'End this Weekly Echo run';
     else if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
@@ -845,6 +847,20 @@ function start(hot = {}) {
       row.appendChild(b);
       panel.appendChild(row);
     }
+    // An Unwishing Glass (0.32) takes every spent point back.
+    const spent = Object.values(p.wishStats || {}).reduce((a, b) => a + (b || 0), 0);
+    const glass = (p.misc && p.misc.glass) || 0;
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'ghost tiny wish-reset';
+    reset.textContent = glass ? `Reset with an Unwishing Glass (you have ${glass})` : 'Reset: needs an Unwishing Glass';
+    reset.title = 'Takes back every Wish point you have spent, to spend again. Unwishing Glass comes from the travelling merchant, Remnants, the Wishthief and Storied enemies.';
+    reset.disabled = !glass || !spent;
+    reset.addEventListener('click', () => {
+      applyNow({ type: 'wishReset' });
+      renderTalents();
+    });
+    panel.appendChild(reset);
   }
 
   function renderTalents() {
@@ -946,7 +962,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -2094,6 +2110,14 @@ function start(hot = {}) {
         break;
       case 'idleNoReward':
         hud.banner('Away from the keys?', `After ${ev.secs} seconds without any input, kills give no EXP, gold or loot until you act again.`);
+        break;
+      case 'miscGot':
+        sfx.pickup(4);
+        hud.feedText(`Found: ${MISC[ev.id] ? MISC[ev.id].name : ev.id} (you have ${ev.total}).`);
+        break;
+      case 'wishReset':
+        sfx.upgrade();
+        hud.banner('Unwished', `${ev.points} Wish points to spend again`);
         break;
       case 'streak':
         hud.feedText(`Streak ${ev.n}: +${ev.pct}% loot on this tier until you are knocked out.`);

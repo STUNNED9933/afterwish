@@ -274,7 +274,8 @@ export const QUEST_IDS = Object.keys(QUESTS);
 /** What a boss gives when it falls out in the world (see World.bossRewards). */
 export const BOSS_LOOT = {
   //        items dropped, their minimum rarity, how many are a step better, odds for the best one
-  boss: { items: 3, min: 2, better: 1, top: [0, 0, 0, 55, 33, 10, 2], keys: 1, tickets: 1, first: 4 },
-  boss2: { items: 4, min: 3, better: 1, top: [0, 0, 0, 0, 62, 30, 8], keys: 2, tickets: 1, first: 5 },
-  boss3: { items: 6, min: 3, better: 2, top: [0, 0, 0, 0, 50, 35, 15], keys: 3, tickets: 2, first: 6 },
+  // (0.32: Immortals only from The Unmade: guaranteed the first time, then 5% for its best piece)
+  boss: { items: 3, min: 2, better: 1, top: [0, 0, 0, 55, 35, 10, 0], keys: 1, tickets: 1, first: 4 },
+  boss2: { items: 4, min: 3, better: 1, top: [0, 0, 0, 0, 66, 34, 0], keys: 2, tickets: 1, first: 5 },
+  boss3: { items: 6, min: 3, better: 2, top: [0, 0, 0, 0, 55, 40, 5], keys: 3, tickets: 2, first: 6 },
 };

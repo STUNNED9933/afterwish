@@ -15,8 +15,8 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL } from './items.js';
-import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT } from './surprises.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, MAPS } from './maps.js';
@@ -64,7 +64,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -378,6 +378,8 @@ export class World {
       glows: Array.isArray(save?.glows) ? save.glows.slice() : [], // weapon glows earned (0.31)
       glow: save?.glow ?? null, // ...and the one shown
       thieves: save?.thieves ?? 0, // Wishthieves caught
+      misc: Object.assign({}, save?.misc), // stackable things in the pouch (0.32): { glass: 2, ... }
+      lsPool: 0, // lifesteal you can still heal this second (0.32)
       unwishedT: 0, // The Unwished Crown: > 0 after avoiding a Doom
       sporeT: 0, // Sporeheart: time to the next heal
       nightcutT: 0, // Nightcut set: > 0 after a Clean Kill
@@ -406,6 +408,7 @@ export class World {
     this.player = p;
     this.recalcStats();
     p.hp = p.stats.maxHp;
+    p.lsPool = p.stats.maxHp * CONFIG.LIFESTEAL_RATE; // the lifesteal budget starts full
     return p;
   }
 
@@ -430,7 +433,12 @@ export class World {
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
     for (const slot of SLOTS) {
       const it = this.player.equipped[slot];
-      if (it && it.effect && it.effect in m) m[it.effect] = true;
+      if (!it || !it.effect) continue;
+      // From level 15 an Immortal's effect is its subclass version (0.32); a Remnant's own is the same for all.
+      const spc = this.player.spec && SPEC_IMMORTALS[this.player.spec];
+      const own = EFFECTS[it.effect] && !EFFECTS[it.effect].unique && spc ? spc[EFFECTS[it.effect].slot] : null;
+      if (own) own.apply(m);
+      else if (it.effect in m) m[it.effect] = true;
     }
     // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
     if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k]);
@@ -453,7 +461,7 @@ export class World {
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
       as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.hurricaneT > 0 ? p.hurricaneAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
-      ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0)),
+      ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0) + (p.bloodied ? m.bloodMs : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
       lifesteal: g.lifesteal + m.lifesteal,
@@ -499,6 +507,7 @@ export class World {
       glows: p.glows,
       glow: p.glow,
       thieves: p.thieves,
+      misc: p.misc,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -540,6 +549,7 @@ export class World {
       else if (c.type === 'ascend') this.ascendItem(c.slot, c.index);
       else if (c.type === 'setGlow') { if (c.id === null || p.glows.includes(c.id)) p.glow = c.id; }
       else if (c.type === 'buyMerchant') this.buyMerchant(c.i);
+      else if (c.type === 'wishReset') this.wishReset();
       else if (c.type === 'openCache') this.openCache(c.tier);
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
@@ -818,6 +828,7 @@ export class World {
         // The Warden's Call: whatever it hits fights you for a while.
         e.tauntPid = this.cur.pid;
         e.tauntT = m.wTaunt;
+        e.tauntVuln = m.tauntVuln || 0; // Wardbreaker
       }
       if (m[slot + 'Stun'] > 0 && !e.dead && !heavy) this.stun(e, m[slot + 'Stun']);
       if (e.dead || heavy || !interrupt || !(knock || def.interrupt)) continue;
@@ -921,6 +932,11 @@ export class World {
     // Shards fly further as Ice Bolt grows (0.28): 3 m, plus half a metre a rank.
     const reach = (m.frostReach || 3) + 0.5 * ((p.ranks.q || 1) - 1);
     this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
+    if (m.shatterWard > 0) {
+      // Rimeguard Mantle: every Shatter puts some of the Arcane Ward back.
+      const cps = CLASSES[this.cls].passive;
+      if (cps && cps.ward) p.ward = Math.min(p.stats.maxHp * cps.ward, (p.ward || 0) + p.stats.maxHp * cps.ward * m.shatterWard);
+    }
     this.hitEnemy(e, dmg, { source: 'shatter' });
     if (!e.dead) {
       if (e.def.boss) {
@@ -1104,7 +1120,7 @@ export class World {
       e.slow = pr.slow;
       if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
       this.hitEnemy(e, pr.dmg, { source: 'w' });
-      if (m.orbFrost > 0 && !e.dead) this.addFrost(e, 2);
+      if (m.orbFrost > 0 && !e.dead) this.addFrost(e, Math.max(2, m.orbBurstFrost || 0)); // (Winter's Loop: 3)
       if (e.dead || e.def.heavy) continue;
       if (m.wStun > 0) this.stun(e, m.wStun);
       else if (e.state === 'windup' || e.state === 'chase') {
@@ -1145,7 +1161,7 @@ export class World {
     const m = this.mods;
     let bonus = def.behind && exposed ? 1 + def.behind + (m[slot + 'Behind'] || 0) : 1;
     // Shadowstrike (Assassin): double damage on an enemy already below 30% health.
-    const execute = def.execute > 0 && !target.def.boss && target.hp < target.maxHp * def.execute;
+    const execute = def.execute > 0 && !target.def.boss && target.hp < target.maxHp * (def.execute + (m.qExecute || 0)); // (Nightfang: 40%)
     if (execute) bonus *= 2;
     if (m[slot + 'Bleed'] > 0) {
       target.bleedT = 3;
@@ -1249,7 +1265,7 @@ export class World {
           id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: o.id, critBonus: 0, gust: true,
           x: p.x + dCos(a2) * 0.7, z: p.z + dSin(a2) * 0.7, px: p.x, pz: p.z,
           vx: dCos(a2) * b.speed, vz: dSin(a2) * b.speed, speed: b.speed,
-          radius: 0.3, dmg: dmg * (def.extraMult || 0.45), parryable: false, reflected: false, life: 1.2, dead: false,
+          radius: 0.3, dmg: dmg * Math.max(def.extraMult || 0.45, this.mods.hurricaneMult || 0), parryable: false, reflected: false, life: 1.2, dead: false,
         });
       }
     }
@@ -1313,6 +1329,7 @@ export class World {
     }
 
     p.cd[slot] = this.abilityCooldown(slot);
+    if (slot === 'q' && m.bloodQcd && p.bloodied) p.cd.q *= 0.5; // Bloodreaver
     if (m.bloodCost > 0 && (slot === 'q' || slot === 'w')) {
       // Blood Rage: Cleave and Whirlwind are paid for in health, but never below 10%.
       const cost = Math.min(p.stats.maxHp * m.bloodCost, Math.max(0, p.hp - p.stats.maxHp * 0.1));
@@ -1423,7 +1440,7 @@ export class World {
             e.vulnT = 4;
             e.vuln = m.qSunder;
           }
-          this.hitEnemy(e, dmg, { source: slot });
+          this.hitEnemy(e, dmg, { source: slot, forceCrit: slot === 'q' && m.qCrit }); // Bullseye Loop
         }
         this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: a, range, width: def.width });
         break;
@@ -1502,14 +1519,16 @@ export class World {
           s.facing = sa;
           s.throwT = 0.25;
           from.push({ x: s.x, z: s.z, ang: sa });
+          if (m.kunaiTwice) from.push({ x: s.x, z: s.z, ang: sa + 0.12 }); // Starglass Edge: two from each afterimage
         }
         const width = (def.width || 1) * (m[slot + 'Radius'] || 1);
+        const kdmg = dmg * (p.veilT > 0 ? 1 + (m.veilKunai || 0) : 1); // (Starglass Edge: more while Veiled)
         for (const f of from) {
           const c = dCos(f.ang), sn = dSin(f.ang);
           this.projectiles.push({
             id: this.nextId++, owner: 'player', kind: 'kunai', slot, pid: this.cur.pid,
             x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
-            radius: width / 2, dmg, group, repeat: p.veilT > 0 ? 1 : def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
+            radius: width / 2, dmg: kdmg, group, repeat: p.veilT > 0 ? 1 : def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
             targetId: seek ? seek.id : null, // afterimages may be further off: a homing kunai flies a little longer
             parryable: false, reflected: false, life: (range / def.speed) * (seek ? 1.6 : 1), dead: false,
           });
@@ -1586,7 +1605,7 @@ export class World {
       }
       case 'deadeye': {
         // Deadeye (Sharpshooter): up to 3 shots across the map within the window; the cooldown starts after.
-        if (!p.deadeye) p.deadeye = { left: def.shots, t: def.window + (m.rDuration || 0) };
+        if (!p.deadeye) p.deadeye = { left: def.shots + (m.rExtraShots || 0), t: def.window + (m.rDuration || 0) };
         p.deadeye.left--;
         const last = p.deadeye.left <= 0;
         let best = null, bestAlong = Infinity;
@@ -1641,6 +1660,7 @@ export class World {
           if (e.dead) continue;
           e.tauntPid = this.cur.pid;
           e.tauntT = def.taunt;
+          e.tauntVuln = m.tauntVuln || 0;
           if (!e.def.boss) {
             const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
             const de1 = Math.max(de, 0.01);
@@ -1797,6 +1817,8 @@ export class World {
     for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
     if (p.fangT > 0) p.fangT -= dt;
     p.idleT = (p.idleT || 0) + dt; // reset by any input (applyCommands)
+    // Lifesteal budget (0.32): it fills at LIFESTEAL_RATE of max health a second, holding one second's worth.
+    p.lsPool = Math.min(p.stats.maxHp * CONFIG.LIFESTEAL_RATE, (p.lsPool || 0) + p.stats.maxHp * CONFIG.LIFESTEAL_RATE * dt);
     if (p.unwishedT > 0) p.unwishedT -= dt;
     if (p.nightcutT > 0) p.nightcutT -= dt;
     if (this.mods.sporeheart) {
@@ -2046,7 +2068,7 @@ export class World {
     }
 
     const parrying = p.parryT > 0;
-    const speed = p.stats.ms * (parrying ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1); // Frostbound elites
+    const speed = p.stats.ms * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
@@ -2162,7 +2184,16 @@ export class World {
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
     const holder = this.heroes.find((h) => h.player.bastionT > 0 && !h.player.dead && dist(h.player.x, h.player.z, p.x, p.z) <= 8);
-    if (holder) rawDamage *= 1 - (holder.kit.r.dr || 0.35);
+    if (holder) rawDamage *= 1 - Math.min(0.75, (holder.kit.r.dr || 0.35) + (holder.mods.bastionDr || 0)); // (Bastion Plate: 50%)
+    // Subclass Immortals that make you harder to hurt in the right moment (0.32).
+    if (m.farGuard > 0 && !this.enemies.some((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 6 + o.radius)) rawDamage *= 1 - m.farGuard; // Rangekeeper's Coat
+    if (m.tailGuard > 0 && (p.rushT > 0 || p.hurricaneT > 0)) rawDamage *= 1 - m.tailGuard; // Windwoven Vest
+    if (m.veilGuard > 0 && p.veilT > 0) rawDamage *= 1 - m.veilGuard; // Shadowweave
+    if (m.burnGuard > 0) {
+      let n = 0;
+      for (const o of this.enemies) if (!o.dead && o.burnT > 0 && dist(o.x, o.z, p.x, p.z) <= 8 + o.radius) n++;
+      rawDamage *= 1 - Math.min(0.24, n * m.burnGuard); // Ashen Robe
+    }
     if (p.bloodied && m.bloodGuard > 0) rawDamage *= 1 - m.bloodGuard; // Blood Rage
     const chiller = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
     if (chiller && chiller.chillWeak > 0 && (chiller.slowT > 0 || chiller.state === 'stunned')) rawDamage *= 1 - chiller.chillWeak; // Deep Winter
@@ -2216,6 +2247,7 @@ export class World {
         }
         this.emit('parry', { perfect, x: p.x, z: p.z, srcId: src ? src.id : null, projectile: !!proj });
         this.addReckoning(1);
+        if (m.parryCdrW > 0) p.cd.w = Math.max(0, p.cd.w - m.parryCdrW); // Unyielding Greaves
         if (proj) {
           // Send the projectile back where it came from (it now belongs to whoever parried it).
           proj.pid = this.cur.pid;
@@ -2273,7 +2305,9 @@ export class World {
           who.vuln = Math.max(who.vuln || 0, 0.2);
         }
         this.emit('ironAnswer', { x: p.x, z: p.z, srcId: who ? who.id : null });
-        this.addReckoning(1);
+        this.addReckoning(1 + (m.blockReckon || 0));
+        if (m.blockHeal > 0) this.healPlayer(p.stats.maxHp * m.blockHeal, true); // Crown of the Iron Answer
+        if (m.parryCdrW > 0) p.cd.w = Math.max(0, p.cd.w - m.parryCdrW);
         return 'parried';
       }
       this.emit('unparryable', { x: p.x, z: p.z });
@@ -2286,7 +2320,7 @@ export class World {
     if (!this.mods.reckoning) return;
     const p = this.player;
     const was = p.reck;
-    p.reck = Math.min(this.mods.reckonMax || CONFIG.RECKON_MAX, p.reck + n);
+    p.reck = Math.min((this.mods.reckonMax || CONFIG.RECKON_MAX) + (this.mods.reckonMaxAdd || 0), p.reck + n);
     if (p.reck > was) this.emit('reckonStack', { stacks: p.reck });
   }
 
@@ -2307,7 +2341,7 @@ export class World {
     }
     if (m.reckoning && dmg > 0) {
       p.reckAcc += dmg;
-      const step = p.stats.maxHp * CONFIG.RECKON_HP;
+      const step = p.stats.maxHp * (m.reckonHp || CONFIG.RECKON_HP); // (Warden's Seal: every 5%)
       while (p.reckAcc >= step) {
         p.reckAcc -= step;
         this.addReckoning(1);
@@ -2328,6 +2362,7 @@ export class World {
       p.hp = 1;
       p.bloodSaveT = m.bloodSave;
       this.emit('lastBreath', { x: p.x, z: p.z });
+      if (m.lastBreathOath > 0) p.frenzyT = Math.max(p.frenzyT || 0, m.lastBreathOath); // Crown of the Last Breath
     }
     if (p.hp <= 0) {
       if (m.undying && !p.undyingUsed) {
@@ -3204,7 +3239,7 @@ export class World {
     if (!c) return null;
     const L = this.worldTier() >= 2 ? CONFIG.MAX_LEVEL : Math.max(1, (this.map.level || 1) + Math.round((this.map.levelSpan || 0) * 0.5));
     const lv = 1 + 0.1 * (L - 1);
-    const stock = MERCHANT.stock.map((s) => Object.assign({}, s, { gold: s.gold ? Math.round(s.gold * lv) : 0, tickets: s.tickets || 0, sold: false }));
+    const stock = MERCHANT.stock.filter((s) => !s.chance || rng() < s.chance).map((s) => Object.assign({}, s, { gold: s.gold ? Math.round(s.gold * lv) : 0, tickets: s.tickets || 0, sold: false }));
     this.merchant = { x: c.x, z: c.z, left: MERCHANT.stay, level: L, stock };
     this.merchantAt = this.ticks;
     this.emit('merchantArrive', { map: this.map.name, x: c.x, z: c.z });
@@ -3222,7 +3257,7 @@ export class World {
       this.emit('cantAfford');
       return;
     }
-    if (s.kind !== 'dust' && p.bag.length >= CONFIG.BAG_SIZE) {
+    if (s.kind !== 'dust' && s.kind !== 'glass' && p.bag.length >= CONFIG.BAG_SIZE) {
       this.emit('bagFull');
       return;
     }
@@ -3231,6 +3266,7 @@ export class World {
     s.sold = true;
     let item = null;
     if (s.kind === 'dust') p.dust += s.n;
+    else if (s.kind === 'glass') this.giveMisc('glass', 1);
     else if (s.kind === 'set') item = rollSetPiece(this.rng, mc.level, this.cls, p.spec);
     else item = rollItem(this.rng, mc.level, { minRarity: s.min, cls: this.cls });
     if (item) p.bag.push(item);
@@ -3366,6 +3402,27 @@ export class World {
     this.emit('wishSpent', { stat, n: k });
   }
 
+  /** Something for the pouch (0.32). */
+  giveMisc(id, n = 1) {
+    const p = this.player;
+    p.misc[id] = (p.misc[id] || 0) + n;
+    this.emit('miscGot', { id, n, total: p.misc[id] });
+  }
+
+  /** An Unwishing Glass: every Wish point spent comes back to spend again. */
+  wishReset() {
+    const p = this.player;
+    if (!(p.misc.glass > 0)) return;
+    let back = 0;
+    for (const k in p.wishStats) back += p.wishStats[k] || 0;
+    if (!back) return;
+    p.misc.glass--;
+    p.wishStats = {};
+    p.wishPts += back;
+    this.recalcStats();
+    this.emit('wishReset', { points: back });
+  }
+
   stepChests() {
     if (!this.chests.length && !this.chestRefill.length) return;
     let opened = false;
@@ -3397,7 +3454,9 @@ export class World {
     p.gold += gold;
     if (T.tickets) p.tickets += T.tickets;
     if (T.potions) p.potions = CONFIG.MAX_POTIONS;
-    const items = T.items.map((o) => rollItem(rng, c.level, o.weights ? { weights: o.weights, cls: this.cls } : { minRarity: o.min, cls: this.cls }));
+    const tierNow = this.worldTier();
+    const odds = (o) => (o.immortal && tierNow >= o.immortalFromTier ? o.weights.map((w, i) => (i === IMMORTAL ? o.immortal : w)) : o.weights);
+    const items = T.items.map((o) => rollItem(rng, c.level, o.weights ? { weights: odds(o), cls: this.cls } : { minRarity: o.min, cls: this.cls }));
     if (c.tier === 'radiant' && !this.trial && rng() < 0.1) items.push(rollSetPiece(rng, c.level, this.cls, this.player.spec)); // a set piece, now and then (0.29)
     items.forEach((item, i) => {
       const a = (i / items.length) * TAU + 0.6;
@@ -4196,6 +4255,10 @@ export class World {
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
       if (e.exposedT > 0 && e.exposedPid === this.cur.pid) dmg *= 1.15;
       if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.2; // The Unwished Crown, after a Doom avoided
+      const im = this.mods;
+      if (im.bloodQW > 0 && p.bloodied && (opts.source === 'q' || opts.source === 'w')) dmg *= 1 + im.bloodQW; // Bloodreaver
+      if (e.tauntT > 0 && e.tauntVuln > 0) dmg *= 1 + e.tauntVuln; // Wardbreaker (anyone's hits)
+      if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
       // Nightfang: ability crits cut deeper and bring Nightstep back sooner.
@@ -4259,6 +4322,10 @@ export class World {
       if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
       if (p.frenzyT > 0) ls *= 2; // Crimson Oath
       let heal = (dmg * ls) / 100;
+      // The budget (0.32): no more than LIFESTEAL_RATE of max health a second (twice that during Crimson Oath).
+      const boost = p.frenzyT > 0 ? 2 : 1;
+      heal = Math.min(heal, (p.lsPool || 0) * boost);
+      p.lsPool = Math.max(0, (p.lsPool || 0) - heal / boost);
       // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.
       if (this.mods.bloodCap && p.bloodied) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
       if (heal > 0) this.healPlayer(heal, false);
@@ -4336,6 +4403,7 @@ export class World {
       }
       if (m.killResetR > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.killResetR);
       if (m.nightcutChain) p.nightcutT = 3; // Nightcut: the next Shadowstrike cuts a crowd
+      if (m.killHeal > 0) this.healPlayer(p.stats.maxHp * m.killHeal, true); // Shroud of Last Rites
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
@@ -4395,16 +4463,19 @@ export class World {
         p.tickets++;
         p.dust += THIEF.dust;
         p.thieves = (p.thieves || 0) + 1;
+        if (this.rng() < GLASS.thief) this.giveMisc('glass', 1);
         this.emit('thiefCaught', { x: e.x, z: e.z, dust: THIEF.dust });
         if (p.thieves >= 10) this.unlockGlow('gold');
       } else if (e.rare) {
         const n = RARE.dust[0] + Math.floor(this.rng() * (RARE.dust[1] - RARE.dust[0] + 1));
         p.dust += n;
         this.emit('rareSlain', { name: e.rare, x: e.x, z: e.z, dust: n });
+        if (this.rng() < GLASS.storied) this.giveMisc('glass', 1);
       } else if (e.remnant) {
         p.dust += REMNANT.dust;
         this.emit('remnantSlain', { name: remnantName(e.def), x: e.x, z: e.z, dust: REMNANT.dust });
         if (REMNANT_GLOW[e.type] && this.rng() < REMNANT.glow) this.unlockGlow(REMNANT_GLOW[e.type]);
+        if (this.rng() < GLASS.remnant) this.giveMisc('glass', 1);
       }
       if (e.type === 'boss3' && e.def.boss && !e.riftGuardian && this.worldTier() >= 5) this.unlockGlow('star');
     }

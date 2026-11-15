@@ -81,6 +81,13 @@ export const MAPS = {
     boss: 'boss3', // The Unmade: the level 100 fight
     portals: [{ to: 'maw', angle: Math.PI + 0.4 }],
   },
+  // The Wilds (0.33): one big open map for world tier II and up (so always level 100), with a bit of
+  // every late region in it, more events, thieves, Storied enemies and merchants. Only by the Waygate.
+  wilds: {
+    name: 'The Shattered Wilds', theme: 'volcano', radius: 92, level: 90, levelSpan: 9, wilds: true, fromTier: 2,
+    roster: { wraith: 3, knight: 3, golem: 2, shaman: 2, wolf: 2, scarab: 2, sporecap: 2, imp: 2 }, spawns: 56, trees: 110, rocks: 80,
+    portals: [{ to: 'town', angle: 0 }],
+  },
 };
 export const MAP_IDS = Object.keys(MAPS);
 
@@ -123,6 +130,8 @@ export function buildMap(id, custom = null) {
       obstacles.push({ kind: 'brazier', shape: 'circle', x: dCos(a) * 8, z: dSin(a) * 8, r: 0.5, lit: i % 2 === 0 });
     }
     obstacles.push({ kind: 'well', shape: 'circle', x: 0, z: -4.5, r: 1.3 });
+    // The bounty board (0.33)
+    obstacles.push({ kind: 'board', shape: 'circle', id: 'bounties', name: 'Bounty Board', x: 4.6, z: 0.4, r: 0.6 });
   }
   // People to talk to (Haven) and signs to read (two on every map). See sim/story.js.
   if (def.theme === 'town') {
@@ -216,7 +225,7 @@ export function buildMap(id, custom = null) {
   });
 
   return {
-    id, name: def.name, theme: def.theme, safe: !!def.safe, radius: R,
+    id, name: def.name, theme: def.theme, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan,
     portals, obstacles, spawns, waygate, waystones,
   };

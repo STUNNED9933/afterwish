@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
-import { buildHero, buildEnemy, buildNpc, buildSign } from './models.js';
+import { buildHero, buildEnemy, buildNpc, buildSign, buildBoard, buildAltar } from './models.js';
+import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
@@ -352,6 +353,11 @@ export class Renderer {
         npc.position.set(o.x, 0, o.z);
         npc.rotation.y = Math.atan2(-o.x, -o.z); // face the middle of the plaza
         g.add(npc);
+      } else if (o.kind === 'board') {
+        const board = buildBoard();
+        board.position.set(o.x, 0, o.z);
+        board.rotation.y = Math.atan2(-o.x, -o.z);
+        g.add(board);
       } else if (o.kind === 'sign') {
         const sign = buildSign();
         sign.position.set(o.x, 0, o.z);
@@ -365,6 +371,16 @@ export class Renderer {
         water.position.set(o.x, 0.92, o.z);
         g.add(ring, water);
       }
+    }
+
+    // The altar under each boss (0.33): a Remnant Sigil calls its Remnant here while the boss is down.
+    this.altarRunes = [];
+    for (const sp of map.spawns || []) {
+      if (!ENEMIES[sp.type] || !ENEMIES[sp.type].boss || map.id === 'rift') continue;
+      const altar = buildAltar();
+      altar.position.set(sp.x, 0, sp.z);
+      g.add(altar);
+      this.altarRunes.push(altar.userData.rune);
     }
 
     // Portals to the neighbouring maps
@@ -1071,6 +1087,12 @@ export class Renderer {
 
   /** The travelling merchant and world events (0.31): a figure, a ring, a pillar of light. */
   syncExtras(world, dt) {
+    if (this.altarRunes && this.altarRunes.length) {
+      // The rune wakes when the boss is down and you carry a Remnant Sigil.
+      const ready = world.bossAltar && world.bossAltar() && world.player.misc && world.player.misc.sigil > 0;
+      this.altarT = (this.altarT || 0) + dt;
+      for (const rune of this.altarRunes) rune.material.opacity = ready ? 0.6 + 0.35 * Math.sin(this.altarT * 3) : 0.18;
+    }
     const mc = world.mode === 'explore' ? world.merchant : null;
     if (mc && !this.merchantView) {
       const g = buildNpc({ robe: 0x7a5a2a, trim: 0xffd27a, hair: 0x3a2a1a, scale: 1 });

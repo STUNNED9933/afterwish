@@ -16,10 +16,10 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
 import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
-import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS } from './surprises.js';
+import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
-import { buildRiftMap, buildMap, MAPS } from './maps.js';
+import { buildRiftMap, buildMap, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -64,7 +64,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -379,6 +379,8 @@ export class World {
       glow: save?.glow ?? null, // ...and the one shown
       thieves: save?.thieves ?? 0, // Wishthieves caught
       misc: Object.assign({}, save?.misc), // stackable things in the pouch (0.32): { glass: 2, ... }
+      bounties: Array.isArray(save?.bounties) ? save.bounties.map((b) => Object.assign({}, b)) : [], // jobs from the board (0.33)
+      bountyN: save?.bountyN ?? 0,
       lsPool: 0, // lifesteal you can still heal this second (0.32)
       unwishedT: 0, // The Unwished Crown: > 0 after avoiding a Doom
       sporeT: 0, // Sporeheart: time to the next heal
@@ -508,6 +510,8 @@ export class World {
       glow: p.glow,
       thieves: p.thieves,
       misc: p.misc,
+      bounties: p.bounties,
+      bountyN: p.bountyN,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -550,6 +554,10 @@ export class World {
       else if (c.type === 'setGlow') { if (c.id === null || p.glows.includes(c.id)) p.glow = c.id; }
       else if (c.type === 'buyMerchant') this.buyMerchant(c.i);
       else if (c.type === 'wishReset') this.wishReset();
+      else if (c.type === 'claimBounty') this.claimBounty(c.i);
+      else if (c.type === 'swapBounty') this.swapBounty(c.i);
+      else if (c.type === 'craftImmortal') this.craftImmortal(c.slot);
+      else if (c.type === 'summonRemnant') this.summonRemnant();
       else if (c.type === 'openCache') this.openCache(c.tier);
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
@@ -642,7 +650,8 @@ export class World {
           break;
         case 'travel':
           // Waygate: jump to a discovered map, arriving at its entrance.
-          if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town')) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+          if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier });
+          else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.loadMap(c.to, MAPS[c.to].portals[0].to);
           break;
         case 'setTier':
           if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
@@ -2631,6 +2640,13 @@ export class World {
       const d = dist(p.x, p.z, ob.x, ob.z) - ob.r;
       if (d < CONFIG.INTERACT_RANGE && d < bd) { best = ob; bd = d; }
     }
+    for (const ob of this.obstacles) {
+      if (ob.kind !== 'board') continue; // the bounty board (0.33)
+      const d = dist(p.x, p.z, ob.x, ob.z) - ob.r;
+      if (d < CONFIG.INTERACT_RANGE && d < bd) { best = ob; bd = d; }
+    }
+    const alt = this.bossAltar(); // a boss's altar, while its boss is down (0.33)
+    if (alt && dist(p.x, p.z, alt.x, alt.z) <= SIGIL.altar && dist(p.x, p.z, alt.x, alt.z) < bd) { best = alt; bd = dist(p.x, p.z, alt.x, alt.z); }
     if (this.merchant) {
       // The travelling merchant (0.31)
       const d = dist(p.x, p.z, this.merchant.x, this.merchant.z) - 0.6;
@@ -2803,13 +2819,13 @@ export class World {
       exp = TIERS[tier].exp;
     }
     const T = TIERS[tier];
-    const chance = rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0;
+    const chance = (rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0) + (this.map.wilds ? WILDS.elite : 0);
     if (!e.def.boss && this.rng() < chance) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes);
     if (!rift && !this.trial) {
       // Exploration surprises (0.29): now and then a named Rare; a boss you know well may come back as its Remnant.
       if (!e.def.boss && !this.enemies.some((o) => o.rare && !o.dead)) {
         const r = this.streamRng('rare', this.surpriseN++);
-        if (r() < RARE.chance) this.makeRare(e, r, Math.max(RARE.affixes, tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.affixes : 0));
+        if (r() < RARE.chance * (this.map.wilds ? WILDS.storied : 1)) this.makeRare(e, r, Math.max(RARE.affixes, tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.affixes : 0));
       } else if (e.def.boss && BOSS_LOOT[e.type] && (this.heroes[0].player.bossKills[e.type] || 0) >= REMNANT.after) {
         const r = this.streamRng('remnant', this.surpriseN++);
         if (r() < REMNANT.chance) this.makeRemnant(e);
@@ -3145,15 +3161,28 @@ export class World {
     return this.happening;
   }
 
+  /** Everyone who saw a world event through, nearby and at the keys: bounty credit, fragments, maybe a sigil. */
+  eventCredit(ev, reach) {
+    const was = this.cur;
+    for (const h of this.heroes) {
+      if (h.player.dead || (h.player.idleT || 0) >= CONFIG.IDLE_NO_REWARD || dist(h.player.x, h.player.z, ev.x, ev.z) > reach) continue;
+      this.use(h);
+      this.bountyEvent('event');
+      this.giveMisc('fragment', FRAGMENTS.event);
+      if (this.rng() < SIGIL.event) this.giveMisc('sigil', 1);
+    }
+    this.use(was);
+  }
+
   stepEvents(dt) {
     if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.map.id === 'rift') return;
     const ev = this.happening;
     if (!ev) {
       this.eventClock -= dt;
       if (this.eventClock <= 0) {
-        this.eventClock = EVENTS.every;
+        this.eventClock = this.map.wilds ? WILDS.events : EVENTS.every;
         const r = this.streamRng('eventRoll', this.surpriseN++);
-        if (r() < EVENTS.chance) this.startEvent(r() < 0.5 ? 'meteor' : 'shrine');
+        if (r() < (this.map.wilds ? WILDS.eventChance : EVENTS.chance)) this.startEvent(r() < 0.5 ? 'meteor' : 'shrine');
       }
       return;
     }
@@ -3177,6 +3206,7 @@ export class World {
       ev.left = ev.ids.filter((id) => this.enemyById(id)).length;
       if (ev.left === 0) {
         this.addChestAt(ev.x, ev.z, 'radiant');
+        this.eventCredit(ev, 30);
         this.emit('eventDone', { kind: 'meteor', x: ev.x, z: ev.z });
         this.happening = null;
       } else if (ev.t <= 0) {
@@ -3226,6 +3256,7 @@ export class World {
         this.player.tickets += S.tickets;
       }
       this.use(was);
+      this.eventCredit(ev, ev.r + 6);
       this.emit('eventDone', { kind: 'shrine', x: ev.x, z: ev.z, dust: S.dust, tickets: S.tickets });
       this.happening = null;
     }
@@ -3294,6 +3325,150 @@ export class World {
     p.glows.push(id);
     if (!p.glow) p.glow = id;
     this.emit('glowUnlocked', { id, name: GLOWS[id].name });
+  }
+
+  // =========================================================================
+  // 0.33: bounties, Immortal Fragments, Remnant Sigils, The Wilds
+  // =========================================================================
+  /** A new job for the board, fitted to what this hero can do now. */
+  makeBounty() {
+    const p = this.player;
+    const rng = this.streamRng('bounty', (p.bountyN = (p.bountyN || 0) + 1) + (p.wish || 0) * 1000 + p.level * 7);
+    const tier = this.worldTier();
+    const kinds = ['kill', 'kill', 'storied', 'event', 'thief'];
+    if (p.level >= BOUNTY.kinds.elite.from || tier >= 2) kinds.push('elite');
+    if (Object.values(p.bossKills).some((n) => n >= REMNANT.after)) kinds.push('remnant');
+    if (p.bossKills.boss > 0) kinds.push('rift');
+    // No two of the same job on the board (two kill jobs, but on different maps).
+    const onBoard = new Set((p.bounties || []).filter((b) => b && b.kind !== 'kill').map((b) => b.kind));
+    const free = kinds.filter((k) => !onBoard.has(k));
+    let kind = (free.length ? free : kinds)[Math.floor(rng() * (free.length ? free : kinds).length)];
+    const b = { id: `b${p.bountyN}`, kind, n: 0, need: BOUNTY.kinds[kind].need, done: false };
+    if (kind === 'kill') {
+      // A map you know that fits your level (on world tier II and up, any map: they are all level 100).
+      const fits = (id) => {
+        const M = MAPS[id];
+        if (M.safe) return false;
+        if (M.fromTier) return tier >= M.fromTier; // The Wilds
+        if (!p.visited.includes(id)) return false;
+        return tier >= 2 || (M.level <= p.level + 3 && M.level + M.levelSpan >= p.level - 15);
+      };
+      const taken = new Set((p.bounties || []).filter((b) => b && b.kind === 'kill').map((b) => b.map));
+      const maps = MAP_IDS.filter((id) => fits(id) && !taken.has(id));
+      const id = maps.length ? maps[Math.floor(rng() * maps.length)] : null;
+      if (!id) {
+        kind = b.kind = 'storied';
+        b.need = 1;
+      } else {
+        b.map = id;
+        b.mapName = MAPS[id].name;
+      }
+    }
+    const extra = ['tickets', 'dust', 'gold'];
+    if (Object.values(p.bossKills).some((n) => n >= REMNANT.after)) extra.push('sigil');
+    const ex = extra[Math.floor(rng() * extra.length)];
+    b.reward = {
+      fragments: BOUNTY.fragments[0] + Math.floor(rng() * (BOUNTY.fragments[1] - BOUNTY.fragments[0] + 1)),
+      [ex]: ex === 'tickets' ? 1 + Math.floor(rng() * 2) : ex === 'dust' ? 4 + Math.floor(rng() * 3) : ex === 'sigil' ? 1 : Math.round(60 * (1 + 0.15 * p.level) * (tier >= 2 ? TIERS[tier].loot : 1)),
+      glass: rng() < BOUNTY.glass ? 1 : 0,
+    };
+    b.text = BOUNTY.kinds[b.kind].text(b);
+    return b;
+  }
+
+  /** Keep three jobs on this hero's board. */
+  fillBounties() {
+    const p = this.player;
+    if (this.trial || this.mode !== 'explore') return;
+    p.bounties = (p.bounties || []).filter(Boolean);
+    while (p.bounties.length < BOUNTY.slots) p.bounties.push(this.makeBounty());
+  }
+
+  /** Something a bounty might be waiting for happened (to the acting hero). */
+  bountyEvent(kind, ctx = {}) {
+    const p = this.player;
+    if (!p.bounties || this.trial) return;
+    for (const b of p.bounties) {
+      if (b.done || b.kind !== kind) continue;
+      if (kind === 'kill' && b.map !== ctx.map) continue;
+      b.n++;
+      if (b.n >= b.need) {
+        b.done = true;
+        this.emit('bountyDone', { text: b.text });
+      }
+    }
+  }
+
+  /** Hand in a finished job at the board (in Haven): its rewards, and a new job in its place. */
+  claimBounty(i) {
+    const p = this.player;
+    const b = p.bounties && p.bounties[i];
+    if (!b || !b.done || !this.map.safe) return;
+    const r = b.reward;
+    if (r.fragments) this.giveMisc('fragment', r.fragments);
+    if (r.sigil) this.giveMisc('sigil', r.sigil);
+    if (r.glass) this.giveMisc('glass', r.glass);
+    if (r.tickets) p.tickets += r.tickets;
+    if (r.dust) p.dust += r.dust;
+    if (r.gold) p.gold += r.gold;
+    p.bounties[i] = this.makeBounty();
+    this.emit('bountyClaimed', { text: b.text, reward: r });
+  }
+
+  /** Swap a job you do not want for another, for a little gold. */
+  swapBounty(i) {
+    const p = this.player;
+    if (!p.bounties || !p.bounties[i] || p.bounties[i].done || !this.map.safe) return;
+    const cost = Math.round(BOUNTY.swapGold * (1 + p.level / 10));
+    if (p.gold < cost) {
+      this.emit('cantAfford');
+      return;
+    }
+    p.gold -= cost;
+    p.bounties[i] = this.makeBounty();
+    this.emit('bountySwapped', {});
+  }
+
+  /** Immortal Fragments: craft an Immortal for the chosen slot, at your level. */
+  craftImmortal(slot) {
+    const p = this.player;
+    if (!SLOTS.includes(slot) || p.level < FRAGMENTS.craftLevel || (p.misc.fragment || 0) < FRAGMENTS.craft || this.trial) return;
+    if (p.bag.length >= CONFIG.BAG_SIZE && p.equipped[slot]) {
+      this.emit('bagFull');
+      return;
+    }
+    p.misc.fragment -= FRAGMENTS.craft;
+    const item = rollItem(this.rng, p.level, { weights: [0, 0, 0, 0, 0, 0, 1], slot, cls: this.cls });
+    this.giveItem(item);
+    this.emit('crafted', { item });
+  }
+
+  /** The boss altar on this map, if it is free for a Remnant to be called (no boss standing there). */
+  bossAltar() {
+    const sp = this.map && this.map.spawns ? this.map.spawns.find((s) => ENEMIES[s.type] && ENEMIES[s.type].boss) : null;
+    if (!sp || this.map.id === 'rift') return null;
+    if (this.enemies.some((e) => e.def.boss && !e.dead)) return null;
+    return { kind: 'altar', id: 'altar', name: `${ENEMIES[sp.type].name}'s altar`, type: sp.type, x: sp.x, z: sp.z, r: 1.2 };
+  }
+
+  /** A Remnant Sigil pressed into the altar: the Remnant rises at once. */
+  summonRemnant() {
+    const p = this.player;
+    const alt = this.bossAltar();
+    if (!alt || dist(p.x, p.z, alt.x, alt.z) > SIGIL.altar || !((p.misc.sigil || 0) > 0)) return;
+    if ((this.heroes[0].player.bossKills[alt.type] || 0) < REMNANT.after) {
+      this.emit('altarLocked', { name: ENEMIES[alt.type].name });
+      return;
+    }
+    const camp = this.camps.find((c) => c.def.type === alt.type);
+    if (!camp) return;
+    const slot = camp.slots[0];
+    p.misc.sigil--;
+    const e = this.spawnCamp(slot, camp);
+    if (!e.remnant) this.makeRemnant(e);
+    slot.id = e.id;
+    delete this.campDown[camp.key];
+    this.emit('remnantSummoned', { name: remnantName(e.def) });
   }
 
   /** Make an enemy an elite with `n` different modifiers. */
@@ -3369,6 +3544,7 @@ export class World {
       if (won) {
         p.riftMax = Math.max(p.riftMax, r.tier + 1);
         if (r.tier >= 10) this.unlockGlow('rift');
+        this.bountyEvent('rift');
         if (!p.riftBest || r.tier > p.riftBest.tier || (r.tier === p.riftBest.tier && secs < p.riftBest.secs)) p.riftBest = { tier: r.tier, secs };
         p.tickets += 1; // your shard back, to go again
       }
@@ -4457,6 +4633,25 @@ export class World {
       return;
     }
     p.idleWarned = false;
+    if (this.mode === 'explore' && !this.trial && !e.def.summon) {
+      // Bounties and fragments (0.33)
+      if (!e.def.thief && !e.def.boss) this.bountyEvent('kill', { map: this.map.id });
+      if (e.elite && !e.rare && !e.def.boss) this.bountyEvent('elite');
+      if (e.rare) {
+        this.bountyEvent('storied');
+        this.giveMisc('fragment', FRAGMENTS.storied);
+        if (this.rng() < SIGIL.storied) this.giveMisc('sigil', 1);
+      }
+      if (e.def.thief) {
+        this.bountyEvent('thief');
+        this.giveMisc('fragment', FRAGMENTS.thief);
+      }
+      if (e.remnant) {
+        this.bountyEvent('remnant');
+        this.giveMisc('fragment', FRAGMENTS.remnant);
+      }
+      if (e.elite && !e.rare && this.worldTier() >= 4 && this.rng() < FRAGMENTS.elite) this.giveMisc('fragment', 1);
+    }
     if (this.mode === 'explore' && !this.trial) {
       // Exploration surprises (0.29): Wishdust, and a shard from the Wishthief.
       if (e.def.thief) {
@@ -5064,8 +5259,10 @@ inTown() {
     this.happening = null;
     this.eventClock = EVENTS.first;
     this.merchant = null;
-    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.ticks - this.merchantAt > MERCHANT.gap / CONFIG.TICK && this.streamRng('merchantIn', this.surpriseN++)() < MERCHANT.chance) this.spawnMerchant();
-    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.streamRng('thiefIn', this.surpriseN++)() < THIEF.onEnter) this.spawnThief();
+    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.ticks - this.merchantAt > MERCHANT.gap / CONFIG.TICK && this.streamRng('merchantIn', this.surpriseN++)() < (map.wilds ? WILDS.merchant : MERCHANT.chance)) this.spawnMerchant();
+    if (this.mode === 'explore' && map.safe && !this.trial) for (const h of this.heroes) { this.use(h); this.fillBounties(); } // fresh jobs on the board
+    this.use(actor);
+    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.streamRng('thiefIn', this.surpriseN++)() < (map.wilds ? WILDS.thiefIn : THIEF.onEnter)) this.spawnThief();
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
       this.use(h);
@@ -5317,7 +5514,7 @@ inTown() {
       this.thiefClock += dt;
       if (this.thiefClock >= THIEF.every) {
         this.thiefClock = 0;
-        if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
+        if (this.streamRng('thiefAgain', this.surpriseN++)() < (this.map.wilds ? WILDS.thiefAgain : THIEF.again)) this.spawnThief();
       }
     }
     // World events and the travelling merchant (0.31)
@@ -5472,7 +5669,7 @@ inTown() {
       this.thiefClock += dt;
       if (this.thiefClock >= THIEF.every) {
         this.thiefClock = 0;
-        if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
+        if (this.streamRng('thiefAgain', this.surpriseN++)() < (this.map.wilds ? WILDS.thiefAgain : THIEF.again)) this.spawnThief();
       }
     }
     // World events and the travelling merchant (0.31)

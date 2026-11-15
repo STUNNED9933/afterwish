@@ -309,7 +309,7 @@ with sync_playwright() as pw:
     page.wait_for_timeout(300)
     page.screenshot(path=str(out / '28-travel.png'))
     rows = ev("() => [...document.querySelectorAll('.travel-row')].map((b) => [b.querySelector('b').textContent, b.disabled])")
-    check('waygate: lists all ten maps, with the ones you have reached unlocked', len(rows) == 10 and not rows[9][1] and rows[9][0] == 'Starfall Sanctum', str(rows[:3]))
+    check('waygate: lists all ten maps, with the ones you have reached unlocked, and The Wilds locked below tier II', len(rows) == 11 and not rows[9][1] and rows[9][0] == 'Starfall Sanctum' and rows[10][0] == 'The Shattered Wilds' and rows[10][1], str(rows[-3:]))
     page.click('.travel-row:nth-child(5)'); page.wait_for_timeout(900)
     check('waygate: clicking a map takes you there', ev("() => game.world.map.id") == 'frost' and ev("() => game.mode") == 'play', ev("() => game.world.map.id"))
     # --- Story: people, signs, journal, talents ------------------------------------------
@@ -503,6 +503,29 @@ with sync_playwright() as pw:
     page.click('#wish-panel .wish-row button'); page.wait_for_timeout(300)
     check('a Wish point goes into Might', ev("() => game.world.player.wishStats.might") == 1 and ev("() => game.world.player.wishPts") == pts - 1)
     page.keyboard.press('t'); page.wait_for_timeout(300)
+    # 0.33: the bounty board, The Shattered Wilds, crafting Immortals
+    ev("() => game.world.command({ type: 'travel', to: 'town' })"); page.wait_for_timeout(1500)
+    ev("() => { const w = game.world, ob = w.obstacles.find((o) => o.kind === 'board'); w.player.x = w.player.px = ob.x + 1.3; w.player.z = w.player.pz = ob.z; }"); page.wait_for_timeout(400)
+    check('a prompt appears by the bounty board', 'Bounty Board' in page.inner_text('#prompt'), page.inner_text('#prompt'))
+    page.keyboard.press('g'); page.wait_for_timeout(500)
+    check('G at the board shows three bounties', page.inner_text('#talk-name') == 'Bounty Board' and len(page.query_selector_all('#talk-quests .quest')) == 3, page.inner_text('#talk-quests')[:200])
+    page.screenshot(path=str(out / '33-bounties.png'))
+    page.keyboard.press('Escape'); page.wait_for_timeout(300)
+    ev("() => { const w = game.world, wg = w.map.waygate; w.player.x = w.player.px = wg.x; w.player.z = w.player.pz = wg.z; }")
+    for _ in range(30):
+        if page.is_visible('#travel .rift-row'): break
+        page.wait_for_timeout(100)
+    wilds = [b for b in page.query_selector_all('#travel-list .travel-row') if 'Shattered Wilds' in b.inner_text()]
+    check('the Waygate lists The Shattered Wilds, open on tier III', len(wilds) == 1 and wilds[0].is_enabled())
+    if wilds: wilds[0].click()
+    page.wait_for_timeout(2500)
+    check('the Waygate takes you to The Shattered Wilds', ev("() => game.world.map.id") == 'wilds' and ev("() => game.world.enemies.length") >= 40, ev("() => game.world.map.id"))
+    page.screenshot(path=str(out / '33-wilds.png'))
+    ev("() => { game.world.player.misc.fragment = 260; }")
+    page.keyboard.press('Tab'); page.wait_for_timeout(500)
+    check('the gear screen shows the Immortal craft row with fragments', page.is_visible('#craft-row') and '260 / 250' in page.inner_text('#craft-row'), page.inner_text('#craft-row') if page.is_visible('#craft-row') else 'hidden')
+    page.screenshot(path=str(out / '33-craft.png'))
+    page.keyboard.press('Tab'); page.wait_for_timeout(300)
     ctx.close()
     browser.close()
 

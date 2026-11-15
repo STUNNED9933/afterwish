@@ -387,6 +387,8 @@ export function setCounts(equipped) {
 // --- Misc items (0.32): stackable things kept in the pouch, not the bag -------------
 export const MISC = {
   glass: { name: 'Unwishing Glass', desc: 'Takes back every Wish point you have spent, to spend again (on the Wishborne panel, T).', color: '#c9a6ff' },
+  fragment: { name: 'Immortal Fragment', desc: 'Gather enough and craft an Immortal of your choice of slot (gear screen, from level 70).', color: '#7ff5e1' },
+  sigil: { name: 'Remnant Sigil', desc: "Press it into a boss's altar (where it fights) to call up its Remnant at once, if you have beaten that boss three times.", color: '#a64bff' },
 };
 export const MISC_IDS = Object.keys(MISC);
 

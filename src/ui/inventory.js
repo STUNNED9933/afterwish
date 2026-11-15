@@ -3,6 +3,7 @@ import { CONFIG } from '../config.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
+import { FRAGMENTS } from '../sim/surprises.js';
 import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 
@@ -249,6 +250,23 @@ export class Inventory {
       pouch.innerHTML = `<span class="pouch-label">Pouch</span>` + (have.length
         ? have.map((id) => `<span class="pouch-item" style="border-color:${MISC[id].color}" title="${MISC[id].desc}"><b style="color:${MISC[id].color}">${p.misc[id]}×</b> ${MISC[id].name}</span>`).join('')
         : '<span class="pouch-empty">Empty. Unwishing Glass and other keepsakes go here, not in the bag.</span>');
+    }
+    // Immortal Fragments (0.33): enough of them craft an Immortal for the slot you choose.
+    const craft = $('craft-row');
+    if (craft) {
+      const have = (p.misc && p.misc.fragment) || 0;
+      craft.classList.toggle('hidden', !have && p.level < FRAGMENTS.craftLevel);
+      const ready = have >= FRAGMENTS.craft && p.level >= FRAGMENTS.craftLevel && !world.trial;
+      craft.innerHTML = `<span class="pouch-label">Craft an Immortal</span><span class="craft-note">${have} / ${FRAGMENTS.craft} fragments${p.level < FRAGMENTS.craftLevel ? ` · from level ${FRAGMENTS.craftLevel}` : ''}. Its special power fits your subclass.</span>`;
+      for (const slot of SLOTS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = ready ? 'primary tiny' : 'ghost tiny';
+        b.textContent = SLOT_NAMES[slot];
+        b.disabled = !ready;
+        b.addEventListener('click', () => this.send({ type: 'craftImmortal', slot }));
+        craft.appendChild(b);
+      }
     }
     const btn = $('btn-scrap');
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';

@@ -24,6 +24,7 @@ import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
+import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
@@ -666,6 +667,21 @@ function start(hot = {}) {
     for (const id of MAP_IDS) {
       const m = MAPS[id];
       if (m.safe || id === world.map.id) continue;
+      if (m.fromTier) {
+        // The Wilds (0.33): by the Waygate only, from world tier II.
+        const open = world.worldTier() >= m.fromTier;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'travel-row' + (open ? ' fit' : '');
+        btn.disabled = !open;
+        btn.innerHTML = `<b>${m.name}</b><span class="lv">World tier ${m.fromTier === 2 ? 'II' : m.fromTier}+</span><span>${open ? 'Huge and restless: world events, Wishthieves, Storied enemies and the merchant turn up far more often' : 'Opens on world tier II'}</span>`;
+        btn.addEventListener('click', () => {
+          setMode('play');
+          applyNow({ type: 'travel', to: id });
+        });
+        list.appendChild(btn);
+        continue;
+      }
       const known = p.visited.includes(id);
       const top = m.level + m.levelSpan + (m.boss ? 1 : 0);
       const btn = document.createElement('button');
@@ -726,8 +742,89 @@ function start(hot = {}) {
     });
   }
 
+  /** The bounty board in Haven (0.33): three jobs, each worth Immortal Fragments and something more. */
+  function rewardLine(r) {
+    const parts = [`${r.fragments} Immortal Fragments`];
+    if (r.tickets) parts.push(`${r.tickets} starglass shard${r.tickets > 1 ? 's' : ''}`);
+    if (r.dust) parts.push(`${r.dust} Wishdust`);
+    if (r.gold) parts.push(`${r.gold.toLocaleString()} gold`);
+    if (r.sigil) parts.push('a Remnant Sigil');
+    if (r.glass) parts.push('an Unwishing Glass');
+    return parts.join(' · ');
+  }
+  function renderBounties() {
+    const p = world.player;
+    $('talk-role').textContent = 'Jobs for anyone handy';
+    $('talk-name').textContent = 'Bounty Board';
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    $('talk-keys').classList.add('hidden');
+    const frags = (p.misc && p.misc.fragment) || 0;
+    $('talk-line').textContent = talkNote || `Notes pinned three deep by the people of Haven. Finish one anywhere, then come back here for the reward. (You have ${frags} Immortal Fragment${frags === 1 ? '' : 's'}: ${FRAGMENTS.craft} craft an Immortal on the gear screen, from level ${FRAGMENTS.craftLevel}.)`;
+    if (world.trial || !p.bounties || !p.bounties.length) {
+      $('talk-line').textContent = 'The notes are all for people who live here. Come back on your own road.';
+      return;
+    }
+    const swap = Math.round(BOUNTY.swapGold * (1 + p.level / 10));
+    p.bounties.forEach((b, i) => {
+      const el = document.createElement('div');
+      el.className = 'quest' + (b.done ? ' ready done-bounty' : '');
+      el.innerHTML = `<h4>${esc(b.text)}</h4><div class="bounty-prog">${b.done ? 'Done: take the reward' : b.need > 1 ? `${b.n} / ${b.need}` : 'Not yet'}</div><div class="rewards">Reward: ${rewardLine(b.reward)}</div>`;
+      const row = document.createElement('div');
+      row.className = 'bounty-btns';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      if (b.done) {
+        btn.className = 'primary';
+        btn.textContent = 'Take the reward';
+        btn.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'claimBounty', i }); });
+      } else {
+        btn.className = 'ghost';
+        btn.textContent = `Swap for another · ${swap} gold`;
+        btn.disabled = p.gold < swap;
+        btn.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'swapBounty', i }); });
+      }
+      row.appendChild(btn);
+      el.appendChild(row);
+      list.appendChild(el);
+    });
+  }
+
+  /** A boss's altar (0.33): press a Remnant Sigil in to call its Remnant now. */
+  function renderAltar() {
+    const p = world.player;
+    const alt = world.bossAltar();
+    $('talk-role').textContent = 'Where the boss stood';
+    $('talk-name').textContent = alt ? alt.name : 'The altar';
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    $('talk-keys').classList.add('hidden');
+    if (!alt) {
+      $('talk-line').textContent = 'Something already stands here.';
+      return;
+    }
+    const sig = (p.misc && p.misc.sigil) || 0;
+    const beaten = (world.heroes[0].player.bossKills[alt.type] || 0);
+    const after = REMNANT.after;
+    $('talk-line').textContent = talkNote || (beaten < after
+      ? `The stones are cold. Its Remnant only answers once the boss has been beaten ${after} times (${beaten} so far${world.party ? ', by the party leader' : ''}).`
+      : `The rune hums under your feet. A Remnant Sigil pressed in here would call up its Remnant now. You have ${sig}. Storied enemies and world events sometimes drop them.`);
+    const el = document.createElement('div');
+    el.className = 'quest';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = sig > 0 && beaten >= after ? 'primary' : 'ghost';
+    btn.textContent = sig > 0 ? 'Press in a Remnant Sigil' : 'You have no Remnant Sigil';
+    btn.disabled = !(sig > 0) || beaten < after;
+    btn.addEventListener('click', () => { setMode('play'); applyNow({ type: 'summonRemnant' }); });
+    el.appendChild(btn);
+    list.appendChild(el);
+  }
+
   function renderTalk() {
     if (talkTo === 'merchant') return renderMerchant();
+    if (talkTo === 'bounties') return renderBounties();
+    if (talkTo === 'altar') return renderAltar();
     const npc = NPCS[talkTo];
     if (!npc) return;
     $('talk-role').textContent = npc.role;
@@ -962,7 +1059,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -1247,7 +1344,7 @@ function start(hot = {}) {
       if (!near) return;
       world.command({ type: 'stop' });
       sfx.ui();
-      if (near.kind === 'npc' || near.kind === 'merchant') {
+      if (near.kind === 'npc' || near.kind === 'merchant' || near.kind === 'board' || near.kind === 'altar') {
         talkTo = near.id;
         talkNote = '';
         setMode('talk');
@@ -2091,6 +2188,35 @@ function start(hot = {}) {
       case 'merchantLeave':
         hud.feedText('The travelling merchant has moved on.');
         if (mode === 'talk' && talkTo === 'merchant') setMode('play');
+        break;
+      case 'bountyDone':
+        sfx.pickup(3);
+        hud.feedText(`Bounty done: ${ev.text}. Claim it at the board in Haven.`);
+        break;
+      case 'bountyClaimed':
+        sfx.upgrade();
+        talkNote = `Claimed: ${rewardLine(ev.reward)}.`;
+        if (mode === 'talk') renderTalk();
+        refreshMenus();
+        break;
+      case 'bountySwapped':
+        sfx.ui();
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'crafted':
+        sfx.levelUp();
+        hud.banner('Immortal crafted', `${itemName(ev.item)} · its power fits your subclass`);
+        refreshMenus();
+        break;
+      case 'remnantSummoned':
+        sfx.slam();
+        hud.banner(ev.name, 'called up by your Remnant Sigil');
+        break;
+      case 'altarLocked':
+        hud.hint(`${ev.name}'s Remnant only answers once you have beaten it three times.`, 4);
+        break;
+      case 'wildsLocked':
+        hud.hint(`The Shattered Wilds opens from world tier ${['', 'I', 'II', 'III', 'IV', 'V'][ev.tier] || ev.tier}. Raise the world tier at the Waygate.`, 5);
         break;
       case 'merchantSold':
         sfx.pickup(4);

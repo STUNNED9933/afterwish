@@ -223,8 +223,11 @@ import { makeRng } from '../src/sim/rng.js';
   // The map chain
   const seen = new Set(['town']); const queue = ['town'];
   while (queue.length) for (const g of buildMap(queue.shift()).portals) if (!seen.has(g.to)) { seen.add(g.to); queue.push(g.to); }
-  check('maps: every map can be reached from town', seen.size === MAP_IDS.length, [...seen].join(' > '));
-  check('maps: every portal has a way back', MAP_IDS.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
+  // (The Wilds is reached by the Waygate only, from world tier II: its one portal leads home.)
+  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier);
+  check('maps: every map on the road can be reached from town', road.every((id) => seen.has(id)), [...seen].join(' > '));
+  check('maps: every portal on the road has a way back', road.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
+  check('maps: the Waygate-only maps lead home', MAP_IDS.filter((id) => MAPS[id].fromTier).every((id) => buildMap(id).portals.every((g) => g.to === 'town')));
   for (const id of MAP_IDS) {
     const m = buildMap(id);
     const types = new Set(m.spawns.map((sp) => sp.type));
@@ -238,7 +241,7 @@ import { makeRng } from '../src/sim/rng.js';
     const chain = ['town'];
     for (;;) { const next = MAPS[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => !chain.includes(to)); if (!next) break; chain.push(next); }
     const fields = chain.slice(1).map((id) => MAPS[id]);
-    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).length, chain.join(' > '));
+    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier).length, chain.join(' > '));
     check('maps: each map picks up where the last one ended, up to level 100', fields.every((m, i) => m.level === (i === 0 ? 1 : fields[i - 1].level + fields[i - 1].levelSpan + 1)) && buildMap(chain[chain.length - 1]).spawns.some((sp) => sp.level === 100));
     check('maps: three bosses, each in its own map', ['keep', 'hollow', 'sanctum'].map((id) => buildMap(id).spawns.find((sp) => DEFS.ENEMIES[sp.type].boss).type).join() === 'boss,boss2,boss3');
     check('maps: enemies get tougher the deeper in you go', (() => { const m = buildMap('frost'); const near = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) < 30); const far = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) > 60); const av = (l) => l.reduce((a, sp) => a + sp.level, 0) / l.length; return near.length && far.length && av(far) > av(near) + 2; })());
@@ -2624,6 +2627,118 @@ import { makeRng } from '../src/sim/rng.js';
     check('Unwishing Glass: the pouch is saved with the character', w.toSave().misc.glass === 0);
   }
 }
+// --- 0.33: bounty board, Immortal Fragments, Remnant Sigils, The Wilds ----------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BOUNTY: BT, FRAGMENTS: FR, WILDS: WD } = await import('../src/sim/surprises.js');
+  const { RARITIES: RR, IMMORTAL: IMM } = await import('../src/sim/items.js');
+  const { MAPS: MM } = await import('../src/sim/maps.js');
+  const tick = (w, n) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
+  // The board
+  {
+    const w = new World({ seed: 5, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 40, 3), { visited: ['town', 'greenwood', 'fen', 'ridge', 'keep'] }) });
+    const p = w.player;
+    w.loadMap('town', 'greenwood');
+    check('Bounties: three jobs on the board in Haven', p.bounties.length === BT.slots && p.bounties.every((b) => b.text && b.reward.fragments >= BT.fragments[0] && b.reward.fragments <= BT.fragments[1]), p.bounties.map((b) => b.text).join(' | '));
+    check('Bounties: never the same job twice on the board', new Set(p.bounties.map((b) => b.kind + (b.map || ''))).size === 3);
+    {
+      // Over many boards, still never a repeat.
+      let dup = 0;
+      for (let k = 0; k < 40; k++) { p.bounties = []; w.fillBounties(); if (new Set(p.bounties.map((b) => b.kind + (b.map || ''))).size < 3) dup++; }
+      check('Bounties: ...over forty fresh boards, not one repeat', dup === 0, String(dup));
+      p.bounties = []; w.fillBounties();
+    }
+    check('Bounties: the board stands in Haven, and G reads it', (() => { const ob = w.obstacles.find((o) => o.kind === 'board'); p.x = p.px = ob.x + 1.2; p.z = p.pz = ob.z; const n = w.interactable(); return n && n.kind === 'board'; })());
+    // A storied job, done and claimed
+    p.bounties[0] = Object.assign(w.makeBounty(), { kind: 'storied', need: 1, n: 0, done: false, text: 'Bring down a Storied enemy', reward: { fragments: 8, dust: 5, glass: 1 } });
+    w.bountyEvent('storied');
+    const dust0 = p.dust;
+    check('Bounties: progress counts, and a finished job says so', p.bounties[0].done === true);
+    w.command({ type: 'claimBounty', i: 0 }); w.runCommands();
+    check('Bounties: claiming pays fragments and the rest, and a new job takes its place', p.misc.fragment === 8 && p.dust === dust0 + 5 && p.misc.glass === 1 && !p.bounties[0].done && p.bounties.length === 3);
+    const g0 = p.gold = 100000;
+    const was = p.bounties[1].id;
+    w.command({ type: 'swapBounty', i: 1 }); w.runCommands();
+    check('Bounties: swap a job for gold', p.bounties[1].id !== was && p.gold < g0);
+    check('Bounties: the board is saved with the character', w.toSave().bounties.length === 3 && w.toSave().bountyN === p.bountyN);
+    // Kill jobs count on their own map only
+    const save = w.toSave();
+    const w2 = new World({ seed: 5, mode: 'explore', cls: 'warrior', save });
+    const p2 = w2.player;
+    p2.bounties[2] = { id: 'x', kind: 'kill', map: 'fen', mapName: 'Fen', need: 2, n: 0, done: false, text: 'Clear 2 enemies in Fen', reward: { fragments: 6 } };
+    w2.loadMap('greenwood', 'town');
+    w2.bountyEvent('kill', { map: 'greenwood' });
+    check('Bounties: a kill job only counts on its map', p2.bounties[2].n === 0);
+    w2.loadMap('fen', 'greenwood');
+    const e = w2.enemies.find((x) => !x.def.boss);
+    w2.killEnemy(e, 'basic');
+    tick(w2, 2);
+    check('Bounties: ...and a kill there counts', p2.bounties[2].n >= 1, String(p2.bounties[2].n));
+    let unclaimable = true;
+    p2.bounties[2].done = true;
+    w2.command({ type: 'claimBounty', i: 2 }); w2.runCommands();
+    unclaimable = p2.bounties[2].id === 'x';
+    check('Bounties: rewards are claimed at the board in Haven, not in the field', unclaimable);
+  }
+  // Fragments and crafting
+  {
+    const save = Object.assign(geared('archer', 80, 3), { spec: 'windrunner', talents: {}, misc: { fragment: FR.craft + 10 } });
+    save.equipped.boots = null;
+    const w = new World({ seed: 11, mode: 'explore', cls: 'archer', save });
+    const p = w.player;
+    w.command({ type: 'craftImmortal', slot: 'boots' }); w.runCommands();
+    check('Immortal Fragments: 250 craft an Immortal for the slot you choose, at your level', p.equipped.boots && p.equipped.boots.rarity === IMM && p.equipped.boots.ilvl >= 78 && p.misc.fragment === 10, p.equipped.boots && RR[p.equipped.boots.rarity].name);
+    w.command({ type: 'craftImmortal', slot: 'ring' }); w.runCommands();
+    check('Immortal Fragments: not enough, no craft', p.misc.fragment === 10);
+    const w2 = new World({ seed: 11, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 50, 3), { misc: { fragment: 999 } }) });
+    w2.command({ type: 'craftImmortal', slot: 'ring' }); w2.runCommands();
+    check('Immortal Fragments: crafting opens at level 70', w2.player.misc.fragment === 999);
+    // How long does an Immortal take? Fragments per hour at a steady endgame pace.
+    const perBounty = (BT.fragments[0] + BT.fragments[1]) / 2;
+    const hour = 4 * perBounty + 12 * FR.storied + 4 * FR.thief + 4 * FR.event; // measured at tier III: ~26-54 fragments an hour in the field, plus ~4 jobs
+    check('Immortal Fragments: about two to four hours of endgame play per crafted Immortal', FR.craft / hour > 1.5 && FR.craft / hour < 4.5, (FR.craft / hour).toFixed(1) + ' h');
+  }
+  // Remnant Sigils
+  {
+    const save = Object.assign(geared('warrior', 100, 5, 7), { spec: 'guardian', talents: {}, tierMax: 3, worldTier: 3, bossKills: { boss: 3, boss2: 1, boss3: 0 }, misc: { sigil: 1 } });
+    const w = new World({ seed: 9, mode: 'explore', cls: 'warrior', save });
+    const p = w.player;
+    w.loadMap('keep', 'ridge');
+    const b = w.enemies.find((e) => e.def.boss);
+    check('Remnant Sigils: no altar while the boss stands', !w.bossAltar());
+    w.killEnemy(b, 'basic'); tick(w, 30);
+    const alt = w.bossAltar();
+    p.x = p.px = alt.x + 1; p.z = p.pz = alt.z; p.dead = false;
+    const near = w.interactable();
+    check('Remnant Sigils: with the boss down, its altar can be used', alt && near && near.kind === 'altar');
+    w.command({ type: 'summonRemnant' }); w.runCommands();
+    const rem = w.enemies.find((e) => e.remnant && !e.dead);
+    check('Remnant Sigils: the sigil calls up the Remnant at once, and is used up', rem && p.misc.sigil === 0);
+    const w2 = new World({ seed: 9, mode: 'explore', cls: 'warrior', save: Object.assign({}, save, { bossKills: { boss: 1, boss2: 1 }, misc: { sigil: 1 } }) });
+    w2.loadMap('keep', 'ridge');
+    const b2 = w2.enemies.find((e) => e.def.boss);
+    w2.killEnemy(b2, 'basic'); tick(w2, 30);
+    const a2 = w2.bossAltar();
+    w2.player.x = w2.player.px = a2.x; w2.player.z = w2.player.pz = a2.z + 1;
+    w2.command({ type: 'summonRemnant' }); w2.runCommands();
+    check('Remnant Sigils: only for a boss beaten three times', w2.player.misc.sigil === 1 && !w2.enemies.some((e) => e.remnant));
+  }
+  // The Wilds
+  {
+    const save = Object.assign(geared('mage', 100, 5), { tierMax: 2, worldTier: 1, bossKills: { boss: 1, boss2: 1, boss3: 1 } });
+    const w = new World({ seed: 4, mode: 'explore', cls: 'mage', save });
+    w.loadMap('town', 'greenwood');
+    w.command({ type: 'travel', to: 'wilds' }); w.runCommands();
+    check('The Wilds: closed on world tier I', w.map.id === 'town');
+    w.player.worldTier = 2;
+    w.command({ type: 'travel', to: 'wilds' }); w.runCommands();
+    check('The Wilds: open by the Waygate from world tier II, no walking needed', w.map.id === 'wilds' && w.map.radius > 1.5 * MM.sanctum.radius, String(w.map.id));
+    check('The Wilds: more of everything', WD.events < 120 && WD.eventChance > 0.4 && WD.thiefIn > 0.3 && WD.storied >= 2);
+    tick(w, 30);
+    check('The Wilds: a world event clock that runs faster', w.eventClock <= WD.events);
+  }
+}
+
 // --- 0.26.1: lighter co-op updates --------------------------------------------------
 // The host sends what changed; the friend rebuilds the whole picture as updates arrive,
 // even when it skips some to catch up. Its world must match the host's at every step.

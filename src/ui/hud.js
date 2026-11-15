@@ -647,7 +647,7 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : 'Read: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : 'Read: ' + near.name}`;
   }
 
   /** The list of quests you are on, under the minimap. */

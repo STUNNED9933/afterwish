@@ -94,6 +94,30 @@ export const MERCHANT = {
   ],
 };
 
+// Bounties (0.33): three jobs on the board in Haven. A finished one is handed in there for
+// Immortal Fragments and a second reward, and a new job takes its place.
+export const BOUNTY = {
+  slots: 3,
+  swapGold: 120, // times (1 + level/10): swap one job for another
+  fragments: [6, 10],
+  glass: 0.1, // chance of an Unwishing Glass as well
+  kinds: {
+    kill: { need: 40, text: (b) => `Clear ${b.need} enemies in ${b.mapName}` },
+    elite: { need: 10, text: (b) => `Bring down ${b.need} elites`, from: 20 },
+    storied: { need: 1, text: () => 'Bring down a Storied enemy' },
+    event: { need: 1, text: () => 'See a world event through (a meteor or a shrine)' },
+    thief: { need: 1, text: () => 'Catch a Wishthief' },
+    remnant: { need: 1, text: () => 'Defeat a Remnant' },
+    rift: { need: 1, text: () => 'Clear an Echo Rift in time' },
+  },
+};
+// Immortal Fragments (0.33): from bounties and the best of the road; enough of them craft an Immortal.
+export const FRAGMENTS = { craft: 250, craftLevel: 70, storied: 2, remnant: 4, thief: 2, event: 3, elite: 0.05 };
+// Remnant Sigils (0.33): call a Remnant at its boss's altar, no waiting.
+export const SIGIL = { storied: 0.1, event: 0.25, altar: 4 };
+// The Wilds (0.33): a big open map for world tier II and up, busier than the rest.
+export const WILDS = { events: 45, eventChance: 0.6, thiefIn: 0.6, thiefAgain: 0.35, merchant: 0.4, storied: 2, elite: 0.03 };
+
 // Where an Unwishing Glass turns up (0.32), besides the merchant.
 export const GLASS = { remnant: 0.15, thief: 0.1, storied: 0.04 };
 export const remnantName = (def) => `Remnant of ${def.name}`;

@@ -150,6 +150,29 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Bounty board, Immortal Fragments, Remnant Sigils, The Shattered Wilds (0.33)
+
+- **Bounty board.** A board by the Waygate in Haven holds three jobs fitted to
+  where you are: clear 40 enemies on a map, bring down 10 elites, a Storied
+  enemy, a world event, a Wishthief, a Remnant or an Echo Rift. Finish one
+  anywhere, then hand it in at the board for 6 to 10 Immortal Fragments plus
+  shards, Wishdust, gold or a Remnant Sigil (and a 10% chance of an Unwishing
+  Glass). Swap a job you do not want for a little gold.
+- **Immortal Fragments.** From bounties, Storied enemies (2), Wishthieves (2),
+  world events (3), Remnants (4) and, on tier IV and up, the odd elite. 250 of
+  them craft an Immortal for the slot you choose on the gear screen, from level
+  70; its power fits your subclass like any other. At a steady endgame pace,
+  about three hours each.
+- **Remnant Sigils.** From Storied enemies (10%), world events (25%) and some
+  bounties. While a boss is down, a rune ring marks its altar; press a sigil in
+  (G) to call up its Remnant at once, for a boss beaten three times. No more
+  waiting on the respawn.
+- **The Shattered Wilds.** A map nearly twice the width of any other, reached
+  by the Waygate from world tier II. Every enemy type of the late road, world
+  events every 45 seconds (60% each time), Wishthieves and the merchant far
+  more often, twice the Storied enemies and a few more elites. Two new signs to
+  find.
+
 ### Subclass Immortals, rarer Immortals, lifesteal budget, Unwishing Glass (0.32)
 
 - **Immortals follow your subclass.** From level 15 every Immortal's effect is

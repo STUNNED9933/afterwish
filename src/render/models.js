@@ -266,6 +266,34 @@ export function buildSign() {
   return g;
 }
 
+/** The bounty board in Haven (0.33): two posts, a wide board and pinned notes. */
+export function buildBoard() {
+  const g = new THREE.Group();
+  const wood = mat(0x5e412a);
+  g.add(cyl(0.1, 0.12, 2.2, wood, -0.85, 1.1, 0, 6), cyl(0.1, 0.12, 2.2, wood, 0.85, 1.1, 0, 6));
+  g.add(box(2.0, 1.15, 0.12, mat(0xa4825a), 0, 1.5, 0));
+  g.add(box(2.2, 0.14, 0.4, wood, 0, 2.2, 0));
+  const paper = [0xf1e6c8, 0xe9dbb6, 0xf6eedb];
+  for (let i = 0; i < 3; i++) g.add(box(0.48, 0.62, 0.02, mat(paper[i]), -0.6 + i * 0.6, 1.52 - (i % 2) * 0.08, 0.08));
+  g.add(box(0.12, 0.12, 0.04, mat(0xc0392b), -0.6, 1.8, 0.1), box(0.12, 0.12, 0.04, mat(0xc0392b), 0, 1.72, 0.1), box(0.12, 0.12, 0.04, mat(0xc0392b), 0.6, 1.8, 0.1));
+  return g;
+}
+
+/** A boss's altar (0.33): a low ring of standing stones round a rune, where a Remnant Sigil calls the Remnant. */
+export function buildAltar() {
+  const g = new THREE.Group();
+  const stone = mat(0x4b4655);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    g.add(box(0.32, 0.7 + (i % 2) * 0.25, 0.32, stone, Math.cos(a) * 2.4, 0.4, Math.sin(a) * 2.4));
+  }
+  const rune = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.75, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xc8a2ff, transparent: true, opacity: 0.55 }));
+  rune.position.y = 0.04;
+  g.add(rune);
+  g.userData.rune = rune;
+  return g;
+}
+
 const BUILDERS = { grunt: buildGrunt, spitter: buildSpitter, brute: buildBrute, stalker: buildStalker, boss: buildBoss };
 
 /**

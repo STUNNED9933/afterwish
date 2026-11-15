@@ -97,6 +97,9 @@ export const SIGNS = {
 
   sanctum1: { map: 'sanctum', spot: 'in', title: 'The cradle', text: 'An empty cradle of star-glass, still warm.\n\nA name is set into the headboard. The letters will not hold still when you look at them, until you notice that they are yours.' },
   sanctum2: { map: 'sanctum', spot: 'out', title: 'The wish, written in light', text: 'LET NOTHING I LOVE BE TAKEN FROM ME.\n\nBelow it, newer, unsteady:\n\nI cannot stop loving them. I have tried. Forgive me. Come home.' },
+  // The Shattered Wilds (0.33): what the wish broke, after.
+  wilds1: { map: 'wilds', spot: 'in', title: 'A map, drawn twice', text: 'Two maps of the same road on one sheet, the second drawn over the first.\n\nOn the first, the Greenwood ends at the Fen, the Fen at the Ridge, the Ridge at the Keep. On the second, nothing ends anywhere. Every road runs into this place.\n\nSomeone has written across both: SHE WANTED THEM ALL IN ONE PLACE. SO NOBODY COULD LEAVE.' },
+  wilds2: { map: 'wilds', spot: 'out', title: 'Scratched into a shard of sky', text: 'To whoever comes next. I made it further than the others. It just keeps going.\n\nI think the wish is still growing. I think it grows a little every time somebody wants something here.\n\nSo try not to want anything. Not even to go home.' },
 };
 for (const id in SIGNS) SIGNS[id].id = id;
 export const SIGN_IDS = Object.keys(SIGNS);

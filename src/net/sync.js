@@ -9,7 +9,7 @@
 import { ENEMIES } from '../sim/defs.js';
 import { buildRiftMap } from '../sim/maps.js';
 
-export const NET_VERSION = 7; // host and friends must run the same build of the rules (7: 0.32 subclass Immortals, lifesteal budget)
+export const NET_VERSION = 8; // host and friends must run the same build of the rules (8: 0.33 bounties, fragments, sigils, the Wilds)
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];

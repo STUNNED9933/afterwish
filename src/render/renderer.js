@@ -1339,9 +1339,18 @@ export class Renderer {
     else this.setEmissive(h.mats, 0, 0, 0);
 
     if (h.rig) {
-      // The rigged model plays its own clips (0.35); a whirlwind still spins it.
-      h.rig.group.rotation.y = h.rig.baseTurn + (an.spin > 0 ? (1 - an.spin) * Math.PI * 2 : 0);
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms });
+      // The rigged model plays its own clips (0.35). Spin attacks turn it smoothly for as long as
+      // they last (Whirlwind: the whole channel), then finish the turn instead of snapping back.
+      const spinning = !!p.spin || an.spin > 0;
+      const TAU = Math.PI * 2;
+      an.spinAngle = an.spinAngle || 0;
+      if (spinning || an.spinAngle > 0) {
+        const step = dt * TAU * 2.4;
+        if (!spinning && an.spinAngle + step >= Math.ceil(an.spinAngle / TAU) * TAU) an.spinAngle = 0;
+        else an.spinAngle += step;
+      }
+      h.rig.group.rotation.y = h.rig.baseTurn + an.spinAngle;
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning });
       g.rotation.z = 0;
     } else if (p.dead) {
       an.deadT = Math.min(1, an.deadT + dt * 2.5);

@@ -130,6 +130,13 @@ export function instantiate(tpl) {
     return a;
   };
   const actions = { idle: act(spec.idle), run: act(spec.run), attack: act('__attack', true), death: act(spec.death, true) };
+  // The rest pose is the T-pose: arms straight out. A spin attack blends the arms toward it.
+  const bindQ = new Map();
+  root.traverse((o) => {
+    if (o.isBone) bindQ.set(o, o.quaternion.clone());
+  });
+  const armBones = [...bindQ.keys()].filter((b) => /^[LR]_(Clavicle|Upperarm|Forearm|Hand|ElbowShare)/.test(b.name));
+  let spinW = 0;
   let current = null;
   let attackLeft = 0;
   const fadeTo = (a, fade = 0.15) => {
@@ -169,10 +176,13 @@ export function instantiate(tpl) {
         if (attackLeft > 0) attackLeft -= dt;
         else if (s.moving && actions.run) {
           actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / 6.5));
-          fadeTo(actions.run);
-        } else fadeTo(actions.idle);
+          fadeTo(actions.run, 0.2);
+        } else fadeTo(actions.idle, current === actions.run ? 0.35 : 0.25); // ease into a stop
       }
       mixer.update(dt);
+      // Spin attacks: arms out, blade sweeping (eased in and out).
+      spinW += ((s.spinning && !s.dead ? 1 : 0) - spinW) * Math.min(1, dt * 10);
+      if (spinW > 0.01) for (const b of armBones) b.quaternion.slerp(bindQ.get(b), spinW);
     },
   };
 }

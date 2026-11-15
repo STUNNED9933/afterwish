@@ -1,5 +1,5 @@
 {
-  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:).",
+  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:). fromRig: add animations to an existing rig task.",
   "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
   "faceLimit": 10000,
   "characters": {
@@ -26,6 +26,13 @@
         "preset:biped:chop",
         "preset:biped:hit_to_body_01",
         "preset:biped:fall"
+      ]
+    },
+    "warrior_v1_run": {
+      "fromRig": "3089b7f2-6057-4d39-a5bb-061e8dd5af54",
+      "prompt": "(the run cycle for the warrior's v1.0 rig)",
+      "animations": [
+        "preset:biped:run"
       ]
     }
   }

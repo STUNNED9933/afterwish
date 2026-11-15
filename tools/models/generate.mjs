@@ -69,18 +69,23 @@ for (const id of ids) {
   const save = () => writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ ...manifest, files: listFiles(dir) }, null, 2));
   try {
     // fromTask: reuse a model already generated (e.g. to re-rig it with another rig model).
-    const model = c.fromTask ? { task_id: c.fromTask } : tripo([...gen, '-o', join(dir, '1-model')]);
+    const model = c.fromTask || c.fromRig ? { task_id: c.fromTask } : tripo([...gen, '-o', join(dir, '1-model')]);
     manifest.steps.model = { task: taskId(model), result: model };
     save();
-    const check = tripo(['anim', 'check', taskId(model), '-o', join(dir, '2-check')]);
-    manifest.steps.check = { task: taskId(check), result: check };
-    const riggable = check.riggable ?? (check.output && check.output.riggable);
-    const rigType = c.rigType || check.rig_type || (check.output && check.output.rig_type);
-    save();
-    if (riggable === false) throw new Error(`rig-check says ${id} cannot be rigged`);
-    const rig = tripo(['anim', 'rig', taskId(model), ...(rigType ? ['--rig-type', rigType] : []), ...(c.rigModel ? ['--model', c.rigModel] : []), '--out-format', 'glb', '-o', join(dir, '3-rig')]);
-    manifest.steps.rig = { task: taskId(rig), rigType, result: rig };
-    save();
+    // fromRig: add animations to a model already rigged (no new rig).
+    let rig;
+    if (c.fromRig) rig = { task_id: c.fromRig };
+    else {
+      const check = tripo(['anim', 'check', taskId(model), '-o', join(dir, '2-check')]);
+      manifest.steps.check = { task: taskId(check), result: check };
+      const riggable = check.riggable ?? (check.output && check.output.riggable);
+      const rigType = c.rigType || check.rig_type || (check.output && check.output.rig_type);
+      save();
+      if (riggable === false) throw new Error(`rig-check says ${id} cannot be rigged`);
+      rig = tripo(['anim', 'rig', taskId(model), ...(rigType ? ['--rig-type', rigType] : []), ...(c.rigModel ? ['--model', c.rigModel] : []), '--out-format', 'glb', '-o', join(dir, '3-rig')]);
+      manifest.steps.rig = { task: taskId(rig), rigType, result: rig };
+      save();
+    }
     // Animations, at most 5 per request (each request returns the model with its clips).
     const anims = c.animations || [];
     manifest.steps.animations = [];

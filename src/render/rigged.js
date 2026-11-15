@@ -232,11 +232,11 @@ export function instantiate(tpl) {
     get slash() {
       return weapon ? slash : 0;
     },
-    /** The blade's world position: a point a third of the way up it, and its tip. */
+    /** The blade's world position: a point part-way up it, and its tip. */
     blade(base, tip) {
       if (!weapon) return false;
       weapon.updateMatrixWorld(true);
-      base.set(0, 0, bladeLen * 0.3).applyMatrix4(weapon.matrixWorld);
+      base.set(0, 0, bladeLen * 0.6).applyMatrix4(weapon.matrixWorld);
       tip.set(0, 0, bladeLen * 1.08).applyMatrix4(weapon.matrixWorld);
       return true;
     },

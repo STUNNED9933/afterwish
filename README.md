@@ -155,6 +155,8 @@ tickets, and your settings, and replaces whatever was there.
 - Cleave shows one shape, flat on the ground with a bright edge, exactly the
   area it hits. It used to draw a raised copy (which looked shifted) and a
   wider sweep that went past where it actually hits.
+- The blade's trail is now a thin, curved swoosh near the Warrior, so it can't
+  be mistaken for an area that hits.
 
 ### Warrior skills that hit hard (0.36)
 

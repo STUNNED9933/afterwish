@@ -1388,7 +1388,7 @@ export class Renderer {
       g.rotation.z = 0;
       // The blade's glowing trail.
       if (!this.heroTrail) {
-        this.heroTrail = new SlashTrail(0xd8f2ff);
+        this.heroTrail = new SlashTrail(0x9fd8ff);
         this.trailB = new THREE.Vector3();
         this.trailT = new THREE.Vector3();
         this.scene.add(this.heroTrail.mesh);

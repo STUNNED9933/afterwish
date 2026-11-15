@@ -34,6 +34,20 @@
       "animations": [
         "preset:biped:run"
       ]
+    },
+    "archer": {
+      "prompt": "young adult woman ranger archer, auburn hair pulled back in a tight braid, fitted forest-green leather jerkin over a cream linen shirt, brown leather bracers on the forearms, quiver of arrows strapped on her back, belt with small pouches, dark trousers, knee-high soft leather boots, small green hooded mantle on the shoulders with the hood down, standing in T-pose with arms straight out to the sides, open empty hands, no bow, no weapon, no cape",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:run",
+        "preset:biped:shoot",
+        "preset:biped:fire",
+        "preset:biped:dive",
+        "preset:biped:hit_to_body_02",
+        "preset:biped:fall"
+      ]
     }
   }
 }

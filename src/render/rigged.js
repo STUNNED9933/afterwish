@@ -48,6 +48,35 @@ export const RIGGED = {
     spin: { clip: 'ual_Spin', at: 0.57 },
     rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
   },
+  // The Archer (0.37): her idle, run and flinch are Tripo's; every shot, the skills, the roll and
+  // the fall are our own, posed in code (tools/models/archer-moves.js). She holds a bow made here,
+  // whose string follows her drawing hand.
+  hero_archer: {
+    url: 'models/archer.glb',
+    height: 1.92,
+    turn: -Math.PI / 2,
+    hand: 'L_Hand',
+    bow: { drawHand: 'R_Hand', shoulder: 'L_Upperarm' },
+    idle: 'idle',
+    run: 'arc_run', // her own (Tripo's sprint leaned too hard for a bow)
+    runRef: 5.6, // the speed it is played at its own pace (quicker, shorter strides)
+    death: 'arc_death',
+    hit: 'hit',
+    // a whole draw-and-loose cycle, played over the time between two shots (the arrow leaves
+    // 30% of the way in, when the game fires it)
+    attack: { clip: 'arc_shot', cycle: true },
+    aiming: /^arc_(shot|power|barrage|volley)$/,
+    moves: {
+      line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
+      deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
+      barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
+      zone: { clip: 'arc_volley', keys: [[0, 0], [1, 1]], fade: 0.3 },
+      dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
+    },
+    recentre: ['idle', 'run', 'hit'],
+    recentreMin: 0.04,
+    rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
+  },
 };
 
 const loader = new GLTFLoader();
@@ -91,11 +120,11 @@ function prepare(spec, gltf) {
   });
   const clips = {};
   for (const c of gltf.animations) clips[c.name] = c;
-  if (clips[spec.run]) {
-    stripDrift(clips[spec.run], spec.rootBones);
-    recentre(clips[spec.run], spec.rootBones, scene);
-  }
-  if (spec.attack && clips[spec.attack.clip]) {
+  const h = box.max.y - box.min.y;
+  if (clips[spec.run]) stripDrift(clips[spec.run], spec.rootBones);
+  for (const name of spec.recentre || [spec.run]) if (clips[name]) recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
+  if (spec.attack && spec.attack.cycle && clips[spec.attack.clip]) clips.__attack = clips[spec.attack.clip];
+  else if (spec.attack && clips[spec.attack.clip]) {
     const src = clips[spec.attack.clip];
     const fps = 30;
     clips.__attack = THREE.AnimationUtils.subclip(src, 'attack', Math.round(spec.attack.from * fps), Math.round(spec.attack.to * fps), fps);
@@ -126,24 +155,33 @@ function stripDrift(clip, rootBones) {
 }
 
 /**
- * Some "in place" cycles sit off to one side of where the character stands (a Tripo run had
- * its hips over half a body-height forward). Move any root track component that is far from
- * the rest pose back over it; small differences (the bob, a lower stance) stay.
+ * Some "in place" clips sit off to one side of where the character stands (a Tripo run had its
+ * hips over half a body-height forward, the Archer's idle stands a step to her left). Move the
+ * hips back over the rest pose's spot, across the ground only (the bob and a lower stance stay),
+ * when they are more than minFrac of the model's height away from it.
  */
-function recentre(clip, rootBones, scene) {
+function recentre(clip, rootBones, scene, minFrac = 0.15, height = 1) {
+  scene.updateMatrixWorld(true);
   for (const t of clip.tracks) {
     const [bone, prop] = t.name.split('.');
     if (prop !== 'position' || !rootBones.includes(bone)) continue;
     const node = scene.getObjectByName(bone);
     if (!node) continue;
-    const rest = node.position;
+    const pm = node.parent.matrixWorld;
+    const pmInv = pm.clone().invert();
+    const rest = node.position.clone().applyMatrix4(pm);
     const v = t.values;
     const n = v.length / 3;
-    for (let k = 0; k < 3; k++) {
-      let mean = 0;
-      for (let i = 0; i < n; i++) mean += v[i * 3 + k] / n;
-      const off = rest.getComponent(k) - mean;
-      if (Math.abs(off) > 0.15) for (let i = 0; i < n; i++) v[i * 3 + k] += off;
+    const p = new THREE.Vector3();
+    const mean = new THREE.Vector3();
+    for (let i = 0; i < n; i++) mean.add(p.fromArray(v, i * 3).applyMatrix4(pm).divideScalar(n));
+    const dx = rest.x - mean.x, dz = rest.z - mean.z;
+    if (Math.hypot(dx, dz) < minFrac * height) continue;
+    for (let i = 0; i < n; i++) {
+      p.fromArray(v, i * 3).applyMatrix4(pm);
+      p.x += dx;
+      p.z += dz;
+      p.applyMatrix4(pmInv).toArray(v, i * 3);
     }
   }
 }
@@ -216,6 +254,8 @@ export function instantiate(tpl) {
   };
   fadeTo(actions.idle, 0);
   const hand = spec.hand ? root.getObjectByName(spec.hand) : null;
+  const aiming = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.aiming && spec.aiming.test(a.getClip().name));
+  let bow = null;
   return {
     group: holder,
     mats,
@@ -227,6 +267,12 @@ export function instantiate(tpl) {
       bladeLen = Math.max(0.5, new THREE.Box3().setFromObject(w).max.z || 1); // (not yet scaled or placed)
       weapon.scale.setScalar((spec.weaponScale || 1) / tpl.scale); // the model is scaled by tpl.scale
       root.add(weapon); // placed at the hand every frame (see update)
+    },
+    /** Hold a bow made here (spec.bow): wood for the limbs, the string glows like a blade. */
+    holdBow(wood, string) {
+      if (!hand || !spec.bow) return;
+      bow = makeBow(wood, string, tpl.scale, root, hand, root.getObjectByName(spec.bow.drawHand), root.getObjectByName(spec.bow.shoulder), root.getObjectByName('Hip'));
+      mats.push(wood);
     },
     /** How strongly the blade should trail light this frame (0 = not at all). */
     get slash() {
@@ -274,9 +320,11 @@ export function instantiate(tpl) {
         }
         if (s.attackStart && actions.attack && !move && !s.move) {
           const len = actions.attack.getClip().duration;
-          attackLeft = Math.max(0.35, s.attackDur * 1.8);
+          const cycle = spec.attack.cycle && s.period > 0;
+          attackLeft = cycle ? Math.max(0.2, s.period) : Math.max(0.35, s.attackDur * 1.8);
           attackLen = attackLeft;
           actions.attack.timeScale = len / attackLeft;
+          if (cycle) attackLeft *= 1.2; // hold the end a moment, so steady shooting flows on
           fadeTo(actions.attack, 0.06, true); // from the start, even if already swinging
         }
         if (s.hitStart && actions.hit && attackLeft <= 0 && !move && !s.spinning && !s.moving) {
@@ -307,12 +355,17 @@ export function instantiate(tpl) {
         } else if (flinching) {
           // let the flinch play out
         } else if (s.moving && actions.run) {
-          actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / 6.5));
+          actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / (spec.runRef || 6.5)));
           fadeTo(actions.run, endFade || 0.2);
         } else fadeTo(actions.idle, endFade || (current === actions.run ? 0.35 : current === actions.spin ? 0.2 : 0.25)); // ease into a stop
         if (!move) endFade = 0;
       }
       mixer.update(dt);
+      if (bow) {
+        let aimW = 0;
+        for (const a of aiming) if (a.isRunning() || a === current) aimW += a.getEffectiveWeight();
+        bow.update(s.dead ? 0 : Math.min(1, aimW));
+      }
       if (weapon) {
         // In the hand, at the grip angle, blending to the trailing pose while the run plays.
         root.updateMatrixWorld(true);
@@ -327,6 +380,86 @@ export function instantiate(tpl) {
         const runW = actions.run && actions.run.isRunning() && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.run.getEffectiveWeight() : 0;
         if (runW > 0.01) weapon.quaternion.slerp(trailQ, runW);
       }
+    },
+  };
+}
+
+/**
+ * A bow in the left hand, made here so its string can be drawn: the string runs from the limb
+ * tips to the drawing hand while that hand is pulled back behind the bow, with an arrow on it,
+ * and snaps straight when the hand lets go. While shooting, the bow points down the bow arm and
+ * stands upright; otherwise it is carried upright, turned with her hips.
+ */
+function makeBow(wood, stringMat, scale, root, hand, drawHand, shoulder, hip) {
+  const group = new THREE.Group(); // bow space, in metres: +X toward the target, +Y up the bow
+  group.scale.setScalar(1 / scale);
+  const L = 0.62;
+  const pts = [[-0.19, L], [-0.08, L * 0.78], [-0.015, L * 0.42], [0, 0], [-0.015, -L * 0.42], [-0.08, -L * 0.78], [-0.19, -L]].map(([x, y]) => new THREE.Vector3(x, y, 0));
+  const limbs = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.02, 6), wood);
+  const leather = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.8 });
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8), leather);
+  const top = pts[0], bottom = pts[6];
+  const segGeo = new THREE.CylinderGeometry(0.006, 0.006, 1, 4).translate(0, 0.5, 0);
+  const upper = new THREE.Mesh(segGeo, stringMat);
+  const lower = new THREE.Mesh(segGeo, stringMat);
+  const arrow = new THREE.Group();
+  const shaftMat = new THREE.MeshStandardMaterial({ color: 0xc9b48a, roughness: 0.7 });
+  arrow.add(new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.78, 5).rotateZ(-Math.PI / 2).translate(0.39, 0, 0), shaftMat));
+  arrow.add(new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.08, 5).rotateZ(-Math.PI / 2).translate(0.8, 0, 0), stringMat));
+  const fl = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.9, side: THREE.DoubleSide });
+  for (const r of [0, Math.PI / 2]) arrow.add(new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.035).translate(0.08, 0, 0).rotateX(r), fl));
+  group.add(limbs, grip, upper, lower, arrow);
+  group.traverse((o) => {
+    if (o.isMesh) o.castShadow = true;
+  });
+  root.add(group);
+  const inv = new THREE.Matrix4(), m = new THREE.Matrix4(), q = new THREE.Quaternion(), qa = new THREE.Quaternion(), qc = new THREE.Quaternion();
+  const hp = new THREE.Vector3(), sp = new THREE.Vector3(), dp = new THREE.Vector3(), tmp = new THREE.Vector3(), sc = new THREE.Vector3();
+  const X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3();
+  const hipBind = new THREE.Quaternion();
+  root.updateMatrixWorld(true);
+  inv.copy(root.matrixWorld).invert();
+  m.multiplyMatrices(inv, hip.matrixWorld).decompose(tmp, hipBind, sc);
+  hipBind.invert();
+  const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.35); // carried leaning forward
+  const local = (bone, out) => out.setFromMatrixPosition(m.multiplyMatrices(inv, bone.matrixWorld));
+  const seg = (mesh, a, b) => {
+    mesh.position.copy(a);
+    tmp.subVectors(b, a);
+    mesh.scale.set(1, tmp.length(), 1);
+    mesh.quaternion.setFromUnitVectors(Y.set(0, 1, 0), tmp.normalize());
+  };
+  const rest = new THREE.Vector3(-0.19, 0, 0);
+  const nock = new THREE.Vector3();
+  return {
+    update(aimW) {
+      root.updateMatrixWorld(true);
+      inv.copy(root.matrixWorld).invert();
+      local(hand, hp);
+      local(shoulder, sp);
+      local(drawHand, dp);
+      // aiming: down the bow arm, upright
+      X.subVectors(hp, sp).normalize();
+      Y.set(0, 1, 0).addScaledVector(X, -X.y).normalize();
+      Z.crossVectors(X, Y);
+      qa.setFromRotationMatrix(m.makeBasis(X, Y, Z));
+      // carried: upright, turned with the hips, leaning forward
+      m.multiplyMatrices(inv, hip.matrixWorld).decompose(tmp, qc, sc);
+      qc.multiply(hipBind);
+      qc.multiply(tilt);
+      q.copy(qc).slerp(qa, aimW);
+      group.quaternion.copy(q);
+      // the grip sits in the palm, a little past the wrist
+      group.position.copy(hp).addScaledVector(X, 0.05 / scale * aimW);
+      group.updateMatrix();
+      // the string: to the drawing hand while it is pulled back behind the bow
+      tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());
+      const drawn = aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
+      nock.copy(drawn ? tmp.set(tmp.x, 0, 0) : rest);
+      seg(upper, nock, top);
+      seg(lower, nock, bottom);
+      arrow.visible = drawn;
+      arrow.position.copy(nock);
     },
   };
 }
@@ -357,6 +490,16 @@ export function upgradeHero(model, cls) {
     if (!tpl || model.disposed || model.rig) return;
     const rig = instantiate(tpl);
     const arm = model.parts.arm;
+    if (tpl.spec.bow) {
+      // her own bow (the hand-built one stays with the hidden hand-built body)
+      rig.holdBow(new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.65 }), model.parts.steel);
+      model.parts.body.visible = false;
+      model.group.add(rig.group);
+      model.mats.push(...rig.mats);
+      rig.baseTurn = rig.group.rotation.y;
+      model.rig = rig;
+      return;
+    }
     const weapon = new THREE.Group();
     // The arm's first child is the sleeve; the rest is the weapon, held along +Z from z≈0.6.
     for (const c of arm.children.slice(1)) weapon.add(c);

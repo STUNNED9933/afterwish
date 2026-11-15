@@ -854,11 +854,13 @@ export class Renderer {
       case 'swing':
         this.heroAnim.swing = 0;
         this.heroAnim.swingDur = Math.max(0.12, ev.dur * 1.5);
-        this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
+        // the swipe only for melee swings (0.37: the Archer's draw showed a sword arc in front of her)
+        if (this.heroCls !== 'archer' && this.heroCls !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
         break;
       case 'cast': {
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
+        if (fx !== 'cone') this.heroAnim.move = fx; // a skill with its own animation (rigged.js moves)
         if (fx === 'cone') {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.2;
@@ -1384,7 +1386,7 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
       // The blade's glowing trail.
       if (!this.heroTrail) {

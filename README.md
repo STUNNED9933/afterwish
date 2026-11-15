@@ -150,6 +150,24 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### The Archer gets her model (0.37)
+
+- **The Archer is now a rigged 3D character**: a young ranger in green leather
+  with a braid and a quiver, made with the Tripo API (125 credits).
+- **Her animations are our own**, posed in code rather than taken from a library
+  (`tools/models/author.js` and `archer-moves.js`): a light, upright run with
+  the bow held low, a full draw-and-loose cycle for every shot (timed so the
+  arrow leaves as the game fires it, then she reaches back to her quiver and
+  nocks the next one), Piercing Shot (a deep draw that rocks her back a step),
+  Barrage (five quick pulls), Arrow Storm (aimed high), a forward roll and a
+  fall. Her idle and flinch come from Tripo.
+- **A real bow**: its string follows her drawing hand, an arrow sits on it while
+  she draws, and it snaps straight on the release. The string glows with your
+  weapon glow.
+- **Evasive Roll lasts 0.3 seconds instead of 0.18** so the roll can be seen;
+  it covers the same distance and you are untouchable for longer.
+- Ranged shots no longer flash a sword swipe in front of the Archer and Mage.
+
 ### Clearer Cleave (0.36.1)
 
 - Cleave shows one shape, flat on the ground with a bright edge, exactly the

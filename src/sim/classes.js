@@ -57,7 +57,7 @@ export const CLASSES = {
         desc: 'Loose 5 arrows at one target in quick succession. Each arrow counts as a basic attack: it advances Steady Aim, can be its guaranteed crit, and steals life.',
       },
       e: {
-        key: 'E', name: 'Evasive Roll', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.18, width: 0,
+        key: 'E', name: 'Evasive Roll', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.3, width: 0,
         rush: { as: 0.5, time: 4 },
         dmg: () => 0,
         desc: 'Roll toward your cursor, then attack 50% faster for 4 seconds. Nothing can hit you mid-roll.',

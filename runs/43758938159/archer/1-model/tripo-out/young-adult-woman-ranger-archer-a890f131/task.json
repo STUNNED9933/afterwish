@@ -1,0 +1,30 @@
+{
+  "task_id": "a890f131-1539-46a3-b4bf-0f3fd3d6cc6a",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "young adult woman ranger archer, auburn hair pulled back in a tight braid, fitted forest-green leather jerkin over a cream linen shirt, brown leather bracers on the forearms, quiver of arrows strapped on her back, belt with small pouches, dark trousers, knee-high soft leather boots, small green hooded mantle on the shoulders with the hood down, standing in T-pose with arms straight out to the sides, open empty hands, no bow, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-15T20:35:33.778091Z",
+  "completed_at": "2026-11-15T20:40:00.138368Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

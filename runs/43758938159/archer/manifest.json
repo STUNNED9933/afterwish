@@ -1,0 +1,116 @@
+{
+  "id": "archer",
+  "prompt": "young adult woman ranger archer, auburn hair pulled back in a tight braid, fitted forest-green leather jerkin over a cream linen shirt, brown leather bracers on the forearms, quiver of arrows strapped on her back, belt with small pouches, dark trousers, knee-high soft leather boots, small green hooded mantle on the shoulders with the hood down, standing in T-pose with arms straight out to the sides, open empty hands, no bow, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T20:35:32.589Z",
+  "creditsBefore": 800,
+  "steps": {
+    "model": {
+      "task": "a890f131-1539-46a3-b4bf-0f3fd3d6cc6a",
+      "result": {
+        "task_id": "a890f131-1539-46a3-b4bf-0f3fd3d6cc6a",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/archer/1-model/tripo-out/young-adult-woman-ranger-archer-a890f131",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/archer/1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/model.glb",
+        "preview": "out/models/archer/1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/preview.png"
+      }
+    },
+    "check": {
+      "task": "11bb041f-d90f-48bc-bc68-4bc1b26ae327",
+      "result": {
+        "task_id": "11bb041f-d90f-48bc-bc68-4bc1b26ae327",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/archer/2-check/tripo-out/rig-check-11bb041f",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "2c97bffb-4491-4fb2-b04d-687281b73bc1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "2c97bffb-4491-4fb2-b04d-687281b73bc1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/archer/3-rig/tripo-out/rig-2c97bffb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/archer/3-rig/tripo-out/rig-2c97bffb/model.glb",
+        "preview": "out/models/archer/3-rig/tripo-out/rig-2c97bffb/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "2ebef9ce-6f13-4c34-b64f-de68a4ca0387",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:run",
+          "preset:biped:shoot",
+          "preset:biped:fire",
+          "preset:biped:dive"
+        ],
+        "result": {
+          "task_id": "2ebef9ce-6f13-4c34-b64f-de68a4ca0387",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/archer/4-anim-1/tripo-out/retarget-2ebef9ce",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/archer/4-anim-1/tripo-out/retarget-2ebef9ce/model.glb"
+        }
+      },
+      {
+        "task": "5c63ae96-5a5b-4134-98eb-4316a444d877",
+        "presets": [
+          "preset:biped:hit_to_body_02",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "5c63ae96-5a5b-4134-98eb-4316a444d877",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/archer/4-anim-2/tripo-out/retarget-2-5c63ae96",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/archer/4-anim-2/tripo-out/retarget-2-5c63ae96/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 675,
+  "creditsUsed": 125,
+  "finished": "2026-11-15T20:40:46.531Z",
+  "files": [
+    "1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/generated_image.jpeg",
+    "1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/model.glb",
+    "1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/preview.png",
+    "1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/rendered_image.webp",
+    "1-model/tripo-out/young-adult-woman-ranger-archer-a890f131/task.json",
+    "2-check/tripo-out/rig-check-11bb041f/task.json",
+    "3-rig/tripo-out/rig-2c97bffb/model.glb",
+    "3-rig/tripo-out/rig-2c97bffb/preview.png",
+    "3-rig/tripo-out/rig-2c97bffb/rendered_image.webp",
+    "3-rig/tripo-out/rig-2c97bffb/task.json",
+    "4-anim-1/tripo-out/retarget-2ebef9ce/model.glb",
+    "4-anim-1/tripo-out/retarget-2ebef9ce/task.json",
+    "4-anim-2/tripo-out/retarget-2-5c63ae96/model.glb",
+    "4-anim-2/tripo-out/retarget-2-5c63ae96/task.json",
+    "manifest.json"
+  ]
+}

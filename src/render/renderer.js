@@ -1350,7 +1350,9 @@ export class Renderer {
         else an.spinAngle += step;
       }
       h.rig.group.rotation.y = h.rig.baseTurn + an.spinAngle;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning });
+      const hitStart = p.hurtT > 0 && !(h.prevHurt > 0);
+      h.prevHurt = p.hurtT;
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart });
       g.rotation.z = 0;
     } else if (p.dead) {
       an.deadT = Math.min(1, an.deadT + dt * 2.5);

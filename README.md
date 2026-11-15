@@ -150,6 +150,20 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Warrior animation fixes (0.35.1)
+
+- **The sword is held properly.** It sat flat in the hand, so the idle looked
+  stiff and the overhead swing read as a sideways sweep. Now it rests lowered
+  in front, rises behind the head in the wind-up and comes down at the strike.
+  While running it trails back and low instead of flipping with the arms.
+- **Smoother stops:** the run eases into the idle over a third of a second.
+- **A flinch when hit** while standing (a new animation), on top of the red flash.
+- **Whirlwind** spins smoothly for its whole length (it used to turn once per
+  damage beat and stop), arms out and blade sweeping, and finishes its turn
+  when it ends.
+- The Warrior moved to Tripo's larger animation set (the same run); the run
+  is centred under him (it sat off to one side) and the file is smaller (630 KB).
+
 ### The first real character model (0.35)
 
 The Warrior is now a rigged, animated 3D model made with the Tripo API: idle, a

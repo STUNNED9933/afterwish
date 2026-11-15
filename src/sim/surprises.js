@@ -1,6 +1,6 @@
 // Exploration surprises and Remnant bosses (0.29): things worth chasing between boss fights.
 //
-//   Rare enemies   now and then a camp spawns a named Rare: two modifiers, five times the
+//   Storied enemies  now and then a camp spawns a named, Storied enemy: two modifiers, five times the
 //                  health, six times the rewards, a good drop, Wishdust and a chance at a set piece.
 //   The Wishthief  a glittering thief that runs from you, spilling gold when hit, and gets
 //                  away after 25 seconds. Catch it for a burst of loot, a shard and Wishdust.
@@ -16,7 +16,7 @@ export const RARE = {
   reward: 6, // EXP and gold
   affixes: 2,
   dust: [3, 5],
-  better: 0.3, // chance its guaranteed Epic is Legendary or better instead
+  better: 0.3, // chance its guaranteed Epic is Mythic or better instead
   set: 0.12, // chance of a set piece too
 };
 
@@ -37,7 +37,7 @@ export const THIEF = {
   stumble: 0.8, // ...then stops to catch its breath this long (a window for aimed shots)
   coins: 0.06, // gold spilled for every tenth of its health, as a share of its gold value
   dust: 5,
-  items: 3, // gear when caught (one of them Legendary or better)
+  items: 3, // gear when caught (one of them Mythic or better)
   hp: 4, // times its listed health, on top of the level scaling (and half a world tier's extra health)
 };
 

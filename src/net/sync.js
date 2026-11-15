@@ -9,7 +9,7 @@
 import { ENEMIES } from '../sim/defs.js';
 import { buildRiftMap } from '../sim/maps.js';
 
-export const NET_VERSION = 4; // host and friends must run the same build of the rules (4: 0.26.1 lighter updates)
+export const NET_VERSION = 5; // host and friends must run the same build of the rules (5: 0.30 rarity names)
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];

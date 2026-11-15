@@ -2242,7 +2242,7 @@ import { makeRng } from '../src/sim/rng.js';
     const t2 = w2.spawnThief();
     const tk = w2.player.tickets, dust2 = w2.player.dust, l2 = w2.loot.length;
     w2.killEnemy(t2, 'basic');
-    check('Wishthief: caught, it gives a shard, Wishdust and three pieces of gear (one Legendary or better)', w2.player.tickets >= tk + 1 && w2.player.dust === dust2 + THIEF.dust && w2.loot.length - l2 === 3 && w2.loot.slice(l2).some((l) => l.item.rarity >= 4));
+    check('Wishthief: caught, it gives a shard, Wishdust and three pieces of gear (one Mythic or better)', w2.player.tickets >= tk + 1 && w2.player.dust === dust2 + THIEF.dust && w2.loot.length - l2 === 3 && w2.loot.slice(l2).some((l) => l.item.rarity >= 4));
   }
   // Remnants
   {
@@ -2278,7 +2278,7 @@ import { makeRng } from '../src/sim/rng.js';
   {
     const r = mk(9);
     const piece = rollSetPiece(r, 60, 'warrior', 'berserker');
-    check('Sets: a set piece is a Legendary of its class, named for its set', piece.rarity === 4 && piece.cls === 'warrior' && SETS[piece.set].cls === 'warrior' && piece.name.startsWith(SETS[piece.set].name));
+    check('Sets: a set piece is Ancient (just below Immortal), of its class, named for its set', piece.rarity === 5 && RARITIES[5].name === 'Ancient' && piece.cls === 'warrior' && SETS[piece.set].cls === 'warrior' && piece.name.startsWith(SETS[piece.set].name));
     let mine = 0;
     for (let i = 0; i < 200; i++) if (rollSetPiece(r, 60, 'warrior', 'berserker').set === 'bloodbound') mine++;
     check('Sets: usually your own subclass\'s set', mine > 140 && mine < 190, mine);
@@ -2309,8 +2309,23 @@ import { makeRng } from '../src/sim/rng.js';
     const after = Object.keys(item.stats);
     check('Enchanting: turns one bonus stat into a different one, in the same place', after.length === keys.length && after[0] === main && !after.slice(1).includes(line) && item.enchantKey === after[1] && p.gold === 1e6 - cost.gold && p.dust === 100 - cost.dust, `${keys} -> ${after}`);
     check('Enchanting: after that only the enchanted line can be enchanted again, and it costs more', enchantable(item).length === 1 && enchantable(item)[0] === item.enchantKey && enchantCost(item).dust > cost.dust);
-    const legendary = roll(mk(2), 50, { weights: [0, 0, 0, 0, 1, 0, 0] });
-    check('Wishdust: scrapping a Legendary gives one', dustValue(legendary) === 1 && dustValue(roll(mk(2), 50, { weights: [0, 0, 1, 0, 0, 0, 0] })) === 0);
+    const mythic = roll(mk(2), 50, { weights: [0, 0, 0, 0, 1, 0, 0] });
+    check('Wishdust: scrapping a Mythic gives one', dustValue(mythic) === 1 && dustValue(roll(mk(2), 50, { weights: [0, 0, 1, 0, 0, 0, 0] })) === 0);
+  }
+  // 0.30: Ancient moved above Mythic; old saves keep their items' strength, with the right names
+  {
+    const { migrateItem } = await import('../src/sim/items.js');
+    check('Rarities: Epic, Mythic, Ancient, Immortal, each stronger than the last', RARITIES.slice(3).map((r) => r.name).join() === 'Epic,Mythic,Ancient,Immortal' && RARITIES[4].mult < RARITIES[5].mult && RARITIES[5].mult < RARITIES[6].mult);
+    const oldLeg = { id: 'a', name: 'Ancient Iron Helm', slot: 'helm', rarity: 4, ilvl: 40, stats: { hp: 500 }, plus: 0 };
+    const oldMyth = { id: 'b', name: 'Mythic Iron Helm', slot: 'helm', rarity: 5, ilvl: 40, stats: { hp: 600 }, plus: 0 };
+    const oldSet = { id: 'c', name: 'Bloodbound Crown', slot: 'helm', rarity: 4, ilvl: 40, stats: { hp: 230 }, plus: 0, set: 'bloodbound', cls: 'warrior' };
+    const w = new World({ seed: 1, cls: 'warrior', save: Object.assign(geared('warrior', 40, 1), { bag: [oldLeg, oldMyth], equipped: Object.assign(geared('warrior', 40, 1).equipped, { helm: oldSet }) }) });
+    const [a, b] = w.player.bag;
+    check('Old saves: a Legendary keeps its strength and is called Mythic now', a.rarity === 4 && a.name === 'Mythic Iron Helm' && a.stats.hp === 500);
+    check('Old saves: a Mythic keeps its strength and is called Ancient now', b.rarity === 5 && b.name === 'Ancient Iron Helm' && b.stats.hp === 600);
+    check('Old saves: a set piece moves up to Ancient, stats and all', w.player.equipped.helm.rarity === 5 && w.player.equipped.helm.stats.hp === Math.round(230 * RARITIES[5].mult / RARITIES[4].mult));
+    migrateItem(a); migrateItem(b);
+    check('Old saves: converting twice changes nothing', a.name === 'Mythic Iron Helm' && b.name === 'Ancient Iron Helm' && w.player.equipped.helm.rarity === 5);
   }
   // A started swing finishes on a target that slips a little out of reach
   {

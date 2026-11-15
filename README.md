@@ -150,13 +150,24 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Rarity names: Ancient above Mythic, Storied enemies (0.30)
+
+- The order is now Common, Uncommon, Rare, Epic, **Mythic**, **Ancient**,
+  Immortal. Ancient (orange) sits just below Immortal; set pieces are Ancient,
+  so a set competes with Immortal effects for the same slots.
+- Each step keeps its strength and drop rates; only the names moved. Old saves
+  convert on load: an old Legendary ("Ancient ...") is a Mythic now, an old
+  Mythic is Ancient now, and set pieces move up to Ancient, stats and all.
+- The named enemies from 0.29 are **Storied** enemies now, so "Rare" only ever
+  means the gear rarity.
+
 ### Exploration surprises, Remnant bosses, sets and enchanting (0.29)
 
-- **Rare enemies.** About one camp spawn in sixty (never in a rift, at most one
-  on a map) is a named Rare, like *Brand Twice-Promised*: a gold name and a gold
+- **Storied enemies.** About one camp spawn in sixty (never in a rift, at most one
+  on a map) is a named, Storied enemy, like *Brand Twice-Promised*: a gold name and a gold
   dot on the minimap, at least two modifiers (never fewer than an elite of its
   tier), five times the health, six times the EXP and gold. It always drops an
-  Epic or better (30%: Legendary or better), 3 to 5 Wishdust, and 12% of the
+  Epic or better (30%: Mythic or better), 3 to 5 Wishdust, and 12% of the
   time a set piece. Farming one map you meet about three every ten minutes.
 - **The Wishthief.** 25% of the time a map you arrive on has one hiding (and
   every two minutes there, a 20% chance of another): a glittering little thief
@@ -164,7 +175,7 @@ tickets, and your settings, and replaces whatever was there.
   running at 90% of your speed, stumbling to catch its breath every 3 seconds,
   and gets away after 25 seconds. Every tenth of its health knocked off spills
   gold; caught, it gives a shard, 5 Wishdust and three pieces of gear (one
-  Legendary or better). Simulated, every subclass catches it, in about 5 to 15
+  Mythic or better). Simulated, every subclass catches it, in about 5 to 15
   seconds.
 - **Remnant bosses.** Once you have beaten a boss three times, each time it
   comes back there is a 25% chance it is its Remnant: 1.8x health, 1.25x damage,
@@ -172,15 +183,15 @@ tickets, and your settings, and replaces whatever was there.
   you (Iron Rain, Spore Bloom, Unwishing). It always drops a set piece and 10
   Wishdust.
 - **Sets.** One per subclass (Bloodbound, Wardstone, Farsight, Galeborn,
-  Nightcut, Veilweave, Ashen, Rimeheart). Set pieces are Legendary items of
+  Nightcut, Veilweave, Ashen, Rimeheart). Set pieces are Ancient items (just below Immortal) of
   their class with a green glow on the ground; two worn give the first bonus,
-  four the second (see each piece's tooltip). From Remnants (always), Rares
-  (12%) and radiant chests (10%); usually your own subclass's set.
+  four the second (see each piece's tooltip). From Remnants (always), Storied
+  enemies (12%) and radiant chests (10%); usually your own subclass's set.
 - **Enchanting** (Gear, Tab: *Enchant* on an equipped item). Turn one bonus stat
   into a different one at a fresh roll, for gold and Wishdust. After the first
   enchant only that line can be enchanted again, and each time costs more.
-  **Wishdust** comes from Rares, the Wishthief, Remnants and scrapping
-  Legendary (1), Mythic (2) or Immortal (4) gear.
+  **Wishdust** comes from Storied enemies, the Wishthief, Remnants and scrapping
+  Mythic (1), Ancient (2) or Immortal (4) gear.
 - **Fix:** a basic attack that has started now finishes if its target only
   slips a little out of reach (25% plus 1 m), and one that is cancelled refunds
   its cooldown, so a running target can no longer dance on the edge of your
@@ -400,7 +411,7 @@ tickets, and your settings, and replaces whatever was there.
   per map, gold dots on the minimap. Walk over one to open it. Plain chests
   hold gold and a piece of gear; **gilded** ones (about 1 in 4) two better
   pieces and refill your potions; **radiant** ones (about 1 in 20) a
-  Legendary or better, with a 12% chance of an **Immortal**, plus a starglass
+  Mythic or better, with a 12% chance of an **Immortal**, plus a starglass
   shard. An opened chest comes back somewhere else on the map after 2.5
   minutes. In a party, the opener gets the gear.
 - **Fixes:** burns show as BURNING ×stacks (not "bleeding"), with Hoarfrost,
@@ -584,7 +595,7 @@ No spoilers here; the whole thing is written out at the top of
   quests tied to the map you are on; each of them lost someone up the mountain.
 - **Rewards** are sized to the quest's level: EXP (most side quests pay about
   a level's worth), gold, scrap, keys, skill points and a piece of gear of a
-  stated rarity. The story quests for the three bosses pay Legendary, Mythic
+  stated rarity. The story quests for the three bosses pay Mythic, Ancient
   and Immortal gear.
 - **J opens the journal:** quests in hand, and every sign you have read.
 - Quests you are on are listed under the minimap.
@@ -599,9 +610,9 @@ A boss out in the world now pays for the time it takes:
 
 | Boss | Gear dropped | Best piece | Keys | First kill |
 | --- | --- | --- | --- | --- |
-| The Warden (40) | 3, Rare or better | Epic+, 12% Mythic or better | 1 | guaranteed Legendary |
-| The Mycelord (70) | 4, Epic or better | Legendary+, 38% Mythic or better | 2 | guaranteed Mythic |
-| The Unmade (100) | 6, Epic or better | Legendary+, 15% Immortal | 3 | guaranteed Immortal |
+| The Warden (40) | 3, Rare or better | Epic+, 12% Ancient or better | 1 | guaranteed Mythic |
+| The Mycelord (70) | 4, Epic or better | Mythic+, 38% Ancient or better | 2 | guaranteed Ancient |
+| The Unmade (100) | 6, Epic or better | Mythic+, 15% Immortal | 3 | guaranteed Immortal |
 
 They also drop six times a normal enemy's gold for their level, two and a half
 times the EXP, arena tickets, and two skill points the first time. The numbers

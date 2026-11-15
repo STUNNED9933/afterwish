@@ -1967,11 +1967,11 @@ function start(hot = {}) {
       // --- Exploration surprises (0.29) ---------------------------------------------
       case 'rareSpawn':
         sfx.ui();
-        hud.feedText(`A Rare roams ${ev.map}: ${ev.name}.`);
-        hintOnce('rare', 'A Rare enemy: gold name, tougher than any elite, and worth it: good gear, Wishdust for enchanting, and sometimes a set piece. Look for the gold dot on the minimap.', 9);
+        hud.feedText(`A Storied enemy roams ${ev.map}: ${ev.name}.`);
+        hintOnce('rare', 'A Storied enemy: a gold name, tougher than any elite, and worth it: good gear, Wishdust for enchanting, and sometimes a set piece. Look for the gold dot on the minimap.', 9);
         break;
       case 'rareSlain':
-        hud.banner(`${ev.name} falls`, `A Rare · +${ev.dust} Wishdust`);
+        hud.banner(`${ev.name} falls`, `Storied · +${ev.dust} Wishdust`);
         sfx.levelUp();
         break;
       case 'thiefSpawn':

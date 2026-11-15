@@ -15,7 +15,7 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue } from './items.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem } from './items.js';
 import { RARE, rareName, THIEF, REMNANT, remnantName } from './surprises.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, MAPS } from './maps.js';
@@ -386,8 +386,8 @@ export class World {
       undyingUsed: false,
     };
     if (save) {
-      for (const slot of SLOTS) p.equipped[slot] = save.equipped?.[slot] || null;
-      p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE);
+      for (const slot of SLOTS) p.equipped[slot] = migrateItem(save.equipped?.[slot] || null);
+      p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE).map(migrateItem); // (0.30: rarity names moved)
     } else {
       p.equipped.weapon = starterWeapon(this.cls);
     }

@@ -210,7 +210,7 @@ export class Inventory {
     const cost = enchantCost(item);
     const can = p.gold >= cost.gold && (p.dust || 0) >= cost.dust;
     const open = enchantable(item);
-    box.innerHTML = `<p class="setting-desc">Turn one bonus stat into a different one, at a fresh roll. Once an item is enchanted, only that line can be enchanted again, and each time costs more. Cost: <b>${cost.gold} gold + ${cost.dust} Wishdust</b> (you have ${p.gold} and ${p.dust || 0}). Wishdust comes from Rares, the Wishthief, Remnants and scrapping Legendary or better.</p>`;
+    box.innerHTML = `<p class="setting-desc">Turn one bonus stat into a different one, at a fresh roll. Once an item is enchanted, only that line can be enchanted again, and each time costs more. Cost: <b>${cost.gold} gold + ${cost.dust} Wishdust</b> (you have ${p.gold} and ${p.dust || 0}). Wishdust comes from Storied enemies, the Wishthief, Remnants and scrapping Mythic or better.</p>`;
     const stats = itemStats(item);
     Object.keys(item.stats).slice(1).forEach((k) => {
       const row = document.createElement('div');

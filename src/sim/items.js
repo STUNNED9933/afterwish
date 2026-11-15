@@ -46,8 +46,9 @@ export const RARITIES = [
   { key: 'uncommon', prefix: 'Fine', name: 'Uncommon', color: '#58c98b', mult: 1.25, affixes: 1, weight: 28 },
   { key: 'rare', prefix: 'Superior', name: 'Rare', color: '#5aa2ff', mult: 1.55, affixes: 2, weight: 14 },
   { key: 'epic', prefix: 'Exalted', name: 'Epic', color: '#b97aff', mult: 1.9, affixes: 3, weight: 5.5 },
-  { key: 'legendary', prefix: 'Ancient', name: 'Legendary', color: '#ffa53a', mult: 2.3, affixes: 3, weight: 1.8 },
-  { key: 'mythic', prefix: 'Mythic', name: 'Mythic', color: '#ff5d7a', mult: 2.8, affixes: 4, weight: 0.5 },
+  // (0.30: Ancient, the old Legendary, moved above Mythic, just below Immortal: see migrateItem)
+  { key: 'mythic', prefix: 'Mythic', name: 'Mythic', color: '#ff5d7a', mult: 2.3, affixes: 3, weight: 1.8 },
+  { key: 'ancient', prefix: 'Ancient', name: 'Ancient', color: '#ffa53a', mult: 2.8, affixes: 4, weight: 0.5 },
   { key: 'immortal', prefix: '', name: 'Immortal', color: '#7ff5e1', mult: 3.4, affixes: 4, weight: 0.1, effect: true },
 ];
 export const IMMORTAL = RARITIES.length - 1;
@@ -190,7 +191,7 @@ export function rollItem(rng, ilvl, { minRarity = 0, weights = null, slot = null
 
   // One name per ten levels, so gear from each map sounds like it came from there.
   const tier = Math.min(9, Math.floor((ilvl - 1) / 10));
-  const item = { id: 'i' + Date.now().toString(36) + '-' + itemCounter++, name: '', slot, rarity: ri, ilvl, stats, plus: 0 };
+  const item = { id: 'i' + Date.now().toString(36) + '-' + itemCounter++, name: '', slot, rarity: ri, ilvl, stats, plus: 0, rv: 2 };
   if (rarity.effect) {
     item.effect = EFFECT_FOR_SLOT[slot];
     item.name = effectFor(item.effect, weapon ? cls : null).itemName;
@@ -203,11 +204,32 @@ export function rollItem(rng, ilvl, { minRarity = 0, weights = null, slot = null
 
 export function starterWeapon(cls = 'warrior') {
   const w = WEAPONS[cls] || WEAPONS.warrior;
-  return { id: 'starter', name: w.starter, slot: 'weapon', cls, rarity: 0, ilvl: 1, stats: { [w.main]: 5, [w.bonus[0]]: 3 }, plus: 0 };
+  return { id: 'starter', name: w.starter, slot: 'weapon', cls, rarity: 0, ilvl: 1, stats: { [w.main]: 5, [w.bonus[0]]: 3 }, plus: 0, rv: 2 };
+}
+
+/**
+ * Items saved before 0.30, when the order was ... Epic, Legendary ("Ancient ..."), Mythic, Immortal.
+ * Now it is ... Epic, Mythic, Ancient, Immortal, so a rarity number keeps its strength and only its
+ * name moves: the old Legendary (4) is a Mythic now and the old Mythic (5) is Ancient. Set pieces were
+ * Legendary and are Ancient now, so they move up a step (and their stats with them). Safe to run twice.
+ */
+export function migrateItem(item) {
+  if (!item || item.rv === 2) return item;
+  if (item.set && item.rarity === 4) {
+    const k = RARITIES[5].mult / RARITIES[4].mult;
+    for (const s in item.stats) item.stats[s] = Math.max(1, Math.round(item.stats[s] * k));
+    item.rarity = 5;
+  } else if (item.rarity === 4 && typeof item.name === 'string' && item.name.startsWith('Ancient ')) {
+    item.name = 'Mythic ' + item.name.slice(8);
+  } else if (item.rarity === 5 && typeof item.name === 'string' && item.name.startsWith('Mythic ')) {
+    item.name = 'Ancient ' + item.name.slice(7);
+  }
+  item.rv = 2;
+  return item;
 }
 
 // --- Sets (0.29) -------------------------------------------------------------
-// One set per subclass. Set pieces are Legendary items of the set's class with a set
+// One set per subclass. Set pieces are Ancient items (just below Immortal) of the set's class with a set
 // name; two pieces worn give the first bonus, four give the second as well. They drop
 // from Remnant bosses (always), Rare enemies (sometimes) and radiant chests (now and then).
 export const SETS = {
@@ -239,7 +261,7 @@ export const SETS = {
 export const SET_IDS = Object.keys(SETS);
 const SET_PIECE = { helm: 'Crown', chest: 'Mantle', boots: 'Treads', ring: 'Seal' };
 const SET_WEAPON = { warrior: 'Blade', archer: 'Longbow', rogue: 'Fangs', mage: 'Staff' };
-export const SET_RARITY = 4; // Legendary
+export const SET_RARITY = 5; // Ancient
 
 /** A set piece for a class: usually of its current subclass's set, sometimes the other one. */
 export function rollSetPiece(rng, ilvl, cls, spec = null) {
@@ -285,7 +307,7 @@ export function enchantable(item) {
 export function rollBonusStat(key, item, rng) {
   return statValue(key, item.ilvl, RARITIES[item.rarity].mult * 0.5, rng);
 }
-/** Wishdust from scrapping an item (Legendary and better only). */
+/** Wishdust from scrapping an item (Mythic and better only). */
 export function dustValue(item) {
   return item.rarity >= 6 ? 4 : item.rarity === 5 ? 2 : item.rarity === 4 ? 1 : 0;
 }

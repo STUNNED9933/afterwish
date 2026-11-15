@@ -38,7 +38,9 @@ function tripo(cmdArgs, { allowFail = false } = {}) {
 const taskId = (r) => r.task_id || r.id || (r.task && (r.task.task_id || r.task.id)) || (r.data && r.data.task_id);
 const credits = () => {
   const b = tripo(['balance'], { allowFail: true });
-  return b.balance ?? b.available ?? (b.data && b.data.balance) ?? null;
+  const n = b.balance ?? b.available ?? (b.data && (b.data.balance ?? b.data.available)) ?? null;
+  console.error(`credits: ${n ?? JSON.stringify(b)}`);
+  return n;
 };
 function listFiles(dir) {
   const out = [];

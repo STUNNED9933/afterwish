@@ -348,6 +348,26 @@ export class Hud {
       this.lastSub = sub;
     }
 
+    // World events (0.31): what is going on and how long is left.
+    const hv = world.mode === 'explore' ? world.happening : null;
+    let et = '';
+    let warnEv = false;
+    if (hv && hv.kind === 'meteor') et = hv.state === 'falling' ? 'A meteor is falling: clear what crawls out for a radiant chest' : `Meteor pack: ${hv.left} left · ${Math.ceil(hv.t)} s`;
+    else if (hv && hv.kind === 'shrine') {
+      if (hv.state === 'waiting') et = `A shrine has woken: stand in its ring to start (${Math.ceil(hv.t)} s)`;
+      else {
+        warnEv = hv.grace < 5.9;
+        et = warnEv ? `Shrine: get back in the ring! (${Math.ceil(hv.grace)} s)` : `Hold the shrine: ${Math.ceil(hv.t)} s`;
+      }
+    }
+    if (world.mode === 'explore' && world.merchant && !et) et = `A travelling merchant is here for ${Math.ceil(world.merchant.left / 60)} more minute${world.merchant.left > 60 ? 's' : ''}`;
+    if (et !== this.lastEvText) {
+      this.lastEvText = et;
+      $('event-text').textContent = et;
+      $('event-box').classList.toggle('hidden', !et);
+    }
+    $('event-box').classList.toggle('warn', warnEv);
+
     // Echo Rift progress (0.26)
     const r = world.mode === 'explore' && world.map && world.map.id === 'rift' ? world.rift : null;
     $('rift-box').classList.toggle('hidden', !r);
@@ -546,6 +566,8 @@ export class Hud {
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
     for (const ws of world.map.waystones || []) dot(ws.x, ws.z, 3.5, '#9fe6ff');
     for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
+    if (world.happening) dot(world.happening.x, world.happening.z, 5, world.happening.kind === 'shrine' ? '#ffd27a' : '#ff8a3a');
+    if (world.merchant) dot(world.merchant.x, world.merchant.z, 4, '#c8a26a');
     for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : e.rare || e.def.thief ? 3.5 : 2, e.rare || e.def.thief ? '#ffd27a' : e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
     if (world.allies) for (const a of world.allies()) dot(a.x, a.z, 3, a.dead ? '#8a8f9c' : '#7fd0ff');
@@ -621,7 +643,7 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : 'Read: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : 'Read: ' + near.name}`;
   }
 
   /** The list of quests you are on, under the minimap. */

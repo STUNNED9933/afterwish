@@ -694,7 +694,38 @@ function start(hot = {}) {
     return parts.join(' · ');
   }
 
+  /** The travelling merchant's wares (0.31), in the conversation panel. */
+  function renderMerchant() {
+    const mc = world.merchant;
+    const p = world.player;
+    $('talk-role').textContent = 'Wanders the roads';
+    $('talk-name').textContent = 'Travelling Merchant';
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    $('talk-keys').classList.add('hidden');
+    if (!mc) {
+      $('talk-line').textContent = 'He has packed up and gone.';
+      return;
+    }
+    $('talk-line').textContent = talkNote || `"Wishes, mostly. Other people's. Don't ask what's in the bag; that's what you're paying for." (Leaves in ${Math.ceil(mc.left / 60)} minute${mc.left > 60 ? 's' : ''}. You have ${p.gold} gold and ${p.tickets} shard${p.tickets === 1 ? '' : 's'}.)`;
+    mc.stock.forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'quest';
+      const price = s.gold ? `${s.gold.toLocaleString()} gold` : `${s.tickets} shard${s.tickets === 1 ? '' : 's'}`;
+      el.innerHTML = `<h4>${esc(s.label)}<small>${price}</small></h4>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = s.sold ? 'ghost' : 'primary';
+      btn.textContent = s.sold ? 'Sold' : `Buy · ${price}`;
+      btn.disabled = s.sold || p.gold < s.gold || p.tickets < s.tickets;
+      btn.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'buyMerchant', i }); });
+      el.appendChild(btn);
+      list.appendChild(el);
+    });
+  }
+
   function renderTalk() {
+    if (talkTo === 'merchant') return renderMerchant();
     const npc = NPCS[talkTo];
     if (!npc) return;
     $('talk-role').textContent = npc.role;
@@ -915,7 +946,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['enchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -1200,7 +1231,7 @@ function start(hot = {}) {
       if (!near) return;
       world.command({ type: 'stop' });
       sfx.ui();
-      if (near.kind === 'npc') {
+      if (near.kind === 'npc' || near.kind === 'merchant') {
         talkTo = near.id;
         talkNote = '';
         setMode('talk');
@@ -2005,6 +2036,61 @@ function start(hot = {}) {
         break;
       case 'remnantSlain':
         hud.feedText(`${ev.name}: +${ev.dust} Wishdust`);
+        break;
+      // --- 0.31: Remnants, world events, the merchant, ascending, glows ----------
+      case 'starFeeds':
+        hud.float(renderer, ev.bx, 4.5, ev.bz, 'A wish-star feeds it', 'word warn');
+        break;
+      case 'unwishedBoon':
+        if ((ev.hero ?? 0) === (net ? net.pid : 0)) hud.float(renderer, ev.x, 3, ev.z, 'Unwished: +20% damage', 'word perfect');
+        break;
+      case 'eventStart':
+        sfx.wave(false);
+        if (ev.kind === 'meteor') {
+          hud.banner('A meteor is falling', `On ${ev.map}: something will crawl out of it. Clear the crater for a radiant chest.`);
+          hintOnce('meteor', 'World event: a meteor. Follow the orange pillar of light (and the orange dot on the minimap); clear the pack that comes out for a radiant chest.', 9);
+        } else {
+          hud.banner('A shrine has woken', `On ${ev.map}: stand in its ring to start, then hold it for 60 seconds.`);
+          hintOnce('shrine', 'World event: a shrine. Follow the gold pillar of light; stand in its ring and hold it for 60 seconds while waves come at you. Leave it empty for 6 seconds and it goes dark.', 10);
+        }
+        break;
+      case 'meteorLands':
+        sfx.slam();
+        break;
+      case 'shrineStart':
+        hud.banner('Hold the shrine', `${ev.secs} seconds. Stay in the ring.`);
+        break;
+      case 'eventDone':
+        sfx.levelUp();
+        hud.banner(ev.kind === 'meteor' ? 'The crater is quiet' : 'The shrine holds', ev.kind === 'meteor' ? 'A radiant chest waits in it' : `A radiant chest · +${ev.dust} Wishdust · +${ev.tickets} shard`);
+        break;
+      case 'eventFail':
+        hud.feedText(ev.kind === 'meteor' ? 'The meteor pack scattered.' : ev.faded ? 'The shrine went dark again.' : 'The shrine went dark: no one held it.');
+        break;
+      case 'merchantArrive':
+        sfx.pickup(3);
+        hud.feedText(`A travelling merchant has set up on ${ev.map}, for 3 minutes.`);
+        hintOnce('merchant', 'A travelling merchant (the brown dot on the minimap): walk up and press G to see his wares. Mystery gear, Wishdust and set pieces, for gold or shards.', 9);
+        break;
+      case 'merchantLeave':
+        hud.feedText('The travelling merchant has moved on.');
+        if (mode === 'talk' && talkTo === 'merchant') setMode('play');
+        break;
+      case 'merchantSold':
+        sfx.pickup(4);
+        talkNote = ev.item ? `Bought: ${itemName(ev.item)} (${RARITIES[ev.item.rarity].name}).` : `Bought: ${ev.label}.`;
+        if (mode === 'talk') renderTalk();
+        refreshMenus();
+        break;
+      case 'ascended':
+        sfx.upgrade();
+        hud.banner(`${ev.name} ascends`, `${'★'.repeat(ev.stars)} · every stat +${ev.stars * 10}%`);
+        refreshMenus();
+        break;
+      case 'glowUnlocked':
+        sfx.levelUp();
+        hud.banner('A new weapon glow', `${ev.name} · choose it on the gear screen (Tab)`);
+        refreshMenus();
         break;
       case 'idleNoReward':
         hud.banner('Away from the keys?', `After ${ev.secs} seconds without any input, kills give no EXP, gold or loot until you act again.`);

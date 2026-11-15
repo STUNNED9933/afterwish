@@ -150,6 +150,54 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Unique Remnants, world events, the travelling merchant, ascending Immortals, glows (0.31)
+
+- **Each Remnant fights its own way** (instead of 0.29's shared ring of blows):
+  - **Remnant of The Warden: Mirrored Oath.** Every 18 s it calls two Oath
+    Shades, copies of itself that fight with its own three-hit combo (parry
+    them like it). They fall with it.
+  - **Remnant of The Mycelord: Spore Bloom.** Every 14 s two spore pools rise
+    near you (never right under you) and grow for 14 s; standing in one hurts.
+  - **Remnant of The Unmade: Unwishing.** Every 20 s three wish-stars appear
+    around it. Break them inside 10 s: each one left heals it 5% and makes it
+    hit 10% harder, for the rest of the fight.
+  - Simulated with a bot that plays the mechanic, every subclass wins, in
+    about twice the time of the normal boss.
+- **Their own Immortals** (20% from each Remnant, any class can wear them):
+  *Oathbreaker's Signet* (ring: a perfect parry strikes everything within 6 m
+  for 250%), *Sporeheart* (armor: every 4 s, heal 1.5% of max health per enemy
+  within 6 m, up to 9%), *The Unwished Crown* (helm: Doom takes half, and
+  avoiding one gives 20% more damage for 5 s). And 30% of the time, a weapon
+  glow.
+- **World events.** After 45 s on a map, and every 90 s after, a 30% chance of:
+  - **a meteor**: it lands somewhere near (an orange pillar of light and an
+    orange minimap dot), a pack crawls out; clear it within 2 minutes for a
+    radiant chest in the crater.
+  - **a shrine**: step into its ring (a gold pillar) and hold it 60 seconds
+    while waves come at you; leave it empty 6 s and it goes dark. Holding it
+    gives a radiant chest, 5 Wishdust and a shard (not to anyone idle).
+- **The travelling merchant.** On 15% of the maps you arrive at (at most once
+  every 6 minutes) he sets up for 3 minutes (a brown minimap dot). Walk up and
+  press G: two pieces of Epic-or-better mystery gear and 5 Wishdust for gold, a
+  Mythic-or-better piece for 2 shards, a set piece for 3. In a party the stock
+  is shared.
+- **Ascending Immortals** (Gear, Tab): with a duplicate of an Immortal you wear
+  (same effect) in your bag, *Ascend* feeds it in: a star, +10% to every stat,
+  up to 5 stars.
+- **Weapon glows**, chosen on the gear screen and seen by friends in co-op:
+  Oathfire, Sporelight and Voidlight (sometimes from each Remnant), Riftfire
+  (clear rift tier 10), Thief's Gold (catch 10 Wishthieves), Afterwish (beat The
+  Unmade on world tier V).
+- **Set bonuses that change how you play** (the 4-piece ones): Bloodbound,
+  nothing drops you below 1 health while Whirlwind spins (and it spins 1 s
+  longer); Wardstone, a Whirlwind with 5+ Reckoning Breaks everything it hits;
+  Farsight, Steady Aim crits pierce; Galeborn, a perfect dodge whips up 3 s of
+  Hurricane; Nightcut, after a Clean Kill the next Shadowstrike cuts everything
+  within 3 m of its target; Veilweave, trading places with your afterimage
+  Veils you and readies Veilstep; Ashen, a burning enemy that dies bursts its
+  burn onto everything within 5 m; Rimeheart, each Shatter also Shatters the
+  nearest other enemy.
+
 ### Rarity names: Ancient above Mythic, Storied enemies (0.30)
 
 - The order is now Common, Uncommon, Rare, Epic, **Mythic**, **Ancient**,

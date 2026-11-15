@@ -181,6 +181,21 @@ const BOSS_ATTACKS = (o) => [
 ];
 Object.assign(ENEMIES, {
   // An exploration surprise (0.29): it never fights. It runs, spilling gold when hit, and escapes after a while.
+  // Called up by Remnants (0.31). The Warden's shades fight with its own combo; wish-stars just wait to be broken.
+  oathshade: {
+    name: 'Oath Shade', model: 'boss', look: { scale: 0.62, colors: [0x6a4ab0, 0xc8b8ff, 0x1c1430] },
+    hp: 300, speed: 3.6, radius: 0.9, height: 2.3, exp: 0, poise: 2, parryStun: 2.6, drop: 0, cost: 0, ai: 'melee', atkCd: [0.8, 1.3], summon: true,
+    attacks: [
+      { name: 'combo1', shape: 'arc', trigger: 3.2, range: 3.6, angle: 2.0, windup: 0.8, recover: 0, dmg: 14, parryable: true, lockAt: 0.25, chain: 'combo2' },
+      { name: 'combo2', shape: 'arc', trigger: 99, range: 3.6, angle: 2.0, windup: 0.55, recover: 0, dmg: 14, parryable: true, lockAt: 0.2, chain: 'combo3' },
+      { name: 'combo3', shape: 'circle', trigger: 99, radius: 2.8, offset: 2.2, windup: 0.8, recover: 1.6, dmg: 20, parryable: true, lockAt: 0.3 },
+    ],
+  },
+  wishstar: {
+    name: 'Wish-star', model: 'spitter', look: { scale: 0.75, colors: [0x7ff5e1, 0x1c3a44] },
+    hp: 300, speed: 0, radius: 0.7, height: 1.8, exp: 0, poise: 99, parryStun: 0, drop: 0, cost: 0, ai: 'static', still: true, summon: true, atkCd: [99, 99],
+    attacks: [{ name: 'none', shape: 'arc', trigger: -1, range: 0, angle: 0, windup: 1, recover: 1, dmg: 0, parryable: true, lockAt: 0 }],
+  },
   wishthief: {
     name: 'Wishthief', model: 'grunt', look: { scale: 0.72, colors: [0xffcf5a, 0x5a3a12, 0xfff2c0] },
     hp: 110, speed: 5, radius: 0.5, height: 1.2, exp: 40, poise: 99, parryStun: 0, drop: 0, cost: 0, ai: 'thief', thief: true, atkCd: [99, 99],

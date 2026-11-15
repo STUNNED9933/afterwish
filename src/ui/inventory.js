@@ -2,6 +2,7 @@
 import { CONFIG } from '../config.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
+import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { svg, gearIcon, gearClassNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 
@@ -135,6 +136,21 @@ export class Inventory {
       const text = document.createElement('div');
       text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
       row.append(cell, text);
+      const btns = document.createElement('div');
+      btns.className = 'eq-btns';
+      if (item && item.rarity === RARITIES.length - 1 && item.effect && !world.trial && (item.stars || 0) < 5) {
+        // Ascending (0.31): a duplicate Immortal in the bag can be fed into this one.
+        const dupAt = p.bag.findIndex((b) => b.rarity === item.rarity && b.effect === item.effect);
+        if (dupAt >= 0) {
+          const a = document.createElement('button');
+          a.type = 'button';
+          a.className = 'ghost tiny ench-btn ascend';
+          a.textContent = `Ascend ★${(item.stars || 0) + 1}`;
+          a.title = `Feed the duplicate ${itemName(p.bag[dupAt])} in your bag into this one: +10% to every stat per star, up to 5 stars. The duplicate is used up.`;
+          a.addEventListener('click', () => this.send({ type: 'ascend', slot, index: dupAt }));
+          btns.appendChild(a);
+        }
+      }
       if (item && Object.keys(item.stats).length > 1 && !world.trial) {
         // Enchanting (0.29): reroll one bonus stat, for gold and Wishdust.
         const b = document.createElement('button');
@@ -146,8 +162,9 @@ export class Inventory {
           this.enchantSlot = this.enchantSlot === slot ? null : slot;
           this.render(world);
         });
-        row.appendChild(b);
+        btns.appendChild(b);
       }
+      if (btns.children.length) row.appendChild(btns);
       eq.appendChild(row);
       if (item && this.enchantSlot === slot) eq.appendChild(this.enchantPanel(world, slot, item));
     }
@@ -156,6 +173,34 @@ export class Inventory {
     const now = steadyRatings(world);
     powerProbe = { now, with: (item) => (world.player === p ? ratingsWith(world, item) : null), empty: (item) => !p.equipped[item.slot] };
     $('power-card').innerHTML = `<div class="cp">${now.cp.toLocaleString()}<small>Combat Power</small></div><div class="sub">Might <b>${now.might.toLocaleString()}</b> · Resolve <b>${now.resolve.toLocaleString()}</b></div>`;
+
+    // Weapon glows (0.31): the ones this character has earned, and which is shown.
+    const glowRow = $('glow-row');
+    if (glowRow) {
+      const owned = (p.glows || []).filter((id) => GLOWS[id]);
+      glowRow.innerHTML = `<span class="glow-label">Weapon glow</span>`;
+      const chip = (id, label, color, title) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'keep-chip';
+        b.textContent = label;
+        b.title = title;
+        if (color != null) b.style.borderColor = '#' + color.toString(16).padStart(6, '0');
+        b.setAttribute('aria-pressed', (p.glow || null) === id ? 'true' : 'false');
+        b.addEventListener('click', () => this.send({ type: 'setGlow', id }));
+        glowRow.appendChild(b);
+      };
+      chip(null, 'None', null, 'No glow');
+      for (const id of owned) chip(id, GLOWS[id].name, GLOWS[id].color, GLOWS[id].how);
+      const locked = GLOW_IDS.filter((id) => !owned.includes(id));
+      if (locked.length) {
+        const hint = document.createElement('span');
+        hint.className = 'glow-hint';
+        hint.textContent = `${locked.length} more to find`;
+        hint.title = locked.map((id) => `${GLOWS[id].name}: ${GLOWS[id].how}`).join('\n');
+        glowRow.appendChild(hint);
+      }
+    }
 
     const s = p.stats;
     const reduction = Math.round((1 - 100 / (100 + s.armor)) * 100);

@@ -99,6 +99,25 @@ export const EFFECTS = {
       mage: { desc: 'A perfect parry or perfect dodge gives +40% move speed for 4 seconds, and your ability cooldowns run 60% faster meanwhile.' },
     },
   },
+  // Unique Immortals (0.31): one from each Remnant, never from anywhere else. Any class can wear them.
+  oathsignet: {
+    slot: 'ring', unique: 'boss',
+    name: "Oathbreaker's Signet",
+    itemName: "Oathbreaker's Signet",
+    desc: 'A perfect parry calls the broken oath down: a spectral blade strikes every enemy within 6 m for 250% attack damage.',
+  },
+  sporeheart: {
+    slot: 'chest', unique: 'boss2',
+    name: 'Sporeheart',
+    itemName: 'Sporeheart',
+    desc: 'Every 4 seconds, spores heal you for 1.5% of your max health for every enemy within 6 m (up to 9%).',
+  },
+  unwished: {
+    slot: 'helm', unique: 'boss3',
+    name: 'The Unwished Crown',
+    itemName: 'The Unwished Crown',
+    desc: 'Doom takes half as much from you. Each Doom aimed at you that you avoid makes you deal 20% more damage for 5 seconds.',
+  },
   timekeeper: {
     slot: 'ring',
     name: 'Timekeeper',
@@ -115,7 +134,15 @@ export function effectFor(key, cls) {
 /** Classes whose Slipstream speeds up cooldowns instead of attacks. */
 export const CASTER_CLASSES = new Set(['rogue', 'mage']);
 const EFFECT_FOR_SLOT = {};
-for (const key in EFFECTS) EFFECT_FOR_SLOT[EFFECTS[key].slot] = key;
+for (const key in EFFECTS) if (!EFFECTS[key].unique) EFFECT_FOR_SLOT[EFFECTS[key].slot] = key;
+/** The unique Immortal a Remnant drops: { boss: 'oathsignet', ... }. */
+export const REMNANT_UNIQUE = Object.fromEntries(Object.entries(EFFECTS).filter(([, e]) => e.unique).map(([k, e]) => [e.unique, k]));
+
+// --- Ascending Immortals (0.31) ---------------------------------------------
+// Feed a duplicate Immortal (same effect) into one you wear: it gains a star, up to 5, and
+// every star adds 10% to all its stats (on top of blacksmith upgrades).
+export const MAX_STARS = 5;
+export const STAR_BONUS = 0.1;
 
 // Each class has its own weapon type. Only that class can equip it, and weapon
 // drops are always for the class you are playing, so nothing you find is useless.
@@ -235,28 +262,28 @@ export function migrateItem(item) {
 export const SETS = {
   bloodbound: { name: 'Bloodbound', cls: 'warrior', spec: 'berserker',
     two: { desc: 'While Bloodied, deal a further 10% damage.', apply: (m) => { m.lowHpDmg += 0.1; } },
-    four: { desc: 'Whirlwind spins 1 second longer (six beats).', apply: (m) => { m.wSpinTime += 1; } } },
+    four: { desc: 'Whirlwind spins 1 second longer, and nothing can drop you below 1 health while it spins.', apply: (m) => { m.wSpinTime += 1; m.spinGuard = true; } } },
   wardstone: { name: 'Wardstone', cls: 'warrior', spec: 'bulwark',
     two: { desc: '+15% armor.', apply: (m) => { m.armorPct += 0.15; } },
-    four: { desc: 'Reckoning holds up to 8 stacks.', apply: (m) => { m.reckonMax = Math.max(m.reckonMax, 8); } } },
+    four: { desc: 'Reckoning holds up to 8 stacks, and a Whirlwind with 5 or more Breaks everything it hits, like Iron Answer.', apply: (m) => { m.reckonMax = Math.max(m.reckonMax, 8); m.reckonBreak = true; } } },
   farsight: { name: 'Farsight', cls: 'archer', spec: 'sharpshooter',
     two: { desc: 'Crits deal a further 15% damage.', apply: (m) => { m.critMult += 0.15; } },
-    four: { desc: 'Long Watch goes up to 60% more damage (was 40%).', apply: (m) => { m.farShotMax += 0.2; } } },
+    four: { desc: "Steady Aim's guaranteed crits pierce, hitting every enemy in their path.", apply: (m) => { m.steadyPierce = true; } } },
   galeborn: { name: 'Galeborn', cls: 'archer', spec: 'windrunner',
     two: { desc: '+8% attack speed.', apply: (m) => { m.asMult *= 1.08; } },
-    four: { desc: 'Evasive Roll comes back 25% sooner.', apply: (m) => { m.eCd *= 0.75; } } },
+    four: { desc: 'Rolling through an attack (a perfect dodge) whips up 3 seconds of Hurricane.', apply: (m) => { m.galeHurricane = Math.max(m.galeHurricane, 3); } } },
   nightcut: { name: 'Nightcut', cls: 'rogue', spec: 'assassin',
     two: { desc: 'Shadowstrike deals 15% more.', apply: (m) => { m.qDmg *= 1.15; } },
-    four: { desc: 'Clean Kill also takes 4 seconds off Last Rites.', apply: (m) => { m.killResetR += 4; } } },
+    four: { desc: 'After a Clean Kill, your next Shadowstrike within 3 seconds also cuts every enemy within 3 m of its target.', apply: (m) => { m.nightcutChain = true; } } },
   veilweave: { name: 'Veilweave', cls: 'rogue', spec: 'shadowdancer',
     two: { desc: 'Veil lasts 1 second longer.', apply: (m) => { m.veilTime += 1; } },
-    four: { desc: "Afterimages' knives deal a further 25% of your basic attack.", apply: (m) => { m.veilCopy += 0.25; } } },
+    four: { desc: 'Trading places with your Nightstep afterimage Veils you and brings Veilstep straight back.', apply: (m) => { m.swapVeil = true; } } },
   ashen: { name: 'Ashen', cls: 'mage', spec: 'pyromancer',
     two: { desc: 'Burns deal 15% more.', apply: (m) => { m.burnMult *= 1.15; } },
-    four: { desc: 'Burns stack 2 higher.', apply: (m) => { m.burnMax += 2; } } },
+    four: { desc: 'A burning enemy that dies bursts: everything within 5 m catches its burn, every stack of it.', apply: (m) => { m.burnSpread = Math.max(m.burnSpread, 99); m.ashBurst = true; } } },
   rimeheart: { name: 'Rimeheart', cls: 'mage', spec: 'frostbinder',
     two: { desc: 'Shatter deals 20% more.', apply: (m) => { m.frostDmg *= 1.2; } },
-    four: { desc: 'Enemies Shatter at 5 Hoarfrost instead of 6.', apply: (m) => { m.frostMax = Math.max(2, m.frostMax - 1); } } },
+    four: { desc: 'Shatter chains: each one also Shatters the nearest other enemy within 6 m.', apply: (m) => { m.shatterChain = true; } } },
 };
 export const SET_IDS = Object.keys(SETS);
 const SET_PIECE = { helm: 'Crown', chest: 'Mantle', boots: 'Treads', ring: 'Seal' };
@@ -319,16 +346,28 @@ export const PLUS_BONUS = 0.08; // each +1 adds 8% to every stat on the item
 /** The stats an item actually gives, including its blacksmith upgrades. */
 export function itemStats(item) {
   const plus = item.plus || 0;
-  if (!plus) return item.stats;
+  const stars = item.stars || 0;
+  if (!plus && !stars) return item.stats;
   const out = {};
-  for (const k in item.stats) out[k] = Math.round(item.stats[k] * (1 + PLUS_BONUS * plus));
+  for (const k in item.stats) out[k] = Math.round(item.stats[k] * (1 + PLUS_BONUS * plus) * (1 + STAR_BONUS * stars));
   return out;
+}
+
+/** A unique Immortal (a Remnant's own drop). */
+export function rollUnique(rng, ilvl, key, cls) {
+  const e = EFFECTS[key];
+  if (!e) return null;
+  const item = rollItem(rng, ilvl, { weights: RARITIES.map((_, i) => (i === IMMORTAL ? 1 : 0)), slot: e.slot, cls });
+  item.effect = key;
+  item.name = e.itemName;
+  return item;
 }
 
 export function itemName(item) {
   // An Immortal weapon is named for its class (an old Stormcaller dagger is Nightfang now).
   const name = item.effect && item.cls ? effectFor(item.effect, item.cls).itemName : item.name;
-  return item.plus ? `${name} +${item.plus}` : name;
+  const stars = item.stars ? ' ' + '★'.repeat(item.stars) : '';
+  return (item.plus ? `${name} +${item.plus}` : name) + stars;
 }
 
 const SCRAP_BY_RARITY = [1, 2, 4, 7, 12, 20, 35];

@@ -56,6 +56,40 @@ export const REMNANT = {
   radius: 2.4,
   warn: 1.1,
   blow: 1.2, // times its first attack's damage
-  attack: { boss: 'Iron Rain', boss2: 'Spore Bloom', boss3: 'Unwishing' },
+  attack: { boss: 'Mirrored Oath', boss2: 'Spore Bloom', boss3: 'Unwishing' },
+  unique: 0.2, // its own Immortal (items.js REMNANT_UNIQUE)
+  glow: 0.3, // its own weapon glow (cosmetics.js)
+  // The Warden: two shades of itself, fighting with its combo, every 18 s (they fall with it).
+  shades: { every: 18, first: 6, count: 2, hp: 0.06, dmg: 0.5 },
+  // The Mycelord: spore pools that grow under your feet and hurt while you stand in them.
+  pools: { every: 14, first: 5, count: 2, from: 1, to: 4.5, grow: 0.8, life: 14, tick: 0.5, dmg: 0.1, near: 2.5, far: 7 },
+  // The Unmade: three wish-stars. Break them inside 10 s, or each one left heals it 5% and makes it hit 10% harder.
+  stars: { every: 20, first: 8, count: 3, dist: 9, hp: 0.03, life: 10, heal: 0.05, dmg: 0.1 },
+};
+
+// World events (0.31): now and then something happens on the map you are on.
+export const EVENTS = {
+  first: 45, // seconds on a map before the first chance
+  every: 90, // then a chance this often
+  chance: 0.3,
+  // A meteor: it lands, a pack crawls out of the crater; clear it for a radiant chest.
+  meteor: { warn: 3, r: 9, pack: 6, time: 120, hit: 3, impact: 1.5 },
+  // A shrine: step in and hold it 60 s against waves; leave it empty 6 s and it goes dark.
+  shrine: { r: 6, wait: 90, hold: 60, wave: 8, per: 3, grace: 6, dust: 5, tickets: 1 },
+};
+
+// The travelling merchant (0.31): shows up on a map now and then for 3 minutes.
+export const MERCHANT = {
+  chance: 0.15, // on arriving at a map
+  gap: 360, // at least this long between visits
+  stay: 180,
+  // Prices: gold scales with the map's level (as gear and upgrades do).
+  stock: [
+    { kind: 'gear', min: 3, label: 'Mystery gear (Epic or better)', gold: 450 },
+    { kind: 'gear', min: 3, label: 'Mystery gear (Epic or better)', gold: 450 },
+    { kind: 'gear', min: 4, label: 'Mystery gear (Mythic or better)', tickets: 2 },
+    { kind: 'dust', n: 5, label: '5 Wishdust', gold: 350 },
+    { kind: 'set', label: 'A set piece (usually your own subclass\'s)', tickets: 3 },
+  ],
 };
 export const remnantName = (def) => `Remnant of ${def.name}`;

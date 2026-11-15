@@ -590,7 +590,7 @@ import { makeRng } from '../src/sim/rng.js';
   check('ranks: abilities go to rank ' + CONFIG.MAX_RANK, (() => { p.skillPoints = 99; for (let i = 0; i < 30; i++) w.command({ type: 'rankUp', slot: 'q' }); w.step(CONFIG.TICK); return p.ranks.q === CONFIG.MAX_RANK; })());
 
   // Every enemy type can fight: put one next to the hero and let it attack for a while.
-  for (const type of Object.keys(ENEMIES).filter((t) => !ENEMIES[t].thief)) { // (the Wishthief never fights: it runs)
+  for (const type of Object.keys(ENEMIES).filter((t) => !ENEMIES[t].thief && !ENEMIES[t].still)) { // (the Wishthief runs; wish-stars just wait)
     const a = new World({ seed: 5, save: { v: 2, level: 30 } }); a.wave.phase = 'explore';
     const e = a.spawnEnemy(type); e.state = 'chase'; e.x = 5; e.z = 0; a.player.x = 0; a.player.z = 0;
     let windups = 0, bad = false;
@@ -2269,7 +2269,7 @@ import { makeRng } from '../src/sim/rng.js';
     b.aggro = true; b.state = 'recover'; b.t = 999;
     let cast = null;
     for (let i = 0; i < 60 * 7 && !cast; i++) { w.command({ type: 'stop' }); w.runCommands(); w.step(CONFIG.TICK); cast = w.events.find((ev) => ev.type === 'remnantCast'); w.events.length = 0; }
-    check('Remnants: a new attack, a ring of blows around you', cast && cast.name === 'Iron Rain' && w.falls.length === REMNANT.count);
+    check('Remnants: the Warden\'s Remnant calls two shades of itself (Mirrored Oath)', cast && cast.name === 'Mirrored Oath' && w.enemies.filter((e) => e.type === 'oathshade' && e.summoner === b.id).length === 2);
     const l0 = w.loot.length, d0 = p.dust;
     w.killEnemy(b, 'basic');
     check('Remnants: always drop a set piece, and Wishdust', w.loot.slice(l0).some((l) => l.item.set) && p.dust === d0 + REMNANT.dust);
@@ -2340,6 +2340,216 @@ import { makeRng } from '../src/sim/rng.js';
     let shot = false;
     for (let i = 0; i < 60 && !shot; i++) { w.step(CONFIG.TICK); shot = w.projectiles.some((pr) => pr.basic); }
     check('Swings: a shot that has started still goes if the target slips a little out of range', shot);
+  }
+}
+// --- 0.31: unique Remnants, world events, the merchant, ascending, glows, set bonuses ------
+{
+  const { geared } = await import('./balance.mjs');
+  const { REMNANT, EVENTS, MERCHANT } = await import('../src/sim/surprises.js');
+  const { rollUnique, rollSetPiece: rsp, itemStats: stats, IMMORTAL, REMNANT_UNIQUE } = await import('../src/sim/items.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const run = (w, sec, fn) => { for (let i = 0; i < sec * 60; i++) { if (fn) fn(); w.step(CONFIG.TICK); } };
+  const remnantOf = (type, map) => {
+    const w = new World({ seed: 3, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 70, 3), { bossKills: { boss: 5, boss2: 5, boss3: 5 } }) });
+    w.loadMap(map, 'town');
+    const b = w.enemies.find((e) => e.type === type);
+    w.enemies = [b];
+    if (!b.remnant) w.makeRemnant(b);
+    const p = w.player;
+    p.x = p.px = b.x - 7; p.z = p.pz = b.z;
+    b.aggro = true; b.state = 'recover'; b.t = 999;
+    return { w, p, b };
+  };
+  const hold = (w) => () => { w.command({ type: 'stop' }); w.runCommands(); };
+  {
+    const { w, b } = remnantOf('boss', 'keep');
+    run(w, REMNANT.shades.first + 0.2, hold(w));
+    const shades = w.enemies.filter((e) => e.summoner === b.id);
+    w.killEnemy(b, 'basic');
+    check('Mirrored Oath: the shades fall with their Remnant', shades.length === 2 && shades.every((s) => s.dead));
+  }
+  {
+    const { w, p, b } = remnantOf('boss2', 'hollow');
+    run(w, REMNANT.pools.first + 0.1, hold(w));
+    check('Spore Bloom: the Mycelord\'s Remnant grows spore pools near you (never right under you)', w.hazards.length === REMNANT.pools.count && w.hazards.every((h) => { const d = Math.hypot(h.x - p.x, h.z - p.z); return d >= REMNANT.pools.near - 0.5 && d <= REMNANT.pools.far + 0.5; }) && w.telegraphs.some((t) => t.pool));
+    const r0 = w.hazards[0].r, hp0 = p.hp;
+    p.x = p.px = w.hazards[0].x; p.z = p.pz = w.hazards[0].z; // stand in one
+    run(w, 2, hold(w));
+    check('Spore Bloom: the pools grow, and standing in one hurts', w.hazards[0].r > r0 + 1 && p.hp < hp0);
+  }
+  {
+    const { w, b } = remnantOf('boss3', 'sanctum');
+    b.hp = b.maxHp * 0.5;
+    run(w, REMNANT.stars.first + 0.1, hold(w));
+    const stars = w.enemies.filter((e) => e.type === 'wishstar');
+    check('Unwishing: The Unmade\'s Remnant calls three wish-stars', stars.length === 3);
+    const hp = b.hp, dmg = b.dmgMult;
+    w.killEnemy(stars[0], 'basic');
+    run(w, REMNANT.stars.life + 0.2, hold(w));
+    check('Unwishing: each wish-star left standing heals it 5% and makes it hit 10% harder', Math.abs(b.hp - hp - b.maxHp * 0.1) < b.maxHp * 0.005 && Math.abs(b.dmgMult / dmg - 1.21) < 0.001, `${((b.hp - hp) / b.maxHp).toFixed(3)} ${(b.dmgMult / dmg).toFixed(3)}`);
+  }
+  {
+    const it = rollUnique(mk(4), 70, REMNANT_UNIQUE.boss3, 'mage');
+    check('Unique Immortals: each Remnant has its own (The Unmade: The Unwished Crown, a helm)', it.rarity === IMMORTAL && it.effect === 'unwished' && it.slot === 'helm' && it.name === 'The Unwished Crown');
+    const save = geared('mage', 100, 4);
+    save.equipped.helm = it;
+    const w = new World({ seed: 7, mode: 'explore', cls: 'mage', save: Object.assign(save, { tierMax: 5, worldTier: 3, bossKills: { boss: 1, boss2: 1, boss3: 1 } }) });
+    w.loadMap('sanctum', 'spire');
+    const b = w.enemies.find((e) => e.def.boss);
+    w.enemies = [b];
+    const p = w.player;
+    p.ward = 0; p.wardT = 99;
+    const hp = p.hp;
+    w.hitPlayer(0, { doom: 0.35, src: b });
+    check('The Unwished Crown: Doom takes half', Math.abs(hp - p.hp - Math.round(p.stats.maxHp * 0.175)) <= 1, `${hp - p.hp} of ${p.stats.maxHp}`);
+  }
+  {
+    const save = geared('warrior', 60, 3);
+    save.equipped.ring = rollUnique(mk(5), 60, 'oathsignet', 'warrior');
+    const w = new World({ seed: 7, cls: 'warrior', save });
+    const p = w.player; w.wave.phase = 'explore'; w.enemies = [];
+    const near = w.spawnEnemy('grunt', { x: 3, z: 0, level: 60 }); near.x = near.px = 3; near.z = near.pz = 0; near.hp = near.maxHp = 1e9; near.state = 'recover'; near.t = 999;
+    p.x = p.px = 0; p.z = p.pz = 0; p.parryT = 0.3; p.parryAge = 0;
+    w.hitPlayer(10, { parryable: true, src: near });
+    check("Oathbreaker's Signet: a perfect parry cuts everything close", near.hp < 1e9 && w.events.some((ev) => ev.type === 'oathBlade'));
+  }
+  // Ascending
+  {
+    const save = geared('archer', 60, 3);
+    const a = rollUnique(mk(6), 60, 'sporeheart', 'archer'), dup = rollUnique(mk(7), 60, 'sporeheart', 'archer');
+    save.equipped.chest = a; save.bag = [dup];
+    const w = new World({ seed: 7, cls: 'archer', save });
+    const before = stats(a).armor;
+    w.command({ type: 'ascend', slot: 'chest', index: 0 }); w.runCommands();
+    check('Ascending: a duplicate Immortal gives a star (+10% to every stat) and is used up', a.stars === 1 && w.player.bag.length === 0 && Math.abs(stats(a).armor / before - 1.1) < 0.02);
+    const other = rollUnique(mk(8), 60, 'oathsignet', 'archer');
+    w.player.bag = [other];
+    w.command({ type: 'ascend', slot: 'chest', index: 0 }); w.runCommands();
+    check('Ascending: only the same Immortal will do', a.stars === 1 && w.player.bag.length === 1);
+  }
+  // Glows
+  {
+    const w = new World({ seed: 7, mode: 'explore', cls: 'rogue', save: geared('rogue', 40, 2) });
+    w.unlockGlow('gold');
+    check('Glows: an earned glow is shown at once and kept with the character', w.player.glows.includes('gold') && w.player.glow === 'gold' && w.toSave().glows.includes('gold'));
+    w.command({ type: 'setGlow', id: 'void' }); w.runCommands();
+    check('Glows: you can only show one you have earned', w.player.glow === 'gold');
+    w.command({ type: 'setGlow', id: null }); w.runCommands();
+    check('Glows: or none', w.player.glow === null);
+  }
+  // World events
+  {
+    const w = new World({ seed: 9, mode: 'explore', cls: 'archer', save: geared('archer', 40, 3) });
+    w.loadMap('frost', 'town');
+    w.enemies = [];
+    const ev = w.startEvent('meteor');
+    check('Meteor: it falls somewhere away from you', ev && ev.state === 'falling' && Math.hypot(ev.x - w.player.x, ev.z - w.player.z) >= 17);
+    run(w, EVENTS.meteor.warn + 0.1);
+    const pack = w.enemies.filter((e) => ev.ids.includes(e.id));
+    check('Meteor: a pack crawls out of the crater', ev.state === 'fight' && pack.length === EVENTS.meteor.pack);
+    const chests = w.chests.length;
+    for (const e of pack) w.killEnemy(e, 'basic');
+    run(w, 0.1);
+    check('Meteor: clear it and a radiant chest waits in the crater', !w.happening && w.chests.length === chests + 1 && w.chests[w.chests.length - 1].tier === 'radiant' && Math.hypot(w.chests[w.chests.length - 1].x - ev.x, w.chests[w.chests.length - 1].z - ev.z) < 0.1);
+  }
+  {
+    const w = new World({ seed: 9, mode: 'explore', cls: 'warrior', save: geared('warrior', 40, 3) });
+    w.loadMap('frost', 'town');
+    w.enemies = [];
+    const p = w.player;
+    w.eventClock = 1e9; // (no other event starting meanwhile)
+    const ev = w.startEvent('shrine');
+    p.x = p.px = ev.x; p.z = p.pz = ev.z;
+    const stay = () => { p.x = ev.x; p.z = ev.z; p.hp = p.stats.maxHp; w.command({ type: 'stop' }); w.runCommands(); };
+    run(w, 0.2, stay);
+    check('Shrine: step into the ring to start it', ev.state === 'hold');
+    run(w, 10, stay);
+    check('Shrine: waves come at you while you hold it', w.enemies.length >= EVENTS.shrine.per);
+    const dust = p.dust, tk = p.tickets, chests = w.chests.length;
+    run(w, EVENTS.shrine.hold, () => { stay(); w.enemies = []; });
+    // (standing on the shrine, the radiant chest opens the moment it appears: its shard comes too)
+    check('Shrine: hold it 60 seconds for a radiant chest, Wishdust and a shard', !w.happening && (w.chests.length === chests + 1 || p.tickets >= tk + EVENTS.shrine.tickets + 1) && p.dust === dust + EVENTS.shrine.dust && p.tickets >= tk + EVENTS.shrine.tickets);
+    w.eventClock = 1e9;
+    const ev2 = w.startEvent('shrine');
+    p.x = p.px = ev2.x; p.z = p.pz = ev2.z;
+    run(w, 0.2, () => { p.x = ev2.x; p.z = ev2.z; w.command({ type: 'stop' }); w.runCommands(); });
+    run(w, EVENTS.shrine.grace + 0.5, () => { p.x = ev2.x + 20; p.z = ev2.z; p.hp = p.stats.maxHp; w.enemies = []; });
+    check('Shrine: leave it empty for 6 seconds and it goes dark', !w.happening);
+  }
+  // The travelling merchant
+  {
+    const w = new World({ seed: 9, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 40, 3), { gold: 1e6, tickets: 10, spec: 'pyromancer' }) });
+    w.loadMap('frost', 'town');
+    const mc = w.merchant || w.spawnMerchant();
+    const p = w.player;
+    check('Merchant: sets up near you, with gear, Wishdust and a set piece for sale', mc && mc.stock.length === MERCHANT.stock.length && Math.hypot(mc.x - p.x, mc.z - p.z) < 15);
+    w.command({ type: 'buyMerchant', i: 0 }); w.runCommands();
+    check('Merchant: you have to walk up to him to buy', !mc.stock[0].sold);
+    p.x = p.px = mc.x + 1; p.z = p.pz = mc.z;
+    p.bag = [];
+    const gold = p.gold, tk = p.tickets, dust = p.dust;
+    for (let i = 0; i < mc.stock.length; i++) { w.command({ type: 'buyMerchant', i }); w.runCommands(); }
+    check('Merchant: everything bought, paid for, and in your bag', mc.stock.every((s) => s.sold) && p.bag.length === 4 && p.bag.some((it) => it.set) && p.bag.filter((it) => !it.set).every((it) => it.rarity >= 3) && p.dust === dust + 5 && p.gold < gold && p.tickets === tk - 5);
+    run(w, MERCHANT.stay + 1, () => { p.hp = p.stats.maxHp; w.enemies = []; });
+    check('Merchant: and he moves on after 3 minutes', !w.merchant);
+  }
+  // Play-changing set bonuses
+  {
+    const four = (cls, spec, setId) => {
+      const save = Object.assign(geared(cls, 60, 3), { spec, talents: {} });
+      for (const slot of ['helm', 'chest', 'boots', 'ring']) { const it = rsp(mk(slot.length), 60, cls, spec); it.set = setId; it.slot = slot; save.equipped[slot] = it; }
+      const w = new World({ seed: 4, cls, save });
+      w.wave.phase = 'explore'; w.enemies = [];
+      const p = w.player; p.x = p.px = 0; p.z = p.pz = 0; for (const k of ['q', 'w', 'e', 'r']) p.cd[k] = 0;
+      return { w, p };
+    };
+    const dummy = (w, x, z = 0) => { const e = w.spawnEnemy('grunt', { x, z, level: 60 }); e.x = e.px = x; e.z = e.pz = z; e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e9; return e; };
+    {
+      const { w } = four('mage', 'frostbinder', 'rimeheart');
+      const a = dummy(w, 3), b = dummy(w, 6);
+      w.shatterFrost(a);
+      check('Rimeheart: a Shatter also Shatters the nearest other enemy', w.events.filter((ev) => ev.type === 'frostShatter').length >= 2 && b.hp < 1e9);
+    }
+    {
+      const { w, p } = four('rogue', 'assassin', 'nightcut');
+      const a = dummy(w, 2), c = dummy(w, 3.5, 1);
+      a.hp = 1;
+      w.killEnemy(a, 'q');
+      const t = dummy(w, 4);
+      w.command({ type: 'cast', slot: 'q', x: 4, z: 0 }); w.runCommands();
+      run(w, 0.3);
+      check('Nightcut: after a Clean Kill, Shadowstrike also cuts everything close to its target', c.hp < 1e9 && t.hp < 1e9);
+    }
+    {
+      const { w, p } = four('rogue', 'shadowdancer', 'veilweave');
+      w.command({ type: 'cast', slot: 'e', x: 6, z: 0 }); w.runCommands();
+      run(w, 0.3);
+      p.cd.q = 5;
+      w.command({ type: 'cast', slot: 'e', x: 0, z: 0 }); w.runCommands();
+      check('Veilweave: trading places Veils you and brings Veilstep back', p.veilT > 3 && p.cd.q === 0);
+    }
+    {
+      const { w, p } = four('warrior', 'berserker', 'bloodbound');
+      w.command({ type: 'cast', slot: 'w', x: 0, z: 0 }); w.runCommands();
+      w.step(CONFIG.TICK);
+      w.takeDamage(p.hp + 1000, null, false);
+      check('Bloodbound: nothing drops you below 1 health while you spin', !p.dead && p.hp === 1);
+    }
+    {
+      const { w, p } = four('warrior', 'bulwark', 'wardstone');
+      const e = dummy(w, 2);
+      p.reck = 6;
+      w.command({ type: 'cast', slot: 'w', x: 0, z: 0 }); w.runCommands();
+      check('Wardstone: a Whirlwind with 5 or more Reckoning Breaks what it hits', e.state === 'stunned' && e.vulnT > 3);
+    }
+    {
+      const { w, p } = four('archer', 'sharpshooter', 'farsight');
+      const a = dummy(w, 4), b = dummy(w, 7);
+      p.swingCount = w.mods.critEvery - 1;
+      w.basicAttack(a);
+      run(w, 0.6);
+      check('Farsight: Steady Aim\'s crits pierce through to the enemy behind', a.hp < 1e9 && b.hp < 1e9);
+    }
   }
 }
 // --- 0.26.1: lighter co-op updates --------------------------------------------------

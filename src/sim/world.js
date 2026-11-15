@@ -15,8 +15,9 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem } from './items.js';
-import { RARE, rareName, THIEF, REMNANT, remnantName } from './surprises.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL } from './items.js';
+import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT } from './surprises.js';
+import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, MAPS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
@@ -63,7 +64,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -95,6 +96,11 @@ export class World {
     this.chestCount = 0;
     this.surpriseN = 0; // dice for Rares, the Wishthief and Remnants (their own streams)
     this.thiefClock = 0;
+    this.hazards = []; // ground that hurts (a Mycelord Remnant's spore pools)
+    this.happening = null; // a world event on this map (0.31)
+    this.eventClock = EVENTS.first;
+    this.merchant = null; // the travelling merchant, while here
+    this.merchantAt = -1e9; // tick of his last visit
     this.telegraphs = [];
     this.events = [];
     this.commands = [];
@@ -239,7 +245,7 @@ export class World {
     for (const h of this.heroes) {
       if (h === this.cur) continue;
       const p = h.player;
-      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving });
+      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null });
     }
     return out;
   }
@@ -369,6 +375,12 @@ export class World {
       wishStats: Object.assign({}, save?.wishStats),
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
+      glows: Array.isArray(save?.glows) ? save.glows.slice() : [], // weapon glows earned (0.31)
+      glow: save?.glow ?? null, // ...and the one shown
+      thieves: save?.thieves ?? 0, // Wishthieves caught
+      unwishedT: 0, // The Unwished Crown: > 0 after avoiding a Doom
+      sporeT: 0, // Sporeheart: time to the next heal
+      nightcutT: 0, // Nightcut set: > 0 after a Clean Kill
       chillT: 0, // Frostbound elites: slower while > 0
       swingCount: 0,
       empowerT: 0, // > 0 while the next ability is empowered (after Nightstep)
@@ -484,6 +496,9 @@ export class World {
       wishStats: p.wishStats,
       streak: p.streak,
       dust: p.dust,
+      glows: p.glows,
+      glow: p.glow,
+      thieves: p.thieves,
       bestWave: this.bestWave,
       maxCheckpoint,
       checkpoint: maxCheckpoint,
@@ -522,6 +537,9 @@ export class World {
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
       else if (c.type === 'enchant') this.enchantItem(c.slot, c.key);
+      else if (c.type === 'ascend') this.ascendItem(c.slot, c.index);
+      else if (c.type === 'setGlow') { if (c.id === null || p.glows.includes(c.id)) p.glow = c.id; }
+      else if (c.type === 'buyMerchant') this.buyMerchant(c.i);
       else if (c.type === 'openCache') this.openCache(c.tier);
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
@@ -790,6 +808,12 @@ export class World {
         e.exposedPid = this.cur.pid;
       }
       this.hitEnemy(e, dmg, { source: slot });
+      if (this.breakNext && !e.dead) {
+        if (e.def.boss) this.addPosture(e, 2, true);
+        else this.stun(e, 1.5);
+        e.vulnT = Math.max(e.vulnT, 4);
+        e.vuln = Math.max(e.vuln || 0, 0.2);
+      }
       if (slot === 'w' && m.wTaunt > 0 && !e.dead) {
         // The Warden's Call: whatever it hits fights you for a while.
         e.tauntPid = this.cur.pid;
@@ -818,6 +842,7 @@ export class World {
       }
     }
     if (storm) this.warriorStorm(struck);
+    this.breakNext = false;
     return hits;
   }
 
@@ -903,6 +928,16 @@ export class World {
         e.vuln = Math.max(e.vuln || 0, m.brittle || 0.15);
         e.brittle = true;
       } else this.stun(e, (e.def.heavy ? 0.4 : 1) * (m.frostFreeze || 1));
+    }
+    if (m.shatterChain && depth === 0) {
+      // Rimeheart: each Shatter also Shatters the nearest other enemy within 6 m.
+      let o = null, od = 6;
+      for (const x of this.enemies) {
+        if (x === e || x.dead || x.state === 'spawn') continue;
+        const dx = dist(x.x, x.z, e.x, e.z) - x.radius;
+        if (dx < od) { od = dx; o = x; }
+      }
+      if (o) this.shatterFrost(o, 1);
     }
     if (depth >= 3) return; // a chain stops after a few jumps
     for (const o of this.enemies) {
@@ -1127,6 +1162,15 @@ export class World {
       this.emit('mark', { id: target.id, x: target.x, z: target.z });
     }
     this.hitEnemy(target, dmg * bonus, { source: slot });
+    if (slot === 'q' && m.nightcutChain && p.nightcutT > 0) {
+      // Nightcut: after a Clean Kill, Shadowstrike also cuts everything close to its target.
+      p.nightcutT = 0;
+      for (const o of this.enemies) {
+        if (o === target || o.dead || o.state === 'spawn' || dist(o.x, o.z, target.x, target.z) > 3 + o.radius) continue;
+        this.hitEnemy(o, dmg * bonus, { source: 'q' });
+      }
+      this.emit('nightcut', { x: target.x, z: target.z, radius: 3 });
+    }
     if (slot === 'q' && m.shadowSlash > 0) {
       // Mirrored Cut: each afterimage copies the Mercy Stroke on whatever is nearest it.
       for (const s of this.shadows) {
@@ -1174,7 +1218,7 @@ export class World {
     if (b.shot) {
       const a = dAtan2(target.z - p.z, target.x - p.x);
       this.projectiles.push({
-        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit, critBonus,
+        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit, critBonus, pierce: critBonus > 0 && this.mods.steadyPierce ? [] : null,
         x: p.x + dCos(a) * 0.7, z: p.z + dSin(a) * 0.7, px: p.x, pz: p.z,
         vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed,
         radius: 0.3, dmg, parryable: false, reflected: false, life: 1.2, dead: false,
@@ -1240,6 +1284,12 @@ export class World {
         sh.swapped = true;
         p.moveTarget = null;
         this.emit('shadowSwap', { x: p.x, z: p.z, fx: ox, fz: oz });
+        if (m.swapVeil) {
+          // Veilweave: the swap Veils you and Veilstep is ready again.
+          p.veilT = Math.max(p.veilT, ((this.kit.q && this.kit.q.veil) || 4) + (m.veilTime || 0));
+          p.cd.q = 0;
+          this.emit('veil', { x: p.x, z: p.z, time: p.veilT });
+        }
         return;
       }
     }
@@ -1301,6 +1351,7 @@ export class World {
         if (slot === 'w' && m.reckoning && p.reck > 0) {
           // Reckoning (Bulwark): every blow you took or turned aside comes back in this Whirlwind.
           dmg *= 1 + CONFIG.RECKON_PER * p.reck;
+          this.breakNext = m.reckonBreak && p.reck >= 5; // Wardstone: a big Reckoning Breaks what it hits
           this.emit('reckoning', { x: p.x, z: p.z, stacks: p.reck });
           p.reck = 0;
           p.reckAcc = 0;
@@ -1746,6 +1797,21 @@ export class World {
     for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
     if (p.fangT > 0) p.fangT -= dt;
     p.idleT = (p.idleT || 0) + dt; // reset by any input (applyCommands)
+    if (p.unwishedT > 0) p.unwishedT -= dt;
+    if (p.nightcutT > 0) p.nightcutT -= dt;
+    if (this.mods.sporeheart) {
+      // Sporeheart: spores heal you for every enemy close by.
+      p.sporeT = (p.sporeT || 0) - dt;
+      if (p.sporeT <= 0) {
+        p.sporeT = 4;
+        let n = 0;
+        for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 6 + e.radius) n++;
+        if (n > 0) {
+          this.healPlayer(p.stats.maxHp * Math.min(0.09, 0.015 * n), true);
+          this.emit('sporeHeal', { x: p.x, z: p.z, n });
+        }
+      }
+    }
     const cps = CLASSES[this.cls].passive;
     if (cps && cps.ward) {
       // Arcane Ward: back to full a few seconds after the last hit.
@@ -2086,7 +2152,7 @@ export class World {
         this.emit('dodge', { x: p.x, z: p.z });
         return 'dodged';
       }
-      return this.takeDamage(Math.round(p.stats.maxHp * doom), src, true);
+      return this.takeDamage(Math.round(p.stats.maxHp * doom * (m.unwished ? 0.5 : 1)), src, true); // The Unwished Crown: half
     }
     if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
       // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
@@ -2106,6 +2172,13 @@ export class World {
         p.dash.refunded = true;
         p.cd[p.dash.slot] = Math.min(p.cd[p.dash.slot], CONFIG.DODGE_REFUND_CD);
         this.stats.dodges++;
+        if (m.galeHurricane > 0 && p.dash.slot === 'e') {
+          // Galeborn: rolling through an attack whips up a short Hurricane.
+          p.hurricaneT = Math.max(p.hurricaneT || 0, m.galeHurricane);
+          p.hurricaneAs = Math.max(p.hurricaneAs || 0, (this.kit.r && this.kit.r.as) || 0.4);
+          this.recalcStats();
+          this.emit('galeburst', { x: p.x, z: p.z });
+        }
         this.emit('perfectDodge', { x: p.x, z: p.z });
         this.triggerSlipstream();
       } else {
@@ -2130,6 +2203,14 @@ export class World {
             }
           }
           for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - CONFIG.PERFECT_CD_REFUND);
+          if (m.oathsignet) {
+            // Oathbreaker's Signet: a spectral blade on everything close.
+            for (const o of this.enemies) {
+              if (o.dead || o.state === 'spawn' || dist(o.x, o.z, p.x, p.z) > 6 + o.radius) continue;
+              this.hitEnemy(o, p.stats.ad * 2.5, { source: 'oath', canCrit: false });
+            }
+            this.emit('oathBlade', { x: p.x, z: p.z, radius: 6 });
+          }
           this.startSlow();
           this.triggerSlipstream();
         }
@@ -2241,6 +2322,7 @@ export class World {
     p.hurtT = 0.25;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg, warded, doom });
     if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
+    if (p.hp <= 0 && p.spin && m.spinGuard) p.hp = 1; // Bloodbound: not while you spin
     if (p.hp <= 0 && m.bloodSave > 0 && p.hp + dmg < p.stats.maxHp * 0.5 && !(p.bloodSaveT > 0)) {
       // Blood Rage: a Bloodied Berserker shrugs off one killing blow every 30 seconds.
       p.hp = 1;
@@ -2335,6 +2417,8 @@ export class World {
       if (e.remnant) {
         extra.push(rollSetPiece(this.rng, Math.max(1, Math.round(e.level)), this.cls, p.spec));
         if (hoard) count++;
+        // Its own Immortal, now and then (0.31).
+        if (REMNANT_UNIQUE[e.type] && this.rng() < REMNANT.unique) extra.push(rollUnique(this.rng, Math.max(1, Math.round(e.level)), REMNANT_UNIQUE[e.type], this.cls));
       }
       extra.forEach((item, i) => {
         if (!item) return;
@@ -2511,6 +2595,11 @@ export class World {
       if (ob.kind !== 'npc' && ob.kind !== 'sign') continue;
       const d = dist(p.x, p.z, ob.x, ob.z) - ob.r;
       if (d < CONFIG.INTERACT_RANGE && d < bd) { best = ob; bd = d; }
+    }
+    if (this.merchant) {
+      // The travelling merchant (0.31)
+      const d = dist(p.x, p.z, this.merchant.x, this.merchant.z) - 0.6;
+      if (d < CONFIG.INTERACT_RANGE && d < bd) best = { kind: 'merchant', id: 'merchant', name: 'Travelling Merchant', x: this.merchant.x, z: this.merchant.z, r: 0.6 };
     }
     return best;
   }
@@ -2735,7 +2824,7 @@ export class World {
     e.dmgMult *= REMNANT.dmg;
     e.expValue *= REMNANT.reward;
     e.goldValue = Math.round(e.goldValue * REMNANT.reward);
-    e.remnantT = REMNANT.first;
+    e.remnantT = e.type === 'boss' ? REMNANT.shades.first : e.type === 'boss2' ? REMNANT.pools.first : e.type === 'boss3' ? REMNANT.stars.first : REMNANT.first;
     this.emit('remnantRise', { id: e.id, name: remnantName(e.def), attack: REMNANT.attack[e.type] || 'Echo', map: this.map.name, x: e.x, z: e.z });
   }
 
@@ -2853,6 +2942,324 @@ export class World {
     this.emit('enchanted', { slot, from: key, to: next, value, name: item.name });
   }
 
+  // =========================================================================
+  // 0.31: unique Remnants, world events, the travelling merchant, ascending, glows
+  // =========================================================================
+  /** Each Remnant's own mechanic (bosses without one fall back to a ring of blows). */
+  stepRemnant(e, near, dt) {
+    e.remnantT -= dt;
+    if (e.remnantT > 0) return;
+    const pick = near[Math.floor(this.rng() * near.length)].player;
+    const name = REMNANT.attack[e.type] || 'Echo';
+    if (e.type === 'boss') {
+      // Mirrored Oath: shades of the Warden, fighting with its own combo.
+      const S = REMNANT.shades;
+      e.remnantT = S.every;
+      const alive = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+      for (let i = alive; i < S.count; i++) {
+        const a = e.facing + (i % 2 ? 1.6 : -1.6);
+        const c = this.clampToArena(e.x + dCos(a) * 4, e.z + dSin(a) * 4, 1);
+        const o = this.spawnEnemy('oathshade', { x: c.x, z: c.z, level: e.level });
+        o.x = o.px = c.x;
+        o.z = o.pz = c.z;
+        o.maxHp = o.hp = Math.round(e.maxHp * S.hp);
+        o.dmgMult = e.dmgMult * S.dmg;
+        o.summoner = e.id;
+        o.home = null;
+        o.aggro = true;
+        o.state = 'chase';
+      }
+    } else if (e.type === 'boss2') {
+      // Spore Bloom: pools that grow under you and hurt while you stand in them.
+      const P = REMNANT.pools;
+      e.remnantT = P.every;
+      const dmg = (e.def.attacks[0].dmg || 20) * e.dmgMult * P.dmg;
+      for (let i = 0; i < P.count; i++) {
+        // Near you, never under you: they take ground away rather than chase you out of a fight.
+        const a = this.rng() * TAU, d = P.near + this.rng() * (P.far - P.near);
+        const c = this.clampToArena(pick.x + dCos(a) * d, pick.z + dSin(a) * d, 1);
+        const tele = { id: this.nextId++, owner: null, kind: 'circle', x: c.x, z: c.z, dir: 0, radius: P.from, offset: 0, t: 0, dur: P.life, parryable: false, cue: false, pool: true };
+        this.telegraphs.push(tele);
+        this.hazards.push({ x: c.x, z: c.z, r: P.from, to: P.to, grow: P.grow, left: P.life, life: P.life, tick: P.tick, next: P.tick, dmg, level: e.level, srcId: e.id, tele });
+      }
+    } else if (e.type === 'boss3') {
+      // Unwishing: wish-stars to break before they feed it.
+      const S = REMNANT.stars;
+      e.remnantT = S.every;
+      if (this.enemies.some((o) => o.summoner === e.id && !o.dead)) return;
+      for (let i = 0; i < S.count; i++) {
+        const a = (i / S.count) * TAU + this.rng();
+        const c = this.clampToArena(e.x + dCos(a) * S.dist, e.z + dSin(a) * S.dist, 1.5);
+        const o = this.spawnEnemy('wishstar', { x: c.x, z: c.z, level: e.level });
+        o.x = o.px = c.x;
+        o.z = o.pz = c.z;
+        o.maxHp = o.hp = Math.round(e.maxHp * S.hp);
+        o.summoner = e.id;
+        o.lifeT = S.life;
+        o.home = null;
+        o.aggro = true;
+        o.state = 'recover';
+      }
+    } else {
+      e.remnantT = REMNANT.every;
+      const blow = (e.def.attacks[0].dmg || 20) * e.dmgMult * REMNANT.blow;
+      for (let i = 0; i < REMNANT.count; i++) {
+        const a = this.rng() * TAU, d = i === 0 ? 0 : 1.5 + this.rng() * REMNANT.spread;
+        const c = this.clampToArena(pick.x + dCos(a) * d, pick.z + dSin(a) * d, 1);
+        this.falls.push({ x: c.x, z: c.z, r: REMNANT.radius, t: -i * 0.15, dur: REMNANT.warn, dmg: blow, level: e.level, srcId: e.id, tele: null });
+      }
+    }
+    this.emit('remnantCast', { id: e.id, name, x: pick.x, z: pick.z });
+  }
+
+  /** A wish-star waits; if it is still there when its time runs out, it feeds the Remnant that called it. */
+  stepStill(e, dt) {
+    e.moving = false;
+    e.lifeT -= dt;
+    if (e.lifeT > 0) return;
+    const S = REMNANT.stars;
+    const b = this.enemyById(e.summoner);
+    e.dead = true;
+    if (b && !b.dead) {
+      b.hp = Math.min(b.maxHp, b.hp + b.maxHp * S.heal);
+      b.dmgMult *= 1 + S.dmg;
+      b.unwished = (b.unwished || 0) + 1;
+    }
+    this.emit('starFeeds', { id: e.id, x: e.x, z: e.z, bx: b ? b.x : e.x, bz: b ? b.z : e.z });
+  }
+
+  /** Ground that hurts (Spore Bloom): it grows, ticks on whoever stands in it, then fades. */
+  stepHazards(dt) {
+    if (!this.hazards.length) return;
+    const was = this.cur;
+    for (const hz of this.hazards) {
+      hz.left -= dt;
+      hz.r = Math.min(hz.to, hz.r + hz.grow * dt);
+      hz.tele.radius = hz.r;
+      hz.tele.t = hz.life - hz.left;
+      hz.next -= dt;
+      if (hz.next <= 0) {
+        hz.next += hz.tick;
+        const src = this.enemyById(hz.srcId);
+        for (const h of this.heroes) {
+          if (h.player.dead || dist(h.player.x, h.player.z, hz.x, hz.z) > hz.r + h.player.radius * 0.4) continue;
+          this.use(h);
+          this.hitPlayer(hz.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: hz.level, srcId: hz.srcId } });
+        }
+      }
+    }
+    this.use(was);
+    const gone = this.hazards.filter((hz) => hz.left <= 0).map((hz) => hz.tele);
+    if (gone.length) this.telegraphs = this.telegraphs.filter((t) => !gone.includes(t));
+    this.hazards = this.hazards.filter((hz) => hz.left > 0);
+  }
+
+  /** A chest put exactly here (world events). */
+  addChestAt(x, z, tier) {
+    const rng = this.streamRng('chest', ++this.chestCount);
+    const map = this.map;
+    const depth = map.portals && map.portals[0] ? Math.min(1, dist(x, z, map.portals[0].x, map.portals[0].z) / (2 * this.radius - 12)) : 0.5;
+    const level = this.worldTier() >= 2 ? CONFIG.MAX_LEVEL : Math.max(1, (map.level || 1) + Math.round((map.levelSpan || 0) * depth));
+    const chest = { id: this.nextId++, x, z, tier, level, seed: Math.floor(rng() * 1e9) };
+    this.chests.push(chest);
+    return chest;
+  }
+
+  /** A clear spot this far from the party's leader, for an event or the merchant. */
+  spotAway(rng, from, to) {
+    const lead = this.heroes[0].player;
+    for (let i = 0; i < 40; i++) {
+      const a = rng() * TAU, d = from + rng() * (to - from);
+      const c = this.clampToArena(lead.x + dCos(a) * d, lead.z + dSin(a) * d, 4);
+      const probe = { x: c.x, z: c.z };
+      if (this.pushOut(probe, 2)) continue;
+      if (this.map.portals.some((g) => dist(g.x, g.z, c.x, c.z) < 8)) continue;
+      return c;
+    }
+    return null;
+  }
+
+  /** The level and strength of a map's enemies, for packs that events call up. */
+  spawnHere(x, z) {
+    const types = this.map.spawns.filter((s) => !ENEMIES[s.type].boss).map((s) => s.type);
+    const t = types.length ? types[Math.floor(this.rng() * types.length)] : 'grunt';
+    const depth = Math.min(1, dist(x, z, this.map.portals[0].x, this.map.portals[0].z) / (2 * this.radius - 12));
+    const level = Math.max(1, (this.map.level || 1) + Math.round((this.map.levelSpan || 0) * depth));
+    const e = this.spawnCamp({ type: t, respawn: 1e9 }, { def: { x, z, level, type: t } });
+    e.home = null;
+    e.aggro = true;
+    e.state = 'chase';
+    return e;
+  }
+
+  /** World events (0.31): a meteor that brings a pack and a chest, or a shrine to hold. */
+  startEvent(kind) {
+    if (this.happening || this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    const rng = this.streamRng('event', this.surpriseN++);
+    const c = this.spotAway(rng, 18, 28);
+    if (!c) return null;
+    if (kind === 'meteor') {
+      const M = EVENTS.meteor;
+      this.happening = { kind, x: c.x, z: c.z, r: M.r, state: 'falling', t: M.warn, ids: [], left: 0 };
+      this.falls.push({ x: c.x, z: c.z, r: M.hit, t: 0, dur: M.warn, dmg: 40 * enemyScale(Math.max(1, this.map.level || 1)).dmg * M.impact, level: this.map.level || 1, srcId: null, tele: null });
+    } else {
+      const S = EVENTS.shrine;
+      this.happening = { kind, x: c.x, z: c.z, r: S.r, state: 'waiting', t: S.wait, wave: 0, grace: S.grace, hold: S.hold };
+    }
+    this.emit('eventStart', { kind, map: this.map.name, x: c.x, z: c.z });
+    return this.happening;
+  }
+
+  stepEvents(dt) {
+    if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.map.id === 'rift') return;
+    const ev = this.happening;
+    if (!ev) {
+      this.eventClock -= dt;
+      if (this.eventClock <= 0) {
+        this.eventClock = EVENTS.every;
+        const r = this.streamRng('eventRoll', this.surpriseN++);
+        if (r() < EVENTS.chance) this.startEvent(r() < 0.5 ? 'meteor' : 'shrine');
+      }
+      return;
+    }
+    const near = (rad) => this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, ev.x, ev.z) <= rad);
+    if (ev.kind === 'meteor') {
+      const M = EVENTS.meteor;
+      if (ev.state === 'falling') {
+        ev.t -= dt;
+        if (ev.t > 0) return;
+        ev.state = 'fight';
+        ev.t = M.time;
+        for (let i = 0; i < M.pack; i++) {
+          const a = (i / M.pack) * TAU, d = 2 + (i % 3);
+          const c = this.clampToArena(ev.x + dCos(a) * d, ev.z + dSin(a) * d, 1);
+          ev.ids.push(this.spawnHere(c.x, c.z).id);
+        }
+        this.emit('meteorLands', { x: ev.x, z: ev.z, n: M.pack });
+        return;
+      }
+      ev.t -= dt;
+      ev.left = ev.ids.filter((id) => this.enemyById(id)).length;
+      if (ev.left === 0) {
+        this.addChestAt(ev.x, ev.z, 'radiant');
+        this.emit('eventDone', { kind: 'meteor', x: ev.x, z: ev.z });
+        this.happening = null;
+      } else if (ev.t <= 0) {
+        this.emit('eventFail', { kind: 'meteor' });
+        this.happening = null;
+      }
+      return;
+    }
+    // The shrine
+    const S = EVENTS.shrine;
+    if (ev.state === 'waiting') {
+      ev.t -= dt;
+      if (near(ev.r).length) {
+        ev.state = 'hold';
+        ev.t = S.hold;
+        ev.next = 2;
+        this.emit('shrineStart', { x: ev.x, z: ev.z, secs: S.hold });
+      } else if (ev.t <= 0) {
+        this.emit('eventFail', { kind: 'shrine', faded: true });
+        this.happening = null;
+      }
+      return;
+    }
+    ev.t -= dt;
+    ev.next -= dt;
+    if (ev.next <= 0) {
+      ev.next = S.wave;
+      ev.wave++;
+      for (let i = 0; i < S.per; i++) {
+        const a = this.rng() * TAU, d = 10 + this.rng() * 3;
+        const c = this.clampToArena(ev.x + dCos(a) * d, ev.z + dSin(a) * d, 1);
+        this.spawnHere(c.x, c.z);
+      }
+    }
+    if (near(ev.r).length) ev.grace = S.grace;
+    else ev.grace -= dt;
+    if (ev.grace <= 0) {
+      this.emit('eventFail', { kind: 'shrine' });
+      this.happening = null;
+    } else if (ev.t <= 0) {
+      this.addChestAt(ev.x, ev.z, 'radiant');
+      const was = this.cur;
+      for (const h of near(ev.r + 6)) {
+        if ((h.player.idleT || 0) >= CONFIG.IDLE_NO_REWARD) continue; // away from the keys: nothing
+        this.use(h);
+        this.player.dust += S.dust;
+        this.player.tickets += S.tickets;
+      }
+      this.use(was);
+      this.emit('eventDone', { kind: 'shrine', x: ev.x, z: ev.z, dust: S.dust, tickets: S.tickets });
+      this.happening = null;
+    }
+  }
+
+  /** The travelling merchant: arrives on a map now and then and stays a few minutes. */
+  spawnMerchant() {
+    if (this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    const rng = this.streamRng('merchant', this.surpriseN++);
+    const c = this.spotAway(rng, 9, 14);
+    if (!c) return null;
+    const L = this.worldTier() >= 2 ? CONFIG.MAX_LEVEL : Math.max(1, (this.map.level || 1) + Math.round((this.map.levelSpan || 0) * 0.5));
+    const lv = 1 + 0.1 * (L - 1);
+    const stock = MERCHANT.stock.map((s) => Object.assign({}, s, { gold: s.gold ? Math.round(s.gold * lv) : 0, tickets: s.tickets || 0, sold: false }));
+    this.merchant = { x: c.x, z: c.z, left: MERCHANT.stay, level: L, stock };
+    this.merchantAt = this.ticks;
+    this.emit('merchantArrive', { map: this.map.name, x: c.x, z: c.z });
+    return this.merchant;
+  }
+
+  /** Buy from the merchant (stock is shared in a party: first come, first served). */
+  buyMerchant(i) {
+    const mc = this.merchant;
+    const p = this.player;
+    if (!mc || dist(p.x, p.z, mc.x, mc.z) > CONFIG.INTERACT_RANGE + 1.5) return;
+    const s = mc.stock[i];
+    if (!s || s.sold) return;
+    if (p.gold < s.gold || p.tickets < s.tickets) {
+      this.emit('cantAfford');
+      return;
+    }
+    if (s.kind !== 'dust' && p.bag.length >= CONFIG.BAG_SIZE) {
+      this.emit('bagFull');
+      return;
+    }
+    p.gold -= s.gold;
+    p.tickets -= s.tickets;
+    s.sold = true;
+    let item = null;
+    if (s.kind === 'dust') p.dust += s.n;
+    else if (s.kind === 'set') item = rollSetPiece(this.rng, mc.level, this.cls, p.spec);
+    else item = rollItem(this.rng, mc.level, { minRarity: s.min, cls: this.cls });
+    if (item) p.bag.push(item);
+    this.emit('merchantSold', { label: s.label, item, dust: s.kind === 'dust' ? s.n : 0 });
+  }
+
+  /** Ascending (0.31): feed a duplicate Immortal (same effect) from the bag into the one you wear. */
+  ascendItem(slot, index) {
+    const p = this.player;
+    const item = p.equipped[slot];
+    const dup = p.bag[index];
+    if (!item || !dup || item.rarity !== IMMORTAL || dup.rarity !== IMMORTAL || !item.effect || dup.effect !== item.effect || dup === item) return;
+    if ((item.stars || 0) >= MAX_STARS) return;
+    this.tradeItemGone(dup.id);
+    p.bag.splice(index, 1);
+    item.stars = (item.stars || 0) + 1;
+    this.recalcStats();
+    this.emit('ascended', { slot, stars: item.stars, name: item.name });
+  }
+
+  /** Weapon glows (0.31): earned once, kept by the character. */
+  unlockGlow(id) {
+    const p = this.player;
+    if (!GLOWS[id] || p.glows.includes(id)) return;
+    p.glows.push(id);
+    if (!p.glow) p.glow = id;
+    this.emit('glowUnlocked', { id, name: GLOWS[id].name });
+  }
+
   /** Make an enemy an elite with `n` different modifiers. */
   makeElite(e, n) {
     const pool = AFFIX_IDS.slice();
@@ -2925,6 +3332,7 @@ export class World {
       const before = p.riftMax;
       if (won) {
         p.riftMax = Math.max(p.riftMax, r.tier + 1);
+        if (r.tier >= 10) this.unlockGlow('rift');
         if (!p.riftBest || r.tier > p.riftBest.tier || (r.tier === p.riftBest.tier && secs < p.riftBest.secs)) p.riftBest = { tier: r.tier, secs };
         p.tickets += 1; // your shard back, to go again
       }
@@ -3546,21 +3954,7 @@ export class World {
       if (!e.def.boss || e.dead || e.state === 'spawn' || !e.aggro || e.returning) continue;
       const near = this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) <= DOOM.range);
       if (!near.length) continue;
-      if (e.remnant) {
-        // A Remnant's own attack (0.29): a ring of blows falling around whoever it fights.
-        e.remnantT -= dt;
-        if (e.remnantT <= 0) {
-          e.remnantT = REMNANT.every;
-          const h = near[Math.floor(this.rng() * near.length)].player;
-          const blow = (e.def.attacks[0].dmg || 20) * e.dmgMult * REMNANT.blow;
-          for (let i = 0; i < REMNANT.count; i++) {
-            const a = this.rng() * TAU, d = i === 0 ? 0 : 1.5 + this.rng() * REMNANT.spread;
-            const c = this.clampToArena(h.x + dCos(a) * d, h.z + dSin(a) * d, 1);
-            this.falls.push({ x: c.x, z: c.z, r: REMNANT.radius, t: -i * 0.15, dur: REMNANT.warn, dmg: blow, level: e.level, srcId: e.id, tele: null });
-          }
-          this.emit('remnantCast', { id: e.id, name: REMNANT.attack[e.type] || 'Echo', x: h.x, z: h.z });
-        }
-      }
+      if (e.remnant) this.stepRemnant(e, near, dt); // each Remnant's own mechanic (0.31)
       // Idle heroes first: standing still with no input near a boss is never safe.
       for (const h of near) {
         if (h.player.idleT < DOOM.idle) continue;
@@ -3581,12 +3975,12 @@ export class World {
         if (d < hd) { hd = d; h = x; }
       }
       this.castDoom(e, h, pct, false);
-      if (e.def.final) this.falls.push({ follow: h.pid, r: DOOM.radius, t: -DOOM.second, dur: DOOM.warn, dmg: 0, doom: pct, level: e.level, srcId: e.id, tele: null });
+      if (e.def.final) this.falls.push({ follow: h.pid, hero: h.pid, r: DOOM.radius, t: -DOOM.second, dur: DOOM.warn, dmg: 0, doom: pct, level: e.level, srcId: e.id, tele: null });
     }
   }
 
   castDoom(e, h, pct, idle) {
-    this.falls.push({ x: h.player.x, z: h.player.z, r: DOOM.radius, t: 0, dur: DOOM.warn, dmg: 0, doom: pct, level: e.level, srcId: e.id, tele: null });
+    this.falls.push({ x: h.player.x, z: h.player.z, r: DOOM.radius, t: 0, dur: DOOM.warn, dmg: 0, doom: pct, hero: h.pid, level: e.level, srcId: e.id, tele: null });
     this.emit('doomCast', { id: e.id, x: h.player.x, z: h.player.z, radius: DOOM.radius, pct, idle, hero: h.pid, name: e.def.name });
   }
 
@@ -3615,7 +4009,14 @@ export class World {
       const src = this.enemyById(f.srcId);
       const was = this.cur;
       for (const h of this.heroes) {
-        if (h.player.dead || dist(h.player.x, h.player.z, f.x, f.z) > f.r + h.player.radius * 0.4) continue;
+        if (h.player.dead || dist(h.player.x, h.player.z, f.x, f.z) > f.r + h.player.radius * 0.4) {
+          // The Unwished Crown: a Doom aimed at you that you got away from.
+          if (f.doom && h.pid === f.hero && !h.player.dead && h.mods.unwished) {
+            h.player.unwishedT = 5;
+            this.emit('unwishedBoon', { x: h.player.x, z: h.player.z, hero: h.pid });
+          }
+          continue;
+        }
         this.use(h);
         if (f.doom) this.hitPlayer(0, { doom: f.doom, src });
         else this.hitPlayer(f.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: f.level, srcId: f.srcId } });
@@ -3794,6 +4195,7 @@ export class World {
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
       if (e.exposedT > 0 && e.exposedPid === this.cur.pid) dmg *= 1.15;
+      if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.2; // The Unwished Crown, after a Doom avoided
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
       // Nightfang: ability crits cut deeper and bring Nightstep back sooner.
@@ -3932,7 +4334,8 @@ export class World {
           this.emit('cdReset', { slot: k });
         }
       }
-      if (m.killResetR > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.killResetR); // Nightcut
+      if (m.killResetR > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.killResetR);
+      if (m.nightcutChain) p.nightcutT = 3; // Nightcut: the next Shadowstrike cuts a crowd
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
@@ -3940,7 +4343,15 @@ export class World {
       // Volatile elites burst a moment after they fall (uses the falling-star warning circles).
       this.falls.push({ x: e.x, z: e.z, r: 3.2, t: 0, dur: 1.2, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * 2.5, level: e.level, srcId: e.id, tele: null });
     }
-    if (this.mode === 'explore' && this.map.id === 'rift' && this.rift) this.riftKill(e);
+    if (this.mode === 'explore' && this.map.id === 'rift' && this.rift && !e.def.summon) this.riftKill(e);
+    if (e.remnant) {
+      // A Remnant's shades and wish-stars go with it.
+      for (const o of this.enemies) {
+        if (o.summoner !== e.id || o.dead) continue;
+        o.dead = true;
+        this.emit('death', { id: o.id, enemyType: o.type, x: o.x, z: o.z, boss: false, elite: false });
+      }
+    }
     // Everyone in the party who is up and close by gets the rewards: their own gold,
     // their own loot roll, quest credit and a share of the EXP.
     const killer = this.cur;
@@ -3983,7 +4394,9 @@ export class World {
       if (e.def.thief) {
         p.tickets++;
         p.dust += THIEF.dust;
+        p.thieves = (p.thieves || 0) + 1;
         this.emit('thiefCaught', { x: e.x, z: e.z, dust: THIEF.dust });
+        if (p.thieves >= 10) this.unlockGlow('gold');
       } else if (e.rare) {
         const n = RARE.dust[0] + Math.floor(this.rng() * (RARE.dust[1] - RARE.dust[0] + 1));
         p.dust += n;
@@ -3991,7 +4404,9 @@ export class World {
       } else if (e.remnant) {
         p.dust += REMNANT.dust;
         this.emit('remnantSlain', { name: remnantName(e.def), x: e.x, z: e.z, dust: REMNANT.dust });
+        if (REMNANT_GLOW[e.type] && this.rng() < REMNANT.glow) this.unlockGlow(REMNANT_GLOW[e.type]);
       }
+      if (e.type === 'boss3' && e.def.boss && !e.riftGuardian && this.worldTier() >= 5) this.unlockGlow('star');
     }
     const fall = this.bossFalloff(e);
     p.gold += Math.round(e.goldValue * fall);
@@ -4083,6 +4498,10 @@ export class World {
       }
       if (e.def.thief) {
         this.stepThief(e, dt);
+        continue;
+      }
+      if (e.def.still) {
+        this.stepStill(e, dt);
         continue;
       }
       const dx = p.x - e.x;
@@ -4349,7 +4768,12 @@ export class World {
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
           if (dist(pr.x, pr.z, e.x, e.z) < pr.radius + e.radius) {
-            pr.dead = true;
+            if (pr.pierce) {
+              // Farsight: a piercing shot hits each enemy in its path once, and keeps going.
+              if (pr.pierce.includes(e.id)) continue;
+              pr.pierce.push(e.id);
+              pr.targetId = null;
+            } else pr.dead = true;
             if (pr.kind) {
               // The hero's own shot: an arrow, a spark or a fire bolt.
               if (pr.bleed > 0) {
@@ -4565,6 +4989,11 @@ inTown() {
     }
     this.placeChests();
     this.thiefClock = 0;
+    this.hazards = [];
+    this.happening = null;
+    this.eventClock = EVENTS.first;
+    this.merchant = null;
+    if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.ticks - this.merchantAt > MERCHANT.gap / CONFIG.TICK && this.streamRng('merchantIn', this.surpriseN++)() < MERCHANT.chance) this.spawnMerchant();
     if (this.mode === 'explore' && !this.trial && !map.safe && map.id !== 'rift' && this.streamRng('thiefIn', this.surpriseN++)() < THIEF.onEnter) this.spawnThief();
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
@@ -4820,6 +5249,15 @@ inTown() {
         if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
       }
     }
+    // World events and the travelling merchant (0.31)
+    this.stepEvents(dt);
+    if (this.merchant) {
+      this.merchant.left -= dt;
+      if (this.merchant.left <= 0) {
+        this.emit('merchantLeave', {});
+        this.merchant = null;
+      }
+    }
     // The Waygate in town: stand on it to choose a map you have already reached.
     const wg = this.map.waygate;
     if (wg) {
@@ -4877,6 +5315,7 @@ inTown() {
       this.stepEnemies(edt);
       this.stepDoom(edt);
       this.stepFalls(edt);
+      this.stepHazards(edt);
       this.collide(dt);
       this.stepProjectiles(dt, edt);
       this.enemies = this.enemies.filter((e) => !e.dead);
@@ -4907,6 +5346,7 @@ inTown() {
     this.stepEnemies(edt);
     this.stepDoom(edt);
     this.stepFalls(edt);
+    this.stepHazards(edt);
     this.use(lead);
     each(() => this.collide(dt));
     this.stepProjectiles(dt, edt);
@@ -4962,6 +5402,15 @@ inTown() {
       if (this.thiefClock >= THIEF.every) {
         this.thiefClock = 0;
         if (this.streamRng('thiefAgain', this.surpriseN++)() < THIEF.again) this.spawnThief();
+      }
+    }
+    // World events and the travelling merchant (0.31)
+    this.stepEvents(dt);
+    if (this.merchant) {
+      this.merchant.left -= dt;
+      if (this.merchant.left <= 0) {
+        this.emit('merchantLeave', {});
+        this.merchant = null;
       }
     }
     const allDown = this.heroes.every((h) => h.player.dead);

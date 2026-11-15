@@ -6,6 +6,7 @@ import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildHero, buildEnemy, buildNpc, buildSign } from './models.js';
 import { AFFIXES } from '../sim/endgame.js';
+import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
 
 const R = CONFIG.ARENA_RADIUS;
@@ -794,6 +795,28 @@ export class Renderer {
         this.burst(ev.tx, 1.2, ev.tz, { count: ev.veil ? 4 : 10, color: 0xd7b8ff, speed: 7, up: 3, life: 0.3 });
         break;
       }
+      case 'oathBlade':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.8, color: 0xc8b8ff, from: 0.6, to: ev.radius, dur: 0.3, opacity: 1 });
+        this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xc8b8ff, speed: 11, up: 3, life: 0.4 });
+        break;
+      case 'sporeHeal':
+        this.burst(ev.x, 1, ev.z, { count: 6 + ev.n * 2, color: 0x9fe07a, speed: 3, up: 4, life: 0.6 });
+        break;
+      case 'starFeeds':
+        this.burst(ev.x, 1.4, ev.z, { count: 18, color: 0x7ff5e1, speed: 6, up: 5, life: 0.5 });
+        this.burst(ev.bx, 2.4, ev.bz, { count: 24, color: 0x7ff5e1, speed: 8, up: 4, life: 0.5 });
+        break;
+      case 'meteorLands':
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff8a3a, from: 1, to: 8, dur: 0.5, opacity: 0.6 });
+        this.burst(ev.x, 1, ev.z, { count: 60, color: 0xffb060, speed: 14, up: 9, size: 1.5, life: 0.8 });
+        this.shake = Math.max(this.shake, 0.7);
+        break;
+      case 'nightcut':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1, color: 0xff4a5c, from: 0.5, to: ev.radius + 0.5, dur: 0.25, opacity: 1 });
+        break;
+      case 'galeburst':
+        this.burst(ev.x, 1.2, ev.z, { count: 20, color: 0xbff2ff, speed: 9, up: 3, life: 0.4 });
+        break;
       case 'thiefCoins':
         this.burst(ev.x, 1.2, ev.z, { count: 8, color: 0xffd27a, speed: 6, up: 6, life: 0.6 });
         break;
@@ -1027,9 +1050,80 @@ export class Renderer {
     for (const m of mats) m.emissive.setRGB(r, g, b);
   }
 
+  /** Weapon glows (0.31): the weapon shines in the glow's colour, with a faint ring at the feet. */
+  applyGlow(model, id) {
+    const steel = model.parts && model.parts.steel;
+    const g = id && GLOWS[id];
+    if (steel) {
+      steel.emissive.set(g ? g.color : 0x7fd8ff);
+      steel.emissiveIntensity = g ? 1.3 : 0.25;
+    }
+    if (!model.glowRing) {
+      model.glowRing = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }));
+      model.glowRing.scale.setScalar(0.9);
+      model.glowRing.position.y = 0.04;
+      model.group.add(model.glowRing);
+    }
+    model.glowRing.visible = !!g;
+    if (g) model.glowRing.material.color.set(g.color);
+    model.glowId = id || null;
+  }
+
+  /** The travelling merchant and world events (0.31): a figure, a ring, a pillar of light. */
+  syncExtras(world, dt) {
+    const mc = world.mode === 'explore' ? world.merchant : null;
+    if (mc && !this.merchantView) {
+      const g = buildNpc({ robe: 0x7a5a2a, trim: 0xffd27a, hair: 0x3a2a1a, scale: 1 });
+      const pack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.4), new THREE.MeshStandardMaterial({ color: 0x8a5a2a }));
+      pack.position.set(0, 1.0, -0.38);
+      g.add(pack);
+      this.scene.add(g);
+      this.merchantView = g;
+    }
+    if (this.merchantView) {
+      if (!mc) {
+        this.disposeGroup(this.merchantView);
+        this.merchantView = null;
+      } else this.merchantView.position.set(mc.x, 0, mc.z);
+    }
+    const ev = world.mode === 'explore' ? world.happening : null;
+    const key = ev ? `${ev.kind}:${ev.x}:${ev.z}` : '';
+    if (key !== this.eventKey) {
+      if (this.eventView) this.disposeGroup(this.eventView);
+      this.eventView = null;
+      this.eventKey = key;
+      if (ev) {
+        const color = ev.kind === 'shrine' ? 0xffd27a : 0xff8a3a;
+        const g = new THREE.Group();
+        const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false }));
+        ring.scale.setScalar(ev.r);
+        ring.position.y = 0.06;
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.6, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+        beam.position.y = 7;
+        g.add(ring, beam);
+        if (ev.kind === 'shrine') {
+          const stone = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 2.2, 6), new THREE.MeshStandardMaterial({ color: 0x9a8f7a, emissive: 0xffd27a, emissiveIntensity: 0.3 }));
+          stone.position.y = 1.1;
+          g.add(stone);
+        }
+        g.position.set(ev.x, 0, ev.z);
+        this.scene.add(g);
+        this.eventView = g;
+        g.userData.ring = ring;
+        g.userData.beam = beam;
+      }
+    }
+    if (this.eventView && ev) {
+      const live = ev.state === 'hold' || ev.state === 'fight';
+      this.eventView.userData.ring.material.opacity = live ? 0.95 : 0.55;
+      this.eventView.userData.ring.rotation.y += dt * (live ? 1.2 : 0.4);
+    }
+  }
+
   syncHero(world, alpha, dt) {
     const p = world.player;
     const h = this.hero;
+    if ((p.glow || null) !== (h.glowId ?? null)) this.applyGlow(h, p.glow);
     const an = this.heroAnim;
     const g = h.group;
     const x = lerp(p.px, p.x, alpha);
@@ -1335,10 +1429,10 @@ export class Renderer {
       const k = Math.min(1, t.t / t.dur);
       v.group.position.set(t.x, 0, t.z);
       v.group.rotation.y = -t.dir;
-      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
+      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : t.pool ? 0x9cff4a : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
       v.base.material.color.set(color);
       v.fill.material.color.set(color);
-      v.fill.material.opacity = t.doom ? 0.55 : t.cue && t.parryable ? 0.7 : 0.4;
+      v.fill.material.opacity = t.doom || t.pool ? 0.6 : t.cue && t.parryable ? 0.7 : 0.4;
       if (t.kind === 'rect') {
         v.base.scale.set(t.length, 1, t.width);
         v.fill.scale.set(t.length * k, 1, t.width);
@@ -1378,6 +1472,7 @@ export class Renderer {
     this.time += dt;
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
+    this.syncExtras(world, dt);
     this.syncShadows(world, dt);
     this.syncWalls(world);
     this.syncEnemies(world, alpha, dt);
@@ -1567,6 +1662,7 @@ export class Renderer {
         v = { model, cls: a.cls, walk: 0 };
         this.allyViews.set(a.pid, v);
       }
+      if ((a.glow || null) !== (v.model.glowId ?? null)) this.applyGlow(v.model, a.glow);
       seen.add(a.pid);
       const g = v.model.group;
       g.visible = true;

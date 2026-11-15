@@ -863,9 +863,11 @@ export class Renderer {
           this.heroAnim.swing = 0;
           this.heroAnim.swingDur = 0.2;
           if (!ev.echo) this.heroAnim.move = 'cone';
-          this.flash(this.sectorGeo(ev.angle, 0.3), { x: ev.x, z: ev.z, y: 0.9, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xbfeaff, from: ev.range * 0.7, to: ev.range, dur: 0.28, opacity: 0.85 });
-          // sparks thrown off along the arc, and a wider, fainter sweep on the ground
-          this.flash(this.sectorGeo(ev.angle * 1.1, 0.15), { x: ev.x, z: ev.z, y: 0.12, dir: ev.dir, color: 0xffffff, from: ev.range * 0.4, to: ev.range * 1.05, dur: 0.35, opacity: 0.45 });
+          // One shape, flat on the ground, exactly the area that is hit (0.36.1: a raised copy
+          // and a wider ground sweep made it unclear where the hit really was).
+          this.flash(this.sectorGeo(ev.angle, 0.12), { x: ev.x, z: ev.z, y: 0.08, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xd8f2ff, from: ev.range * 0.85, to: ev.range, dur: 0.32, opacity: 0.7 });
+          this.flash(this.sectorGeo(ev.angle, 0.93), { x: ev.x, z: ev.z, y: 0.09, dir: ev.dir, color: 0xffffff, from: ev.range, to: ev.range, dur: 0.32, opacity: 0.9 }); // its edge
+          // sparks thrown off along the arc
           for (let i = -2; i <= 2; i++) {
             const a = ev.dir + (i / 2) * ev.angle * 0.45;
             this.burst(ev.x + Math.cos(a) * ev.range * 0.65, 1, ev.z + Math.sin(a) * ev.range * 0.65, { count: 5, color: ev.echo ? 0xffe2a0 : 0xe8f6ff, speed: 7, up: 3, life: 0.35 });

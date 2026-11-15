@@ -150,6 +150,12 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Clearer Cleave (0.36.1)
+
+- Cleave shows one shape, flat on the ground with a bright edge, exactly the
+  area it hits. It used to draw a raised copy (which looked shifted) and a
+  wider sweep that went past where it actually hits.
+
 ### Warrior skills that hit hard (0.36)
 
 - **Every Warrior skill has its own animation now**, made from motion-captured

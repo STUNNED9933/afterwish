@@ -1,0 +1,94 @@
+{
+  "id": "warrior",
+  "prompt": "bearded human warrior, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-15T08:24:37.980Z",
+  "creditsBefore": 1000,
+  "steps": {
+    "model": {
+      "task": "908fed4d-c975-46c8-b2f6-cf04d980a4f2",
+      "result": {
+        "task_id": "908fed4d-c975-46c8-b2f6-cf04d980a4f2",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/warrior/1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/warrior/1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/model.glb",
+        "preview": "out/models/warrior/1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/preview.png"
+      }
+    },
+    "check": {
+      "task": "e5b472d1-d9a9-4d3a-ab33-66187ab835ee",
+      "result": {
+        "task_id": "e5b472d1-d9a9-4d3a-ab33-66187ab835ee",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/warrior/2-check/tripo-out/rig-check-e5b472d1",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "1a786ccf-5c1a-4b42-a1c5-0284b904b8b0",
+      "rigType": "biped",
+      "result": {
+        "task_id": "1a786ccf-5c1a-4b42-a1c5-0284b904b8b0",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/warrior/3-rig/tripo-out/rig-1a786ccf",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/warrior/3-rig/tripo-out/rig-1a786ccf/model.glb",
+        "preview": "out/models/warrior/3-rig/tripo-out/rig-1a786ccf/preview.png"
+      }
+    },
+    "animations": {
+      "task": "f3a2a2a1-d419-47f1-ba3e-ceed7232e4c0",
+      "presets": [
+        "preset:idle",
+        "preset:run",
+        "preset:slash",
+        "preset:hurt",
+        "preset:fall"
+      ],
+      "result": {
+        "task_id": "f3a2a2a1-d419-47f1-ba3e-ceed7232e4c0",
+        "type": "animate_retarget",
+        "status": "success",
+        "credits_consumed": 50,
+        "output_dir": "out/models/warrior/4-anim/tripo-out/retarget-f3a2a2a1",
+        "files": [
+          "model.glb"
+        ],
+        "model_file": "out/models/warrior/4-anim/tripo-out/retarget-f3a2a2a1/model.glb"
+      }
+    }
+  },
+  "creditsAfter": 895,
+  "creditsUsed": 105,
+  "finished": "2026-11-15T08:30:16.640Z",
+  "files": [
+    "1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/generated_image.jpeg",
+    "1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/model.glb",
+    "1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/preview.png",
+    "1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/rendered_image.webp",
+    "1-model/tripo-out/bearded-human-warrior-teal-tunic-908fed4d/task.json",
+    "2-check/tripo-out/rig-check-e5b472d1/task.json",
+    "3-rig/tripo-out/rig-1a786ccf/model.glb",
+    "3-rig/tripo-out/rig-1a786ccf/preview.png",
+    "3-rig/tripo-out/rig-1a786ccf/rendered_image.webp",
+    "3-rig/tripo-out/rig-1a786ccf/task.json",
+    "4-anim/tripo-out/retarget-f3a2a2a1/model.glb",
+    "4-anim/tripo-out/retarget-f3a2a2a1/task.json",
+    "manifest.json"
+  ]
+}

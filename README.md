@@ -150,6 +150,19 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### The Archer, with more weight behind her (0.37.1)
+
+- **She shoots from a kneel**: right knee down, left foot planted toward the
+  target, so her legs drive every shot. Barrage fires from the kneel too;
+  Piercing Shot and Arrow Storm use a wide, low split stance.
+- **Her drawing hand no longer passes through her body**: it reaches over her
+  shoulder to the quiver, brings the arrow round in front of her chest to the
+  bow, and draws back to her chin along the arrow.
+- **A more urgent run**: quicker strides, leaning in, knees driving and the free
+  arm pumping.
+- **A new fall**: her knees give, she pitches forward with her hands out to
+  catch herself, the arms fold and she goes down on her front.
+
 ### The Archer gets her model (0.37)
 
 - **The Archer is now a rigged 3D character**: a young ranger in green leather

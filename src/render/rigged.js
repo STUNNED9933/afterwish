@@ -64,7 +64,7 @@ export const RIGGED = {
     hit: 'hit',
     // a whole draw-and-loose cycle, played over the time between two shots (the arrow leaves
     // 30% of the way in, when the game fires it)
-    attack: { clip: 'arc_shot', cycle: true },
+    attack: { clip: 'arc_shot', cycle: true, fadeIn: 0.14 }, // (dropping to the kneel takes a moment)
     aiming: /^arc_(shot|power|barrage|volley)$/,
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
@@ -325,7 +325,7 @@ export function instantiate(tpl) {
           attackLen = attackLeft;
           actions.attack.timeScale = len / attackLeft;
           if (cycle) attackLeft *= 1.2; // hold the end a moment, so steady shooting flows on
-          fadeTo(actions.attack, 0.06, true); // from the start, even if already swinging
+          fadeTo(actions.attack, current === actions.attack ? 0.06 : spec.attack.fadeIn || 0.06, true); // from the start, even if already swinging
         }
         if (s.hitStart && actions.hit && attackLeft <= 0 && !move && !s.spinning && !s.moving) {
           // A flinch, when standing (running and attacking carry on).

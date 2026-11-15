@@ -111,9 +111,10 @@ export function makePoser(scene, clips) {
       b.updateMatrixWorld(true);
       return P;
     },
-    /** Two-bone IK: put side's hand ('L' or 'R') at target, the elbow toward pole (points). */
-    reach(side, target, pole) {
-      const up = `${side}_Upperarm`, lo = `${side}_Forearm`, hand = `${side}_Hand`;
+    /** Two-bone IK: put side's hand ('L' or 'R') at target, the elbow toward pole (points).
+     * chain: the three joints (default the arm; ['Thigh', 'Calf', 'Foot'] for a leg). */
+    reach(side, target, pole, chain = ['Upperarm', 'Forearm', 'Hand']) {
+      const [up, lo, hand] = chain.map((c) => `${side}_${c}`);
       const S = P.pos(up), E = P.pos(lo), W = P.pos(hand);
       const a = S.distanceTo(E), b = E.distanceTo(W);
       const toT = target.clone().sub(S);
@@ -127,6 +128,10 @@ export function makePoser(scene, clips) {
       P.aim(up, lo, elbow.clone().sub(S));
       P.aim(lo, hand, S.clone().addScaledVector(dir, d).sub(elbow));
       return P;
+    },
+    /** A leg's foot to a point, the knee toward pole. */
+    step(side, target, pole) {
+      return P.reach(side, target, pole, ['Thigh', 'Calf', 'Foot']);
     },
     /** Raise or lower the hips so the lowest foot rests on the ground (plus lift, in heights). */
     ground(lift = 0) {

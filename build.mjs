@@ -6,9 +6,16 @@
 //   npm run build   build once
 //   npm run watch   rebuild whenever a file in src/ changes
 import { build, context } from 'esbuild';
-import { readFileSync, writeFileSync, mkdirSync, watch } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, watch, existsSync, readdirSync, copyFileSync } from 'node:fs';
 
 const watching = process.argv.includes('--watch');
+
+/** Character models (0.35): assets/models/*.glb are served next to the game, loaded when needed. */
+function copyModels() {
+  if (!existsSync('assets/models')) return;
+  mkdirSync('dist/models', { recursive: true });
+  for (const f of readdirSync('assets/models')) if (f.endsWith('.glb')) copyFileSync(`assets/models/${f}`, `dist/models/${f}`);
+}
 
 function writeHtml() {
   const css = readFileSync('src/style.css', 'utf8');
@@ -31,6 +38,7 @@ const options = {
 };
 
 writeHtml();
+copyModels();
 if (watching) {
   const ctx = await context(options);
   await ctx.watch();

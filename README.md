@@ -150,6 +150,21 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### The first real character model (0.35)
+
+The Warrior is now a rigged, animated 3D model made with the Tripo API: idle, a
+run cycle, a sword swing timed to every attack, and a fall when knocked out. It
+holds the game's own sword (so weapons can still change), keeps the parry guard
+and weapon glow, and gets the soft edge light. Friends playing a Warrior in co-op
+see it too. The model is loaded when first needed (about 0.85 MB) and the
+hand-built one stays if it cannot load, so nothing depends on it.
+
+How models are made (`tools/models`): `roster.json` lists each character's
+prompt and animations; the "Make character models" workflow (run by hand, with
+the `TRIPO_API_KEY` secret) generates, rigs and animates them through tripo-cli
+and saves the results to the `tripo-models` branch; `optimize.mjs` shrinks a
+model for the game into `assets/models/`. The Warrior cost 105 credits ($1.05).
+
 ### Brighter days (0.34.1)
 
 Each map now has a mood. Haven, the Greenwood, Frostfall Pass and the Sunscar

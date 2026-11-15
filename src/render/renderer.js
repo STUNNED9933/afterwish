@@ -11,6 +11,7 @@ import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, rockGeometries, pebbleGeometry, treeGeometries, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
+import { upgradeHero } from './rigged.js';
 
 const R = CONFIG.ARENA_RADIUS;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -597,14 +598,17 @@ export class Renderer {
   setHeroClass(cls) {
     if (cls === this.heroCls) return;
     this.heroCls = cls;
+    this.hero.disposed = true;
     this.disposeGroup(this.hero.group);
     this.hero = buildHero(cls);
+    upgradeHero(this.hero, cls); // the rigged model, when there is one (0.35)
     this.scene.add(this.hero.group);
   }
 
   buildHero() {
     this.heroCls = 'warrior';
     this.hero = buildHero();
+    upgradeHero(this.hero, 'warrior');
     this.scene.add(this.hero.group);
     this.heroAnim = { swing: 1, swingDur: 0.2, spin: 0, walk: 0, deadT: 0 };
   }
@@ -1287,6 +1291,7 @@ export class Renderer {
     if ((p.glow || null) !== (h.glowId ?? null)) this.applyGlow(h, p.glow);
     const an = this.heroAnim;
     const g = h.group;
+    const attackStart = an.swing === 0; // an attack or cast began since the last frame
     const x = lerp(p.px, p.x, alpha);
     const z = lerp(p.pz, p.z, alpha);
     let y = 0;
@@ -1333,7 +1338,12 @@ export class Renderer {
     if (p.hurtT > 0) this.setEmissive(h.mats, 0.9, 0.08, 0.1);
     else this.setEmissive(h.mats, 0, 0, 0);
 
-    if (p.dead) {
+    if (h.rig) {
+      // The rigged model plays its own clips (0.35); a whirlwind still spins it.
+      h.rig.group.rotation.y = h.rig.baseTurn + (an.spin > 0 ? (1 - an.spin) * Math.PI * 2 : 0);
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms });
+      g.rotation.z = 0;
+    } else if (p.dead) {
       an.deadT = Math.min(1, an.deadT + dt * 2.5);
       g.rotation.z = easeOut(an.deadT) * 1.5;
     } else {
@@ -1818,11 +1828,13 @@ export class Renderer {
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
       if (v && v.cls !== a.cls) {
+        v.model.disposed = true;
         this.disposeGroup(v.model.group);
         v = null;
       }
       if (!v) {
         const model = buildHero(a.cls);
+        upgradeHero(model, a.cls);
         this.scene.add(model.group);
         v = { model, cls: a.cls, walk: 0 };
         this.allyViews.set(a.pid, v);
@@ -1835,7 +1847,11 @@ export class Renderer {
       g.rotation.y = Math.PI / 2 - a.facing;
       const x = lerp(a.px ?? a.x, a.x, alpha);
       const z = lerp(a.pz ?? a.z, a.z, alpha);
-      if (a.dead) {
+      if (v.model.rig) {
+        g.rotation.x = 0;
+        g.position.set(x, 0, z);
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving });
+      } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);
       } else {

@@ -61,7 +61,9 @@ function start(hot = {}) {
     sfx.unlock();
     music.attach(sfx.ctx);
   });
-  renderer.setShadows(settings.shadows);
+  // Graphics quality (0.34). Auto starts on High and steps down once or twice if frames are slow.
+  const gfx = { level: settings.graphics === 'auto' ? 'high' : settings.graphics, t: 0, frames: 0, warm: 3, drops: 0 };
+  renderer.setQuality(gfx.level);
 
   // One character per class, used in both exploration and the arena.
   if (!CLASSES[settings.cls]) settings.cls = 'warrior';
@@ -1735,10 +1737,13 @@ function start(hot = {}) {
     if (!net || net.role === 'host') world.player.autoAttack = settings.autoAttack; // a joiner's goes to the host below
     world.command({ type: 'setAutoAttack', on: settings.autoAttack });
   });
-  $('shadows').checked = settings.shadows;
-  $('shadows').addEventListener('change', (e) => {
-    settings.shadows = e.target.checked;
-    renderer.setShadows(settings.shadows);
+  $('graphics').value = settings.graphics;
+  $('graphics').addEventListener('change', (e) => {
+    settings.graphics = e.target.value;
+    gfx.level = settings.graphics === 'auto' ? 'high' : settings.graphics;
+    gfx.t = gfx.frames = gfx.drops = 0;
+    gfx.warm = 3;
+    renderer.setQuality(gfx.level);
     storeSettings(settings);
   });
 
@@ -2408,8 +2413,29 @@ function start(hot = {}) {
   // ------------------------------------------------------------- main loop
   function frame(now) {
     requestAnimationFrame(frame);
-    const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+    const rawDt = Math.max(0, (now - last) / 1000);
+    const dt = Math.min(0.1, rawDt);
     last = now;
+    if (settings.graphics === 'auto' && gfx.drops < 2 && mode === 'play' && !document.hidden && rawDt < 3) {
+      // (frames up to 3 s long still count: a very slow machine must step down too; longer is a tab switch)
+      // Auto graphics: after a few seconds of play, average the frame rate over six seconds.
+      if (gfx.warm > 0) gfx.warm -= rawDt;
+      else {
+        gfx.t += rawDt;
+        gfx.frames++;
+        if (gfx.t >= 6) {
+          const fps = gfx.frames / gfx.t;
+          gfx.t = gfx.frames = 0;
+          if (fps < 45 && gfx.level !== 'low') {
+            gfx.level = gfx.level === 'high' ? 'medium' : 'low';
+            gfx.drops++;
+            gfx.warm = 3;
+            renderer.setQuality(gfx.level);
+            hud.hint(`Graphics stepped down to ${gfx.level === 'medium' ? 'Medium' : 'Low'} for a smoother game (${Math.round(fps)} frames a second). Change it any time in the Menu.`, 6);
+          } else gfx.drops = 2; // fast enough: stop checking
+        }
+      }
+    }
     if (pendingTalk) {
       // Walking to someone you right-clicked: open the conversation when they are in reach.
       const near = mode === 'play' ? world.interactable() : null;

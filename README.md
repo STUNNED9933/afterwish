@@ -150,6 +150,34 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### A new look for the world (0.34)
+
+Drawing only: the rules, collisions and what co-op sends are unchanged.
+
+- **Painted ground.** Every map's ground is worked out per pixel: large light
+  and dark patches, worn dirt, fine grain and small bumps that catch the light.
+  The Fen has wet, shiny puddles; Warden's Keep has flagstones; the Dunes have
+  ripples; Ashen Ridge, Gloomcap Hollow, Stormspire Cliffs, Obsidian Maw, the
+  Sanctum and the Wilds have glowing seams in cracked earth.
+- **Moodier light.** Darker sky light tinted by each map, and a warm light you
+  carry, so the world is lit around you. Snow and sand get less light, so they
+  don't glare.
+- **Smoother scenery.** Lumpy, smooth boulders with moss, snow or ash settled
+  on top; layered pines, mushroom caps, crystal clusters and cacti; a wall of
+  boulders at the edge of each map; timber-framed houses in Haven.
+- **Ground cover.** Swaying grass, reeds, ice shards, crystals or little
+  glowing mushrooms, and pebbles or rubble, by the thousand, drawn in one go
+  each. Attack telegraphs always show through them.
+- **Drifting motes:** pollen, embers, snow, spores.
+- **Characters** have rounded, smoothly shaded parts and a soft edge light, so
+  they read against dark ground.
+- **Glow and colour.** On High: bloom on spells, lava and glows, and a colour
+  grade with a vignette.
+- **Graphics setting** (Menu): Auto, High, Medium or Low. Auto starts on High
+  and steps down if the game runs below 45 frames a second. Low turns off
+  shadows, grass and glow, and costs about what the old look did. It replaces
+  the Shadows switch (shadows off becomes Low).
+
 ### Bounty board, Immortal Fragments, Remnant Sigils, The Shattered Wilds (0.33)
 
 - **Bounty board.** A board by the Waygate in Haven holds three jobs fitted to

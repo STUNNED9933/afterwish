@@ -9,6 +9,8 @@ import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
+import { QUALITY, GROUND, groundMaterial, rockGeometries, pebbleGeometry, treeGeometries, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
+import { PostFX } from './postfx.js';
 
 const R = CONFIG.ARENA_RADIUS;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -40,13 +42,10 @@ const MAP_THEMES = {
   volcano: { ground: '#241a1a', hue: 8, sky: 0x180806, tree: 0x1a1414, trunk: 0x100c0c, rock: 0x2a1a18, edge: 0x100808, crown: 'spike', rockGlow: 0xc23a0c },
   astral: { ground: '#1c1a3a', hue: 250, sky: 0x06061a, tree: 0x8fe8ff, trunk: 0x2a2a5a, rock: 0x3a3a7a, edge: 0x0c0c24, crown: 'crystal', crownGlow: 0x2a8aa8, rockGlow: 0x2a2a8a },
 };
-const CROWNS = {
-  cone: () => new THREE.ConeGeometry(1.5, 3.6, 6).translate(0, 3.2, 0),
-  cap: () => new THREE.SphereGeometry(1.9, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.75, 1).translate(0, 1.6, 0), // mushroom
-  spike: () => new THREE.ConeGeometry(0.7, 4.4, 5).translate(0, 2.6, 0), // dead spire
-  crystal: () => new THREE.OctahedronGeometry(1.25, 0).scale(0.75, 1.9, 0.75).translate(0, 3.3, 0),
-  cactus: () => new THREE.CylinderGeometry(0.42, 0.5, 2.6, 7).translate(0, 2.4, 0),
-};
+function makeSeeded(seed) {
+  let s = seed % 2147483647 || 1;
+  return () => ((s = (s * 16807) % 2147483647) / 2147483647);
+}
 
 export class Renderer {
   constructor(canvas) {
@@ -82,6 +81,9 @@ export class Renderer {
     this.flashes = [];
     this.geoCache = new Map();
     this.time = 0;
+    this.quality = 'high'; // graphics quality (0.34): low | medium | high, see environment.js
+    this.windClock = { value: 0 }; // shared by everything that sways
+    this.post = null;
     this.hoverId = null;
 
     this.buildLights();
@@ -96,7 +98,11 @@ export class Renderer {
   // Scene setup
   // -------------------------------------------------------------------------
   buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0x9db4ff, 0x241a20, 1.15));
+    this.hemi = new THREE.HemisphereLight(0x9db4ff, 0x241a20, 1.15);
+    this.scene.add(this.hemi);
+    // A warm light carried by the hero (0.34): the world is darker, and lit around you.
+    this.heroLight = new THREE.PointLight(0xffc890, 0, 30, 1.4);
+    this.scene.add(this.heroLight);
     const sun = (this.sun = new THREE.DirectionalLight(0xffe6c4, 2.6));
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -110,6 +116,25 @@ export class Renderer {
     sun.shadow.bias = -0.0015;
     sun.shadow.normalBias = 0.04;
     this.scene.add(sun, sun.target);
+  }
+
+  /**
+   * Graphics quality (0.34): shadows, ground detail, grass, bloom and resolution.
+   * Rebuilds the current map's scenery so the change shows at once. Drawing only.
+   */
+  setQuality(q) {
+    if (!QUALITY[q]) q = 'high';
+    const Q = QUALITY[q];
+    const changed = q !== this.quality;
+    this.quality = q;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pixelRatio));
+    this.sun.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
+    if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
+    this.setShadows(Q.shadows);
+    if (Q.post && !this.post) this.post = new PostFX(this.renderer, this.scene, this.camera);
+    else if (!Q.post && this.post) { this.post.dispose(); this.post = null; }
+    this.resize();
+    if (changed && this.mapRef && this.exploreGroup && this.exploreGroup.visible) this.setMap(this.mapRef);
   }
 
   setShadows(on) {
@@ -248,29 +273,41 @@ export class Renderer {
     let seed = 11;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const flat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, flatShading: true, ...o });
+    const d = new THREE.Object3D();
 
-    // Ground, tinted for the map's theme. The walkable part ends at the dark rim.
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 256;
-    const c2 = cv.getContext('2d');
-    c2.fillStyle = T.ground;
-    c2.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 1500; i++) {
-      c2.fillStyle = `hsla(${T.hue + rnd() * 30}, 24%, ${(T.light || 15) + rnd() * 16}%, 0.5)`;
-      c2.fillRect(rnd() * 256, rnd() * 256, 3 + rnd() * 5, 3 + rnd() * 5);
-    }
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set((R + 45) / 3.2, (R + 45) / 3.2);
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(R + 45, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    // Ground (0.34): painted per pixel from world position (see environment.js), lit and shadowed.
+    const Q = QUALITY[this.quality] || QUALITY.high;
+    const GP = GROUND[map.theme] || GROUND.forest;
+    this.mapRef = map;
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(R + 45, 96).rotateX(-Math.PI / 2), groundMaterial(map.theme, R, this.quality));
     ground.receiveShadow = true;
     g.add(ground);
-    const beyond = new THREE.Mesh(new THREE.RingGeometry(R + 0.6, R + 45, 72).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.55, depthWrite: false }));
-    beyond.position.y = 0.02;
-    g.add(beyond);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + 0.8, 0.9, 5, 80).rotateX(Math.PI / 2), flat(T.edge));
-    g.add(rim);
+    // The edge of the map: a wall of boulders where the walkable ground ends.
+    {
+      const geos = rockGeometries(map.theme, T.rock, 1);
+      const n = Math.round((Math.PI * 2 * (R + 1.6)) / 2.1);
+      const per = Math.ceil(n / geos.length);
+      const er = makeSeeded(map.id.length * 131 + 17);
+      const edgeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+      edgeMat.color.set(0x8a8a8a);
+      geos.forEach((geo, k) => {
+        const inst = new THREE.InstancedMesh(geo, edgeMat, per);
+        let used = 0;
+        for (let i = k; i < n; i += geos.length) {
+          const a = (i / n) * Math.PI * 2 + (er() - 0.5) * 0.02;
+          const rr = R + 1.4 + er() * 1.6;
+          const sz = 1.3 + er() * 1.4;
+          d.position.set(Math.cos(a) * rr, sz * 0.25, Math.sin(a) * rr);
+          d.rotation.set(0, er() * 6.3, 0);
+          d.scale.set(sz * (1 + er() * 0.5), sz * (0.9 + er() * 0.7), sz);
+          d.updateMatrix();
+          inst.setMatrixAt(used++, d.matrix);
+        }
+        inst.count = used;
+        inst.receiveShadow = true;
+        g.add(inst);
+      });
+    }
 
     if (map.theme === 'town') {
       if (!this.stoneTex) {
@@ -284,17 +321,21 @@ export class Renderer {
     }
 
     // Solid things
-    const wall = flat(0xb9a98c);
-    const roof = flat(0x8e3b34);
+    const wall = new THREE.MeshStandardMaterial({ color: 0x8c7c66, roughness: 0.95 });
+    const roof = new THREE.MeshStandardMaterial({ color: 0x5e2622, roughness: 0.85, flatShading: true });
+    const timber = new THREE.MeshStandardMaterial({ color: 0x3a281c, roughness: 0.9 });
     const glow = new THREE.MeshBasicMaterial({ color: 0xffd28a });
     const fire = new THREE.MeshBasicMaterial({ color: COLORS.ember });
     const dark = flat(0x2b2d3a);
     const trees = map.obstacles.filter((o) => o.kind === 'tree');
     const rocks = map.obstacles.filter((o) => o.kind === 'rock');
-    const d = new THREE.Object3D();
     if (trees.length) {
-      const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.5, 1.7, 6).translate(0, 0.85, 0), flat(T.trunk), trees.length);
-      const crowns = new THREE.InstancedMesh(CROWNS[T.crown || 'cone'](), flat(T.tree, T.crownGlow ? { emissive: T.crownGlow } : {}), trees.length);
+      // Smooth, shaded trees (0.34); the same sizes as before, so nothing you bump into moves.
+      const tg = treeGeometries(T.crown || 'cone', T.trunk, T.tree);
+      const trunks = new THREE.InstancedMesh(tg.trunk, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), trees.length);
+      const crownMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, emissive: T.crownGlow || 0x000000, flatShading: T.crown === 'crystal' });
+      const crowns = new THREE.InstancedMesh(tg.crown, crownMat, trees.length);
+      const tint = new THREE.Color();
       trees.forEach((o, n) => {
         d.position.set(o.x, 0, o.z);
         d.rotation.set(0, o.turn, 0);
@@ -302,21 +343,31 @@ export class Renderer {
         d.updateMatrix();
         trunks.setMatrixAt(n, d.matrix);
         crowns.setMatrixAt(n, d.matrix);
+        const v = 0.82 + ((n * 0.6180339) % 1) * 0.36;
+        crowns.setColorAt(n, tint.setRGB(v, v * (0.95 + ((n * 0.37) % 1) * 0.1), v));
       });
+      trunks.receiveShadow = crowns.receiveShadow = true;
       trunks.castShadow = crowns.castShadow = true;
       g.add(trunks, crowns);
     }
     if (rocks.length) {
-      const mesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), flat(T.rock, T.rockGlow ? { emissive: T.rockGlow } : {}), rocks.length);
-      rocks.forEach((o, n) => {
-        d.position.set(o.x, o.r * 0.35, o.z);
-        d.rotation.set(o.turn, o.turn * 2, 0);
-        d.scale.set(o.r * 1.05, o.r * 0.8, o.r * 1.05);
-        d.updateMatrix();
-        mesh.setMatrixAt(n, d.matrix);
+      // Lumpy, smooth boulders with moss / snow / ash settled on top (0.34).
+      const geos = rockGeometries(map.theme, T.rock);
+      const rockMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, emissive: T.rockGlow || 0x000000, emissiveIntensity: T.rockGlow ? 0.35 : 1 });
+      geos.forEach((geo, k) => {
+        const mine = rocks.filter((_, n) => n % geos.length === k);
+        if (!mine.length) return;
+        const mesh = new THREE.InstancedMesh(geo, rockMat, mine.length);
+        mine.forEach((o, n) => {
+          d.position.set(o.x, o.r * 0.3, o.z);
+          d.rotation.set(0, o.turn * 2, 0);
+          d.scale.set(o.r * 1.08, o.r * 0.9, o.r * 1.08);
+          d.updateMatrix();
+          mesh.setMatrixAt(n, d.matrix);
+        });
+        mesh.castShadow = mesh.receiveShadow = true;
+        g.add(mesh);
       });
-      mesh.castShadow = mesh.receiveShadow = true;
-      g.add(mesh);
     }
     for (const o of map.obstacles) {
       if (o.kind === 'house') {
@@ -333,6 +384,18 @@ export class Renderer {
         const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.7, 0.1), dark);
         door.position.set(1.3, 0.85, -o.hd - 0.02);
         house.add(base, top, win, door);
+        // Timber frame and a chimney (0.34): corner posts, a beam under the eaves.
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, o.height, 0.28), timber);
+          post.position.set(sx * (o.hw - 0.1), o.height / 2, sz * (o.hd - 0.1));
+          house.add(post);
+        }
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(o.hw * 2 + 0.1, 0.24, o.hd * 2 + 0.1), timber);
+        beam.position.y = o.height - 0.1;
+        const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.2, 0.6), dark);
+        chimney.position.set(o.hw * 0.45, o.height + 1.5, o.hd * 0.3);
+        chimney.castShadow = true;
+        house.add(beam, chimney);
         house.position.set(o.x, 0, o.z);
         house.rotation.y = -o.rot; // the simulation turns the same box by `rot`
         g.add(house);
@@ -440,6 +503,47 @@ export class Renderer {
       stone.position.set(ws.x, 0, ws.z);
       g.add(stone);
     }
+
+    // Ground cover (0.34): grass tufts that sway, and pebbles or rubble. One draw call each.
+    const area = Math.PI * R * R;
+    const nGrass = Math.min(9000, Math.round((area / 3.2) * Q.grass * (GP.sparse ?? 1)));
+    if (nGrass > 0) {
+      const spots = scatterSpots(map, nGrass, map.id.length * 7919 + 3);
+      const tufts = new THREE.InstancedMesh(tuftGeometry(map.theme), swayMaterial(this.windClock, GP.caps ? { emissive: new THREE.Color(GP.grass[1]).multiplyScalar(0.05) } : {}), spots.length);
+      const tint = new THREE.Color();
+      spots.forEach(([x, z, a, b], n) => {
+        d.position.set(x, 0, z);
+        d.rotation.set(0, a * 6.28, 0);
+        d.scale.setScalar(0.7 + b * 0.9);
+        d.updateMatrix();
+        tufts.setMatrixAt(n, d.matrix);
+        const v = 0.75 + a * 0.4;
+        tufts.setColorAt(n, tint.setRGB(v, v, v * (0.9 + b * 0.2)));
+      });
+      tufts.receiveShadow = true;
+      // Ground cover writes no depth, so attack telegraphs on the ground always show through it.
+      tufts.material.depthWrite = false;
+      g.add(tufts);
+    }
+    const nPebbles = Math.min(2600, Math.round((area / 14) * Q.pebbles));
+    if (nPebbles > 0) {
+      const spots = scatterSpots(map, nPebbles, map.id.length * 104729 + 11, { minGap: 0.1 });
+      const pm = new THREE.InstancedMesh(pebbleGeometry(map.theme, T.rock), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), spots.length);
+      spots.forEach(([x, z, a, b], n) => {
+        const sz = (GP.debris === 'rubble' ? 0.14 : 0.08) + a * a * 0.28;
+        d.position.set(x, sz * 0.15, z);
+        d.rotation.set(b * 0.6, a * 6.28, 0);
+        d.scale.set(sz, sz, sz * (0.8 + b * 0.5));
+        d.updateMatrix();
+        pm.setMatrixAt(n, d.matrix);
+      });
+      pm.receiveShadow = true;
+      pm.material.depthWrite = false; // (see the grass)
+      g.add(pm);
+    }
+    // Drifting motes: pollen, embers, snow, spores.
+    this.motes = buildMotes(map.theme, Q.motes);
+    g.add(this.motes.points);
     this.setEnvironment('explore');
   }
 
@@ -451,8 +555,29 @@ export class Renderer {
     const sky = explore ? this.mapTheme.sky : 0x0a0d16;
     this.scene.background.set(sky);
     this.scene.fog.color.set(sky);
-    this.scene.fog.near = explore ? 48 : 42;
-    this.scene.fog.far = explore ? 105 : 90;
+    this.scene.fog.near = explore ? 34 : 42;
+    this.scene.fog.far = explore ? 92 : 90;
+    // Moodier light out in the world (0.34): dimmer sky light tinted by the map, a lower sun,
+    // and the hero's own warm light doing more of the work.
+    const GP = explore ? GROUND[this.mapRef && this.mapRef.theme] || GROUND.forest : null;
+    if (explore) {
+      const skyC = new THREE.Color(sky);
+      this.hemi.color.copy(skyC).lerp(new THREE.Color(0x9db4ff), 0.55);
+      this.hemi.groundColor.set(0x1a1414);
+      const k = GP.bright || 1; // pale maps (snow, sand) need less light to read
+      this.hemi.intensity = 0.75 * k;
+      this.sun.color.set(0xffe0c0).lerp(new THREE.Color(GP.light), 0.35);
+      this.sun.intensity = 2.1 * k;
+      this.heroLight.color.set(GP.light);
+      this.heroLight.intensity = 70 * k;
+    } else {
+      this.hemi.color.set(0x9db4ff);
+      this.hemi.groundColor.set(0x241a20);
+      this.hemi.intensity = 1.15;
+      this.sun.color.set(0xffe6c4);
+      this.sun.intensity = 2.6;
+      this.heroLight.intensity = 0;
+    }
   }
 
   /** Swap the hero model when a different class is played. */
@@ -508,6 +633,7 @@ export class Renderer {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h, false);
+    if (this.post) this.post.setSize(w, h, this.renderer.getPixelRatio());
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.width = w;
@@ -542,7 +668,7 @@ export class Renderer {
     for (const o of world.interactables()) {
       this.tmpV.set(o.x, 0.1, o.z);
       this.tmpV2.set(o.x, 1.8, o.z);
-      const d = Math.sqrt(ray.distanceSqToSegment(this.tmpV, this.tmpV2));
+      const d = Math.sqrt(Math.max(0, ray.distanceSqToSegment(this.tmpV, this.tmpV2)));
       if (d < (o.pickR || 0.95) && d < bestD) {
         bestD = d;
         best = o;
@@ -562,7 +688,7 @@ export class Renderer {
       const pos = v.model.group.position;
       this.tmpV.set(pos.x, 0.1, pos.z);
       this.tmpV2.set(pos.x, e.def.height, pos.z);
-      const d = Math.sqrt(ray.distanceSqToSegment(this.tmpV, this.tmpV2));
+      const d = Math.sqrt(Math.max(0, ray.distanceSqToSegment(this.tmpV, this.tmpV2)));
       if (d < e.radius * 1.35 + 0.35 && d < bestD) {
         bestD = d;
         best = e;
@@ -1340,7 +1466,7 @@ export class Renderer {
     this.scene.remove(group);
     const shared = new Set(this.geoCache.values());
     group.traverse((o) => {
-      if (o.geometry && !shared.has(o.geometry)) o.geometry.dispose();
+      if (o.geometry && !shared.has(o.geometry) && !o.geometry.userData.keep) o.geometry.dispose();
       if (o.material) {
         if (o.material.map && !o.material.map.userData.keep) o.material.map.dispose();
         o.material.dispose();
@@ -1539,8 +1665,12 @@ export class Renderer {
 
     this.sun.position.set(this.camTarget.x + 14, 30, this.camTarget.z + 9);
     this.sun.target.position.set(this.camTarget.x, 0, this.camTarget.z);
+    this.heroLight.position.set(heroPos.x, 7.5, heroPos.z + 2.5);
+    this.windClock.value = this.time;
+    if (this.motes && this.exploreGroup && this.exploreGroup.visible) this.motes.update(Math.min(dt, 0.1), this.camTarget.x, this.camTarget.z, this.time);
 
-    this.renderer.render(this.scene, this.camera);
+    if (this.post) this.post.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 
   /** Remove every enemy / projectile / loot view (used when a new run starts). */

@@ -7,8 +7,12 @@
 //   parts - named pieces the animator moves (weapon pivot, legs ...)
 import * as THREE from 'three';
 import { ENEMIES } from '../sim/defs.js';
+import { addRim } from './environment.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
-const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.08, flatShading: true, ...o });
+// Every character material gets a soft edge light (0.34), so heroes and enemies read on dark ground.
+// Smooth shading with rounded edges (0.34) instead of sharp, flat-shaded boxes.
+const mat = (color, o = {}) => addRim(new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.08, ...o }));
 
 function mesh(geo, material, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geo, material);
@@ -16,7 +20,19 @@ function mesh(geo, material, x = 0, y = 0, z = 0) {
   m.castShadow = true;
   return m;
 }
-const box = (w, h, d, material, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), material, x, y, z);
+// Rounded boxes, shared between models of the same size (cheap to build when enemies spawn).
+const boxCache = new Map();
+function roundedBox(w, h, d) {
+  const key = `${w.toFixed(3)},${h.toFixed(3)},${d.toFixed(3)}`;
+  let g = boxCache.get(key);
+  if (!g) {
+    g = new RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) * 0.22);
+    g.userData.keep = true; // shared: never disposed with one model
+    boxCache.set(key, g);
+  }
+  return g;
+}
+const box = (w, h, d, material, x, y, z) => mesh(roundedBox(w, h, d), material, x, y, z);
 const cyl = (rt, rb, h, material, x, y, z, seg = 8) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), material, x, y, z);
 const ball = (r, material, x, y, z) => mesh(new THREE.IcosahedronGeometry(r, 1), material, x, y, z);
 const cone = (r, h, material, x, y, z, seg = 6) => mesh(new THREE.ConeGeometry(r, h, seg), material, x, y, z);

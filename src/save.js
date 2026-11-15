@@ -70,7 +70,10 @@ export function clearSave(cls) {
   }
 }
 export function loadSettings() {
-  return Object.assign({ parryPreset: null, volume: 0.6, muted: false, shadows: true }, read(SETTINGS_KEY) || {});
+  const s = Object.assign({ parryPreset: null, volume: 0.6, muted: false, shadows: true }, read(SETTINGS_KEY) || {});
+  // Graphics quality (0.34) replaces the Shadows switch: shadows off becomes Low.
+  if (!s.graphics) s.graphics = s.shadows === false ? 'low' : 'auto';
+  return s;
 }
 export function storeSettings(settings) {
   write(SETTINGS_KEY, settings);

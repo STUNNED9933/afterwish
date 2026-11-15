@@ -27,7 +27,10 @@ with sync_playwright() as pw:
     check('a brand-new account has no shards, so the title offers only Explore', ev("() => game.account ? game.account.tickets : JSON.parse(localStorage.getItem('stunned-account-v1') || '{\"tickets\":0}').tickets") == 0 and not page.is_visible('#btn-new') and page.is_visible('#btn-explore'))
     # The rest of these tests start in the arena: give this browser a few shards first.
     ev("() => localStorage.setItem('stunned-account-v1', JSON.stringify({ gold: 0, tickets: 3 }))")
+    # This browser draws in software (no graphics card), so play on Low, as Auto would soon pick.
+    ev("() => { const k = 'stunned-arena-settings-v1'; const s = JSON.parse(localStorage.getItem(k) || '{}'); s.graphics = 'low'; localStorage.setItem(k, JSON.stringify(s)); }")
     page.reload(); page.wait_for_timeout(1200)
+    check('the Graphics setting is kept, and Low is applied', ev("() => document.getElementById('graphics').value") == 'low' and ev("() => game.renderer.quality") == 'low')
 
     # --- A new character in the arena -----------------------------------------
     page.click('#btn-new')
@@ -503,6 +506,8 @@ with sync_playwright() as pw:
     page.click('#wish-panel .wish-row button'); page.wait_for_timeout(300)
     check('a Wish point goes into Might', ev("() => game.world.player.wishStats.might") == 1 and ev("() => game.world.player.wishPts") == pts - 1)
     page.keyboard.press('t'); page.wait_for_timeout(300)
+    # (the saves moved in above replaced the settings: back to Low for this software-drawn browser)
+    ev("() => { const s = document.getElementById('graphics'); s.value = 'low'; s.dispatchEvent(new Event('change')); }")
     # 0.33: the bounty board, The Shattered Wilds, crafting Immortals
     ev("() => game.world.command({ type: 'travel', to: 'town' })"); page.wait_for_timeout(1500)
     ev("() => { const w = game.world, ob = w.obstacles.find((o) => o.kind === 'board'); w.player.x = w.player.px = ob.x + 1.3; w.player.z = w.player.pz = ob.z; }"); page.wait_for_timeout(400)

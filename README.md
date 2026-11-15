@@ -150,6 +150,31 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Every class has its model; a Warrior combo (0.38)
+
+- **The Rogue and the Mage are rigged 3D characters now** (Tripo, 85 credits
+  each): a lean rogue in a charcoal leather jacket with a dagger in each hand,
+  and a silver-haired mage in a blue coat with her staff.
+  - Rogue: jab and cross stabs that alternate hands (from the animation
+    library); our own run, Mercy Stroke and Last Rites (both blades driven
+    down together), Fan of Knives (crouched, arms flung wide as he spins),
+    Nightstep (a long low lunge) and fall.
+  - Mage: our own run, spark cast (the free hand snaps forward), Fire Bolt (a
+    two-handed thrust), Starwake, Meteor (staff raised high, then brought down
+    as it falls) and fall; Frozen Orb is an overhand throw from the library. Her
+    staff stays upright, leaning the way her forearm points.
+- **No limb moves as a mirror of another.** Every hero's run gives each arm and
+  leg its own reach, timing and a small rhythm of its own, and the head and
+  shoulders follow a beat late; the Archer's bow arm answers each release a
+  moment after the string is let go. (Enemies meant to look mechanical can
+  still move in lockstep.)
+- **The Warrior's basic attack is a two-slash combo**: up and across, then down
+  and back, flowing into each other; it starts again after a pause.
+- **The talent button is easy to spot** (a glowing gold bar at the top of the
+  talents screen) and asks for a second click before it spends anything.
+- `tools/models`: `common-moves.js` (the shared run and fall), `rogue-moves.js`,
+  `mage-moves.js`.
+
 ### Talents in one click, a tidier gear screen, a smoother Archer (0.37.2)
 
 - **Spend talent points in one click.** The talents screen has a button that

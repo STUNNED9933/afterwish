@@ -32,6 +32,12 @@ export const RIGGED = {
     deathFrom: 0.45, // skip the stagger at the start: he drops when the blow lands
     hit: 'hit',
     attack: { clip: 'attack', from: 1.6, to: 2.7 },
+    // 0.37.3: basic attacks alternate two slashes that flow into each other (up and across, then
+    // down and back), from the same library as the skills; after a pause it starts again.
+    attacks: [
+      { clip: 'ual_SlashA', from: 0.08, to: 0.43 },
+      { clip: 'ual_SlashB', from: 0.08, to: 0.45 },
+    ],
     // Skills (0.36): sword moves from Quaternius' Universal Animation Library (CC0), moved onto
     // this skeleton by tools/models/retarget.js. Those clips hold the blade along the hand's +Z.
     // keys: [seconds since the cast, clip time] (the clip is played through these, so a move can
@@ -74,6 +80,61 @@ export const RIGGED = {
       dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
     },
     recentre: ['idle', 'run', 'hit'],
+    recentreMin: 0.04,
+    rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
+  },
+  // The Rogue (0.37.3): Tripo's idle and flinch; jab and cross stabs from the library, one per
+  // hand, alternating; his run, Mercy Stroke / Last Rites, Fan of Knives, Nightstep and the fall
+  // are our own (tools/models/rogue-moves.js). A dagger in each hand.
+  hero_rogue: {
+    url: 'models/rogue.glb',
+    height: 2.0,
+    turn: -Math.PI / 2,
+    hand: 'R_Hand',
+    offhand: 'L_Hand',
+    weaponScale: 0.82,
+    idle: 'idle',
+    run: 'rog_run',
+    runRef: 6.0,
+    death: 'rog_death',
+    hit: 'hit',
+    attack: { clip: 'ual_Punch_Cross', from: 0.05, to: 0.75 },
+    attacks: [
+      { clip: 'ual_Punch_Jab', from: 0.0, to: 0.6 }, // the left blade
+      { clip: 'ual_Punch_Cross', from: 0.05, to: 0.75 }, // the right
+    ],
+    moves: {
+      strike: { clip: 'rog_stab', keys: [[0, 0], [0.7, 0.7]], stop: [0.13, 0.04], slash: [0.04, 0.22], fade: 0.25 },
+      dash: { clip: 'rog_dash', keys: [[0, 0], [0.1, 0.1], [0.6, 0.6]], land: 1, slash: [0.02, 0.14], fade: 0.2 },
+    },
+    spin: { clip: 'rog_spin', at: 0.05 },
+    recentre: ['idle', 'hit'],
+    recentreMin: 0.04,
+    rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
+  },
+  // The Mage (0.37.3): Tripo's idle and flinch; Frozen Orb is an overhand throw from the
+  // library; her run, sparks, Fire Bolt, Starwake, Meteor and the fall are our own
+  // (tools/models/mage-moves.js). Her staff stays upright, leaning with her forearm.
+  hero_mage: {
+    url: 'models/mage.glb',
+    height: 1.9,
+    turn: -Math.PI / 2,
+    hand: 'R_Hand',
+    staff: true,
+    weaponScale: 0.82,
+    idle: 'idle',
+    run: 'mag_run',
+    runRef: 5.6,
+    death: 'mag_death',
+    hit: 'hit',
+    attack: { clip: 'mag_cast', cycle: true, fadeIn: 0.1 },
+    moves: {
+      bolt: { clip: 'mag_bolt', keys: [[0, 0], [0.8, 0.8]], fade: 0.25 },
+      orb: { clip: 'ual_OverhandThrow', keys: [[0, 0.15], [0.16, 0.38], [0.7, 1.0], [0.9, 1.3]], fade: 0.25 },
+      dash: { clip: 'mag_blink', keys: [[0, 0], [0.08, 0.08], [0.55, 0.55]], land: 1, fade: 0.2 },
+      meteor: { clip: 'mag_meteor', keys: [[0, 0], [1.2, 1.2]], fade: 0.3 },
+    },
+    recentre: ['idle', 'hit'],
     recentreMin: 0.04,
     rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
   },
@@ -123,6 +184,9 @@ function prepare(spec, gltf) {
   const h = box.max.y - box.min.y;
   if (clips[spec.run]) stripDrift(clips[spec.run], spec.rootBones);
   for (const name of spec.recentre || [spec.run]) if (clips[name]) recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
+  (spec.attacks || []).forEach((a, i) => {
+    if (clips[a.clip]) clips[`__attack${i}`] = THREE.AnimationUtils.subclip(clips[a.clip], a.clip, Math.round(a.from * 30), Math.round(a.to * 30), 30);
+  });
   if (spec.attack && spec.attack.cycle && clips[spec.attack.clip]) clips.__attack = clips[spec.attack.clip];
   else if (spec.attack && clips[spec.attack.clip]) {
     const src = clips[spec.attack.clip];
@@ -215,6 +279,11 @@ export function instantiate(tpl) {
     return a;
   };
   const actions = { idle: act(spec.idle), run: act(spec.run), attack: act('__attack', true), death: act(spec.death, true), hit: act(spec.hit, true) };
+  // alternating basic attacks (spec.attacks), in place of the single one
+  const combo = (spec.attacks || []).map((_, i) => act(`__attack${i}`, true)).filter(Boolean);
+  let comboAt = 0;
+  let sinceAttack = 99;
+  if (combo.length) actions.attack = combo[0];
   // Skill moves and the spin pose are posed by hand each frame (time set, not played).
   const moves = {};
   for (const [k, m] of Object.entries(spec.moves || {})) {
@@ -225,7 +294,7 @@ export function instantiate(tpl) {
     actions.spin = act(spec.spin.clip);
     if (actions.spin) actions.spin.timeScale = 0;
   }
-  const library = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.libraryGrip && spec.libraryGrip.test(a.getClip().name));
+  const library = Object.values(actions).concat(Object.values(moves).map((m) => m.action), combo).filter((a) => a && spec.libraryGrip && spec.libraryGrip.test(a.getClip().name));
   let move = null; // { def, t, keys, stop, end }
   let endFade = 0; // how slowly to leave the move that just ended
   let current = null;
@@ -235,10 +304,22 @@ export function instantiate(tpl) {
   let slash = 0; // how strongly the blade trails light (0..1)
   let weapon = null;
   let bladeLen = 1;
+  const held = []; // other things in hand: { obj, hand, mode: 'blade' | 'staff', grip }
+  // The grip that points a blade (+Z) forward from a fist, for a hand: worked out from the bind
+  // pose (a T-pose: the thumb up, so a held blade points forward). Library clips assume it.
+  root.updateMatrixWorld(true);
+  const rootInv0 = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const forwardGrip = (h) => {
+    const q = new THREE.Quaternion();
+    new THREE.Matrix4().multiplyMatrices(rootInv0, h.matrixWorld).decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    return new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0).applyQuaternion(q.invert()).normalize());
+  };
   const tmpM = new THREE.Matrix4(), tmpP = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
   const xAxis = new THREE.Vector3(1, 0, 0);
+  const zAxis = new THREE.Vector3(0, 0, 1);
+  const staffA = new THREE.Vector3(), staffB = new THREE.Vector3(), staffUp = new THREE.Vector3();
   const tripoGrip = new THREE.Quaternion().setFromAxisAngle(xAxis, spec.gripTilt || 0);
-  const libraryGrip = new THREE.Quaternion();
+  const libraryGrip = spec.hand && root.getObjectByName(spec.hand) ? forwardGrip(root.getObjectByName(spec.hand)) : new THREE.Quaternion();
   const gripQ = new THREE.Quaternion();
   const trailQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(spec.trail || [0, -1, 0])).normalize());
   // Cross-fade to an action (restart: play it again from the start if it is already on).
@@ -264,9 +345,24 @@ export function instantiate(tpl) {
     holdWeapon(w) {
       if (!hand) return;
       weapon = w;
+      if (spec.staff) {
+        held.push({ obj: w, hand, mode: 'staff', grip: null });
+        weapon = null; // a staff is not a blade (no swing trail, no warrior grips)
+        w.scale.setScalar((spec.weaponScale || 1) / tpl.scale);
+        root.add(w);
+        return;
+      }
       bladeLen = Math.max(0.5, new THREE.Box3().setFromObject(w).max.z || 1); // (not yet scaled or placed)
       weapon.scale.setScalar((spec.weaponScale || 1) / tpl.scale); // the model is scaled by tpl.scale
       root.add(weapon); // placed at the hand every frame (see update)
+    },
+    /** A second weapon, in another hand (the Rogue's off-hand dagger), held like a blade. */
+    holdOffhand(w, handName) {
+      const h = root.getObjectByName(handName);
+      if (!h) return;
+      w.scale.setScalar((spec.weaponScale || 1) / tpl.scale);
+      held.push({ obj: w, hand: h, mode: 'blade', grip: forwardGrip(h) });
+      root.add(w);
     },
     /** Hold a bow made here (spec.bow): wood for the limbs, the string glows like a blade. */
     holdBow(wood, string) {
@@ -318,7 +414,14 @@ export function instantiate(tpl) {
             move = null;
           }
         }
+        sinceAttack += dt;
         if (s.attackStart && actions.attack && !move && !s.move) {
+          if (combo.length) {
+            // the next slash of the combo; a fresh combo after a pause
+            comboAt = sinceAttack > 1.2 ? 0 : (comboAt + 1) % combo.length;
+            actions.attack = combo[comboAt];
+          }
+          sinceAttack = 0;
           const len = actions.attack.getClip().duration;
           const cycle = spec.attack.cycle && s.period > 0;
           attackLeft = cycle ? Math.max(0.2, s.period) : Math.max(0.35, s.attackDur * 1.8);
@@ -375,10 +478,29 @@ export function instantiate(tpl) {
         // (an action that has never played still reports full weight, so ask if it is running)
         let libW = 0;
         for (const a of library) if (a.isRunning() || a === current) libW += a.getEffectiveWeight();
-        gripQ.copy(tripoGrip).slerp(libraryGrip, Math.min(1, libW));
+        if (spec.gripTilt != null) gripQ.copy(tripoGrip).slerp(libraryGrip, Math.min(1, libW));
+        else gripQ.copy(libraryGrip); // every clip of this character holds the blade forward
         weapon.quaternion.copy(tmpQ).multiply(gripQ);
         const runW = actions.run && actions.run.isRunning() && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.run.getEffectiveWeight() : 0;
-        if (runW > 0.01) weapon.quaternion.slerp(trailQ, runW);
+        if (spec.trail && runW > 0.01) weapon.quaternion.slerp(trailQ, runW);
+      }
+      if (held.length) {
+        root.updateMatrixWorld(true);
+        const inv = tmpM.copy(root.matrixWorld).invert();
+        for (const h of held) {
+          new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld).decompose(tmpP, tmpQ, tmpS);
+          h.obj.position.copy(tmpP);
+          if (h.mode === 'blade') h.obj.quaternion.copy(tmpQ).multiply(h.grip);
+          else {
+            // a staff stays upright, leaning the way the forearm points (forward when casting)
+            const fore = h.hand.parent;
+            fore.getWorldPosition(staffA);
+            h.hand.getWorldPosition(staffB);
+            staffB.sub(staffA).transformDirection(inv);
+            staffUp.set(0, 1, 0).addScaledVector(staffB, 0.35).normalize();
+            h.obj.quaternion.setFromUnitVectors(zAxis, staffUp);
+          }
+        }
       }
     },
   };
@@ -505,6 +627,7 @@ export function upgradeHero(model, cls) {
     for (const c of arm.children.slice(1)) weapon.add(c);
     weapon.children.forEach((c) => (c.position.z -= 0.6));
     rig.holdWeapon(weapon);
+    if (tpl.spec.offhand) rig.holdOffhand(weapon.clone(), tpl.spec.offhand); // the Rogue's second dagger
     model.parts.body.visible = false;
     model.group.add(rig.group);
     model.mats.push(...rig.mats);

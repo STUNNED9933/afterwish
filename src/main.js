@@ -1035,13 +1035,14 @@ function start(hot = {}) {
       // 0.37.2: spend them all in one click (your last build in this subclass, if you had one)
       const auto = document.createElement('button');
       auto.type = 'button';
-      auto.className = 'primary tiny tal-auto';
+      auto.className = 'tal-auto';
       const kept = (p.talentBuilds && p.talentBuilds[p.spec]) || [];
       auto.textContent = kept.length ? `Spend ${pts} point${pts === 1 ? '' : 's'} like last time` : `Spend ${pts} point${pts === 1 ? '' : 's'} for me`;
       auto.title = kept.length
         ? `Puts your points back where you had them as ${sp.name} (in the order you spent them); any left over go to the deepest open row.`
         : 'Fills the deepest open row first, evening out the ranks. You can respec later for gold.';
-      auto.addEventListener('click', () => applyNow({ type: 'autoTalents' }));
+      // a second click confirms (0.37.3), so a stray click cannot spend them
+      auto.addEventListener('click', () => armThenRun(auto, `Click again to spend ${pts} point${pts === 1 ? '' : 's'}`, () => applyNow({ type: 'autoTalents' })));
       body.prepend(auto);
     }
     respec.classList.remove('hidden');

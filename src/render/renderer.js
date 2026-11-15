@@ -1381,8 +1381,9 @@ export class Renderer {
       // Skills with their own animation (0.36): Cleave from its cast; dashes and leaps when they start.
       let move = an.move || null;
       let moveDur = 0;
-      if (p.dash && !h.prevDash) [move, moveDur] = ['dash', p.dash.dur];
-      if (p.leap && !h.prevLeap) [move, moveDur] = ['leap', p.leap.dur];
+      // (a strike that closes the gap with a dash keeps its own animation)
+      if (p.dash && !h.prevDash && (!move || move === 'dash')) [move, moveDur] = ['dash', p.dash.dur];
+      if (p.leap && !h.prevLeap && (!move || move === 'leap')) [move, moveDur] = ['leap', p.leap.dur];
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;

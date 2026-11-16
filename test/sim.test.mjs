@@ -233,7 +233,7 @@ import { makeRng } from '../src/sim/rng.js';
     const types = new Set(m.spawns.map((sp) => sp.type));
     const ok = [...types].every((t) => DEFS.ENEMIES[t].boss || MAPS[id].roster[t]) && m.spawns.every((sp) => sp.level >= m.level && sp.level <= m.levelMax + (DEFS.ENEMIES[sp.type].boss ? 1 : 0));
     const open = m.spawns.every((sp) => !m.obstacles.some((ob) => Math.hypot(ob.x - sp.x, ob.z - sp.z) < ob.r + 1)) && m.portals.every((g) => !m.obstacles.some((ob) => Math.hypot(ob.x - g.x, ob.z - g.z) < ob.r + 3));
-    check(`${m.name}: its own enemies, at its own level, with room to stand`, ok && open && (m.safe ? m.spawns.length === 0 : m.spawns.length >= 15), `${m.spawns.length} enemies: ${[...types].join(', ') || 'none'}; ${m.obstacles.length} solid objects`);
+    check(`${m.name}: its own enemies, at its own level, with room to stand`, ok && open && (m.safe ? m.spawns.length === 0 : MAPS[id].bossOnly ? m.spawns.length === 1 && DEFS.ENEMIES[m.spawns[0].type].boss : m.spawns.length >= 15), `${m.spawns.length} enemies: ${[...types].join(', ') || 'none'}; ${m.obstacles.length} solid objects`);
   }
   check('maps: same layout every time', JSON.stringify(buildMap('fen')) === JSON.stringify(buildMap('fen')));
   {
@@ -630,7 +630,7 @@ import { makeRng } from '../src/sim/rng.js';
   const { farm } = await import('./balance.mjs');
   for (const id of Object.keys(MAPS)) {
     const m = MAPS[id];
-    if (m.safe) continue;
+    if (m.safe || m.bossOnly) continue; // (a boss's chamber is not for farming)
     const level = Math.min(99, m.level + Math.round(m.levelSpan / 2));
     const o = farm({ cls: 'warrior', map: id, level, minutes: 1.5, rarity: 2, parrySkill: 0.6 });
     check(`balance: a level ${level} warrior can farm ${m.name}`, o.kills >= 8 && o.downs <= 1, `${o.kills} kills, knocked out ${o.downs}x, lowest health ${Math.round(o.minHp * 100)}%`);
@@ -666,7 +666,7 @@ import { makeRng } from '../src/sim/rng.js';
   if (glass) {
     const n0 = w.falls.length;
     w.killEnemy(glass, 'q');
-    check('Act II: a Glassbound shatters a moment after it falls (a circle to step out of)', w.falls.length === n0 + 1);
+    check('Act II: a Glassbound shatters a moment after it falls (a circle to step out of)', w.falls.length >= n0 + 1, `${n0} -> ${w.falls.length}, ${glass.dead}`);
   }
   const wl = w.enemies.find((e) => e.type === 'wishling' && !e.dead);
   if (wl) {
@@ -677,6 +677,60 @@ import { makeRng } from '../src/sim/rng.js';
     for (let i = 0; i < Math.round(5 / CONFIG.TICK) && !got; i++) { step(w); got = w.events.some((e) => e.type === 'wished'); }
     check('Act II: a Wishling now and then gives a nearby enemy 30% more damage, for a while', got && w.enemies.some((e) => e.wishedT > 0 && Math.abs(e.dmgMult / (e.wishedMult || 1) - (e === other ? before : e.dmgMult / e.wishedMult)) < 1e-9));
   }
+  // --- 0.40: the Frozen Court and the Starwell ---
+  p.quests.survey.s = 'done';
+  check('Act II: after the survey, Wren sends you to the Frozen Court', w.questOpen('court') && !w.questOpen('starwell'));
+  w.command({ type: 'acceptQuest', id: 'court' }); step(w);
+  const herald = w.enemies.find((e) => e.type === 'herald');
+  check('Act II: the Herald holds the Frozen Court in Asterfell', !!herald);
+  for (const e of w.enemies) if (e !== herald) { e.dead = true; e.hp = 0; }
+  w.enemies = w.enemies.filter((e) => !e.dead);
+  p.x = herald.x + 6; p.z = herald.z; herald.aggro = true; herald.state = 'chase';
+  for (let i = 0; i < Math.round(30 / CONFIG.TICK); i++) { p.hp = p.stats.maxHp; p.dead = false; step(w); }
+  const guards = w.enemies.filter((e) => e.type === 'heraldguard' && !e.dead && e.summoner === herald.id);
+  check('Act II: the Herald calls up shielded guards as he proclaims, never more than four', guards.length >= 2 && guards.length <= 4 && guards.every((g) => g.maxShield > 0 && g.def.exp === 0), `${guards.length} guards`);
+  w.killEnemy(herald, 'q'); step(w);
+  check('Act II: when the Herald falls, The Frozen Court is done and the Starwell opens', w.questState('court') === 'ready');
+  check('Act II: and his guards fall with him', guards.every((g) => g.dead));
+  p.quests.court.s = 'done';
+  w.command({ type: 'acceptQuest', id: 'starwell' }); step(w);
+  w.command({ type: 'travel', to: 'starwell' }); step(w, 2);
+  const asker = w.enemies.find((e) => e.type === 'asker');
+  check('Act II: the Starwell holds only the Asker', w.map.id === 'starwell' && asker && w.enemies.filter((e) => !e.dead).length === 1);
+  // Its offers
+  const dmg0 = p.stats.dmg, ms0 = p.stats.ms;
+  asker.hp = asker.maxHp * 0.76; w.hitEnemy(asker, 1e-6 + asker.maxHp * 0.02);
+  check('Act II: at 75% the Asker stops and offers you a wish', asker.offerT > 0 && asker.offerTo.has(w.cur.pid) && w.events.some((e) => e.type === 'askerOffer'));
+  const hp0 = asker.hp; w.hitEnemy(asker, 1000);
+  check('Act II: while it waits for your answer, it cannot be hurt', asker.hp === hp0);
+  w.command({ type: 'askerAnswer', pick: 'speed' }); step(w);
+  check('Act II: a speed wish makes you 20% faster, and the Asker grows from it', Math.abs(p.stats.ms / ms0 - 1.2) < 1e-6 && asker.askerGrown === 1, `${ms0} -> ${p.stats.ms}`);
+  step(w, Math.round(1 / CONFIG.TICK));
+  check('Act II: once everyone has answered, the fight goes on', !(asker.offerT > 0));
+  asker.hp = asker.maxHp * 0.51; w.hitEnemy(asker, asker.maxHp * 0.02);
+  const mult0 = asker.dmgMult;
+  w.command({ type: 'askerAnswer', pick: 'none' }); step(w);
+  check('Act II: refusing makes it press 8% harder', Math.abs(asker.dmgMult / mult0 - 1.08) < 1e-9 && asker.askerGrown === 1);
+  step(w, Math.round(1 / CONFIG.TICK));
+  asker.hp = asker.maxHp * 0.26; w.hitEnemy(asker, asker.maxHp * 0.02);
+  const ward0 = p.ward || 0;
+  w.command({ type: 'askerAnswer', pick: 'shield' }); step(w);
+  check('Act II: a shield wish gives a ward of 30% of your health', (p.ward || 0) - ward0 >= p.stats.maxHp * 0.3 - 1 && asker.askerGrown === 2);
+  step(w, Math.round(1 / CONFIG.TICK));
+  const mult1 = asker.dmgMult;
+  asker.hp = asker.maxHp * 0.21; w.hitEnemy(asker, asker.maxHp * 0.02);
+  check('Act II: in its last stretch the Asker grows from every wish it granted (and forgets refusals)', asker.askerLast && Math.abs(asker.dmgMult - (mult1 / 1.08) * 1.6) < 1e-6 && asker.maxShield === Math.round(asker.maxHp * 0.16), `${mult1} -> ${asker.dmgMult}, shield ${asker.maxShield}`);
+  // Nobody answers: time runs out
+  const w2 = new World({ seed: 23, cls: 'mage', mode: 'explore', save: { v: 2, level: 100, tierMax: 2, worldTier: 2, quests: { unmade: { s: 'done', n: 1 }, w: { s: 'done', n: 1 }, sand: { s: 'done', n: 1 }, survey: { s: 'done', n: 1 }, court: { s: 'done', n: 1 } }, visited: ['town', 'frost', 'asterfell'] } });
+  w2.command({ type: 'travel', to: 'starwell' }); step(w2, 2);
+  const a2 = w2.enemies.find((e) => e.type === 'asker');
+  a2.hp = a2.maxHp * 0.74; w2.hitEnemy(a2, 1);
+  const m2 = a2.dmgMult;
+  step(w2, Math.round(10.5 / CONFIG.TICK));
+  check('Act II: saying nothing until the time runs out counts as refusing', !(a2.offerT > 0) && Math.abs(a2.dmgMult / m2 - 1.08) < 1e-9 && w2.events.some((e) => e.type === 'askerRefused'), `${w2.map.id}, ${a2.offerT}, ${m2} -> ${a2.dmgMult}`);
+  // Wishes end with the Asker
+  w.killEnemy(asker, 'q'); step(w);
+  check('Act II: when the Asker falls its wishes are gone, and The Starwell is done', !p.wished && Math.abs(p.stats.ms - ms0) < 1e-6 && w.questState('starwell') === 'ready');
 }
 
 // --- Story: quests, signs, boss rewards -----------------------------------------

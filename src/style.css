@@ -63,7 +63,17 @@ body.slowmo #slowtint { opacity: 1; }
 .plabel.way.stone { color: #bff2ff; }
 /* Trading (0.25) */
 #party-trade { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
-#party-trade.hidden, #trade-panel.hidden, #trade-ask.hidden { display: none; }
+#party-trade.hidden, #trade-panel.hidden, #trade-ask.hidden, #asker-offer.hidden { display: none; }
+/* The Asker's offer (0.40) */
+#asker-offer { position: fixed; left: 50%; top: 96px; transform: translateX(-50%); z-index: 60; width: min(640px, 92vw); padding: 14px 18px 12px; text-align: center; border-radius: 12px; background: rgba(20, 16, 8, 0.94); border: 1px solid rgba(255, 210, 122, 0.7); box-shadow: 0 0 40px rgba(255, 210, 122, 0.25), 0 10px 30px rgba(0, 0, 0, 0.6); }
+#asker-offer .ask-eyebrow { margin: 0; font: 600 11px var(--body); letter-spacing: 0.2em; text-transform: uppercase; color: #ffd27a; }
+#asker-offer .ask-q { margin: 2px 0 10px; font: italic 600 26px/1.1 var(--display); color: #fff2c0; }
+#asker-offer .ask-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#asker-offer button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; border-radius: 8px; border: 1px solid rgba(255, 210, 122, 0.45); background: rgba(255, 210, 122, 0.08); color: var(--bone); font: 600 15px var(--body); cursor: pointer; }
+#asker-offer button:hover { background: rgba(255, 210, 122, 0.2); border-color: #ffd27a; }
+#asker-offer button small { font: 400 12px var(--body); color: var(--muted); }
+#asker-offer button.ask-none { border-color: rgba(200, 220, 255, 0.4); background: rgba(160, 190, 255, 0.06); }
+#asker-offer .ask-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 #trade-panel { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(240, 196, 90, 0.4); background: rgba(240, 196, 90, 0.06); }
 #trade-panel h3 { margin-top: 0; }
 .trade-side { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }

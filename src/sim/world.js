@@ -479,6 +479,11 @@ export class World {
       lifesteal: g.lifesteal + m.lifesteal,
       regen: 1 + 0.1 * p.level,
     };
+    if (p.wished && p.wished.speed) {
+      // The Asker's speed (0.40): for the rest of the fight
+      p.stats.ms *= 1 + 0.2 * p.wished.speed;
+      p.stats.as *= 1 + 0.2 * p.wished.speed;
+    }
     if (prevMax && p.stats.maxHp > prevMax) p.hp += p.stats.maxHp - prevMax;
     p.hp = Math.min(p.hp, p.stats.maxHp);
   }
@@ -658,6 +663,9 @@ export class World {
           break;
         case 'autoTalents':
           this.autoTalents();
+          break;
+        case 'askerAnswer':
+          this.askerAnswer(c.pick);
           break;
         case 'respec':
           this.respec();
@@ -3065,6 +3073,94 @@ export class World {
   }
 
   // =========================================================================
+  // Act II bosses (0.40): the Herald's proclamation, the Asker's wishes
+  // =========================================================================
+  /** The Herald reads a line of your naming-day proclamation, and Court Guards answer it. */
+  stepHerald(e, dt) {
+    const H = e.def.herald;
+    e.heraldT = (e.heraldT ?? H.every * 0.5) - dt;
+    if (e.heraldT > 0) return;
+    e.heraldT = H.every;
+    e.heraldLine = (e.heraldLine || 0) + 1;
+    const alive = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+    for (let i = 0; i < Math.min(H.guards, H.max - alive); i++) {
+      const a = e.facing + (i % 2 ? 2 : -2);
+      const c = this.clampToArena(e.x + dCos(a) * 5, e.z + dSin(a) * 5, 1);
+      const o = this.spawnEnemy('heraldguard', { x: c.x, z: c.z, level: e.level });
+      o.x = o.px = c.x;
+      o.z = o.pz = c.z;
+      o.maxHp = o.hp = Math.round(e.maxHp * H.hp);
+      o.shield = o.maxShield = Math.round(o.maxHp * o.def.shield);
+      o.dmgMult = e.dmgMult * H.dmg;
+      o.summoner = e.id;
+      o.home = null;
+      o.aggro = true;
+      o.state = 'chase';
+    }
+    this.emit('proclaim', { id: e.id, line: e.heraldLine, x: e.x, z: e.z });
+  }
+
+  /** The Asker stops at 75%, 50% and 25% health and offers every hero there a wish. */
+  askerCheck(e) {
+    const A = e.def.asker;
+    const n = e.askerOffers || 0;
+    if (n < A.at.length && e.hp <= e.maxHp * A.at[n]) {
+      e.askerOffers = n + 1;
+      e.offerT = A.time;
+      this.removeTelegraph(e);
+      e.state = 'recover';
+      e.t = 0;
+      e.offerTo = new Set(this.heroes.filter((h) => !h.player.dead).map((h) => h.pid));
+      this.emit('askerOffer', { id: e.id, n: e.askerOffers, time: A.time, x: e.x, z: e.z });
+    }
+    if (!e.askerLast && e.hp <= e.maxHp * A.last) {
+      // The last stretch: it grows from what was wanted of it; refusals no longer count against you.
+      e.askerLast = true;
+      e.dmgMult /= e.refuseMult || 1;
+      e.refuseMult = 1;
+      const grown = e.askerGrown || 0;
+      if (grown > 0) {
+        e.dmgMult *= 1 + 0.3 * grown;
+        e.shield = e.maxShield = Math.round(e.maxHp * 0.08 * grown);
+      }
+      this.emit('askerLast', { id: e.id, grown, x: e.x, z: e.z });
+    }
+  }
+
+  /** A hero answers the Asker: 'power', 'shield', 'speed', or nothing at all. */
+  askerAnswer(pick) {
+    const e = this.enemies.find((o) => o.def.asker && !o.dead && o.offerT > 0 && o.offerTo && o.offerTo.has(this.cur.pid));
+    if (!e) return;
+    const p = this.player;
+    e.offerTo.delete(this.cur.pid);
+    if (pick === 'power' || pick === 'shield' || pick === 'speed') {
+      // Granted exactly: for the rest of this fight.
+      p.wished = p.wished || {};
+      p.wished[pick] = (p.wished[pick] || 0) + 1;
+      if (pick === 'shield') p.ward = (p.ward || 0) + p.stats.maxHp * 0.3;
+      e.askerGrown = (e.askerGrown || 0) + 1;
+      this.recalcStats();
+      this.emit('askerGranted', { id: e.id, pick, x: p.x, z: p.z, pid: this.cur.pid });
+    } else {
+      // Refused: it presses harder until the end (where refusals stop counting).
+      e.refuseMult = (e.refuseMult || 1) * 1.08;
+      e.dmgMult *= 1.08;
+      this.emit('askerRefused', { id: e.id, pid: this.cur.pid });
+    }
+    if (!e.offerTo.size) e.offerT = Math.min(e.offerT, 0.6); // everyone has answered: a breath, then on
+  }
+
+  /** The Asker's wishes last only while it stands (and only on its map). */
+  clearWishes() {
+    for (const h of this.heroes || []) {
+      if (h.player.wished) {
+        h.player.wished = null;
+        this.as(h, () => this.recalcStats());
+      }
+    }
+  }
+
+  // =========================================================================
   // 0.31: unique Remnants, world events, the travelling merchant, ascending, glows
   // =========================================================================
   /** Each Remnant's own mechanic (bosses without one fall back to a ring of blows). */
@@ -4261,6 +4357,7 @@ export class World {
       const near = this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) <= DOOM.range);
       if (!near.length) continue;
       if (e.remnant) this.stepRemnant(e, near, dt); // each Remnant's own mechanic (0.31)
+      if (e.def.herald && !e.remnant) this.stepHerald(e, dt); // the proclamation (0.40)
       // Idle heroes first: standing still with no input near a boss is never safe.
       for (const h of near) {
         if (h.player.idleT < DOOM.idle) continue;
@@ -4473,8 +4570,10 @@ export class World {
 
   hitEnemy(e, base, opts = {}) {
     if (e.dead) return;
+    if (e.offerT > 0) return; // the Asker, waiting for your answer, cannot be hurt
     const p = this.player;
     let dmg = base;
+    if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
     let crit = false;
     const chance = p.stats.crit + (opts.critBonus || 0);
     if (opts.canCrit !== false && (opts.forceCrit || this.rng() < chance / 100)) {
@@ -4578,6 +4677,7 @@ export class World {
       if (heal > 0) this.healPlayer(heal, false);
     }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
+    if (e.def.asker && e.hp > 0) this.askerCheck(e);
     if (e.def.final && e.hp > 0) {
       // The final boss fights in three phases: new attacks at two thirds and one third health.
       const phase = e.hp < e.maxHp / 3 ? 3 : e.hp < (2 * e.maxHp) / 3 ? 2 : 1;
@@ -4654,6 +4754,7 @@ export class World {
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
+    if (e.def.asker) this.clearWishes();
     if (e.def.shatter) {
       // Glassbound (0.39): the glass gives way a moment after they fall.
       this.falls.push({ x: e.x, z: e.z, r: e.def.shatter.r, t: 0, dur: 1.0, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * e.def.shatter.mult, level: e.level, srcId: e.id, tele: null });
@@ -4663,8 +4764,8 @@ export class World {
       this.falls.push({ x: e.x, z: e.z, r: 3.2, t: 0, dur: 1.2, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * 2.5, level: e.level, srcId: e.id, tele: null });
     }
     if (this.mode === 'explore' && this.map.id === 'rift' && this.rift && !e.def.summon) this.riftKill(e);
-    if (e.remnant) {
-      // A Remnant's shades and wish-stars go with it.
+    if (e.remnant || e.def.herald) {
+      // A Remnant's shades and wish-stars go with it (and the Herald's guards, 0.40).
       for (const o of this.enemies) {
         if (o.summoner !== e.id || o.dead) continue;
         o.dead = true;
@@ -4790,6 +4891,21 @@ export class World {
       e.moving = false;
       if (e.dead) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt;
+      if (e.offerT > 0) {
+        // The Asker waits for your answer (0.40); whoever has not answered when time runs out has refused.
+        e.offerT -= dt;
+        if (e.offerT <= 0) {
+          e.offerT = 1e-9; // (still open while the silent refuse)
+          for (const pid of [...(e.offerTo || [])]) {
+            const h = this.heroes.find((x) => x.pid === pid);
+            if (h) this.as(h, () => this.askerAnswer('none'));
+          }
+          e.offerT = 0;
+          e.offerTo = null;
+          this.emit('askerResume', { id: e.id });
+        }
+        continue;
+      }
       if (e.wishedT > 0) {
         // Given what it wanted by a Wishling (0.39): stronger for a while.
         e.wishedT -= dt;
@@ -5278,6 +5394,7 @@ inTown() {
    * arrive at the portal that leads back to it (or in the middle if there is none).
    */
   loadMap(id, from = null) {
+    this.clearWishes(); // the Asker's wishes stay in the Starwell (0.40)
     if (this.map && this.mode === 'explore' && !this.trial && this.map.id !== 'rift') this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     if (id !== 'rift' && this.rift) {
       // Leaving an Echo Rift ends it.

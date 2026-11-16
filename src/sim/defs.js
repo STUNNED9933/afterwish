@@ -266,6 +266,23 @@ Object.assign(ENEMIES, {
     grants: { every: 4, range: 8, time: 4, dmg: 1.3 }, // now and then gives a nearby enemy what it wants: 30% more damage, for a while
     attacks: [{ name: 'mote', shape: 'shot', trigger: 12, windup: 0.8, recover: 1.2, dmg: 12, parryable: true, lockAt: 0.1, speed: 10, count: 1, spread: 0 }],
   },
+  // The Herald (0.40): Maren's chamberlain, still reading out your naming-day proclamation. Each line
+  // of it calls Court Guards to the court (see world.js stepHerald).
+  herald: {
+    name: 'The Herald', model: 'boss', look: { scale: 1.05, colors: [0xe8d8b0, 0xd8b25a, 0x5a3a18] },
+    hp: 2600, speed: 3.0, radius: 1.4, height: 3.6, heavy: true, boss: true, exp: 360, poise: 3, parryStun: 4, drop: 1, cost: 0, ai: 'boss', atkCd: [0.7, 1.2],
+    herald: { every: 12, guards: 2, max: 4, hp: 0.07, dmg: 0.6 },
+    title: 'Who reads your name to the city',
+    attacks: [], // filled in below (BOSS_ATTACKS is defined after this table)
+  },
+  // The Asker (0.40): the star itself, in a shape of light. It offers you a wish three times.
+  asker: {
+    name: 'The Asker', model: 'boss', look: { scale: 1.15, colors: [0xfff2c0, 0xffd27a, 0x3a2a0a] },
+    hp: 3200, speed: 3.3, radius: 1.5, height: 4.0, heavy: true, boss: true, exp: 420, poise: 4, parryStun: 4, drop: 1, cost: 0, ai: 'boss', atkCd: [0.6, 1.1],
+    asker: { at: [0.75, 0.5, 0.25], time: 10, last: 0.2 },
+    title: 'What the star wants to give you',
+    attacks: [],
+  },
   boss2: {
     name: 'The Mycelord', model: 'boss', look: { scale: 1.1, colors: [0x5a3a6a, 0x9fe07a, 0x1c1424] },
     hp: 1700, speed: 2.9, radius: 1.5, height: 3.7, heavy: true, boss: true, exp: 260, poise: 3, parryStun: 4, drop: 1, cost: 0, ai: 'boss', atkCd: [0.7, 1.3],
@@ -284,6 +301,17 @@ Object.assign(ENEMIES, {
     ],
   },
 });
+// Act II bosses (0.40): their attacks, and the Herald's guards (after every table above is in, before attacks are indexed).
+ENEMIES.herald.attacks.push(
+  ...BOSS_ATTACKS({ size: 1.05, pace: 0.95, dmg: 30, slam: 7, shots: 7, spread: 1.2, shotSpeed: 13 }),
+  // the proclamation's light, falling along your path
+  { name: 'proclaim', shape: 'rain', trigger: 22, windup: 0.6, recover: 1.0, dmg: 30, parryable: false, lockAt: 0, count: 7, gap: 0.2, fall: 0.8, radius: 2.2 },
+);
+ENEMIES.asker.attacks.push(
+  ...BOSS_ATTACKS({ size: 1.15, pace: 0.85, dmg: 32, slam: 8, shots: 11, spread: 2.4, shotSpeed: 15 }),
+  { name: 'starfall', shape: 'rain', trigger: 30, windup: 0.6, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 8, gap: 0.24, fall: 0.8, radius: 2.4 },
+);
+ENEMIES.heraldguard = { ...ENEMIES.courtguard, exp: 0, drop: 0, summon: true }; // called by the Herald; no reward of their own
 /** The arena's bosses take turns: wave 5 The Warden, 10 The Mycelord, 15 The Unmade, 20 The Warden ... */
 export const BOSSES = ['boss', 'boss2', 'boss3'];
 

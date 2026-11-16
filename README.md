@@ -150,6 +150,27 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Act II: the Frozen Court and the Starwell (0.40)
+
+- **The Frozen Court** (from Wren, after Tobin's Survey): the **Herald** stands
+  at the heart of Asterfell, still reading the proclamation for your naming day.
+  Every few seconds he reaches a new line (you can read them over his head) and
+  calls up two shielded guards, never more than four at once; they fall with
+  him. Between lines, light rains down on the court. Let him finish.
+- **The Starwell** opens on the Waygate after the Herald: a small, quiet chamber
+  under the court with nothing in it but the **Asker**, and its own music (the
+  naming-day tune on one bell, breaking off every other line).
+- **The Asker's offers.** At 75%, 50% and 25% health it stops, cannot be hurt,
+  and offers everyone a wish for the rest of the fight (keys 1 to 4, or click):
+  - *Power*: 40% more damage.
+  - *A shield*: a ward worth 30% of your health.
+  - *Speed*: 20% faster movement and attacks.
+  - *Nothing*: it presses 8% harder. Saying nothing for ten seconds counts as
+    this.
+  At 20% it grows from every wish it granted (30% more damage and a shield for
+  each), and the refusals stop counting against you. Wanting nothing is harder
+  at first and easier at the end. The wishes are gone when it falls.
+
 ### Act II begins: Asterfell (0.39)
 
 The story goes on after The Unmade (the plan: `docs/design/act-ii.md`).
@@ -162,7 +183,7 @@ The story goes on after The Unmade (the plan: `docs/design/act-ii.md`).
   rings of roads, spires of glass, warm amber light and its own music ("The
   Naming Day"). It is still celebrating.
 - **Tobin's Survey** (from Sister Odile): find his four survey stones in the
-  city and learn what he knew. A banner over the court doors waits for 0.40.
+  city and learn what he knew.
 - **Three new enemies:**
   - *Glassbound*: slow citizens in glass that shatter a moment after they fall
     (step out of the circle).

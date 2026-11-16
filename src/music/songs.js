@@ -185,6 +185,18 @@ export const SONGS = {
       'D5:6 Bb4:2 G4:8', 'E5:4 G5:4 C5:8', 'D5:4 C5:4 Bb4:4 G4:4', 'F4:12 r:4',
     ],
   },
+  // The Starwell (0.40): the same naming-day tune, one voice, nearly nothing under it, every other line breaking off.
+  starwell: {
+    name: 'The Naming Day (the well)', bpm: 60,
+    style: { lead: 'bell', pad: 'strings', arp: null, bass: 'half', stabs: false, drums: null },
+    chords: ['F', 'C', 'Dm', 'Bb', 'F', 'C', 'Bb', 'C', 'Dm', 'Am', 'Bb', 'F', 'Gm', 'C', 'Bb', 'F'],
+    melody: [
+      'A4:6 C5:2 F5:8', 'E5:4 D5:4 r:8', 'D5:6 F5:2 A4:8', 'Bb4:4 D5:4 F5:4 r:4',
+      'C5:6 A4:2 F4:8', 'G4:4 C5:4 r:8', 'D5:6 C5:2 Bb4:4 A4:4', 'G4:12 r:4',
+      'F5:6 E5:2 D5:8', 'C5:4 E5:4 r:8', 'G5:6 F5:2 D5:8', 'C5:4 A4:4 r:8',
+      'D5:6 Bb4:2 G4:8', 'E5:4 G5:4 r:8', 'D5:4 C5:4 Bb4:4 G4:4', 'F4:12 r:4',
+    ],
+  },
 };
 
 /** Which theme plays on which exploration map (by the map's `theme`). */

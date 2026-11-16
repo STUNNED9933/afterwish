@@ -102,6 +102,17 @@
   </div>
 </section>
 <div id="tooltip" class="hidden"></div>
+<div id="asker-offer" class="hidden" role="dialog" aria-label="The Asker offers a wish">
+  <p class="ask-eyebrow">The Asker</p>
+  <p class="ask-q">"What do you want?"</p>
+  <div class="ask-row">
+    <button type="button" data-pick="power"><kbd>1</kbd> Power<small>+40% damage</small></button>
+    <button type="button" data-pick="shield"><kbd>2</kbd> Safety<small>a shield of 30% health</small></button>
+    <button type="button" data-pick="speed"><kbd>3</kbd> Speed<small>+20% move and attack speed</small></button>
+    <button type="button" data-pick="none" class="ask-none"><kbd>4</kbd> Nothing<small>it presses harder, until the end</small></button>
+  </div>
+  <p class="ask-note">A wish lasts for the rest of this fight. Whatever you take, it takes back at the end. <span id="ask-time"></span></p>
+</div>
 <div id="trade-ask" class="hidden" role="alertdialog"><span id="trade-ask-text"></span><button type="button" id="btn-trade-yes" class="primary tiny">Trade</button><button type="button" id="btn-trade-no" class="ghost tiny">No thanks</button></div>
 
 <section id="augment" class="screen hidden">
@@ -210,7 +221,7 @@
 
 <section id="title" class="screen">
   <div class="title-col">
-    <p class="eyebrow">STUNNED Games &middot; version 0.39</p>
+    <p class="eyebrow">STUNNED Games &middot; version 0.40</p>
     <h1>After<em>wish</em></h1>
     <p class="tagline">What falls here does not stay down.</p>
     <p class="lede">Whatever you cut down on the road above Haven gets back up. It always has. The people of Haven stopped asking why a long time ago, and the ones who know will not say. Parry at the flash, climb, and find out what keeps them walking. Alone, or with friends.</p>

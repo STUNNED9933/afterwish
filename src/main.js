@@ -20,7 +20,7 @@ import { Music } from './music/player.js';
 import { MAP_SONG, BOSS_SONG } from './music/songs.js';
 import { MAPS, MAP_IDS } from './sim/maps.js';
 import { BOSSES, ENEMIES } from './sim/defs.js';
-import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS } from './sim/story.js';
+import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
@@ -232,7 +232,7 @@ function start(hot = {}) {
     else if (mode === 'title' || mode === 'town' || (mode === 'gear' && gearReturn === 'town')) id = 'haven';
     else if (world.mode === 'explore') {
       const guardian = world.rift && world.rift.state === 'guardian' ? world.enemies.find((e) => e.riftGuardian) : null;
-      id = guardian ? BOSS_SONG[guardian.type] : MAP_SONG[world.map.theme]; // a rift's guardian brings its own theme
+      id = guardian ? BOSS_SONG[guardian.type] : world.map.song || MAP_SONG[world.map.theme]; // a rift's guardian brings its own theme; a map may have its own song
     }
     else if (world.wave.phase === 'active' && world.wave.n % CONFIG.BOSS_EVERY === 0) id = BOSS_SONG[BOSSES[(world.wave.n / CONFIG.BOSS_EVERY - 1) % BOSSES.length]]; // each boss brings its own theme
     else id = 'arena';
@@ -1079,7 +1079,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -1419,6 +1419,11 @@ function start(hot = {}) {
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
+      // The Asker's offer (0.40): 1 to 4 answer it (before the potion key gets them).
+      if (!$('asker-offer').classList.contains('hidden') && /^[1-4]$/.test(key)) {
+        answerAsker(['power', 'shield', 'speed', 'none'][Number(key) - 1]);
+        return true;
+      }
       if (mode === 'watch' && watching && key === '2') {
         watching.fast = !watching.fast;
         return true;
@@ -1784,6 +1789,30 @@ function start(hot = {}) {
     hud.hint(text, seconds);
   }
 
+  // The Asker's offer panel (0.40)
+  let askerTimer = null;
+  function askerOffer(time) {
+    const el = $('asker-offer');
+    el.classList.remove('hidden');
+    let left = Math.ceil(time);
+    $('ask-time').textContent = `${left}s`;
+    clearInterval(askerTimer);
+    askerTimer = setInterval(() => {
+      left--;
+      $('ask-time').textContent = left > 0 ? `${left}s` : '';
+      if (left <= 0) hideAsker();
+    }, 1000);
+  }
+  function hideAsker() {
+    clearInterval(askerTimer);
+    $('asker-offer').classList.add('hidden');
+  }
+  function answerAsker(pick) {
+    world.command({ type: 'askerAnswer', pick });
+    hideAsker();
+  }
+  for (const b of document.querySelectorAll('#asker-offer button')) b.addEventListener('click', () => answerAsker(b.dataset.pick));
+
   function handleEvent(ev) {
     renderer.onEvent(ev, world);
     const p = world.player;
@@ -2114,6 +2143,32 @@ function start(hot = {}) {
         break;
       case 'enrage':
         hud.banner('Enraged', `${world.enemies.find((e) => e.id === ev.id)?.def.name || 'The boss'} attacks faster`);
+        break;
+      case 'proclaim':
+        hud.hint(`The Herald: "${HERALD_LINES[(ev.line - 1) % HERALD_LINES.length]}"`, 4);
+        sfx.wave(false);
+        break;
+      case 'askerOffer':
+        askerOffer(ev.time);
+        hud.screenFlash(0.35);
+        break;
+      case 'askerGranted':
+        if (!net || ev.pid === net.pid) {
+          hideAsker();
+          hud.feedText({ power: 'It gives you power, exactly as asked.', shield: 'It gives you safety, exactly as asked.', speed: 'It gives you speed, exactly as asked.' }[ev.pick]);
+        }
+        break;
+      case 'askerRefused':
+        if (!net || ev.pid === net.pid) {
+          hideAsker();
+          hud.feedText('You want nothing. It presses harder.');
+        }
+        break;
+      case 'askerResume':
+        hideAsker();
+        break;
+      case 'askerLast':
+        hud.banner('The Asker grows', ev.grown ? `From everything that was wanted of it (${ev.grown})` : 'Nothing was wanted of it: it is only light now');
         break;
       case 'bossPhase':
         hud.banner(ev.phase === 2 ? `${ev.name} unravels` : `${ev.name} collapses inward`, ev.phase === 2 ? 'Stars begin to fall: keep moving' : 'It drags you in before it bursts: dash away');

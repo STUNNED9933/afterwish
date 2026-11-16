@@ -100,9 +100,9 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 1 | Quest 1, W.: Wren's confession and the frost-pass scene | 0.39 | Done |
 | 2 | Asterfell map, enemies, Waygate entry (quest 2) | 0.39 | Done |
 | 3 | Tobin's survey stones and Asterfell signs (quest 3) | 0.39 | Done |
-| 4 | The Herald, boss 4 (quest 4) | 0.40 | In progress |
-| 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Not started |
-| 6 | Unwish: the ending choice (quest 6) | 0.41 | Not started |
+| 4 | The Herald, boss 4 (quest 4) | 0.40 | Done |
+| 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
+| 6 | Unwish: the ending choice (quest 6) | 0.41 | In progress |
 | 7 | Asterfell delves | 0.42 | Not started |
 | 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.43 | Not started |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
@@ -116,5 +116,12 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
   src/sim/defs.js, handled in src/sim/world.js; theme `glass` (environment.js, renderer.js
   MAP_THEMES, mood `amber`), song `asterfell` (src/music/songs.js). Quest goals `{ sign }` and
   `{ signs, what }` added. Tests: "Act II" block in test/sim.test.mjs.
-- Next (0.40): the Frozen Court (`aster6` marks its doors), the Herald as boss 4, the Starwell map
-  and the Asker with its three wish offers.
+- 0.40: quests `court` and `starwell`; boss `herald` in Asterfell (`herald: {every, guards, max,
+  hp, dmg}`: `stepHerald` in world.js, called from `stepDoom`, summons `heraldguard`, emits
+  `proclaim` with a line from HERALD_LINES; guards die with him). Map `starwell` (`bossOnly`,
+  `unlock: 'court'`, song `starwell`) with boss `asker` (`asker: {at, time, last}`): `askerCheck`
+  opens offers (invulnerable while `offerT > 0`), `askerAnswer` / command `askerAnswer` applies
+  `p.wished` (power, shield as ward, speed in recalcStats) or a refusal (`refuseMult`); silence
+  at the timeout counts as a refusal; `clearWishes` on its death and on loadMap. UI: `#asker-offer`
+  panel in index.html, keys 1–4 in main.js.
+- Next (0.41): Unwish, the ending choice (quest 6).

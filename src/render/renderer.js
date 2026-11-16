@@ -1090,6 +1090,25 @@ export class Renderer {
           this.burst(ev.x + Math.cos(a) * r, 0.2, ev.z + Math.sin(a) * r, { count: 2, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc060, speed: 1.5, up: 4, gravity: -2, life: 0.6 });
         }
         break;
+      case 'proclaim':
+        // The Herald reads a line: a ring of light from the court (0.40)
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.2, color: 0xffe2a0, from: 1, to: 9, dur: 0.8, opacity: 0.8 });
+        this.burst(ev.x, 3, ev.z, { count: 20, color: 0xfff2c0, speed: 4, up: 6, life: 0.8 });
+        break;
+      case 'askerOffer':
+        // The Asker stops and asks (0.40)
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffd27a, from: 2, to: 12, dur: 1.2, opacity: 0.35 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xfff2c0, from: 12, to: 2, dur: 1.0, opacity: 0.9 });
+        this.burst(ev.x, 3.5, ev.z, { count: 40, color: 0xfff2c0, speed: 6, up: 4, life: 1.0, gravity: 0 });
+        break;
+      case 'askerGranted':
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.2, color: 0xffd27a, from: 3, to: 0.6, dur: 0.6, opacity: 1 });
+        this.burst(ev.x, 1.4, ev.z, { count: 24, color: 0xffd27a, speed: 3, up: 6, life: 0.8 });
+        break;
+      case 'askerLast':
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.grown ? 0xffa040 : 0xfff2c0, from: 1, to: 16, dur: 1.0, opacity: 0.4 });
+        this.shake = Math.max(this.shake, 0.5);
+        break;
       case 'wished': {
         // A Wishling gives an enemy what it wants (0.39): a thread of gold, a ring round the one it chose.
         const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);

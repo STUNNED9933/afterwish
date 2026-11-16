@@ -106,11 +106,22 @@ export const SIGNS = {
   aster4: { map: 'asterfell', spot: [-34, -12], title: "Tobin's survey stone, III", text: 'Fire, iron, prayer, and at last the rot from my own garden: none of it breaks the wish. But at the well where the star came down, the one it holds on to can let it go.\n\n— T.' },
   aster5: { map: 'asterfell', spot: [8, -34], title: "Tobin's survey stone, IV", text: 'Letting go means wanting nothing. Not to live, not to be saved, not even for the rest of them to be freed. I do not know that anyone could do it.\n\nI hope I am wrong about what it costs.\n\n— T.' },
   aster6: { map: 'asterfell', spot: 'out', title: 'A banner over the court doors', text: "BLESSED BE THE QUEEN'S CHILD ON THE DAY OF THEIR NAMING.\n\nThe name stitched below it is yours. The thread is still bright." },
+  star1: { map: 'starwell', spot: 'in', title: 'The rim of the well', text: 'Stand close and it will ask what you want.\n\nAnswer carefully. It is listening to everything you have ever wanted.' },
+  star2: { map: 'starwell', spot: 'out', title: "Written round the rim, in the Queen's hand", text: 'I asked it for too much.\n\nIt gave me exactly that.' },
   wilds1: { map: 'wilds', spot: 'in', title: 'A map, drawn twice', text: 'Two maps of the same road on one sheet, the second drawn over the first.\n\nOn the first, the Greenwood ends at the Fen, the Fen at the Ridge, the Ridge at the Keep. On the second, nothing ends anywhere. Every road runs into this place.\n\nSomeone has written across both: SHE WANTED THEM ALL IN ONE PLACE. SO NOBODY COULD LEAVE.' },
   wilds2: { map: 'wilds', spot: 'out', title: 'Scratched into a shard of sky', text: 'To whoever comes next. I made it further than the others. It just keeps going.\n\nI think the wish is still growing. I think it grows a little every time somebody wants something here.\n\nSo try not to want anything. Not even to go home.' },
 };
 for (const id in SIGNS) SIGNS[id].id = id;
 export const SIGN_IDS = Object.keys(SIGNS);
+
+// The Herald's proclamation (0.40): one line each time he calls the Court Guards.
+export const HERALD_LINES = [
+  'Hear me, Asterfell! On this day the Queen presents her child to the city!',
+  'Let every bell be rung and every door stand open!',
+  'Let the child be blessed with long life, and every gift the star can give!',
+  'Let nothing the Queen loves ever be taken from her!',
+  'And let the child be named, before all of you, as...',
+];
 
 // Quests.
 //   giver   who offers it and pays it out
@@ -208,6 +219,19 @@ export const QUESTS = {
     offer: 'Wren told me what was under the cairn. So he found it after all.\n\nTobin surveyed everything. He would have surveyed the end of the world. Find his stones in Asterfell, all four. I need to know what he knew.',
     done: 'He knew. All those years in the garden he knew, and he kept looking for another way, so that no one would ever have to ask it of you.\n\nThe court is at the heart of the city. Whatever keeps that day from ending, it starts there.',
     reward: { exp: 0, gold: 1400, item: 5, keys: 2 },
+  },
+
+  court: {
+    giver: 'wren', level: 100, after: 'survey', name: 'The Frozen Court', goal: { kill: 1, boss: 'herald' },
+    offer: 'Odile says the court is still holding your naming day. The Herald is still reading the proclamation. Nineteen years, and he never reached the end of it.\n\nLet him finish, child. Then whatever lies under the court will have to answer to you.',
+    done: 'He finished it? Then you have been named, nineteen years late, and the whole city heard it.\n\nUnder the court is the well where the star came down. It will speak to you. Whatever it offers, remember Tobin\'s last stone: wanting nothing is the only way out.',
+    reward: { exp: 0, gold: 2400, item: 6, keys: 3, tickets: 3 },
+  },
+  starwell: {
+    giver: 'wren', level: 100, after: 'court', name: 'The Starwell', goal: { kill: 1, boss: 'asker' },
+    offer: 'Go down to the well. It will ask you what you want. It asked her, and she answered with her whole heart.\n\nAnswer it with nothing, if you can. The Waygate knows the way now.',
+    done: 'You came back. Did it offer you everything? It offered her everything too.\n\nThere is one thing left to do down there, and I cannot ask it of you yet. Rest first. Come home for a little while.',
+    reward: { exp: 0, gold: 3000, item: 6, keys: 4, tickets: 4 },
   },
 
   // --- Bram the smith ---------------------------------------------------------
@@ -310,4 +334,7 @@ export const BOSS_LOOT = {
   boss: { items: 3, min: 2, better: 1, top: [0, 0, 0, 55, 35, 10, 0], keys: 1, tickets: 1, first: 4 },
   boss2: { items: 4, min: 3, better: 1, top: [0, 0, 0, 0, 66, 34, 0], keys: 2, tickets: 1, first: 5 },
   boss3: { items: 6, min: 3, better: 2, top: [0, 0, 0, 0, 55, 40, 5], keys: 3, tickets: 2, first: 6 },
+  // Act II (0.40): the Herald and the Asker pay like the Unmade, the Asker a little more
+  herald: { items: 5, min: 4, better: 2, top: [0, 0, 0, 0, 45, 50, 5], keys: 3, tickets: 2, first: 5 },
+  asker: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 35, 55, 10], keys: 4, tickets: 3, first: 6 },
 };

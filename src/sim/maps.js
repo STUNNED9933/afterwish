@@ -95,6 +95,14 @@ export const MAPS = {
     name: 'Asterfell', theme: 'glass', radius: 62, level: 90, levelSpan: 9, fromTier: 2, unlock: 'w',
     blurb: "The Queen's city under the Dunes, still celebrating your naming day",
     roster: { glassbound: 4, courtguard: 3, wishling: 2, knight: 2, wraith: 1 }, spawns: 32, trees: 40, rocks: 30, houses: 22,
+    boss: 'herald', // in the Frozen Court, the middle of the city (0.40)
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  // The Starwell (0.40): the round chamber where the star came down. Only the Asker is here.
+  starwell: {
+    name: 'The Starwell', theme: 'glass', radius: 30, level: 90, levelSpan: 9, fromTier: 2, unlock: 'court', song: 'starwell', bossOnly: true,
+    blurb: 'Where the star came down. It will ask you what you want',
+    roster: {}, spawns: 0, trees: 14, rocks: 10, boss: 'asker',
     portals: [{ to: 'town', angle: 0 }],
   },
 };
@@ -258,7 +266,7 @@ export function buildMap(id, custom = null) {
   });
 
   return {
-    id, name: def.name, theme: def.theme, safe: !!def.safe, radius: R, wilds: !!def.wilds,
+    id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan,
     portals, obstacles, spawns, waygate, waystones,
   };

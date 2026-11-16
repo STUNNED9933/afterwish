@@ -1,0 +1,30 @@
+{
+  "task_id": "55e9d644-071b-43e7-b467-a62977210569",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Sister Odile, a herbalist in her thirties, auburn hair under a sage green headscarf, a sage green habit with a cream apron full of herb pockets, a satchel of dried plants, a gentle serious face. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 9000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T14:24:50.833639Z",
+  "completed_at": "2026-11-16T14:29:47.618261Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

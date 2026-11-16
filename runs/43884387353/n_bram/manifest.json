@@ -1,0 +1,96 @@
+{
+  "id": "n_bram",
+  "prompt": "Bram the smith, a burly middle-aged man with a thick dark beard, a scorched leather apron over a shirt with rolled sleeves, soot-stained forearms, a heavy hammer at his belt, broad shoulders. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-16T14:18:51.692Z",
+  "creditsBefore": 1650,
+  "steps": {
+    "model": {
+      "task": "74adb838-ca6d-473b-ba31-c74bb442d3de",
+      "result": {
+        "task_id": "74adb838-ca6d-473b-ba31-c74bb442d3de",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_bram/1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_bram/1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/model.glb",
+        "preview": "out/models/n_bram/1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/preview.png"
+      }
+    },
+    "check": {
+      "task": "d13ae2e7-5626-4f88-b53b-b6a5d741f26b",
+      "result": {
+        "task_id": "d13ae2e7-5626-4f88-b53b-b6a5d741f26b",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_bram/2-check/tripo-out/rig-check-d13ae2e7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "526f40ce-c395-4ab3-adf3-f59de0a27eb7",
+      "rigType": "biped",
+      "result": {
+        "task_id": "526f40ce-c395-4ab3-adf3-f59de0a27eb7",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_bram/3-rig/tripo-out/rig-526f40ce",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_bram/3-rig/tripo-out/rig-526f40ce/model.glb",
+        "preview": "out/models/n_bram/3-rig/tripo-out/rig-526f40ce/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "07c5da3a-1e16-4078-9e92-d673519f9c78",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_03",
+          "preset:biped:fold_arms",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "07c5da3a-1e16-4078-9e92-d673519f9c78",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_bram/4-anim-1/tripo-out/retarget-07c5da3a",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_bram/4-anim-1/tripo-out/retarget-07c5da3a/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1410,
+  "creditsUsed": 240,
+  "finished": "2026-11-16T14:24:49.837Z",
+  "files": [
+    "1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/generated_image.jpeg",
+    "1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/model.glb",
+    "1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/preview.png",
+    "1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/rendered_image.webp",
+    "1-model/tripo-out/bram-the-smith-a-burly-middle-ag-74adb838/task.json",
+    "2-check/tripo-out/rig-check-d13ae2e7/task.json",
+    "3-rig/tripo-out/rig-526f40ce/model.glb",
+    "3-rig/tripo-out/rig-526f40ce/preview.png",
+    "3-rig/tripo-out/rig-526f40ce/rendered_image.webp",
+    "3-rig/tripo-out/rig-526f40ce/task.json",
+    "4-anim-1/tripo-out/retarget-07c5da3a/model.glb",
+    "4-anim-1/tripo-out/retarget-07c5da3a/task.json",
+    "manifest.json"
+  ]
+}

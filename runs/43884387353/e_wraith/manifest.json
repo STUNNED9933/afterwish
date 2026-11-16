@@ -1,0 +1,96 @@
+{
+  "id": "e_wraith",
+  "prompt": "a Storm Wraith, a tall ghost of a drowned soldier in a long ragged grey-blue shroud that hides its legs, skeletal hands crackling with lightning, a hollow face under a torn hood, tattered cloth streaming. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:37:08.069Z",
+  "creditsBefore": 780,
+  "steps": {
+    "model": {
+      "task": "24d2a288-179c-4fe3-bf60-9ec6b86664c3",
+      "result": {
+        "task_id": "24d2a288-179c-4fe3-bf60-9ec6b86664c3",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_wraith/1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wraith/1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/model.glb",
+        "preview": "out/models/e_wraith/1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/preview.png"
+      }
+    },
+    "check": {
+      "task": "3d75b0f9-e853-471d-a8e1-8643294f6eb3",
+      "result": {
+        "task_id": "3d75b0f9-e853-471d-a8e1-8643294f6eb3",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_wraith/2-check/tripo-out/rig-check-4-3d75b0f9",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "53416f1d-8884-4991-98a2-1d5d3e762c62",
+      "rigType": "biped",
+      "result": {
+        "task_id": "53416f1d-8884-4991-98a2-1d5d3e762c62",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_wraith/3-rig/tripo-out/rig-4-53416f1d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wraith/3-rig/tripo-out/rig-4-53416f1d/model.glb",
+        "preview": "out/models/e_wraith/3-rig/tripo-out/rig-4-53416f1d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "01a388cc-d839-4514-8dd8-a4fdec4dedd0",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "01a388cc-d839-4514-8dd8-a4fdec4dedd0",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_wraith/4-anim-1/tripo-out/retarget-4-01a388cc",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_wraith/4-anim-1/tripo-out/retarget-4-01a388cc/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 420,
+  "creditsUsed": 360,
+  "finished": "2026-11-16T14:43:37.554Z",
+  "files": [
+    "1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/generated_image.jpeg",
+    "1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/model.glb",
+    "1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/preview.png",
+    "1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/rendered_image.webp",
+    "1-model/tripo-out/a-storm-wraith-a-tall-ghost-of-a-24d2a288/task.json",
+    "2-check/tripo-out/rig-check-4-3d75b0f9/task.json",
+    "3-rig/tripo-out/rig-4-53416f1d/model.glb",
+    "3-rig/tripo-out/rig-4-53416f1d/preview.png",
+    "3-rig/tripo-out/rig-4-53416f1d/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-53416f1d/task.json",
+    "4-anim-1/tripo-out/retarget-4-01a388cc/model.glb",
+    "4-anim-1/tripo-out/retarget-4-01a388cc/task.json",
+    "manifest.json"
+  ]
+}

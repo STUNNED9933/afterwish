@@ -1,0 +1,96 @@
+{
+  "id": "n_odile",
+  "prompt": "Sister Odile, a herbalist in her thirties, auburn hair under a sage green headscarf, a sage green habit with a cream apron full of herb pockets, a satchel of dried plants, a gentle serious face. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-16T14:24:49.839Z",
+  "creditsBefore": 1410,
+  "steps": {
+    "model": {
+      "task": "55e9d644-071b-43e7-b467-a62977210569",
+      "result": {
+        "task_id": "55e9d644-071b-43e7-b467-a62977210569",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_odile/1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_odile/1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/model.glb",
+        "preview": "out/models/n_odile/1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/preview.png"
+      }
+    },
+    "check": {
+      "task": "6f478e76-6e58-448d-9ef9-e175efd3417a",
+      "result": {
+        "task_id": "6f478e76-6e58-448d-9ef9-e175efd3417a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_odile/2-check/tripo-out/rig-check-2-6f478e76",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "b492e595-059e-4bd7-8037-68432e76fd19",
+      "rigType": "biped",
+      "result": {
+        "task_id": "b492e595-059e-4bd7-8037-68432e76fd19",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_odile/3-rig/tripo-out/rig-2-b492e595",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_odile/3-rig/tripo-out/rig-2-b492e595/model.glb",
+        "preview": "out/models/n_odile/3-rig/tripo-out/rig-2-b492e595/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "69d78df0-bf0f-4fbc-83c8-35ea3c28c4b1",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_01",
+          "preset:biped:look_around",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "69d78df0-bf0f-4fbc-83c8-35ea3c28c4b1",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_odile/4-anim-1/tripo-out/retarget-2-69d78df0",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_odile/4-anim-1/tripo-out/retarget-2-69d78df0/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1095,
+  "creditsUsed": 315,
+  "finished": "2026-11-16T14:30:40.533Z",
+  "files": [
+    "1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/generated_image.jpeg",
+    "1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/model.glb",
+    "1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/preview.png",
+    "1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/rendered_image.webp",
+    "1-model/tripo-out/sister-odile-a-herbalist-in-her-55e9d644/task.json",
+    "2-check/tripo-out/rig-check-2-6f478e76/task.json",
+    "3-rig/tripo-out/rig-2-b492e595/model.glb",
+    "3-rig/tripo-out/rig-2-b492e595/preview.png",
+    "3-rig/tripo-out/rig-2-b492e595/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-b492e595/task.json",
+    "4-anim-1/tripo-out/retarget-2-69d78df0/model.glb",
+    "4-anim-1/tripo-out/retarget-2-69d78df0/task.json",
+    "manifest.json"
+  ]
+}

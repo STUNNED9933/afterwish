@@ -1,0 +1,96 @@
+{
+  "id": "n_pip",
+  "prompt": "Pip, a small orphan child about nine years old, scruffy brown hair, an oversized rust orange patched coat with the sleeves rolled up, scraped knees, a wooden toy sword in one hand, a wary watchful face. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-16T14:30:40.534Z",
+  "creditsBefore": 1095,
+  "steps": {
+    "model": {
+      "task": "49aeab5b-37f2-4500-b2e9-86b87e8ab24f",
+      "result": {
+        "task_id": "49aeab5b-37f2-4500-b2e9-86b87e8ab24f",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_pip/1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_pip/1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/model.glb",
+        "preview": "out/models/n_pip/1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/preview.png"
+      }
+    },
+    "check": {
+      "task": "25ce7a14-2cd4-483d-91b1-a7cf9f337ace",
+      "result": {
+        "task_id": "25ce7a14-2cd4-483d-91b1-a7cf9f337ace",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_pip/2-check/tripo-out/rig-check-3-25ce7a14",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "172ec6d0-4a0a-488d-8b12-ebd22325ae04",
+      "rigType": "biped",
+      "result": {
+        "task_id": "172ec6d0-4a0a-488d-8b12-ebd22325ae04",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_pip/3-rig/tripo-out/rig-3-172ec6d0",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_pip/3-rig/tripo-out/rig-3-172ec6d0/model.glb",
+        "preview": "out/models/n_pip/3-rig/tripo-out/rig-3-172ec6d0/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "d41d8cd3-8635-4eb7-aadf-a93a6462e8a4",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:look_around",
+          "preset:biped:greet_04",
+          "preset:biped:wait",
+          "preset:biped:jump"
+        ],
+        "result": {
+          "task_id": "d41d8cd3-8635-4eb7-aadf-a93a6462e8a4",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_pip/4-anim-1/tripo-out/retarget-3-d41d8cd3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_pip/4-anim-1/tripo-out/retarget-3-d41d8cd3/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 780,
+  "creditsUsed": 315,
+  "finished": "2026-11-16T14:37:08.068Z",
+  "files": [
+    "1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/generated_image.jpeg",
+    "1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/model.glb",
+    "1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/preview.png",
+    "1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/rendered_image.webp",
+    "1-model/tripo-out/pip-a-small-orphan-child-about-n-49aeab5b/task.json",
+    "2-check/tripo-out/rig-check-3-25ce7a14/task.json",
+    "3-rig/tripo-out/rig-3-172ec6d0/model.glb",
+    "3-rig/tripo-out/rig-3-172ec6d0/preview.png",
+    "3-rig/tripo-out/rig-3-172ec6d0/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-172ec6d0/task.json",
+    "4-anim-1/tripo-out/retarget-3-d41d8cd3/model.glb",
+    "4-anim-1/tripo-out/retarget-3-d41d8cd3/task.json",
+    "manifest.json"
+  ]
+}

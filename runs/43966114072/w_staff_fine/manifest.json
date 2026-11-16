@@ -1,0 +1,37 @@
+{
+  "id": "w_staff_fine",
+  "prompt": "a mage's staff of pale ash wood bound with silver bands, the top a cage of curling silver branches holding a glowing blue crystal. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:02:46.897Z",
+  "creditsBefore": 1535,
+  "steps": {
+    "model": {
+      "task": "5a33af1d-84e2-4e67-a807-fd654271f212",
+      "result": {
+        "task_id": "5a33af1d-84e2-4e67-a807-fd654271f212",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_staff_fine/1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_staff_fine/1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/model.glb",
+        "preview": "out/models/w_staff_fine/1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1445,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:05:28.172Z",
+  "files": [
+    "1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/generated_image.jpeg",
+    "1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/model.glb",
+    "1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/preview.png",
+    "1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/rendered_image.webp",
+    "1-model/tripo-out/a-mage-s-staff-of-pale-ash-wood-5a33af1d/task.json",
+    "manifest.json"
+  ]
+}

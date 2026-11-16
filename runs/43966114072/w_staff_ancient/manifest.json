@@ -1,0 +1,37 @@
+{
+  "id": "w_staff_ancient",
+  "prompt": "an ancient mage's staff of dark petrified wood and bronze bands, its head a ring of carved stone holding a floating amber orb. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:05:28.174Z",
+  "creditsBefore": 1415,
+  "steps": {
+    "model": {
+      "task": "f6b2bd01-24a0-48c8-b649-a5038d909861",
+      "result": {
+        "task_id": "f6b2bd01-24a0-48c8-b649-a5038d909861",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_staff_ancient/1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_staff_ancient/1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/model.glb",
+        "preview": "out/models/w_staff_ancient/1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1325,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:09:40.151Z",
+  "files": [
+    "1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/generated_image.jpeg",
+    "1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/model.glb",
+    "1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/preview.png",
+    "1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/rendered_image.webp",
+    "1-model/tripo-out/an-ancient-mage-s-staff-of-dark-f6b2bd01/task.json",
+    "manifest.json"
+  ]
+}

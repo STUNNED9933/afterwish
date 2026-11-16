@@ -1,0 +1,37 @@
+{
+  "id": "w_staff_immortal",
+  "prompt": "a legendary mage's staff of white starglass and gold, its head a radiant eight-pointed star held in curling golden rays, glowing. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:09:40.152Z",
+  "creditsBefore": 1325,
+  "steps": {
+    "model": {
+      "task": "46bb8ff6-88af-43cf-acf3-59334632a17c",
+      "result": {
+        "task_id": "46bb8ff6-88af-43cf-acf3-59334632a17c",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_staff_immortal/1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_staff_immortal/1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/model.glb",
+        "preview": "out/models/w_staff_immortal/1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1265,
+  "creditsUsed": 60,
+  "finished": "2026-11-16T22:12:22.982Z",
+  "files": [
+    "1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/generated_image.jpeg",
+    "1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/model.glb",
+    "1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/preview.png",
+    "1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/rendered_image.webp",
+    "1-model/tripo-out/a-legendary-mage-s-staff-of-whit-46bb8ff6/task.json",
+    "manifest.json"
+  ]
+}

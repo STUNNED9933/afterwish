@@ -1,0 +1,96 @@
+{
+  "id": "e_knight",
+  "prompt": "an Oathbound Knight, an undead soldier still keeping his oath: gaunt corpse in dented steel plate with a faded royal blue tabard bearing a gold star, a closed great helm whose visor slit glows pale teal, a longsword and a battered kite shield. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:11:37.465Z",
+  "creditsBefore": 1890,
+  "steps": {
+    "model": {
+      "task": "bf91aa13-1b06-4a1f-bc27-189c7c3e8c0b",
+      "result": {
+        "task_id": "bf91aa13-1b06-4a1f-bc27-189c7c3e8c0b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_knight/1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_knight/1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/model.glb",
+        "preview": "out/models/e_knight/1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/preview.png"
+      }
+    },
+    "check": {
+      "task": "2863bd5e-2074-4fa6-ac2b-7c40f3cc4f94",
+      "result": {
+        "task_id": "2863bd5e-2074-4fa6-ac2b-7c40f3cc4f94",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_knight/2-check/tripo-out/rig-check-2863bd5e",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "437d24bb-da70-4edc-a5f2-1fbf3986928f",
+      "rigType": "biped",
+      "result": {
+        "task_id": "437d24bb-da70-4edc-a5f2-1fbf3986928f",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_knight/3-rig/tripo-out/rig-437d24bb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_knight/3-rig/tripo-out/rig-437d24bb/model.glb",
+        "preview": "out/models/e_knight/3-rig/tripo-out/rig-437d24bb/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "d1aa2493-96a0-4a7a-8d74-5503432959ee",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "d1aa2493-96a0-4a7a-8d74-5503432959ee",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_knight/4-anim-1/tripo-out/retarget-d1aa2493",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_knight/4-anim-1/tripo-out/retarget-d1aa2493/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1755,
+  "creditsUsed": 135,
+  "finished": "2026-11-16T14:17:06.329Z",
+  "files": [
+    "1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/generated_image.jpeg",
+    "1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/model.glb",
+    "1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/preview.png",
+    "1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/rendered_image.webp",
+    "1-model/tripo-out/an-oathbound-knight-an-undead-so-bf91aa13/task.json",
+    "2-check/tripo-out/rig-check-2863bd5e/task.json",
+    "3-rig/tripo-out/rig-437d24bb/model.glb",
+    "3-rig/tripo-out/rig-437d24bb/preview.png",
+    "3-rig/tripo-out/rig-437d24bb/rendered_image.webp",
+    "3-rig/tripo-out/rig-437d24bb/task.json",
+    "4-anim-1/tripo-out/retarget-d1aa2493/model.glb",
+    "4-anim-1/tripo-out/retarget-d1aa2493/task.json",
+    "manifest.json"
+  ]
+}

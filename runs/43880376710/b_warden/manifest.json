@@ -1,0 +1,117 @@
+{
+  "id": "b_warden",
+  "prompt": "the Warden, Captain Aldric: a towering undead knight-captain who has guarded a mountain gate for a hundred years and forgotten why, heavy dented plate armour grey with frost and old rust, a tattered royal blue tabard with a faded gold star, a great iron ring of keys at his belt, a long two-handed greatsword, his helm's visor cracked open on a gaunt pale face with hollow pale-glowing eyes, heavy chains over his shoulders, rigid tired posture. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:03:57.189Z",
+  "creditsBefore": 2205,
+  "steps": {
+    "model": {
+      "task": "985c74f0-2432-4e2f-9bbe-100d484a2cd6",
+      "result": {
+        "task_id": "985c74f0-2432-4e2f-9bbe-100d484a2cd6",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_warden/1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_warden/1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/model.glb",
+        "preview": "out/models/b_warden/1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/preview.png"
+      }
+    },
+    "check": {
+      "task": "56b688d7-cc89-49e2-acaf-827c54ed3c5c",
+      "result": {
+        "task_id": "56b688d7-cc89-49e2-acaf-827c54ed3c5c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_warden/2-check/tripo-out/rig-check-2-56b688d7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "9de2a220-eebf-4ec7-b86b-bb3496f5cd9e",
+      "rigType": "biped",
+      "result": {
+        "task_id": "9de2a220-eebf-4ec7-b86b-bb3496f5cd9e",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_warden/3-rig/tripo-out/rig-2-9de2a220",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_warden/3-rig/tripo-out/rig-2-9de2a220/model.glb",
+        "preview": "out/models/b_warden/3-rig/tripo-out/rig-2-9de2a220/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "cdb0330c-bace-427b-8475-8fa893488d3a",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "cdb0330c-bace-427b-8475-8fa893488d3a",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_warden/4-anim-1/tripo-out/retarget-3-cdb0330c",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_warden/4-anim-1/tripo-out/retarget-3-cdb0330c/model.glb"
+        }
+      },
+      {
+        "task": "1b277581-9ca1-4a2e-9c6e-4b2163e9fe40",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:look_around"
+        ],
+        "result": {
+          "task_id": "1b277581-9ca1-4a2e-9c6e-4b2163e9fe40",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_warden/4-anim-2/tripo-out/retarget-4-1b277581",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_warden/4-anim-2/tripo-out/retarget-4-1b277581/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1830,
+  "creditsUsed": 375,
+  "finished": "2026-11-16T14:12:08.024Z",
+  "files": [
+    "1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/generated_image.jpeg",
+    "1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/model.glb",
+    "1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/preview.png",
+    "1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/rendered_image.webp",
+    "1-model/tripo-out/the-warden-captain-aldric-a-towe-985c74f0/task.json",
+    "2-check/tripo-out/rig-check-2-56b688d7/task.json",
+    "3-rig/tripo-out/rig-2-9de2a220/model.glb",
+    "3-rig/tripo-out/rig-2-9de2a220/preview.png",
+    "3-rig/tripo-out/rig-2-9de2a220/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-9de2a220/task.json",
+    "4-anim-1/tripo-out/retarget-3-cdb0330c/model.glb",
+    "4-anim-1/tripo-out/retarget-3-cdb0330c/task.json",
+    "4-anim-2/tripo-out/retarget-4-1b277581/model.glb",
+    "4-anim-2/tripo-out/retarget-4-1b277581/task.json",
+    "manifest.json"
+  ]
+}

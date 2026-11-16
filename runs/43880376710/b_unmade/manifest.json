@@ -1,0 +1,118 @@
+{
+  "id": "b_unmade",
+  "prompt": "the Unmade, once Queen Maren, a sorrowful undead queen remade by a fallen star: tall gaunt elegant woman in a torn deep violet royal gown with a long ragged train, a broken silver crown fused into her brow, cracks of glowing teal starlight across pale porcelain skin, long dark hair drifting as if underwater, her arms cradling an empty bundle of a child's swaddling cloth, shards of glowing starglass growing from her back like broken wings, tragic and terrifying. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T13:54:59.249Z",
+  "creditsBefore": 2680,
+  "steps": {
+    "model": {
+      "task": "f8ce33ea-7c11-4f3a-86df-cf69d967ee24",
+      "result": {
+        "task_id": "f8ce33ea-7c11-4f3a-86df-cf69d967ee24",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_unmade/1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_unmade/1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/model.glb",
+        "preview": "out/models/b_unmade/1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/preview.png"
+      }
+    },
+    "check": {
+      "task": "8f73260a-ba6b-41b2-94de-8fc9d0fee8f1",
+      "result": {
+        "task_id": "8f73260a-ba6b-41b2-94de-8fc9d0fee8f1",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_unmade/2-check/tripo-out/rig-check-8f73260a",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "703f539d-84d8-41b6-8ac4-792b38a704f5",
+      "rigType": "biped",
+      "result": {
+        "task_id": "703f539d-84d8-41b6-8ac4-792b38a704f5",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_unmade/3-rig/tripo-out/rig-703f539d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_unmade/3-rig/tripo-out/rig-703f539d/model.glb",
+        "preview": "out/models/b_unmade/3-rig/tripo-out/rig-703f539d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "b68cc3ea-a5ad-44eb-88d1-bcda870a06f2",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "b68cc3ea-a5ad-44eb-88d1-bcda870a06f2",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_unmade/4-anim-1/tripo-out/retarget-b68cc3ea",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_unmade/4-anim-1/tripo-out/retarget-b68cc3ea/model.glb"
+        }
+      },
+      {
+        "task": "2a402cb3-1b29-4b05-aabe-452acd6cda47",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:sob",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "2a402cb3-1b29-4b05-aabe-452acd6cda47",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/b_unmade/4-anim-2/tripo-out/retarget-2-2a402cb3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_unmade/4-anim-2/tripo-out/retarget-2-2a402cb3/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2205,
+  "creditsUsed": 475,
+  "finished": "2026-11-16T14:03:57.187Z",
+  "files": [
+    "1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/generated_image.jpeg",
+    "1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/model.glb",
+    "1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/preview.png",
+    "1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/rendered_image.webp",
+    "1-model/tripo-out/the-unmade-once-queen-maren-a-so-f8ce33ea/task.json",
+    "2-check/tripo-out/rig-check-8f73260a/task.json",
+    "3-rig/tripo-out/rig-703f539d/model.glb",
+    "3-rig/tripo-out/rig-703f539d/preview.png",
+    "3-rig/tripo-out/rig-703f539d/rendered_image.webp",
+    "3-rig/tripo-out/rig-703f539d/task.json",
+    "4-anim-1/tripo-out/retarget-b68cc3ea/model.glb",
+    "4-anim-1/tripo-out/retarget-b68cc3ea/task.json",
+    "4-anim-2/tripo-out/retarget-2-2a402cb3/model.glb",
+    "4-anim-2/tripo-out/retarget-2-2a402cb3/task.json",
+    "manifest.json"
+  ]
+}

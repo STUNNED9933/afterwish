@@ -1,0 +1,37 @@
+{
+  "id": "w_sword_fine",
+  "prompt": "ONE single ornate one-handed knight's sword, standing upright on its own, nothing else in the scene: a long polished steel blade with an engraved fuller, a curved silver cross guard set with a small blue gem, a wire-wrapped grip, a round silver pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:18:39.537Z",
+  "creditsBefore": 1265,
+  "steps": {
+    "model": {
+      "task": "e91fc05d-90a3-48a8-bde2-2b8a4e66bcfe",
+      "result": {
+        "task_id": "e91fc05d-90a3-48a8-bde2-2b8a4e66bcfe",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_sword_fine/1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_sword_fine/1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/model.glb",
+        "preview": "out/models/w_sword_fine/1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1235,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T22:20:49.792Z",
+  "files": [
+    "1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/generated_image.jpeg",
+    "1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/model.glb",
+    "1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/preview.png",
+    "1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/rendered_image.webp",
+    "1-model/tripo-out/one-single-ornate-one-handed-kni-e91fc05d/task.json",
+    "manifest.json"
+  ]
+}

@@ -57,7 +57,8 @@ export function itemTooltip(item, compareTo) {
 export function rollPip(item, key) {
   const q = rollQuality(item, key);
   const t = RARITIES[rollTier(q)];
-  return `<span class="roll-pip" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
+  const top = rollTier(q) === RARITIES.length - 1; // an Immortal roll shimmers like Immortal gear (0.43.1)
+  return `<span class="roll-pip${top ? ' imm' : ''}" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
 }
 
 /** "Combat Power +123 (Might +200, Resolve −77)" for wearing this item, when the gear drawer can work it out. */

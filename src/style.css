@@ -372,7 +372,9 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 .eq-name.immortal { background: linear-gradient(90deg, #ffd24a, #fff6d6 45%, #ffd24a 60%, #d9a441); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; }
 #tooltip.immortal { border: 2px solid transparent; background: linear-gradient(#0c0f18, #0c0f18) padding-box, conic-gradient(from var(--imm-turn), #ffd24a, #fff6d6, #b98bff, #ffd24a 40%, #8a5a12, #ffd24a 70%, #fff6d6, #ffd24a) border-box; animation: imm-turn 3.2s linear infinite; box-shadow: 0 0 22px -6px #ffd24a, 0 10px 30px rgba(0, 0, 0, 0.6); }
 #tooltip.immortal .tt-meta::before { content: '✦ '; color: #ffd24a; }
-@media (prefers-reduced-motion: reduce) { .cell.immortal, .cell.immortal::before, #tooltip.immortal { animation: none; } }
+/* An Immortal roll (0.43.1): the diamond shimmers gold, like Immortal gear */
+.roll-pip.imm { background: conic-gradient(from var(--imm-turn), #ffd24a, #fff6d6, #b98bff, #ffd24a 40%, #8a5a12, #ffd24a 70%, #fff6d6, #ffd24a); box-shadow: 0 0 8px 0 #ffd24a; animation: imm-turn 2.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .cell.immortal, .cell.immortal::before, #tooltip.immortal, .roll-pip.imm { animation: none; } }
 .cell .arrow { position: absolute; left: 3px; top: 0; font-size: 13px; color: var(--life); }
 .inv-actions { margin-top: 12px; }
 .inv-help { margin-top: 10px; color: var(--muted); font-size: 14px; max-width: 46ch; }

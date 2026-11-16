@@ -126,6 +126,329 @@
         "preset:biped:run",
         "preset:biped:hit_to_body_01"
       ]
+    },
+    "b_warden": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:look_around"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Warden, Captain Aldric: a towering undead knight-captain who has guarded a mountain gate for a hundred years and forgotten why, heavy dented plate armour grey with frost and old rust, a tattered royal blue tabard with a faded gold star, a great iron ring of keys at his belt, a long two-handed greatsword, his helm's visor cracked open on a gaunt pale face with hollow pale-glowing eyes, heavy chains over his shoulders, rigid tired posture"
+    },
+    "b_mycelord": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:depressed"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Mycelord, once Brother Tobin the royal physician, now a tall gaunt fungal horror: a long stained grey physician's coat and a leather apron, purple and sickly green bracket fungus growing from his shoulders and spine, a crown of pale mushroom caps, his left arm overgrown into a long branching mycelium claw, a sad hollow face half covered in pale mould, cracked glass medicine vials on his belt"
+    },
+    "b_unmade": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:sob",
+        "preset:biped:angry_02"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Unmade, once Queen Maren, a sorrowful undead queen remade by a fallen star: tall gaunt elegant woman in a torn deep violet royal gown with a long ragged train, a broken silver crown fused into her brow, cracks of glowing teal starlight across pale porcelain skin, long dark hair drifting as if underwater, her arms cradling an empty bundle of a child's swaddling cloth, shards of glowing starglass growing from her back like broken wings, tragic and terrifying"
+    },
+    "b_herald": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:bow"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Herald, a royal chamberlain frozen in amber glass in the middle of a ceremony: tall thin man in an ornate cream and gold court tabard with a gold chain of office, a powdered wig, holding a long unrolled parchment proclamation in one hand and a tall ceremonial gold staff in the other, his skin translucent golden glass full of cracks, a fixed frozen smile, ribbons and banners hanging from him"
+    },
+    "b_asker": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:greet_02"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Asker, a fallen star in the shape of a person: a tall slender faceless humanoid made of pale gold starlight and translucent glass, a smooth featureless mask for a face, a bright white star glowing in its chest, long flowing robes of light that break into sparks at the hem, a halo of floating glass shards behind its head, arms open as if offering a gift, serene and deeply unsettling"
+    },
+    "n_wren": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_01",
+        "preset:biped:look_around",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "Elder Wren, an elderly woman who was once a royal nurse, kind tired face with deep lines, white hair in a loose bun, a muted plum shawl over a cream linen dress, a wooden walking cane, a small ring of old keys at her waist"
+    },
+    "n_bram": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_03",
+        "preset:biped:fold_arms",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "Bram the smith, a burly middle-aged man with a thick dark beard, a scorched leather apron over a shirt with rolled sleeves, soot-stained forearms, a heavy hammer at his belt, broad shoulders"
+    },
+    "n_odile": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_01",
+        "preset:biped:look_around",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "Sister Odile, a herbalist in her thirties, auburn hair under a sage green headscarf, a sage green habit with a cream apron full of herb pockets, a satchel of dried plants, a gentle serious face"
+    },
+    "n_pip": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:look_around",
+        "preset:biped:greet_04",
+        "preset:biped:wait",
+        "preset:biped:jump"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 8000,
+      "prompt": "Pip, a small orphan child about nine years old, scruffy brown hair, an oversized rust orange patched coat with the sleeves rolled up, scraped knees, a wooden toy sword in one hand, a wary watchful face"
+    },
+    "e_husk": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Husk, a villager who could not die: gaunt grey-skinned undead peasant in torn faded homespun clothes, sunken hollow eyes with a faint teal glow, thin cracks of starlight in the skin, hunched, long reaching arms with broken fingernails"
+    },
+    "e_spitter": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:fire",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Spitter, a bloated undead fen villager carrying the low-water fever: swollen belly, wet sickly green-grey skin, a distended jaw, ragged fisherman's clothes and a rope belt, hunched, dripping"
+    },
+    "e_crusher": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Crusher, a hulking undead quarry labourer: enormous arms ending in fists fused with stone, grey skin cracked like rock, rusted shackles and broken chains on the wrists, a bent back and a small head sunk between huge shoulders"
+    },
+    "e_knight": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "an Oathbound Knight, an undead soldier still keeping his oath: gaunt corpse in dented steel plate with a faded royal blue tabard bearing a gold star, a closed great helm whose visor slit glows pale teal, a longsword and a battered kite shield"
+    },
+    "e_stalker": {
+      "rigType": "quadruped",
+      "animations": [
+        "preset:quadruped:walk"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000,
+      "prompt": "a Stalker, a starved undead hound-like beast with far too long limbs, grey hairless skin stretched over its ribs, an eyeless face with a split jaw full of needle teeth, crouched low on all fours"
+    },
+    "e_wolf": {
+      "rigType": "quadruped",
+      "animations": [
+        "preset:quadruped:walk"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000,
+      "prompt": "a Frost Wolf of the high pass, gaunt and starving, pale white-blue fur matted with ice, icicles hanging from its jaws, ribs showing, pale glowing eyes, standing on all fours"
+    },
+    "e_imp": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000,
+      "prompt": "a Cinder Imp, a small lean creature of cracked charcoal skin with orange embers glowing inside the cracks, sharp claws, short curled horns, ember eyes, a thin tail"
+    },
+    "e_shaman": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Rime Caller, an undead frost priest: tall thin figure in tattered blue-grey robes stiff with frost, a deep hood over a frozen skull-like face, a staff topped with a jagged ice crystal"
+    },
+    "e_golem": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Stone Colossus, a huge sandstone statue of a royal guard come to life, weathered golden sandstone body carved with old royal patterns, glowing cracks of starlight, its carved face half broken away"
+    },
+    "e_sporecap": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:fire",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Sporecap, a dead villager overgrown by a garden of purple and pale mushrooms, caps growing from the head and shoulders, swollen spore sacs on the back, stooped, its face hidden under fungus"
+    },
+    "e_wraith": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Storm Wraith, a tall ghost of a drowned soldier in a long ragged grey-blue shroud that hides its legs, skeletal hands crackling with lightning, a hollow face under a torn hood, tattered cloth streaming"
+    },
+    "e_glassbound": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Glassbound, a citizen of a golden capital frozen in glass on a day of celebration: a festive courtier in party clothes and a feathered hat whose whole body is translucent amber glass full of cracks, a fixed delighted smile, holding a wine goblet"
+    },
+    "e_courtguard": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Court Guard turned to golden glass, ornate ceremonial cream and gold armour with a tall plumed helmet and a tower shield, a halberd, body partly translucent amber glass, standing at attention"
+    },
+    "e_scarab": {
+      "rigType": "hexapod",
+      "animations": [
+        "preset:hexapod:walk"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000,
+      "prompt": "a giant Dune Scarab beetle, a golden bronze carapace scarred with old royal engravings, six jointed legs, large curved mandibles"
     }
   }
 }

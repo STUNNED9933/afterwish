@@ -478,7 +478,7 @@
       "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
       "faceLimit": 3000,
       "rig": false,
-      "prompt": "an ornate one-handed knight's sword, a long polished steel blade with an engraved fuller, a curved silver cross guard set with a small blue gem, a wire-wrapped grip, a round silver pommel"
+      "prompt": "ONE single ornate one-handed knight's sword, standing upright on its own, nothing else in the scene: a long polished steel blade with an engraved fuller, a curved silver cross guard set with a small blue gem, a wire-wrapped grip, a round silver pommel"
     },
     "w_sword_ancient": {
       "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",

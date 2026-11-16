@@ -257,7 +257,7 @@ export class World {
       const p = h.player;
       out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null,
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
-        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as) });
+        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null });
     }
     return out;
   }
@@ -1301,13 +1301,19 @@ export class World {
     // Steady Aim: every third shot gets +100% crit chance; anything over 100% becomes crit damage.
     const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
     const forceCrit = false;
+    let gale = false;
+    if (p.quickShots > 0 && dmgOverride === null) {
+      // Skirmish Step's shots are gusts: harder, and no mirror turns them back (0.42)
+      p.quickShots--;
+      gale = true;
+    }
     if (b.shot) {
       const a = dAtan2(target.z - p.z, target.x - p.x);
       this.projectiles.push({
-        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, forceCrit, critBonus, pierce: critBonus > 0 && this.mods.steadyPierce ? [] : null,
+        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, gale, targetId: target.id, forceCrit, critBonus, pierce: gale || (critBonus > 0 && this.mods.steadyPierce) ? [] : null,
         x: p.x + dCos(a) * 0.7, z: p.z + dSin(a) * 0.7, px: p.x, pz: p.z,
         vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed,
-        radius: 0.3, dmg, parryable: false, reflected: false, life: 1.2, dead: false,
+        radius: 0.3, dmg: gale ? dmg * (p.quickMult || 1.25) : dmg, parryable: false, reflected: false, life: 1.2, dead: false,
       });
     } else {
       this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
@@ -1390,7 +1396,7 @@ export class World {
 
     // Single-target abilities need someone to hit before they go on cooldown.
     let target = null;
-    if (def.type === 'strike' || def.type === 'barrage') {
+    if (def.type === 'strike' || def.type === 'barrage' || def.type === 'ricochet') {
       target = this.enemyNear(x, z, 3.5, range) || this.enemyNear(p.x, p.z, range + 2, range);
       if (!target) {
         this.emit('noTarget', { slot, x: p.x, z: p.z });
@@ -1411,10 +1417,13 @@ export class World {
     p.atkWind = 0;
     p.parryT = 0; // casting drops the parry stance
     let dmg = this.abilityDamage(slot);
+    let empCrit = false;
     if (p.empowerT > 0 && slot !== 'e' && dmg > 0) {
-      // Nightstep: the next ability hits harder.
+      // Nightstep (and Steady Breath): the next ability hits harder.
       dmg *= p.empowerMult;
+      empCrit = !!p.empowerCrit;
       p.empowerT = 0;
+      p.empowerCrit = false;
       this.emit('empowered', { slot, x: p.x, z: p.z });
     }
     /** A point toward the cursor, no further than the ability's range, inside the map. */
@@ -1480,7 +1489,7 @@ export class World {
         }
         if (slot === 'e' && m.shadowStep) this.addShadow('e', p.x, p.z, a);
         if (def.veil) this.addShadow(slot, p.x, p.z, a); // Veilstep leaves one too
-        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null, veil: def.veil || 0, faceId };
+        p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null, veil: def.veil || 0, faceId, quick: def.quick || null };
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
         break;
@@ -1674,10 +1683,7 @@ export class World {
         break;
       }
       case 'deadeye': {
-        // Deadeye (Sharpshooter): up to 3 shots across the map within the window; the cooldown starts after.
-        if (!p.deadeye) p.deadeye = { left: def.shots + (m.rExtraShots || 0), t: def.window + (m.rDuration || 0) };
-        p.deadeye.left--;
-        const last = p.deadeye.left <= 0;
+        // Deadeye (Sharpshooter, 0.42): one shot across the map; it stops in the first enemy it meets.
         let best = null, bestAlong = Infinity;
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
@@ -1688,12 +1694,53 @@ export class World {
           best = e;
           bestAlong = along;
         }
-        if (best) this.hitEnemy(best, dmg * (last ? def.lastMult : 1), { source: slot, forceCrit: true });
+        if (best) this.hitEnemy(best, dmg, { source: slot, forceCrit: true, heavy: true });
         p.facing = a;
-        p.castLock = 0.2;
-        this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: best ? Math.max(1, bestAlong) : range, width: def.width, last });
-        if (last) p.deadeye = null;
-        else p.cd[slot] = 0.45; // a moment between shots; the full cooldown comes after the last
+        p.castLock = 0.32;
+        this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: best ? Math.max(1, bestAlong) : range, width: def.width, last: true, hit: !!best, tx: best ? best.x : null, tz: best ? best.z : null });
+        break;
+      }
+      case 'focus': {
+        // Steady Breath (Sharpshooter): the next ability hits harder and always crits.
+        p.empowerT = def.time;
+        p.empowerMult = def.mult + (m.wEmpower || 0);
+        p.empowerCrit = true;
+        p.swingCount = Math.ceil((p.swingCount + 1) / m.critEvery) * m.critEvery - 1; // the next basic is Steady Aim's
+        if (m.focusRcd > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.focusRcd); // One Shot
+        p.castLock = 0.1;
+        this.emit('cast', { slot, fx: 'focus', x: p.x, z: p.z });
+        this.emit('buff', { name: 'Steady Breath', x: p.x, z: p.z });
+        break;
+      }
+      case 'ricochet': {
+        // Ricochet (Sharpshooter): an arrow glancing from enemy to enemy, each within range of the last.
+        const first = target;
+        const chain = [first];
+        const most = 1 + (def.bounces || 5) + (m.qBounces || 0);
+        while (chain.length < most) {
+          const last = chain[chain.length - 1];
+          let best = null, bd = range;
+          for (const e of this.enemies) {
+            if (e.dead || e.state === 'spawn' || chain.includes(e)) continue;
+            const de = dist(e.x, e.z, last.x, last.z) - e.radius;
+            if (de < bd) { bd = de; best = e; }
+          }
+          if (!best) break;
+          chain.push(best);
+        }
+        p.facing = dAtan2(first.z - p.z, first.x - p.x);
+        p.castLock = 0.14;
+        let t = 0, fx = p.x, fz = p.z;
+        const pts = [[p.x, p.z]];
+        for (const e of chain) {
+          t += dist(fx, fz, e.x, e.z) / def.speed;
+          fx = e.x;
+          fz = e.z;
+          pts.push([e.x, e.z]);
+          const far = m.qFar > 0 && dist(p.x, p.z, e.x, e.z) > 10 ? 1 + m.qFar : 1; // Bullseye Loop
+          this.delayed.push({ t, kind: 'ricochet', id: e.id, dmg: dmg * far, crit: empCrit || m.qCrit, sunder: m.qSunder || 0 });
+        }
+        this.emit('cast', { slot, fx: 'ricochet', x: p.x, z: p.z, pts, speed: def.speed });
         break;
       }
       case 'frenzy': {
@@ -1807,7 +1854,14 @@ export class World {
       if (d.tele) d.tele.t = d.tele.dur - d.t;
       if (d.t > 0) continue;
       d.done = true;
-      if (d.kind === 'cleave') {
+      if (d.kind === 'ricochet') {
+        const e = this.enemyById(d.id);
+        if (e && !e.dead) {
+          if (d.sunder > 0) { e.vulnT = 4; e.vuln = Math.max(e.vuln || 0, d.sunder); } // Marked Prey
+          this.hitEnemy(e, d.dmg, { source: 'q', forceCrit: d.crit });
+          if (e.dead && this.mods.qResetOnKill) p.cd.q = 0;
+        }
+      } else if (d.kind === 'cleave') {
         this.cleaveHit(d.dir, d.range, d.angle, d.dmg);
         this.emit('cast', { slot: 'q', echo: true, x: p.x, z: p.z, dir: d.dir, range: d.range, angle: d.angle });
       } else if (d.kind === 'quake') {
@@ -1941,6 +1995,10 @@ export class World {
     p.castLock = Math.max(0, p.castLock - dt);
     p.hurtT = Math.max(0, p.hurtT - dt);
     p.empowerT = Math.max(0, p.empowerT - dt);
+    if (p.quickT > 0) {
+      p.quickT -= dt;
+      if (p.quickT <= 0) p.quickShots = 0;
+    }
     p.veilT = Math.max(0, p.veilT - dt);
     p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
     // Berserker: Bloodied while below half health (attack speed needs a stat rebuild when it flips).
@@ -1972,13 +2030,7 @@ export class World {
         this.emit('buffEnd', { name: 'Hurricane' });
       }
     }
-    if (p.deadeye) {
-      p.deadeye.t -= dt;
-      if (p.deadeye.t <= 0) {
-        p.deadeye = null; // the chance is gone: now the real cooldown
-        p.cd.r = this.abilityCooldown('r');
-      }
-    }
+
     if (p.frenzyT > 0) p.frenzyT -= dt;
     if (p.bastionT > 0) p.bastionT -= dt;
     if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
@@ -2051,6 +2103,15 @@ export class World {
           this.emit('rush', { time: p.rushT });
         }
         if (ds.motes) this.fireMotes(ds);
+        if (ds.quick) {
+          // Skirmish Step (Windrunner): the next shots leave the string at once.
+          p.quickShots = ds.quick.shots;
+          p.quickT = ds.quick.time;
+          p.quickMult = ds.quick.mult;
+          p.attackCd = 0;
+          p.atkWind = 0;
+          p.autoAcquire = true;
+        }
         if (ds.empower) {
           p.empowerT = ds.empower.time;
           p.empowerMult = ds.empower.mult + (this.mods[ds.slot + 'Empower'] || 0);
@@ -2162,9 +2223,10 @@ export class World {
             }
           } else if (p.attackCd <= 0) {
             const period = 1 / p.stats.as;
-            p.atkWind = period * 0.3;
-            p.attackCd = period;
-            this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: period * 0.3 });
+            const quick = p.quickShots > 0; // Skirmish Step: straight off the string
+            p.atkWind = quick ? 0.05 : period * 0.3;
+            p.attackCd = quick ? 0.16 : period;
+            this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: p.atkWind });
           }
         }
       }
@@ -2339,6 +2401,7 @@ export class World {
           proj.dmg = (proj.dmg * 2.5 + p.stats.ad) * m.reflectDmg;
           proj.life = 3;
         } else if (src && !src.dead) {
+          if (src.elite && src.elite.includes('reflective') && !(src.mirrorT > 0)) this.shatterMirror(src); // (0.42)
           if (src.shield > 0) {
             // Shielded elites: a parried attack shatters the shield at once.
             src.shield = 0;
@@ -2391,6 +2454,13 @@ export class World {
       this.emit('unparryable', { x: p.x, z: p.z });
     }
     return this.takeDamage(Math.max(1, Math.round(rawDamage * (100 / (100 + p.stats.armor)) * (1 - m.dmgTaken))), src, false);
+  }
+
+  /** A Reflective elite's mirror breaks (0.42): for 6 seconds it reflects nothing and takes 20% more. */
+  shatterMirror(e) {
+    e.mirrorT = 6;
+    e.mirrorCracks = 0;
+    this.emit('mirrorBreak', { id: e.id, x: e.x, z: e.z });
   }
 
   /** Reckoning (Bulwark): stacks for the next Whirlwind. */
@@ -4670,6 +4740,7 @@ export class World {
         for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
       }
     }
+    if (e.mirrorT > 0) dmg *= 1.2; // a shattered mirror (Reflective, 0.42)
     if (e.shield > 0) {
       // Shielded elites: the shield takes it first.
       const soak = Math.min(e.shield, dmg);
@@ -4677,7 +4748,13 @@ export class World {
       dmg -= soak;
       if (e.shield <= 0) this.emit('shieldBreak', { id: e.id, x: e.x, z: e.z });
     }
-    if (opts.basic && e.elite && e.elite.includes('reflective') && !p.dead && dmg > 0) {
+    if (e.elite && e.elite.includes('reflective') && dmg > 0 && !(e.mirrorT > 0) && (opts.gale || ['q', 'w', 'e', 'r'].includes(opts.source))) {
+      // Reflective (0.42): abilities (and Skirmish Step's gusts) crack the mirror; two cracks shatter it.
+      e.mirrorCracks = (e.mirrorCracks || 0) + 1;
+      if (e.mirrorCracks >= 2) this.shatterMirror(e);
+      else this.emit('mirrorCrack', { id: e.id, x: e.x, z: e.z });
+    }
+    if (opts.basic && !opts.gale && e.elite && e.elite.includes('reflective') && !(e.mirrorT > 0) && !p.dead && dmg > 0) {
       // Reflective elites: a fifth of a basic attack comes back (abilities are safe). Never fatal.
       const back = Math.min(Math.round(dmg * 0.2), Math.floor(p.hp) - 1);
       if (back > 0) {
@@ -4952,6 +5029,7 @@ export class World {
         }
         continue;
       }
+      if (e.mirrorT > 0) e.mirrorT = Math.max(0, e.mirrorT - dt);
       if (e.wishedT > 0) {
         // Given what it wanted by a Wishling (0.39): stronger for a while.
         e.wishedT -= dt;
@@ -5310,7 +5388,7 @@ export class World {
               }
               if (pr.slot === 'q' && this.mods.qBurn > 0 && !e.dead) this.addBurn(e, this.mods.qBurn); // Everything Burns
               if (pr.basic && this.mods.basicBurn > 0 && !e.dead) this.addBurn(e, this.mods.basicBurn);
-              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
+              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, gale: !!pr.gale, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
               const m = this.mods;
               if (m.frostMax > 0 && !e.dead) {
                 // Hoarfrost (Frostbinder)

@@ -177,6 +177,57 @@ trees and stones (`src/render/species.js`, `src/render/biomes.js`).
   load) the old hand-built version stands in.
 - Lower graphics settings draw fewer far edge trees and less ground cover.
 
+### Archer and Rogue rework (0.42)
+
+**Sharpshooter: the boss killer.** Less about holding down the attack button, more about
+the one shot that matters.
+- *Ricochet* (Q, was Piercing Shot): an arrow that glances from enemy to enemy, each within
+  11 m of the last, hitting up to 4. Enough to clear a road.
+- *Steady Breath* (W, was Barrage): no damage of its own. Your next ability within 6 s deals
+  60% more and always crits, and your next basic attack is a Steady Aim crit.
+- *Deadeye* (R): one shot across the map, always a crit, its damage multiplied by your
+  attacks per second, with a heavy crack-and-boom of its own. Breathe, then fire.
+- Talents: *Glancing Blow* (Ricochet hits harder and further along), *Marked Prey* (Ricochet
+  makes everything it hits take more, bosses too), capstone *One Shot* (Deadeye +25%, and
+  every Steady Breath takes 5 s off its cooldown). *Hawk's Hood* and *Bullseye Loop* changed
+  to match.
+
+**Windrunner: Skirmish Step** (Q, was Piercing Shot): hop a few steps without breaking
+stride, and your next 3 basic attacks leave the string at once for 50% more. They are gusts:
+they blow through every enemy in their path. Hop, shoot shoot shoot, hop. *Light Step*
+shortens it too.
+
+**Reflective enemies can be broken.** Two ability hits crack and shatter the mirror (a
+Windrunner's gusts count), and parrying one shatters it at once. For 6 seconds it reflects
+nothing and takes 20% more damage. The ring around it goes dim while it is broken.
+
+**Assassin: rarer, heavier blows.** Shadowstrike's cooldown is 2.5 times longer (10 s) and it
+hits 2.4 times harder; Death Lotus 2 times longer (14 s) and 2 times harder (and bleeds
+twice as much); Ambush 12 s, and its empowered ability deals 75% more. A kill still brings
+them all back at once.
+
+Measured by a bot at level 75 (three packs of 8 knights, and 60 s on one big target):
+
+| | packs cleared | one target (damage per second) |
+| --- | --- | --- |
+| Sharpshooter | 21.5 s (was 22.0) | 18.8k (was 14.1k) |
+| Windrunner | 20.1 s (was 21.0) | 12.4k (was 12.5k) |
+| Assassin | 1.9 s (was 4.8) | 22.2k (was 18.1k) |
+| Shadowdancer | 22.8 s | 22.5k |
+
+**The rogue's look and moves.**
+- Once he picks a subclass, the rogue becomes a hooded ninja in a steel mask with red eye
+  slits (a new Tripo model), on every screen, friends' too.
+- A new, serious run: low and driven, blades trailing behind him.
+- Nightstep, Ambush and Veilstep: a sudden coil, then a long flat lunge with both blades
+  swept back.
+- Starglass Kunai: a real throw, wind-up and whip.
+- Fixed: the Shadowdancer's afterimages were the old hand-built figure and never threw.
+  They are now his own model, blades and all, and throw when he does.
+
+**The mage's run** is upright and composed now: a shorter stride, little bounce, her staff
+held steady.
+
 ### Co-op, tested and tuned (0.41.1)
 
 A host and two friends (warrior, archer, rogue) played through real browser

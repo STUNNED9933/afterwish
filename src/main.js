@@ -2030,8 +2030,19 @@ function start(hot = {}) {
         sfx.swing();
         break;
       case 'cast':
-        sfx.cast(ev.slot);
+        if (ev.fx === 'deadeye') {
+          sfx.sniper();
+          hud.screenFlash(0.25);
+        } else if (ev.fx === 'focus') sfx.breath();
+        else sfx.cast(ev.slot);
         if (!ev.echo) hud.flashSlot(ev.slot);
+        break;
+      case 'mirrorCrack':
+        sfx.mirrorCrack();
+        break;
+      case 'mirrorBreak':
+        sfx.shatter();
+        hud.float(renderer, ev.x, 3, ev.z, 'Mirror shattered', 'word perfect');
         break;
       case 'impact':
         if (ev.kind === 'skyfall' || ev.kind === 'aftershock') sfx.impact();

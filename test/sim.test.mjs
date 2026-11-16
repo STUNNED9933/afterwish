@@ -1689,24 +1689,79 @@ import { makeRng } from '../src/sim/rng.js';
     run(w, 6.2);
     check('Hurricane: ends after 6 seconds', !(p.hurricaneT > 0) && p.stats.as < as0);
   }
-  // Sharpshooter: Deadeye
+  // Sharpshooter (0.42): Ricochet, Steady Breath, the one-shot Deadeye
   {
     const { w, p } = setup('archer', 'sharpshooter');
-    check('Sharpshooter: R is Deadeye', w.kit.r.name === 'Deadeye');
-    const near = dummy(w, 6), far = dummy(w, 30), side = dummy(w, 15, 6);
-    p.cd.r = 0;
-    cast(w, 'r', 40, 0);
-    const hits = () => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy');
-    check('Deadeye: the shot stops in the first enemy on the line, and crits', near.hp < 1e9 && far.hp === 1e9 && side.hp === 1e9 && hits()[0].crit);
-    check('Deadeye: the cooldown waits while shots are left', p.cd.r < 1 && p.deadeye && p.deadeye.left === 2);
-    w.enemies = [far]; w.events.length = 0;
-    run(w, 0.5); cast(w, 'r', 40, 0);
-    const second = hits()[0].amount;
-    run(w, 0.5); w.events.length = 0; cast(w, 'r', 40, 0);
-    const third = hits()[0].amount;
-    check('Deadeye: three shots, the third deals 50% more, then the full cooldown', Math.abs(third / second - 1.5) < 0.05 && !p.deadeye && p.cd.r > 15, `${second} -> ${third}, cd ${p.cd.r.toFixed(1)}`);
-    run(w, 0.3); p.cd.r = 0; cast(w, 'r', 40, 0); run(w, 8.2);
-    check('Deadeye: unused shots run out after 8 seconds and the cooldown starts', !p.deadeye && p.cd.r > 15);
+    check('Sharpshooter: Q, W and R are Ricochet, Steady Breath and Deadeye', w.kit.q.name === 'Ricochet' && w.kit.w.name === 'Steady Breath' && w.kit.r.name === 'Deadeye');
+    // a line of enemies 8 m apart, and one 14 m beyond the last (too far to glance to)
+    const line = [6, 14, 22, 30].map((x) => dummy(w, x));
+    const lone = dummy(w, 44);
+    p.cd.q = 0;
+    cast(w, 'q', 6, 0);
+    run(w, 2);
+    check('Ricochet: glances from enemy to enemy within 11 m of the last', line.every((e) => e.hp < 1e9) && lone.hp === 1e9, line.map((e) => e.hp < 1e9).join());
+    const many = Array.from({ length: 9 }, (_, i) => dummy(w, 3 + i * 1.2, 8));
+    p.cd.q = 0; cast(w, 'q', 3, 8); run(w, 2);
+    check('Ricochet: hits up to 4 different enemies', many.filter((e) => e.hp < 1e9).length === 4, many.filter((e) => e.hp < 1e9).length);
+  }
+  {
+    const { w, p } = setup('archer', 'sharpshooter');
+    p.stats.crit = 0;
+    const far = dummy(w, 20);
+    const hits = () => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === far.id).map((ev) => ev.amount);
+    p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    const plain = hits()[0];
+    check('Deadeye: one shot, always a crit, then the full cooldown', w.events.some((ev) => ev.type === 'damage' && ev.id === far.id && ev.crit) && p.cd.r > 20, `cd ${p.cd.r.toFixed(1)}`);
+    // twice the attack speed: twice the damage
+    const as0 = p.stats.as;
+    run(w, 0.4); p.stats.as = as0 * 2; p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    const fast = hits()[0];
+    p.stats.as = as0;
+    check('Deadeye: its damage grows with attack speed', Math.abs(fast / plain - 2) < 0.05, `${plain} -> ${fast}`);
+    // Steady Breath, then Deadeye: 60% more
+    run(w, 0.4); p.cd.w = 0; cast(w, 'w', 0, 0);
+    check('Steady Breath: a buff, no damage, and the next basic attack is a Steady Aim crit', p.empowerT > 0 && p.empowerCrit && (p.swingCount + 1) % w.mods.critEvery === 0);
+    run(w, 0.2); p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    check('Steady Breath: the next ability deals 60% more', Math.abs(hits()[0] / plain - 1.6) < 0.05 && !(p.empowerT > 0), `${plain} -> ${hits()[0]}`);
+  }
+  // Windrunner (0.42): Skirmish Step
+  {
+    const { w, p } = setup('archer', 'windrunner');
+    check('Windrunner: Q is Skirmish Step', w.kit.q.name === 'Skirmish Step');
+    const e = dummy(w, 7);
+    p.cd.q = 0;
+    cast(w, 'q', -4, 0);
+    run(w, 0.25);
+    check('Skirmish Step: a short hop, and three quick shots ready', p.x < -1.5 && p.quickShots === 3, `${p.x.toFixed(1)}, ${p.quickShots}`);
+    w.command({ type: 'attack', id: e.id }); w.runCommands();
+    run(w, 0.6);
+    check('Skirmish Step: all three leave almost at once', p.quickShots === 0 && w.projectiles.filter((pr) => pr.gale).length + w.events.filter((ev) => ev.type === 'damage' && ev.id === e.id).length >= 3);
+  }
+  // Reflective (0.42): crack the mirror
+  {
+    const { w, p } = setup('archer', 'sharpshooter');
+    const e = dummy(w, 8);
+    e.elite = ['reflective'];
+    const hp0 = p.hp;
+    w.hitEnemy(e, 1000, { basic: true, source: 'basic', canCrit: false });
+    check('Reflective: a basic attack comes back at you', p.hp < hp0);
+    w.hitEnemy(e, 10, { source: 'q', canCrit: false });
+    check('Reflective: one ability hit cracks the mirror', e.mirrorCracks === 1 && !(e.mirrorT > 0));
+    w.hitEnemy(e, 10, { source: 'w', canCrit: false });
+    check('Reflective: a second shatters it', e.mirrorT > 0);
+    const plainE = dummy(w, 8, 0.01);
+    p.hp = hp0; w.events.length = 0;
+    w.hitEnemy(plainE, 1000, { basic: true, source: 'basic', canCrit: false });
+    w.hitEnemy(e, 1000, { basic: true, source: 'basic', canCrit: false });
+    const base = w.events.find((ev) => ev.type === 'damage' && ev.id === plainE.id).amount;
+    const d = w.events.find((ev) => ev.type === 'damage' && ev.id === e.id);
+    check('Reflective: shattered, it reflects nothing and takes 20% more', p.hp === hp0 && Math.abs(d.amount / base - 1.2) < 0.01, `${base} -> ${d.amount}`);
+    const { w: w2, p: p2 } = setup('archer', 'windrunner');
+    const e2 = dummy(w2, 8); e2.elite = ['reflective'];
+    const hp2 = p2.hp;
+    w2.hitEnemy(e2, 1000, { basic: true, gale: true, source: 'basic', canCrit: false });
+    w2.hitEnemy(e2, 1000, { basic: true, gale: true, source: 'basic', canCrit: false });
+    check("Reflective: a Windrunner's two gusts come back at no one and shatter the mirror", p2.hp === hp2 && e2.mirrorT > 0);
   }
   // Berserker
   {
@@ -2029,6 +2084,8 @@ import { makeRng } from '../src/sim/rng.js';
     e.hp = e.maxHp * 0.5; p.parryT = 0; p.hp = p.stats.maxHp;
     w.hitPlayer(50, { parryable: true, src: e });
     check('Vampiric: it heals when it hits you; Frostbound: you are chilled', e.hp > e.maxHp * 0.5 && p.chillT > 1.5);
+    check('Reflective: parrying it shatters its mirror too (0.42)', e.mirrorT > 0);
+    e.mirrorT = 0; e.mirrorCracks = 0;
     const hp1 = p.hp;
     w.hitEnemy(e, 500, { basic: true, canCrit: false });
     const afterBasic = p.hp;

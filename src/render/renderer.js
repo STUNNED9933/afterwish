@@ -12,7 +12,7 @@ import { NPCS } from '../sim/story.js';
 import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, groundMask, buildRain, pebbleGeometry, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
-import { upgradeHero } from './rigged.js';
+import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED } from './rigged.js';
 import { propInstances } from './props.js';
 import { SlashTrail } from './slash.js';
 
@@ -628,18 +628,21 @@ export class Renderer {
   }
 
   /** Swap the hero model when a different class is played. */
-  setHeroClass(cls) {
-    if (cls === this.heroCls) return;
+  setHeroClass(cls, spec = null) {
+    const look = heroLook(cls, spec);
+    if (cls === this.heroCls && look === this.heroLook) return;
     this.heroCls = cls;
+    this.heroLook = look;
     this.hero.disposed = true;
     this.disposeGroup(this.hero.group);
     this.hero = buildHero(cls);
-    upgradeHero(this.hero, cls); // the rigged model, when there is one (0.35)
+    upgradeHero(this.hero, cls, look); // the rigged model, when there is one (0.35; the ninja, 0.42)
     this.scene.add(this.hero.group);
   }
 
   buildHero() {
     this.heroCls = 'warrior';
+    this.heroLook = 'warrior';
     this.hero = buildHero();
     upgradeHero(this.hero, 'warrior');
     this.scene.add(this.hero.group);
@@ -859,7 +862,18 @@ export class Renderer {
     return mesh;
   }
 
+  /** Run fn after `t` seconds of drawing (effects that play out in steps, like Ricochet's legs). */
+  later(t, fn) {
+    if (t <= 0) return fn();
+    (this.laters = this.laters || []).push({ t, fn });
+  }
+
   updateFlashes(dt) {
+    if (this.laters && this.laters.length) {
+      const due = [];
+      this.laters = this.laters.filter((l) => ((l.t -= dt) > 0 ? true : (due.push(l), false)));
+      for (const l of due) l.fn();
+    }
     for (const f of this.flashes) {
       f.t += dt;
       const k = Math.min(1, f.t / f.dur);
@@ -941,11 +955,41 @@ export class Renderer {
           this.burst(ev.x, 0.3, ev.z, { count: 14, color: 0x9fe8ff, speed: 5, up: 6 });
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffffff, from: 0.4, to: 2.6, dur: 0.3, opacity: 0.6 });
         } else if (fx === 'deadeye') {
-          // A shot across the map: a long bright streak, gold on the third.
+          // One shot across the map (0.42): a white-hot core in a gold streak, a flash at the bow
+          // and a burst where it lands.
           an.swing = 0;
-          an.swingDur = 0.2;
-          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir: ev.dir, color: ev.last ? 0xffd27a : 0xfff6d8, sx: ev.range, sz: ev.width * 0.5, dur: 0.35, opacity: 1 });
-          this.shake = Math.max(this.shake, ev.last ? 0.3 : 0.15);
+          an.swingDur = 0.32;
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir: ev.dir, color: 0xffc860, sx: ev.range, sz: ev.width * 0.9, dur: 0.7, opacity: 0.95 });
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.12, dir: ev.dir, color: 0xfffbea, sx: ev.range, sz: ev.width * 0.32, dur: 0.5, opacity: 1, additive: false });
+          this.flash(this.ringGeo(), { x: ev.x + Math.cos(ev.dir) * 0.8, z: ev.z + Math.sin(ev.dir) * 0.8, y: 1.1, color: 0xfff0c0, from: 0.3, to: 2.6, dur: 0.3, opacity: 0.9 });
+          this.burst(ev.x + Math.cos(ev.dir) * 0.9, 1.1, ev.z + Math.sin(ev.dir) * 0.9, { count: 14, color: 0xfff2c8, speed: 9, up: 1, life: 0.3 });
+          if (ev.hit) {
+            this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, y: 0.6, color: 0xffd27a, from: 0.4, to: 4.2, dur: 0.45, opacity: 1 });
+            this.flash(this.discGeo(), { x: ev.tx, z: ev.tz, color: 0xffe2a0, from: 0.5, to: 3, dur: 0.35, opacity: 0.4 });
+            this.burst(ev.tx, 1.2, ev.tz, { count: 36, color: 0xffd890, speed: 12, up: 4, life: 0.55 });
+          }
+          this.shake = Math.max(this.shake, 0.5);
+        } else if (fx === 'focus') {
+          // Steady Breath (0.42): a slow gold ring closing in, and motes drawn into the hero.
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xffe2a0, from: 3.2, to: 0.6, dur: 0.6, opacity: 0.8 });
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.3, color: 0xfff2c8, from: 2.2, to: 0.4, dur: 0.5, opacity: 0.6 });
+          this.burst(ev.x, 1.4, ev.z, { count: 12, color: 0xffe9b0, speed: -3, up: 0.5, gravity: 0, life: 0.5 });
+        } else if (fx === 'ricochet') {
+          // Ricochet (0.42): the arrow glances from enemy to enemy, one streak per leg as it flies.
+          an.swing = 0;
+          an.swingDur = 0.18;
+          let t = 0;
+          for (let i = 1; i < ev.pts.length; i++) {
+            const [x0, z0] = ev.pts[i - 1], [x1, z1] = ev.pts[i];
+            const len = Math.hypot(x1 - x0, z1 - z0);
+            const dir = Math.atan2(z1 - z0, x1 - x0);
+            this.later(t, () => {
+              this.flash(this.rectGeo(), { x: x0, z: z0, y: 1.0, dir, color: 0xffd27a, sx: len, sz: 0.5, dur: 0.3, opacity: 0.8 });
+              this.flash(this.rectGeo(), { x: x0, z: z0, y: 1.02, dir, color: 0xfffbea, sx: len, sz: 0.16, dur: 0.24, opacity: 1, additive: false });
+            });
+            t += len / (ev.speed || 40);
+            this.later(t, () => this.burst(x1, 1.0, z1, { count: 8, color: 0xfff2c8, speed: 6, up: 2, life: 0.3 }));
+          }
         } else if (fx === 'hurricane') {
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: 0xd9fff1, from: 0.5, to: 6, dur: 0.5, opacity: 0.9 });
           this.burst(ev.x, 1, ev.z, { count: 40, color: 0xe6fff6, speed: 10, up: 3, gravity: 0, life: 0.7 });
@@ -977,6 +1021,14 @@ export class Renderer {
 
         break;
       }
+      case 'mirrorCrack':
+        this.burst(ev.x, 1.4, ev.z, { count: 8, color: 0xf4f2ec, speed: 5, up: 2, life: 0.3 });
+        break;
+      case 'mirrorBreak':
+        // A Reflective elite's mirror shatters (0.42)
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: 0xffffff, from: 0.6, to: 3.4, dur: 0.4, opacity: 1 });
+        this.burst(ev.x, 1.4, ev.z, { count: 30, color: 0xeef6ff, speed: 10, up: 5, life: 0.6 });
+        break;
       case 'burst':
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.ice ? 0x9fe6ff : 0xff9a3a, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
         this.burst(ev.x, 1, ev.z, { count: 18, color: ev.ice ? 0xd8f6ff : 0xffb060, speed: 8, up: 5, life: 0.45 });
@@ -1517,7 +1569,11 @@ export class Renderer {
       // Spawn-in
       const s = (e.state === 'spawn' ? Math.max(0.01, easeOut(1 - e.t / 0.9)) : 1) * (v.size || 1);
       group.scale.setScalar(s);
-      if (v.aura) v.aura.rotation.y += dt * 1.5;
+      if (v.aura) {
+        v.aura.rotation.y += dt * 1.5;
+        // a Reflective elite with its mirror shattered: the ring goes dim and cracked (0.42)
+        v.aura.material.opacity = e.mirrorT > 0 ? 0.2 + 0.15 * Math.sin(this.time * 12) : 0.85;
+      }
 
       // Walk cycle
       if (e.moving) v.walk += dt * (6 + e.def.speed * 1.6);
@@ -1778,6 +1834,7 @@ export class Renderer {
 
   render(world, alpha, dt) {
     this.time += dt;
+    if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec);
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
     this.syncExtras(world, dt);
@@ -1925,7 +1982,8 @@ export class Renderer {
     }
   }
 
-  /** Shadowdancer Shadows: dark, see-through copies of the hero that fade as they run out. */
+  /** Shadowdancer Shadows: dark, see-through copies of the hero that fade as they run out. (0.42:
+   * the hero's own rigged model, blades and all, and they throw when the hero throws.) */
   syncShadows(world, dt) {
     if (!this.shadowViews) this.shadowViews = new Map();
     const seen = new Set();
@@ -1933,26 +1991,50 @@ export class Renderer {
       seen.add(s.id);
       let v = this.shadowViews.get(s.id);
       if (!v) {
-        const model = buildHero(s.cls);
+        const group = new THREE.Group();
         const mat = new THREE.MeshBasicMaterial({ color: 0x4a2a88, transparent: true, opacity: 0.7, depthWrite: false });
-        model.group.traverse((o) => {
-          if (o.isMesh) {
-            o.material = mat;
-            o.castShadow = false;
-          }
-        });
         const ringMat = new THREE.MeshBasicMaterial({ color: 0x9a6cff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
         const ring = new THREE.Mesh(this.ringGeo(), ringMat);
         ring.position.y = 0.05;
-        model.group.add(ring);
-        this.scene.add(model.group);
-        v = { model, mat, ring, ringMat };
+        group.add(ring);
+        // the hand-built figure stands in until the rigged one is ready
+        const stand = buildHero(s.cls);
+        stand.group.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = false; } });
+        group.add(stand.group);
+        this.scene.add(group);
+        v = { model: { group }, mat, ring, ringMat, rig: null, throwSeen: 0 };
         this.shadowViews.set(s.id, v);
+        const look = heroLook(s.cls, 'shadowdancer');
+        const id = 'hero_' + look;
+        if (RIGGED[id]) {
+          Promise.all([loadRigged(id), loadWeapon(s.cls, RIGGED[id].weaponScale || 1)]).then(([tpl, made]) => {
+            if (!tpl || !this.shadowViews.has(s.id)) return;
+            const rig = instantiate(tpl);
+            if (made) {
+              const wpn = new THREE.Group();
+              wpn.add(made.clone());
+              rig.holdWeapon(wpn);
+              if (tpl.spec.offhand) rig.holdOffhand(wpn.clone(), tpl.spec.offhand);
+            }
+            rig.group.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = false; } });
+            stand.group.visible = false;
+            group.add(rig.group);
+            rig.baseTurn = rig.group.rotation.y;
+            v.rig = rig;
+          });
+        }
         this.burst(s.x, 1, s.z, { count: 16, color: 0x7a3cff, speed: 4, up: 3, life: 0.5 });
       }
       const g = v.model.group;
-      g.position.set(s.x, s.throwT > 0 ? 0.15 : 0, s.z);
+      g.position.set(s.x, 0, s.z);
       g.rotation.y = Math.PI / 2 - s.facing;
+      if (v.rig) {
+        // a fresh throw (or copied cut): play the kunai throw once
+        const throwing = s.throwT > 0;
+        const start = throwing && !v.wasThrowing;
+        v.wasThrowing = throwing;
+        v.rig.update(dt, { moving: false, move: start ? 'kunai' : null, moveDur: 0 });
+      } else g.position.y = s.throwT > 0 ? 0.15 : 0;
       const fade = Math.min(1, s.t / 0.8);
       v.mat.opacity = (0.55 + 0.12 * Math.sin(this.time * 5)) * fade;
       v.ringMat.opacity = 0.55 * fade;
@@ -1967,6 +2049,7 @@ export class Renderer {
       this.shadowViews.delete(id);
     }
   }
+
 
   /** A friend's animation state (0.41.1): their swings and skills, fed by their events. */
   allyAnim(pid) {
@@ -1985,16 +2068,17 @@ export class Renderer {
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      if (v && v.cls !== a.cls) {
+      const look = heroLook(a.cls, a.spec);
+      if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);
         v = null;
       }
       if (!v) {
         const model = buildHero(a.cls);
-        upgradeHero(model, a.cls);
+        upgradeHero(model, a.cls, look);
         this.scene.add(model.group);
-        v = { model, cls: a.cls, walk: 0 };
+        v = { model, cls: a.cls, look, walk: 0 };
         this.allyViews.set(a.pid, v);
       }
       if ((a.glow || null) !== (v.model.glowId ?? null)) this.applyGlow(v.model, a.glow);

@@ -13,32 +13,34 @@ const flat = (v) => {
 /**
  * A run cycle (two strides). arms: per arm [side, sign (1 right, -1 left), swing degrees,
  * elbow bend, out from the body, lag, second-rhythm phase]; lean: forward lean of the waist.
+ * (0.42) reach / kick scale the stride and the heel kick, twist the hips' and shoulders' turn,
+ * bob the bounce; hold(P, ph) poses arms that do not swing (say, blades held back).
  */
-export function runCycle({ duration = 0.56, lean = -10, arms } = {}) {
+export function runCycle({ duration = 0.56, lean = -10, arms = [], reach = 1, kick = 1, twist = 1, bob = 1, hold = null } = {}) {
   return {
     duration,
     pose(P, t) {
       const ph = t / duration;
       P.reset(BASE, true);
       const side = () => P.axis('Hip', RIGHT);
-      P.rot('Hip', UP, 8 * Math.sin(TAU * ph));
+      P.rot('Hip', UP, 8 * twist * Math.sin(TAU * ph));
       P.rot('Hip', side(), -5); // pelvis tipped into the run
       P.rot('Waist', side(), lean);
       P.rot('Spine01', side(), -5);
-      P.rot('Spine01', UP, -13 * Math.sin(TAU * ph - 0.25)); // shoulders against the hips, a beat late
+      P.rot('Spine01', UP, -13 * twist * Math.sin(TAU * ph - 0.25)); // shoulders against the hips, a beat late
       P.rot('NeckTwist01', UP, 5 * Math.sin(TAU * ph - 0.6) + 1.5 * Math.sin(2 * TAU * ph + 1)); // the head steadies itself
       P.rot('NeckTwist01', side(), 12); // eyes up, ahead
       // each leg has its own reach, kick and timing, plus a small second rhythm of its own
-      for (const [s, off, reach, kick, lag, h2] of [['L', 0, 41, 104, 0.4, 0.9], ['R', 0.5, 44, 112, 0.48, 2.3]]) {
+      for (const [s, off, reachL, kickL, lag, h2] of [['L', 0, 41, 104, 0.4, 0.9], ['R', 0.5, 44, 112, 0.48, 2.3]]) {
         const a = TAU * (ph + off);
-        const thigh = 14 + reach * Math.sin(a) + 3 * Math.sin(2 * a + h2); // driven forward, pushed far back
-        const knee = 18 + kick * Math.pow(Math.max(0, Math.cos(a - lag)), 1.4); // heel kicks up behind
+        const thigh = 14 + reachL * reach * Math.sin(a) + 3 * Math.sin(2 * a + h2); // driven forward, pushed far back
+        const knee = 18 + kickL * kick * Math.pow(Math.max(0, Math.cos(a - lag)), 1.4); // heel kicks up behind
         const ax = side();
         P.rot(`${s}_Thigh`, ax, thigh);
         P.rot(`${s}_Calf`, ax, -knee);
         P.rot(`${s}_Foot`, ax, -0.45 * (thigh - knee) - 18 * Math.max(0, -Math.sin(a - 0.1)));
       }
-      P.ground(0.022 * Math.max(0, Math.sin(2 * TAU * ph - 0.6)));
+      P.ground(0.022 * bob * Math.max(0, Math.sin(2 * TAU * ph - 0.6)));
       // arms swing from the shoulder, elbows bent, a beat behind the legs, crossing a little
       // toward the middle as they come forward; each with its own lag and second rhythm
       const across = P.axis('Spine02', RIGHT), ahead = P.axis('Spine02', FWD), down = P.axis('Spine02', UP).negate();
@@ -52,6 +54,7 @@ export function runCycle({ duration = 0.56, lean = -10, arms } = {}) {
         P.rot(`${s}_Clavicle`, across, swing * 0.15);
         P.rot(`${s}_Forearm`, across, flex + 18 * Math.max(0, Math.sin(a))); // bends more on the way up
       }
+      if (hold) hold(P, ph);
     },
   };
 }

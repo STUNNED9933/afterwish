@@ -116,6 +116,26 @@ export class Sfx {
     } else if (slot === 'e') this.noise(0.22, { vol: 0.28, freq: 3500, type: 'bandpass', slide: -2800, q: 1.4 });
     else if (slot === 'r') this.tone(180, 0.5, { type: 'sawtooth', vol: 0.14, slide: 600 });
   }
+  /** Deadeye (0.42): a hard crack, a deep boom and a long rolling echo. */
+  sniper() {
+    this.noise(0.06, { vol: 0.7, freq: 4200, type: 'highpass', q: 0.7 });
+    this.tone(1800, 0.05, { type: 'square', vol: 0.12, slide: -1400 });
+    this.tone(62, 1.1, { type: 'sine', vol: 0.75, slide: -32 });
+    this.tone(150, 0.4, { type: 'sawtooth', vol: 0.22, slide: -90 });
+    this.noise(1.3, { vol: 0.32, freq: 900, type: 'lowpass', slide: -700, delay: 0.02 });
+    for (const [d, v] of [[0.22, 0.16], [0.47, 0.09], [0.78, 0.05]]) this.noise(0.5, { vol: v, freq: 600, type: 'lowpass', slide: -400, delay: d });
+  }
+  /** Steady Breath (0.42): a slow breath in, and a low hum as the world goes quiet. */
+  breath() {
+    this.noise(0.7, { vol: 0.13, freq: 350, type: 'bandpass', slide: 700, q: 1.2 });
+    this.tone(110, 0.9, { type: 'sine', vol: 0.12, slide: 10, attack: 0.25 });
+    this.tone(880, 0.6, { type: 'sine', vol: 0.05, delay: 0.35, attack: 0.1 });
+  }
+  /** A Reflective elite's mirror cracks (0.42). */
+  mirrorCrack() {
+    this.tone(2600, 0.08, { type: 'sine', vol: 0.12, slide: -600 });
+    this.noise(0.08, { vol: 0.12, freq: 5000, type: 'highpass' });
+  }
   impact() {
     this.tone(70, 0.6, { type: 'sine', vol: 0.6, slide: -40 });
     this.noise(0.5, { vol: 0.5, freq: 900, slide: -700 });

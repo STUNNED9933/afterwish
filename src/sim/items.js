@@ -148,10 +148,10 @@ export const SPEC_IMMORTALS = {
   },
   sharpshooter: {
     weapon: { name: 'Farstring', desc: 'Long Watch goes up to 70% more damage (instead of 40%).', apply: (m) => { m.farShotMax += 0.3; } },
-    helm: { name: "Hawk's Hood", desc: 'Deadeye fires 2 more shots and comes back 30% sooner.', apply: (m) => { m.rExtraShots += 2; m.rCd *= 0.7; } },
+    helm: { name: "Hawk's Hood", desc: 'Deadeye comes back 35% sooner and deals 15% more.', apply: (m) => { m.rCd *= 0.65; m.rDmg *= 1.15; } },
     chest: { name: "Rangekeeper's Coat", desc: 'While no enemy is within 6 m of you, you take 25% less damage.', apply: (m) => { m.farGuard += 0.25; } },
     boots: { name: 'Quickstep Boots', desc: 'Evasive Roll comes back 40% sooner.', apply: (m) => { m.eCd *= 0.6; } },
-    ring: { name: 'Bullseye Loop', desc: 'Piercing Shot always crits and deals 30% more to enemies more than 10 m away.', apply: (m) => { m.qCrit = true; m.qFar += 0.3; } },
+    ring: { name: 'Bullseye Loop', desc: 'Ricochet always crits and deals 30% more to enemies more than 10 m from you.', apply: (m) => { m.qCrit = true; m.qFar += 0.3; } },
   },
   windrunner: {
     weapon: { name: 'Galestring', desc: "Tailwind's on-hit damage is 50% higher.", apply: (m) => { m.tailwind *= 1.5; } },
@@ -162,7 +162,7 @@ export const SPEC_IMMORTALS = {
   },
   assassin: {
     weapon: { name: 'Nightfang', desc: "Shadowstrike's double damage works below 40% health (instead of 30%), and your crits deal a further 25%.", apply: (m) => { m.qExecute += 0.1; m.critMult += 0.25; } },
-    helm: { name: 'Mask of the Unseen', desc: "Ambush's empowered ability deals 85% more (instead of 35%).", apply: (m) => { m.eEmpower += 0.5; } },
+    helm: { name: 'Mask of the Unseen', desc: "Ambush's empowered ability deals 125% more (instead of 75%).", apply: (m) => { m.eEmpower += 0.5; } },
     chest: { name: 'Shroud of Last Rites', desc: 'Every Clean Kill heals you for 5% of your max health.', apply: (m) => { m.killHeal += 0.05; } },
     boots: { name: 'Silent Step', desc: 'Shadowstrike leaps 50% further, and Ambush comes back 30% sooner.', apply: (m) => { m.qRange *= 1.5; m.eCd *= 0.7; } },
     ring: { name: 'Contract Seal', desc: 'Every Clean Kill also takes 8 seconds off Last Rites.', apply: (m) => { m.killResetR += 8; } },

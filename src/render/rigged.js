@@ -75,6 +75,7 @@ export const RIGGED = {
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
+      ricochet: { clip: 'arc_power', keys: [[0, 0.2], [0.6, 0.85]], fade: 0.2 },
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
       zone: { clip: 'arc_volley', keys: [[0, 0], [1, 1]], fade: 0.3 },
       dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
@@ -105,12 +106,18 @@ export const RIGGED = {
     ],
     moves: {
       strike: { clip: 'rog_stab', keys: [[0, 0], [0.7, 0.7]], stop: [0.13, 0.04], slash: [0.04, 0.22], fade: 0.25 },
-      dash: { clip: 'rog_dash', keys: [[0, 0], [0.1, 0.1], [0.6, 0.6]], land: 1, slash: [0.02, 0.14], fade: 0.2 },
+      dash: { clip: 'rog_dash', keys: [[0, 0], [0.13, 0.13], [0.6, 0.6]], land: 1, slash: [0.02, 0.14], fade: 0.15 },
+      kunai: { clip: 'rog_throw', keys: [[0, 0], [0.55, 0.55]], fade: 0.12 }, // (0.42) Starglass Kunai
     },
     spin: { clip: 'rog_spin', at: 0.05 },
     recentre: ['idle', 'hit'],
     recentreMin: 0.04,
     rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
+  },
+  // The rogue once he has chosen Assassin or Shadowdancer (0.42): a hooded ninja in a steel mask,
+  // the same moves (tools/models/rogue-moves.js baked onto his own rig).
+  get hero_ninja() {
+    return { ...RIGGED.hero_rogue, url: 'models/ninja.glb', height: 2.0 };
   },
   // The Mage (0.37.3): Tripo's idle and flinch; Frozen Orb is an overhand throw from the
   // library; her run, sparks, Fire Bolt, Starwake, Meteor and the fall are our own
@@ -664,8 +671,13 @@ function warp(keys, t) {
  * model's group stays (so position, facing, glow and the parry guard work as before); its body
  * is hidden and its weapon moves into the rigged model's hand.
  */
-export function upgradeHero(model, cls) {
-  const id = `hero_${cls}`;
+/** Which model a hero wears (0.42): a rogue with a subclass becomes the ninja. */
+export function heroLook(cls, spec) {
+  return cls === 'rogue' && spec ? 'ninja' : cls;
+}
+
+export function upgradeHero(model, cls, look = cls) {
+  const id = `hero_${look}`;
   if (!RIGGED[id]) return;
   Promise.all([loadRigged(id), loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1)]).then(([tpl, made]) => {
     if (!tpl || model.disposed || model.rig) return;

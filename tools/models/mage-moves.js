@@ -14,8 +14,17 @@ function hands(P, l, r) {
 const mix3 = (a, b, w) => a.map((x, i) => x + (b[i] - x) * w);
 
 export const MAGE_MOVES = {
-  // A light, upright run: the staff arm steadier, the free arm swinging, out of step.
-  mag_run: runCycle({ duration: 0.6, lean: -7, arms: [['R', 1, 17, 82, 0.18, 0.7, 0.9], ['L', -1, 36, 86, 0.12, 0.45, 2.2]] }),
+  // (0.42) A composed, purposeful run: upright, a shorter stride and little bounce, the staff
+  // carried steady across the body, the free arm swinging close and low, out of step.
+  mag_run: runCycle({
+    duration: 0.62, lean: -9, reach: 0.82, kick: 0.62, twist: 0.5, bob: 0.55,
+    arms: [['L', -1, 20, 64, 0.1, 0.45, 2.2]],
+    hold(P, ph) {
+      const T = Math.PI * 2;
+      const at = (v) => P.at('Spine02', v);
+      P.reach('R', at([0.2 + 0.015 * Math.sin(T * ph + 0.7), -0.17 + 0.01 * Math.sin(T * 2 * ph + 0.3), 0.14]), at([-0.1, -0.15, 0.4]));
+    },
+  }),
   // Starwake: she gathers herself low, vanishes, and rises where she lands, arms opening.
   mag_blink: {
     duration: 0.55,

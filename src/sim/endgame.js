@@ -51,7 +51,7 @@ export const ELITE_FROM_LEVEL = 20;
 export const AFFIXES = {
   vampiric: { name: 'Vampiric', color: 0xd0303a, desc: 'Heals 4% of its health each time it hits you.' },
   frostbound: { name: 'Frostbound', color: 0x9fe6ff, desc: 'Its hits chill you: 35% slower for 2 seconds.' },
-  reflective: { name: 'Reflective', color: 0xe8e4dc, desc: 'Sends 20% of your basic attack damage back at you. Abilities are safe.' },
+  reflective: { name: 'Reflective', color: 0xe8e4dc, desc: 'Sends 20% of your basic attack damage back at you. Crack its mirror: two ability hits (or a Windrunner\'s gusts) shatter it for 6 seconds, and parrying it shatters it at once. While shattered it reflects nothing and takes 20% more damage.' },
   swift: { name: 'Swift', color: 0x7ff5a0, desc: 'Moves 40% faster and winds up its attacks 25% faster.' },
   shielded: { name: 'Shielded', color: 0xf0c45a, desc: 'A shield worth 40% of its health takes damage first. Parry one of its attacks to shatter it at once.' },
   volatile: { name: 'Volatile', color: 0xff8a3a, desc: 'Bursts a moment after it dies. Step out of the circle.' },

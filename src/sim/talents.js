@@ -79,26 +79,37 @@ export const SPECS = {
   // ------------------------------------------------------------------- Archer
   sharpshooter: {
     cls: 'archer', name: 'Sharpshooter',
-    blurb: 'One arrow, one problem solved, from further away than anyone else. The further the target, the harder it hits: stay behind your front line, or keep your distance on your own.',
+    blurb: 'One arrow, one problem solved. Built for the big fights: breathe, take aim, and put a single shot through a boss from across the map. Ricochet keeps the small fry honest on the way there.',
     perk: {
       name: 'Long Watch',
-      desc: 'Your hits deal 4% more for every metre between you and the target past the first 2, up to 40% more (about 30% at your normal range). Damage numbers turn gold at long range.',
+      desc: 'Your hits deal 4% more for every metre between you and the target past the first 2, up to 40% more (about 30% at your normal range). Damage numbers turn gold at long range. Piercing Shot becomes Ricochet, Barrage becomes Steady Breath, and Arrow Storm becomes Deadeye.',
       apply: (m) => { m.farShot = Math.max(m.farShot, 0.04); m.farShotMax = Math.max(m.farShotMax, 0.4); },
     },
     kit: {
+      q: {
+        key: 'Q', name: 'Ricochet', type: 'ricochet', icon: 'line', unlock: 1, cd: 6, range: 11, bounces: 3, speed: 42,
+        dmg: (s, lvl) => 0.55 * s.ad + 5 + 2 * lvl,
+        desc: 'Loose an arrow at the enemy nearest your cursor (up to 11 m). It glances off to the next enemy within 11 m of the last one, and the next, hitting up to 4 different enemies for full damage. Enough to clear a road.',
+      },
+      w: {
+        key: 'W', name: 'Steady Breath', type: 'focus', icon: 'barrage', unlock: 2, cd: 12, time: 6, mult: 1.6,
+        dmg: () => 0,
+        desc: 'Slow your breathing. Your next ability within 6 seconds deals 60% more and always crits, and your next basic attack is a Steady Aim crit. Breathe before Deadeye.',
+      },
       r: {
-        key: 'R', name: 'Deadeye', type: 'deadeye', icon: 'deadeye', unlock: 6, cd: 40, range: 40, width: 1.3, shots: 3, window: 8, lastMult: 1.5,
-        dmg: (s, lvl) => 1.5 * s.ad + 25 + 7 * lvl,
-        desc: 'Take aim: for 8 seconds, R fires a shot across the whole map at your cursor (up to 3 shots). Each stops in the first enemy it meets and always crits; the third deals 50% more. Long Watch makes the far ones hurt most.',
+        key: 'R', name: 'Deadeye', type: 'deadeye', icon: 'deadeye', unlock: 6, cd: 40, range: 44, width: 1.3,
+        // one shot, multiplied by attacks per second: the faster your hands, the harder the one shot lands
+        dmg: (s, lvl) => (2.4 * s.ad + 45 + 12 * lvl) * Math.max(1, s.as || 1),
+        desc: 'One shot across the whole map at your cursor. It stops in the first enemy it meets, always crits, and its damage is multiplied by your attacks per second (attack speed makes the one shot bigger). Long Watch makes a far one hurt most.',
       },
     },
     talents: [
       { id: 'ss_eye', row: 'minor', name: 'Keen Eye', max: 5, desc: (r) => `+${2 * r}% crit chance.`, apply: (m, r) => { m.crit += 2 * r; } },
       { id: 'ss_draw', row: 'minor', name: 'Longbow', max: 5, desc: (r) => `Your basic attacks reach ${5 * r}% further.`, apply: (m, r) => { m.rangePct += 0.05 * r; } },
       { id: 'ss_deadly', row: 'minor', name: 'Deadly Aim', max: 5, desc: (r) => `Crits deal a further ${4 * r}% damage.`, apply: (m, r) => { m.critMult += 0.04 * r; } },
-      { id: 'ss_pierce', row: 'major', name: 'Bodkin Point', max: 3, desc: (r) => `Piercing Shot deals ${10 * r}% more damage and reaches ${5 * r}% further.`, apply: (m, r) => { m.qDmg *= 1 + 0.1 * r; m.qRange *= 1 + 0.05 * r; } },
-      { id: 'ss_mark', row: 'major', name: 'Marked Prey', max: 3, desc: (r) => `Enemies hit by Piercing Shot take ${6 * r}% more damage for 4 seconds.`, apply: (m, r) => { m.qSunder = Math.max(m.qSunder, 0.06 * r); } },
-      { id: 'ss_cap', row: 'capstone', name: 'Rapid Aim', max: 1, desc: () => 'Steady Aim works on every second basic attack, instead of every third, and your basic attacks reach 10% further.', apply: (m) => { m.critEvery = Math.min(m.critEvery, 2); m.rangePct += 0.1; } },
+      { id: 'ss_pierce', row: 'major', name: 'Glancing Blow', max: 3, desc: (r) => `Ricochet deals ${10 * r}% more damage and glances off ${r} more enem${r > 1 ? 'ies' : 'y'}.`, apply: (m, r) => { m.qDmg *= 1 + 0.1 * r; m.qBounces += r; } },
+      { id: 'ss_mark', row: 'major', name: 'Marked Prey', max: 3, desc: (r) => `Enemies hit by Ricochet take ${6 * r}% more damage for 4 seconds (bosses too: Ricochet, then Deadeye).`, apply: (m, r) => { m.qSunder = Math.max(m.qSunder, 0.06 * r); } },
+      { id: 'ss_cap', row: 'capstone', name: 'One Shot', max: 1, desc: () => 'Deadeye deals 25% more, and every Steady Breath takes 5 seconds off its cooldown.', apply: (m) => { m.rDmg *= 1.25; m.focusRcd = Math.max(m.focusRcd, 5); } },
     ],
   },
   windrunner: {
@@ -106,10 +117,16 @@ export const SPECS = {
     blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane turns every shot into three.',
     perk: {
       name: 'Tailwind',
-      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Arrow Storm becomes Hurricane.",
+      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
       apply: (m) => { m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); },
     },
     kit: {
+      q: {
+        key: 'Q', name: 'Skirmish Step', type: 'dash', icon: 'e', unlock: 1, cd: 3.5, range: 3.5, minRange: 2.5, duration: 0.14, width: 0,
+        quick: { shots: 3, time: 2.5, mult: 1.5 },
+        dmg: () => 0,
+        desc: 'Hop a few steps toward your cursor without breaking stride. Your next 3 basic attacks within 2.5 seconds leave the string at once, one after the other, for 50% more. They are gusts: they blow through every enemy in their path, Reflective enemies cannot turn them back, and they crack the mirror. Hop, shoot shoot shoot, hop.',
+      },
       r: {
         key: 'R', name: 'Hurricane', type: 'hurricane', icon: 'hurricane', unlock: 6, cd: 55, duration: 6, as: 0.4, extra: 2, extraMult: 0.45,
         dmg: () => 0,
@@ -119,7 +136,7 @@ export const SPECS = {
     talents: [
       { id: 'wr_fleet', row: 'minor', name: 'Fleet', max: 5, desc: (r) => `+${1.5 * r}% move speed.`, apply: (m, r) => { m.msPct += 0.015 * r; } },
       { id: 'wr_hands', row: 'minor', name: 'Quick Hands', max: 5, desc: (r) => `+${3 * r}% attack speed.`, apply: (m, r) => { m.asMult *= 1 + 0.03 * r; } },
-      { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Evasive Roll cooldown is ${4 * r}% shorter.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; } },
+      { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Evasive Roll and Skirmish Step come back ${4 * r}% sooner.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; m.qCd *= 1 - 0.04 * r; } },
       { id: 'wr_volley', row: 'major', name: 'Rolling Barrage', max: 3, desc: (r) => `Barrage looses ${r} more arrow${r > 1 ? 's' : ''}, and each deals ${5 * r}% more.`, apply: (m, r) => { m.wExtra += r; m.wDmg *= 1 + 0.05 * r; } },
       { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Evasive Roll's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
       { id: 'wr_cap', row: 'capstone', name: 'Eye of the Storm', max: 1, desc: () => 'Hurricane lasts 2 seconds longer and its cooldown is 20% shorter, and Tailwind adds a further 10% attack damage on hit.', apply: (m) => { m.rDuration += 2; m.rCd *= 0.8; m.tailwind += 0.1; } },
@@ -129,7 +146,7 @@ export const SPECS = {
   // -------------------------------------------------------------------- Rogue
   assassin: {
     cls: 'rogue', name: 'Assassin',
-    blurb: 'Clears the road one throat at a time. Every kill brings Q, W and E straight back, so you jump from enemy to enemy faster than they can turn round: the subclass for farming. Weaker on a boss, where nothing dies until the end.',
+    blurb: 'Clears the road one throat at a time. His blows are slow to come back and land like an executioner\'s, and every kill brings Q, W and E straight back, so you jump from enemy to enemy faster than they can turn round.',
     perk: {
       name: 'Clean Kill',
       desc: 'Killing an enemy resets Shadowstrike, Death Lotus and Ambush (not Last Rites). Mercy Stroke becomes Shadowstrike, Fan of Knives becomes Death Lotus and Nightstep becomes Ambush.',
@@ -137,20 +154,21 @@ export const SPECS = {
     },
     kit: {
       q: {
-        key: 'Q', name: 'Shadowstrike', type: 'strike', icon: 'strike', unlock: 1, cd: 4, range: 7.5, gap: true, behind: 0.6, execute: 0.3,
-        dmg: (s, lvl) => 1.9 * s.ad + 12 + 5 * lvl,
+        key: 'Q', name: 'Shadowstrike', type: 'strike', icon: 'strike', unlock: 1, cd: 10, range: 7.5, gap: true, behind: 0.6, execute: 0.3,
+        // (0.42: cooldown 2.5x, damage 2.4x: rarer, heavier, and a kill still brings it back at once)
+        dmg: (s, lvl) => 4.2 * s.ad + 27 + 11 * lvl,
         desc: 'Leap to the enemy nearest your cursor and stab it. 60% more damage from behind, on a stunned enemy or on one Death Lotus has Exposed, and double damage on an enemy below 30% health (not bosses).',
       },
       w: {
-        key: 'W', name: 'Death Lotus', type: 'nova', icon: 'w', unlock: 2, cd: 7, radius: 5.5, knockback: 0, bleed: 0.8, expose: 4,
-        dmg: (s, lvl) => 1.0 * s.ad + 10 + 4 * lvl,
-        desc: 'Spin a ring of knives around you. Everything hit bleeds for 80% attack damage over 3 seconds and is Exposed for 4 seconds: it takes 15% more damage from you, and every side of it counts as its back (bosses keep their guard: only the 15%).',
+        key: 'W', name: 'Death Lotus', type: 'nova', icon: 'w', unlock: 2, cd: 14, radius: 5.5, knockback: 0, bleed: 1.6, expose: 4,
+        dmg: (s, lvl) => 1.9 * s.ad + 19 + 8 * lvl,
+        desc: 'Spin a ring of knives around you. Everything hit bleeds for 160% attack damage over 3 seconds and is Exposed for 4 seconds: it takes 15% more damage from you, and every side of it counts as its back (bosses keep their guard: only the 15%).',
       },
       e: {
-        key: 'E', name: 'Ambush', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 9, minRange: 2, duration: 0.1, width: 0, ambush: true,
-        empower: { mult: 1.35, time: 3 },
+        key: 'E', name: 'Ambush', type: 'dash', icon: 'e', unlock: 3, cd: 12, range: 9, minRange: 2, duration: 0.16, width: 0, ambush: true,
+        empower: { mult: 1.75, time: 3 },
         dmg: () => 0,
-        desc: 'Blink behind the enemy nearest your cursor (or toward your cursor, with no one there), facing its back. The next ability you use within 3 seconds deals 35% more.',
+        desc: 'Blink behind the enemy nearest your cursor (or toward your cursor, with no one there), facing its back. The next ability you use within 3 seconds deals 75% more.',
       },
     },
     talents: [

@@ -102,9 +102,9 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 3 | Tobin's survey stones and Asterfell signs (quest 3) | 0.39 | Done |
 | 4 | The Herald, boss 4 (quest 4) | 0.40 | Done |
 | 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
-| 6 | Unwish: the ending choice (quest 6) | 0.42 | Not started |
-| 7 | Asterfell delves | 0.43 | Not started |
-| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.44 | Not started |
+| 6 | Unwish: the ending choice (quest 6) | 0.43 | Not started |
+| 7 | Asterfell delves | 0.44 | Not started |
+| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.45 | Not started |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
@@ -128,4 +128,6 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
   ground cover are in src/render/biomes.js (BIOMES), the shapes in src/render/species.js, the
   ground mask (paths, pools, the Wilds' seams) in environment.js `groundMask`, Tripo landmarks
   in src/render/props.js. The Wilds draw as their own look, `shattered` (`lookOf`).
-- Next (0.42): Unwish, the ending choice (quest 6).
+- 0.42 (added): Archer and Rogue rework (Sharpshooter Ricochet / Steady Breath / one-shot
+  Deadeye, Windrunner Skirmish Step, Reflective mirrors, Assassin numbers, the ninja model).
+- Next (0.43): Unwish, the ending choice (quest 6).

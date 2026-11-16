@@ -50,6 +50,7 @@ early fight hardest and the end fair. Accepted wishes show as debuffs on the bar
   Pip's father comes home one last time. Credits, then world tiers carry on "after the wish".
 - **Take her place.** You wish to keep them all; you become the next Unmade: New Game+ with
   harder enemies and your old hero as the final boss. Offered only once the first ending is seen.
+  (0.43: built on Rebirth: a special rebirth that also gives Starmarks.)
 
 Draft signs: Asterfell gate "ASTERFELL. The Queen's city. Population: all of it, still." ·
 Tobin's survey "A wish needs something to hold on to. Hers holds on to the child. Find the child
@@ -102,9 +103,10 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 3 | Tobin's survey stones and Asterfell signs (quest 3) | 0.39 | Done |
 | 4 | The Herald, boss 4 (quest 4) | 0.40 | Done |
 | 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
-| 6 | Unwish: the ending choice (quest 6) | 0.43 | Not started |
-| 7 | Asterfell delves | 0.44 | Not started |
-| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.45 | Not started |
+| 5d | Late-game balance, gear rolls, Rebirth (added) | 0.43 | Done |
+| 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.44 | Not started |
+| 7 | Asterfell delves | 0.45 | Not started |
+| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.46 | Not started |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
@@ -130,4 +132,13 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
   in src/render/props.js. The Wilds draw as their own look, `shattered` (`lookOf`).
 - 0.42 (added): Archer and Rogue rework (Sharpshooter Ricochet / Steady Breath / one-shot
   Deadeye, Windrunner Skirmish Step, Reflective mirrors, Assassin numbers, the ninja model).
-- Next (0.43): Unwish, the ending choice (quest 6).
+- 0.43 (added): Overflow for Warrior and Mage (`passive.overflow`, `rawCooldown`/`overflowMult`
+  in world.js), subclass hooks (`spinTempo`, `ironWeight`, `burnCrit`/`burnHaste`, `frostHaste`,
+  `crosswind`), value-only rerolls with roll quality (`rerollCost`, `statRange`, `rollQuality`,
+  `rollTier` in items.js), reforging by choice, and Rebirth (src/sim/rebirth.js: Starmarks,
+  `PERKS`, `rebirthSave`; `p.rebirth.past` keeps each life for the second ending).
+- Rebirth and the ending: Rebirth unlocks after The Unmade (Act I's end), so it never needs Act II.
+  A reborn hero replays the story, and Act II quests are gated on level 100 as before. *Take her
+  place* (0.44) should be a rebirth with extras: call `rebirthSave` and add the NG+ flags, and
+  use `rebirth.past` (level, spec, Wishborne) for the old hero as the final boss.
+- Next (0.44): Unwish, the ending choice (quest 6).

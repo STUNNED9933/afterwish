@@ -24,6 +24,7 @@ import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/st
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
+import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -90,6 +91,7 @@ function start(hot = {}) {
     w.player.autoAttack = settings.autoAttack !== false;
     w.player.gold = account.gold;
     w.player.tickets = account.tickets;
+    w.player.acctRebirths = account.rebirths || 0; // Rebirth (0.43): every hero's EXP grows with the account's rebirths
     return w;
   }
   let world = makeWorld({ save });
@@ -917,7 +919,8 @@ function start(hot = {}) {
   function talentBadge() {
     const p = world.player;
     // A Weekly Echo build is set on its own screen before the run, so nothing to spend here.
-    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : (p.spec ? world.talentPoints() : 0) + (p.wishPts || 0);
+    const perkable = p.rebirth && PERK_IDS.some((id) => perkRank(p.rebirth, id) < PERKS[id].max && p.rebirth.marks >= PERKS[id].cost) ? 1 : 0; // Starmarks to spend (0.43)
+    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : (p.spec ? world.talentPoints() : 0) + (p.wishPts || 0) + perkable;
     const b = $('talent-badge');
     b.textContent = n;
     b.classList.toggle('hidden', !n);
@@ -966,8 +969,70 @@ function start(hot = {}) {
     panel.appendChild(reset);
   }
 
+  /** Rebirth (0.43): Starmarks, perks, and the choice to begin again. */
+  let rebirthSure = false;
+  function renderRebirth() {
+    const p = world.player;
+    const panel = $('rebirth-panel');
+    const rb = p.rebirth;
+    const show = !world.trial && (p.level >= CONFIG.MAX_LEVEL || (rb && rb.n > 0));
+    panel.classList.toggle('hidden', !show);
+    if (!show) return;
+    const block = rebirthBlock(p);
+    const marks = world.rebirthMarks();
+    const acct = Math.round(Math.min(REBIRTH.acctExpMax, REBIRTH.acctExp * (p.acctRebirths || 0)) * 100);
+    panel.innerHTML = `<h3>Rebirth${rb.n ? ` · reborn ${rb.n} time${rb.n === 1 ? '' : 's'}` : ''}</h3>
+      <p class="setting-desc rb-lore">The star grants exactly what is asked. Ask it to begin again and you will wake in Haven as if for the first time. It does not forget you.</p>
+      <p class="setting-desc"><span class="rb-marks">${rb.marks} Starmark${rb.marks === 1 ? '' : 's'}</span> to spend${rb.earned ? ` (${rb.earned} earned in all)` : ''}. Perks last for every life after this one.${acct ? ` Every hero on this account gets +${acct}% EXP from your rebirths.` : ''}</p>`;
+    for (const id of PERK_IDS) {
+      const pk = PERKS[id];
+      const r = perkRank(rb, id);
+      const row = document.createElement('div');
+      row.className = 'perk-row';
+      row.innerHTML = `<span>${pk.name}</span><span class="v">${r ? pk.desc(r) : pk.each + ' a rank'}</span><span class="v">${r}/${pk.max}</span>`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ghost tiny';
+      b.textContent = r >= pk.max ? 'Max' : `+ (${pk.cost})`;
+      b.disabled = r >= pk.max || rb.marks < pk.cost;
+      b.title = `${pk.each} a rank, for ${pk.cost} Starmark${pk.cost === 1 ? '' : 's'}`;
+      b.addEventListener('click', () => {
+        applyNow({ type: 'rebirthPerk', id });
+        renderTalents();
+      });
+      row.appendChild(b);
+      panel.appendChild(row);
+    }
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'ghost rb-go' + (rebirthSure ? ' sure' : '');
+    const why = block || (net ? 'Leave the party first: a rebirth is made alone.' : null);
+    go.disabled = !!why;
+    go.textContent = why ? `Begin again: ${why}` : rebirthSure
+      ? `Are you sure? Click again to begin again with ${marks} Starmarks`
+      : `Begin again · +${marks} Starmarks`;
+    go.title = 'A full fresh start for this hero: level 1, no gear, scrap or Wishdust, the story, quests, world tiers, talents and Wishborne levels from the beginning. Gold is the account\'s and stays. Kept: Starmarks and perks, weapon glows. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels.';
+    go.addEventListener('click', () => {
+      if (!rebirthSure) {
+        rebirthSure = true;
+        renderTalents();
+        return;
+      }
+      rebirthSure = false;
+      applyNow({ type: 'rebirth' });
+    });
+    panel.appendChild(go);
+    if (!block) {
+      const note = document.createElement('p');
+      note.className = 'setting-desc';
+      note.textContent = `Begin again: level 1, nothing in your hands but a starter weapon. Your gear, scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, and your weapon glows (gold belongs to the account).`;
+      panel.appendChild(note);
+    }
+  }
+
   function renderTalents() {
     renderWish();
+    renderRebirth();
     const p = world.player;
     const body = $('talents-body');
     const respec = $('btn-respec');
@@ -1079,7 +1144,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
 
   async function hostGame() {
     const name = playerName();
@@ -2107,6 +2172,23 @@ function start(hot = {}) {
         hud.feedText('Rifts open once you have beaten The Warden out in the world.');
         sfx.denied();
         break;
+      case 'reborn': {
+        // Rebirth (0.43): keep a backup, store the new life, and wake in Haven.
+        backupNow('before a rebirth');
+        account.rebirths = (account.rebirths || 0) + 1;
+        storeAccount(account);
+        save = Object.assign(ev.save, { acctRebirths: account.rebirths });
+        storeSave(save, world.cls);
+        startExplore(true);
+        sfx.levelUp();
+        hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks. Spend them in Talents (T).`);
+        hintOnce('reborn', `You are reborn. ${ev.marks} Starmarks are yours to spend on perks in Talents (T)${ev.glow ? ', and a new weapon glow is on the gear screen' : ''}.`, 12);
+        break;
+      }
+      case 'perkBought':
+        sfx.ui();
+        talentBadge();
+        break;
       case 'wishUp':
         hud.float(renderer, ev.x, 3.2, ev.z, `Wishborne ${ev.wish}`, 'word perfect');
         sfx.levelUp();
@@ -2463,9 +2545,16 @@ function start(hot = {}) {
         break;
       case 'enchanted':
         sfx.upgrade();
-        hud.feedText(`Enchanted ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}.`);
+        hud.feedText(`Reforged ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}.`);
         refreshMenus();
         break;
+      case 'rerolled': {
+        sfx.upgrade();
+        const tier = RARITIES[ev.tier];
+        hud.feedText(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} (${tier.name} roll)`);
+        refreshMenus();
+        break;
+      }
       case 'upgrade':
         sfx.upgrade();
         break;

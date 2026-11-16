@@ -28,7 +28,7 @@ const COLORS = {
   doom: 0xa64bff, // Doom: a share of your health that nothing reduces (0.28)
   friendly: 0x7fd8ff,
   ember: 0xff8a3a,
-  immortal: 0x7ff5e1, // matches the Immortal rarity colour
+  immortal: 0xffd24a, // matches the Immortal rarity colour (radiant gold since 0.43)
 };
 
 // Colours for each kind of exploration map (see sim/maps.js).

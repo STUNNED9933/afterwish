@@ -150,6 +150,52 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Late-game balance, gear rolls and Rebirth (0.43)
+
+- **Attack-move: A, or Shift + click.** Firefox always opens its own menu on
+  Shift + right-click, so the A key (as in League) and Shift + left-click now
+  attack-move too. Shift + right-click still works in other browsers.
+- **Why Warriors and Mages fell behind.** Late gear brings ability cooldowns to
+  0.3–0.7 s, faster than anyone presses keys, while basic attacks keep pace with
+  attack speed on their own. So a class built on abilities stopped growing.
+  - **Overflow (Warrior and Mage):** ability haste never takes a cooldown below
+    1 second; the haste left over becomes damage (a would-be 0.25 s cooldown hits
+    4 times as hard).
+  - **Berserker, Red Tempo:** Whirlwind beats once per basic attack you could
+    make (2 to 10 a second), so attack speed makes it spin faster.
+  - **Bulwark, Weight of Iron:** 70% of armor counts as attack damage for his
+    abilities.
+  - **Pyromancer, Searing:** burns can crit, and an enemy carries one more burn
+    stack for every 120 ability haste.
+  - **Frostbinder, Deep Winter:** ability haste shortens the wait after a
+    Shatter (1.5 s down to 0.3 s); the freeze keeps its own wait.
+  - **Windrunner, Crosswind:** extra arrows on every shot, growing with attack
+    speed squared (half an arrow at 4 a second, 2 at 8, 4.5 at 12).
+  - **Assassin:** Shadowstrike 15 s (8× attack damage), Death Lotus 20 s,
+    Ambush 16 s and +120% to the next ability.
+  - Measured with a bot, single target, late (level 100, five +10 five-star
+    Immortals, 120 Wishborne points) and at level 75: Berserker 1.75M / 19k,
+    Shadowdancer 1.72M / 23k, Assassin 1.54M / 24k, Pyromancer 1.36M / 20k,
+    Bulwark 1.32M / 12k, Frostbinder 1.16M / 18k, Windrunner 1.02M / 18k,
+    Sharpshooter 3.08M / 19k (before: Warriors and Mages 0.29–0.6M late).
+- **Immortal gear is radiant gold** (it was pale teal, easy to mistake for
+  Common) with a border of light that runs round it, on the gear screen and in
+  its tooltip.
+- **Rerolling.** Reroll any line of an equipped item (the main stat too) for a
+  fresh number of the same stat, as often as you like, for gold and scrap at the
+  same price every time. Rolls now spread ±8% (was ±6%), so it is worth it.
+  Every line shows its **roll quality** as a diamond in the rarity colours, from
+  Common (a low roll) to Immortal (the very top of its range).
+- **Reforging** (the old enchanting) turns a bonus line into a stat *you
+  choose*, never a random one, for gold and Wishdust.
+- **Rebirth.** At level 100 with The Unmade beaten, ask the star to begin again
+  (Talents, T). A full fresh start for that hero; kept are Starmarks (10 for
+  level 100 plus 2 × the root of your Wishborne levels), the perks bought with
+  them (Starborn, Quick Study, Fortune, Lucky Star, Head Start, Deep Pockets,
+  Old Wishes), and weapon glows, with new ones at rebirths 1, 3, 5 and 10. Every
+  rebirth on the account also gives every hero +5% EXP (up to +50%). Alone
+  only. The planned second ending, *Take her place*, will build on this.
+
 ### The world, rebuilt (0.41)
 
 Every map is now its own place instead of one disc with recoloured cones and blobs.

@@ -1,6 +1,6 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
@@ -21,8 +21,8 @@ export function itemTooltip(item, compareTo) {
   const keys = Object.keys(stats);
   let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; gear score ${Math.round(itemScore(item))}</div>`;
   keys.forEach((k, i) => {
-    const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Enchanted: only this line can be enchanted again">✦</span>' : '';
-    html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${formatStat(k, stats[k])}${ench}</div>`;
+    const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Reforged: only this line can be reforged again">✦</span>' : '';
+    html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
   });
   if (item.set && SETS[item.set]) {
     // A set piece (0.29): its set's bonuses, lit when enough pieces are worn.
@@ -51,6 +51,13 @@ export function itemTooltip(item, compareTo) {
   const dust = dustValue(item);
   html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ''}</div>`;
   return html;
+}
+
+/** A small mark in the colour of how well a line rolled (0.43): Common for a low roll, Immortal for the best. */
+export function rollPip(item, key) {
+  const q = rollQuality(item, key);
+  const t = RARITIES[rollTier(q)];
+  return `<span class="roll-pip" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
 }
 
 /** "Combat Power +123 (Might +200, Resolve −77)" for wearing this item, when the gear drawer can work it out. */
@@ -102,8 +109,9 @@ export function itemCell(tooltip, item, { button = false, compareTo = null, upgr
   if (item) {
     const color = RARITIES[item.rarity].color;
     el.style.setProperty('--rarity', color);
-    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}`;
-    el.addEventListener('mouseenter', () => tooltip.show(itemTooltip(item, compareTo), el, color));
+    const imm = !!RARITIES[item.rarity].effect;
+    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}${imm ? '<span class="imm-star" aria-hidden="true">✦</span>' : ''}`;
+    el.addEventListener('mouseenter', () => tooltip.show(itemTooltip(item, compareTo), el, color, imm));
     el.addEventListener('mouseleave', () => tooltip.hide());
     if (button) el.setAttribute('aria-label', `${itemName(item)}, ${RARITIES[item.rarity].name} ${itemTypeName(item)}${upgrade ? ', upgrade' : ''}`);
   }
@@ -167,7 +175,7 @@ export class Inventory {
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');
-      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
+      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name${item && RARITIES[item.rarity].effect ? ' immortal' : ''}" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
       row.append(cell, text);
       const btns = document.createElement('div');
       btns.className = 'eq-btns';
@@ -184,15 +192,16 @@ export class Inventory {
           btns.appendChild(a);
         }
       }
-      if (item && Object.keys(item.stats).length > 1 && !world.trial) {
-        // Enchanting (0.29): reroll one bonus stat, for gold and Wishdust.
+      if (item && !world.trial) {
+        // Rerolling and reforging (0.43; enchanting since 0.29)
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'ghost tiny ench-btn';
-        b.textContent = this.enchantSlot === slot ? 'Close' : 'Enchant';
-        b.title = 'Turn one bonus stat into a different one, for gold and Wishdust';
+        b.textContent = this.enchantSlot === slot ? 'Close' : 'Reroll';
+        b.title = 'Reroll the numbers on this item (gold and scrap, as often as you like), or reforge a line into a stat you choose (Wishdust)';
         b.addEventListener('click', () => {
           this.enchantSlot = this.enchantSlot === slot ? null : slot;
+          this.reforgeKey = null;
           this.render(world);
         });
         btns.appendChild(b);
@@ -255,7 +264,7 @@ export class Inventory {
     const bag = $('bag');
     bag.innerHTML = '';
     let scrapTotal = 0;
-    for (let i = 0; i < CONFIG.BAG_SIZE; i++) {
+    for (let i = 0; i < world.bagSize(); i++) {
       const item = p.bag[i] || null;
       const current = item ? p.equipped[item.slot] : null;
       const upgrade = item ? itemScore(item) > itemScore(current) : false;
@@ -273,7 +282,7 @@ export class Inventory {
       }
       bag.appendChild(el);
     }
-    $('bag-count').textContent = `${p.bag.length} / ${CONFIG.BAG_SIZE}`;
+    $('bag-count').textContent = `${p.bag.length} / ${world.bagSize()}`;
     // The pouch (0.32): stackable things that do not take a bag slot.
     const pouch = $('pouch');
     if (pouch) {
@@ -311,30 +320,71 @@ export class Inventory {
     btn.disabled = !scrapTotal;
   }
 
-  /** Enchanting (0.29): the bonus stats of one equipped item, each with a reroll button. */
+  /**
+   * Rerolling (0.43): every line of one equipped item, with how good its roll is and a Reroll button
+   * (gold and scrap, the same price every time). Reforging: turn one bonus line into a stat you choose.
+   */
   enchantPanel(world, slot, item) {
     const p = world.player;
     const box = document.createElement('div');
     box.className = 'ench-panel';
-    const cost = enchantCost(item);
-    const can = p.gold >= cost.gold && (p.dust || 0) >= cost.dust;
+    const rc = rerollCost(item);
+    const canRoll = p.gold >= rc.gold && p.scrap >= rc.scrap;
+    const fc = enchantCost(item);
+    const canForge = p.gold >= fc.gold && (p.dust || 0) >= fc.dust;
     const open = enchantable(item);
-    box.innerHTML = `<p class="setting-desc">Turn one bonus stat into a different one, at a fresh roll. Once an item is enchanted, only that line can be enchanted again, and each time costs more. Cost: <b>${cost.gold} gold + ${cost.dust} Wishdust</b> (you have ${p.gold} and ${p.dust || 0}). Wishdust comes from Storied enemies, the Wishthief, Remnants and scrapping Mythic or better.</p>`;
+    const choices = reforgeChoices(item);
+    box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time (you have ${p.gold.toLocaleString()} and ${p.scrap.toLocaleString()}). The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust (you have ${p.dust || 0}); once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
     const stats = itemStats(item);
-    Object.keys(item.stats).slice(1).forEach((k) => {
+    Object.keys(item.stats).forEach((k) => {
       const row = document.createElement('div');
       row.className = 'ench-row';
-      const ok = open.includes(k);
-      row.innerHTML = `<span>${formatStat(k, stats[k])}${item.enchantKey === k ? ' ✦' : ''}</span>`;
+      const q = rollQuality(item, k);
+      const t = RARITIES[rollTier(q)];
+      const { lo, hi } = statRange(item, k);
+      row.innerHTML = `<span class="ench-stat">${rollPip(item, k)}${formatStat(k, stats[k])}${item.enchantKey === k ? ' ✦' : ''}${isMainStat(item, k) ? ' <small>(main)</small>' : ''}</span><span class="ench-q" style="color:${t.color}" title="Rolls between ${lo} and ${hi} before upgrades">${t.name} · ${item.stats[k]} of ${lo}–${hi}</span>`;
+      const btns = document.createElement('span');
+      btns.className = 'ench-btns';
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'ghost tiny';
-      b.textContent = ok ? 'Reroll' : 'Locked';
-      b.disabled = !ok || !can;
-      b.title = ok ? `Becomes one of: ${['as', 'crit', 'lifesteal', 'haste', 'armor', 'hp'].filter((x) => !(x in item.stats)).map((x) => STATS[x].label).join(', ')}` : 'Only the enchanted line can be enchanted again';
+      b.textContent = 'Reroll';
+      b.disabled = !canRoll || q >= 1;
+      b.title = q >= 1 ? 'Already the best roll this line can have' : `A fresh roll between ${lo} and ${hi}`;
       b.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k }));
-      row.appendChild(b);
+      btns.appendChild(b);
+      if (!isMainStat(item, k) && open.includes(k) && choices.length) {
+        const f = document.createElement('button');
+        f.type = 'button';
+        f.className = 'ghost tiny forge';
+        f.textContent = this.reforgeKey === k ? 'Cancel' : 'Reforge';
+        f.title = 'Turn this line into a stat you choose, for Wishdust';
+        f.addEventListener('click', () => {
+          this.reforgeKey = this.reforgeKey === k ? null : k;
+          this.render(world);
+        });
+        btns.appendChild(f);
+      }
+      row.appendChild(btns);
       box.appendChild(row);
+      if (this.reforgeKey === k && open.includes(k)) {
+        const pick = document.createElement('div');
+        pick.className = 'ench-pick';
+        pick.innerHTML = `<span>Make ${STATS[k].label} into (${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust):</span>`;
+        for (const to of choices) {
+          const c = document.createElement('button');
+          c.type = 'button';
+          c.className = 'ghost tiny';
+          c.textContent = STATS[to].label;
+          c.disabled = !canForge;
+          c.addEventListener('click', () => {
+            this.reforgeKey = null;
+            this.send({ type: 'reforge', slot, key: k, to });
+          });
+          pick.appendChild(c);
+        }
+        box.appendChild(pick);
+      }
     });
     return box;
   }

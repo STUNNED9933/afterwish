@@ -55,15 +55,11 @@ export class Input {
     const world = this.getWorld();
     this.mouse.x = e.clientX;
     this.mouse.y = e.clientY;
-    if (e.button === 2 && e.shiftKey) {
-      // Shift + right-click: attack-move (nearest to you or to the cursor: a pause-menu setting).
+    if ((e.button === 2 || e.button === 0) && e.shiftKey) {
+      // Shift + right-click (or Shift + left-click): attack-move. Firefox always opens its own menu on
+      // Shift + right-click, whatever the page asks, so Shift + left-click and the A key do the same (0.43).
       e.preventDefault();
-      const g = this.ground();
-      if (g) {
-        if (this.actions.cancelInteract) this.actions.cancelInteract();
-        world.command({ type: 'attackMove', x: g.x, z: g.z, near: this.actions.attackMoveNear ? this.actions.attackMoveNear() : 'cursor' });
-        this.renderer.moveMarker(g.x, g.z, true);
-      }
+      this.attackMove();
       this.mouse.right = false;
       return;
     }
@@ -94,6 +90,15 @@ export class Input {
       world.command({ type: 'attack', id: enemy.id });
       this.renderer.moveMarker(enemy.x, enemy.z, true);
     }
+  }
+
+  /** Attack-move at the cursor (nearest to you or to the cursor: a pause-menu setting). */
+  attackMove() {
+    const g = this.ground();
+    if (!g) return;
+    if (this.actions.cancelInteract) this.actions.cancelInteract();
+    this.getWorld().command({ type: 'attackMove', x: g.x, z: g.z, near: this.actions.attackMoveNear ? this.actions.attackMoveNear() : 'cursor' });
+    this.renderer.moveMarker(g.x, g.z, true);
   }
 
   onKeyDown(e) {
@@ -149,6 +154,8 @@ export class Input {
       world.command({ type: 'cast', slot: key, x: g.x, z: g.z });
     } else if (key === '1' || key === 'd') {
       if (!e.repeat) world.command({ type: 'potion' });
+    } else if (key === 'a') {
+      if (!e.repeat) this.attackMove(); // as in League: A attack-moves to the cursor
     } else if (key === 's') {
       world.command({ type: 'stop' });
     } else if (key === 'enter') {

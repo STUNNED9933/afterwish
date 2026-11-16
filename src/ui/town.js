@@ -111,7 +111,7 @@ export class Town {
     // --- Cache vault -----------------------------------------------------
     const list = $('cache-list');
     list.innerHTML = '';
-    const bagFull = p.bag.length >= CONFIG.BAG_SIZE;
+    const bagFull = p.bag.length >= world.bagSize();
     for (const tier in CACHES) {
       const def = CACHES[tier];
       const total = def.odds.reduce((a, b) => a + b, 0);

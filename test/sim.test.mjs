@@ -2278,8 +2278,59 @@ import { makeRng } from '../src/sim/rng.js';
     w.command({ type: 'move', x: 6, z: 0 }); w.runCommands();
     let beats = 0;
     for (let i = 0; i < 150; i++) { w.step(CONFIG.TICK); beats += w.events.filter((ev) => ev.type === 'spinTick').length; w.events.length = 0; }
-    check('Berserker: Whirlwind is a 2-second spin of four beats', beats === 4 && !p.spin);
+    const want = Math.round(2 / Math.min(0.5, Math.max(0.1, 1 / p.stats.as)));
+    check('Berserker: Whirlwind is a 2-second spin, one beat per basic attack (Red Tempo, 0.43)', beats === want && beats >= 4 && !p.spin, `${beats} beats at ${p.stats.as.toFixed(2)} attacks a second`);
     check('Berserker: ...and you keep moving while it spins', p.x > 3);
+  }
+  // Red Tempo (0.43): attack speed makes the spin beat faster, never past 10 a second
+  {
+    const beatsAt = (as) => {
+      const { w, p } = setup('warrior', 'berserker'); noCrit(w);
+      dummy(w, 2, 0);
+      p.stats.as = as;
+      w.recalcStats = () => {};
+      cast(w, 'w', 0, 0);
+      let n = 0;
+      for (let i = 0; i < 200; i++) { w.step(CONFIG.TICK); n += w.events.filter((ev) => ev.type === 'spinTick').length; w.events.length = 0; }
+      return n;
+    };
+    const slow = beatsAt(1.5), fast = beatsAt(5), max = beatsAt(40);
+    check('Red Tempo: a slow hand spins four beats', slow === 4, slow);
+    check('Red Tempo: five attacks a second spin ten', fast === 10, fast);
+    check('Red Tempo: never more than ten beats a second', max === 20, max);
+  }
+  // Overflow (0.43): Warrior and Mage cooldowns stop at 1 second and the rest becomes damage
+  {
+    const { w, p } = setup('mage', 'pyromancer');
+    const base = w.abilityDamage('q');
+    p.stats.haste = 4000;
+    check('Overflow: a cooldown never drops below 1 second', Math.abs(w.abilityCooldown('q') - 1) < 1e-9, w.abilityCooldown('q'));
+    const raw = w.rawCooldown('q');
+    check('Overflow: ...and the haste past it becomes damage', Math.abs(w.abilityDamage('q') / base - 1 / raw) < 1e-6, (w.abilityDamage('q') / base).toFixed(2));
+    p.stats.haste = 0;
+    check('Overflow: without that much haste nothing changes', w.overflowMult('q') === 1);
+    const a = setup('archer', 'sharpshooter');
+    a.p.stats.haste = 4000;
+    check('Overflow: archers do not have it', a.w.abilityCooldown('q') < 0.5 && a.w.overflowMult('q') === 1);
+  }
+  // Weight of Iron (Bulwark), Searing (Pyromancer), Deep Winter (Frostbinder), Crosswind (Windrunner)
+  {
+    const { w, p } = setup('warrior', 'bulwark');
+    const d0 = w.abilityDamage('q');
+    p.stats.armor += 1000;
+    check('Weight of Iron: armor adds to Bulwark ability damage', w.abilityDamage('q') > d0 + 1.5 * 700 * 0.9);
+    const py = setup('mage', 'pyromancer');
+    py.p.stats.haste = 600;
+    check('Searing: 120 ability haste is one more burn stack', py.w.burnCap() === 10, py.w.burnCap());
+    check('Searing: burns can crit', py.w.mods.burnCrit === true);
+    const fb = setup('mage', 'frostbinder');
+    fb.p.stats.haste = 900;
+    const en = dummy(fb.w, 3, 0);
+    fb.w.shatterFrost(en);
+    check('Deep Winter: ability haste shortens the wait after a Shatter', Math.abs(en.frostLock - 0.3) < 1e-9, en.frostLock);
+    check('Deep Winter: ...but the freeze keeps its own wait', en.freezeWait > 1);
+    const wr = setup('archer', 'windrunner');
+    check('Crosswind: the Windrunner has it', wr.w.mods.crosswind > 0);
   }
   // Bulwark: Reckoning
   {
@@ -2500,22 +2551,84 @@ import { makeRng } from '../src/sim/rng.js';
     w.recalcStats();
     check('Sets: four give the second as well (Reckoning up to 8)', setCounts(w.player.equipped).wardstone === 4 && w.mods.reckonMax === 8);
   }
-  // Enchanting
+  // Rebirth (0.43)
   {
+    const { starmarksFor, PERKS, REBIRTH } = await import('../src/sim/rebirth.js');
+    const save = geared('rogue', 100, 6);
+    Object.assign(save, { wish: 100, wishPts: 3, wishStats: { might: 40 }, gold: 5000, scrap: 900, dust: 40, tierMax: 4, worldTier: 4, spec: 'assassin', bossKills: { boss3: 2 }, quests: { unmade: { s: 'done', n: 1 } }, glows: ['ember'] });
+    const w = new World({ seed: 7, cls: 'rogue', save });
+    const p = w.player;
+    check('Rebirth: 10 Starmarks for level 100, plus 2 x the root of Wishborne levels', starmarksFor(100, 100) === 30 && starmarksFor(100, 0) === 10 && starmarksFor(99, 400) === 0);
+    const young = new World({ seed: 7, cls: 'rogue', save: Object.assign(geared('rogue', 100, 3), { bossKills: {} }) });
+    young.command({ type: 'rebirth' }); young.runCommands();
+    check('Rebirth: not before The Unmade is beaten', !young.events.some((e) => e.type === 'reborn'));
+    w.command({ type: 'rebirth' }); w.runCommands();
+    const ev = w.events.find((e) => e.type === 'reborn');
+    check('Rebirth: at level 100 with The Unmade beaten, the star begins you again', !!ev && ev.n === 1 && ev.marks === 30);
+    const fresh = ev.save;
+    check('Rebirth: a full fresh start (level 1, starter weapon, empty bag, no scrap or Wishdust)', fresh.level === 1 && Object.keys(fresh.equipped).join() === 'weapon' && fresh.equipped.weapon.id === 'starter' && !fresh.bag.length && fresh.scrap === 0 && !fresh.dust);
+    const w2 = new World({ seed: 7, cls: 'rogue', save: fresh });
+    const q = w2.player;
+    check('Rebirth: story, quests, tiers, subclass and Wishborne all start again', !q.spec && q.tierMax === 1 && !Object.keys(q.quests).length && q.wish === 0 && !Object.keys(q.wishStats).length && !q.bossKills.boss3);
+    check('Rebirth: Starmarks, glows (a new one too) and the account\'s gold stay', q.rebirth.marks === 30 && q.rebirth.n === 1 && q.glows.includes('ember') && q.glows.includes('dawn') && fresh.gold === 5000);
+    check('Rebirth: the past life is remembered (for the ending that builds on this)', q.rebirth.past.length === 1 && q.rebirth.past[0].level === 100 && q.rebirth.past[0].spec === 'assassin');
+    const ad0 = q.stats.ad, bag0 = w2.bagSize(), sp0 = q.skillPoints;
+    for (let i = 0; i < 3; i++) { w2.command({ type: 'rebirthPerk', id: 'starborn' }); w2.runCommands(); }
+    w2.command({ type: 'rebirthPerk', id: 'pockets' }); w2.runCommands();
+    w2.command({ type: 'rebirthPerk', id: 'head' }); w2.runCommands();
+    check('Perks: Starborn adds damage, Deep Pockets bag slots, Head Start a skill point', q.stats.ad > ad0 && w2.bagSize() === bag0 + 4 && q.skillPoints === sp0 + 1, `${ad0}->${q.stats.ad}`);
+    check('Perks: paid in Starmarks', q.rebirth.marks === 30 - 3 * PERKS.starborn.cost - PERKS.pockets.cost - PERKS.head.cost);
+    q.rebirth.marks = 0;
+    w2.command({ type: 'rebirthPerk', id: 'study' }); w2.runCommands();
+    check('Perks: none without the Starmarks', !q.rebirth.perks.study);
+    const e0 = q.exp;
+    w2.gainExp(20);
+    check('Rebirth: every rebirth on the account adds 5% EXP (Quick Study more)', q.exp - e0 === Math.round(20 * (1 + REBIRTH.acctExp)), q.exp - e0);
+    const back = new World({ seed: 7, cls: 'rogue', save: w2.toSave() });
+    check('Rebirth: perks and Starmarks are saved', back.player.rebirth.perks.starborn === 3 && back.bagSize() === bag0 + 4);
+  }
+  // Rerolling and reforging (0.43; enchanting since 0.29)
+  {
+    const { rerollCost, rollQuality, rollTier, statRange, reforgeChoices } = await import('../src/sim/items.js');
     const save = geared('archer', 50, 3);
-    save.gold = 1e6; save.dust = 100;
+    save.gold = 1e8; save.dust = 100; save.scrap = 1e7;
     const w = new World({ seed: 4, cls: 'archer', save });
     const p = w.player;
     const item = p.equipped.helm;
     const keys = Object.keys(item.stats);
     const main = keys[0], line = keys[1];
+    const rc = rerollCost(item);
+    const seen = new Set();
+    let sameKeys = true, inRange = true;
+    for (let i = 0; i < 300; i++) {
+      w.command({ type: 'enchant', slot: 'helm', key: line }); w.runCommands();
+      seen.add(item.stats[line]);
+      if (Object.keys(item.stats).join() !== keys.join()) sameKeys = false;
+      const { lo, hi } = statRange(item, line);
+      if (item.stats[line] < lo || item.stats[line] > hi) inRange = false;
+    }
+    check('Reroll: the line keeps its stat, only the number changes', sameKeys && seen.size > 3, `${seen.size} different numbers`);
+    check('Reroll: as often as you like, the same price every time', p.gold === 1e8 - 300 * rc.gold && p.scrap === 1e7 - 300 * rc.scrap && rerollCost(item).gold === rc.gold);
+    check('Reroll: every roll lands inside the line\'s range', inRange);
+    const m0 = item.stats[main];
+    for (let i = 0; i < 40; i++) { w.command({ type: 'enchant', slot: 'helm', key: main }); w.runCommands(); }
+    check('Reroll: the main stat can be rerolled too', Object.keys(item.stats)[0] === main && item.stats[main] > 0, `${m0} -> ${item.stats[main]}`);
+    const { lo, hi } = statRange(item, line);
+    item.stats[line] = hi;
+    check('Roll quality: the best roll is an Immortal roll', rollQuality(item, line) === 1 && rollTier(1) === 6);
+    item.stats[line] = lo;
+    check('Roll quality: the lowest is a Common roll', rollQuality(item, line) === 0 && rollTier(0) === 0);
+    check('Roll quality: in order, Common up to Immortal', [0.1, 0.4, 0.6, 0.75, 0.9, 0.95, 0.99].map(rollTier).join() === '0,1,2,3,4,5,6');
     const cost = enchantCost(item);
-    w.command({ type: 'enchant', slot: 'helm', key: main }); w.runCommands();
-    check('Enchanting: never the main stat', Object.keys(item.stats)[0] === main && !item.enchants);
-    w.command({ type: 'enchant', slot: 'helm', key: line }); w.runCommands();
+    const to = reforgeChoices(item)[0];
+    w.command({ type: 'reforge', slot: 'helm', key: main, to }); w.runCommands();
+    check('Reforge: never the main stat', Object.keys(item.stats)[0] === main && !item.enchants);
+    w.command({ type: 'reforge', slot: 'helm', key: line, to: 'ms' }); w.runCommands();
+    check('Reforge: only into a stat it may have', !item.enchants);
+    w.command({ type: 'reforge', slot: 'helm', key: line, to }); w.runCommands();
     const after = Object.keys(item.stats);
-    check('Enchanting: turns one bonus stat into a different one, in the same place', after.length === keys.length && after[0] === main && !after.slice(1).includes(line) && item.enchantKey === after[1] && p.gold === 1e6 - cost.gold && p.dust === 100 - cost.dust, `${keys} -> ${after}`);
-    check('Enchanting: after that only the enchanted line can be enchanted again, and it costs more', enchantable(item).length === 1 && enchantable(item)[0] === item.enchantKey && enchantCost(item).dust > cost.dust);
+    check('Reforge: turns one bonus stat into the one you chose, in the same place', after.length === keys.length && after[0] === main && after[1] === to && item.enchantKey === to && p.dust === 100 - cost.dust, `${keys} -> ${after}`);
+    check('Reforge: after that only the reforged line can be reforged again, and it costs more', enchantable(item).length === 1 && enchantable(item)[0] === item.enchantKey && enchantCost(item).dust > cost.dust);
     const mythic = roll(mk(2), 50, { weights: [0, 0, 0, 0, 1, 0, 0] });
     check('Wishdust: scrapping a Mythic gives one', dustValue(mythic) === 1 && dustValue(roll(mk(2), 50, { weights: [0, 0, 1, 0, 0, 0, 0] })) === 0);
   }

@@ -46,6 +46,8 @@ export function defaultMods() {
     // 0.24: Windrunner Tailwind, Berserker Blood Rage rules, Bulwark Iron Answer and Hold the Line.
     tailwind: 0, tailwindCdr: 0, bloodGuard: 0, bloodCap: false, bloodSave: 0, blockRed: false,
     frostMax: 0, frostDmg: 1, frostFreeze: 1, frostReach: 3, basicFrost: 0, qFrost: 0, qSplashFrost: 1, orbFrost: 0, moteFrost: 0, brittle: 0.15, smoulderStacks: 2,
+    // 0.43 late-game scaling: Red Tempo (Berserker), Weight of Iron (Bulwark), Searing (Pyromancer), Deep Winter (Frostbinder)
+    spinTempo: false, crosswind: 0, ironWeight: 0, burnCrit: false, burnHaste: 0, frostHaste: false,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
   };

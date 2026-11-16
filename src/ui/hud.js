@@ -239,7 +239,7 @@ export class Hud {
     const need = expToNext(p.level);
     const maxed = p.level >= CONFIG.MAX_LEVEL;
     // Past 100 the bar fills Wishborne levels instead (0.26).
-    const wneed = maxed ? wishNeed(p.wish || 0) : 0;
+    const wneed = maxed ? (world.wishNeedNow ? world.wishNeedNow(p) : wishNeed(p.wish || 0)) : 0;
     $('xp-fill').style.transform = `scaleX(${maxed ? Math.min(1, (p.wishExp || 0) / wneed) : p.exp / need})`;
     $('xp-text').textContent = maxed ? `Wishborne ${p.wish || 0} · ${p.wishExp || 0} / ${wneed}` : `${p.exp} / ${need} EXP`;
     $('level-badge').textContent = p.level;
@@ -805,10 +805,11 @@ export class Tooltip {
   constructor() {
     this.el = $('tooltip');
   }
-  show(html, anchor, rarityColor) {
+  show(html, anchor, rarityColor, immortal = false) {
     if (!html) return;
     this.el.innerHTML = html;
     this.el.style.setProperty('--rarity', rarityColor || '');
+    this.el.classList.toggle('immortal', !!immortal);
     this.el.classList.remove('hidden');
     const r = anchor.getBoundingClientRect();
     const tw = this.el.offsetWidth;

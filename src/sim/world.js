@@ -20,7 +20,8 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS } from './rebirth.js';
+import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
@@ -74,7 +75,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -388,6 +389,8 @@ export class World {
       wishExp: save?.wishExp ?? 0,
       wishPts: save?.wishPts ?? 0,
       wishStats: Object.assign({}, save?.wishStats),
+      rebirth: migrateRebirth(save?.rebirth), // Rebirth (0.43): Starmarks, perks, past lives
+      acctRebirths: save?.acctRebirths ?? 0, // rebirths on every hero of the account (main.js keeps it current)
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
       glows: Array.isArray(save?.glows) ? save.glows.slice() : [], // weapon glows earned (0.31)
@@ -418,7 +421,7 @@ export class World {
     };
     if (save) {
       for (const slot of SLOTS) p.equipped[slot] = migrateItem(save.equipped?.[slot] || null);
-      p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE).map(migrateItem); // (0.30: rarity names moved)
+      p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE + 4 * perkRank(p.rebirth, 'pockets')).map(migrateItem); // (0.30: rarity names moved)
     } else {
       p.equipped.weapon = starterWeapon(this.cls);
     }
@@ -459,6 +462,9 @@ export class World {
     }
     // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
     if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k]);
+    // Rebirth perks (0.43): Starborn, never in the Weekly Echo either
+    const star = this.trial ? 0 : perkRank(this.player.rebirth, 'starborn');
+    if (star > 0) { m.adPct += 0.02 * star; m.hpPct += 0.02 * star; }
     this.mods = m;
   }
 
@@ -524,6 +530,8 @@ export class World {
       wish: p.wish,
       wishExp: p.wishExp,
       wishPts: p.wishPts,
+      rebirth: p.rebirth,
+      acctRebirths: p.acctRebirths,
       wishStats: p.wishStats,
       streak: p.streak,
       dust: p.dust,
@@ -577,7 +585,8 @@ export class World {
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
-      else if (c.type === 'enchant') this.enchantItem(c.slot, c.key);
+      else if (c.type === 'enchant') this.rerollLine(c.slot, c.key);
+      else if (c.type === 'reforge') this.enchantItem(c.slot, c.key, c.to);
       else if (c.type === 'ascend') this.ascendItem(c.slot, c.index);
       else if (c.type === 'setGlow') { if (c.id === null || p.glows.includes(c.id)) p.glow = c.id; }
       else if (c.type === 'buyMerchant') this.buyMerchant(c.i);
@@ -697,6 +706,12 @@ export class World {
         case 'enterRift':
           this.enterRift(c.tier);
           break;
+        case 'rebirth':
+          this.rebirth();
+          break;
+        case 'rebirthPerk':
+          this.buyPerk(c.id);
+          break;
         case 'wishSpend':
           this.wishSpend(c.stat, c.n);
           break;
@@ -804,15 +819,42 @@ export class World {
     return this.player.level >= this.kit[slot].unlock || (slot === 'r' && this.mods.rUnlock);
   }
 
-  /** Cooldown in seconds after ranks, augments and ability haste. */
-  abilityCooldown(slot) {
+  /** Cooldown in seconds after ranks, augments and ability haste, before Overflow's floor. */
+  rawCooldown(slot) {
     const p = this.player;
     return this.kit[slot].cd * this.mods[slot + 'Cd'] * (1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1)) * (100 / (100 + p.stats.haste));
   }
 
+  /** Overflow (Warrior and Mage, 0.43): the shortest a cooldown can be; 0 for the other classes. */
+  overflowFloor() {
+    const ps = CLASSES[this.cls].passive;
+    return (ps && ps.overflow) || 0;
+  }
+
+  /** Cooldown in seconds after ranks, augments and ability haste. */
+  abilityCooldown(slot) {
+    const raw = this.rawCooldown(slot);
+    const floor = this.overflowFloor();
+    return floor > 0 && this.kit[slot].cd > floor ? Math.max(floor, raw) : raw;
+  }
+
+  /**
+   * Overflow (0.43): haste that would take a cooldown below the floor is not lost, it becomes
+   * damage. A cooldown that would be 0.25 s stays at 1 s and the ability hits 4 times as hard.
+   */
+  overflowMult(slot) {
+    const floor = this.overflowFloor();
+    if (!(floor > 0) || !(this.kit[slot].cd > floor)) return 1;
+    const raw = this.rawCooldown(slot);
+    return raw < floor ? floor / raw : 1;
+  }
+
   abilityDamage(slot) {
     const p = this.player;
-    return this.kit[slot].dmg(p.stats, p.level) * this.mods[slot + 'Dmg'] * (1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1));
+    let s = p.stats;
+    // Weight of Iron (Bulwark, 0.43): armor counts toward ability damage
+    if (this.mods.ironWeight > 0) s = Object.assign({}, s, { ad: s.ad + s.armor * this.mods.ironWeight });
+    return this.kit[slot].dmg(s, p.level) * this.mods[slot + 'Dmg'] * (1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1)) * this.overflowMult(slot);
   }
 
   /** Damage every enemy in a cone in front of the hero (Cleave and its echo). */
@@ -964,6 +1006,12 @@ export class World {
     this.shadows.push({ id: this.nextId++, pid, src, x, z, t: dur, dur, facing, cls: this.cls, throwT: 0 });
   }
 
+  /** Most burn stacks an enemy can carry: 5, plus one for every 150 ability haste with Searing (0.43). */
+  burnCap() {
+    const m = this.mods;
+    return (m.burnMax || 5) + (m.burnHaste > 0 ? Math.floor(this.player.stats.haste / m.burnHaste) : 0);
+  }
+
   /** Pyromancer burns: stacks (up to burnMax) that all renew when a new one lands. */
   addBurn(e, stacks) {
     const m = this.mods;
@@ -972,7 +1020,7 @@ export class World {
     // Like an ability: spell power plus a bit per level, and it grows with Fire Bolt's rank.
     const per = (p.stats.ad * m.burnPerStack + p.level * (m.burnPerLevel || 0)) * (m.burnMult || 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1));
     const live = e.burnT > 0;
-    e.burnStacks = Math.min(m.burnMax || 5, (live ? e.burnStacks : 0) + stacks);
+    e.burnStacks = Math.min(this.burnCap(), (live ? e.burnStacks : 0) + stacks);
     e.burnDps = Math.max(live ? e.burnDps : 0, per);
     e.burnT = m.burnTime || 4;
     e.burnPid = this.cur.pid;
@@ -997,8 +1045,9 @@ export class World {
     const p = this.player;
     e.frostStacks = 0;
     e.frostT = 0;
-    e.frostLock = 1.5; // a moment before it can build Hoarfrost again, so nothing stays frozen forever
-    const dmg = (1.4 * p.stats.ad + 35 + 9 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1);
+    // a moment before it can build Hoarfrost again (Deep Winter, 0.43: shorter with ability haste, never under 0.3 s)
+    e.frostLock = m.frostHaste ? Math.max(0.3, 1.5 * (100 / (100 + p.stats.haste))) : 1.5;
+    const dmg = (1.7 * p.stats.ad + 40 + 10 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1);
     // Shards fly further as Ice Bolt grows (0.28): 3 m, plus half a metre a rank.
     const reach = (m.frostReach || 3) + 0.5 * ((p.ranks.q || 1) - 1);
     this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
@@ -1013,7 +1062,12 @@ export class World {
         e.vulnT = Math.max(e.vulnT, 4);
         e.vuln = Math.max(e.vuln || 0, m.brittle || 0.15);
         e.brittle = true;
-      } else this.stun(e, (e.def.heavy ? 0.4 : 1) * (m.frostFreeze || 1));
+      } else if (!(e.freezeWait > 0)) {
+        // the freeze has its own wait, so a fast Shatter chain never keeps anything frozen for good
+        const fz = (e.def.heavy ? 0.4 : 1) * (m.frostFreeze || 1);
+        this.stun(e, fz);
+        e.freezeWait = fz + 1;
+      }
     }
     if (m.shatterChain && depth === 0) {
       // Rimeheart: each Shatter also Shatters the nearest other enemy within 6 m.
@@ -1329,6 +1383,22 @@ export class World {
         }
       }
     }
+    if (b.shot && this.mods.crosswind > 0 && dmgOverride === null && !target.dead) {
+      // Crosswind (Windrunner, 0.43): extra arrows at the same target, more the faster you shoot
+      // (attacks per second squared, over 32: half an arrow at 4 a second, 2 at 8, 4.5 at 12; at most 6)
+      p.crossAcc = (p.crossAcc || 0) + (p.stats.as * p.stats.as) / 32;
+      const n = Math.min(6, Math.floor(p.crossAcc));
+      p.crossAcc -= n;
+      for (let i = 0; i < n; i++) {
+        const a3 = dAtan2(target.z - p.z, target.x - p.x) + (i % 2 ? 1 : -1) * (0.08 + 0.05 * (i >> 1));
+        this.projectiles.push({
+          id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, critBonus: 0, gust: true, cross: true,
+          x: p.x + dCos(a3) * 0.7, z: p.z + dSin(a3) * 0.7, px: p.x, pz: p.z,
+          vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed,
+          radius: 0.3, dmg: dmg * this.mods.crosswind, parryable: false, reflected: false, life: 1.2, dead: false,
+        });
+      }
+    }
     if (b.shot && p.hurricaneT > 0 && dmgOverride === null) {
       // Hurricane (Windrunner): every real basic attack also looses arrows at other enemies nearby.
       const def = this.kit.r;
@@ -1459,8 +1529,10 @@ export class World {
       }
       case 'spin': {
         // Whirlwind (Berserker): a spin you can move in, hitting all around every half second.
-        const ticks = Math.max(1, Math.round((def.duration + (m.wSpinTime || 0)) / def.tick)); // Bloodbound: longer
-        p.spin = { left: ticks, next: 0, tick: def.tick, dmg: dmg * def.tickMult, radius, slot, first: true };
+        // Red Tempo (0.43): the spin keeps time with your hands, one beat per basic attack (2 to 10 a second)
+        const tick = m.spinTempo ? clamp(1 / Math.max(0.1, p.stats.as), 0.1, def.tick) : def.tick;
+        const ticks = Math.max(1, Math.round((def.duration + (m.wSpinTime || 0)) / tick)); // Bloodbound: longer
+        p.spin = { left: ticks, next: 0, tick, dmg: dmg * def.tickMult, radius, slot, first: true };
         this.emit('cast', { slot, fx: 'spin', x: p.x, z: p.z, radius, dur: def.duration });
         break;
       }
@@ -1976,7 +2048,7 @@ export class World {
       if (sp.next <= 0) {
         const def = this.kit[sp.slot];
         const hits = this.novaHit(sp.slot, def, sp.dmg, sp.radius, sp.first, sp.first);
-        this.battleRhythm(sp.slot, hits * 0.5); // four beats: half the usual Battle Rhythm each
+        this.battleRhythm(sp.slot, hits * sp.tick); // every beat gives Battle Rhythm for its share of the spin (four beats: half each)
         this.emit('spinTick', { x: p.x, z: p.z, radius: sp.radius, first: sp.first });
         sp.first = false;
         sp.left--;
@@ -2547,14 +2619,25 @@ export class World {
   // =========================================================================
   // Progression: EXP, loot, inventory
   // =========================================================================
+  /** Bag slots: 24, and more with Deep Pockets (Rebirth, 0.43). */
+  bagSize(p = this.player) {
+    return CONFIG.BAG_SIZE + 4 * perkRank(p.rebirth, 'pockets');
+  }
+
+  /** EXP for the next Wishborne level, with Old Wishes (Rebirth, 0.43). */
+  wishNeedNow(p = this.player) {
+    return Math.round(wishNeed(p.wish) * (1 - 0.05 * perkRank(p.rebirth, 'wishes')));
+  }
+
   gainExp(amount) {
     const p = this.player;
     if (this.trial) return; // the Weekly Echo fixes your level
+    amount *= expMult(p.rebirth, p.acctRebirths); // Quick Study, and every rebirth on the account (0.43)
     if (p.level >= CONFIG.MAX_LEVEL) {
       // Wishborne: endless small levels past 100, each a Wish point.
       p.wishExp += Math.round(amount);
-      while (p.wishExp >= wishNeed(p.wish)) {
-        p.wishExp -= wishNeed(p.wish);
+      while (p.wishExp >= this.wishNeedNow()) {
+        p.wishExp -= this.wishNeedNow();
         p.wish++;
         p.wishPts++;
         this.emit('wishUp', { wish: p.wish, x: p.x, z: p.z });
@@ -2620,7 +2703,12 @@ export class World {
         if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoard.top, cls: this.cls };
         else opts = { minRarity: hoard.min + (i <= hoard.better ? 1 : 0), cls: this.cls };
       }
-      const item = rollItem(this.rng, ilvl, opts);
+      let item = rollItem(this.rng, ilvl, opts);
+      const luck = 0.04 * perkRank(p.rebirth, 'luck');
+      if (luck > 0 && item.rarity < 5 && !item.set && this.rng() < luck) {
+        // Lucky Star (Rebirth, 0.43): one rarity higher, up to Ancient
+        item = rollItem(this.rng, ilvl, { weights: RARITY_ONLY(item.rarity + 1), slot: item.slot, cls: this.cls });
+      }
       const a = this.rng() * TAU;
       const c = this.clampToArena(e.x + dCos(a) * (0.8 + i), e.z + dSin(a) * (0.8 + i), 1);
       const drop = { id: this.nextId++, x: c.x, z: c.z, item, age: 0, magnet: false, owner: this.cur.pid }; // in a party, only its owner sees and takes it
@@ -2773,7 +2861,7 @@ export class World {
     if (!p.equipped[item.slot]) {
       p.equipped[item.slot] = item;
       this.recalcStats();
-    } else if (p.bag.length < CONFIG.BAG_SIZE) p.bag.push(item);
+    } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
     else this.loot.push({ id: this.nextId++, x: p.x, z: p.z, item, age: 0, magnet: false, owner: this.cur.pid }); // only theirs, even in a party
   }
 
@@ -3160,21 +3248,40 @@ export class World {
     e.moving = true;
   }
 
-  /** Enchanting (0.29): reroll one bonus stat on an equipped item into another, for gold and Wishdust. */
-  enchantItem(slot, key) {
+  /** Rerolling (0.43): a fresh number for one line of an equipped item, the same stat, for gold and scrap. */
+  rerollLine(slot, key) {
+    const p = this.player;
+    const item = p.equipped[slot];
+    if (!item || !(key in item.stats)) return;
+    const cost = rerollCost(item);
+    if (p.gold < cost.gold || p.scrap < cost.scrap) {
+      this.emit('cantAfford');
+      return;
+    }
+    p.gold -= cost.gold;
+    p.scrap -= cost.scrap;
+    const from = item.stats[key];
+    item.stats[key] = rollLine(key, item, this.rng);
+    item.rerolls = (item.rerolls || 0) + 1;
+    this.recalcStats();
+    this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: rollTier(rollQuality(item, key)), name: item.name });
+  }
+
+  /** Reforging (0.29 enchanting; 0.43: you choose the stat): turn one bonus stat into another, for gold and Wishdust. */
+  enchantItem(slot, key, to) {
     const p = this.player;
     const item = p.equipped[slot];
     if (!item || !enchantable(item).includes(key)) return;
+    const pool = reforgeChoices(item);
+    if (!pool.includes(to)) return;
     const cost = enchantCost(item);
     if (p.gold < cost.gold || p.dust < cost.dust) {
       this.emit('cantAfford');
       return;
     }
-    const pool = ENCHANT_POOL.filter((k) => !(k in item.stats));
-    if (!pool.length) return;
     p.gold -= cost.gold;
     p.dust -= cost.dust;
-    const next = pool[Math.floor(this.rng() * pool.length)];
+    const next = to;
     const value = rollBonusStat(next, item, this.rng);
     const stats = {};
     for (const k in item.stats) {
@@ -3571,7 +3678,7 @@ export class World {
       this.emit('cantAfford');
       return;
     }
-    if (s.kind !== 'dust' && s.kind !== 'glass' && p.bag.length >= CONFIG.BAG_SIZE) {
+    if (s.kind !== 'dust' && s.kind !== 'glass' && p.bag.length >= this.bagSize(p)) {
       this.emit('bagFull');
       return;
     }
@@ -3716,7 +3823,7 @@ export class World {
   craftImmortal(slot) {
     const p = this.player;
     if (!SLOTS.includes(slot) || p.level < FRAGMENTS.craftLevel || (p.misc.fragment || 0) < FRAGMENTS.craft || this.trial) return;
-    if (p.bag.length >= CONFIG.BAG_SIZE && p.equipped[slot]) {
+    if (p.bag.length >= this.bagSize(p) && p.equipped[slot]) {
       this.emit('bagFull');
       return;
     }
@@ -3861,6 +3968,37 @@ export class World {
     this.emit('wishSpent', { stat, n: k });
   }
 
+  /**
+   * Rebirth (0.43): ask the star to begin again. The world does not rebuild itself: it hands the new
+   * save to the game (main.js), which stores it and starts the new life in Haven. Alone only.
+   */
+  rebirth() {
+    const p = this.player;
+    if (this.trial || this.heroes.length > 1 || rebirthBlock(p)) return;
+    const save = rebirthSave(this.toSave(), starterWeapon);
+    this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow });
+  }
+
+  /** Starmarks the hero would get for a rebirth now. */
+  rebirthMarks() {
+    return starmarksFor(this.player.level, this.player.wish || 0);
+  }
+
+  /** Buy one rank of a Rebirth perk with Starmarks. */
+  buyPerk(id) {
+    const p = this.player;
+    const perk = PERKS[id];
+    const rb = p.rebirth;
+    if (!perk || this.trial) return;
+    const r = perkRank(rb, id);
+    if (r >= perk.max || rb.marks < perk.cost) return;
+    rb.marks -= perk.cost;
+    rb.perks[id] = r + 1;
+    if (id === 'head') p.skillPoints++; // a Head Start bought mid-life counts at once
+    this.recalcStats();
+    this.emit('perkBought', { id, rank: r + 1 });
+  }
+
   /** Something for the pouch (0.32). */
   giveMisc(id, n = 1) {
     const p = this.player;
@@ -3909,7 +4047,7 @@ export class World {
     const p = this.player;
     const rng = makeRng(c.seed);
     const T = CHEST_TIERS[c.tier];
-    const gold = Math.round((12 + c.level * 3) * T.gold);
+    const gold = Math.round((12 + c.level * 3) * T.gold * (1 + 0.1 * perkRank(p.rebirth, 'fortune')));
     p.gold += gold;
     if (T.tickets) p.tickets += T.tickets;
     if (T.potions) p.potions = CONFIG.MAX_POTIONS;
@@ -3942,7 +4080,7 @@ export class World {
         l.z += ((p.z - l.z) / d) * sp;
       }
       if (d < 1.5 && l.age > 0.35) {
-        if (p.bag.length >= CONFIG.BAG_SIZE && p.equipped[l.item.slot]) {
+        if (p.bag.length >= this.bagSize(p) && p.equipped[l.item.slot]) {
           if (!l.warned) {
             l.warned = true;
             this.emit('bagFull');
@@ -4050,7 +4188,7 @@ export class World {
     const take = (p, ids) => ids.map((id) => p.bag.find((it) => it.id === id));
     const ia = take(pa, t.items[t.a]), ib = take(pb, t.items[t.b]);
     if (ia.some((x) => !x) || ib.some((x) => !x) || pa.gold < t.gold[t.a] || pb.gold < t.gold[t.b]) return this.tradeCancel('changed');
-    if (pa.bag.length - ia.length + ib.length > CONFIG.BAG_SIZE || pb.bag.length - ib.length + ia.length > CONFIG.BAG_SIZE) return this.tradeCancel('full');
+    if (pa.bag.length - ia.length + ib.length > this.bagSize(pa) || pb.bag.length - ib.length + ia.length > this.bagSize(pb)) return this.tradeCancel('full');
     pa.bag = pa.bag.filter((it) => !ia.includes(it)).concat(ib);
     pb.bag = pb.bag.filter((it) => !ib.includes(it)).concat(ia);
     pa.gold += t.gold[t.b] - t.gold[t.a];
@@ -4155,7 +4293,7 @@ export class World {
     const p = this.player;
     const def = CACHES[tier];
     if (!def) return;
-    if (p.bag.length >= CONFIG.BAG_SIZE) {
+    if (p.bag.length >= this.bagSize(p)) {
       this.emit('bagFull');
       return;
     }
@@ -4690,16 +4828,16 @@ export class World {
     const p = this.player;
     let dmg = base;
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
+    if (opts.basic && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0)) {
+      // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
+      dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
+      if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr);
+    }
     let crit = false;
     const chance = p.stats.crit + (opts.critBonus || 0);
     if (opts.canCrit !== false && (opts.forceCrit || this.rng() < chance / 100)) {
       dmg *= this.critMultiplier(opts.critBonus || 0);
       crit = true;
-    }
-    if (opts.basic && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0)) {
-      // Tailwind (Windrunner): on-hit damage, and the next roll comes sooner.
-      dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
-      if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr);
     }
     const stunned = e.state === 'stunned';
     let far = false;
@@ -4974,7 +5112,7 @@ export class World {
       if (e.type === 'boss3' && e.def.boss && !e.riftGuardian && this.worldTier() >= 5) this.unlockGlow('star');
     }
     const fall = this.bossFalloff(e);
-    p.gold += Math.round(e.goldValue * fall);
+    p.gold += Math.round(e.goldValue * fall * (1 + 0.1 * perkRank(p.rebirth, 'fortune'))); // Fortune (Rebirth)
     if (this.mode === 'explore' && (e.def.heavy || this.rng() < CONFIG.TICKET_CHANCE)) {
       p.tickets++;
       this.emit('ticket', { x: e.x, z: e.z });
@@ -5072,7 +5210,8 @@ export class World {
           e.burnAcc -= 0.5;
           const h = this.heroByPid(e.burnPid) || this.heroes[0];
           const amount = e.burnDps * e.burnStacks * 0.5 * (e.smoulderT > 0 ? 1 + e.smoulderAmp : 1);
-          this.as(h, () => this.hitEnemy(e, amount, { canCrit: false, source: 'burn', dot: true, burn: true }));
+          // Searing (0.43): a Pyromancer's burns can crit
+          this.as(h, () => this.hitEnemy(e, amount, { canCrit: !!this.mods.burnCrit, source: 'burn', dot: true, burn: true }));
           if (e.dead) continue;
         }
         if (e.burnT <= 0) e.burnStacks = 0;
@@ -5083,6 +5222,7 @@ export class World {
         if (e.frostT <= 0) e.frostStacks = 0;
       }
       if (e.frostLock > 0) e.frostLock -= dt;
+      if (e.freezeWait > 0) e.freezeWait -= dt;
       if (e.brittle && !(e.vulnT > 0)) e.brittle = false;
       if (e.bleedT > 0) {
         e.bleedT -= dt;

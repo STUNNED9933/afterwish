@@ -40,7 +40,10 @@ const BONUS_STATS = {
 //   prefix   goes in front of the item name.
 //   weight   drop chance relative to the others.
 // There are no negative stats on any item.
-export const ROLL_SPREAD = 0.06;
+// (0.43: +/-8%, up from 6%, so rerolling a line for a better number is worth doing. The narrowest
+// gap between two rarities is 21%, and 1.08 / 0.92 is under 1.18, so the rule above still holds,
+// whole-number rounding included.)
+export const ROLL_SPREAD = 0.08;
 export const RARITIES = [
   { key: 'common', prefix: '', name: 'Common', color: '#b9bdc7', mult: 1, affixes: 0, weight: 50 },
   { key: 'uncommon', prefix: 'Fine', name: 'Uncommon', color: '#58c98b', mult: 1.25, affixes: 1, weight: 28 },
@@ -51,7 +54,8 @@ export const RARITIES = [
   { key: 'ancient', prefix: 'Ancient', name: 'Ancient', color: '#ffa53a', mult: 2.8, affixes: 4, weight: 0.5 },
   // weight 0: since 0.32 an Immortal never comes from an ordinary roll, only from the endgame sources that ask for one
   // (The Unmade, Remnants, the Warden's Cache, radiant chests on tier IV and up).
-  { key: 'immortal', prefix: '', name: 'Immortal', color: '#7ff5e1', mult: 3.4, affixes: 4, weight: 0, effect: true },
+  // (0.43: radiant gold, not the old pale teal, which was too easy to mistake for Common; the gear screen also gives it a moving border)
+  { key: 'immortal', prefix: '', name: 'Immortal', color: '#ffd24a', mult: 3.4, affixes: 4, weight: 0, effect: true },
 ];
 export const IMMORTAL = RARITIES.length - 1;
 
@@ -387,30 +391,75 @@ export function setCounts(equipped) {
 // --- Misc items (0.32): stackable things kept in the pouch, not the bag -------------
 export const MISC = {
   glass: { name: 'Unwishing Glass', desc: 'Takes back every Wish point you have spent, to spend again (on the Wishborne panel, T).', color: '#c9a6ff' },
-  fragment: { name: 'Immortal Fragment', desc: 'Gather enough and craft an Immortal of your choice of slot (gear screen, from level 70).', color: '#7ff5e1' },
+  fragment: { name: 'Immortal Fragment', desc: 'Gather enough and craft an Immortal of your choice of slot (gear screen, from level 70).', color: '#ffd24a' },
   sigil: { name: 'Remnant Sigil', desc: "Press it into a boss's altar (where it fights) to call up its Remnant at once, if you have beaten that boss three times.", color: '#a64bff' },
 };
 export const MISC_IDS = Object.keys(MISC);
 
-// --- Enchanting (0.29) -------------------------------------------------------
-// Reroll one bonus stat on an item into another stat (never the main stat). Once an item
-// has been enchanted, only that same line can be enchanted again, and each time costs more.
+// --- Rerolling and reforging (0.43; enchanting since 0.29) -------------------
+// Reroll: any line on an item (the main stat too) gets a fresh number for the same stat. As often as
+// you like, for gold and scrap, at the same price every time. Each line shows how good its roll is,
+// in the rarity colours: Common for a low roll up to Immortal for the very best.
+// Reforge: turn one bonus line into a stat you choose (never at random), for gold and Wishdust. Once an
+// item is reforged only that line can be reforged again, and each time costs more.
 export const ENCHANT_POOL = ['as', 'crit', 'lifesteal', 'haste', 'armor', 'hp'];
+const itemLv = (item) => 1 + 0.1 * ((item.ilvl || 1) - 1);
+/** Price of one reroll of one line: the same every time. */
+export function rerollCost(item) {
+  const lv = itemLv(item);
+  return { gold: Math.round(60 * (1 + item.rarity) * lv), scrap: Math.round(4 * (1 + item.rarity) * lv) };
+}
+/** Price of a reforge: more each time. */
 export function enchantCost(item) {
   const n = item.enchants || 0;
-  const lv = 1 + 0.1 * ((item.ilvl || 1) - 1);
-  return { gold: Math.round(120 * (1 + item.rarity) * lv * (1 + n)), dust: 1 + item.rarity + n };
+  return { gold: Math.round(120 * (1 + item.rarity) * itemLv(item) * (1 + n)), dust: 1 + item.rarity + n };
 }
-/** Which of an item's stats can be enchanted right now. */
+/** Which of an item's bonus stats can be reforged right now. */
 export function enchantable(item) {
   if (!item) return [];
   const keys = Object.keys(item.stats).slice(1); // the first is the main stat
   if (item.enchantKey && keys.includes(item.enchantKey)) return [item.enchantKey];
   return keys;
 }
-/** A fresh bonus-stat roll for an item (what enchanting gives). */
+/** The stats a bonus line could be reforged into. */
+export function reforgeChoices(item) {
+  return item ? ENCHANT_POOL.filter((k) => !(k in item.stats)) : [];
+}
+/** Is this the item's main stat (the first line)? */
+export function isMainStat(item, key) {
+  return Object.keys(item.stats)[0] === key;
+}
+/** The value a line would have at an average roll, before upgrades. */
+function nominalStat(item, key) {
+  const s = STATS[key];
+  const mult = RARITIES[item.rarity].mult * (isMainStat(item, key) ? 1 : 0.5);
+  return s.base * (1 + s.growth * ((item.ilvl || 1) - 1)) * mult;
+}
+/** Lowest and highest whole number a line can roll. */
+export function statRange(item, key) {
+  const n = nominalStat(item, key);
+  return { lo: Math.max(1, Math.round(n * (1 - ROLL_SPREAD))), hi: Math.max(1, Math.round(n * (1 + ROLL_SPREAD))) };
+}
+/** How good a line's roll is, 0 (the lowest it can be) to 1 (the highest). */
+export function rollQuality(item, key) {
+  const { lo, hi } = statRange(item, key);
+  if (hi <= lo) return 1;
+  return Math.max(0, Math.min(1, (item.stats[key] - lo) / (hi - lo)));
+}
+/** Roll quality as a rarity index, Common (0) to Immortal (6): Immortal is the very top of the range. */
+export const ROLL_TIER_AT = [0.3, 0.5, 0.68, 0.82, 0.92, 0.98];
+export function rollTier(q) {
+  let t = 0;
+  while (t < ROLL_TIER_AT.length && q >= ROLL_TIER_AT[t] - 1e-9) t++;
+  return t;
+}
+/** A fresh roll for one line of an item (main or bonus), as rerolling and reforging give. */
+export function rollLine(key, item, rng, main = isMainStat(item, key)) {
+  return statValue(key, item.ilvl, RARITIES[item.rarity].mult * (main ? 1 : 0.5), rng);
+}
+/** (0.29 name) A fresh bonus-stat roll. */
 export function rollBonusStat(key, item, rng) {
-  return statValue(key, item.ilvl, RARITIES[item.rarity].mult * 0.5, rng);
+  return rollLine(key, item, rng, false);
 }
 /** Wishdust from scrapping an item (Mythic and better only). */
 export function dustValue(item) {

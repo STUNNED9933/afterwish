@@ -109,7 +109,6 @@ body.slowmo #slowtint { opacity: 1; }
 .glow-row .glow-label { font: 600 11px var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .glow-row .glow-hint { font-size: 12px; color: var(--muted); cursor: help; }
 .eq-btns { display: flex; flex-direction: column; gap: 4px; align-self: center; }
-.ench-btn.ascend { border-color: #7ff5e1; color: #7ff5e1; }
 .tt-as { margin-top: 4px; font-size: 11px; color: #9fb0a4; font-style: italic; }
 .tt-set { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(111, 224, 138, 0.35); color: #9fb0a4; font-size: 12px; }
 .tt-set b { color: #6fe08a; }
@@ -117,9 +116,19 @@ body.slowmo #slowtint { opacity: 1; }
 .tt-ench { color: #c9a6ff; }
 .set-tag { color: #6fe08a; }
 .ench-btn { margin-left: auto; align-self: center; }
-.ench-panel { margin: 2px 0 10px 54px; padding: 8px 10px; border: 1px solid rgba(201, 166, 255, 0.35); border-radius: 6px; background: rgba(40, 28, 64, 0.35); }
+.ench-panel { margin: 2px 0 10px 0; padding: 8px 10px; border: 1px solid rgba(201, 166, 255, 0.35); border-radius: 6px; background: rgba(40, 28, 64, 0.35); }
 .ench-panel .setting-desc { margin: 0 0 6px; font-size: 12px; }
-.ench-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; }
+.ench-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.ench-row .ench-stat { grid-column: 1; grid-row: 1; }
+.ench-row .ench-q { grid-column: 1; grid-row: 2; }
+.ench-row .ench-btns { grid-column: 2; grid-row: 1 / span 2; }
+.ench-row small { color: var(--muted); }
+.ench-q { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ench-btns { display: flex; gap: 4px; }
+.ench-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0 6px 18px; font-size: 12px; color: var(--muted); }
+.ench-btn.ascend { border-color: #ffd24a; color: #ffd24a; }
+/* Roll quality (0.43): a diamond in the colour of how well the line rolled */
+.roll-pip { display: inline-block; width: 8px; height: 8px; margin: 0 7px 1px 1px; transform: rotate(45deg); background: var(--tier); box-shadow: 0 0 6px -1px var(--tier); vertical-align: middle; }
 .ebar.rare { border-color: #ffd27a; box-shadow: 0 0 10px rgba(255, 210, 122, 0.8); }
 .ebar .rarename { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); white-space: nowrap; font: italic 600 13px var(--display, serif); color: #ffe29a; text-shadow: 0 1px 3px #000, 0 0 8px rgba(255, 200, 90, 0.6); }
 .ebar.thief { border-color: #ffe29a; }
@@ -128,6 +137,16 @@ body.slowmo #slowtint { opacity: 1; }
 .ebar .shieldfill { position: absolute; left: 0; top: 0; height: 100%; width: 100%; transform-origin: left; background: rgba(240, 240, 255, 0.75); pointer-events: none; }
 #wish-panel { margin: 4px 0 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127, 245, 225, 0.35); background: rgba(127, 245, 225, 0.05); }
 #wish-panel.hidden { display: none; }
+/* Rebirth (0.43) */
+#rebirth-panel { margin: 4px 0 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 210, 74, 0.4); background: linear-gradient(160deg, rgba(255, 210, 74, 0.07), rgba(185, 139, 255, 0.05)); }
+#rebirth-panel.hidden { display: none; }
+#rebirth-panel h3 { margin: 0 0 6px; color: #ffe9a8; }
+#rebirth-panel .rb-lore { font-style: italic; color: #e8dcc0; }
+#rebirth-panel .rb-marks { color: #ffd24a; font-weight: 600; }
+.perk-row { display: grid; grid-template-columns: 9.5em 1fr auto auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+.perk-row .v { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rb-go { margin-top: 8px; border-color: #ffd24a; color: #ffd24a; }
+.rb-go.sure { background: #ffd24a; color: #1a1408; }
 #wish-panel h3 { margin: 0 0 6px; color: #bff2ff; }
 .wish-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
 .wish-row .v { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -338,8 +357,22 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 .cell svg { width: 58%; height: 58%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .cell .lvl { position: absolute; right: 3px; bottom: 1px; font: 600 11px var(--body); color: var(--bone); }
 .cell .lvl small { color: var(--gold); margin-left: 2px; font-size: 10px; }
-.cell.immortal { animation: immortal 2.4s ease-in-out infinite; }
-@keyframes immortal { 50% { box-shadow: inset 0 0 16px -2px var(--rarity), 0 0 12px -2px var(--rarity); } }
+.cell.immortal { animation: immortal 2.4s ease-in-out infinite; border-color: transparent; background: radial-gradient(circle at 50% 40%, #3a2c0c 0%, var(--slate) 70%); }
+@keyframes immortal { 50% { box-shadow: inset 0 0 16px -2px var(--rarity), 0 0 14px -1px var(--rarity); } }
+/* Immortal (0.43): a border of light that runs round the cell, gold into white into violet */
+@property --imm-turn { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.cell.immortal::before {
+  content: ''; position: absolute; inset: -2px; border-radius: 6px; padding: 2px; pointer-events: none;
+  background: conic-gradient(from var(--imm-turn), #ffd24a, #fff6d6, #b98bff, #ffd24a 40%, #8a5a12, #ffd24a 70%, #fff6d6, #ffd24a);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: imm-turn 3.2s linear infinite;
+}
+@keyframes imm-turn { to { --imm-turn: 360deg; } }
+.cell .imm-star { position: absolute; right: 3px; top: 0; font-size: 11px; color: #fff6d6; text-shadow: 0 0 6px #ffd24a; }
+.eq-name.immortal { background: linear-gradient(90deg, #ffd24a, #fff6d6 45%, #ffd24a 60%, #d9a441); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; }
+#tooltip.immortal { border: 2px solid transparent; background: linear-gradient(#0c0f18, #0c0f18) padding-box, conic-gradient(from var(--imm-turn), #ffd24a, #fff6d6, #b98bff, #ffd24a 40%, #8a5a12, #ffd24a 70%, #fff6d6, #ffd24a) border-box; animation: imm-turn 3.2s linear infinite; box-shadow: 0 0 22px -6px #ffd24a, 0 10px 30px rgba(0, 0, 0, 0.6); }
+#tooltip.immortal .tt-meta::before { content: '✦ '; color: #ffd24a; }
+@media (prefers-reduced-motion: reduce) { .cell.immortal, .cell.immortal::before, #tooltip.immortal { animation: none; } }
 .cell .arrow { position: absolute; left: 3px; top: 0; font-size: 13px; color: var(--life); }
 .inv-actions { margin-top: 12px; }
 .inv-help { margin-top: 10px; color: var(--muted); font-size: 14px; max-width: 46ch; }

@@ -27,14 +27,14 @@ export const SPECS = {
     blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
     perk: {
       name: 'Blood Rage',
-      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Whirlwind becomes a spin you can run with, and Skyfall becomes Crimson Oath.',
-      apply: (m) => { m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
+      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Red Tempo: Whirlwind becomes a spin you can run with that keeps time with your hands, one beat for every basic attack you could make (from 2 to 10 beats a second), so attack speed makes it spin faster. Skyfall becomes Crimson Oath.',
+      apply: (m) => { m.spinTempo = true; m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
     },
     kit: {
       w: {
-        key: 'W', name: 'Whirlwind', type: 'spin', icon: 'w', unlock: 2, cd: 9, radius: 4.2, duration: 2, tick: 0.5, tickMult: 0.45, interrupt: true,
+        key: 'W', name: 'Whirlwind', type: 'spin', icon: 'w', unlock: 2, cd: 9, radius: 4.2, duration: 2, tick: 0.5, tickMult: 0.22, interrupt: true,
         dmg: (s, lvl) => 1.1 * s.ad + 15 + 5 * lvl,
-        desc: 'Spin for 2 seconds while you keep moving: every half second you hit everything around you for 45% (four hits, 180% in all). The first hit interrupts normal enemies. Plough through a pack.',
+        desc: 'Spin for 2 seconds while you keep moving, hitting everything around you for 22% on every beat. Red Tempo sets the beat: one for each basic attack you could make in that time (at least 4 beats, at most 20). The first hit interrupts normal enemies. Plough through a pack.',
       },
       r: {
         key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
@@ -56,8 +56,8 @@ export const SPECS = {
     blurb: 'The wall the party stands behind. Drags enemies into one place for the others to hit, makes them look only at you, and parries for the whole group.',
     perk: {
       name: "The Warden's Call",
-      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds. Iron Answer: your parry also blocks red attacks no one else can parry. A blocked red attack does no harm, and whoever threw it is Broken: stunned for 1.5 seconds (bosses take two posture hits) and 20% more damage taken for 4 seconds. Reckoning: every attack you parry or block, and every 10% of your health you lose, is a stack (up to 5); your next Whirlwind deals 25% more per stack. Skyfall becomes Hold the Line.',
-      apply: (m) => { m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); m.blockRed = true; m.reckoning = true; },
+      desc: 'Whirlwind drags enemies to you instead of pushing them away, stuns normal enemies for a moment, and makes everything it hits fight you for 3 seconds. Iron Answer: your parry also blocks red attacks no one else can parry. A blocked red attack does no harm, and whoever threw it is Broken: stunned for 1.5 seconds (bosses take two posture hits) and 20% more damage taken for 4 seconds. Reckoning: every attack you parry or block, and every 10% of your health you lose, is a stack (up to 5); your next Whirlwind deals 25% more per stack. Weight of Iron: 70% of your armor counts as attack damage for your abilities. Skyfall becomes Hold the Line.',
+      apply: (m) => { m.ironWeight = Math.max(m.ironWeight, 0.7); m.wPull = true; m.wStun = Math.max(m.wStun, 0.35); m.wTaunt = Math.max(m.wTaunt, 3); m.blockRed = true; m.reckoning = true; },
     },
     kit: {
       r: {
@@ -117,8 +117,8 @@ export const SPECS = {
     blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane turns every shot into three.',
     perk: {
       name: 'Tailwind',
-      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
-      apply: (m) => { m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); },
+      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Crosswind: your basic attacks loose extra arrows at the same target for 65% damage, and more the faster you shoot: half an extra arrow per shot at 4 attacks a second, 2 at 8, 4 and a half at 12 (up to 6). Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
+      apply: (m) => { m.crosswind = Math.max(m.crosswind, 0.65); m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); },
     },
     kit: {
       q: {
@@ -154,21 +154,21 @@ export const SPECS = {
     },
     kit: {
       q: {
-        key: 'Q', name: 'Shadowstrike', type: 'strike', icon: 'strike', unlock: 1, cd: 10, range: 7.5, gap: true, behind: 0.6, execute: 0.3,
-        // (0.42: cooldown 2.5x, damage 2.4x: rarer, heavier, and a kill still brings it back at once)
-        dmg: (s, lvl) => 4.2 * s.ad + 27 + 11 * lvl,
+        key: 'Q', name: 'Shadowstrike', type: 'strike', icon: 'strike', unlock: 1, cd: 15, range: 7.5, gap: true, behind: 0.6, execute: 0.3,
+        // (0.42: cooldown 2.5x, damage 2.4x; 0.43: cooldown 1.5x again, damage 1.9x: rarer, heavier, and a kill still brings it back at once)
+        dmg: (s, lvl) => 8 * s.ad + 52 + 21 * lvl,
         desc: 'Leap to the enemy nearest your cursor and stab it. 60% more damage from behind, on a stunned enemy or on one Death Lotus has Exposed, and double damage on an enemy below 30% health (not bosses).',
       },
       w: {
-        key: 'W', name: 'Death Lotus', type: 'nova', icon: 'w', unlock: 2, cd: 14, radius: 5.5, knockback: 0, bleed: 1.6, expose: 4,
-        dmg: (s, lvl) => 1.9 * s.ad + 19 + 8 * lvl,
-        desc: 'Spin a ring of knives around you. Everything hit bleeds for 160% attack damage over 3 seconds and is Exposed for 4 seconds: it takes 15% more damage from you, and every side of it counts as its back (bosses keep their guard: only the 15%).',
+        key: 'W', name: 'Death Lotus', type: 'nova', icon: 'w', unlock: 2, cd: 20, radius: 5.5, knockback: 0, bleed: 3, expose: 4,
+        dmg: (s, lvl) => 3.6 * s.ad + 36 + 15 * lvl,
+        desc: 'Spin a ring of knives around you. Everything hit bleeds for 300% attack damage over 3 seconds and is Exposed for 4 seconds: it takes 15% more damage from you, and every side of it counts as its back (bosses keep their guard: only the 15%).',
       },
       e: {
-        key: 'E', name: 'Ambush', type: 'dash', icon: 'e', unlock: 3, cd: 12, range: 9, minRange: 2, duration: 0.16, width: 0, ambush: true,
-        empower: { mult: 1.75, time: 3 },
+        key: 'E', name: 'Ambush', type: 'dash', icon: 'e', unlock: 3, cd: 16, range: 9, minRange: 2, duration: 0.16, width: 0, ambush: true,
+        empower: { mult: 2.2, time: 3 },
         dmg: () => 0,
-        desc: 'Blink behind the enemy nearest your cursor (or toward your cursor, with no one there), facing its back. The next ability you use within 3 seconds deals 75% more.',
+        desc: 'Blink behind the enemy nearest your cursor (or toward your cursor, with no one there), facing its back. The next ability you use within 3 seconds deals 120% more.',
       },
     },
     talents: [
@@ -216,8 +216,8 @@ export const SPECS = {
     blurb: 'Everything burns, and keeps burning. Stack fire on your enemies, make the burns bite harder, and leave the ground itself on fire.',
     perk: {
       name: 'Everything Burns',
-      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. When a burning enemy dies, its burn jumps to the nearest enemy within 5 m, every stack of it. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
-      apply: (m) => { m.burnSpread = Math.max(m.burnSpread, 1); m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
+      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. When a burning enemy dies, its burn jumps to the nearest enemy within 5 m, every stack of it. Searing: your burns can crit, and an enemy can carry one more stack for every 120 ability haste you have. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
+      apply: (m) => { m.burnCrit = true; m.burnHaste = Math.max(m.burnHaste, 120); m.burnSpread = Math.max(m.burnSpread, 1); m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
     },
     kit: {
       w: {
@@ -246,8 +246,8 @@ export const SPECS = {
     blurb: 'Pile Hoarfrost on everything, then watch it Shatter: frozen solid, cut open, and the shards spread the cold to whatever stands nearby. A wall of ice keeps the rest away.',
     perk: {
       name: 'Hoarfrost',
-      desc: "Ice Bolt, Frozen Orb, Starwake's motes and your basic attacks build Hoarfrost on enemies. At 6 stacks the enemy Shatters: it takes heavy damage that grows with Ice Bolt's rank, freezes solid for 1 second (heavy enemies 0.4 s; bosses turn Brittle instead and take 15% more damage for 4 s), and the shards give 2 Hoarfrost to enemies within 3 m (half a metre further for each rank of Ice Bolt past the first). Frozen Orb comes back 20% sooner. Fire Bolt becomes Ice Bolt and Meteor becomes Rimewall.",
-      apply: (m) => { m.frostMax = 6; m.basicFrost = 1; m.qFrost = Math.max(m.qFrost, 2); m.orbFrost = 1; m.moteFrost = 1; m.wCd *= 0.8; },
+      desc: "Ice Bolt, Frozen Orb, Starwake's motes and your basic attacks build Hoarfrost on enemies. At 6 stacks the enemy Shatters: it takes heavy damage that grows with Ice Bolt's rank, freezes solid for 1 second (heavy enemies 0.4 s; bosses turn Brittle instead and take 15% more damage for 4 s), and the shards give 2 Hoarfrost to enemies within 3 m (half a metre further for each rank of Ice Bolt past the first). Frozen Orb comes back 20% sooner. Deep Winter: after a Shatter an enemy normally waits 1.5 seconds before it can gather Hoarfrost again; ability haste shortens the wait (down to 0.3 s), so the faster you cast the more often it Shatters. The freeze itself still comes at most once every few seconds. Fire Bolt becomes Ice Bolt and Meteor becomes Rimewall.",
+      apply: (m) => { m.frostHaste = true; m.frostMax = 6; m.basicFrost = 1; m.qFrost = Math.max(m.qFrost, 2); m.orbFrost = 1; m.moteFrost = 1; m.wCd *= 0.8; },
     },
     kit: {
       q: {

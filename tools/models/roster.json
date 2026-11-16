@@ -473,6 +473,66 @@
         "3ee65b4b-565e-40a4-bf5c-c882fb2266fc"
       ],
       "prompt": "(download of an animation task that already ran: e_glassbound)"
+    },
+    "w_sword_fine": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "an ornate one-handed knight's sword, a long polished steel blade with an engraved fuller, a curved silver cross guard set with a small blue gem, a wire-wrapped grip, a round silver pommel"
+    },
+    "w_sword_ancient": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "an ancient royal sword of pale weathered gold-bronze, a broad leaf-shaped blade etched with star patterns, a cross guard shaped like two spread wings, a worn leather grip, a star-shaped pommel"
+    },
+    "w_sword_immortal": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "a legendary radiant sword of white starglass and gold, a long elegant blade glowing with inner light along its edges, a cross guard of golden rays like a rising sun, a glowing star pommel"
+    },
+    "w_dagger_fine": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 2500,
+      "rig": false,
+      "prompt": "an ornate assassin's dagger, a slim curved polished steel blade with an engraved spine, a small silver cross guard set with a red gem, a black wire-wrapped grip, a silver pommel"
+    },
+    "w_dagger_ancient": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 2500,
+      "rig": false,
+      "prompt": "an ancient ceremonial dagger of pale weathered gold-bronze, a wavy kris-shaped blade etched with stars, a cross guard shaped like small wings, a worn leather grip"
+    },
+    "w_dagger_immortal": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 2500,
+      "rig": false,
+      "prompt": "a legendary radiant dagger of white starglass and gold, a slim curved glowing blade like a sliver of moonlight, a small guard of golden rays, a glowing star pommel"
+    },
+    "w_staff_fine": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "a mage's staff of pale ash wood bound with silver bands, the top a cage of curling silver branches holding a glowing blue crystal"
+    },
+    "w_staff_ancient": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "an ancient mage's staff of dark petrified wood and bronze bands, its head a ring of carved stone holding a floating amber orb"
+    },
+    "w_staff_immortal": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "a legendary mage's staff of white starglass and gold, its head a radiant eight-pointed star held in curling golden rays, glowing"
+    },
+    "w_edric": {
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false,
+      "prompt": "a gate-guard's longsword, a sturdy plain steel blade, a cross guard wrapped in faded royal blue cloth, a blue-trimmed leather grip, a simple round pommel with a small gold star"
     }
   }
 }

@@ -1,0 +1,96 @@
+{
+  "id": "e_husk",
+  "prompt": "a Husk, a villager who could not die: gaunt grey-skinned undead peasant in torn faded homespun clothes, sunken hollow eyes with a faint teal glow, thin cracks of starlight in the skin, hunched, long reaching arms with broken fingernails. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:11:28.024Z",
+  "creditsBefore": 1920,
+  "steps": {
+    "model": {
+      "task": "39283a8f-2707-418e-a58c-e580e33bd07e",
+      "result": {
+        "task_id": "39283a8f-2707-418e-a58c-e580e33bd07e",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_husk/1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_husk/1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/model.glb",
+        "preview": "out/models/e_husk/1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/preview.png"
+      }
+    },
+    "check": {
+      "task": "0f0d4a05-3ba4-482c-8948-aeff6b93f31c",
+      "result": {
+        "task_id": "0f0d4a05-3ba4-482c-8948-aeff6b93f31c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_husk/2-check/tripo-out/rig-check-0f0d4a05",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "b682e32a-dd65-49f5-bf01-530416a7a4aa",
+      "rigType": "biped",
+      "result": {
+        "task_id": "b682e32a-dd65-49f5-bf01-530416a7a4aa",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_husk/3-rig/tripo-out/rig-b682e32a",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_husk/3-rig/tripo-out/rig-b682e32a/model.glb",
+        "preview": "out/models/e_husk/3-rig/tripo-out/rig-b682e32a/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "14e2174e-640a-4ed7-9a38-c78eae0fd919",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "14e2174e-640a-4ed7-9a38-c78eae0fd919",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_husk/4-anim-1/tripo-out/retarget-14e2174e",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_husk/4-anim-1/tripo-out/retarget-14e2174e/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1680,
+  "creditsUsed": 240,
+  "finished": "2026-11-16T14:17:53.448Z",
+  "files": [
+    "1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/generated_image.jpeg",
+    "1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/model.glb",
+    "1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/preview.png",
+    "1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/rendered_image.webp",
+    "1-model/tripo-out/a-husk-a-villager-who-could-not-39283a8f/task.json",
+    "2-check/tripo-out/rig-check-0f0d4a05/task.json",
+    "3-rig/tripo-out/rig-b682e32a/model.glb",
+    "3-rig/tripo-out/rig-b682e32a/preview.png",
+    "3-rig/tripo-out/rig-b682e32a/rendered_image.webp",
+    "3-rig/tripo-out/rig-b682e32a/task.json",
+    "4-anim-1/tripo-out/retarget-14e2174e/model.glb",
+    "4-anim-1/tripo-out/retarget-14e2174e/task.json",
+    "manifest.json"
+  ]
+}

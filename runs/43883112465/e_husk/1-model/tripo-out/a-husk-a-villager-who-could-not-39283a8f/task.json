@@ -1,0 +1,30 @@
+{
+  "task_id": "39283a8f-2707-418e-a58c-e580e33bd07e",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a Husk, a villager who could not die: gaunt grey-skinned undead peasant in torn faded homespun clothes, sunken hollow eyes with a faint teal glow, thin cracks of starlight in the skin, hunched, long reaching arms with broken fingernails. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 9000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T14:11:29.673637Z",
+  "completed_at": "2026-11-16T14:17:05.226768Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

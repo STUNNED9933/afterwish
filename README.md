@@ -150,6 +150,17 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Weapon looks (0.48)
+
+What you hold shows what you found. Swords, daggers and staves have four looks, each a model made with Tripo:
+plain (Common and Uncommon), **fine** (Rare and Epic: polished steel with a blue gem), **ancient** (Mythic: old
+gold and bronze) and **radiant** (Immortal: white gold that gives off its own light). The Rogue's second dagger
+matches the first. The Archer's bow changes its wood: dark lacquer, old gold, then radiant gold. *Edric's
+Sword* has a model of its own, steel and his blue, and shines that blue.
+
+New weapon props are measured by `tools/models/calib.mjs` (where the tip, grip and guard are) and listed in
+`WEAPON_MODELS` in `src/render/rigged.js` under `<class>_<look>`.
+
 ### Side stories (0.47)
 
 Each ends with someone letting go; the choices cannot be undone.

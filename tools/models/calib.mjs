@@ -1,3 +1,6 @@
+// Calibrate a weapon prop for WEAPON_MODELS: finds tip, butt and guard direction along the principal axis.
+// Usage: node tools/models/calib.mjs <glb> blade|staff
+// Needs: npm i --no-save @gltf-transform/core @gltf-transform/extensions meshoptimizer
 // node calib.mjs <glb> <kind: blade|staff>  -> { tip, butt, side }
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';

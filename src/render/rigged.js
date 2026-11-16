@@ -157,23 +157,49 @@ export const WEAPON_MODELS = {
   warrior: { url: 'models/w_sword.glb', tip: [0, -0.5, 0], butt: [0, 0.5, 0], grip: 0.13, length: 1.15, side: [0, 0, 1] },
   rogue: { url: 'models/w_dagger.glb', tip: [0.158, -0.5, 0.424], butt: [-0.116, 0.479, -0.404], grip: 0.2, length: 0.55 },
   mage: { url: 'models/w_staff.glb', tip: [-0.004, 0.5, -0.014], butt: [0.001, -0.5, 0.007], grip: 0.4, length: 1.85 },
+  // Weapon looks by rarity (0.48), made with Tripo; tip, butt and guard measured by tools/models/calib.mjs
+  warrior_edric: { url: 'models/w_edric.glb', tip: [-0.03, -0.433, 0.493], butt: [0.02, 0.399, -0.501], grip: 0.13, length: 1.2, side: [-0.647, 0.6, 0.47] },
+  warrior_fine: { url: 'models/w_sword_fine.glb', tip: [0, -0.5, 0], butt: [0, 0.5, 0], grip: 0.13, length: 1.15, side: [0, 0, 1] },
+  warrior_ancient: { url: 'models/w_sword_ancient.glb', tip: [-0.189, 0.487, -0.497], butt: [0.175, -0.496, 0.491], grip: 0.13, length: 1.15, side: [-0.471, 0.532, 0.704] },
+  warrior_immortal: { url: 'models/w_sword_immortal.glb', tip: [-0.313, 0.494, -0.493], butt: [0.29, -0.491, 0.488], grip: 0.13, length: 1.2, side: [-0.391, 0.519, 0.76] },
+  rogue_fine: { url: 'models/w_dagger_fine.glb', tip: [0.252, -0.507, 0.445], butt: [-0.234, 0.487, -0.436], grip: 0.2, length: 0.55, side: [-0.321, 0.535, 0.781] },
+  rogue_ancient: { url: 'models/w_dagger_ancient.glb', tip: [-0.065, 0.477, -0.504], butt: [0.035, -0.493, 0.468], grip: 0.2, length: 0.55, side: [-0.288, 0.663, 0.691] },
+  rogue_immortal: { url: 'models/w_dagger_immortal.glb', tip: [0.415, -0.542, 0.32], butt: [-0.387, 0.48, -0.382], grip: 0.2, length: 0.58, side: [-0.209, 0.437, 0.875] },
+  mage_fine: { url: 'models/w_staff_fine.glb', tip: [-0.001, 0.5, 0.003], butt: [0.001, -0.5, -0.001], grip: 0.4, length: 1.85 },
+  mage_ancient: { url: 'models/w_staff_ancient.glb', tip: [0.001, 0.498, -0.005], butt: [0.001, -0.5, 0.012], grip: 0.4, length: 1.85 },
+  mage_immortal: { url: 'models/w_staff_immortal.glb', tip: [-0.028, 0.486, -0.407], butt: [0.077, -0.509, 0.401], grip: 0.4, length: 1.9 },
 };
 const weaponCache = new Map();
+
+/**
+ * Weapon looks by rarity (0.48): Common to Rare carry the plain weapon; Epic and Mythic a finer one;
+ * Ancient an old royal one; Immortal a radiant one of starglass. Edric's Sword is its own.
+ */
+export function weaponLook(item) {
+  if (!item) return null;
+  if (item.effect === 'edric') return 'edric';
+  if (item.rarity >= 6) return 'immortal';
+  if (item.rarity >= 5) return 'ancient';
+  if (item.rarity >= 3) return 'fine';
+  return null;
+}
+
 /** A fresh copy of a class's weapon model (its own materials, so its glow is its own), or null. */
-export function loadWeapon(cls, weaponScale = 1) {
-  const w = WEAPON_MODELS[cls];
+export function loadWeapon(cls, weaponScale = 1, look = null) {
+  const key = look && WEAPON_MODELS[`${cls}_${look}`] ? `${cls}_${look}` : cls;
+  const w = WEAPON_MODELS[key];
   if (!w) return Promise.resolve(null);
   if (typeof location !== 'undefined' && location.protocol === 'file:') return Promise.resolve(null);
-  if (!weaponCache.has(cls)) {
+  if (!weaponCache.has(key)) {
     weaponCache.set(
-      cls,
+      key,
       loader.loadAsync(w.url).then(
         (gltf) => gltf.scene,
         () => null,
       ),
     );
   }
-  return weaponCache.get(cls).then((scene) => {
+  return weaponCache.get(key).then((scene) => {
     if (!scene) return null;
     const inner = scene.clone();
     const mats = [];
@@ -678,6 +704,7 @@ export function heroLook(cls, spec) {
 
 export function upgradeHero(model, cls, look = cls) {
   const id = `hero_${look}`;
+  model.lookId = look;
   if (!RIGGED[id]) return;
   Promise.all([loadRigged(id), loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1)]).then(([tpl, made]) => {
     if (!tpl || model.disposed || model.rig) return;
@@ -685,7 +712,8 @@ export function upgradeHero(model, cls, look = cls) {
     const arm = model.parts.arm;
     if (tpl.spec.bow) {
       // her own bow (the hand-built one stays with the hidden hand-built body)
-      rig.holdBow(new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.65 }), model.parts.steel);
+      model.parts.bowWood = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.65 });
+      rig.holdBow(model.parts.bowWood, model.parts.steel);
       model.parts.body.visible = false;
       model.group.add(rig.group);
       model.mats.push(...rig.mats);
@@ -704,6 +732,8 @@ export function upgradeHero(model, cls, look = cls) {
       weapon.children.forEach((c) => (c.position.z -= 0.6));
     }
     rig.holdWeapon(weapon);
+    model.parts.heldWeapon = weapon;
+    model.weaponLook = null;
     if (tpl.spec.offhand) {
       // the Rogue's second dagger (its own materials, glowing with the first)
       const off = weapon.clone();
@@ -714,6 +744,7 @@ export function upgradeHero(model, cls, look = cls) {
         }
       });
       rig.holdOffhand(off, tpl.spec.offhand);
+      model.parts.heldOff = off;
     }
     if (model.glowId !== undefined && model.applyGlowAgain) model.applyGlowAgain();
     model.parts.body.visible = false;
@@ -721,5 +752,52 @@ export function upgradeHero(model, cls, look = cls) {
     model.mats.push(...rig.mats);
     rig.baseTurn = rig.group.rotation.y;
     model.rig = rig;
+  });
+}
+
+/** Bow looks by rarity (0.48): the archer's bow is made in code, so its look is its wood. */
+const BOW_LOOKS = {
+  null: { color: 0x6b4a2e, emissive: 0x000000, metal: 0 },
+  fine: { color: 0x2e2228, emissive: 0x000000, metal: 0.35 },
+  ancient: { color: 0xc9a46a, emissive: 0x000000, metal: 0.55 },
+  immortal: { color: 0xffcf4a, emissive: 0xffa020, metal: 0.5 },
+  edric: { color: 0x6b4a2e, emissive: 0x000000, metal: 0 },
+};
+
+/**
+ * Put a new look in a hero's hands (0.48) when their weapon's rarity changes: the held weapon
+ * (and the Rogue's second dagger) gets the new model; the bow its new wood.
+ */
+export function setWeaponLook(model, cls, look) {
+  if (!model.rig || model.weaponLook === look) return;
+  model.weaponLook = look;
+  if (model.parts.bowWood) {
+    const b = BOW_LOOKS[look] || BOW_LOOKS.null;
+    model.parts.bowWood.color.set(b.color);
+    model.parts.bowWood.emissive.set(b.emissive);
+    model.parts.bowWood.emissiveIntensity = look === 'immortal' ? 0.5 : 0;
+    model.parts.bowWood.metalness = b.metal;
+    return;
+  }
+  const held = model.parts.heldWeapon;
+  if (!held) return;
+  const id = `hero_${model.lookId || cls}`;
+  loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1, look).then((made) => {
+    if (!made || model.disposed || model.weaponLook !== look) return;
+    held.clear();
+    held.add(made);
+    model.parts.weaponMats = made.userData.mats.slice();
+    if (model.parts.heldOff) {
+      const c = made.clone();
+      c.traverse((o) => {
+        if (o.isMesh) {
+          o.material = o.material.clone();
+          model.parts.weaponMats.push(o.material);
+        }
+      });
+      model.parts.heldOff.clear();
+      model.parts.heldOff.add(c);
+    }
+    if (model.applyGlowAgain) model.applyGlowAgain();
   });
 }

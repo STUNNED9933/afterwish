@@ -13,7 +13,7 @@ import { NPCS } from '../sim/story.js';
 import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, groundMask, buildRain, pebbleGeometry, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
-import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED } from './rigged.js';
+import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook } from './rigged.js';
 import { propInstances } from './props.js';
 import { SlashTrail } from './slash.js';
 
@@ -1473,10 +1473,11 @@ export class Renderer {
       steel.emissiveIntensity = g ? 1.3 : 0.25;
     }
     // a weapon model (0.38.1) glows softly in the chosen colour, and not at all without one
+    const radiant = !g && model.weaponLook === 'immortal'; // an Immortal weapon has a light of its own (0.48)
     for (const m of (model.parts && model.parts.weaponMats) || []) {
       if (!m.emissive) continue;
-      m.emissive.set(g ? g.color : 0x000000);
-      m.emissiveIntensity = g ? 0.45 : 0;
+      m.emissive.set(g ? g.color : radiant ? 0xffc860 : 0x000000);
+      m.emissiveIntensity = g ? 0.45 : radiant ? 0.35 : 0;
     }
     // (the weapon model may arrive after the glow was set: apply it again then)
     if (model.parts) model.applyGlowAgain = () => this.applyGlow(model, model.glowId);
@@ -1553,6 +1554,7 @@ export class Renderer {
     const h = this.hero;
     const wantGlow = p.glow || (p.equipped && p.equipped.weapon && p.equipped.weapon.effect === 'edric' ? 'edricblue' : null);
     if ((wantGlow || null) !== (h.glowId ?? null)) this.applyGlow(h, wantGlow);
+    if (h.rig) setWeaponLook(h, world.cls, weaponLook(p.equipped && p.equipped.weapon)); // its look by rarity (0.48)
     const an = this.heroAnim;
     const g = h.group;
     const attackStart = an.swing === 0; // an attack or cast began since the last frame

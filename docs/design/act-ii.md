@@ -105,10 +105,11 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
 | 5d | Late-game balance, gear rolls, Rebirth (added) | 0.43 | Done |
 | 5e | Enemies and bosses remade: kits, boss lines, Tripo models (added) | 0.44 | Done |
+| 5f | Weapon looks by rarity: fine, ancient and radiant swords, daggers and staves, bow woods, Edric's sword (added) | 0.48 | Done |
 | 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.45 | Done |
 | 7 | Asterfell delves | 0.46 | Done |
 | 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.47 | Done |
-| 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
+| 9 | Character customisation | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
 ## Implementation notes (for future sessions)

@@ -1,0 +1,96 @@
+{
+  "id": "e_golem",
+  "prompt": "a Stone Colossus, a huge sandstone statue of a royal guard come to life, weathered golden sandstone body carved with old royal patterns, glowing cracks of starlight, its carved face half broken away. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:30:31.280Z",
+  "creditsBefore": 1125,
+  "steps": {
+    "model": {
+      "task": "bac721fc-c3e5-4de0-83e9-858f711373ca",
+      "result": {
+        "task_id": "bac721fc-c3e5-4de0-83e9-858f711373ca",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_golem/1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_golem/1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/model.glb",
+        "preview": "out/models/e_golem/1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/preview.png"
+      }
+    },
+    "check": {
+      "task": "daf6eb2f-75b3-4653-816f-b88c069b87f8",
+      "result": {
+        "task_id": "daf6eb2f-75b3-4653-816f-b88c069b87f8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_golem/2-check/tripo-out/rig-check-3-daf6eb2f",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "98e33895-dafb-49f5-8d33-ab0d26a73a7a",
+      "rigType": "biped",
+      "result": {
+        "task_id": "98e33895-dafb-49f5-8d33-ab0d26a73a7a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_golem/3-rig/tripo-out/rig-3-98e33895",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_golem/3-rig/tripo-out/rig-3-98e33895/model.glb",
+        "preview": "out/models/e_golem/3-rig/tripo-out/rig-3-98e33895/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "54553be4-e3b6-43ae-a3b2-d363b2007849",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:chop",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "54553be4-e3b6-43ae-a3b2-d363b2007849",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_golem/4-anim-1/tripo-out/retarget-3-54553be4",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_golem/4-anim-1/tripo-out/retarget-3-54553be4/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 810,
+  "creditsUsed": 315,
+  "finished": "2026-11-16T14:37:05.174Z",
+  "files": [
+    "1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/generated_image.jpeg",
+    "1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/model.glb",
+    "1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/preview.png",
+    "1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/rendered_image.webp",
+    "1-model/tripo-out/a-stone-colossus-a-huge-sandston-bac721fc/task.json",
+    "2-check/tripo-out/rig-check-3-daf6eb2f/task.json",
+    "3-rig/tripo-out/rig-3-98e33895/model.glb",
+    "3-rig/tripo-out/rig-3-98e33895/preview.png",
+    "3-rig/tripo-out/rig-3-98e33895/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-98e33895/task.json",
+    "4-anim-1/tripo-out/retarget-3-54553be4/model.glb",
+    "4-anim-1/tripo-out/retarget-3-54553be4/task.json",
+    "manifest.json"
+  ]
+}

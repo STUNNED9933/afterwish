@@ -1,0 +1,96 @@
+{
+  "id": "e_shaman",
+  "prompt": "a Rime Caller, an undead frost priest: tall thin figure in tattered blue-grey robes stiff with frost, a deep hood over a frozen skull-like face, a staff topped with a jagged ice crystal. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:24:13.889Z",
+  "creditsBefore": 1490,
+  "steps": {
+    "model": {
+      "task": "5e4d63a3-873a-475d-815a-803a37184363",
+      "result": {
+        "task_id": "5e4d63a3-873a-475d-815a-803a37184363",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_shaman/1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_shaman/1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/model.glb",
+        "preview": "out/models/e_shaman/1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/preview.png"
+      }
+    },
+    "check": {
+      "task": "fbcb94a3-979b-4eb3-8321-5bd47ded5567",
+      "result": {
+        "task_id": "fbcb94a3-979b-4eb3-8321-5bd47ded5567",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_shaman/2-check/tripo-out/rig-check-2-fbcb94a3",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "5930af25-106c-4d3d-b162-da855a26aa29",
+      "rigType": "biped",
+      "result": {
+        "task_id": "5930af25-106c-4d3d-b162-da855a26aa29",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_shaman/3-rig/tripo-out/rig-2-5930af25",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_shaman/3-rig/tripo-out/rig-2-5930af25/model.glb",
+        "preview": "out/models/e_shaman/3-rig/tripo-out/rig-2-5930af25/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "49b443dc-8b0d-4562-a476-2bf7c2cca8dc",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "49b443dc-8b0d-4562-a476-2bf7c2cca8dc",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_shaman/4-anim-1/tripo-out/retarget-2-49b443dc",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_shaman/4-anim-1/tripo-out/retarget-2-49b443dc/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1125,
+  "creditsUsed": 365,
+  "finished": "2026-11-16T14:30:31.278Z",
+  "files": [
+    "1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/generated_image.jpeg",
+    "1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/model.glb",
+    "1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/preview.png",
+    "1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/rendered_image.webp",
+    "1-model/tripo-out/a-rime-caller-an-undead-frost-pr-5e4d63a3/task.json",
+    "2-check/tripo-out/rig-check-2-fbcb94a3/task.json",
+    "3-rig/tripo-out/rig-2-5930af25/model.glb",
+    "3-rig/tripo-out/rig-2-5930af25/preview.png",
+    "3-rig/tripo-out/rig-2-5930af25/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-5930af25/task.json",
+    "4-anim-1/tripo-out/retarget-2-49b443dc/model.glb",
+    "4-anim-1/tripo-out/retarget-2-49b443dc/task.json",
+    "manifest.json"
+  ]
+}

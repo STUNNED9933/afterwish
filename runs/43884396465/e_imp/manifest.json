@@ -1,0 +1,96 @@
+{
+  "id": "e_imp",
+  "prompt": "a Cinder Imp, a small lean creature of cracked charcoal skin with orange embers glowing inside the cracks, sharp claws, short curled horns, ember eyes, a thin tail. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:18:55.374Z",
+  "creditsBefore": 1620,
+  "steps": {
+    "model": {
+      "task": "43384978-03c1-40c8-82f5-e51b06712c06",
+      "result": {
+        "task_id": "43384978-03c1-40c8-82f5-e51b06712c06",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_imp/1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_imp/1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/model.glb",
+        "preview": "out/models/e_imp/1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/preview.png"
+      }
+    },
+    "check": {
+      "task": "1cfef907-c538-414c-a32b-08c3fd77588a",
+      "result": {
+        "task_id": "1cfef907-c538-414c-a32b-08c3fd77588a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_imp/2-check/tripo-out/rig-check-1cfef907",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "5d091774-5bd2-4202-afa4-ce337fd6bd26",
+      "rigType": "biped",
+      "result": {
+        "task_id": "5d091774-5bd2-4202-afa4-ce337fd6bd26",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_imp/3-rig/tripo-out/rig-5d091774",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_imp/3-rig/tripo-out/rig-5d091774/model.glb",
+        "preview": "out/models/e_imp/3-rig/tripo-out/rig-5d091774/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "3b1a928d-8094-4273-9725-019bdbcb7df3",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "3b1a928d-8094-4273-9725-019bdbcb7df3",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_imp/4-anim-1/tripo-out/retarget-3b1a928d",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_imp/4-anim-1/tripo-out/retarget-3b1a928d/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1490,
+  "creditsUsed": 130,
+  "finished": "2026-11-16T14:24:13.887Z",
+  "files": [
+    "1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/generated_image.jpeg",
+    "1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/model.glb",
+    "1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/preview.png",
+    "1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/rendered_image.webp",
+    "1-model/tripo-out/a-cinder-imp-a-small-lean-creatu-43384978/task.json",
+    "2-check/tripo-out/rig-check-1cfef907/task.json",
+    "3-rig/tripo-out/rig-5d091774/model.glb",
+    "3-rig/tripo-out/rig-5d091774/preview.png",
+    "3-rig/tripo-out/rig-5d091774/rendered_image.webp",
+    "3-rig/tripo-out/rig-5d091774/task.json",
+    "4-anim-1/tripo-out/retarget-3b1a928d/model.glb",
+    "4-anim-1/tripo-out/retarget-3b1a928d/task.json",
+    "manifest.json"
+  ]
+}

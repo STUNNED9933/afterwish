@@ -1,0 +1,117 @@
+{
+  "id": "b_asker",
+  "prompt": "the Asker, a fallen star in the shape of a person: a tall slender faceless humanoid made of pale gold starlight and translucent glass, a smooth featureless mask for a face, a bright white star glowing in its chest, long flowing robes of light that break into sparks at the hem, a halo of floating glass shards behind its head, arms open as if offering a gift, serene and deeply unsettling. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T13:55:10.390Z",
+  "creditsBefore": 2620,
+  "steps": {
+    "model": {
+      "task": "35b4e0e4-1174-4ad3-a650-4708d799e7ff",
+      "result": {
+        "task_id": "35b4e0e4-1174-4ad3-a650-4708d799e7ff",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_asker/1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_asker/1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/model.glb",
+        "preview": "out/models/b_asker/1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/preview.png"
+      }
+    },
+    "check": {
+      "task": "0ca41c04-5631-404c-858b-e47a99b37c4d",
+      "result": {
+        "task_id": "0ca41c04-5631-404c-858b-e47a99b37c4d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_asker/2-check/tripo-out/rig-check-0ca41c04",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "ee52bb7c-8c6e-4639-95bc-469f1c9b25f1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "ee52bb7c-8c6e-4639-95bc-469f1c9b25f1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_asker/3-rig/tripo-out/rig-ee52bb7c",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_asker/3-rig/tripo-out/rig-ee52bb7c/model.glb",
+        "preview": "out/models/b_asker/3-rig/tripo-out/rig-ee52bb7c/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "bf1cf384-4890-401d-bcaa-8256256ef2a9",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "bf1cf384-4890-401d-bcaa-8256256ef2a9",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_asker/4-anim-1/tripo-out/retarget-bf1cf384",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_asker/4-anim-1/tripo-out/retarget-bf1cf384/model.glb"
+        }
+      },
+      {
+        "task": "7e3e182a-c4cd-4a8f-99ba-2b90d95315ef",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:greet_02"
+        ],
+        "result": {
+          "task_id": "7e3e182a-c4cd-4a8f-99ba-2b90d95315ef",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_asker/4-anim-2/tripo-out/retarget-2-7e3e182a",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_asker/4-anim-2/tripo-out/retarget-2-7e3e182a/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2335,
+  "creditsUsed": 285,
+  "finished": "2026-11-16T14:03:28.312Z",
+  "files": [
+    "1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/generated_image.jpeg",
+    "1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/model.glb",
+    "1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/preview.png",
+    "1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/rendered_image.webp",
+    "1-model/tripo-out/the-asker-a-fallen-star-in-the-s-35b4e0e4/task.json",
+    "2-check/tripo-out/rig-check-0ca41c04/task.json",
+    "3-rig/tripo-out/rig-ee52bb7c/model.glb",
+    "3-rig/tripo-out/rig-ee52bb7c/preview.png",
+    "3-rig/tripo-out/rig-ee52bb7c/rendered_image.webp",
+    "3-rig/tripo-out/rig-ee52bb7c/task.json",
+    "4-anim-1/tripo-out/retarget-bf1cf384/model.glb",
+    "4-anim-1/tripo-out/retarget-bf1cf384/task.json",
+    "4-anim-2/tripo-out/retarget-2-7e3e182a/model.glb",
+    "4-anim-2/tripo-out/retarget-2-7e3e182a/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "n_wren",
+  "prompt": "Elder Wren, an elderly woman who was once a royal nurse, kind tired face with deep lines, white hair in a loose bun, a muted plum shawl over a cream linen dress, a wooden walking cane, a small ring of old keys at her waist. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-16T14:03:28.314Z",
+  "creditsBefore": 2335,
+  "steps": {
+    "model": {
+      "task": "0a62d7db-6518-4b80-bbbb-53e25be8460b",
+      "result": {
+        "task_id": "0a62d7db-6518-4b80-bbbb-53e25be8460b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_wren/1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_wren/1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/model.glb",
+        "preview": "out/models/n_wren/1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/preview.png"
+      }
+    },
+    "check": {
+      "task": "4ac65939-eeff-4b5c-846b-705a1e220926",
+      "result": {
+        "task_id": "4ac65939-eeff-4b5c-846b-705a1e220926",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_wren/2-check/tripo-out/rig-check-2-4ac65939",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "f7354d04-3097-4eeb-9ed0-814015ddf80b",
+      "rigType": "biped",
+      "result": {
+        "task_id": "f7354d04-3097-4eeb-9ed0-814015ddf80b",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_wren/3-rig/tripo-out/rig-2-f7354d04",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_wren/3-rig/tripo-out/rig-2-f7354d04/model.glb",
+        "preview": "out/models/n_wren/3-rig/tripo-out/rig-2-f7354d04/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "606350c6-2463-4e37-a40e-d866bf9e1b3b",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_01",
+          "preset:biped:look_around",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "606350c6-2463-4e37-a40e-d866bf9e1b3b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_wren/4-anim-1/tripo-out/retarget-3-606350c6",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_wren/4-anim-1/tripo-out/retarget-3-606350c6/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2100,
+  "creditsUsed": 235,
+  "finished": "2026-11-16T14:09:38.967Z",
+  "files": [
+    "1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/generated_image.jpeg",
+    "1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/model.glb",
+    "1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/preview.png",
+    "1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/rendered_image.webp",
+    "1-model/tripo-out/elder-wren-an-elderly-woman-who-0a62d7db/task.json",
+    "2-check/tripo-out/rig-check-2-4ac65939/task.json",
+    "3-rig/tripo-out/rig-2-f7354d04/model.glb",
+    "3-rig/tripo-out/rig-2-f7354d04/preview.png",
+    "3-rig/tripo-out/rig-2-f7354d04/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-f7354d04/task.json",
+    "4-anim-1/tripo-out/retarget-3-606350c6/model.glb",
+    "4-anim-1/tripo-out/retarget-3-606350c6/task.json",
+    "manifest.json"
+  ]
+}

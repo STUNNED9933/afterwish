@@ -1,0 +1,13 @@
+{
+  "task_id": "4ac65939-eeff-4b5c-846b-705a1e220926",
+  "type": "animate_prerigcheck",
+  "status": "success",
+  "input": {
+    "original_model_id": "0a62d7db-6518-4b80-bbbb-53e25be8460b"
+  },
+  "output_fields": [],
+  "credits_consumed": 0,
+  "created_at": "2026-11-16T14:09:08.114552Z",
+  "completed_at": "2026-11-16T14:09:08.993406Z",
+  "files": []
+}

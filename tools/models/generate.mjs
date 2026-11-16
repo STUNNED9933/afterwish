@@ -57,7 +57,7 @@ for (const id of ids) {
     failures++;
     continue;
   }
-  const prompt = `${c.prompt}. ${roster.style}`.slice(0, 1000);
+  const prompt = `${c.prompt}. ${c.style || roster.style}`.slice(0, 1000); // style: props (weapons) have their own
   const gen = ['generate', 'text-to-model', prompt, '--model', 'tripo-v3.1', '-p', `face_limit=${c.faceLimit || roster.faceLimit}`, '-p', 'smart_low_poly=true'];
   if (dry) {
     console.log(JSON.stringify({ id, plan: tripo(['make', prompt, '--for', 'anim', '--model', 'tripo-v3.1', '-p', `face_limit=${c.faceLimit || roster.faceLimit}`, '-p', 'smart_low_poly=true', '--dry-run']) }));
@@ -72,6 +72,8 @@ for (const id of ids) {
     const model = c.fromTask || c.fromRig ? { task_id: c.fromTask } : tripo([...gen, '-o', join(dir, '1-model')]);
     manifest.steps.model = { task: taskId(model), result: model };
     save();
+    // rig: false — a prop (a weapon): the model is all there is.
+    if (c.rig === false) throw Object.assign(new Error('done'), { done: true });
     // fromRig: add animations to a model already rigged (no new rig).
     let rig;
     if (c.fromRig) rig = { task_id: c.fromRig };
@@ -96,8 +98,10 @@ for (const id of ids) {
       save();
     }
   } catch (err) {
-    manifest.error = String(err.message || err);
-    failures++;
+    if (!err.done) {
+      manifest.error = String(err.message || err);
+      failures++;
+    }
   }
   manifest.creditsAfter = credits();
   if (manifest.creditsBefore != null && manifest.creditsAfter != null) manifest.creditsUsed = manifest.creditsBefore - manifest.creditsAfter;

@@ -1,5 +1,5 @@
 {
-  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:). fromRig: add animations to an existing rig task.",
+  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:). fromRig: add animations to an existing rig task. rig: false makes a prop (no rig, no animations); style replaces the roster style for it.",
   "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
   "faceLimit": 10000,
   "characters": {
@@ -68,6 +68,30 @@
         "preset:biped:run",
         "preset:biped:hit_to_body_02"
       ]
+    },
+    "w_sword": {
+      "prompt": "a one-handed steel arming sword, straight double-edged blade with a fuller, simple cross guard with a small blue gem, leather-wrapped grip, round steel pommel",
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false
+    },
+    "w_dagger": {
+      "prompt": "a short steel dagger, slim single-edged blade with a slight curve, small cross guard, dark leather-wrapped grip, small pommel ring",
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 2500,
+      "rig": false
+    },
+    "w_staff": {
+      "prompt": "a mage's staff, long straight dark wooden shaft with silver bands, the top curls around a glowing pale blue crystal orb",
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false
+    },
+    "w_bow": {
+      "prompt": "a wooden recurve bow without its string, dark polished wood limbs curving back at the tips, leather-wrapped grip in the middle, small silver caps on the tips",
+      "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false
     }
   }
 }

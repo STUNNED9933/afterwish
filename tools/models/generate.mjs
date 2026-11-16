@@ -65,6 +65,13 @@ for (const id of ids) {
   }
   const dir = join('out', 'models', id);
   mkdirSync(dir, { recursive: true });
+  if (c.fetchAnims) {
+    // Download animation tasks that already ran (a lost result): no credits spent.
+    c.fetchAnims.forEach((t, i) => tripo(['task', 'get', t, '--download', '-o', join(dir, `4-anim-${i + 1}`)]));
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ id, fetched: c.fetchAnims, files: listFiles(dir) }, null, 2));
+    console.log(JSON.stringify({ id, ok: true, fetched: true, files: listFiles(dir) }));
+    continue;
+  }
   const manifest = { id, prompt, started: new Date().toISOString(), creditsBefore: credits(), steps: {} };
   const save = () => writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ ...manifest, files: listFiles(dir) }, null, 2));
   try {

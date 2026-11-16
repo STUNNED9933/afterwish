@@ -449,6 +449,30 @@
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 8000,
       "prompt": "a giant Dune Scarab beetle, a golden bronze carapace scarred with old royal engravings, six jointed legs, large curved mandibles"
+    },
+    "e_crusher_fetch": {
+      "fetchAnims": [
+        "ef6e032c-c26b-4065-8af7-7e8d942fa564"
+      ],
+      "prompt": "(download of an animation task that already ran: e_crusher)"
+    },
+    "e_spitter_fetch": {
+      "fetchAnims": [
+        "02c4f0a4-90d1-4142-99c4-837d6eef7e07"
+      ],
+      "prompt": "(download of an animation task that already ran: e_spitter)"
+    },
+    "e_courtguard_fetch": {
+      "fetchAnims": [
+        "28d2b043-dbfd-4a1e-b92a-c898c84192b1"
+      ],
+      "prompt": "(download of an animation task that already ran: e_courtguard)"
+    },
+    "e_glassbound_fetch": {
+      "fetchAnims": [
+        "3ee65b4b-565e-40a4-bf5c-c882fb2266fc"
+      ],
+      "prompt": "(download of an animation task that already ran: e_glassbound)"
     }
   }
 }

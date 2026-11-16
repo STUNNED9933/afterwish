@@ -1,0 +1,37 @@
+{
+  "id": "w_sword_ancient",
+  "prompt": "an ancient royal sword of pale weathered gold-bronze, a broad leaf-shaped blade etched with star patterns, a cross guard shaped like two spread wings, a worn leather grip, a star-shaped pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:09:07.645Z",
+  "creditsBefore": 1355,
+  "steps": {
+    "model": {
+      "task": "fde60373-6737-499e-b63b-48c4f659fe8d",
+      "result": {
+        "task_id": "fde60373-6737-499e-b63b-48c4f659fe8d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_sword_ancient/1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_sword_ancient/1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/model.glb",
+        "preview": "out/models/w_sword_ancient/1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1295,
+  "creditsUsed": 60,
+  "finished": "2026-11-16T22:12:17.990Z",
+  "files": [
+    "1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/generated_image.jpeg",
+    "1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/model.glb",
+    "1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/preview.png",
+    "1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/rendered_image.webp",
+    "1-model/tripo-out/an-ancient-royal-sword-of-pale-w-fde60373/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "8ef1a014-78eb-4042-b480-85e5faaa803b",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a gate-guard's longsword, a sturdy plain steel blade, a cross guard wrapped in faded royal blue cloth, a blue-trimmed leather grip, a simple round pommel with a small gold star. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 3000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T22:02:48.946053Z",
+  "completed_at": "2026-11-16T22:05:08.037776Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

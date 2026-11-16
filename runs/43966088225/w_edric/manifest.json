@@ -1,0 +1,37 @@
+{
+  "id": "w_edric",
+  "prompt": "a gate-guard's longsword, a sturdy plain steel blade, a cross guard wrapped in faded royal blue cloth, a blue-trimmed leather grip, a simple round pommel with a small gold star. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:02:47.597Z",
+  "creditsBefore": 1535,
+  "steps": {
+    "model": {
+      "task": "8ef1a014-78eb-4042-b480-85e5faaa803b",
+      "result": {
+        "task_id": "8ef1a014-78eb-4042-b480-85e5faaa803b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_edric/1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_edric/1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/model.glb",
+        "preview": "out/models/w_edric/1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1445,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:05:27.108Z",
+  "files": [
+    "1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/generated_image.jpeg",
+    "1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/model.glb",
+    "1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/preview.png",
+    "1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/rendered_image.webp",
+    "1-model/tripo-out/a-gate-guard-s-longsword-a-sturd-8ef1a014/task.json",
+    "manifest.json"
+  ]
+}

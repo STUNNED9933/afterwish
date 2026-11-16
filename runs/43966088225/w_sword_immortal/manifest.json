@@ -1,0 +1,37 @@
+{
+  "id": "w_sword_immortal",
+  "prompt": "a legendary radiant sword of white starglass and gold, a long elegant blade glowing with inner light along its edges, a cross guard of golden rays like a rising sun, a glowing star pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:12:17.990Z",
+  "creditsBefore": 1295,
+  "steps": {
+    "model": {
+      "task": "239b3a32-ea9a-4d7c-8e13-12da40279bf3",
+      "result": {
+        "task_id": "239b3a32-ea9a-4d7c-8e13-12da40279bf3",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_sword_immortal/1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_sword_immortal/1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/model.glb",
+        "preview": "out/models/w_sword_immortal/1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1265,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T22:14:58.006Z",
+  "files": [
+    "1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/generated_image.jpeg",
+    "1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/model.glb",
+    "1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/preview.png",
+    "1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/rendered_image.webp",
+    "1-model/tripo-out/a-legendary-radiant-sword-of-whi-239b3a32/task.json",
+    "manifest.json"
+  ]
+}

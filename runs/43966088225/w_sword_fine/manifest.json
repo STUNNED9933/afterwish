@@ -1,0 +1,37 @@
+{
+  "id": "w_sword_fine",
+  "prompt": "an ornate one-handed knight's sword, a long polished steel blade with an engraved fuller, a curved silver cross guard set with a small blue gem, a wire-wrapped grip, a round silver pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:05:27.109Z",
+  "creditsBefore": 1445,
+  "steps": {
+    "model": {
+      "task": "bfef514b-66f5-46c4-b461-4ee49d66ec00",
+      "result": {
+        "task_id": "bfef514b-66f5-46c4-b461-4ee49d66ec00",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_sword_fine/1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_sword_fine/1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/model.glb",
+        "preview": "out/models/w_sword_fine/1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1355,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:09:07.645Z",
+  "files": [
+    "1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/generated_image.jpeg",
+    "1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/model.glb",
+    "1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/preview.png",
+    "1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/rendered_image.webp",
+    "1-model/tripo-out/an-ornate-one-handed-knight-s-sw-bfef514b/task.json",
+    "manifest.json"
+  ]
+}

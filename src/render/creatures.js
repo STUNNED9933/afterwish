@@ -131,19 +131,28 @@ export function makeCreature(tpl, spec) {
   holder.rotation.y = -Math.PI / 2;
   holder.scale.setScalar(tpl.scale * spec.height);
   holder.add(root);
+  // A blade in the right hand (the Warden's: Tripo left his out). It is not parented to the hand
+  // bone, whose scale changes with the pose and the rig's units, but placed by the hand each frame
+  // in the creature's own space, at a fixed size, as the heroes hold theirs.
+  let blade = null;
   if (spec.weapon) {
-    // a blade in the right hand, held the way Tripo's own clips hold one (as the hero warrior does)
     loadWeapon(spec.weapon.cls, 1).then((w) => {
-      const hand = root.getObjectByName('R_Hand');
-      if (!w || !hand) return;
-      holder.updateMatrixWorld(true);
-      const hs = hand.getWorldScale(new THREE.Vector3()).x || 1;
-      w.scale.setScalar(spec.weapon.size / hs);
-      w.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 4);
-      hand.add(w);
+      if (!w || !root.getObjectByName('R_Hand')) return;
+      blade = { w, hand: root.getObjectByName('R_Hand'), grip: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 4) };
+      w.scale.setScalar(spec.weapon.size / holder.scale.x);
+      holder.add(w);
       for (const m of w.userData.mats || []) mats.push(m);
     });
   }
+  const tmpM = new THREE.Matrix4(), tmpP = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
+  const placeBlade = () => {
+    if (!blade) return;
+    holder.updateMatrixWorld(true);
+    tmpM.copy(holder.matrixWorld).invert().multiply(blade.hand.matrixWorld);
+    tmpM.decompose(tmpP, tmpQ, tmpS);
+    blade.w.position.copy(tmpP);
+    blade.w.quaternion.copy(tmpQ).multiply(blade.grip);
+  };
   const mixer = new THREE.AnimationMixer(root);
   const cache = {};
   const action = (kind, once) => {
@@ -175,6 +184,10 @@ export function makeCreature(tpl, spec) {
     mats,
     /** Wind-ups, strikes and the rest. */
     update(dt, s) {
+      this.pose(dt, s);
+      placeBlade();
+    },
+    pose(dt, s) {
       if (s.dead) {
         const a = action('fall', true);
         if (a && current !== a) {

@@ -92,6 +92,30 @@
       "style": "stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
       "faceLimit": 3000,
       "rig": false
+    },
+    "env_cottage": {
+      "prompt": "a small cosy fantasy village cottage, one storey, rectangular footprint, grey fieldstone lower walls, cream plaster upper walls with dark timber framing, steep golden thatched roof, a stone chimney, a wooden door on the long side, two small warm-lit windows with shutters, a flower box",
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+      "faceLimit": 4000,
+      "rig": false
+    },
+    "env_asterhouse": {
+      "prompt": "a desert city townhouse of pale golden sandstone, two storeys, rectangular footprint, flat roof with a low parapet and a small round dome on one corner, an arched doorway, tall arched windows filled with glowing amber stained glass, a faded blue cloth awning over the door, carved star motifs",
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+      "faceLimit": 4000,
+      "rig": false
+    },
+    "env_waygate": {
+      "prompt": "a freestanding ancient stone portal archway, two weathered grey stone pillars joined by a round arch, the open middle is empty, pale blue glowing runes carved along the arch, a few vines and moss at the foot of the pillars",
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "rig": false
+    },
+    "env_tower": {
+      "prompt": "a ruined round stone watchtower, three storeys, the top half broken and crumbled with jagged walls, dark grey castle stone, narrow arrow-slit windows, a tattered dark red banner hanging from one side, rubble at its foot",
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+      "faceLimit": 5000,
+      "rig": false
     }
   }
 }

@@ -1,0 +1,37 @@
+{
+  "id": "w_dagger_immortal",
+  "prompt": "a legendary radiant dagger of white starglass and gold, a slim curved glowing blade like a sliver of moonlight, a small guard of golden rays, a glowing star pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:08:02.582Z",
+  "creditsBefore": 1385,
+  "steps": {
+    "model": {
+      "task": "1e1ff724-8fa7-4b61-b090-a7ccba4f0ae5",
+      "result": {
+        "task_id": "1e1ff724-8fa7-4b61-b090-a7ccba4f0ae5",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_dagger_immortal/1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_dagger_immortal/1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/model.glb",
+        "preview": "out/models/w_dagger_immortal/1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1295,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:10:13.045Z",
+  "files": [
+    "1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/generated_image.jpeg",
+    "1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/model.glb",
+    "1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/preview.png",
+    "1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/rendered_image.webp",
+    "1-model/tripo-out/a-legendary-radiant-dagger-of-wh-1e1ff724/task.json",
+    "manifest.json"
+  ]
+}

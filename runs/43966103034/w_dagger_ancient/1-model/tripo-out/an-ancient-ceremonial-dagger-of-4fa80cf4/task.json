@@ -1,0 +1,30 @@
+{
+  "task_id": "4fa80cf4-713b-4edd-80ff-c2ee3ecdafca",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "an ancient ceremonial dagger of pale weathered gold-bronze, a wavy kris-shaped blade etched with stars, a cross guard shaped like small wings, a worn leather grip. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 2500,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T22:04:53.985775Z",
+  "completed_at": "2026-11-16T22:07:59.291598Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "w_dagger_ancient",
+  "prompt": "an ancient ceremonial dagger of pale weathered gold-bronze, a wavy kris-shaped blade etched with stars, a cross guard shaped like small wings, a worn leather grip. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T22:04:52.709Z",
+  "creditsBefore": 1475,
+  "steps": {
+    "model": {
+      "task": "4fa80cf4-713b-4edd-80ff-c2ee3ecdafca",
+      "result": {
+        "task_id": "4fa80cf4-713b-4edd-80ff-c2ee3ecdafca",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_dagger_ancient/1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_dagger_ancient/1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/model.glb",
+        "preview": "out/models/w_dagger_ancient/1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1385,
+  "creditsUsed": 90,
+  "finished": "2026-11-16T22:08:02.582Z",
+  "files": [
+    "1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/generated_image.jpeg",
+    "1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/model.glb",
+    "1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/preview.png",
+    "1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/rendered_image.webp",
+    "1-model/tripo-out/an-ancient-ceremonial-dagger-of-4fa80cf4/task.json",
+    "manifest.json"
+  ]
+}

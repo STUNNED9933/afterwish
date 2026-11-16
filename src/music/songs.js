@@ -172,12 +172,25 @@ export const SONGS = {
       'A5:2 C#6:2 E6:4 C#6:8', 'F#6:6 C#6:2 A5:8', 'G#5:4 C6:4 D#6:4 C6:4', 'C#6:12 r:4',
     ],
   },
+
+  // Asterfell (0.39): the naming-day music, still playing. A slow, sweet F major, a little too slow.
+  asterfell: {
+    name: 'The Naming Day', bpm: 72,
+    style: { lead: 'flute', pad: 'organ', arp: 'harp16', arpInst: 'bell', bass: 'half', stabs: false, drums: 'soft' },
+    chords: ['F', 'C', 'Dm', 'Bb', 'F', 'C', 'Bb', 'C', 'Dm', 'Am', 'Bb', 'F', 'Gm', 'C', 'Bb', 'F'],
+    melody: [
+      'A4:6 C5:2 F5:8', 'E5:4 D5:4 C5:8', 'D5:6 F5:2 A4:8', 'Bb4:4 D5:4 F5:4 D5:4',
+      'C5:6 A4:2 F4:8', 'G4:4 C5:4 E5:8', 'D5:6 C5:2 Bb4:4 A4:4', 'G4:12 r:4',
+      'F5:6 E5:2 D5:8', 'C5:4 E5:4 A5:8', 'G5:6 F5:2 D5:8', 'C5:4 A4:4 F5:8',
+      'D5:6 Bb4:2 G4:8', 'E5:4 G5:4 C5:8', 'D5:4 C5:4 Bb4:4 G4:4', 'F4:12 r:4',
+    ],
+  },
 };
 
 /** Which theme plays on which exploration map (by the map's `theme`). */
 export const MAP_SONG = {
   town: 'haven', forest: 'greenwood', swamp: 'fen', ash: 'ridge', keep: 'keep',
-  frost: 'frost', desert: 'dunes', fungal: 'hollow', storm: 'spire', volcano: 'maw', astral: 'sanctum',
+  frost: 'frost', desert: 'dunes', fungal: 'hollow', storm: 'spire', volcano: 'maw', astral: 'sanctum', glass: 'asterfell',
 };
 /** Each arena boss brings a theme of its own. */
 export const BOSS_SONG = { boss: 'keep', boss2: 'maw', boss3: 'spire' };

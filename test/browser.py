@@ -525,9 +525,20 @@ with sync_playwright() as pw:
     page.mouse.move(xy[0], xy[1]); page.wait_for_timeout(1500)
     xy = ev("() => { const o = game.world.map.obstacles.find((x) => x.kind === 'board'); const s = game.renderer.project(o.x, 1.4, o.z); return [s.x, s.y]; }")
     page.mouse.move(xy[0], xy[1]); page.wait_for_timeout(1000)
+    # (the software-drawn browser can take a few frames to notice the pointer: nudge it until it does)
+    for _ in range(10):
+        if ev("() => document.getElementById('game').classList.contains('hover-talk')"): break
+        xy = ev("() => { const o = game.world.map.obstacles.find((x) => x.kind === 'board'); const s = game.renderer.project(o.x, 1.4, o.z); return [s.x, s.y]; }")
+        page.mouse.move(xy[0] + 1, xy[1]); page.wait_for_timeout(600)
     check('hovering the bounty board shows a pointer cursor', ev("() => document.getElementById('game').classList.contains('hover-talk')"))
     page.mouse.click(xy[0], xy[1], button='right')
-    page.wait_for_function("() => game.mode === 'talk'", timeout=40000)
+    for _ in range(3):
+        try:
+            page.wait_for_function("() => game.mode === 'talk'", timeout=20000); break
+        except Exception:
+            # the walk may have been nudged off course by a slow frame: click again from where the hero is
+            xy = ev("() => { const o = game.world.map.obstacles.find((x) => x.kind === 'board'); const s = game.renderer.project(o.x, 1.4, o.z); return [s.x, s.y]; }")
+            page.mouse.click(xy[0], xy[1], button='right')
     check('right-clicking the bounty board walks over and opens it', page.inner_text('#talk-name') == 'Bounty Board')
     page.keyboard.press('Escape'); page.wait_for_timeout(300)
     ev("() => { const w = game.world, wg = w.map.waygate; w.player.x = w.player.px = wg.x; w.player.z = w.player.pz = wg.z; }")

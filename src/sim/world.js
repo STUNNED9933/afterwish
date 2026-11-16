@@ -664,7 +664,8 @@ export class World {
           break;
         case 'travel':
           // Waygate: jump to a discovered map, arriving at its entrance.
-          if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier });
+          if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
+          else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier, name: MAPS[c.to].name });
           else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.loadMap(c.to, MAPS[c.to].portals[0].to);
           break;
         case 'setTier':
@@ -2549,7 +2550,15 @@ export class World {
 
   /** How many of the quest's goal are needed, and how to say what it is. */
   questNeed(q) {
-    return q.goal.kill || q.goal.read || 1;
+    return q.goal.kill || q.goal.read || (q.goal.signs && q.goal.signs.length) || 1;
+  }
+
+  /** Signs read that count for a quest goal ({ read: n, map? } or { sign: id }). */
+  signsFor(g) {
+    const p = this.player;
+    if (g.sign) return p.signs.includes(g.sign) ? 1 : 0;
+    if (g.signs) return g.signs.filter((id) => p.signs.includes(id)).length;
+    return g.map ? p.signs.filter((id) => SIGNS[id] && SIGNS[id].map === g.map).length : p.signs.length;
   }
 
   acceptQuest(id) {
@@ -2559,7 +2568,7 @@ export class World {
     const st = (p.quests[id] = { s: 'active', n: 0 });
     // Some goals may already be met: a map you have been to, signs you have read.
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
-    if (q.goal.read) st.n = Math.min(q.goal.read, p.signs.length);
+    if (q.goal.read || q.goal.sign || q.goal.signs) st.n = Math.min(this.questNeed(q), this.signsFor(q.goal));
     if (q.goal.wave && this.bestWave >= q.goal.wave) st.n = 1;
     if (st.n >= this.questNeed(q)) st.s = 'ready';
     this.questStamp++;
@@ -2585,9 +2594,9 @@ export class World {
       } else if (kind === 'wave' && g.wave && data >= g.wave) {
         hit = true;
         st.n = 1;
-      } else if (kind === 'read' && g.read) {
+      } else if (kind === 'read' && (g.read || g.sign || g.signs)) {
         hit = true;
-        st.n = Math.min(g.read, p.signs.length);
+        st.n = Math.min(this.questNeed(q), this.signsFor(g));
       }
       if (!hit) continue;
       const need = this.questNeed(q);
@@ -2681,7 +2690,7 @@ export class World {
     p.signs.push(id);
     this.questStamp++;
     this.emit('lore', { id, title: SIGNS[id].title, found: p.signs.length });
-    this.questEvent('read');
+    this.questEvent('read', id);
   }
 
   /**
@@ -2897,6 +2906,7 @@ export class World {
     e.expValue *= exp;
     e.goldValue = Math.round(e.goldValue * exp);
     if (e.elite && e.elite.includes('shielded')) e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
+    else if (e.def.shield) e.shield = e.maxShield = Math.round(e.maxHp * e.def.shield); // Court Guards (0.39)
     return e;
   }
 
@@ -4644,6 +4654,10 @@ export class World {
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
+    if (e.def.shatter) {
+      // Glassbound (0.39): the glass gives way a moment after they fall.
+      this.falls.push({ x: e.x, z: e.z, r: e.def.shatter.r, t: 0, dur: 1.0, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * e.def.shatter.mult, level: e.level, srcId: e.id, tele: null });
+    }
     if (e.elite && e.elite.includes('volatile')) {
       // Volatile elites burst a moment after they fall (uses the falling-star warning circles).
       this.falls.push({ x: e.x, z: e.z, r: 3.2, t: 0, dur: 1.2, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * 2.5, level: e.level, srcId: e.id, tele: null });
@@ -4776,6 +4790,30 @@ export class World {
       e.moving = false;
       if (e.dead) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt;
+      if (e.wishedT > 0) {
+        // Given what it wanted by a Wishling (0.39): stronger for a while.
+        e.wishedT -= dt;
+        if (e.wishedT <= 0) e.dmgMult /= e.wishedMult || 1;
+      }
+      if (e.def.grants && e.state !== 'spawn') {
+        e.grantT = (e.grantT ?? e.def.grants.every * 0.5) - dt;
+        if (e.grantT <= 0) {
+          e.grantT = e.def.grants.every;
+          const g = e.def.grants;
+          let best = null, bd = g.range;
+          for (const o of this.enemies) {
+            if (o === e || o.dead || o.def.grants || o.wishedT > 0 || o.state === 'spawn') continue;
+            const d = dist(o.x, o.z, e.x, e.z);
+            if (d < bd) [best, bd] = [o, d];
+          }
+          if (best) {
+            best.wishedT = g.time;
+            best.wishedMult = g.dmg;
+            best.dmgMult *= g.dmg;
+            this.emit('wished', { id: best.id, from: e.id, x: e.x, z: e.z, tx: best.x, tz: best.z });
+          }
+        }
+      }
       if (e.vulnT > 0) e.vulnT -= dt;
       if (e.slowT > 0) e.slowT -= dt;
       if (e.tauntT > 0) e.tauntT -= dt;

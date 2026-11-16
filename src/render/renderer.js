@@ -43,6 +43,8 @@ const MAP_THEMES = {
   storm: { ground: '#3a4250', hue: 215, sky: 0x10141e, tree: 0x4a5a6a, trunk: 0x2a2e38, rock: 0x6a7484, edge: 0x1a1e28, crown: 'spike' },
   volcano: { ground: '#241a1a', hue: 8, sky: 0x180806, tree: 0x1a1414, trunk: 0x100c0c, rock: 0x2a1a18, edge: 0x100808, crown: 'spike', rockGlow: 0xc23a0c },
   astral: { ground: '#1c1a3a', hue: 250, sky: 0x06061a, tree: 0x8fe8ff, trunk: 0x2a2a5a, rock: 0x3a3a7a, edge: 0x0c0c24, crown: 'crystal', crownGlow: 0x2a8aa8, rockGlow: 0x2a2a8a },
+  // Asterfell (0.39): sandstone, and spires of gold star-glass where trees would be.
+  glass: { ground: '#988266', hue: 36, light: 44, sky: 0x2a1a0c, tree: 0xffe2a0, trunk: 0xc8a060, rock: 0xd8b070, edge: 0x6a4a28, crown: 'crystal', crownGlow: 0xc89030, rockGlow: 0x8a6020 },
 };
 function makeSeeded(seed) {
   let s = seed % 2147483647 || 1;
@@ -1088,6 +1090,14 @@ export class Renderer {
           this.burst(ev.x + Math.cos(a) * r, 0.2, ev.z + Math.sin(a) * r, { count: 2, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc060, speed: 1.5, up: 4, gravity: -2, life: 0.6 });
         }
         break;
+      case 'wished': {
+        // A Wishling gives an enemy what it wants (0.39): a thread of gold, a ring round the one it chose.
+        const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir, color: 0xffd27a, sx: Math.hypot(ev.tx - ev.x, ev.tz - ev.z), sz: 0.22, dur: 0.45, opacity: 0.9 });
+        this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, y: 0.2, color: 0xffd27a, from: 0.6, to: 1.8, dur: 0.6, opacity: 0.9 });
+        this.burst(ev.tx, 1.4, ev.tz, { count: 14, color: 0xffe8a8, speed: 4, up: 5, life: 0.6 });
+        break;
+      }
       case 'burnSpread': {
         const dir = Math.atan2(ev.tz - ev.z, ev.tx - ev.x);
         this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir, color: 0xff7a2a, sx: Math.hypot(ev.tx - ev.x, ev.tz - ev.z), sz: 0.35, dur: 0.3, opacity: 0.9 });

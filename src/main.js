@@ -670,13 +670,17 @@ function start(hot = {}) {
       const m = MAPS[id];
       if (m.safe || id === world.map.id) continue;
       if (m.fromTier) {
-        // The Wilds (0.33): by the Waygate only, from world tier II.
-        const open = world.worldTier() >= m.fromTier;
+        // The Wilds (0.33), Asterfell (0.39): by the Waygate only, from world tier II; Asterfell
+        // only once Wren has told you about it (unseen until her quest is taken).
+        const told = !m.unlock || world.questState(m.unlock) === 'done';
+        if (m.unlock && !world.questState(m.unlock)) continue;
+        const open = told && world.worldTier() >= m.fromTier;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'travel-row' + (open ? ' fit' : '');
         btn.disabled = !open;
-        btn.innerHTML = `<b>${m.name}</b><span class="lv">World tier ${m.fromTier === 2 ? 'II' : m.fromTier}+</span><span>${open ? 'Huge and restless: world events, Wishthieves, Storied enemies and the merchant turn up far more often' : 'Opens on world tier II'}</span>`;
+        const why = !told ? `Finish ${QUESTS[m.unlock].name} first` : `Opens on world tier ${['', 'I', 'II', 'III', 'IV', 'V'][m.fromTier] || m.fromTier}`;
+        btn.innerHTML = `<b>${m.name}</b><span class="lv">World tier ${m.fromTier === 2 ? 'II' : m.fromTier}+</span><span>${open ? m.blurb : why}</span>`;
         btn.addEventListener('click', () => {
           setMode('play');
           applyNow({ type: 'travel', to: id });
@@ -2240,7 +2244,10 @@ function start(hot = {}) {
         hud.hint(`${ev.name}'s Remnant only answers once you have beaten it three times.`, 4);
         break;
       case 'wildsLocked':
-        hud.hint(`The Shattered Wilds opens from world tier ${['', 'I', 'II', 'III', 'IV', 'V'][ev.tier] || ev.tier}. Raise the world tier at the Waygate.`, 5);
+        hud.hint(`${ev.name || 'The Shattered Wilds'} opens from world tier ${['', 'I', 'II', 'III', 'IV', 'V'][ev.tier] || ev.tier}. Raise the world tier at the Waygate.`, 5);
+        break;
+      case 'mapLocked':
+        hud.hint(`${ev.name}: finish ${ev.quest} first.`, 5);
         break;
       case 'merchantSold':
         sfx.pickup(4);

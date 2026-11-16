@@ -9,7 +9,7 @@ import { ABILITIES, ABILITY_SLOTS, expToNext } from '../sim/defs.js';
 import { RARITIES, itemName } from '../sim/items.js';
 import { AUGMENTS } from '../sim/augments.js';
 
-import { QUESTS, NPCS } from '../sim/story.js';
+import { QUESTS, NPCS, SIGNS } from '../sim/story.js';
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 
@@ -18,6 +18,8 @@ export function goalText(q) {
   const g = q.goal;
   if (g.reach) return `Travel to ${MAPS[g.reach].name}`;
   if (g.read) return `Read ${g.read} signs or notes`;
+  if (g.sign) return `Find and read: ${SIGNS[g.sign].title} (${MAPS[SIGNS[g.sign].map].name})`;
+  if (g.signs) return `Read ${g.signs.length} ${g.what || 'signs'} in ${MAPS[SIGNS[g.signs[0]].map].name}`;
   if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
   if (g.boss) return `Defeat ${ENEMIES[g.boss].name}`;
   const who = g.enemy ? ENEMIES[g.enemy].name + (g.kill > 1 ? 's' : '') : 'enemies';

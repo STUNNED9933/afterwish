@@ -244,6 +244,28 @@ Object.assign(ENEMIES, {
     hp: 60, speed: 4.6, radius: 0.55, height: 2.3, exp: 19, poise: 1, parryStun: 1.5, drop: 0.25, cost: 2, ai: 'ranged', band: [7, 11], atkCd: [0.6, 1.2],
     attacks: [{ name: 'bolt', shape: 'shot', trigger: 12, windup: 0.6, recover: 0.9, dmg: 13, parryable: true, lockAt: 0.08, speed: 19, count: 1, spread: 0 }],
   },
+  // Asterfell (0.39): the Queen's people, held in glass on their happiest day.
+  glassbound: {
+    name: 'Glassbound', model: 'grunt', look: { scale: 1.15, colors: [0xe8c27a, 0x7a4a1c, 0xfff0c0] },
+    hp: 170, speed: 2.9, radius: 0.75, height: 2.0, exp: 24, poise: 2, parryStun: 2.2, drop: 0.35, cost: 2, ai: 'melee', atkCd: [0.7, 1.3],
+    shatter: { r: 2.8, mult: 1.8 }, // bursts into glass a moment after it falls: step out of the circle
+    attacks: [{ name: 'smash', shape: 'arc', trigger: 2.6, range: 3.2, angle: 1.8, windup: 0.8, recover: 1.0, dmg: 22, parryable: true, lockAt: 0.25 }],
+  },
+  courtguard: {
+    name: 'Court Guard', model: 'boss', look: { scale: 0.66, colors: [0xd8b25a, 0xf2ead8, 0x4a3218] },
+    hp: 160, speed: 3.2, radius: 0.85, height: 2.3, exp: 28, poise: 2, parryStun: 2.6, drop: 0.4, cost: 2.5, ai: 'melee', atkCd: [0.7, 1.2],
+    shield: 0.5, // a shield worth half its health takes damage first; a parry shatters it
+    attacks: [
+      { name: 'bash', shape: 'arc', trigger: 2.8, range: 3.2, angle: 1.6, windup: 0.65, recover: 0, dmg: 15, parryable: true, lockAt: 0.22, chain: 'thrust' },
+      { name: 'thrust', shape: 'rect', trigger: 99, length: 5.5, width: 1.4, windup: 0.5, recover: 1.1, dmg: 20, parryable: true, lockAt: 0.2, chargeDur: 0.18 },
+    ],
+  },
+  wishling: {
+    name: 'Wishling', model: 'spitter', look: { scale: 0.62, colors: [0xfff2b0, 0xffc860] },
+    hp: 48, speed: 4.4, radius: 0.45, height: 1.4, exp: 18, poise: 1, parryStun: 1.6, drop: 0.25, cost: 1.5, ai: 'ranged', band: [8, 12], atkCd: [1.2, 2.0],
+    grants: { every: 4, range: 8, time: 4, dmg: 1.3 }, // now and then gives a nearby enemy what it wants: 30% more damage, for a while
+    attacks: [{ name: 'mote', shape: 'shot', trigger: 12, windup: 0.8, recover: 1.2, dmg: 12, parryable: true, lockAt: 0.1, speed: 10, count: 1, spread: 0 }],
+  },
   boss2: {
     name: 'The Mycelord', model: 'boss', look: { scale: 1.1, colors: [0x5a3a6a, 0x9fe07a, 0x1c1424] },
     hp: 1700, speed: 2.9, radius: 1.5, height: 3.7, heavy: true, boss: true, exp: 260, poise: 3, parryStun: 4, drop: 1, cost: 0, ai: 'boss', atkCd: [0.7, 1.3],

@@ -150,6 +150,28 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Act II begins: Asterfell (0.39)
+
+The story goes on after The Unmade (the plan: `docs/design/act-ii.md`).
+
+- **W.** Wren has one more thing to confess: what she buried under the cairn on
+  the frost pass the night she carried you down. Read it.
+- **Under the Sand.** The Queen's city is not gone. **Asterfell** opens on the
+  Waygate once Wren has told you, from world tier II: a sandstone city held up
+  by star-glass that glows gold in the cracks of its streets, houses along two
+  rings of roads, spires of glass, warm amber light and its own music ("The
+  Naming Day"). It is still celebrating.
+- **Tobin's Survey** (from Sister Odile): find his four survey stones in the
+  city and learn what he knew. A banner over the court doors waits for 0.40.
+- **Three new enemies:**
+  - *Glassbound*: slow citizens in glass that shatter a moment after they fall
+    (step out of the circle).
+  - *Court Guards*: shielded; a parry shatters the shield, then a bash and a
+    thrust.
+  - *Wishlings*: small lights that now and then give a nearby enemy what it
+    wants (30% more damage for a few seconds, a gold thread shows who).
+- Quests can now ask for one particular sign, or a set of them.
+
 ### Real weapons (0.38.1)
 
 - **The Warrior's sword, the Rogue's daggers and the Mage's staff are 3D models

@@ -29,6 +29,8 @@ export const GROUND = {
   storm: { a: '#38404c', b: '#20252e', c: '#56606e', top: '#6a7484', crack: ['#8fd8ff', 0.3], grass: ['#3a4448', '#6a7a78'], dry: true, sparse: 0.5, debris: 'rubble', light: 0xc8dcff },
   volcano: { a: '#3a2a26', b: '#1c1210', c: '#4c3630', top: '#5a4038', crack: ['#ff5a14', 2.2], grass: ['#2a1c18', '#4a2a20'], dry: true, sparse: 0.3, debris: 'rubble', light: 0xffa060 },
   astral: { a: '#201e44', b: '#0e0d24', c: '#2e2c5e', top: '#5a5aa8', crack: ['#6aa8ff', 1.0], grass: ['#3a3a7a', '#8fd8ff'], shards: true, sparse: 0.6, debris: 'pebble', light: 0xb8c8ff },
+  // Asterfell (0.39): paved streets of the Queen's city, star-glass glowing gold in the cracks.
+  glass: { a: '#988266', b: '#6a5844', c: '#b49c7c', top: '#c4ae8c', stones: true, crack: ['#ffd27a', 0.8], grass: ['#a08a4a', '#e0c070'], shards: true, sparse: 0.2, debris: 'rubble', light: 0xffd8a0 },
 };
 
 // Each map's mood (0.34.1): bright daylight for the cheerful places, dusk for the uneasy ones,
@@ -37,9 +39,11 @@ export const GROUND = {
 export const MOODS = {
   day: { sky: 1.85, skyTint: 0xd0e2ff, bounce: 0x6a5a3e, sun: 3.5, sunColor: 0xfff2dc, hero: 6, haze: 0xa9bfcc, hazeMix: 0.8, near: 50, far: 140, vignette: 0.14, bloom: 0.3 },
   dusk: { sky: 1.0, skyTint: 0xb4c4ff, bounce: 0x3a2a24, sun: 2.5, sunColor: 0xffd8b0, hero: 34, haze: 0x6a6070, hazeMix: 0.35, near: 40, far: 110, vignette: 0.24, bloom: 0.45 },
+  // Asterfell: warm light through the sand overhead, a city on its happiest day.
+  amber: { sky: 1.2, skyTint: 0xf2e0c8, bounce: 0x5a4632, sun: 2.6, sunColor: 0xffdcaa, hero: 14, haze: 0xb49a7a, hazeMix: 0.55, near: 46, far: 130, vignette: 0.2, bloom: 0.42 },
   night: { sky: 0.75, skyTint: 0x9db4ff, bounce: 0x1a1414, sun: 2.1, sunColor: 0xffe0c0, hero: 70, haze: 0x000000, hazeMix: 0, near: 34, far: 92, vignette: 0.32, bloom: 0.55 },
 };
-export const THEME_MOOD = { town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'dusk', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night' };
+export const THEME_MOOD = { town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'dusk', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night', glass: 'amber' };
 
 // --- Shared GLSL ----------------------------------------------------------------------
 const NOISE_GLSL = /* glsl */ `
@@ -388,6 +392,7 @@ const MOTE = {
   desert: { color: 0xf0d8a0, size: 0.06, rise: 0.1, glow: 0.5 }, fungal: { color: 0xd890ff, size: 0.1, rise: 0.2, glow: 1 },
   storm: { color: 0xa8d8ff, size: 0.07, rise: 0.1, glow: 0.7 }, volcano: { color: 0xff6a20, size: 0.1, rise: 0.9, glow: 1.2 },
   astral: { color: 0x9fd0ff, size: 0.1, rise: 0.25, glow: 1.1 },
+  glass: { color: 0xffe8a8, size: 0.07, rise: 0.05, glow: 1.1 },
 };
 /** Drifting specks around the camera: pollen, embers, snow, spores. Returns { points, update }. */
 export function buildMotes(theme, count) {

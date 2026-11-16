@@ -85,7 +85,16 @@ export const MAPS = {
   // every late region in it, more events, thieves, Storied enemies and merchants. Only by the Waygate.
   wilds: {
     name: 'The Shattered Wilds', theme: 'volcano', radius: 92, level: 90, levelSpan: 9, wilds: true, fromTier: 2,
+    blurb: 'Huge and restless: world events, Wishthieves, Storied enemies and the merchant turn up far more often',
     roster: { wraith: 3, knight: 3, golem: 2, shaman: 2, wolf: 2, scarab: 2, sporecap: 2, imp: 2 }, spawns: 56, trees: 110, rocks: 80,
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  // Act II (0.39): the Queen's city under the Dunes, held up by star-glass. By the Waygate only,
+  // once Wren has told you about it (quest 'w') and from world tier II (so level 100).
+  asterfell: {
+    name: 'Asterfell', theme: 'glass', radius: 62, level: 90, levelSpan: 9, fromTier: 2, unlock: 'w',
+    blurb: "The Queen's city under the Dunes, still celebrating your naming day",
+    roster: { glassbound: 4, courtguard: 3, wishling: 2, knight: 2, wraith: 1 }, spawns: 32, trees: 40, rocks: 30, houses: 22,
     portals: [{ to: 'town', angle: 0 }],
   },
 };
@@ -115,6 +124,18 @@ export function buildMap(id, custom = null) {
   const keepClear = portals.map((g) => ({ x: g.x, z: g.z, r: 6 }));
   const obstacles = [];
 
+  if (def.houses && def.theme !== 'town') {
+    // A buried city (Asterfell): houses along two rings of streets, gaps left for the roads.
+    for (let i = 0; i < def.houses; i++) {
+      const ring = i % 2 ? 0.42 : 0.7;
+      const a = (i / def.houses) * Math.PI * 2 + rng() * 0.18;
+      if (portals.some((g) => Math.abs(dAtan2(dSin(a - g.angle), dCos(a - g.angle))) < 0.3)) continue;
+      const x = dCos(a) * R * ring, z = dSin(a) * R * ring;
+      if (Object.values(SIGNS).some((sg) => sg.map === id && Array.isArray(sg.spot) && dHypot(sg.spot[0] - x, sg.spot[1] - z) < 7)) continue; // not on a sign
+      obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 2.4 + rng() * 1.2, hd: 2.0 + rng(), rot: a + Math.PI / 2, height: 3.2 + rng() * 2.4, r: 3.6 });
+      keepClear.push({ x, z, r: 4.5 });
+    }
+  }
   if (def.theme === 'town') {
     keepClear.push({ x: 0, z: 0, r: 9 });
     for (let i = 0; i < def.houses; i++) {
@@ -134,6 +155,18 @@ export function buildMap(id, custom = null) {
     obstacles.push({ kind: 'board', shape: 'circle', id: 'bounties', name: 'Bounty Board', x: 4.6, z: 0.4, r: 0.6, pickR: 1.3 });
   }
   // People to talk to (Haven) and signs to read (two on every map). See sim/story.js.
+  if (def.houses && def.theme !== 'town') {
+    // A buried city (Asterfell): houses along two rings of streets, gaps left for the roads.
+    for (let i = 0; i < def.houses; i++) {
+      const ring = i % 2 ? 0.42 : 0.7;
+      const a = (i / def.houses) * Math.PI * 2 + rng() * 0.18;
+      if (portals.some((g) => Math.abs(dAtan2(dSin(a - g.angle), dCos(a - g.angle))) < 0.3)) continue;
+      const x = dCos(a) * R * ring, z = dSin(a) * R * ring;
+      if (Object.values(SIGNS).some((sg) => sg.map === id && Array.isArray(sg.spot) && dHypot(sg.spot[0] - x, sg.spot[1] - z) < 7)) continue; // not on a sign
+      obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 2.4 + rng() * 1.2, hd: 2.0 + rng(), rot: a + Math.PI / 2, height: 3.2 + rng() * 2.4, r: 3.6 });
+      keepClear.push({ x, z, r: 4.5 });
+    }
+  }
   if (def.theme === 'town') {
     for (const nid in NPCS) obstacles.push({ kind: 'npc', shape: 'circle', id: nid, name: NPCS[nid].name, x: NPCS[nid].at[0], z: NPCS[nid].at[1], r: 0.55 });
   }

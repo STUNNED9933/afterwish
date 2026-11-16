@@ -98,6 +98,14 @@ export const SIGNS = {
   sanctum1: { map: 'sanctum', spot: 'in', title: 'The cradle', text: 'An empty cradle of star-glass, still warm.\n\nA name is set into the headboard. The letters will not hold still when you look at them, until you notice that they are yours.' },
   sanctum2: { map: 'sanctum', spot: 'out', title: 'The wish, written in light', text: 'LET NOTHING I LOVE BE TAKEN FROM ME.\n\nBelow it, newer, unsteady:\n\nI cannot stop loving them. I have tried. Forgive me. Come home.' },
   // The Shattered Wilds (0.33): what the wish broke, after.
+  // Act II (0.39): what Wren buried, and the city under the sand.
+  frost3: { map: 'frost', spot: [-29.4, 20.2], title: 'Under the cairn, a letter in oilcloth', text: 'Wren. If the child lives, the wish lives: it holds on to what she loved most.\n\nIt cannot be broken, but it can be let go, at the well the star made under Asterfell. It needs the child to want nothing at all. I cannot ask that of a baby. Perhaps one day someone can ask it of them grown.\n\nBurn this if you love them.\n\n— Tobin' },
+  aster1: { map: 'asterfell', spot: 'in', title: 'The city gate', text: "ASTERFELL. The Queen's city.\n\nCut underneath, fresh as if it were yesterday: POPULATION: ALL OF IT, STILL." },
+  aster2: { map: 'asterfell', spot: [34, 10], title: "Tobin's survey stone, I", text: 'The glass that holds up these streets was poured in the moment the star struck. Nothing here has aged a day since. The bread in the ovens is still warm.\n\n— T.' },
+  aster3: { map: 'asterfell', spot: [-12, 33], title: "Tobin's survey stone, II", text: 'A wish needs something to hold on to. Hers holds on to the child. For as long as the child lives and is loved, the wish holds.\n\n— T.' },
+  aster4: { map: 'asterfell', spot: [-34, -12], title: "Tobin's survey stone, III", text: 'Fire, iron, prayer, and at last the rot from my own garden: none of it breaks the wish. But at the well where the star came down, the one it holds on to can let it go.\n\n— T.' },
+  aster5: { map: 'asterfell', spot: [8, -34], title: "Tobin's survey stone, IV", text: 'Letting go means wanting nothing. Not to live, not to be saved, not even for the rest of them to be freed. I do not know that anyone could do it.\n\nI hope I am wrong about what it costs.\n\n— T.' },
+  aster6: { map: 'asterfell', spot: 'out', title: 'A banner over the court doors', text: "BLESSED BE THE QUEEN'S CHILD ON THE DAY OF THEIR NAMING.\n\nThe name stitched below it is yours. The thread is still bright." },
   wilds1: { map: 'wilds', spot: 'in', title: 'A map, drawn twice', text: 'Two maps of the same road on one sheet, the second drawn over the first.\n\nOn the first, the Greenwood ends at the Fen, the Fen at the Ridge, the Ridge at the Keep. On the second, nothing ends anywhere. Every road runs into this place.\n\nSomeone has written across both: SHE WANTED THEM ALL IN ONE PLACE. SO NOBODY COULD LEAVE.' },
   wilds2: { map: 'wilds', spot: 'out', title: 'Scratched into a shard of sky', text: 'To whoever comes next. I made it further than the others. It just keeps going.\n\nI think the wish is still growing. I think it grows a little every time somebody wants something here.\n\nSo try not to want anything. Not even to go home.' },
 };
@@ -112,6 +120,7 @@ export const SIGN_IDS = Object.keys(SIGNS);
 //   goal    { kill: n, enemy?, map?, boss? }  kill n enemies (of a type / on a map / a boss)
 //           { reach: mapId }                  walk into a map
 //           { read: n }                       have read n signs in total
+//           { sign: id } / { signs: [ids] }   read that sign / all of those signs
 //           { wave: n }                       clear wave n in the Echo Ring (the arena)
 //   reward  exp:   fraction of the level's EXP bar
 //           gold, scrap: base amounts, scaled up by the quest's level
@@ -179,6 +188,26 @@ export const QUESTS = {
     offer: 'She asks every knight who reaches her whether the child is safe. Go up and let her see that you are. Then let her sleep.',
     done: 'Two minutes of quiet on the mountain. It is not nothing. It is all any of us have managed in nineteen years.',
     reward: { exp: 0, gold: 900, item: 4, keys: 1 },
+  },
+
+  // --- Act II: The Asker (0.39; see docs/design/act-ii.md) ----------------------
+  w: {
+    giver: 'wren', level: 100, after: 'unmade', name: 'W.', goal: { sign: 'frost3' },
+    offer: 'I told you there is no ending. That was a lie, and I have told it for nineteen years.\n\nThere is something under the cairn on the pass, where I stopped following her. I put it there the night I carried you down. Go and read it. Then come back and be angry with me.',
+    done: 'I did not burn it. I could not even do that. I buried it, and I raised you, and I told myself there was no ending, because the ending was you.\n\nThe Waygate will find the city now that you know it is there. I will not stop you. I could never stop any of you.',
+    reward: { exp: 0, gold: 1500, item: 5, keys: 2, tickets: 2 },
+  },
+  sand: {
+    giver: 'wren', level: 100, after: 'w', name: 'Under the Sand', goal: { reach: 'asterfell' },
+    offer: 'Asterfell is not gone. It is under the Dunes, held up by the glass the star made, and everyone who was in it is still in it. The Waygate will take you there from world tier II.\n\nGo carefully. They are celebrating.',
+    done: 'Banners. Of course there are banners. It was your naming day, child. The whole city came out for it, and then the star came down, and the day never ended.',
+    reward: { exp: 0, gold: 1200, item: 5, tickets: 2 },
+  },
+  survey: {
+    giver: 'odile', level: 100, after: 'sand', name: "Tobin's Survey", goal: { signs: ['aster2', 'aster3', 'aster4', 'aster5'], what: "of Tobin's survey stones" },
+    offer: 'Wren told me what was under the cairn. So he found it after all.\n\nTobin surveyed everything. He would have surveyed the end of the world. Find his stones in Asterfell, all four. I need to know what he knew.',
+    done: 'He knew. All those years in the garden he knew, and he kept looking for another way, so that no one would ever have to ask it of you.\n\nThe court is at the heart of the city. Whatever keeps that day from ending, it starts there.',
+    reward: { exp: 0, gold: 1400, item: 5, keys: 2 },
   },
 
   // --- Bram the smith ---------------------------------------------------------

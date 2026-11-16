@@ -636,16 +636,59 @@ import { makeRng } from '../src/sim/rng.js';
     check(`balance: a level ${level} warrior can farm ${m.name}`, o.kills >= 8 && o.downs <= 1, `${o.kills} kills, knocked out ${o.downs}x, lowest health ${Math.round(o.minHp * 100)}%`);
   }
 }
+// --- Act II (0.39): Wren's letter, Asterfell, Tobin's survey ---------------------
+{
+  const { SIGNS } = await import('../src/sim/story.js');
+  const step = (w, n = 1) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
+  const w = new World({ seed: 21, cls: 'warrior', mode: 'explore', save: { v: 2, level: 100, tierMax: 2, worldTier: 2, quests: { unmade: { s: 'done', n: 1 } }, visited: ['town', 'frost'] } });
+  const p = w.player;
+  check('Act II: after Let Her Rest, Wren offers W.', w.questOpen('w') && !w.questOpen('sand'));
+  w.command({ type: 'travel', to: 'asterfell' }); step(w);
+  check('Act II: Asterfell stays shut until Wren has told you about it', w.map.id === 'town' && w.events.some((e) => e.type === 'mapLocked'));
+  w.command({ type: 'acceptQuest', id: 'w' }); step(w);
+  w.readSign('frost3');
+  check('Act II: reading the letter under the cairn finishes W.', w.questState('w') === 'ready');
+  p.quests.w.s = 'done';
+  w.command({ type: 'acceptQuest', id: 'sand' }); step(w);
+  w.command({ type: 'travel', to: 'asterfell' }); step(w, 2);
+  check('Act II: then the Waygate takes you to Asterfell (world tier II) and Under the Sand is done', w.map.id === 'asterfell' && w.questState('sand') === 'ready');
+  check('Act II: Asterfell is a city: houses, four survey stones, its own enemies', w.map.obstacles.filter((o) => o.kind === 'house').length >= 12 && ['aster2', 'aster3', 'aster4', 'aster5'].every((id) => SIGNS[id].map === 'asterfell') && w.enemies.some((e) => ['glassbound', 'courtguard', 'wishling'].includes(e.type)));
+  p.quests.sand.s = 'done';
+  w.command({ type: 'acceptQuest', id: 'survey' }); step(w);
+  for (const id of ['aster2', 'aster3', 'aster4']) w.readSign(id);
+  const three = w.questState('survey') === 'active' && p.quests.survey.n === 3;
+  w.readSign('aster5');
+  check("Act II: Tobin's Survey counts his four stones, and only those", three && w.questState('survey') === 'ready', JSON.stringify(p.quests.survey));
+  // The new enemies
+  const guard = w.enemies.find((e) => e.type === 'courtguard');
+  check('Act II: Court Guards carry a shield worth half their health', !guard || Math.abs(guard.shield - Math.round(guard.maxHp * 0.5)) <= 1, guard ? `${guard.shield} of ${guard.maxHp}` : 'none spawned');
+  const glass = w.enemies.find((e) => e.type === 'glassbound');
+  if (glass) {
+    const n0 = w.falls.length;
+    w.killEnemy(glass, 'q');
+    check('Act II: a Glassbound shatters a moment after it falls (a circle to step out of)', w.falls.length === n0 + 1);
+  }
+  const wl = w.enemies.find((e) => e.type === 'wishling' && !e.dead);
+  if (wl) {
+    const other = w.enemies.find((e) => !e.dead && e !== wl && !e.def.grants);
+    other.x = wl.x + 2; other.z = wl.z; other.state = 'idle'; wl.state = 'idle';
+    const before = other.dmgMult;
+    let got = false;
+    for (let i = 0; i < Math.round(5 / CONFIG.TICK) && !got; i++) { step(w); got = w.events.some((e) => e.type === 'wished'); }
+    check('Act II: a Wishling now and then gives a nearby enemy 30% more damage, for a while', got && w.enemies.some((e) => e.wishedT > 0 && Math.abs(e.dmgMult / (e.wishedMult || 1) - (e === other ? before : e.dmgMult / e.wishedMult)) < 1e-9));
+  }
+}
+
 // --- Story: quests, signs, boss rewards -----------------------------------------
 {
   const { QUESTS, QUEST_IDS, SIGNS, SIGN_IDS, NPCS, BOSS_LOOT } = await import('../src/sim/story.js');
   const { buildMap, MAP_IDS } = await import('../src/sim/maps.js');
   const step = (w, n = 1) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
   // The data hangs together.
-  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (g.kill || g.reach || g.read || g.wave); }), QUEST_IDS.length + ' quests');
+  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs); }), QUEST_IDS.length + ' quests');
   check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy]; }));
   check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy) return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
-  check('story: two signs on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
+  check('story: every sign is placed, at least two on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === SIGN_IDS.filter((sid) => SIGNS[sid].map === id).length && signs.length >= (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
   check('story: four people live in Haven', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;

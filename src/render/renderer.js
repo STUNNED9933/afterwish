@@ -420,6 +420,49 @@ export class Renderer {
             person.rig = rig;
           });
         }
+      } else if (o.kind === 'decor') {
+        // Haven grows (0.47): what each finished side story leaves behind
+        const wood = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.9 });
+        const d = new THREE.Group();
+        d.position.set(o.x, 0, o.z);
+        if (o.what === 'lantern') {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 2.4, 6), wood);
+          post.position.y = 1.2;
+          const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.4, 0.32), new THREE.MeshStandardMaterial({ color: 0xffd08a, emissive: 0xffa040, emissiveIntensity: 1.6 }));
+          lamp.position.y = 2.45;
+          const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.04, 6, 12), new THREE.MeshStandardMaterial({ color: 0xc0302a }));
+          scarf.position.y = 1.9;
+          scarf.rotation.x = Math.PI / 2;
+          const light = new THREE.PointLight(0xffb060, 1.4, 7);
+          light.position.y = 2.4;
+          d.add(post, lamp, scarf, light);
+        } else if (o.what === 'banner') {
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 3.4, 6), wood);
+          pole.position.y = 1.7;
+          const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.5), new THREE.MeshStandardMaterial({ color: 0x2a4aa8, side: THREE.DoubleSide, roughness: 0.8 }));
+          cloth.position.set(0.48, 2.5, 0);
+          const trim = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.12), new THREE.MeshStandardMaterial({ color: 0xd8c070, side: THREE.DoubleSide }));
+          trim.position.set(0.48, 1.8, 0.01);
+          d.add(pole, cloth, trim);
+        } else if (o.what === 'stall') {
+          const top = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 1.0), wood);
+          top.position.y = 0.9;
+          for (const [x, z] of [[-0.9, -0.42], [0.9, -0.42], [-0.9, 0.42], [0.9, 0.42]]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 0.08), wood);
+            leg.position.set(x, 0.45, z);
+            d.add(leg);
+          }
+          const canopy = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 1.3), new THREE.MeshStandardMaterial({ color: 0x5a8a5a, roughness: 0.9 }));
+          canopy.position.y = 2.1;
+          canopy.rotation.x = 0.18;
+          for (let i = 0; i < 6; i++) {
+            const herb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), new THREE.MeshStandardMaterial({ color: [0x6a9a4a, 0xb98aff, 0xd8c070][i % 3] }));
+            herb.position.set(-0.75 + i * 0.3, 1.02, (i % 2) * 0.2 - 0.1);
+            d.add(herb);
+          }
+          d.add(top, canopy);
+        }
+        g.add(d);
       } else if (o.kind === 'delve') {
         // The palace stair (0.46): a dark doorway of starglass going down
         const door = buildAltar();
@@ -1424,7 +1467,7 @@ export class Renderer {
   /** Weapon glows (0.31): the weapon shines in the glow's colour, with a faint ring at the feet. */
   applyGlow(model, id) {
     const steel = model.parts && model.parts.steel;
-    const g = id && GLOWS[id];
+    const g = id && (GLOWS[id] || (id === 'edricblue' ? { color: 0x4a7aff } : null)); // Edric's Sword keeps his blue (0.47)
     if (steel) {
       steel.emissive.set(g ? g.color : 0x7fd8ff);
       steel.emissiveIntensity = g ? 1.3 : 0.25;
@@ -1508,7 +1551,8 @@ export class Renderer {
   syncHero(world, alpha, dt) {
     const p = world.player;
     const h = this.hero;
-    if ((p.glow || null) !== (h.glowId ?? null)) this.applyGlow(h, p.glow);
+    const wantGlow = p.glow || (p.equipped && p.equipped.weapon && p.equipped.weapon.effect === 'edric' ? 'edricblue' : null);
+    if ((wantGlow || null) !== (h.glowId ?? null)) this.applyGlow(h, wantGlow);
     const an = this.heroAnim;
     const g = h.group;
     const attackStart = an.swing === 0; // an attack or cast began since the last frame

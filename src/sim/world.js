@@ -75,7 +75,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -393,6 +393,7 @@ export class World {
       endings: Object.assign({}, save?.endings), // (0.45) { self: times you unwished yourself, place: times you took her place }
       tomasMet: !!save?.tomasMet, // Pip's father came home and you saw him
       delveBest: save?.delveBest ?? 0, // the highest tier of delve cleared (0.46)
+      choices: Object.assign({}, save?.choices), // side stories (0.47): { scarf: 'rest' | 'walk' }, never undone
       acctRebirths: save?.acctRebirths ?? 0, // rebirths on every hero of the account (main.js keeps it current)
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
@@ -538,6 +539,7 @@ export class World {
       endings: p.endings,
       tomasMet: p.tomasMet,
       delveBest: p.delveBest,
+      choices: p.choices,
       wishStats: p.wishStats,
       streak: p.streak,
       dust: p.dust,
@@ -720,6 +722,12 @@ export class World {
           break;
         case 'enterDelve':
           this.enterDelve(c.tier);
+          break;
+        case 'scarfChoice':
+          this.scarfChoice(c.choice);
+          break;
+        case 'meetOdile':
+          this.meetOdile();
           break;
         case 'metTomas':
           this.player.tomasMet = true;
@@ -2095,6 +2103,7 @@ export class World {
       this.recalcStats();
       this.emit('bloodied', { on: bloodied, x: p.x, z: p.z });
     }
+    if (p.edricT > 0) p.edricT -= dt;
     if (p.slipT > 0) {
       p.slipT -= dt;
       if (p.slipT <= 0) {
@@ -2123,6 +2132,7 @@ export class World {
     if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
     if (p.chillT > 0) p.chillT -= dt;
     if (this.delve && this.map.id === 'delve' && this.cur === this.heroes[0]) this.stepDelve(dt);
+    if (this.map && this.map.id === 'keep' && !this.edricHere && this.mode === 'explore' && this.cur === this.heroes[0] && this.questState('edric') === 'active') this.spawnEdric();
     if (this.rift && this.map.id === 'rift' && (this.rift.state === 'run' || this.rift.state === 'guardian') && this.cur === this.heroes[0]) {
       // The rift's clock (counted once, on the party leader's step).
       this.rift.timeLeft -= dt;
@@ -2451,8 +2461,16 @@ export class World {
         p.parryHit = true;
         p.parryT = Math.max(p.parryT, 0.15); // also catches the rest of a multi-hit
         this.stats.parries++;
+        if (m.bluetrim) this.healPlayer(p.stats.maxHp * 0.04, true); // Edric's Colours (0.47)
         if (perfect) {
           this.stats.perfects++;
+          if (m.edric) {
+            // Edric's Sword (0.47): blue trim; the parried enemy is struck back, and you hit harder for a while
+            p.edricStacks = Math.min(3, (p.edricT > 0 ? p.edricStacks || 0 : 0) + 1);
+            p.edricT = 8;
+            const who = src && !src.dead ? src : proj && proj.srcId != null ? this.enemyById(proj.srcId) : null;
+            if (who && !who.dead) this.hitEnemy(who, p.stats.ad * 1.5, { source: 'oath', canCrit: true });
+          }
           this.healPlayer(p.stats.maxHp * (CONFIG.PERFECT_HEAL + m.parryHeal), true);
           if (m.allyParryHeal > 0 && this.party) {
             // Bastion: a perfect parry also heals friends nearby.
@@ -2778,7 +2796,7 @@ export class World {
 
   /** How many of the quest's goal are needed, and how to say what it is. */
   questNeed(q) {
-    return q.goal.kill || q.goal.read || (q.goal.signs && q.goal.signs.length) || 1;
+    return q.goal.kill || q.goal.read || q.goal.stories || (q.goal.signs && q.goal.signs.length) || 1;
   }
 
   /** Signs read that count for a quest goal ({ read: n, map? } or { sign: id }). */
@@ -2796,6 +2814,7 @@ export class World {
     const st = (p.quests[id] = { s: 'active', n: 0 });
     if (q.give && q.give.glass) this.giveMisc('glass', q.give.glass); // Wren's own Unwishing Glass (0.45)
     if (q.goal.ending && (p.endings.self || p.endings.place)) st.n = 1;
+    if (q.goal.stories) this.sideStoryCount();
     // Some goals may already be met: a map you have been to, signs you have read.
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
     if (q.goal.read || q.goal.sign || q.goal.signs) st.n = Math.min(this.questNeed(q), this.signsFor(q.goal));
@@ -2815,7 +2834,7 @@ export class World {
       const g = q.goal;
       let hit = false;
       if (kind === 'kill' && g.kill) {
-        hit = (!g.enemy || g.enemy === data.type) && (!g.boss || g.boss === data.type) && (!g.map || (this.map && this.map.id === g.map));
+        hit = (!g.enemy || g.enemy === data.type || g.enemy === data.named) && (!g.boss || g.boss === data.type) && (!g.map || (this.map && this.map.id === g.map));
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
         if (hit) st.n++;
       } else if (kind === 'reach' && g.reach === data) {
@@ -2871,9 +2890,29 @@ export class World {
       item = rollItem(this.rng, ilvl, { minRarity: r.item, weights: RARITY_ONLY(r.item), slot: r.slot, cls: this.cls });
       this.giveItem(item);
     }
+    if (q.reward.unique) {
+      // Edric's Colours: his sword for a warrior, his colours (a ring) for anyone else
+      const key = q.reward.unique[this.cls] || q.reward.unique.other;
+      item = rollUnique(this.rng, Math.max(q.level, Math.min(p.level, q.level + 12)), key, this.cls);
+      this.giveItem(item);
+    }
+    if (q.reward.glow) this.unlockGlow(q.reward.glow);
+    if (q.side) this.sideStoryCount();
     this.questStamp++;
-    this.emit('quest', { id, what: 'claimed', name: q.name, reward: r, item });
+    this.emit('quest', { id, what: 'claimed', name: q.name, reward: r, item, alt: id === 'scarf2' && p.choices && p.choices.scarf === 'walk' });
     this.gainExp(r.exp);
+  }
+
+  /** Haven Grows (0.47): counts the side stories finished. */
+  sideStoryCount() {
+    const p = this.player;
+    const st = p.quests.havengrows;
+    if (!st || st.s !== 'active') return;
+    st.n = ['scarf2', 'edric', 'tobin'].filter((id) => this.questState(id) === 'done').length;
+    if (st.n >= 3) {
+      st.s = 'ready';
+      this.emit('quest', { id: 'havengrows', what: 'ready', name: QUESTS.havengrows.name });
+    }
   }
 
   /** Hand the hero an item directly: wear it if the slot is empty, else bag it, else drop it at their feet. */
@@ -4119,9 +4158,79 @@ export class World {
   /** Is this person in Haven right now? (Tomas only after the Unwish, until you have seen him.) */
   npcHere(id) {
     const n = NPCS[id];
-    if (!n || !n.onlyAfter) return true;
+    if (!n) return true;
     const p = this.heroes[0].player;
-    return this.afterWish(p) && !p.tomasMet;
+    const tobinDone = this.as(this.heroes[0], () => this.questState('tobin') === 'done');
+    if (id === 'odile') return !tobinDone; // she stays in the garden (0.47)
+    if (n.onlyFlag === 'tobin') return tobinDone; // Lark has her stall
+    if (n.onlyAfter) return this.afterWish(p) && !p.tomasMet && !(p.choices && p.choices.scarf === 'rest'); // laid to rest, he does not come home
+    return true;
+  }
+
+  /**
+   * Side stories (0.47): who stands where outside Haven, and what Haven has grown. Called as a map loads.
+   * Tomas on the Greenwood road while Red Scarf, Part Two is open; Odile at the garden's heart once she
+   * has gone to Tobin; a lantern, Edric's banner and a herb stall in Haven as the stories end.
+   */
+  sideStoryProps(map) {
+    const h0 = this.heroes[0];
+    const st = (id) => this.as(h0, () => this.questState(id));
+    const p = h0.player;
+    if (map.id === 'greenwood' && st('scarf2') === 'active' && !(p.choices && p.choices.scarf)) {
+      const g = map.portals[0];
+      map.obstacles.push({ kind: 'npc', shape: 'circle', id: 'tomashusk', name: 'Tomas', x: g.x * 0.55 + 3, z: g.z * 0.55, r: 0.6 });
+    }
+    if (map.id === 'hollow' && (st('tobin') === 'active' || st('tobin') === 'ready' || st('tobin') === 'done')) {
+      const sp = map.spawns.find((s) => s.type === 'boss2');
+      if (sp) map.obstacles.push({ kind: 'npc', shape: 'circle', id: 'odile', name: 'Sister Odile', x: sp.x + 3.5, z: sp.z + 2, r: 0.55 });
+    }
+    if (map.id === 'town') {
+      if (st('scarf2') === 'done') map.obstacles.push({ kind: 'decor', what: 'lantern', shape: 'circle', id: 'lantern', x: 3.4, z: 6.6, r: 0.3 });
+      if (st('edric') === 'done') map.obstacles.push({ kind: 'decor', what: 'banner', shape: 'circle', id: 'banner', x: NPCS.bram.at[0] + 1.8, z: NPCS.bram.at[1] - 1.6, r: 0.3 });
+      if (st('tobin') === 'done') map.obstacles.push({ kind: 'decor', what: 'stall', shape: 'circle', id: 'stall', x: NPCS.odile.at[0] - 1.6, z: NPCS.odile.at[1] - 0.6, r: 1.0 });
+    }
+  }
+
+  /** Red Scarf, Part Two: untie his scarf and let him lie down, or let him keep walking. For good. */
+  scarfChoice(choice) {
+    const p = this.player;
+    if (choice !== 'rest' && choice !== 'walk') return;
+    if (this.questState('scarf2') !== 'active' || (p.choices && p.choices.scarf) || !this.map || this.map.id !== 'greenwood') return;
+    const t = this.obstacles.find((o) => o.id === 'tomashusk');
+    if (!t || dist(p.x, p.z, t.x, t.z) > 5) return;
+    p.choices = Object.assign({}, p.choices, { scarf: choice });
+    p.quests.scarf2.n = 1;
+    p.quests.scarf2.s = 'ready';
+    if (choice === 'rest') this.giveMisc('scarf', 1);
+    this.map.obstacles = this.obstacles = this.obstacles.filter((o) => o.id !== 'tomashusk');
+    this.questStamp++;
+    this.emit('npcGone', { id: 'tomashusk', choice, x: t.x, z: t.z });
+  }
+
+  /** An Ending for Tobin: you reach Odile at the heart of the garden. */
+  meetOdile() {
+    const p = this.player;
+    if (this.questState('tobin') !== 'active' || !this.map || this.map.id !== 'hollow') return;
+    const o = this.obstacles.find((x) => x.id === 'odile');
+    if (!o || dist(p.x, p.z, o.x, o.z) > 5) return;
+    p.quests.tobin.n = 1;
+    p.quests.tobin.s = 'ready';
+    this.questStamp++;
+    this.emit('quest', { id: 'tobin', what: 'ready', name: QUESTS.tobin.name });
+  }
+
+  /** The Keep's Storied knight with blue trim (Edric's Colours), once per visit while the quest is open. */
+  spawnEdric() {
+    this.edricHere = true;
+    const sp = this.map.spawns.find((s) => s.type === 'knight') || this.map.spawns[0];
+    if (!sp) return;
+    const e = this.spawnEnemy('knight', { x: sp.x, z: sp.z, level: this.map.levelMax || this.map.level });
+    e.x = e.px = sp.x;
+    e.z = e.pz = sp.z;
+    this.makeRare(e, () => this.rng());
+    e.rare = 'Edric of the Blue Trim';
+    e.named = 'edric';
+    e.home = { x: sp.x, z: sp.z };
   }
 
   /**
@@ -5179,6 +5288,8 @@ export class World {
     const p = this.player;
     let dmg = base;
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
+    if (p.edricT > 0) dmg *= 1 + 0.12 * (p.edricStacks || 0); // Edric's Sword (0.47)
+    if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.8) dmg *= 1.15; // Edric's Colours
     if (opts.basic && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0)) {
       // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
       dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
@@ -6049,6 +6160,8 @@ inTown() {
     const p = this.player;
     this.radius = map.radius;
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id)); // (0.45) Tomas, after
+    if (this.mode === 'explore' && !this.trial) this.sideStoryProps(map);
+    this.edricHere = false;
     this.obstacles = map.obstacles;
     this.enemies = [];
     this.projectiles = [];
@@ -6136,6 +6249,7 @@ inTown() {
     const map = (this.map = buildMap(id));
     this.radius = map.radius;
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
+    this.sideStoryProps(map);
     this.obstacles = map.obstacles;
     this.enemies = [];
     this.projectiles = [];

@@ -745,11 +745,11 @@ import { makeRng } from '../src/sim/rng.js';
   const { buildMap, MAP_IDS } = await import('../src/sim/maps.js');
   const step = (w, n = 1) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
   // The data hangs together.
-  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs || g.ending); }), QUEST_IDS.length + ' quests');
-  check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy]; }));
-  check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy) return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
+  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy] || g.enemy === 'edric') && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs || g.ending || g.choose || g.meet || g.stories); }), QUEST_IDS.length + ' quests');
+  check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy] || (g.enemy === 'edric' && MAPS[g.map].roster.knight); }));
+  check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy || g.enemy === 'edric') return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
   check('story: every sign is placed, at least two on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === SIGN_IDS.filter((sid) => SIGNS[sid].map === id).length && signs.length >= (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
-  check('story: four people live in Haven (and Tomas, once, after the Unwish)', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 5 && new World({ seed: 1, mode: 'explore' }).obstacles.filter((o) => o.kind === 'npc').length === 4);
+  check('story: four people live in Haven (and Tomas, once, after the Unwish)', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 6 && new World({ seed: 1, mode: 'explore' }).obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;
   check('quests: a new hero has work waiting with Elder Wren and nothing from the others yet at their level', w.npcMarker('wren') === 'available' && w.questOpen('road') && !w.questOpen('husks') && !w.questOpen('gate'));
@@ -2631,6 +2631,52 @@ import { makeRng } from '../src/sim/rng.js';
       const motes = w.projectiles.filter((pr) => pr.owner === 'enemy' && pr.seek > 0);
       check('Lullaby: ten slow motes all around her, that lean toward you', motes.length === 10);
     }
+  }
+  // Side stories (0.47)
+  {
+    const save = geared('warrior', 80, 4);
+    Object.assign(save, { quests: { scarf: { s: 'done', n: 8 }, knights: { s: 'done', n: 12 } } });
+    const w = new World({ seed: 41, cls: 'warrior', mode: 'explore', save });
+    const p = w.player;
+    for (const id of ['scarf2', 'edric', 'tobin', 'havengrows']) { w.command({ type: 'acceptQuest', id }); w.runCommands(); }
+    check('Side stories: Pip, Bram, Odile and Wren each have one', ['scarf2', 'edric', 'tobin', 'havengrows'].every((id) => w.questState(id) === 'active'));
+    // Red Scarf, Part Two
+    w.loadMap('greenwood', 'town');
+    const t = w.obstacles.find((o) => o.id === 'tomashusk');
+    check('Red Scarf: Tomas walks the Greenwood road', !!t);
+    p.x = p.px = t.x + 1; p.z = p.pz = t.z;
+    w.command({ type: 'scarfChoice', choice: 'rest' }); w.runCommands();
+    check('Red Scarf: untie it, and he lies down; the scarf is yours; it cannot be taken back', p.choices.scarf === 'rest' && p.misc.scarf === 1 && w.questState('scarf2') === 'ready' && !w.obstacles.some((o) => o.id === 'tomashusk'));
+    w.command({ type: 'scarfChoice', choice: 'walk' }); w.runCommands();
+    check('...for good', p.choices.scarf === 'rest');
+    w.command({ type: 'claimQuest', id: 'scarf2' }); w.runCommands();
+    // Edric's Colours
+    w.loadMap('keep', 'ridge');
+    for (let i = 0; i < 3; i++) w.step(CONFIG.TICK);
+    const ed = w.enemies.find((e) => e.named === 'edric');
+    check("Edric's Colours: Edric of the Blue Trim stands his watch in the Keep", !!ed && ed.rare === 'Edric of the Blue Trim');
+    w.killEnemy(ed, 'test');
+    check('...and falls', w.questState('edric') === 'ready');
+    w.command({ type: 'claimQuest', id: 'edric' }); w.runCommands();
+    const blade = [p.equipped.weapon, ...p.bag].find((it) => it && it.effect === 'edric');
+    check("Edric's Colours: a warrior gets his sword", !!blade);
+    // An Ending for Tobin
+    w.loadMap('hollow', 'dunes');
+    const od = w.obstacles.find((o) => o.id === 'odile');
+    check('An Ending for Tobin: Odile waits at the heart of the garden', !!od);
+    p.x = p.px = od.x + 1; p.z = p.pz = od.z;
+    w.command({ type: 'meetOdile' }); w.runCommands();
+    w.command({ type: 'claimQuest', id: 'tobin' }); w.runCommands();
+    check('An Ending for Tobin: she stays; a Gloomcap glow', w.questState('tobin') === 'done' && p.glows.includes('gloomcap'));
+    w.loadMap('town');
+    const ids = w.obstacles.filter((o) => o.kind === 'npc').map((o) => o.id);
+    check('Haven: Lark has Odile\'s stall, and Odile is gone', ids.includes('lark') && !ids.includes('odile'));
+    check('Haven Grows: a lantern, a banner and a stall', ['lantern', 'banner', 'stall'].every((d) => w.obstacles.some((o) => o.kind === 'decor' && o.what === d)));
+    check('Haven Grows: Wren sees all three', w.questState('havengrows') === 'ready');
+    w.loadMap('starwell', 'asterfell');
+    p.endings = { self: 1 };
+    w.loadMap('town');
+    check('After the Unwish: laid to rest, Tomas does not come home', !w.obstacles.some((o) => o.id === 'tomas'));
   }
   // Asterfell delves (0.46)
   {

@@ -124,6 +124,19 @@ export const EFFECTS = {
     itemName: 'The Unwished Crown',
     desc: 'Doom takes half as much from you. Each Doom aimed at you that you avoid makes you deal 20% more damage for 5 seconds.',
   },
+  // Edric's Colours (0.47): the reward from Bram, never a drop. The blade for a warrior, the ring for anyone else.
+  edric: {
+    slot: 'weapon', unique: 'quest',
+    name: 'Blue Trim',
+    itemName: "Edric's Sword",
+    desc: 'Bram made it; Edric kept it. Every perfect parry adds 12% damage for 8 seconds (up to 3 times), and strikes the enemy you parried for 150% attack damage.',
+  },
+  bluetrim: {
+    slot: 'ring', unique: 'quest',
+    name: 'Keep the Gate',
+    itemName: "Edric's Colours",
+    desc: 'A ring of blue cloth and steel. While above 80% health you deal 15% more damage, and every parry heals you for 4% of your health.',
+  },
   timekeeper: {
     slot: 'ring',
     name: 'Timekeeper',
@@ -392,6 +405,7 @@ export function setCounts(equipped) {
 export const MISC = {
   glass: { name: 'Unwishing Glass', desc: 'Takes back every Wish point you have spent, to spend again (on the Wishborne panel, T).', color: '#c9a6ff' },
   fragment: { name: 'Immortal Fragment', desc: 'Gather enough and craft an Immortal of your choice of slot (gear screen, from level 70).', color: '#ffd24a' },
+  scarf: { name: 'Red Scarf', desc: "Knitted by Pip's mother, twice round the neck. A keepsake (Red Scarf, Part Two).", color: '#d0402a' },
   sigil: { name: 'Remnant Sigil', desc: "Press it into a boss's altar (where it fights) to call up its Remnant at once, if you have beaten that boss three times.", color: '#a64bff' },
 };
 export const MISC_IDS = Object.keys(MISC);

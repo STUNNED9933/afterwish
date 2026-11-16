@@ -47,6 +47,8 @@ export const PEOPLE = {
   bram: { model: 'n_bram', height: 1.95 },
   odile: { model: 'n_odile', height: 1.75 },
   pip: { model: 'n_pip', height: 1.25 },
+  tomashusk: { model: 'e_husk', height: 1.85, tint: 0x8a3a30 }, // (0.47) Pip's father on the road, the scarf gone to colour
+  lark: { model: 'n_odile', height: 1.62, tint: 0xd8b060 }, // Odile's apprentice
 };
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its

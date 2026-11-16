@@ -26,6 +26,7 @@ import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
+import { GLOWS } from './sim/cosmetics.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -718,6 +719,10 @@ function start(hot = {}) {
     if (r.keys) parts.push(`${r.keys} Warden key${r.keys > 1 ? 's' : ''}`);
     if (r.tickets) parts.push(`${r.tickets} starglass shard${r.tickets > 1 ? 's' : ''}`);
     if (r.skill) parts.push(`${r.skill} skill points`);
+    const q = QUESTS[id];
+    if (q.reward.unique) parts.push(`<span style="color:${RARITIES[6].color}">${world.cls === 'warrior' ? "Edric's Sword (unique)" : "Edric's Colours (unique ring)"}</span>`);
+    if (q.reward.glow) parts.push(`${GLOWS[q.reward.glow].name} weapon glow`);
+    if (id === 'scarf2') parts.push('a keepsake, maybe');
     return parts.join(' · ');
   }
 
@@ -800,6 +805,35 @@ function start(hot = {}) {
   }
 
   /** A boss's altar (0.33): press a Remnant Sigil in to call its Remnant now. */
+  /** Red Scarf, Part Two (0.47): Tomas on the Greenwood road, and the choice. */
+  function renderTomasHusk() {
+    const npc = NPCS.tomashusk;
+    $('talk-role').textContent = npc.role;
+    $('talk-name').textContent = npc.name;
+    $('talk-keys').classList.add('hidden');
+    $('talk-line').textContent = talkNote || npc.greet;
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    const choose = (label, text, choice) => {
+      const el = document.createElement('div');
+      el.className = 'quest well-choice';
+      el.innerHTML = `<p>${esc(text)}</p>`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = choice === 'rest' ? 'primary' : 'ghost';
+      b.textContent = label;
+      b.addEventListener('click', () => { setMode('play'); applyNow({ type: 'scarfChoice', choice }); });
+      el.appendChild(b);
+      list.appendChild(el);
+    };
+    choose('Untie the scarf', 'Unwind the red scarf, gently. Without it he stops, and stands, and lies down in the grass by the road as if he had only been waiting for someone to say he could. Pip will have his scarf, and will know.', 'rest');
+    choose('Let him keep walking', 'Step aside. He goes on toward Haven, the way he always has, and does not get there. Pip will not know. Some day, maybe, he will get there after all.', 'walk');
+    const note = document.createElement('p');
+    note.className = 'setting-desc';
+    note.textContent = 'You cannot take this back.';
+    list.appendChild(note);
+  }
+
   /** The palace stair (0.46): go down into an Asterfell delve, at any world tier you have reached. */
   function renderDelve() {
     const p = world.player;
@@ -923,6 +957,7 @@ function start(hot = {}) {
     if (talkTo === 'bounties') return renderBounties();
     if (talkTo === 'altar') return renderAltar();
     if (talkTo === 'delve') return renderDelve();
+    if (talkTo === 'tomashusk') return renderTomasHusk();
     const npc = NPCS[talkTo];
     if (!npc) return;
     $('talk-role').textContent = npc.role;
@@ -933,7 +968,8 @@ function start(hot = {}) {
     let keyNo = 0;
     for (const id of QUEST_IDS) {
       const q = QUESTS[id];
-      if (q.giver !== talkTo) continue;
+      if (q.giver !== (npc.as || talkTo)) continue; // (0.47) Lark keeps Odile's quests
+      if (talkTo === 'odile' && world.map && world.map.id === 'hollow' && id !== 'tobin') continue; // in the garden, only her ending
       const st = world.questState(id);
       const open = world.questOpen(id);
       if (!open && !(st === 'active' || st === 'ready')) {
@@ -946,7 +982,7 @@ function start(hot = {}) {
       el.className = 'quest' + (st === 'ready' ? ' ready' : '');
       const need = world.questNeed(q);
       const prog = st === 'active' && need > 1 ? ` · ${world.player.quests[id].n}/${need}` : '';
-      el.innerHTML = `<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? q.done : q.offer)}</p><div class="goal">${goalText(q)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
+      el.innerHTML = `<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? (id === 'scarf2' && world.player.choices && world.player.choices.scarf === 'walk' ? q.doneAlt : q.done) : q.offer)}</p><div class="goal">${goalText(q)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
       const btn = document.createElement('button');
       btn.type = 'button';
       if (st === 'ready') {
@@ -969,6 +1005,22 @@ function start(hot = {}) {
     }
     $('talk-keys').classList.toggle('hidden', !keyNo);
     const after = world.afterWish() && npc.after; // (0.45) after the Unwish, Haven talks differently
+    if (talkTo === 'odile' && world.map && world.map.id === 'hollow') {
+      // An Ending for Tobin (0.47): she is at the heart of the garden
+      if (world.questState('tobin') === 'active') {
+        $('talk-line').textContent = 'She is kneeling in the moss beside what is left of him, holding his hand. She does not look up. "Sit with us a moment. Then go home."';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'primary';
+        b.textContent = 'Sit with them';
+        b.addEventListener('click', () => { applyNow({ type: 'meetOdile' }); renderTalk(); });
+        $('talk-quests').prepend(b);
+        return;
+      }
+      if (world.questState('tobin') === 'done') { $('talk-line').textContent = npc.garden; return; }
+    }
+    const ch = world.player.choices && world.player.choices.scarf;
+    if (talkTo === 'pip' && ch && !shown && !after) { $('talk-line').textContent = npc[ch]; return; }
     $('talk-line').textContent = talkTo === 'tomas' ? (world.player.tomasMet ? npc.idle : npc.greet) : talkNote || (after && !shown ? npc.after : shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
     if (talkTo === 'tomas' && !world.player.tomasMet) applyNow({ type: 'metTomas' });
   }
@@ -2389,6 +2441,11 @@ function start(hot = {}) {
         break;
       case 'enrage':
         hud.banner('Enraged', `${world.enemies.find((e) => e.id === ev.id)?.def.name || 'The boss'} attacks faster`);
+        break;
+      case 'npcGone':
+        // (0.47) Tomas lies down, or walks on
+        renderer.setMap(world.map);
+        hud.banner(ev.choice === 'rest' ? 'He lies down' : 'He keeps walking', ev.choice === 'rest' ? 'You have the red scarf. Take it to Pip.' : 'Tell Pip.');
         break;
       case 'delveRoom':
         hud.banner(`${ev.name} · room ${ev.n} of ${ev.of}`, ev.line);

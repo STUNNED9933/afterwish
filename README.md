@@ -150,6 +150,22 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Side stories (0.47)
+
+Each ends with someone letting go; the choices cannot be undone.
+
+- **Red Scarf, Part Two** (Pip, level 25): Tomas walks the Greenwood road as a husk, the red scarf twice round
+  his neck. Untie it and he lies down (Pip gets his scarf, and knows), or let him keep walking (and after the
+  Unwish he comes home, once; laid to rest, he does not). Pip's words change for good either way.
+- **Edric's Colours** (Bram, level 45): Edric of the Blue Trim, a Storied Oathbound, still stands his watch in
+  the Warden's Keep. Bram gets his colours; you get *Edric's Sword* (warriors: perfect parries strike back for
+  150% and stack +12% damage for 8 s, up to 3; it shines his blue) or *Edric's Colours* (a ring for anyone:
+  +15% damage above 80% health, parries heal 4%).
+- **An Ending for Tobin** (Odile, level 75): she goes ahead to the heart of Gloomcap Hollow; find her there and
+  sit with them. She stays. Her apprentice Lark takes her stall and her quests in Haven. A Gloomcap glow.
+- **Haven Grows** (Wren): each finished story leaves something in Haven: a lantern for Tomas by the Waygate,
+  Edric's blue banner by the forge, Lark's herb stall. With all three, a Hearthlight glow.
+
 ### Asterfell delves (0.46)
 
 - **The palace stair**, beside Asterfell's gate, goes down into the palace: 3 rooms on tiers I and II, 4 on

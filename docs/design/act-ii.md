@@ -107,7 +107,7 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 5e | Enemies and bosses remade: kits, boss lines, Tripo models (added) | 0.44 | Done |
 | 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.45 | Done |
 | 7 | Asterfell delves | 0.46 | Done |
-| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.47 | Not started |
+| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.47 | Done |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
@@ -154,4 +154,8 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 - 0.46: delves. `enterDelve` / `delveSpawn` / `stepDelve` in world.js, rooms from `buildDelveRoom` and
   DELVE_ROOMS / `delveRoute` in maps.js; the stair is an obstacle of kind `delve` in Asterfell; `instanced()`
   keeps world events, chests and altars out of rifts and delves; friends rebuild the room from the snapshot.
-- Next (0.47): side stories (Red Scarf Part Two, Edric's Colours, An Ending for Tobin, Haven Grows).
+- 0.47: side stories. Quests `scarf2` (goal `choose`, command `scarfChoice`, `p.choices.scarf`), `edric`
+  (named Rare `e.named`, reward `unique`: items `edric` / `bluetrim`), `tobin` (goal `meet`, command
+  `meetOdile`; NPC `lark` with `as: 'odile'`), `havengrows` (goal `stories`). Placement and Haven's decor in
+  `sideStoryProps` (world.js); obstacles of kind `decor` drawn in renderer.js.
+- Next: Later rows (weapon looks by rarity, customisation, Echo-caller).

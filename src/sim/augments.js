@@ -32,7 +32,7 @@ export function defaultMods() {
     // Subclass traits and talents: Berserker (Bloodied below half health), Bulwark (The Warden's Call, Shield Wall, Bastion)
     bloodRage: false, bloodAs: 0, bloodCost: 0, bloodLeech: 0, wTaunt: 0, wPullHeavy: false, guardRange: 0, allyParryHeal: 0,
     // Shadowdancer (Afterimage and its talents)
-    shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false, veilCopy: 0, veilTime: 0, killReset: false, reckoning: false, wSpinTime: 0, reckonMax: 0, killResetR: 0, spinGuard: false, reckonBreak: false, steadyPierce: false, galeHurricane: 0, nightcutChain: false, swapVeil: false, ashBurst: false, shatterChain: false, oathsignet: false, sporeheart: false, unwished: false,
+    shadowStep: false, shadowDur: 0, shadowSlash: 0, rMark: 0, rShadow: false, veilCopy: 0, veilTime: 0, killReset: false, reckoning: false, wSpinTime: 0, reckonMax: 0, killResetR: 0, spinGuard: false, reckonBreak: false, steadyPierce: false, galeHurricane: 0, nightcutChain: false, swapVeil: false, ashBurst: false, shatterChain: false, oathsignet: false, sporeheart: false, unwished: false, edric: false, bluetrim: false,
     // Subclass Immortals (0.32)
     bloodQW: 0, bloodQcd: false, lastBreathOath: 0, bloodMs: 0, tauntVuln: 0, blockHeal: 0, blockReckon: 0, bastionDr: 0, parryFree: false, parryCdrW: 0, reckonHp: 0, reckonMaxAdd: 0,
     rExtraShots: 0, qBounces: 0, focusRcd: 0, wEmpower: 0, farGuard: 0, qCrit: false, qFar: 0, hurricaneMult: 0, tailGuard: 0, qExecute: 0, killHeal: 0, veilKunai: 0, kunaiTwice: false, veilGuard: 0, burnGuard: 0, shatterWard: 0, orbBurstFrost: 0,

@@ -22,6 +22,10 @@ export function goalText(q) {
   if (g.signs) return `Read ${g.signs.length} ${g.what || 'signs'} in ${MAPS[SIGNS[g.signs[0]].map].name}`;
   if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
   if (g.ending) return 'Press the Unwishing Glass into the Starwell, and choose';
+  if (g.choose === 'scarf') return 'Find Tomas on the Greenwood road at dusk, and choose';
+  if (g.meet === 'odile') return "Reach Odile at the heart of Gloomcap Hollow's garden";
+  if (g.stories) return `Finish the side stories of Pip, Bram and Odile`;
+  if (g.enemy === 'edric') return 'Find Edric of the Blue Trim in the Warden\'s Keep';
   if (g.boss) return `Defeat ${ENEMIES[g.boss].name}`;
   const who = g.enemy ? ENEMIES[g.enemy].name + (g.kill > 1 ? 's' : '') : 'enemies';
   return `Defeat ${g.kill} ${who}${g.map ? ' in ' + MAPS[g.map].name : ''}`;

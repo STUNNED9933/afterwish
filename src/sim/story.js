@@ -53,6 +53,7 @@ export const NPCS = {
     greet: 'I was a physician\'s apprentice once, up the mountain. I left. I am still deciding whether that was the right thing.',
     idle: 'I have what I need for now. Thank you for asking. Few do.',
     after: 'Things rot now. The herbs I picked yesterday are wilting. I have never been so glad to see something die. He would have laughed. Tobin, I mean.',
+    garden: 'It is quieter here than you would think. He is nearly done. I will tell him you came.',
   },
   pip: {
     name: 'Pip', role: 'Orphan of the Greenwood road', at: [3.2, 3.6],
@@ -60,6 +61,22 @@ export const NPCS = {
     greet: 'Are you going out the gate? You always come back. Nobody else always comes back.',
     idle: 'I\'m all right. I\'m watching the gate. Somebody should.',
     after: 'He came in. Dad came in, and sat by the fire, and he knew me. Then he went to sleep. Wren says that is all right now. I think it is.',
+    rest: "I wear the scarf every day. Wren says it's too big for me. I'll grow into it.",
+    walk: 'I walked next to Da today, as far as the bridge. He didn\'t know me. He slowed down a bit, though. I think he slowed down for me.',
+  },
+  // Red Scarf, Part Two (0.47): Pip's father on the Greenwood road, still walking home.
+  tomashusk: {
+    name: 'Tomas', role: 'a husk with a red scarf', where: 'greenwood', husk: true,
+    look: { robe: 0x5a5a4a, trim: 0xb02a2a, hair: 0x2a2a2a, scale: 1 },
+    greet: "He does not look at you. He is walking, slowly, toward Haven, the way he has walked every evening for a hundred years. The red scarf is wound twice round his neck. His lips move: a name, over and over. Pip's name.",
+    idle: 'He keeps walking.',
+  },
+  // An Ending for Tobin (0.47): Odile's apprentice, at her stall once she has gone to the garden.
+  lark: {
+    name: 'Lark', role: "Odile's apprentice, at her stall", at: [-6.4, 1.8], as: 'odile', onlyFlag: 'tobin',
+    look: { robe: 0x6a8a5a, trim: 0xd8c8a0, hair: 0xc89a4a, scale: 0.92 },
+    greet: "Sister Odile's in the garden now, with Brother Tobin. She left me her notes and her stall. And her opinions about the thyme.\n\nWhat can I get you?",
+    idle: "Sister Odile's notes say you're not to buy anything you don't need. I'm ignoring that bit.",
   },
   // Pip's father (0.45): after the Unwish he comes home, once. onlyAfter: only in Haven then, until spoken to.
   tomas: {
@@ -344,6 +361,13 @@ export const QUESTS = {
     reward: { exp: 0, gold: 5000, keys: 5, tickets: 5 },
   },
 
+  edric: {
+    giver: 'bram', level: 45, after: 'knights', name: "Edric's Colours", side: true, goal: { kill: 1, enemy: 'edric', map: 'keep' },
+    offer: "I lied to you. I said don't tell me. I've changed my mind.\n\nThere's one in the Keep who still stands his watch. Blue trim on the pauldron. He'll not have moved from his post in a hundred years; Edric never could stand to be relieved early.\n\nBring me his colours. And his sword. I made that sword.",
+    done: "That's my work on the hilt. That's his blue.\n\nI'll hang the colours by the forge, where he can see the fire. The sword's yours. He'd want it used, not hung on a wall. He hated walls. He was a gate-guard. Go figure.",
+    reward: { exp: 1, gold: 900, scrap: 120, unique: { warrior: 'edric', other: 'bluetrim' } },
+  },
+
   // --- Bram the smith ---------------------------------------------------------
   spit: {
     giver: 'bram', level: 10, name: 'Scrap for the Forge', goal: { kill: 10, enemy: 'spitter' },
@@ -374,6 +398,19 @@ export const QUESTS = {
     offer: 'The crater glass takes an edge like nothing I\'ve worked. Clear twenty of whatever lives in the Maw and I will make you something worth carrying to the top.',
     done: 'There. Best thing I have ever made. I hope you never need to use it on anyone you know.',
     reward: { exp: 1, gold: 500, scrap: 80, item: 5, slot: 'weapon' },
+  },
+
+  tobin: {
+    giver: 'odile', level: 75, name: 'An Ending for Tobin', side: true, goal: { meet: 'odile' },
+    offer: "I was his apprentice. Did Wren tell you? I was the one he sent away, the day he went into the garden. He said someone had to keep the herbs.\n\nI have kept them a hundred years. I am going to him now. I will go ahead; you come behind, through Gloomcap Hollow, to the heart of the garden. Do not let anything follow me in.",
+    done: "He knew me. Under all of it, he knew me. He said I had let the thyme go woody.\n\nI am staying. Somebody should sit with him while it finishes; it was always going to be me. Lark has my stall in Haven, and my notes, and she is better with the pestle than I ever was. Go on. Go home.",
+    reward: { exp: 1, gold: 1500, glow: 'gloomcap' },
+  },
+  havengrows: {
+    giver: 'wren', level: 25, name: 'Haven Grows', side: true, goal: { stories: 3 },
+    offer: "Do you know what Haven was, before? A waystation. A fire and a roof for people who had to keep going.\n\nEvery time you help one of them let go, something changes here. Someone stays. Someone builds. Help Pip, and Bram, and Odile finish what they are carrying, and come and tell me. I want to see what Haven becomes.",
+    done: "Look at it. A lantern on the gate for Tomas. Edric's blue over the forge. Lark at Odile's stall, singing out of tune.\n\nIt is not a waystation any more. It is a town. Thank you, child.",
+    reward: { exp: 1, gold: 3000, keys: 5, glow: 'hearth' },
   },
 
   // --- Sister Odile -----------------------------------------------------------
@@ -418,6 +455,15 @@ export const QUESTS = {
     offer: 'I have one idea left. If the star grants exactly what is asked, perhaps it can be asked something else. Clear twenty from the Sanctum and bring me the dust that falls from them.',
     done: 'It is not dust. It is the same thing as the star, in very small pieces. It asked me what I wanted.\n\nI did not answer. I have seen what answers cost.',
     reward: { exp: 1, gold: 600, item: 5, slot: 'ring' },
+  },
+
+  // --- Side stories (0.47): each ends with someone letting go. Choices cannot be undone. ---
+  scarf2: {
+    giver: 'pip', level: 25, after: 'scarf', name: 'Red Scarf, Part Two', side: true, goal: { choose: 'scarf' },
+    offer: "The others lay down. Da didn't. He walks the Greenwood road every evening, the same way, like he's coming home and forgets the last bit.\n\nHe's still got the scarf. Mam knitted it. Could you... I don't know what I'm asking. You'll know when you see him.",
+    done: "You brought it. It still smells like the fire at home. That's... that's him, then. That's all of him.\n\nI'm going to keep it on. Even in summer. Don't tell Wren.",
+    doneAlt: "You let him walk. Good. I mean... good. As long as he's walking, he's going somewhere.\n\nI'll stop waving from far away. Tomorrow I'm going to walk next to him for a bit.",
+    reward: { exp: 0.9, gold: 400, keys: 2 },
   },
 
   // --- Pip --------------------------------------------------------------------

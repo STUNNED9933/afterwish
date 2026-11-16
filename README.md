@@ -150,6 +150,18 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Real weapons (0.38.1)
+
+- **The Warrior's sword, the Rogue's daggers and the Mage's staff are 3D models
+  now** (made with Tripo as props, 30 credits each, about 100 KB each), in place
+  of the block weapons: a steel arming sword with a blue-gemmed guard, curved
+  daggers with dark leather grips (one in each hand), and a dark wooden staff
+  curling round a pale blue crystal. Your weapon glow tints their metal.
+- The Archer keeps her bow made in the game, because its string has to follow her
+  drawing hand (the generated bow came with its string baked in).
+- `tools/models`: props in the roster (`rig: false`, with their own style
+  line); `optimize.mjs` takes `TEX=512` for smaller textures.
+
 ### Every class has its model; a Warrior combo (0.38)
 
 - **The Rogue and the Mage are rigged 3D characters now** (Tripo, 85 credits

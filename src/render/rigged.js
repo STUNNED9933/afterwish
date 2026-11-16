@@ -140,6 +140,65 @@ export const RIGGED = {
   },
 };
 
+/**
+ * Weapon models (0.38.1), made with the Tripo API as props. Each is measured once in its own
+ * file (tools/models: the long axis and its ends); here it is turned so the blade (or the
+ * staff's head) points along +Z from the grip at the origin, as the hand-built weapons did,
+ * and sized in the same units (metres / weaponScale). side: the file's axis the guard runs along.
+ */
+export const WEAPON_MODELS = {
+  warrior: { url: 'models/w_sword.glb', tip: [0, -0.5, 0], butt: [0, 0.5, 0], grip: 0.13, length: 1.15, side: [0, 0, 1] },
+  rogue: { url: 'models/w_dagger.glb', tip: [0.158, -0.5, 0.424], butt: [-0.116, 0.479, -0.404], grip: 0.2, length: 0.55 },
+  mage: { url: 'models/w_staff.glb', tip: [-0.004, 0.5, -0.014], butt: [0.001, -0.5, 0.007], grip: 0.4, length: 1.85 },
+};
+const weaponCache = new Map();
+/** A fresh copy of a class's weapon model (its own materials, so its glow is its own), or null. */
+export function loadWeapon(cls, weaponScale = 1) {
+  const w = WEAPON_MODELS[cls];
+  if (!w) return Promise.resolve(null);
+  if (typeof location !== 'undefined' && location.protocol === 'file:') return Promise.resolve(null);
+  if (!weaponCache.has(cls)) {
+    weaponCache.set(
+      cls,
+      loader.loadAsync(w.url).then(
+        (gltf) => gltf.scene,
+        () => null,
+      ),
+    );
+  }
+  return weaponCache.get(cls).then((scene) => {
+    if (!scene) return null;
+    const inner = scene.clone();
+    const mats = [];
+    inner.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = o.material.clone();
+      o.castShadow = true;
+      mats.push(o.material);
+    });
+    const tip = new THREE.Vector3(...w.tip), butt = new THREE.Vector3(...w.butt);
+    const along = tip.clone().sub(butt);
+    const grip = butt.clone().addScaledVector(along, w.grip);
+    const dir = along.clone().normalize();
+    const turn = new THREE.Quaternion().setFromUnitVectors(dir, new THREE.Vector3(0, 0, 1));
+    if (w.side) {
+      // twist about the blade so the guard lies along +X
+      const side = new THREE.Vector3(...w.side).applyQuaternion(turn);
+      side.z = 0;
+      if (side.lengthSq() > 1e-6) turn.premultiply(new THREE.Quaternion().setFromUnitVectors(side.normalize(), new THREE.Vector3(1, 0, 0)));
+    }
+    inner.position.copy(grip).negate();
+    const pivot = new THREE.Group();
+    pivot.quaternion.copy(turn);
+    pivot.scale.setScalar(w.length / weaponScale / along.length());
+    pivot.add(inner);
+    const group = new THREE.Group();
+    group.add(pivot);
+    group.userData.mats = mats;
+    return group;
+  });
+}
+
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map(); // id -> Promise<template | null>
@@ -608,7 +667,7 @@ function warp(keys, t) {
 export function upgradeHero(model, cls) {
   const id = `hero_${cls}`;
   if (!RIGGED[id]) return;
-  loadRigged(id).then((tpl) => {
+  Promise.all([loadRigged(id), loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1)]).then(([tpl, made]) => {
     if (!tpl || model.disposed || model.rig) return;
     const rig = instantiate(tpl);
     const arm = model.parts.arm;
@@ -624,10 +683,27 @@ export function upgradeHero(model, cls) {
     }
     const weapon = new THREE.Group();
     // The arm's first child is the sleeve; the rest is the weapon, held along +Z from z≈0.6.
-    for (const c of arm.children.slice(1)) weapon.add(c);
-    weapon.children.forEach((c) => (c.position.z -= 0.6));
+    if (made) {
+      // the weapon model; its metal takes the weapon glow (see renderer applyGlow)
+      weapon.add(made);
+      model.parts.weaponMats = made.userData.mats;
+    } else {
+      for (const c of arm.children.slice(1)) weapon.add(c);
+      weapon.children.forEach((c) => (c.position.z -= 0.6));
+    }
     rig.holdWeapon(weapon);
-    if (tpl.spec.offhand) rig.holdOffhand(weapon.clone(), tpl.spec.offhand); // the Rogue's second dagger
+    if (tpl.spec.offhand) {
+      // the Rogue's second dagger (its own materials, glowing with the first)
+      const off = weapon.clone();
+      off.traverse((o) => {
+        if (o.isMesh && made) {
+          o.material = o.material.clone();
+          model.parts.weaponMats.push(o.material);
+        }
+      });
+      rig.holdOffhand(off, tpl.spec.offhand);
+    }
+    if (model.glowId !== undefined && model.applyGlowAgain) model.applyGlowAgain();
     model.parts.body.visible = false;
     model.group.add(rig.group);
     model.mats.push(...rig.mats);

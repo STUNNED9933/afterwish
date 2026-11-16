@@ -1243,6 +1243,14 @@ export class Renderer {
       steel.emissive.set(g ? g.color : 0x7fd8ff);
       steel.emissiveIntensity = g ? 1.3 : 0.25;
     }
+    // a weapon model (0.38.1) glows softly in the chosen colour, and not at all without one
+    for (const m of (model.parts && model.parts.weaponMats) || []) {
+      if (!m.emissive) continue;
+      m.emissive.set(g ? g.color : 0x000000);
+      m.emissiveIntensity = g ? 0.45 : 0;
+    }
+    // (the weapon model may arrive after the glow was set: apply it again then)
+    if (model.parts) model.applyGlowAgain = () => this.applyGlow(model, model.glowId);
     if (!model.glowRing) {
       model.glowRing = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }));
       model.glowRing.scale.setScalar(0.9);

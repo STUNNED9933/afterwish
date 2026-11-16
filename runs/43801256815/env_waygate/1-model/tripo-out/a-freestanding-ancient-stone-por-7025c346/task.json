@@ -1,0 +1,30 @@
+{
+  "task_id": "7025c346-8015-421f-ab1b-c11a0073a64d",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a freestanding ancient stone portal archway, two weathered grey stone pillars joined by a round arch, the open middle is empty, pale blue glowing runes carved along the arch, a few vines and moss at the foot of the pillars. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 3000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T04:05:32.296093Z",
+  "completed_at": "2026-11-16T04:08:20.158360Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

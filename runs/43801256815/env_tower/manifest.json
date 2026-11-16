@@ -1,0 +1,37 @@
+{
+  "id": "env_tower",
+  "prompt": "a ruined round stone watchtower, three storeys, the top half broken and crumbled with jagged walls, dark grey castle stone, narrow arrow-slit windows, a tattered dark red banner hanging from one side, rubble at its foot. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-16T04:08:41.652Z",
+  "creditsBefore": 295,
+  "steps": {
+    "model": {
+      "task": "3bb45e04-a897-48b8-bbc0-209907a85d2e",
+      "result": {
+        "task_id": "3bb45e04-a897-48b8-bbc0-209907a85d2e",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_tower/1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_tower/1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/model.glb",
+        "preview": "out/models/env_tower/1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 265,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T04:12:52.900Z",
+  "files": [
+    "1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/generated_image.jpeg",
+    "1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/model.glb",
+    "1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/preview.png",
+    "1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/rendered_image.webp",
+    "1-model/tripo-out/a-ruined-round-stone-watchtower-3bb45e04/task.json",
+    "manifest.json"
+  ]
+}

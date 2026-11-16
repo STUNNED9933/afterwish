@@ -1,0 +1,37 @@
+{
+  "id": "env_cottage",
+  "prompt": "a small cosy fantasy village cottage, one storey, rectangular footprint, grey fieldstone lower walls, cream plaster upper walls with dark timber framing, steep golden thatched roof, a stone chimney, a wooden door on the long side, two small warm-lit windows with shutters, a flower box. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-16T03:58:39.066Z",
+  "creditsBefore": 385,
+  "steps": {
+    "model": {
+      "task": "59536c02-9270-48ce-9d4e-d7e9c02e7145",
+      "result": {
+        "task_id": "59536c02-9270-48ce-9d4e-d7e9c02e7145",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_cottage/1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_cottage/1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/model.glb",
+        "preview": "out/models/env_cottage/1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 355,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T04:01:50.041Z",
+  "files": [
+    "1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/generated_image.jpeg",
+    "1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/model.glb",
+    "1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/preview.png",
+    "1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/rendered_image.webp",
+    "1-model/tripo-out/a-small-cosy-fantasy-village-cot-59536c02/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "env_waygate",
+  "prompt": "a freestanding ancient stone portal archway, two weathered grey stone pillars joined by a round arch, the open middle is empty, pale blue glowing runes carved along the arch, a few vines and moss at the foot of the pillars. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-16T04:05:30.765Z",
+  "creditsBefore": 325,
+  "steps": {
+    "model": {
+      "task": "7025c346-8015-421f-ab1b-c11a0073a64d",
+      "result": {
+        "task_id": "7025c346-8015-421f-ab1b-c11a0073a64d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_waygate/1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_waygate/1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/model.glb",
+        "preview": "out/models/env_waygate/1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 295,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T04:08:41.652Z",
+  "files": [
+    "1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/generated_image.jpeg",
+    "1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/model.glb",
+    "1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/preview.png",
+    "1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/rendered_image.webp",
+    "1-model/tripo-out/a-freestanding-ancient-stone-por-7025c346/task.json",
+    "manifest.json"
+  ]
+}

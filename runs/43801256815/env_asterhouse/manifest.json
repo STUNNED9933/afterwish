@@ -1,0 +1,37 @@
+{
+  "id": "env_asterhouse",
+  "prompt": "a desert city townhouse of pale golden sandstone, two storeys, rectangular footprint, flat roof with a low parapet and a small round dome on one corner, an arched doorway, tall arched windows filled with glowing amber stained glass, a faded blue cloth awning over the door, carved star motifs. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-16T04:01:50.043Z",
+  "creditsBefore": 355,
+  "steps": {
+    "model": {
+      "task": "c9b19f9b-ad2c-4e12-baa5-bda69e3e3485",
+      "result": {
+        "task_id": "c9b19f9b-ad2c-4e12-baa5-bda69e3e3485",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_asterhouse/1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_asterhouse/1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/model.glb",
+        "preview": "out/models/env_asterhouse/1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 325,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T04:05:30.765Z",
+  "files": [
+    "1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/generated_image.jpeg",
+    "1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/model.glb",
+    "1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/preview.png",
+    "1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/rendered_image.webp",
+    "1-model/tripo-out/a-desert-city-townhouse-of-pale-c9b19f9b/task.json",
+    "manifest.json"
+  ]
+}

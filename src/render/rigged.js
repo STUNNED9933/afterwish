@@ -185,6 +185,17 @@ export function weaponLook(item) {
 }
 
 /** A fresh copy of a class's weapon model (its own materials, so its glow is its own), or null. */
+/**
+ * Where a held thing sits (0.48.1): the middle of the palm, a little past the wrist, as a point in the
+ * hand bone's own space. The rigs have no finger bones, so the palm is found along the forearm's line,
+ * a share of the forearm's length past the wrist (read in the bind pose, before any clip plays).
+ */
+export const PALM = 0.42;
+export function palmOf(hand, share = PALM) {
+  if (!hand) return new THREE.Vector3();
+  return hand.position.clone().applyQuaternion(hand.quaternion.clone().invert()).multiplyScalar(share);
+}
+
 export function loadWeapon(cls, weaponScale = 1, look = null) {
   const key = look && WEAPON_MODELS[`${cls}_${look}`] ? `${cls}_${look}` : cls;
   const w = WEAPON_MODELS[key];
@@ -427,6 +438,7 @@ export function instantiate(tpl) {
   };
   fadeTo(actions.idle, 0);
   const hand = spec.hand ? root.getObjectByName(spec.hand) : null;
+  const palm = palmOf(hand, spec.palm); // weapons sit in the palm, not at the wrist joint
   const aiming = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.aiming && spec.aiming.test(a.getClip().name));
   let bow = null;
   return {
@@ -438,7 +450,7 @@ export function instantiate(tpl) {
       if (!hand) return;
       weapon = w;
       if (spec.staff) {
-        held.push({ obj: w, hand, mode: 'staff', grip: null });
+        held.push({ obj: w, hand, mode: 'staff', grip: null, palm });
         weapon = null; // a staff is not a blade (no swing trail, no warrior grips)
         w.scale.setScalar((spec.weaponScale || 1) / tpl.scale);
         root.add(w);
@@ -453,13 +465,13 @@ export function instantiate(tpl) {
       const h = root.getObjectByName(handName);
       if (!h) return;
       w.scale.setScalar((spec.weaponScale || 1) / tpl.scale);
-      held.push({ obj: w, hand: h, mode: 'blade', grip: forwardGrip(h) });
+      held.push({ obj: w, hand: h, mode: 'blade', grip: forwardGrip(h), palm: palmOf(h, spec.palm) });
       root.add(w);
     },
     /** Hold a bow made here (spec.bow): wood for the limbs, the string glows like a blade. */
     holdBow(wood, string) {
       if (!hand || !spec.bow) return;
-      bow = makeBow(wood, string, tpl.scale, root, hand, root.getObjectByName(spec.bow.drawHand), root.getObjectByName(spec.bow.shoulder), root.getObjectByName('Hip'));
+      bow = makeBow(wood, string, tpl.scale, root, hand, palm, root.getObjectByName(spec.bow.drawHand), root.getObjectByName(spec.bow.shoulder), root.getObjectByName('Hip'));
       mats.push(wood);
     },
     /** How strongly the blade should trail light this frame (0 = not at all). */
@@ -565,7 +577,7 @@ export function instantiate(tpl) {
         // In the hand, at the grip angle, blending to the trailing pose while the run plays.
         root.updateMatrixWorld(true);
         tmpM.copy(root.matrixWorld).invert().multiply(hand.matrixWorld).decompose(tmpP, tmpQ, tmpS);
-        weapon.position.copy(tmpP);
+        weapon.position.copy(palm).applyMatrix4(tmpM);
         // The two clip sets hold the blade differently; blend by how much each is playing.
         // (an action that has never played still reports full weight, so ask if it is running)
         let libW = 0;
@@ -580,8 +592,9 @@ export function instantiate(tpl) {
         root.updateMatrixWorld(true);
         const inv = tmpM.copy(root.matrixWorld).invert();
         for (const h of held) {
-          new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld).decompose(tmpP, tmpQ, tmpS);
-          h.obj.position.copy(tmpP);
+          const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
+          hm.decompose(tmpP, tmpQ, tmpS);
+          h.obj.position.copy(h.palm).applyMatrix4(hm);
           if (h.mode === 'blade') h.obj.quaternion.copy(tmpQ).multiply(h.grip);
           else {
             // a staff stays upright, leaning the way the forearm points (forward when casting)
@@ -604,7 +617,7 @@ export function instantiate(tpl) {
  * and snaps straight when the hand lets go. While shooting, the bow points down the bow arm and
  * stands upright; otherwise it is carried upright, turned with her hips.
  */
-function makeBow(wood, stringMat, scale, root, hand, drawHand, shoulder, hip) {
+function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, hip) {
   const group = new THREE.Group(); // bow space, in metres: +X toward the target, +Y up the bow
   group.scale.setScalar(1 / scale);
   const L = 0.62;
@@ -649,7 +662,7 @@ function makeBow(wood, stringMat, scale, root, hand, drawHand, shoulder, hip) {
     update(aimW) {
       root.updateMatrixWorld(true);
       inv.copy(root.matrixWorld).invert();
-      local(hand, hp);
+      hp.copy(palm).applyMatrix4(m.multiplyMatrices(inv, hand.matrixWorld)); // the grip, in her palm
       local(shoulder, sp);
       local(drawHand, dp);
       // aiming: down the bow arm, upright
@@ -663,8 +676,7 @@ function makeBow(wood, stringMat, scale, root, hand, drawHand, shoulder, hip) {
       qc.multiply(tilt);
       q.copy(qc).slerp(qa, aimW);
       group.quaternion.copy(q);
-      // the grip sits in the palm, a little past the wrist
-      group.position.copy(hp).addScaledVector(X, 0.05 / scale * aimW);
+      group.position.copy(hp);
       group.updateMatrix();
       // the string: to the drawing hand while it is pulled back behind the bow
       tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());

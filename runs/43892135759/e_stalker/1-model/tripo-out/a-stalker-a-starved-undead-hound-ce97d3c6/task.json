@@ -1,0 +1,30 @@
+{
+  "task_id": "ce97d3c6-96f8-4ab3-adaf-260110dec1f3",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a Stalker, a starved undead hound-like beast with far too long limbs, grey hairless skin stretched over its ribs, an eyeless face with a split jaw full of needle teeth, crouched low on all fours. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 8000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T15:08:47.900013Z",
+  "completed_at": "2026-11-16T15:14:24.928993Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "id": "e_stalker",
+  "prompt": "a Stalker, a starved undead hound-like beast with far too long limbs, grey hairless skin stretched over its ribs, an eyeless face with a split jaw full of needle teeth, crouched low on all fours. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T15:08:47.348Z",
+  "creditsBefore": 325,
+  "steps": {
+    "model": {
+      "task": "ce97d3c6-96f8-4ab3-adaf-260110dec1f3",
+      "result": {
+        "task_id": "ce97d3c6-96f8-4ab3-adaf-260110dec1f3",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_stalker/1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_stalker/1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/model.glb",
+        "preview": "out/models/e_stalker/1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/preview.png"
+      }
+    },
+    "check": {
+      "task": "64154298-b88a-4855-aa79-c2f56fc3c41c",
+      "result": {
+        "task_id": "64154298-b88a-4855-aa79-c2f56fc3c41c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_stalker/2-check/tripo-out/rig-check-2-64154298",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "90a0256f-d7ba-4af8-8e38-9e8291ec3bef",
+      "rigType": "quadruped",
+      "result": {
+        "task_id": "90a0256f-d7ba-4af8-8e38-9e8291ec3bef",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_stalker/3-rig/tripo-out/rig-2-90a0256f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_stalker/3-rig/tripo-out/rig-2-90a0256f/model.glb",
+        "preview": "out/models/e_stalker/3-rig/tripo-out/rig-2-90a0256f/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "e1576714-522b-487c-9b53-ac6c6e67707c",
+        "presets": [
+          "preset:quadruped:walk"
+        ],
+        "result": {
+          "task_id": "e1576714-522b-487c-9b53-ac6c6e67707c",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/e_stalker/4-anim-1/tripo-out/retarget-2-e1576714",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_stalker/4-anim-1/tripo-out/retarget-2-e1576714/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 195,
+  "creditsUsed": 130,
+  "finished": "2026-11-16T15:15:28.656Z",
+  "files": [
+    "1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/generated_image.jpeg",
+    "1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/model.glb",
+    "1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/preview.png",
+    "1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/rendered_image.webp",
+    "1-model/tripo-out/a-stalker-a-starved-undead-hound-ce97d3c6/task.json",
+    "2-check/tripo-out/rig-check-2-64154298/task.json",
+    "3-rig/tripo-out/rig-2-90a0256f/model.glb",
+    "3-rig/tripo-out/rig-2-90a0256f/preview.png",
+    "3-rig/tripo-out/rig-2-90a0256f/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-90a0256f/task.json",
+    "4-anim-1/tripo-out/retarget-2-e1576714/model.glb",
+    "4-anim-1/tripo-out/retarget-2-e1576714/task.json",
+    "manifest.json"
+  ]
+}

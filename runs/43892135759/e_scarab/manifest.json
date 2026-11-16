@@ -1,0 +1,92 @@
+{
+  "id": "e_scarab",
+  "prompt": "a giant Dune Scarab beetle, a golden bronze carapace scarred with old royal engravings, six jointed legs, large curved mandibles. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T15:15:28.657Z",
+  "creditsBefore": 195,
+  "steps": {
+    "model": {
+      "task": "24913316-f30a-43a9-9719-fc724e46e35f",
+      "result": {
+        "task_id": "24913316-f30a-43a9-9719-fc724e46e35f",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_scarab/1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_scarab/1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/model.glb",
+        "preview": "out/models/e_scarab/1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/preview.png"
+      }
+    },
+    "check": {
+      "task": "b7ffbc30-565d-4111-8e1d-9f0126af5522",
+      "result": {
+        "task_id": "b7ffbc30-565d-4111-8e1d-9f0126af5522",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_scarab/2-check/tripo-out/rig-check-3-b7ffbc30",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "fd1f5ecb-4540-4ed9-a09e-31939c30cf33",
+      "rigType": "hexapod",
+      "result": {
+        "task_id": "fd1f5ecb-4540-4ed9-a09e-31939c30cf33",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_scarab/3-rig/tripo-out/rig-3-fd1f5ecb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_scarab/3-rig/tripo-out/rig-3-fd1f5ecb/model.glb",
+        "preview": "out/models/e_scarab/3-rig/tripo-out/rig-3-fd1f5ecb/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "32241ee6-1962-436f-a1ec-104383042812",
+        "presets": [
+          "preset:hexapod:walk"
+        ],
+        "result": {
+          "task_id": "32241ee6-1962-436f-a1ec-104383042812",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/e_scarab/4-anim-1/tripo-out/retarget-3-32241ee6",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_scarab/4-anim-1/tripo-out/retarget-3-32241ee6/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 65,
+  "creditsUsed": 130,
+  "finished": "2026-11-16T15:21:29.769Z",
+  "files": [
+    "1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/generated_image.jpeg",
+    "1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/model.glb",
+    "1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/preview.png",
+    "1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/rendered_image.webp",
+    "1-model/tripo-out/a-giant-dune-scarab-beetle-a-gol-24913316/task.json",
+    "2-check/tripo-out/rig-check-3-b7ffbc30/task.json",
+    "3-rig/tripo-out/rig-3-fd1f5ecb/model.glb",
+    "3-rig/tripo-out/rig-3-fd1f5ecb/preview.png",
+    "3-rig/tripo-out/rig-3-fd1f5ecb/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-fd1f5ecb/task.json",
+    "4-anim-1/tripo-out/retarget-3-32241ee6/model.glb",
+    "4-anim-1/tripo-out/retarget-3-32241ee6/task.json",
+    "manifest.json"
+  ]
+}

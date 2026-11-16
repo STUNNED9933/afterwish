@@ -1,0 +1,20 @@
+{
+  "task_id": "32241ee6-1962-436f-a1ec-104383042812",
+  "type": "animate_retarget",
+  "status": "success",
+  "input": {
+    "animation": "preset:hexapod:walk",
+    "out_format": "glb",
+    "animate_in_place": true,
+    "original_model_id": "fd1f5ecb-4540-4ed9-a09e-31939c30cf33"
+  },
+  "output_fields": [
+    "model_url"
+  ],
+  "credits_consumed": 10,
+  "created_at": "2026-11-16T15:21:24.478002Z",
+  "completed_at": "2026-11-16T15:21:28.111985Z",
+  "files": [
+    "model.glb"
+  ]
+}

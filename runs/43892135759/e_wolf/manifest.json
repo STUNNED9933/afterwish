@@ -1,0 +1,92 @@
+{
+  "id": "e_wolf",
+  "prompt": "a Frost Wolf of the high pass, gaunt and starving, pale white-blue fur matted with ice, icicles hanging from its jaws, ribs showing, pale glowing eyes, standing on all fours. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T15:03:11.187Z",
+  "creditsBefore": 420,
+  "steps": {
+    "model": {
+      "task": "cea91115-0f9d-475c-acbb-5af56e7eeb38",
+      "result": {
+        "task_id": "cea91115-0f9d-475c-acbb-5af56e7eeb38",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_wolf/1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wolf/1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/model.glb",
+        "preview": "out/models/e_wolf/1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/preview.png"
+      }
+    },
+    "check": {
+      "task": "6fdbab35-c355-461e-9d31-47ad8e177947",
+      "result": {
+        "task_id": "6fdbab35-c355-461e-9d31-47ad8e177947",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_wolf/2-check/tripo-out/rig-check-6fdbab35",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "cbbe1c18-2baf-4e51-8283-0daf36e3ac6a",
+      "rigType": "quadruped",
+      "result": {
+        "task_id": "cbbe1c18-2baf-4e51-8283-0daf36e3ac6a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_wolf/3-rig/tripo-out/rig-cbbe1c18",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wolf/3-rig/tripo-out/rig-cbbe1c18/model.glb",
+        "preview": "out/models/e_wolf/3-rig/tripo-out/rig-cbbe1c18/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "169aac91-a041-4220-835d-5760d24d259b",
+        "presets": [
+          "preset:quadruped:walk"
+        ],
+        "result": {
+          "task_id": "169aac91-a041-4220-835d-5760d24d259b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/e_wolf/4-anim-1/tripo-out/retarget-169aac91",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_wolf/4-anim-1/tripo-out/retarget-169aac91/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 325,
+  "creditsUsed": 95,
+  "finished": "2026-11-16T15:08:47.347Z",
+  "files": [
+    "1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/generated_image.jpeg",
+    "1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/model.glb",
+    "1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/preview.png",
+    "1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/rendered_image.webp",
+    "1-model/tripo-out/a-frost-wolf-of-the-high-pass-ga-cea91115/task.json",
+    "2-check/tripo-out/rig-check-6fdbab35/task.json",
+    "3-rig/tripo-out/rig-cbbe1c18/model.glb",
+    "3-rig/tripo-out/rig-cbbe1c18/preview.png",
+    "3-rig/tripo-out/rig-cbbe1c18/rendered_image.webp",
+    "3-rig/tripo-out/rig-cbbe1c18/task.json",
+    "4-anim-1/tripo-out/retarget-169aac91/model.glb",
+    "4-anim-1/tripo-out/retarget-169aac91/task.json",
+    "manifest.json"
+  ]
+}

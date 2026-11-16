@@ -1,0 +1,94 @@
+{
+  "id": "ninja",
+  "prompt": "lean agile ninja assassin, layered charcoal and black cloth wrappings over fitted dark leather armour, a close hood, a smooth dark steel face mask covering the whole face with two narrow glowing red eye slits, crimson cloth sash at the waist and crimson wraps on the forearms, one segmented dark steel pauldron on the left shoulder with a few sharp blade-like ridges, wrapped shins, split-toe soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T09:00:43.099Z",
+  "creditsBefore": 265,
+  "steps": {
+    "model": {
+      "task": "cec8a39f-0bd2-4d15-a39a-d053e0541249",
+      "result": {
+        "task_id": "cec8a39f-0bd2-4d15-a39a-d053e0541249",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/ninja/1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/ninja/1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/model.glb",
+        "preview": "out/models/ninja/1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/preview.png"
+      }
+    },
+    "check": {
+      "task": "558393a0-3b04-492e-a85f-80b7ab90742a",
+      "result": {
+        "task_id": "558393a0-3b04-492e-a85f-80b7ab90742a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/ninja/2-check/tripo-out/rig-check-558393a0",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "49d9f494-ab48-4394-b690-c85967a1a2b0",
+      "rigType": "biped",
+      "result": {
+        "task_id": "49d9f494-ab48-4394-b690-c85967a1a2b0",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/ninja/3-rig/tripo-out/rig-49d9f494",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/ninja/3-rig/tripo-out/rig-49d9f494/model.glb",
+        "preview": "out/models/ninja/3-rig/tripo-out/rig-49d9f494/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "94b3d0dd-8150-42b4-b73f-80bcc39ad819",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:run",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "94b3d0dd-8150-42b4-b73f-80bcc39ad819",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/ninja/4-anim-1/tripo-out/retarget-94b3d0dd",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/ninja/4-anim-1/tripo-out/retarget-94b3d0dd/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 180,
+  "creditsUsed": 85,
+  "finished": "2026-11-16T09:06:14.744Z",
+  "files": [
+    "1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/generated_image.jpeg",
+    "1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/model.glb",
+    "1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/preview.png",
+    "1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/rendered_image.webp",
+    "1-model/tripo-out/lean-agile-ninja-assassin-layere-cec8a39f/task.json",
+    "2-check/tripo-out/rig-check-558393a0/task.json",
+    "3-rig/tripo-out/rig-49d9f494/model.glb",
+    "3-rig/tripo-out/rig-49d9f494/preview.png",
+    "3-rig/tripo-out/rig-49d9f494/rendered_image.webp",
+    "3-rig/tripo-out/rig-49d9f494/task.json",
+    "4-anim-1/tripo-out/retarget-94b3d0dd/model.glb",
+    "4-anim-1/tripo-out/retarget-94b3d0dd/task.json",
+    "manifest.json"
+  ]
+}

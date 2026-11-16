@@ -1,0 +1,30 @@
+{
+  "task_id": "cec8a39f-0bd2-4d15-a39a-d053e0541249",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "lean agile ninja assassin, layered charcoal and black cloth wrappings over fitted dark leather armour, a close hood, a smooth dark steel face mask covering the whole face with two narrow glowing red eye slits, crimson cloth sash at the waist and crimson wraps on the forearms, one segmented dark steel pauldron on the left shoulder with a few sharp blade-like ridges, wrapped shins, split-toe soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-16T09:00:44.727799Z",
+  "completed_at": "2026-11-16T09:05:50.854567Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

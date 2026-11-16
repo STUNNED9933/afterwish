@@ -1,0 +1,117 @@
+{
+  "id": "b_herald",
+  "prompt": "the Herald, a royal chamberlain frozen in amber glass in the middle of a ceremony: tall thin man in an ornate cream and gold court tabard with a gold chain of office, a powdered wig, holding a long unrolled parchment proclamation in one hand and a tall ceremonial gold staff in the other, his skin translucent golden glass full of cracks, a fixed frozen smile, ribbons and banners hanging from him. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T14:03:41.177Z",
+  "creditsBefore": 2275,
+  "steps": {
+    "model": {
+      "task": "314337d9-8c03-4c0e-b2e1-4135dbb2aadf",
+      "result": {
+        "task_id": "314337d9-8c03-4c0e-b2e1-4135dbb2aadf",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_herald/1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_herald/1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/model.glb",
+        "preview": "out/models/b_herald/1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/preview.png"
+      }
+    },
+    "check": {
+      "task": "4b789ca6-852c-43bf-8350-92240b697d92",
+      "result": {
+        "task_id": "4b789ca6-852c-43bf-8350-92240b697d92",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_herald/2-check/tripo-out/rig-check-2-4b789ca6",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "e7f21d64-dbdf-46ee-a3f7-4397d5298d0e",
+      "rigType": "biped",
+      "result": {
+        "task_id": "e7f21d64-dbdf-46ee-a3f7-4397d5298d0e",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_herald/3-rig/tripo-out/rig-2-e7f21d64",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_herald/3-rig/tripo-out/rig-2-e7f21d64/model.glb",
+        "preview": "out/models/b_herald/3-rig/tripo-out/rig-2-e7f21d64/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "f4d486d7-09b9-40f8-a99d-a4639e396936",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "f4d486d7-09b9-40f8-a99d-a4639e396936",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_herald/4-anim-1/tripo-out/retarget-3-f4d486d7",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_herald/4-anim-1/tripo-out/retarget-3-f4d486d7/model.glb"
+        }
+      },
+      {
+        "task": "53f98cbb-5c7a-4dcc-8211-4bdd1eaeb53a",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:bow"
+        ],
+        "result": {
+          "task_id": "53f98cbb-5c7a-4dcc-8211-4bdd1eaeb53a",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_herald/4-anim-2/tripo-out/retarget-4-53f98cbb",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_herald/4-anim-2/tripo-out/retarget-4-53f98cbb/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1970,
+  "creditsUsed": 305,
+  "finished": "2026-11-16T14:10:51.314Z",
+  "files": [
+    "1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/generated_image.jpeg",
+    "1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/model.glb",
+    "1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/preview.png",
+    "1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/rendered_image.webp",
+    "1-model/tripo-out/the-herald-a-royal-chamberlain-f-314337d9/task.json",
+    "2-check/tripo-out/rig-check-2-4b789ca6/task.json",
+    "3-rig/tripo-out/rig-2-e7f21d64/model.glb",
+    "3-rig/tripo-out/rig-2-e7f21d64/preview.png",
+    "3-rig/tripo-out/rig-2-e7f21d64/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-e7f21d64/task.json",
+    "4-anim-1/tripo-out/retarget-3-f4d486d7/model.glb",
+    "4-anim-1/tripo-out/retarget-3-f4d486d7/task.json",
+    "4-anim-2/tripo-out/retarget-4-53f98cbb/model.glb",
+    "4-anim-2/tripo-out/retarget-4-53f98cbb/task.json",
+    "manifest.json"
+  ]
+}

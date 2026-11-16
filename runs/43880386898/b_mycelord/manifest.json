@@ -1,0 +1,117 @@
+{
+  "id": "b_mycelord",
+  "prompt": "the Mycelord, once Brother Tobin the royal physician, now a tall gaunt fungal horror: a long stained grey physician's coat and a leather apron, purple and sickly green bracket fungus growing from his shoulders and spine, a crown of pale mushroom caps, his left arm overgrown into a long branching mycelium claw, a sad hollow face half covered in pale mould, cracked glass medicine vials on his belt. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-16T13:55:02.729Z",
+  "creditsBefore": 2650,
+  "steps": {
+    "model": {
+      "task": "942be8bb-5406-44d2-b3d0-2e224854df0c",
+      "result": {
+        "task_id": "942be8bb-5406-44d2-b3d0-2e224854df0c",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_mycelord/1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_mycelord/1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/model.glb",
+        "preview": "out/models/b_mycelord/1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/preview.png"
+      }
+    },
+    "check": {
+      "task": "deefc7ef-d7dc-4f90-8ee5-c242dfb4d065",
+      "result": {
+        "task_id": "deefc7ef-d7dc-4f90-8ee5-c242dfb4d065",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_mycelord/2-check/tripo-out/rig-check-deefc7ef",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "4153ae8d-81c4-4b72-8e60-18aa893186c6",
+      "rigType": "biped",
+      "result": {
+        "task_id": "4153ae8d-81c4-4b72-8e60-18aa893186c6",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_mycelord/3-rig/tripo-out/rig-4153ae8d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_mycelord/3-rig/tripo-out/rig-4153ae8d/model.glb",
+        "preview": "out/models/b_mycelord/3-rig/tripo-out/rig-4153ae8d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "0ab731c3-caba-43f8-806c-9dafbbe08695",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "0ab731c3-caba-43f8-806c-9dafbbe08695",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_mycelord/4-anim-1/tripo-out/retarget-0ab731c3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_mycelord/4-anim-1/tripo-out/retarget-0ab731c3/model.glb"
+        }
+      },
+      {
+        "task": "ed44ff2f-c5c4-4d9d-8094-e7a519d5e987",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:depressed"
+        ],
+        "result": {
+          "task_id": "ed44ff2f-c5c4-4d9d-8094-e7a519d5e987",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_mycelord/4-anim-2/tripo-out/retarget-2-ed44ff2f",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_mycelord/4-anim-2/tripo-out/retarget-2-ed44ff2f/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2275,
+  "creditsUsed": 375,
+  "finished": "2026-11-16T14:03:41.176Z",
+  "files": [
+    "1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/generated_image.jpeg",
+    "1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/model.glb",
+    "1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/preview.png",
+    "1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/rendered_image.webp",
+    "1-model/tripo-out/the-mycelord-once-brother-tobin-942be8bb/task.json",
+    "2-check/tripo-out/rig-check-deefc7ef/task.json",
+    "3-rig/tripo-out/rig-4153ae8d/model.glb",
+    "3-rig/tripo-out/rig-4153ae8d/preview.png",
+    "3-rig/tripo-out/rig-4153ae8d/rendered_image.webp",
+    "3-rig/tripo-out/rig-4153ae8d/task.json",
+    "4-anim-1/tripo-out/retarget-0ab731c3/model.glb",
+    "4-anim-1/tripo-out/retarget-0ab731c3/task.json",
+    "4-anim-2/tripo-out/retarget-2-ed44ff2f/model.glb",
+    "4-anim-2/tripo-out/retarget-2-ed44ff2f/task.json",
+    "manifest.json"
+  ]
+}

@@ -102,9 +102,9 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 3 | Tobin's survey stones and Asterfell signs (quest 3) | 0.39 | Done |
 | 4 | The Herald, boss 4 (quest 4) | 0.40 | Done |
 | 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
-| 6 | Unwish: the ending choice (quest 6) | 0.41 | In progress |
-| 7 | Asterfell delves | 0.42 | Not started |
-| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.43 | Not started |
+| 6 | Unwish: the ending choice (quest 6) | 0.42 | Not started |
+| 7 | Asterfell delves | 0.43 | Not started |
+| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.44 | Not started |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
@@ -124,4 +124,8 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
   `p.wished` (power, shield as ward, speed in recalcStats) or a refusal (`refuseMult`); silence
   at the timeout counts as a refusal; `clearWishes` on its death and on loadMap. UI: `#asker-offer`
   panel in index.html, keys 1–4 in main.js.
-- Next (0.41): Unwish, the ending choice (quest 6).
+- 0.41 (not in the original plan): the world rebuilt. Each theme's species, edge, pools and
+  ground cover are in src/render/biomes.js (BIOMES), the shapes in src/render/species.js, the
+  ground mask (paths, pools, the Wilds' seams) in environment.js `groundMask`, Tripo landmarks
+  in src/render/props.js. The Wilds draw as their own look, `shattered` (`lookOf`).
+- Next (0.42): Unwish, the ending choice (quest 6).

@@ -150,6 +150,33 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### The world, rebuilt (0.41)
+
+Every map is now its own place instead of one disc with recoloured cones and blobs.
+Nothing you bump into moved or changed size: the same obstacles, drawn as each land's own
+trees and stones (`src/render/species.js`, `src/render/biomes.js`).
+
+| Map | What grows and stands there | Its edge | Ground and weather |
+| --- | --- | --- | --- |
+| Haven | oaks, an autumn oak, pines, birches; flowers, berry bushes; Tripo cottages with thatched roofs | woods | dirt paths to the gates |
+| Greenwood Trail | oaks, birches, pines; ferns, bushes, fallen logs, mossy boulders, stumps | woods | dirt paths |
+| Spitter Fen | weeping willows, dead snags; reeds, lily pads | willows | still water with ripples, mud paths |
+| Ashen Ridge | burnt trees with glowing splits; ash-dusted boulders, cinders | ash cliffs | grey ash, falling ash |
+| Warden's Keep | broken columns, dead trees; ruined walls, graves | a ruined wall with Tripo towers | flagstones under moonlight |
+| Frostfall Pass | snow-laden pines, ice spikes; ice-crusted boulders | ice cliffs | frozen ponds, snowfall |
+| Sunscar Dunes | saguaros, bleached dead trees; layered sandstone outcrops, bones, pots | sandstone cliffs | blowing dust |
+| Gloomcap Hollow | giant mushrooms with glowing gills; fungus-grown rocks | giant mushrooms | glowing mycelium threads, spore pools |
+| Stormspire Cliffs | basalt columns; wind-carved rocks | basalt | rain and lightning |
+| Obsidian Maw | obsidian shards, burnt trees; lava rocks | obsidian over a sea of lava | lava cracks |
+| Starfall Sanctum | crystal clusters; stones floating over their bases | the ground ends in stars | holes into the stars |
+| The Shattered Wilds | **new look:** pieces of four lands (green, frozen, sand, ember), each with its own plants, split by glowing violet seams | broken cliffs and crystals | a torn violet dusk |
+| Asterfell | gold glass spires, palms; sandstone ruins; Tripo sandstone houses with amber windows | city walls | paving stones with star-glass in the joints |
+
+- Every portal now stands under a stone arch with glowing runes (Tripo).
+- The four Tripo landmarks are about 120–230 KB each; until one arrives (or if it cannot
+  load) the old hand-built version stands in.
+- Lower graphics settings draw fewer far edge trees and less ground cover.
+
 ### Act II: the Frozen Court and the Starwell (0.40)
 
 - **The Frozen Court** (from Wren, after Tobin's Survey): the **Herald** stands

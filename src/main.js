@@ -2431,7 +2431,9 @@ function start(hot = {}) {
         break;
       case 'mapChange':
         // Arrived on another exploration map: swap the scenery and forget the old map's enemies.
-        if (renderer.mapId !== world.map.id || !renderer.exploreGroup.visible) renderer.setMap(world.map);
+        // (the same map object already built only needs showing: building scenery is not free)
+        if (renderer.mapRef !== world.map || renderer.mapId !== world.map.id) renderer.setMap(world.map);
+        else if (!renderer.exploreGroup.visible) renderer.setEnvironment('explore');
         renderer.reset();
         renderer.camTarget.set(p.x, 0, p.z);
         tune();

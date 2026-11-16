@@ -476,6 +476,8 @@ with sync_playwright() as pw:
     check('a trial run never touches the saved character', save_before == save_after)
     # --- After The Unmade: world tiers, Echo Rifts, Wishborne (0.26) ------------------------------
     # A fresh browser profile with a level-100 Sharpshooter who has beaten The Unmade twice.
+    # (the finished page is closed first: two games rendering at once in software is very slow)
+    page.close()
     ctx = browser.new_context(viewport={'width': 1366, 'height': 768})
     page = ctx.new_page(); ev = page.evaluate
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
@@ -493,7 +495,8 @@ with sync_playwright() as pw:
     page.click('#travel .tier-row button:nth-child(3)'); page.wait_for_timeout(400)
     check('picking tier III raises it for every map out in the world', ev("() => game.world.worldTier()") == 3 and ev("() => game.world.player.worldTier") == 3)
     page.screenshot(path=str(out / '26-waygate.png'))
-    page.click('#travel .rift-row .primary'); page.wait_for_timeout(2500)
+    # (building a whole map and compiling its shaders in software rendering takes ~10 s here)
+    page.click('#travel .rift-row .primary', timeout=90000); page.wait_for_timeout(2500)
     check('entering an Echo Rift costs a shard and opens a random map with a timer', ev("() => game.world.map.id") == 'rift' and ev("() => !!game.world.rift") and ev("() => game.world.player.tickets") == 1 and page.is_visible('#rift-box'), ev("() => game.world.map.id"))
     check('rift enemies use the rift tier, not the world tier', ev("() => game.world.rift.tier") >= 1 and ev("() => game.world.enemies.length") >= 20, ev("() => game.world.enemies.length"))
     ev("() => { const w = game.world; w.rift.progress = w.rift.need - 1; const e = w.enemies.find((x) => !x.dead && !x.riftGuardian); e.hp = 0; w.killEnemy(e, 'test'); }"); page.wait_for_timeout(1200)

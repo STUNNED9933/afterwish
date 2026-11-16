@@ -267,9 +267,85 @@ export function loadRigged(id) {
   return cache.get(id);
 }
 
+/**
+ * Close a hand around what it holds (0.48.1). The hero rigs have no finger bones, so the fingers
+ * cannot be curled by a clip; instead the part of the hand mesh past the knuckles is bent once, at
+ * load, around a cylinder under the palm (where the handle runs), the way a fist wraps a grip.
+ * Done in the bind pose: the palm faces down there, so "down" is the side the fingers close to.
+ */
+const FIST = { knuckle: 0.42, radius: 0.3, most: 2.9 }; // knuckles at 42% of the hand; curl radius 30% of it; at most ~165°
+const FIST_AT = new Map(); // model url -> { hand bone name: [x, y, z] }, the middle of the fist in the bone's own space
+function closeHands(scene, names, url) {
+  const at = {};
+  FIST_AT.set(url, at);
+  scene.updateMatrixWorld(true);
+  const v = new THREE.Vector3(), q = new THREE.Quaternion();
+  scene.traverse((o) => {
+    if (!o.isSkinnedMesh || !o.skeleton || !o.geometry.attributes.skinIndex) return;
+    const g = o.geometry;
+    if (g.userData.fists) return;
+    g.userData.fists = true;
+    const pos = g.attributes.position, nor = g.attributes.normal, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+    const bones = o.skeleton.bones;
+    const bindInv = o.bindMatrixInverse;
+    for (const name of names) {
+      const bi = bones.findIndex((b) => b.name === name);
+      const fi = bi < 0 ? -1 : bones.indexOf(bones[bi].parent);
+      if (fi < 0) continue;
+      const H = new THREE.Vector3().setFromMatrixPosition(o.skeleton.boneInverses[bi].clone().invert());
+      const F = new THREE.Vector3().setFromMatrixPosition(o.skeleton.boneInverses[fi].clone().invert());
+      const d = H.clone().sub(F).normalize(); // along the hand, toward the fingertips
+      const list = [];
+      for (let i = 0; i < pos.count; i++) {
+        let w = 0;
+        for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === bi) w += sw.getComponent(i, k);
+        if (w < 0.5) continue;
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.bindMatrix).sub(H);
+        if (v.dot(d) > 0) list.push(i);
+      }
+      if (list.length < 12) continue;
+      // the hand's length, and the back of the hand: up, across the hand from the palm
+      let L = 0;
+      for (const i of list) L = Math.max(L, v.fromBufferAttribute(pos, i).applyMatrix4(o.bindMatrix).sub(H).dot(d));
+      const up = new THREE.Vector3(0, 1, 0).addScaledVector(d, -d.y).normalize();
+      const axis = new THREE.Vector3().crossVectors(up, d).normalize(); // turning about it takes the fingers from d toward -up
+      const t0 = L * FIST.knuckle, R = L * FIST.radius;
+      const C = H.clone().addScaledVector(d, t0).addScaledVector(up, -R);
+      const toBone = o.skeleton.boneInverses[bi];
+      at[name] = {
+        at: C.clone().applyMatrix4(toBone).toArray(), // what is held goes through here
+        hole: axis.clone().transformDirection(toBone).toArray(), // ...and runs this way through the fist
+        along: d.clone().transformDirection(toBone).toArray(), // the hand's own line, from the wrist
+      };
+      for (const i of list) {
+        const p = v.fromBufferAttribute(pos, i).applyMatrix4(o.bindMatrix).sub(H);
+        const t = p.dot(d);
+        if (t <= t0) continue;
+        const y = p.dot(up);
+        const side = p.clone().addScaledVector(d, -t).addScaledVector(up, -y);
+        const th = Math.min(FIST.most, (t - t0) / R);
+        const rho = R + y;
+        const out = C.clone().add(side).addScaledVector(d, rho * Math.sin(th)).addScaledVector(up, rho * Math.cos(th)).applyMatrix4(bindInv);
+        pos.setXYZ(i, out.x, out.y, out.z);
+        if (nor) {
+          q.setFromAxisAngle(axis, th);
+          const n = new THREE.Vector3().fromBufferAttribute(nor, i).transformDirection(o.bindMatrix).applyQuaternion(q).transformDirection(bindInv);
+          nor.setXYZ(i, n.x, n.y, n.z);
+        }
+      }
+      pos.needsUpdate = true;
+      if (nor) nor.needsUpdate = true;
+    }
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+  });
+}
+
 /** One-time work on a loaded model: size, clips cut and cleaned, shared things marked. */
 function prepare(spec, gltf) {
   const scene = gltf.scene;
+  const grips = [spec.hand, spec.offhand, spec.bow && spec.bow.drawHand].filter(Boolean);
+  if (spec.fists !== false && grips.length) closeHands(scene, grips, spec.url); // hands close around what they hold
   const box = new THREE.Box3().setFromObject(scene);
   const scale = spec.height / Math.max(0.01, box.max.y - box.min.y);
   scene.traverse((o) => {
@@ -438,7 +514,11 @@ export function instantiate(tpl) {
   };
   fadeTo(actions.idle, 0);
   const hand = spec.hand ? root.getObjectByName(spec.hand) : null;
-  const palm = palmOf(hand, spec.palm); // weapons sit in the palm, not at the wrist joint
+  const fistAt = FIST_AT.get(spec.url) || {};
+  const gripAt = (h) => (fistAt[h.name] ? new THREE.Vector3(...fistAt[h.name].at) : palmOf(h, spec.palm)); // in the fist (or the palm)
+  const fistHole = hand && fistAt[hand.name] ? new THREE.Vector3(...fistAt[hand.name].hole) : null;
+  const holeW = new THREE.Vector3(), wantW = new THREE.Vector3(), twistQ = new THREE.Quaternion();
+  const palm = hand ? gripAt(hand) : new THREE.Vector3(); // weapons sit in the hand, not at the wrist joint
   const aiming = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.aiming && spec.aiming.test(a.getClip().name));
   let bow = null;
   return {
@@ -465,7 +545,7 @@ export function instantiate(tpl) {
       const h = root.getObjectByName(handName);
       if (!h) return;
       w.scale.setScalar((spec.weaponScale || 1) / tpl.scale);
-      held.push({ obj: w, hand: h, mode: 'blade', grip: forwardGrip(h), palm: palmOf(h, spec.palm) });
+      held.push({ obj: w, hand: h, mode: 'blade', grip: forwardGrip(h), palm: gripAt(h) });
       root.add(w);
     },
     /** Hold a bow made here (spec.bow): wood for the limbs, the string glows like a blade. */
@@ -592,11 +672,12 @@ export function instantiate(tpl) {
         root.updateMatrixWorld(true);
         const inv = tmpM.copy(root.matrixWorld).invert();
         for (const h of held) {
-          const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
-          hm.decompose(tmpP, tmpQ, tmpS);
-          h.obj.position.copy(h.palm).applyMatrix4(hm);
-          if (h.mode === 'blade') h.obj.quaternion.copy(tmpQ).multiply(h.grip);
-          else {
+          if (h.mode === 'blade') {
+            const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
+            hm.decompose(tmpP, tmpQ, tmpS);
+            h.obj.position.copy(h.palm).applyMatrix4(hm);
+            h.obj.quaternion.copy(tmpQ).multiply(h.grip);
+          } else {
             // a staff stays upright, leaning the way the forearm points (forward when casting)
             const fore = h.hand.parent;
             fore.getWorldPosition(staffA);
@@ -604,6 +685,21 @@ export function instantiate(tpl) {
             staffB.sub(staffA).transformDirection(inv);
             staffUp.set(0, 1, 0).addScaledVector(staffB, 0.35).normalize();
             h.obj.quaternion.setFromUnitVectors(zAxis, staffUp);
+            if (fistHole) {
+              // bend the wrist so the fist closes round the staff, knuckles along it, as a hand holds a
+              // walking stick (0.48.1): the smallest turn of the hand that lines its fist up with the staff
+              const hm0 = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
+              hm0.decompose(tmpP, tmpQ, tmpS);
+              holeW.copy(fistHole).applyQuaternion(tmpQ);
+              wantW.copy(staffUp);
+              if (holeW.dot(wantW) < 0) wantW.negate(); // the hole runs both ways: turn the short way
+              twistQ.setFromUnitVectors(holeW, wantW); // in the model's space...
+              twistQ.premultiply(tmpQ.clone().invert()).multiply(tmpQ); // ...as a turn of the hand itself
+              h.hand.quaternion.multiply(twistQ);
+              h.hand.updateMatrixWorld(true);
+            }
+            const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
+            h.obj.position.copy(h.palm).applyMatrix4(hm);
           }
         }
       }

@@ -51,7 +51,7 @@ export const PEOPLE = {
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));
@@ -234,7 +234,11 @@ export function makeCreature(tpl, spec) {
           fadeTo(w, 0.2);
           w.timeScale = Math.max(0.6, Math.min(2.2, (s.speed || 3) / (spec.beast ? 4 : 2.6)));
         }
-      } else fadeTo(action(s.idleKind || 'idle'), 0.25);
+      } else {
+        const idle = action(s.idleKind || 'idle');
+        if (idle) fadeTo(idle, 0.25);
+        else if (current) current.timeScale = 0.12; // a beast with only a walk: nearly still, breathing
+      }
       mixer.update(dt);
     },
   };

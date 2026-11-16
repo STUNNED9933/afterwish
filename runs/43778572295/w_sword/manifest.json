@@ -1,0 +1,37 @@
+{
+  "id": "w_sword",
+  "prompt": "a one-handed steel arming sword, straight double-edged blade with a fuller, simple cross guard with a small blue gem, leather-wrapped grip, round steel pommel. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T00:08:23.114Z",
+  "creditsBefore": 505,
+  "steps": {
+    "model": {
+      "task": "84a1735d-a342-4b57-b66e-cac6c4f930b2",
+      "result": {
+        "task_id": "84a1735d-a342-4b57-b66e-cac6c4f930b2",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_sword/1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_sword/1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/model.glb",
+        "preview": "out/models/w_sword/1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 475,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T00:10:32.911Z",
+  "files": [
+    "1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/generated_image.jpeg",
+    "1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/model.glb",
+    "1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/preview.png",
+    "1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/rendered_image.webp",
+    "1-model/tripo-out/a-one-handed-steel-arming-sword-84a1735d/task.json",
+    "manifest.json"
+  ]
+}

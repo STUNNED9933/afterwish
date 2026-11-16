@@ -1,0 +1,37 @@
+{
+  "id": "w_dagger",
+  "prompt": "a short steel dagger, slim single-edged blade with a slight curve, small cross guard, dark leather-wrapped grip, small pommel ring. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T00:10:32.913Z",
+  "creditsBefore": 475,
+  "steps": {
+    "model": {
+      "task": "ac90d62a-1093-4fe6-b6e1-1409a5d63453",
+      "result": {
+        "task_id": "ac90d62a-1093-4fe6-b6e1-1409a5d63453",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_dagger/1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_dagger/1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/model.glb",
+        "preview": "out/models/w_dagger/1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 445,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T00:14:13.462Z",
+  "files": [
+    "1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/generated_image.jpeg",
+    "1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/model.glb",
+    "1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/preview.png",
+    "1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/rendered_image.webp",
+    "1-model/tripo-out/a-short-steel-dagger-slim-single-ac90d62a/task.json",
+    "manifest.json"
+  ]
+}

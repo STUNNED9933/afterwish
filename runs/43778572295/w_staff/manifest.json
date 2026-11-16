@@ -1,0 +1,37 @@
+{
+  "id": "w_staff",
+  "prompt": "a mage's staff, long straight dark wooden shaft with silver bands, the top curls around a glowing pale blue crystal orb. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T00:14:13.463Z",
+  "creditsBefore": 445,
+  "steps": {
+    "model": {
+      "task": "14861ba3-3317-4729-8079-666c9c35cfa9",
+      "result": {
+        "task_id": "14861ba3-3317-4729-8079-666c9c35cfa9",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_staff/1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_staff/1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/model.glb",
+        "preview": "out/models/w_staff/1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 415,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T00:17:23.349Z",
+  "files": [
+    "1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/generated_image.jpeg",
+    "1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/model.glb",
+    "1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/preview.png",
+    "1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/rendered_image.webp",
+    "1-model/tripo-out/a-mage-s-staff-long-straight-dar-14861ba3/task.json",
+    "manifest.json"
+  ]
+}

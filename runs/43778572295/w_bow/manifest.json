@@ -1,0 +1,37 @@
+{
+  "id": "w_bow",
+  "prompt": "a wooden recurve bow without its string, dark polished wood limbs curving back at the tips, leather-wrapped grip in the middle, small silver caps on the tips. stylised-realistic fantasy game weapon prop, a single object on its own, no hands, no stand, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-16T00:17:23.349Z",
+  "creditsBefore": 415,
+  "steps": {
+    "model": {
+      "task": "392777f5-a50e-4f55-8ae3-da402df87b3c",
+      "result": {
+        "task_id": "392777f5-a50e-4f55-8ae3-da402df87b3c",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/w_bow/1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/w_bow/1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/model.glb",
+        "preview": "out/models/w_bow/1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 385,
+  "creditsUsed": 30,
+  "finished": "2026-11-16T00:19:32.718Z",
+  "files": [
+    "1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/generated_image.jpeg",
+    "1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/model.glb",
+    "1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/preview.png",
+    "1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/rendered_image.webp",
+    "1-model/tripo-out/a-wooden-recurve-bow-without-its-392777f5/task.json",
+    "manifest.json"
+  ]
+}

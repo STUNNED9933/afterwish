@@ -137,7 +137,8 @@ with sync_playwright() as pw:
     res = []
     for k in range(8):
         host.evaluate("""() => { const w = game.world; const a = w.heroByPid(1).player; a.hp = a.stats.maxHp; a.parryCd = 0; a.parryT = 0;
-            const e = w.enemies.find((x) => !x.def.boss && !x.dead && x.state !== 'spawn' && x.def.attacks.every((t) => t.parryable));
+            const e = w.enemies.find((x) => !x.def.boss && !x.dead && x.state !== 'spawn' && x.def.attacks.some((t) => t.parryable && t.shape === 'arc'));
+            e.atkCds = {}; for (const t of e.def.attacks) if (!t.parryable || t.shape !== 'arc') e.atkCds[t.name] = 1e9; // (0.44 kits: only its parryable swings for this test)
             for (const o of w.enemies) if (o !== e && Math.hypot(o.x - a.x, o.z - a.z) < 16) { o.x = a.x + 40; o.z = a.z + 40; o.aggro = false; }
             a.autoAttack = false; a.target = null;
             e.maxHp = e.hp = 1e7; e.x = e.px = a.x + 1.6; e.z = e.pz = a.z; e.home = null; e.returning = false; e.aggro = true; e.targetPid = 1; e.state = 'chase'; e.t = 0; window.__parries0 = w.as(w.heroByPid(1), () => w.stats.parries); }""")

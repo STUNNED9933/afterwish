@@ -311,7 +311,200 @@ ENEMIES.asker.attacks.push(
   ...BOSS_ATTACKS({ size: 1.15, pace: 0.85, dmg: 32, slam: 8, shots: 11, spread: 2.4, shotSpeed: 15 }),
   { name: 'starfall', shape: 'rain', trigger: 30, windup: 0.6, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 8, gap: 0.24, fall: 0.8, radius: 2.4 },
 );
+// ---------------------------------------------------------------------------
+// 0.44: every enemy's moves, fitted to where it lives and what it was before the wish.
+// Kits are picked by sim/world.js pickFromKit (trigger, min, cd, weight, phase, hpBelow).
+// New shapes and extras: ring (safe close in: inner), beam (a still line; cross = four of them),
+// call (no blow: summon / heal only), rain with line or scatter, shots around and seeking (seek),
+// pool (ground that hurts after), chill (slows on hit), blink (steps beside you first), fx (colour).
+// ---------------------------------------------------------------------------
+const POOL = (kind, r, life, dmg = 0.25, more = {}) => ({ kind, r, life, dmg, ...more });
+const KITS = {
+  // The Husks of the Greenwood: villagers the wish would not let die. They reach for you.
+  grunt: [
+    { name: 'swipe', shape: 'arc', trigger: 2.3, range: 2.9, angle: 1.9, windup: 0.75, recover: 0.9, dmg: 17, parryable: true, lockAt: 0.25, weight: 3 },
+    { name: 'lurch', shape: 'rect', trigger: 6, min: 3, length: 5, width: 1.6, windup: 0.8, recover: 1.1, dmg: 15, parryable: false, lockAt: 0.25, chargeDur: 0.32, cd: 6 },
+  ],
+  // Fen Spitters: the low-water fever, carried and coughed up. Where it lands, the ground is sick.
+  spitter: [
+    { name: 'bolt', shape: 'shot', trigger: 13, windup: 0.85, recover: 1.3, dmg: 15, parryable: true, lockAt: 0.1, speed: 13, count: 1, spread: 0, fx: 'fever', weight: 2 },
+    { name: 'retch', shape: 'rain', trigger: 13, windup: 0.9, recover: 1.4, dmg: 13, parryable: false, lockAt: 0, count: 1, gap: 0, fall: 1.0, radius: 2.2, pool: POOL('fever', 2.2, 4, 0.22), fx: 'fever', cd: 7 },
+  ],
+  // Crushers: quarry hands still in their shackles. The chain swings wide; the stomp only misses those who hug them.
+  brute: [
+    { name: 'slam', shape: 'circle', trigger: 3.3, radius: 3.0, offset: 2.4, windup: 1.25, recover: 1.5, dmg: 44, parryable: true, lockAt: 0.35, weight: 2 },
+    { name: 'chain', shape: 'arc', trigger: 4.2, range: 4.6, angle: 4.2, windup: 1.0, recover: 1.3, dmg: 32, parryable: true, lockAt: 0.3, cd: 6, fx: 'iron' },
+    { name: 'stomp', shape: 'ring', trigger: 5, radius: 5.6, inner: 2.2, windup: 1.2, recover: 1.5, dmg: 38, parryable: false, lockAt: 0, cd: 9, fx: 'iron' },
+  ],
+  // Stalkers: starved things that hunt by sound. A charge, or a pounce onto where you stood.
+  stalker: [
+    { name: 'charge', shape: 'rect', trigger: 10, length: 11, width: 1.8, windup: 0.9, recover: 1.3, dmg: 30, parryable: false, lockAt: 0.3, chargeDur: 0.4, weight: 2 },
+    { name: 'pounce', shape: 'circle', leap: true, trigger: 12, min: 4, radius: 2.2, offset: 0, windup: 0.85, recover: 1.1, dmg: 26, parryable: false, lockAt: 0.25, cd: 6 },
+  ],
+  // Cinder Imps of the Ashen Ridge: they burst into embers that keep burning.
+  imp: [
+    { name: 'claw', shape: 'arc', trigger: 2.0, range: 2.5, angle: 1.7, windup: 0.5, recover: 0.7, dmg: 9, parryable: true, lockAt: 0.2, weight: 3 },
+    { name: 'cinders', shape: 'circle', trigger: 2.6, radius: 2.4, offset: 0, windup: 0.9, recover: 1.0, dmg: 10, parryable: false, lockAt: 0, pool: POOL('ember', 2.0, 3, 0.3), fx: 'ember', cd: 7 },
+  ],
+  // The Oathbound: the Warden's men, still keeping the gate. Two cuts, a shield to close the gap, and the oath's thrust.
+  knight: [
+    { name: 'cut1', shape: 'arc', trigger: 2.9, range: 3.4, angle: 2.0, windup: 0.7, recover: 0, dmg: 16, parryable: true, lockAt: 0.25, chain: 'cut2', weight: 3 },
+    { name: 'cut2', shape: 'arc', trigger: 99, range: 3.4, angle: 2.0, windup: 0.45, recover: 1.1, dmg: 18, parryable: true, lockAt: 0.2 },
+    { name: 'shieldrush', shape: 'rect', trigger: 7, min: 3.2, length: 5.5, width: 1.8, windup: 0.7, recover: 1.0, dmg: 18, parryable: false, lockAt: 0.25, chargeDur: 0.25, cd: 6, fx: 'iron' },
+    { name: 'oath', shape: 'beam', trigger: 5.6, length: 6.5, width: 1.3, windup: 0.8, recover: 1.1, dmg: 22, parryable: true, lockAt: 0.2, cd: 6, fx: 'oath' },
+  ],
+  // Frost Wolves of the high pass: a bite that leaves you cold, and a leap from further out.
+  wolf: [
+    { name: 'bite', shape: 'arc', trigger: 2.2, range: 2.7, angle: 1.5, windup: 0.45, recover: 0.8, dmg: 14, parryable: true, lockAt: 0.18, chill: 1.5, fx: 'frost', weight: 3 },
+    { name: 'pounce', shape: 'circle', leap: true, trigger: 11, min: 4.5, radius: 2.0, offset: 0, windup: 0.75, recover: 1.0, dmg: 16, parryable: false, lockAt: 0.22, chill: 2, cd: 5, fx: 'frost' },
+  ],
+  // Rime Callers: the pass's priests. Shards, and frost that grows up out of the ground under you.
+  shaman: [
+    { name: 'shards', shape: 'shot', trigger: 13, windup: 0.9, recover: 1.4, dmg: 9, parryable: true, lockAt: 0.12, speed: 12, count: 3, spread: 0.5, fx: 'frost', weight: 2 },
+    { name: 'rime', shape: 'rain', trigger: 13, windup: 0.8, recover: 1.3, dmg: 12, parryable: false, lockAt: 0, count: 1, gap: 0, fall: 1.1, radius: 2.6, pool: POOL('frost', 2.6, 3, 0.12, { slow: 0.8 }), fx: 'frost', cd: 8 },
+  ],
+  // Dune Scarabs: the old city's beetles. A charge, or a dive under the sand and out beneath you.
+  scarab: [
+    { name: 'charge', shape: 'rect', trigger: 9, length: 12, width: 2.2, windup: 0.75, recover: 1.2, dmg: 22, parryable: false, lockAt: 0.25, chargeDur: 0.4, weight: 2 },
+    { name: 'burrow', shape: 'rain', trigger: 13, windup: 0.7, recover: 1.3, dmg: 24, parryable: false, lockAt: 0, count: 1, gap: 0, fall: 1.2, radius: 2.4, fx: 'sand', cd: 7 },
+  ],
+  // Stone Colossi: the Queen's guard, carved in sandstone and woken. A fist, the quake, and the statue falling on you.
+  golem: [
+    { name: 'quake', shape: 'circle', trigger: 3.6, radius: 4.6, offset: 0, windup: 1.4, recover: 1.6, dmg: 30, parryable: false, lockAt: 0, fx: 'sand' },
+    { name: 'fist', shape: 'arc', trigger: 4, range: 4.2, angle: 1.4, windup: 1.0, recover: 1.2, dmg: 34, parryable: true, lockAt: 0.3, weight: 2 },
+    { name: 'topple', shape: 'beam', trigger: 9, min: 3, length: 9, width: 3, windup: 1.4, recover: 2.0, dmg: 46, parryable: false, lockAt: 0.3, cd: 9, fx: 'sand' },
+  ],
+  // Sporecaps: Brother Tobin's garden, walking. Spores that take root, and a cloud when you come close.
+  sporecap: [
+    { name: 'spore', shape: 'shot', trigger: 12, windup: 1.0, recover: 1.5, dmg: 20, parryable: false, lockAt: 0.3, speed: 8.5, count: 1, spread: 0, pool: POOL('spore', 1.8, 4, 0.2), fx: 'spore', weight: 2 },
+    { name: 'cloud', shape: 'circle', trigger: 4, radius: 3.2, offset: 0, windup: 1.0, recover: 1.3, dmg: 10, parryable: false, lockAt: 0, pool: POOL('spore', 3.2, 4, 0.2), fx: 'spore', cd: 9 },
+  ],
+  // Storm Wraiths of the Spire: a bolt, lightning that walks toward you, and a step through the air to your side.
+  wraith: [
+    { name: 'bolt', shape: 'shot', trigger: 12, windup: 0.6, recover: 0.9, dmg: 13, parryable: true, lockAt: 0.08, speed: 19, count: 1, spread: 0, fx: 'storm', weight: 2 },
+    { name: 'arc', shape: 'rain', line: true, trigger: 13, windup: 0.7, recover: 1.1, dmg: 14, parryable: false, lockAt: 0.1, count: 4, gap: 0.12, fall: 0.6, radius: 1.8, fx: 'storm', cd: 6 },
+    { name: 'stepcut', shape: 'arc', trigger: 14, min: 4, range: 2.8, angle: 1.8, windup: 0.6, recover: 1.0, dmg: 16, parryable: true, lockAt: 0.2, blink: 2.2, cd: 8, fx: 'storm' },
+  ],
+  // The Glassbound: Asterfell's people, frozen mid-toast. They raise their glass, and it breaks outward.
+  glassbound: [
+    { name: 'smash', shape: 'arc', trigger: 2.6, range: 3.2, angle: 1.8, windup: 0.8, recover: 1.0, dmg: 22, parryable: true, lockAt: 0.25, weight: 2 },
+    { name: 'toast', shape: 'shot', around: true, trigger: 6, windup: 1.0, recover: 1.3, dmg: 12, parryable: true, lockAt: 0, speed: 9, count: 8, spread: 0, life: 1.4, fx: 'glass', cd: 8 },
+  ],
+  // Court Guards: still on parade. A bash, the thrust that follows it, and the halberd's sweep.
+  courtguard: [
+    { name: 'bash', shape: 'arc', trigger: 2.8, range: 3.2, angle: 1.6, windup: 0.65, recover: 0, dmg: 15, parryable: true, lockAt: 0.22, chain: 'thrust', weight: 2 },
+    { name: 'thrust', shape: 'rect', trigger: 99, length: 5.5, width: 1.4, windup: 0.5, recover: 1.1, dmg: 20, parryable: true, lockAt: 0.2, chargeDur: 0.18 },
+    { name: 'sweep', shape: 'arc', trigger: 4, range: 4.2, angle: 3.2, windup: 0.9, recover: 1.2, dmg: 18, parryable: true, lockAt: 0.3, cd: 6, fx: 'gold' },
+  ],
+};
+for (const id in KITS) {
+  ENEMIES[id].attacks = KITS[id];
+  ENEMIES[id].kit = true;
+}
 ENEMIES.heraldguard = { ...ENEMIES.courtguard, exp: 0, drop: 0, summon: true }; // called by the Herald; no reward of their own
+ENEMIES.wishling.attacks[0].fx = 'gold';
+
+// --- Bosses (0.44): each fights like who they were ---------------------------------------------
+const CHASE_KIT = (o) => CHASE_ATTACKS(o).map((a) => ({ ...a, min: a.name === 'lunge' ? 7 : 8, weight: 0.6, cd: 5 }));
+const BOSS_BASE = (o) => BOSS_ATTACKS(o).filter((a) => a.name !== 'lunge' && a.name !== 'leap').map((a) =>
+  a.name === 'combo1' ? { ...a, weight: 3 } : a.name === 'fan' ? { ...a, min: 6, weight: 0.8, cd: 4 } : a);
+const CALL = (name, more) => ({ name, shape: 'call', trigger: 40, windup: 1.2, recover: 1.0, dmg: 0, parryable: false, lockAt: 0, ...more });
+
+// The Warden, Captain Aldric: barred the gate so the curse stayed up the mountain, and still counts it.
+ENEMIES.boss.attacks = [
+  ...BOSS_BASE({ size: 1, pace: 1, dmg: 28, slam: 6.5, shots: 5, spread: 0.9, shotSpeed: 12 }),
+  { name: 'keys', shape: 'arc', trigger: 6, range: 6, angle: 4.4, windup: 1.0, recover: 1.2, dmg: 30, parryable: true, lockAt: 0.3, cd: 7, fx: 'iron' },
+  { name: 'bargate', shape: 'beam', trigger: 16, length: 16, width: 2.6, windup: 1.2, recover: 1.4, dmg: 50, parryable: false, lockAt: 0.25, cd: 9, fx: 'iron' },
+  { name: 'count', shape: 'rain', line: true, trigger: 18, windup: 0.8, recover: 1.2, dmg: 32, parryable: false, lockAt: 0.1, count: 6, gap: 0.22, fall: 0.7, radius: 2.2, cd: 10, fx: 'oath' },
+  CALL('muster', { summon: { type: 'oathshade', count: 2, max: 2 }, hpBelow: 0.6, cd: 28 }),
+  ...CHASE_KIT({ size: 1, pace: 1, dmg: 28 }),
+];
+// The Mycelord, once Brother Tobin: he tried to teach bodies to rot so they could rest. He is still trying.
+ENEMIES.boss2.attacks = [
+  ...BOSS_BASE({ size: 1.1, pace: 1, dmg: 26, slam: 7.5, shots: 7, spread: 1.3, shotSpeed: 11 }).map((a) => (a.name === 'slam' ? { ...a, pool: POOL('spore', 4, 4, 0.18), fx: 'spore' } : a)),
+  { name: 'remedy', shape: 'shot', trigger: 16, min: 4, windup: 0.9, recover: 1.1, dmg: 18, parryable: true, lockAt: 0.15, speed: 10, count: 3, spread: 0.8, pool: POOL('fever', 2, 4, 0.2), fx: 'fever', cd: 5 },
+  { name: 'garden', shape: 'rain', scatter: 7, trigger: 20, windup: 1.0, recover: 1.2, dmg: 22, parryable: false, lockAt: 0, count: 6, gap: 0.15, fall: 1.0, radius: 2.2, pool: POOL('spore', 2.2, 5, 0.18), fx: 'spore', cd: 12 },
+  { name: 'rot', shape: 'ring', trigger: 9, radius: 8, inner: 3, windup: 1.3, recover: 1.4, dmg: 44, parryable: false, lockAt: 0, cd: 9, fx: 'rot' },
+  { name: 'medicine', shape: 'circle', trigger: 14, radius: 4.2, offset: 0, windup: 1.7, recover: 1.6, dmg: 56, parryable: false, lockAt: 0, pull: 3.4, hpBelow: 0.7, cd: 14, fx: 'rot' },
+  CALL('tend', { summon: { type: 'sporecap', count: 2, max: 3 }, heal: 0.03, hpBelow: 0.5, cd: 24 }),
+  ...CHASE_KIT({ size: 1.1, pace: 1, dmg: 26 }),
+];
+// The Unmade, once Queen Maren: "let nothing I love be taken from me". She sings to an empty cradle,
+// holds you close, calls her people back, and in the end she weeps the sky down.
+ENEMIES.boss3.attacks = [
+  ...BOSS_BASE({ size: 1.2, pace: 0.88, dmg: 30, slam: 8, shots: 9, spread: 1.6, shotSpeed: 14 }),
+  { name: 'lullaby', shape: 'shot', around: true, trigger: 20, windup: 1.0, recover: 1.0, dmg: 16, parryable: true, lockAt: 0, speed: 6, count: 10, spread: 0, seek: 0.9, life: 5, cd: 9, fx: 'star' },
+  { name: 'cradle', shape: 'ring', trigger: 9, radius: 9, inner: 2.8, windup: 1.3, recover: 1.3, dmg: 46, parryable: false, lockAt: 0, cd: 8, fx: 'star' },
+  // phase two: the mother
+  { name: 'starfall', shape: 'rain', trigger: 30, windup: 0.7, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 6, gap: 0.28, fall: 0.85, radius: 2.6, phase: 2, cd: 7, fx: 'star' },
+  { name: 'holdon', shape: 'circle', trigger: 14, radius: 4.6, offset: 0, windup: 1.6, recover: 1.5, dmg: 52, parryable: false, lockAt: 0, pull: 3.2, phase: 2, cd: 12, fx: 'star' },
+  CALL('people', { summon: { type: 'grunt', count: 3, max: 4 }, phase: 2, cd: 20 }),
+  // phase three: the wish
+  { name: 'collapse', shape: 'circle', trigger: 13, radius: 7.5, offset: 0, windup: 1.8, recover: 1.8, dmg: 70, parryable: false, lockAt: 0, pull: 4.2, phase: 3, cd: 10, weight: 1.5, fx: 'star' },
+  { name: 'weep', shape: 'rain', scatter: 9, trigger: 30, windup: 1.0, recover: 1.0, dmg: 24, parryable: false, lockAt: 0, count: 10, gap: 0.12, fall: 0.8, radius: 2.0, pool: POOL('tears', 2, 3, 0.15, { slow: 0.6 }), phase: 3, cd: 11, fx: 'tears' },
+  { name: 'emptycradle', shape: 'beam', cross: true, trigger: 16, length: 16, width: 2.4, windup: 1.2, recover: 1.3, dmg: 48, parryable: false, lockAt: 0.6, phase: 3, cd: 9, fx: 'star' },
+  { name: 'wings', shape: 'shot', around: true, trigger: 20, windup: 0.9, recover: 1.1, dmg: 22, parryable: false, lockAt: 0, speed: 13, count: 14, spread: 0, phase: 3, cd: 10, fx: 'star' },
+  ...CHASE_KIT({ size: 1.2, pace: 0.88, dmg: 30 }),
+];
+// The Herald: the chamberlain reading your naming day to a city held in glass. He wants to present you.
+ENEMIES.herald.attacks = [
+  ...BOSS_BASE({ size: 1.05, pace: 0.95, dmg: 30, slam: 7, shots: 7, spread: 1.2, shotSpeed: 13 }),
+  { name: 'proclaim', shape: 'rain', trigger: 22, windup: 0.6, recover: 1.0, dmg: 30, parryable: false, lockAt: 0, count: 7, gap: 0.2, fall: 0.8, radius: 2.2, cd: 8, fx: 'gold' },
+  { name: 'fanfare', shape: 'shot', around: true, trigger: 12, windup: 0.9, recover: 1.0, dmg: 18, parryable: true, lockAt: 0, speed: 11, count: 12, spread: 0, cd: 8, fx: 'gold' },
+  { name: 'decree', shape: 'beam', trigger: 18, length: 18, width: 2.2, windup: 1.0, recover: 1.2, dmg: 44, parryable: false, lockAt: 0.25, cd: 7, fx: 'gold' },
+  { name: 'present', shape: 'circle', trigger: 14, radius: 4.5, offset: 0, windup: 1.6, recover: 1.5, dmg: 50, parryable: false, lockAt: 0, pull: 3, hpBelow: 0.75, cd: 14, fx: 'gold' },
+  ...CHASE_KIT({ size: 1.05, pace: 0.95, dmg: 30 }),
+];
+// The Asker: the star. It gives what is asked, and every wish ever made is still in the air around it.
+ENEMIES.asker.attacks = [
+  ...BOSS_BASE({ size: 1.15, pace: 0.85, dmg: 32, slam: 8, shots: 11, spread: 2.4, shotSpeed: 15 }),
+  { name: 'starfall', shape: 'rain', trigger: 30, windup: 0.6, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 8, gap: 0.24, fall: 0.8, radius: 2.4, cd: 8, fx: 'gold' },
+  { name: 'halo', shape: 'ring', trigger: 10, radius: 9, inner: 3, windup: 1.2, recover: 1.2, dmg: 46, parryable: false, lockAt: 0, cd: 8, fx: 'gold' },
+  { name: 'crosslight', shape: 'beam', cross: true, trigger: 15, length: 14, width: 2, windup: 1.3, recover: 1.2, dmg: 46, parryable: false, lockAt: 0.6, cd: 10, fx: 'star' },
+  { name: 'granted', shape: 'shot', around: true, trigger: 20, windup: 1.0, recover: 1.1, dmg: 18, parryable: true, lockAt: 0, speed: 8, count: 16, spread: 0, seek: 0.6, life: 4, cd: 12, fx: 'gold' },
+  ...CHASE_KIT({ size: 1.15, pace: 0.85, dmg: 32 }),
+];
+for (const id of ['boss', 'boss2', 'boss3', 'herald', 'asker']) ENEMIES[id].kit = true;
+
+// New Game+ (0.45): the Unmade wears your old face. It fights with your old class's moves, and in its
+// later phases with the wish's own (the same as Maren's). These are kits only: the boss is still boss3.
+const WISH_LATE = ENEMIES.boss3.attacks.filter((a) => a.phase >= 2);
+const OLD = (cls, moves) => ({ name: 'The Unmade', type: 'oldself_' + cls, attacks: [...moves, ...WISH_LATE, ...CHASE_KIT({ size: 1.2, pace: 0.88, dmg: 30 })] });
+export const OLD_SELVES = {
+  warrior: OLD('warrior', [
+    { name: 'combo1', shape: 'arc', trigger: 5, range: 5.2, angle: 2.4, windup: 0.75, recover: 0, dmg: 30, parryable: true, lockAt: 0.25, chain: 'combo2', weight: 3, fx: 'oath' },
+    { name: 'combo2', shape: 'arc', trigger: 99, range: 5.2, angle: 2.4, windup: 0.5, recover: 1.0, dmg: 30, parryable: true, lockAt: 0.2 },
+    { name: 'slam', shape: 'circle', leap: true, trigger: 14, radius: 5.5, offset: 0, windup: 1.1, recover: 1.4, dmg: 60, parryable: false, lockAt: 0.3, cd: 8, fx: 'oath' },
+    { name: 'whirl', shape: 'ring', trigger: 6, radius: 5, inner: 0.6, windup: 1.0, recover: 1.2, dmg: 44, parryable: false, lockAt: 0, cd: 7, fx: 'oath' },
+    { name: 'charge', shape: 'rect', trigger: 14, min: 5, length: 12, width: 2.4, windup: 0.8, recover: 1.2, dmg: 40, parryable: false, lockAt: 0.25, chargeDur: 0.35, cd: 6 },
+  ]),
+  archer: OLD('archer', [
+    { name: 'combo1', shape: 'shot', trigger: 20, windup: 0.6, recover: 0.5, dmg: 24, parryable: true, lockAt: 0.1, speed: 26, count: 3, spread: 0.3, weight: 3, fx: 'gold' },
+    { name: 'slam', shape: 'beam', trigger: 22, length: 22, width: 1.6, windup: 1.1, recover: 1.0, dmg: 60, parryable: false, lockAt: 0.3, cd: 7, fx: 'gold' },
+    { name: 'storm', shape: 'rain', scatter: 6, trigger: 20, windup: 0.9, recover: 1.0, dmg: 30, parryable: false, lockAt: 0, count: 8, gap: 0.12, fall: 0.8, radius: 2.2, cd: 9, fx: 'gold' },
+    { name: 'volley', shape: 'shot', around: true, trigger: 8, windup: 0.8, recover: 1.0, dmg: 22, parryable: true, lockAt: 0, speed: 16, count: 12, spread: 0, cd: 8, fx: 'gold' },
+  ]),
+  rogue: OLD('rogue', [
+    { name: 'combo1', shape: 'arc', trigger: 16, range: 3, angle: 1.8, windup: 0.5, recover: 0, dmg: 28, parryable: true, lockAt: 0.15, blink: 2, chain: 'combo2', weight: 3, fx: 'oath' },
+    { name: 'combo2', shape: 'arc', trigger: 99, range: 3, angle: 1.8, windup: 0.35, recover: 0.9, dmg: 28, parryable: true, lockAt: 0.1 },
+    { name: 'slam', shape: 'shot', around: true, trigger: 10, windup: 0.7, recover: 1.0, dmg: 22, parryable: true, lockAt: 0, speed: 18, count: 14, spread: 0, cd: 7, fx: 'oath' },
+    { name: 'lotus', shape: 'circle', trigger: 5, radius: 4.6, offset: 0, windup: 0.9, recover: 1.1, dmg: 46, parryable: false, lockAt: 0, cd: 7, fx: 'oath' },
+    { name: 'rites', shape: 'rect', trigger: 14, min: 4, length: 11, width: 1.8, windup: 0.7, recover: 1.2, dmg: 52, parryable: false, lockAt: 0.3, chargeDur: 0.25, cd: 8 },
+  ]),
+  mage: OLD('mage', [
+    { name: 'combo1', shape: 'shot', trigger: 18, windup: 0.7, recover: 0.6, dmg: 30, parryable: true, lockAt: 0.1, speed: 18, count: 1, spread: 0, pool: POOL('ember', 2, 3, 0.2), weight: 3, fx: 'ember' },
+    { name: 'slam', shape: 'rain', trigger: 22, windup: 0.9, recover: 1.2, dmg: 64, parryable: false, lockAt: 0, count: 1, gap: 0, fall: 1.3, radius: 4.5, cd: 8, fx: 'ember' },
+    { name: 'orb', shape: 'shot', trigger: 18, windup: 1.0, recover: 1.0, dmg: 34, parryable: false, lockAt: 0, speed: 5, count: 1, spread: 0, seek: 1.2, life: 6, cd: 9, fx: 'frost' },
+    { name: 'wake', shape: 'circle', trigger: 16, radius: 3.6, offset: 0, windup: 0.8, recover: 1.0, dmg: 40, parryable: false, lockAt: 0, blink: 3, cd: 7, fx: 'star' },
+  ]),
+};
+for (const k in OLD_SELVES) {
+  const d = OLD_SELVES[k];
+  d.attackByName = {};
+  for (const a of d.attacks) d.attackByName[a.name] = a;
+  d.chainOnly = new Set(d.attacks.map((a) => a.chain).filter(Boolean));
+}
+
 /** The arena's bosses take turns: wave 5 The Warden, 10 The Mycelord, 15 The Unmade, 20 The Warden ... */
 export const BOSSES = ['boss', 'boss2', 'boss3'];
 
@@ -320,6 +513,7 @@ for (const key in ENEMIES) {
   def.type = key;
   def.attackByName = {};
   for (const a of def.attacks) def.attackByName[a.name] = a;
+  def.chainOnly = new Set(def.attacks.map((a) => a.chain).filter(Boolean)); // moves only ever used as a follow-up
 }
 
 /**

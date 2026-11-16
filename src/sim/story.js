@@ -38,24 +38,35 @@ export const NPCS = {
     look: { robe: 0x6a5a7a, trim: 0xd8cfc0, hair: 0xe8e4dc, scale: 0.95 },
     greet: 'Sit, child. You have your mother\'s way of standing in a doorway. ... Never mind. What do you need?',
     idle: 'Go and see what there is to see. I will be here. I am always here.',
+    after: 'The husks on the road lay down in the night, all of them, the way people lie down when they are finally tired. I carried you down that mountain. I would do it again.',
   },
   bram: {
     name: 'Bram', role: 'Smith', at: [6.4, -2.8],
     look: { robe: 0x5a3a2a, trim: 0x2a2a30, hair: 0x3a2a20, scale: 1.1 },
     greet: 'Forge is hot. If it came off the mountain, I can use it. If it came off the Keep, don\'t tell me whose it was.',
     idle: 'Nothing I need just now. Come back when you have a few more levels on you.',
+    after: 'Forge went cold this morning for the first time in a hundred years. I just stood there and let it. Then I lit it again. Some things you keep.',
   },
   odile: {
     name: 'Sister Odile', role: 'Herbalist', at: [-6.4, 1.8],
     look: { robe: 0x3a6a5a, trim: 0xe8e4dc, hair: 0x8a5a3a, scale: 1 },
     greet: 'I was a physician\'s apprentice once, up the mountain. I left. I am still deciding whether that was the right thing.',
     idle: 'I have what I need for now. Thank you for asking. Few do.',
+    after: 'Things rot now. The herbs I picked yesterday are wilting. I have never been so glad to see something die. He would have laughed. Tobin, I mean.',
   },
   pip: {
     name: 'Pip', role: 'Orphan of the Greenwood road', at: [3.2, 3.6],
     look: { robe: 0xb0522e, trim: 0xd8b060, hair: 0x5a3a20, scale: 0.68 },
     greet: 'Are you going out the gate? You always come back. Nobody else always comes back.',
     idle: 'I\'m all right. I\'m watching the gate. Somebody should.',
+    after: 'He came in. Dad came in, and sat by the fire, and he knew me. Then he went to sleep. Wren says that is all right now. I think it is.',
+  },
+  // Pip's father (0.45): after the Unwish he comes home, once. onlyAfter: only in Haven then, until spoken to.
+  tomas: {
+    name: 'Tomas', role: "Pip's father, home", at: [4.6, 4.9], onlyAfter: true,
+    look: { robe: 0x4a5a3a, trim: 0x8a7a5a, hair: 0x3a2a1a, scale: 1.02 },
+    greet: 'I walked past this door every dusk for a hundred years. I could never remember why I should not come in. Tonight I remembered I could.\n\nWhere is my boy? No, do not tell me. I can hear him. I will just sit with him a while.',
+    idle: 'I will just sit with him a while.',
   },
 };
 
@@ -64,7 +75,7 @@ export const NPCS = {
  * 'in' = just inside the entrance, 'out' = by the far side, or [x, z] in Haven.
  */
 export const SIGNS = {
-  haven1: { map: 'town', spot: [9.4, 2.7], title: 'Town notice board', text: 'HAVEN. All who come down the mountain are welcome here.\n\nDo not go back up for the ones you left. They will not know you.\n\n— Elder Wren' },
+  haven1: { map: 'town', spot: [9.4, 2.7], title: 'Town notice board', text: 'HAVEN. All who come down the mountain are welcome here.\n\nDo not go back up for the ones you left. They will not know you.\n\n— Elder Wren', after: 'HAVEN. All who come down the mountain are welcome here.\n\nThe old notice is gone. Under where it hung, in the same hand:\n\nYou may go back up for the ones you left now. Go gently. Bury them.\n\n— Elder Wren' },
   haven3: { map: 'town', spot: [-9.6, 3.6], title: 'Path marker on the hill road', text: 'TO THE STONES.\n\nScratched underneath, in a careful hand: The glass remembers. Bring a shard, and do not go in looking for anyone you lost.\n\n— O.' },
   haven2: { map: 'town', spot: [2.0, -5.9], title: 'The well stone', text: 'Nineteen names are cut into the rim: the dead of the first winter, before the star.\n\nThey are the last names anyone in Haven has had to carve.' },
 
@@ -113,6 +124,98 @@ export const SIGNS = {
 };
 for (const id in SIGNS) SIGNS[id].id = id;
 export const SIGN_IDS = Object.keys(SIGNS);
+
+/**
+ * What the bosses say as they fight (0.44): who they were, coming through. Keyed by boss type, then by
+ * the move that says it; `phase2` / `phase3` when the Unmade changes, `low` once at a quarter health,
+ * `death` as they fall.
+ */
+export const BOSS_LINES = {
+  boss: {
+    keys: 'Every key accounted for. Every one.',
+    bargate: 'The gate stays shut. Those are my orders.',
+    count: '...ninety-eight. Ninety-nine. Start again.',
+    muster: 'To me! Hold the line, lads! Hold the line!',
+    slam: 'Nothing comes down this mountain.',
+    low: 'What was on the other side? I had it a moment ago.',
+    death: 'Is it... done, then? Tell the Queen I held it.',
+  },
+  boss2: {
+    remedy: 'Drink. It will help. It always almost helps.',
+    garden: 'Lie down here. Let it take you gently.',
+    rot: 'The body wants to go. Let it.',
+    medicine: 'Hold still. This is for your own good.',
+    tend: 'Grow. Please. Grow quiet.',
+    low: 'Still nothing rots. Not even me.',
+    death: 'Tell Odile she was right to leave.',
+  },
+  boss3: {
+    lullaby: 'Hush now. Hush. Mother is here.',
+    cradle: 'Come here. Let me hold you.',
+    holdon: "Don't go. Don't you go too.",
+    people: 'Rise. All of you. No one leaves me.',
+    weep: 'I asked for so little. I asked for everything.',
+    emptycradle: 'Where is my child? Where is my child?',
+    collapse: 'Let nothing I love be taken from me!',
+    phase2: 'Stay. Everyone stays.',
+    phase3: 'Is that you? No. My baby is small. My baby is—',
+    death: 'There you are. Oh. There you are.',
+  },
+  herald: {
+    fanfare: 'Ring the bells! Ring every one!',
+    decree: 'By order of the Queen!',
+    present: 'Come, come! The whole city is waiting to see you!',
+    low: 'The ceremony cannot end. It has not finished.',
+    death: 'And the child... shall be named...',
+  },
+  asker: {
+    halo: 'Is this what you wanted?',
+    granted: 'Granted. Granted. Granted.',
+    crosslight: 'Ask. I am listening.',
+    starfall: 'Every wish falls somewhere.',
+    low: 'You could still ask me to stop.',
+    death: 'Then want nothing. I will wait.',
+  },
+};
+
+// The Unmade in New Game+ (0.45): you, after you took her place.
+BOSS_LINES.oldself = {
+  combo1: 'I kept them. I kept every one of them.',
+  slam: 'Nothing I love will be taken from me.',
+  people: 'Stay. All of you. Stay.',
+  holdon: 'You look like someone I used to be.',
+  weep: 'I asked for so little.',
+  collapse: 'Let nothing I love be taken from me!',
+  phase2: 'You walked down the same road. Turn back.',
+  phase3: 'I said yes. Why did I say yes?',
+  low: 'You could let go. I never could.',
+  death: 'There. Now someone else can rest.',
+};
+
+/** What the well says when you stand at it with the Asker gone (0.45). */
+export const WELL = {
+  first: 'The well is quiet now. Starglass all the way down, and at the bottom, very far away, a light that is waiting.\n\nIt is listening to everything you have ever wanted.',
+  noGlass: 'The well is quiet now. You have no Unwishing Glass to give it. (Elder Wren has one for you: the quest Unwish.)',
+  self: 'Unwish yourself. Want nothing at all: not to live, not to be saved, not even for them to be freed. The wish lets go of the one it was holding, and everyone it held lies down.',
+  place: 'Take her place. Wish to keep them all, the way she did. You will begin again, and the wish will begin again with you, stronger, and at the top of the mountain the Unmade will wear your face.',
+  placeLocked: 'Take her place. (Only once you have seen what it means to let go.)',
+};
+
+/** The credits after the Unwish (0.45). */
+export const CREDITS = [
+  ['', 'The husks on the Greenwood road lay down in the night.'],
+  ['', 'Aldric opened the gate, and counted no more.'],
+  ['', 'Brother Tobin\'s garden began, at last, to rot.'],
+  ['', 'In Asterfell the bread went cold in the ovens, and the banners faded.'],
+  ['', 'Tomas came home, once.'],
+  ['', 'And Queen Maren, who asked for too much, was given rest.'],
+  ['AFTERWISH', 'a game by STUNNED Games'],
+  ['Design, story and direction', 'Ko Ko'],
+  ['Built with', 'Claude'],
+  ['Models', 'made with Tripo'],
+  ['Animations', "Tripo, and Quaternius' Universal Animation Library (CC0)"],
+  ['', 'The world goes on after the wish. So do you.'],
+];
 
 // The Herald's proclamation (0.40): one line each time he calls the Court Guards.
 export const HERALD_LINES = [
@@ -232,6 +335,13 @@ export const QUESTS = {
     offer: 'Go down to the well. It will ask you what you want. It asked her, and she answered with her whole heart.\n\nAnswer it with nothing, if you can. The Waygate knows the way now.',
     done: 'You came back. Did it offer you everything? It offered her everything too.\n\nThere is one thing left to do down there, and I cannot ask it of you yet. Rest first. Come home for a little while.',
     reward: { exp: 0, gold: 3000, item: 6, keys: 4, tickets: 4 },
+  },
+
+  unwish: {
+    giver: 'wren', level: 100, after: 'starwell', name: 'Unwish', goal: { ending: 1 }, give: { glass: 1 },
+    offer: 'I kept one of these for a hundred years. An Unwishing Glass. I never had the courage to use it, and it was never mine to use.\n\nIt is yours. Take it down to the well, where the star fell. Press it in, and want nothing. Or... no. I will not tell you what else you could ask. You will know.',
+    done: 'You came back. I did not think you would. I am so glad you did.\n\nSit. The fire is warm, and for the first time in a long time, it is only a fire.',
+    reward: { exp: 0, gold: 5000, keys: 5, tickets: 5 },
   },
 
   // --- Bram the smith ---------------------------------------------------------

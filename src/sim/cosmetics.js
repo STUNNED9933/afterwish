@@ -12,6 +12,7 @@ export const GLOWS = {
   thrice: { name: 'Thrice Wished', color: 0x8fd4ff, how: 'Be reborn three times' },
   evermore: { name: 'Evermore', color: 0xd38cff, how: 'Be reborn five times' },
   eternal: { name: 'The Star Remembers', color: 0xffffff, how: 'Be reborn ten times' },
+  afterlight: { name: 'Afterlight', color: 0xfff6d6, how: 'Unwish yourself at the Starwell' }, // (0.45)
 };
 export const GLOW_IDS = Object.keys(GLOWS);
 /** Which glow each Remnant can drop. */

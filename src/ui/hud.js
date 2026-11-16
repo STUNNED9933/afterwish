@@ -21,6 +21,7 @@ export function goalText(q) {
   if (g.sign) return `Find and read: ${SIGNS[g.sign].title} (${MAPS[SIGNS[g.sign].map].name})`;
   if (g.signs) return `Read ${g.signs.length} ${g.what || 'signs'} in ${MAPS[SIGNS[g.signs[0]].map].name}`;
   if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
+  if (g.ending) return 'Press the Unwishing Glass into the Starwell, and choose';
   if (g.boss) return `Defeat ${ENEMIES[g.boss].name}`;
   const who = g.enemy ? ENEMIES[g.enemy].name + (g.kill > 1 ? 's' : '') : 'enemies';
   return `Defeat ${g.kill} ${who}${g.map ? ' in ' + MAPS[g.map].name : ''}`;
@@ -649,7 +650,7 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : 'Read: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Read: ' + near.name}`;
   }
 
   /** The list of quests you are on, under the minimap. */

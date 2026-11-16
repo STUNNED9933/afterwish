@@ -150,6 +150,52 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Asterfell delves (0.46)
+
+- **The palace stair**, beside Asterfell's gate, goes down into the palace: 3 rooms on tiers I and II, 4 on
+  III and IV, 5 on V (Bakers' Row, the Guard Hall, the Ballroom, the Royal Nursery, the Throne Room), each
+  with its own people and a line of what is left there. Every room must be cleared before the next opens.
+- Beside the empty throne waits a boss for the tier (the Warden, the Mycelord, the Herald, the Unmade, the
+  Asker). A radiant chest at the end; the first clear of each tier also gives a Remnant Sigil and an
+  Unwishing Glass. Co-op: the party leader leads the way down, and the party goes too.
+
+### Unwish: the ending (0.45)
+
+- **Quest 6, Unwish** (Elder Wren, after The Starwell): she gives you the Unwishing Glass she kept for a
+  hundred years. With the Asker gone, the Starwell offers the choice:
+  - **Unwish yourself.** Want nothing at all. The credits roll; the husks lie down; Haven's notice board,
+    Wren, Bram, Odile and Pip all have new words; Pip's father Tomas comes home, once. The world tiers
+    carry on, after the wish. A weapon glow, Afterlight.
+  - **Take her place** (once you have unwished yourself). Wish to keep them all, as she did: a full
+    rebirth into **New Game+**. Enemies have a third more health and a fifth more damage for each time,
+    and at the top of the mountain the Unmade wears your old hero's face and fights with your old
+    class's moves, then with the wish's own.
+
+### Enemies and bosses, remade (0.44)
+
+- **Every enemy has a kit of its own**, fitted to where it lives and what it was before the wish:
+  Husks lurch, Spitters cough fever that stays on the ground, Crushers swing their chains and stomp (hug
+  them), Oathbound Knights rush with their shields and thrust their oath, Frost Wolves pounce and chill,
+  Rime Callers grow frost under you, Scarabs burrow, Colossi topple, Sporecaps leave spores, Storm
+  Wraiths step through the air and walk lightning toward you, the Glassbound raise a toast that breaks
+  outward, Court Guards sweep their halberds.
+- **Bosses fight like who they were**, and say so:
+  - *The Warden (Aldric)* swings his ring of keys, bars the gate across your path, counts the gate stone by
+    stone toward you, and below 60% musters his men.
+  - *The Mycelord (Tobin)* hands out remedies that sicken the ground, plants a spore garden, rots the
+    ground in a ring, drags you in for your medicine, and tends his garden.
+  - *The Unmade (Maren)* sings a lullaby of slow seeking motes, holds you close (safe only near her), and
+    in her later phases calls her people back, holds on, weeps the sky down, opens the empty cradle (four
+    beams) and spreads her broken wings.
+  - *The Herald* sounds a fanfare, reads a decree in a line, and wants to present you to the city.
+  - *The Asker* asks if this is what you wanted, grants every wish at once, and crosses light.
+- New attack shapes: rings with a safe middle, still beams (and crosses), lingering pools, rings of shots,
+  seeking shots, a pull, steps through the air, and calls for help (summons pay nothing and fall with
+  their caller).
+- **Models made with Tripo** for the five bosses, Haven's people and the common enemies, with their own
+  animations: wind-ups are timed so the blow lands with the game's. A model that has not loaded yet (or
+  cannot) keeps the hand-built body.
+
 ### Late-game balance, gear rolls and Rebirth (0.43)
 
 - **Attack-move: A, or Shift + click.** Firefox always opens its own menu on

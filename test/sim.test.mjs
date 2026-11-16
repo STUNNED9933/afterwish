@@ -273,10 +273,16 @@ import { makeRng } from '../src/sim/rng.js';
   w.command({ type: 'move', x: gate.x, z: gate.z });
   let changes = 0;
   w.events.length = 0;
-  for (let i = 0; i < 60 * 12; i++) { w.step(CONFIG.TICK); for (const ev of w.events) if (ev.type === 'mapChange') changes++; w.events.length = 0; }
+  let arrived = null;
+  for (let i = 0; i < 60 * 12; i++) {
+    w.step(CONFIG.TICK);
+    for (const ev of w.events) if (ev.type === 'mapChange') changes++;
+    w.events.length = 0;
+    if (changes && arrived === null) { const bk = w.map.portals.find((g) => g.to === 'town'); arrived = bk ? Math.hypot(p.x - bk.x, p.z - bk.z) : 99; }
+  }
   check('portal: walking into it takes you to the next map', w.map.id === 'greenwood' && changes === 1, `${w.map.id} after ${changes} trips`);
+  check('portal: you arrive beside the way back, but are not sent straight back', arrived !== null && arrived < 8 && w.map.id === 'greenwood', arrived);
   const back = w.map.portals.find((g) => g.to === 'town');
-  check('portal: you arrive beside the way back, but are not sent straight back', Math.hypot(p.x - back.x, p.z - back.z) < 8 && w.map.id === 'greenwood');
   check('explore: the new map has its own enemies, each with a home spot', w.enemies.length >= 13 && w.enemies.every((e) => e.home), w.enemies.length + ' alive');
 
   // Solid trees: walk through the middle of one. You go around it.
@@ -739,11 +745,11 @@ import { makeRng } from '../src/sim/rng.js';
   const { buildMap, MAP_IDS } = await import('../src/sim/maps.js');
   const step = (w, n = 1) => { for (let i = 0; i < n; i++) w.step(CONFIG.TICK); };
   // The data hangs together.
-  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs); }), QUEST_IDS.length + ' quests');
+  check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy]) && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs || g.ending); }), QUEST_IDS.length + ' quests');
   check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy]; }));
   check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy) return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
   check('story: every sign is placed, at least two on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === SIGN_IDS.filter((sid) => SIGNS[sid].map === id).length && signs.length >= (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
-  check('story: four people live in Haven', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 4);
+  check('story: four people live in Haven (and Tomas, once, after the Unwish)', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 5 && new World({ seed: 1, mode: 'explore' }).obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;
   check('quests: a new hero has work waiting with Elder Wren and nothing from the others yet at their level', w.npcMarker('wren') === 'available' && w.questOpen('road') && !w.questOpen('husks') && !w.questOpen('gate'));
@@ -2550,6 +2556,146 @@ import { makeRng } from '../src/sim/rng.js';
     for (const slot of ['boots', 'ring']) { const it = rollSetPiece(r, 60, 'warrior', 'bulwark'); it.set = 'wardstone'; it.slot = slot; it.stats = { ms: 1 }; w.player.equipped[slot] = it; }
     w.recalcStats();
     check('Sets: four give the second as well (Reckoning up to 8)', setCounts(w.player.equipped).wardstone === 4 && w.mods.reckonMax === 8);
+  }
+  // Enemy kits (0.44)
+  {
+    const mk = (type, cls = 'warrior') => {
+      const w = new World({ seed: 21, cls, mode: 'explore', save: geared(cls, 60, 3) });
+      w.loadMap('spire', MAPS.spire.portals[0].to);
+      for (const e of w.enemies) e.dead = true;
+      w.enemies = [];
+      const p = w.player;
+      p.x = p.px = 0; p.z = p.pz = 0;
+      const e = w.spawnEnemy(type, { x: 6, z: 0, level: 60 });
+      e.x = e.px = 6; e.z = e.pz = 0; e.state = 'chase'; e.aggro = true; e.home = null;
+      return { w, p, e };
+    };
+    const fire = (w, e, name) => { w.startWindup(e, e.def.attackByName[name], false); let n = 0; while (e.state === 'windup' && n++ < 600) { w.step(CONFIG.TICK); } };
+    for (const id of ['grunt', 'spitter', 'brute', 'stalker', 'imp', 'knight', 'wolf', 'shaman', 'scarab', 'golem', 'sporecap', 'wraith', 'glassbound', 'courtguard', 'boss', 'boss2', 'boss3', 'herald', 'asker'])
+      if (!(DEFS.ENEMIES[id].kit && DEFS.ENEMIES[id].attacks.length >= 2)) check(`kits: ${id} has more than one move`, false);
+    check('kits: every enemy and boss has a kit of its own moves', ['grunt', 'boss3', 'asker', 'wraith'].every((id) => DEFS.ENEMIES[id].kit));
+    // a ring is safe close in
+    {
+      const { w, p, e } = mk('brute');
+      p.x = p.px = e.x - 1.6; const hp0 = (p.hp = p.stats.maxHp);
+      fire(w, e, 'stomp');
+      check('Crusher stomp: hugging it is safe', p.hp === hp0);
+      const b = mk('brute');
+      b.p.x = b.p.px = b.e.x - 4; b.p.hp = b.p.stats.maxHp;
+      fire(b.w, b.e, 'stomp');
+      check('...a few steps out is not', b.p.hp < b.p.stats.maxHp);
+    }
+    // pools stay and hurt
+    {
+      const { w, p, e } = mk('spitter');
+      p.x = p.px = 0; p.z = p.pz = 0;
+      w.startWindup(e, e.def.attackByName.retch, false);
+      for (let i = 0; i < 60 * 2.5; i++) { p.x = p.px = 0; p.z = p.pz = 0; w.step(CONFIG.TICK); }
+      check('Spitter retch: the fever stays on the ground', w.hazards.length >= 1 && w.telegraphs.some((t) => t.pool && t.poolKind === 'fever'));
+    }
+    // a beam hits along its line only
+    {
+      const { w, p, e } = mk('golem');
+      e.x = e.px = 5; p.x = p.px = 0; p.z = p.pz = 0; p.hp = p.stats.maxHp;
+      fire(w, e, 'topple');
+      check('Colossus topple: falls along a line, onto you', p.hp < p.stats.maxHp);
+    }
+    // summons pay nothing and fall with their caller
+    {
+      const { w, p, e } = mk('boss');
+      e.hp = e.maxHp * 0.5;
+      fire(w, e, 'muster');
+      const men = w.enemies.filter((o) => o.summoner === e.id && !o.dead);
+      check('Warden muster: below 60% he calls two of his men', men.length === 2 && men.every((o) => o.type === 'oathshade'));
+      const g0 = p.gold;
+      w.killEnemy(men[0], 'test');
+      check('...who pay nothing', p.gold === g0);
+      w.killEnemy(e, 'test');
+      check('...and fall with him', men.every((o) => o.dead));
+    }
+    // the Unmade's moves come by phase
+    {
+      const { w, e } = mk('boss3');
+      let late = false;
+      for (let i = 0; i < 200; i++) { const a = w.pickFromKit(e, 6); if (a && a.phase >= 2) late = true; }
+      check('The Unmade: no phase-two moves in phase one', !late);
+      e.phase = 3;
+      const seen = new Set();
+      for (let i = 0; i < 400; i++) { e.atkCds = {}; const a = w.pickFromKit(e, 8); if (a) seen.add(a.name); }
+      check('...and in phase three she weeps, collapses, and opens the empty cradle', ['weep', 'collapse', 'emptycradle'].every((n) => seen.has(n)), [...seen].join());
+    }
+    // a seeking lullaby follows you
+    {
+      const { w, p, e } = mk('boss3');
+      fire(w, e, 'lullaby');
+      const motes = w.projectiles.filter((pr) => pr.owner === 'enemy' && pr.seek > 0);
+      check('Lullaby: ten slow motes all around her, that lean toward you', motes.length === 10);
+    }
+  }
+  // Asterfell delves (0.46)
+  {
+    const save = geared('warrior', 100, 6);
+    Object.assign(save, { tierMax: 3, worldTier: 3, quests: { w: { s: 'done', n: 1 } } });
+    const w = new World({ seed: 31, cls: 'warrior', mode: 'explore', save });
+    const p = w.player;
+    w.loadMap('asterfell', 'town');
+    const door = w.obstacles.find((o) => o.kind === 'delve');
+    check('Delves: the palace stair stands in Asterfell', !!door);
+    w.command({ type: 'enterDelve', tier: 3 }); w.runCommands();
+    check('Delves: tier III goes down four rooms, starting in Bakers\' Row', w.map.id === 'delve' && w.delve.rooms === 4 && w.events.some((ev) => ev.type === 'delveRoom' && ev.name === "Bakers' Row"));
+    check('Delves: the room is full of the palace\'s people, all awake', w.enemies.length >= 9 && w.enemies.every((e) => e.aggro && !e.home));
+    let rooms = 1, done = false;
+    w.events.length = 0;
+    for (let guard = 0; guard < 60 * 60 && !done; guard++) {
+      for (const e of w.enemies) if (!e.dead) w.killEnemy(e, 'test');
+      p.hp = p.stats.maxHp;
+      w.step(CONFIG.TICK);
+      for (const ev of w.events) { if (ev.type === 'delveRoom') rooms++; if (ev.type === 'delveDone') done = ev; }
+      w.events.length = 0;
+    }
+    check('Delves: room after room, to the Throne Room, and done', done && rooms === 4 && done.first, rooms);
+    check('Delves: a radiant chest by the throne, and a Sigil and a Glass the first time', w.chests.some((c) => c.tier === 'radiant') && p.misc.sigil >= 1 && p.misc.glass >= 1 && p.delveBest === 3);
+    w.loadMap('asterfell', 'delve');
+    check('Delves: leaving ends it', !w.delve);
+  }
+  // The ending (0.45): Unwish yourself, or take her place
+  {
+    const save = geared('mage', 100, 6);
+    Object.assign(save, { bossKills: { boss3: 1, asker: 1 }, quests: { starwell: { s: 'done', n: 1 } }, tierMax: 3, worldTier: 3 });
+    const w = new World({ seed: 9, cls: 'mage', mode: 'explore', save });
+    const p = w.player;
+    check('Unwish: Wren offers it after the Starwell', w.questOpen('unwish'));
+    w.command({ type: 'acceptQuest', id: 'unwish' }); w.runCommands();
+    check('Unwish: she gives you her own Unwishing Glass', p.misc.glass === 1);
+    w.command({ type: 'unwish', choice: 'self' }); w.runCommands();
+    check('Unwish: only at the Starwell', !(p.endings.self > 0));
+    w.loadMap('starwell', 'asterfell');
+    for (const e of w.enemies) { if (e.def.boss) w.killEnemy(e, 'test'); }
+    check('Unwish: with the Asker gone, the well is there to use', !!w.bossAltar() && w.bossAltar().name === 'the Starwell');
+    w.command({ type: 'unwish', choice: 'place' }); w.runCommands();
+    check('Take her place: not before you have let go once', !w.events.some((ev) => ev.type === 'reborn'));
+    w.events.length = 0;
+    w.command({ type: 'unwish', choice: 'self' }); w.runCommands();
+    check('Unwish yourself: the glass goes in, the ending is seen, the quest is done', p.endings.self === 1 && !p.misc.glass && w.questState('unwish') === 'ready' && w.events.some((ev) => ev.type === 'ending' && ev.first) && p.glows.includes('afterlight'));
+    w.loadMap('town');
+    check('After the wish: Tomas comes home', w.obstacles.some((o) => o.kind === 'npc' && o.id === 'tomas') && w.afterWish());
+    w.command({ type: 'metTomas' }); w.runCommands();
+    w.loadMap('town');
+    check('...once', !w.obstacles.some((o) => o.id === 'tomas'));
+    w.loadMap('starwell', 'asterfell');
+    for (const e of w.enemies) { if (e.def.boss) w.killEnemy(e, 'test'); }
+    w.events.length = 0;
+    w.command({ type: 'unwish', choice: 'place' }); w.runCommands();
+    const ev = w.events.find((x) => x.type === 'reborn');
+    check('Take her place: a rebirth into New Game+', !!ev && ev.ng === 1 && ev.save.level === 1 && ev.save.endings.self === 1 && ev.save.endings.place === 1);
+    const w2 = new World({ seed: 9, cls: 'mage', mode: 'explore', save: ev.save });
+    const normal = new World({ seed: 9, cls: 'mage', mode: 'explore' });
+    w2.loadMap('greenwood', 'town'); normal.loadMap('greenwood', 'town');
+    const a = w2.spawnEnemy('grunt', { x: 5, z: 0, level: 5 }), b = normal.spawnEnemy('grunt', { x: 5, z: 0, level: 5 });
+    check('New Game+: enemies are tougher', a.maxHp > b.maxHp * 1.25 && a.dmgMult > b.dmgMult * 1.15);
+    w2.loadMap('sanctum', 'spire');
+    const u = w2.enemies.find((e) => e.type === 'boss3') || w2.spawnEnemy('boss3', { x: 0, z: 0, level: 100 });
+    check('New Game+: the Unmade wears your old face', u.oldCls === 'mage' && u.kitDef && u.kitDef.attackByName.orb);
   }
   // Rebirth (0.43)
   {

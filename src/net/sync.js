@@ -6,8 +6,8 @@
 // own hero. Friends send back commands (the same {type: 'move' ...} objects
 // the keyboard and mouse already produce). Nothing here touches the screen.
 
-import { ENEMIES } from '../sim/defs.js';
-import { buildRiftMap } from '../sim/maps.js';
+import { ENEMIES, OLD_SELVES } from '../sim/defs.js';
+import { buildRiftMap, buildDelveRoom } from '../sim/maps.js';
 
 import { SIM_VERSION } from '../sim/version.js';
 
@@ -33,10 +33,14 @@ export function eventFor(ev, pid) {
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
 // What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
 const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius', 'rare', 'remnant'];
-const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'mirrorT', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT'];
-const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice'];
-const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue', 'doom', 'pool'];
-const pack = (o, keys) => keys.map((k) => r2(o[k]));
+const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'mirrorT', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT', 'oldCls'];
+const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice', 'fx'];
+const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue', 'doom', 'pool', 'inner', 'poolKind'];
+const pack = (o, keys) => {
+  const a = keys.map((k) => r2(o[k]));
+  while (a.length && (a[a.length - 1] === null || a[a.length - 1] === undefined)) a.pop(); // (0.44: trailing blanks cost bytes)
+  return a;
+};
 const unpack = (a, keys) => {
   const o = {};
   keys.forEach((k, i) => {
@@ -221,6 +225,7 @@ export function makeSnapshot(world, pid, memo) {
       tier: world.worldTier(),
       happening: world.happening ? { kind: world.happening.kind, x: r2(world.happening.x), z: r2(world.happening.z), r: world.happening.r, state: world.happening.state, t: r2(world.happening.t), left: world.happening.left || 0, grace: r2(world.happening.grace || 0) } : null,
       merchant: world.merchant ? { x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: world.merchant.stock } : null,
+      delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,
       rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
     };
     // The heavy parts one by one, so picking up an item resends the bag and nothing else.
@@ -247,14 +252,22 @@ export function applySnapshot(world, snap, alpha = 1) {
   // so an update that arrives early never makes anything jump.
   const at = (o, k) => (o['p' + k] === undefined ? o[k] : o['p' + k] + (o[k] - o['p' + k]) * alpha);
   let mapChanged = false;
-  const riftKey = snap.rift ? `${snap.rift.theme}:${snap.rift.seed}` : '';
+  const riftKey = snap.rift ? `${snap.rift.theme}:${snap.rift.seed}` : snap.delve ? `delve:${snap.delve.seed}:${snap.delve.room}` : '';
+  world.delve = snap.delve || null;
   world.rift = snap.rift || null;
   world.syncTier = snap.tier || 1;
-  if (!world.map || world.map.id !== snap.map || (snap.map === 'rift' && world.riftKey !== riftKey)) {
+  if (!world.map || world.map.id !== snap.map || ((snap.map === 'rift' || snap.map === 'delve') && world.riftKey !== riftKey)) {
     world.loadMapMirror(snap.map);
     if (snap.map === 'rift' && snap.rift) {
       // The rift's layout is built from its theme and seed, the same as on the host.
       const m = buildRiftMap(snap.rift.theme, snap.rift.seed);
+      world.map = m;
+      world.radius = m.radius;
+      world.obstacles = m.obstacles;
+    }
+    if (snap.map === 'delve' && snap.delve) {
+      // A delve room (0.46): built from its place in the route and the delve's seed, as on the host.
+      const m = buildDelveRoom(snap.delve.route[snap.delve.room], snap.delve.seed + snap.delve.room);
       world.map = m;
       world.radius = m.radius;
       world.obstacles = m.obstacles;
@@ -297,7 +310,7 @@ export function applySnapshot(world, snap, alpha = 1) {
     });
     const o = oldEnemies.get(e.id);
     e.def = ENEMIES[e.type];
-    e.atk = e.atkName ? e.def.attackByName[e.atkName] : null;
+    e.atk = e.atkName ? (e.oldCls && OLD_SELVES[e.oldCls] ? OLD_SELVES[e.oldCls] : e.def).attackByName[e.atkName] || null : null;
     e.px = o && !mapChanged ? at(o, 'x') : e.x;
     e.pz = o && !mapChanged ? at(o, 'z') : e.z;
     return e;

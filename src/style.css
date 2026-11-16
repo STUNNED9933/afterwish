@@ -189,6 +189,8 @@ body.slowmo #slowtint { opacity: 1; }
 .float.far { color: #ffe27a; text-shadow: 0 0 10px rgba(255, 200, 80, 0.8), 0 2px 3px #000; }
 .float.crit.mark { font-size: 34px; color: #d7b8ff; text-shadow: 0 0 16px #7a3cff, 0 2px 3px #000; }
 .float.word.mark { color: #c9a2ff; font-size: 22px; }
+/* A boss speaking (0.44): pale, italic, slow to fade */
+.float.word.speech { color: #f2ead8; font: italic 600 19px/1.2 var(--display); white-space: nowrap; text-shadow: 0 0 10px #000, 0 2px 3px #000; animation-duration: 3.2s; }
 .float.blood { color: #b5172b; font-size: 17px; }
 .float.word.blood { color: #ff4a55; font-size: 24px; text-shadow: 0 0 14px #b5172b, 0 2px 3px #000; }
 .float.word { font: italic 600 26px var(--display); letter-spacing: 0.04em; color: var(--steel); animation-duration: 1.1s; }
@@ -717,3 +719,14 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* 0.34: the Graphics setting */
 #graphics { background: #141a24; color: #e8e2d4; border: 1px solid #3a4456; border-radius: 6px; padding: 4px 8px; font: inherit; cursor: pointer; }
 #graphics:focus { outline: 2px solid #ffd27a88; outline-offset: 1px; }
+
+/* The credits after the Unwish (0.45) */
+#credits { position: fixed; inset: 0; z-index: 80; background: radial-gradient(ellipse at 50% 120%, #2a2340 0%, #07070c 70%); overflow: hidden; cursor: pointer; }
+#credits.hidden { display: none; }
+#credits-roll { position: absolute; left: 50%; top: 100%; width: min(640px, 86vw); transform: translateX(-50%); text-align: center; animation: credits-up 42s linear forwards; }
+#credits-roll .beat { font: italic 400 24px/1.5 var(--display); color: #e8dcc0; margin: 0 0 70px; }
+#credits-roll h3 { font: 600 13px var(--body); letter-spacing: 0.22em; text-transform: uppercase; color: #ffd24a; margin: 60px 0 6px; }
+#credits-roll p { font: 400 22px var(--display); color: #f2ead8; margin: 0; }
+.credits-skip { position: absolute; right: 18px; bottom: 12px; color: var(--muted); font-size: 13px; }
+@keyframes credits-up { to { top: -160%; } }
+.well-choice p { color: #e8dcc0; font-style: italic; }

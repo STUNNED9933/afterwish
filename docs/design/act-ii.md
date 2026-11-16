@@ -104,9 +104,10 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 4 | The Herald, boss 4 (quest 4) | 0.40 | Done |
 | 5 | The Starwell, the Asker and its wish offers (quest 5) | 0.40 | Done |
 | 5d | Late-game balance, gear rolls, Rebirth (added) | 0.43 | Done |
-| 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.44 | Not started |
-| 7 | Asterfell delves | 0.45 | Not started |
-| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.46 | Not started |
+| 5e | Enemies and bosses remade: kits, boss lines, Tripo models (added) | 0.44 | Done |
+| 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.45 | Done |
+| 7 | Asterfell delves | 0.46 | Done |
+| 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.47 | Not started |
 | 9 | Weapon looks by rarity, customisation, enemy models | Later | Not started |
 | 10 | Echo-caller class, the Star's Echo | Later | Not started |
 
@@ -141,4 +142,16 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
   A reborn hero replays the story, and Act II quests are gated on level 100 as before. *Take her
   place* (0.44) should be a rebirth with extras: call `rebirthSave` and add the NG+ flags, and
   use `rebirth.past` (level, spec, Wishborne) for the old hero as the final boss.
-- Next (0.44): Unwish, the ending choice (quest 6).
+- 0.44 (added): enemy kits in src/sim/defs.js (KITS; bosses below it), picked by `pickFromKit` in
+  world.js; shapes ring / beam (cross) / call; extras pool, seek, around, blink, chill, summon, heal.
+  Boss lines: BOSS_LINES in story.js (`bossLine`). Rigged creatures: src/render/creatures.js
+  (CREATURES, PEOPLE, SHIPPED), models from tools/models/roster.json (b_*, e_*, n_*), clips merged by
+  tools/models/merge-all.mjs.
+- 0.45: quest `unwish` (goal `{ ending: 1 }`, `give: { glass: 1 }`), command `unwish` (`self` / `place`),
+  `p.endings`, NPC `tomas` (`onlyAfter`), NPC and sign `after` text, CREDITS and WELL in story.js.
+  New Game+: `rebirth.ng`, enemies x(1 + 0.33 ng) health and x(1 + 0.2 ng) damage, the Unmade's
+  `oldCls` / `kitDef` from OLD_SELVES (defs.js), drawn with your old hero's model.
+- 0.46: delves. `enterDelve` / `delveSpawn` / `stepDelve` in world.js, rooms from `buildDelveRoom` and
+  DELVE_ROOMS / `delveRoute` in maps.js; the stair is an obstacle of kind `delve` in Asterfell; `instanced()`
+  keeps world events, chests and altars out of rifts and delves; friends rebuild the room from the snapshot.
+- Next (0.47): side stories (Red Scarf Part Two, Edric's Colours, An Ending for Tobin, Haven Grows).

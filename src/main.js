@@ -25,6 +25,7 @@ import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
+import { WELL, CREDITS } from './sim/story.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -799,7 +800,95 @@ function start(hot = {}) {
   }
 
   /** A boss's altar (0.33): press a Remnant Sigil in to call its Remnant now. */
+  /** The palace stair (0.46): go down into an Asterfell delve, at any world tier you have reached. */
+  function renderDelve() {
+    const p = world.player;
+    $('talk-role').textContent = 'Asterfell, under the palace';
+    $('talk-name').textContent = 'The palace stair';
+    $('talk-keys').classList.add('hidden');
+    $('talk-line').textContent = talkNote || `A stair of starglass goes down under the palace, room after room, to the Throne Room. Every room must be cleared before the next one opens; something waits beside the empty throne. Higher tiers go deeper. The first clear of each tier gives a Remnant Sigil and an Unwishing Glass.${p.delveBest ? ` (Cleared up to tier ${TIERS[p.delveBest].numeral}.)` : ''}`;
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    const leader = !net || net.role === 'host';
+    for (let t = 1; t <= p.tierMax; t++) {
+      const rooms = 3 + (t >= 3 ? 1 : 0) + (t >= 5 ? 1 : 0);
+      const el = document.createElement('div');
+      el.className = 'quest';
+      el.innerHTML = `<h4>Tier ${TIERS[t].numeral} · ${TIERS[t].name}<small>${rooms} rooms</small></h4><div class="goal">${(p.delveBest || 0) >= t ? 'Cleared' : 'Not cleared yet: a Remnant Sigil and an Unwishing Glass the first time'}</div>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'primary';
+      btn.textContent = leader ? 'Go down' : 'The party leader leads the way';
+      btn.disabled = !leader;
+      btn.addEventListener('click', () => { setMode('play'); applyNow({ type: 'enterDelve', tier: t }); });
+      el.appendChild(btn);
+      list.appendChild(el);
+    }
+  }
+
+  /** The Starwell after the Asker (0.45): the ending's choice. */
+  function renderWell() {
+    const p = world.player;
+    const glass = (p.misc && p.misc.glass) || 0;
+    const seen = p.endings && p.endings.self > 0;
+    $('talk-role').textContent = 'Where the star came down';
+    $('talk-name').textContent = 'The Starwell';
+    $('talk-keys').classList.add('hidden');
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    $('talk-line').textContent = talkNote || (glass ? WELL.first : WELL.noGlass);
+    const alone = !net;
+    const add = (label, text, on, cls) => {
+      const el = document.createElement('div');
+      el.className = 'quest well-choice';
+      el.innerHTML = `<p>${esc(text)}</p>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = cls;
+      btn.textContent = label;
+      btn.disabled = !on;
+      el.appendChild(btn);
+      list.appendChild(el);
+      return btn;
+    };
+    const self = add(alone ? 'Unwish yourself' : 'Unwish yourself (alone only: leave the party first)', WELL.self, glass > 0 && alone, 'primary');
+    self.addEventListener('click', () => { setMode('play'); applyNow({ type: 'unwish', choice: 'self' }); });
+    const place = add(seen ? 'Take her place (New Game+)' : 'Take her place', seen ? WELL.place : WELL.placeLocked, seen && alone && world.player.level >= 100, 'ghost');
+    let sure = false;
+    place.addEventListener('click', () => {
+      if (!sure) {
+        sure = true;
+        place.textContent = 'Are you sure? Click again: a full rebirth, into New Game+';
+        return;
+      }
+      setMode('play');
+      applyNow({ type: 'unwish', choice: 'place' });
+    });
+  }
+
+  /** The credits (0.45): after the Unwish, then home. */
+  function rollCredits(first) {
+    const box = $('credits');
+    const inner = $('credits-roll');
+    inner.innerHTML = CREDITS.map(([h, t]) => (h ? `<h3>${esc(h)}</h3><p>${esc(t)}</p>` : `<p class="beat">${esc(t)}</p>`)).join('');
+    box.classList.remove('hidden');
+    inner.style.animation = 'none';
+    void inner.offsetWidth;
+    inner.style.animation = '';
+    let done = false;
+    const end = () => {
+      if (done) return;
+      done = true;
+      box.classList.add('hidden');
+      applyNow({ type: 'travel', to: 'town' });
+      hud.banner(first ? 'After the wish' : 'Unwished, again', 'Haven is waiting. The world goes on.');
+    };
+    box.onclick = end;
+    setTimeout(end, 44000);
+  }
+
   function renderAltar() {
+    if (world.map && world.map.id === 'starwell') return renderWell();
     const p = world.player;
     const alt = world.bossAltar();
     $('talk-role').textContent = 'Where the boss stood';
@@ -833,6 +922,7 @@ function start(hot = {}) {
     if (talkTo === 'merchant') return renderMerchant();
     if (talkTo === 'bounties') return renderBounties();
     if (talkTo === 'altar') return renderAltar();
+    if (talkTo === 'delve') return renderDelve();
     const npc = NPCS[talkTo];
     if (!npc) return;
     $('talk-role').textContent = npc.role;
@@ -878,7 +968,9 @@ function start(hot = {}) {
       list.appendChild(el);
     }
     $('talk-keys').classList.toggle('hidden', !keyNo);
-    $('talk-line').textContent = talkNote || (shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
+    const after = world.afterWish() && npc.after; // (0.45) after the Unwish, Haven talks differently
+    $('talk-line').textContent = talkTo === 'tomas' ? (world.player.tomasMet ? npc.idle : npc.greet) : talkNote || (after && !shown ? npc.after : shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
+    if (talkTo === 'tomas' && !world.player.tomasMet) applyNow({ type: 'metTomas' });
   }
 
   function renderRead() {
@@ -886,7 +978,7 @@ function start(hot = {}) {
     if (!sg) return;
     $('read-where').textContent = MAPS[sg.map].name;
     $('read-title').textContent = sg.title;
-    $('read-text').textContent = sg.text;
+    $('read-text').textContent = sg.after && world.afterWish() ? sg.after : sg.text;
     $('read-note').textContent = `Added to your journal (${world.player.signs.length} of ${SIGN_IDS.length} found). Press J to read them again.`;
   }
 
@@ -1144,7 +1236,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend']);
+  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend', 'enterDelve', 'metTomas']);
 
   async function hostGame() {
     const name = playerName();
@@ -2181,7 +2273,8 @@ function start(hot = {}) {
         storeSave(save, world.cls);
         startExplore(true);
         sfx.levelUp();
-        hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks. Spend them in Talents (T).`);
+        if (ev.ng) hud.banner(`You took her place · New Game+ ${ev.ng}`, `The wish begins again, stronger. At the top of the mountain, the Unmade wears your face. +${ev.marks} Starmarks.`);
+        else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks. Spend them in Talents (T).`);
         hintOnce('reborn', `You are reborn. ${ev.marks} Starmarks are yours to spend on perks in Talents (T)${ev.glow ? ', and a new weapon glow is on the gear screen' : ''}.`, 12);
         break;
       }
@@ -2297,6 +2390,30 @@ function start(hot = {}) {
       case 'enrage':
         hud.banner('Enraged', `${world.enemies.find((e) => e.id === ev.id)?.def.name || 'The boss'} attacks faster`);
         break;
+      case 'delveRoom':
+        hud.banner(`${ev.name} · room ${ev.n} of ${ev.of}`, ev.line);
+        sfx.wave(ev.n === ev.of);
+        break;
+      case 'delveClear':
+        hud.hint('The room falls quiet. The way down opens...', 3);
+        break;
+      case 'delveDone':
+        hud.banner(`The Throne Room is still · tier ${TIERS[ev.tier].numeral}`, ev.first ? 'A radiant chest, a Remnant Sigil and an Unwishing Glass. The stair goes back up to the city.' : 'A radiant chest by the empty throne. The stair goes back up to the city.');
+        sfx.levelUp();
+        break;
+      case 'ending':
+        // the Unwish (0.45)
+        sfx.levelUp();
+        hud.screenFlash(0.9);
+        rollCredits(ev.first);
+        break;
+      case 'bossLine': {
+        // a boss speaks (0.44): over its head, and in the hint line so it is not missed
+        const be = world.enemyById(ev.id);
+        if (be) hud.float(renderer, be.x, (be.def.height || 3) + 1.2, be.z, ev.text, 'word speech');
+        hud.hint(`${ev.name}: "${ev.text}"`, ev.key === 'death' ? 6 : 4);
+        break;
+      }
       case 'proclaim':
         hud.hint(`The Herald: "${HERALD_LINES[(ev.line - 1) % HERALD_LINES.length]}"`, 4);
         sfx.wave(false);

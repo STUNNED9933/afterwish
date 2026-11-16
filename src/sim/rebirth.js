@@ -41,11 +41,12 @@ export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'etern
 
 /** A hero's rebirth record, from a save (or a fresh one). */
 export function migrateRebirth(r) {
-  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [] };
+  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0 };
   if (!r || typeof r !== 'object') return out;
   out.n = Math.max(0, Math.floor(Number(r.n) || 0));
   out.marks = Math.max(0, Math.floor(Number(r.marks) || 0));
   out.earned = Math.max(out.marks, Math.floor(Number(r.earned) || 0));
+  out.ng = Math.max(0, Math.floor(Number(r.ng) || 0)); // New Game+ (0.45): times this hero took her place
   for (const id of PERK_IDS) {
     const v = Math.floor(Number(r.perks && r.perks[id]) || 0);
     if (v > 0) out.perks[id] = Math.min(PERKS[id].max, v);
@@ -84,7 +85,7 @@ export function rebirthSave(old, starterWeapon) {
   rb.n += 1;
   rb.marks += marks;
   rb.earned += marks;
-  rb.past.push({ n: rb.n, level: old.level, wish: old.wish || 0, spec: old.spec || null, marks, tier: old.tierMax || 1 });
+  rb.past.push({ n: rb.n, cls: old.cls, level: old.level, wish: old.wish || 0, spec: old.spec || null, marks, tier: old.tierMax || 1 });
   rb.past = rb.past.slice(-REBIRTH.pastMax);
   const glows = Array.isArray(old.glows) ? old.glows.slice() : [];
   const glow = REBIRTH_GLOWS[rb.n];
@@ -106,5 +107,6 @@ export function rebirthSave(old, starterWeapon) {
     talentBuilds: old.talentBuilds, // a remembered build is a preference, not power
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,
+    endings: Object.assign({}, old.endings), // (0.45) the endings you have seen stay seen
   };
 }

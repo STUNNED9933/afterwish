@@ -12,20 +12,20 @@ import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, rif
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board']);
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve']);
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
 const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'parry', 'potion', 'warp', 'travel']);
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
-import { ABILITIES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
+import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS } from './rebirth.js';
 import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
-import { buildRiftMap, buildMap, MAPS, MAP_IDS } from './maps.js';
+import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -44,7 +44,7 @@ function migrateBuilds(saved) {
   for (const spec in saved || {}) if (Array.isArray(saved[spec])) out[spec] = saved[spec].map((id) => RENAMED_TALENTS[id] || id);
   return out;
 }
-import { QUESTS, QUEST_IDS, SIGNS, NPCS, BOSS_LOOT } from './story.js';
+import { QUESTS, QUEST_IDS, SIGNS, NPCS, BOSS_LOOT, BOSS_LINES } from './story.js';
 import { dAtan2, dCos, dExp, dHypot, dSin } from './dmath.js';
 
 const TAU = Math.PI * 2;
@@ -75,7 +75,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -390,6 +390,9 @@ export class World {
       wishPts: save?.wishPts ?? 0,
       wishStats: Object.assign({}, save?.wishStats),
       rebirth: migrateRebirth(save?.rebirth), // Rebirth (0.43): Starmarks, perks, past lives
+      endings: Object.assign({}, save?.endings), // (0.45) { self: times you unwished yourself, place: times you took her place }
+      tomasMet: !!save?.tomasMet, // Pip's father came home and you saw him
+      delveBest: save?.delveBest ?? 0, // the highest tier of delve cleared (0.46)
       acctRebirths: save?.acctRebirths ?? 0, // rebirths on every hero of the account (main.js keeps it current)
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
@@ -532,6 +535,9 @@ export class World {
       wishPts: p.wishPts,
       rebirth: p.rebirth,
       acctRebirths: p.acctRebirths,
+      endings: p.endings,
+      tomasMet: p.tomasMet,
+      delveBest: p.delveBest,
       wishStats: p.wishStats,
       streak: p.streak,
       dust: p.dust,
@@ -708,6 +714,15 @@ export class World {
           break;
         case 'rebirth':
           this.rebirth();
+          break;
+        case 'unwish':
+          this.unwish(c.choice);
+          break;
+        case 'enterDelve':
+          this.enterDelve(c.tier);
+          break;
+        case 'metTomas':
+          this.player.tomasMet = true;
           break;
         case 'rebirthPerk':
           this.buyPerk(c.id);
@@ -2107,6 +2122,7 @@ export class World {
     if (p.bastionT > 0) p.bastionT -= dt;
     if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
     if (p.chillT > 0) p.chillT -= dt;
+    if (this.delve && this.map.id === 'delve' && this.cur === this.heroes[0]) this.stepDelve(dt);
     if (this.rift && this.map.id === 'rift' && (this.rift.state === 'run' || this.rift.state === 'guardian') && this.cur === this.heroes[0]) {
       // The rift's clock (counted once, on the party leader's step).
       this.rift.timeLeft -= dt;
@@ -2778,6 +2794,8 @@ export class World {
     const q = QUESTS[id];
     const p = this.player;
     const st = (p.quests[id] = { s: 'active', n: 0 });
+    if (q.give && q.give.glass) this.giveMisc('glass', q.give.glass); // Wren's own Unwishing Glass (0.45)
+    if (q.goal.ending && (p.endings.self || p.endings.place)) st.n = 1;
     // Some goals may already be met: a map you have been to, signs you have read.
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
     if (q.goal.read || q.goal.sign || q.goal.signs) st.n = Math.min(this.questNeed(q), this.signsFor(q.goal));
@@ -2804,6 +2822,9 @@ export class World {
         hit = true;
         st.n = 1;
       } else if (kind === 'wave' && g.wave && data >= g.wave) {
+        hit = true;
+        st.n = 1;
+      } else if (kind === 'ending' && g.ending) {
         hit = true;
         st.n = 1;
       } else if (kind === 'read' && (g.read || g.sign || g.signs)) {
@@ -3032,7 +3053,7 @@ export class World {
   // An opened chest comes back somewhere else on the map a few minutes later.
   // =========================================================================
   placeChests() {
-    const kept = this.map.id === 'rift' ? null : this.chestMaps[this.map.id];
+    const kept = this.instanced() ? null : this.chestMaps[this.map.id];
     if (kept) {
       this.chests = kept.chests;
       this.chestRefill = kept.refill;
@@ -3164,7 +3185,7 @@ export class World {
 
   /** The Wishthief: hides on a map; bolts when someone comes near or hits it, and gets away in the end. */
   spawnThief() {
-    if (this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    if (this.mode !== 'explore' || this.trial || this.map.safe || this.instanced() || !this.map.portals || !this.map.portals.length) return null;
     if (this.enemies.some((o) => o.def.thief && !o.dead)) return null;
     const r = this.streamRng('thief', this.surpriseN++);
     const lead = this.heroes[0].player;
@@ -3470,6 +3491,21 @@ export class World {
   }
 
   /** Ground that hurts (Spore Bloom): it grows, ticks on whoever stands in it, then fades. */
+  /**
+   * Ground that hurts (0.44): fever where a Spitter's bile lands, spores, embers, tears. pool:
+   * { r, life, dmg (share of the attack's damage each tick), tick, grow (to this radius), slow }.
+   */
+  addPool(e, x, z, pool) {
+    if (!e || this.hazards.length > 40) return;
+    const life = pool.life || 4;
+    const c = this.clampToArena(x, z, 0.5);
+    const base = (e.def.attacks[0] && e.def.attacks[0].dmg) || 15;
+    const tele = { id: this.nextId++, owner: null, kind: 'circle', x: c.x, z: c.z, dir: 0, radius: pool.r, offset: 0, t: 0, dur: life, parryable: false, cue: false, pool: true, poolKind: pool.kind || null };
+    this.telegraphs.push(tele);
+    const tick = pool.tick || 0.5;
+    this.hazards.push({ x: c.x, z: c.z, r: pool.r, to: pool.grow || pool.r, grow: pool.grow ? (pool.grow - pool.r) / life : 0, left: life, life, tick, next: tick, dmg: base * e.dmgMult * (pool.dmg ?? 0.25), level: e.level, srcId: e.id, tele, slow: pool.slow || 0 });
+  }
+
   stepHazards(dt) {
     if (!this.hazards.length) return;
     const was = this.cur;
@@ -3486,6 +3522,7 @@ export class World {
           if (h.player.dead || dist(h.player.x, h.player.z, hz.x, hz.z) > hz.r + h.player.radius * 0.4) continue;
           this.use(h);
           this.hitPlayer(hz.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: hz.level, srcId: hz.srcId } });
+          if (hz.slow > 0) h.player.chillT = Math.max(h.player.chillT || 0, hz.slow); // frost and tar slow you
         }
       }
     }
@@ -3535,7 +3572,7 @@ export class World {
 
   /** World events (0.31): a meteor that brings a pack and a chest, or a shrine to hold. */
   startEvent(kind) {
-    if (this.happening || this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    if (this.happening || this.mode !== 'explore' || this.trial || this.map.safe || this.instanced() || !this.map.portals || !this.map.portals.length) return null;
     const rng = this.streamRng('event', this.surpriseN++);
     const c = this.spotAway(rng, 18, 28);
     if (!c) return null;
@@ -3565,7 +3602,7 @@ export class World {
   }
 
   stepEvents(dt) {
-    if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.map.id === 'rift') return;
+    if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.instanced()) return;
     const ev = this.happening;
     if (!ev) {
       this.eventClock -= dt;
@@ -3654,7 +3691,7 @@ export class World {
 
   /** The travelling merchant: arrives on a map now and then and stays a few minutes. */
   spawnMerchant() {
-    if (this.mode !== 'explore' || this.trial || this.map.safe || this.map.id === 'rift' || !this.map.portals || !this.map.portals.length) return null;
+    if (this.mode !== 'explore' || this.trial || this.map.safe || this.instanced() || !this.map.portals || !this.map.portals.length) return null;
     const rng = this.streamRng('merchant', this.surpriseN++);
     const c = this.spotAway(rng, 9, 14);
     if (!c) return null;
@@ -3836,9 +3873,9 @@ export class World {
   /** The boss altar on this map, if it is free for a Remnant to be called (no boss standing there). */
   bossAltar() {
     const sp = this.map && this.map.spawns ? this.map.spawns.find((s) => ENEMIES[s.type] && ENEMIES[s.type].boss) : null;
-    if (!sp || this.map.id === 'rift') return null;
+    if (!sp || this.instanced()) return null;
     if (this.enemies.some((e) => e.def.boss && !e.dead)) return null;
-    return { kind: 'altar', id: 'altar', name: `${ENEMIES[sp.type].name}'s altar`, type: sp.type, x: sp.x, z: sp.z, r: 1.2 };
+    return { kind: 'altar', id: 'altar', name: sp.type === 'asker' ? 'the Starwell' : `${ENEMIES[sp.type].name}'s altar`, type: sp.type, x: sp.x, z: sp.z, r: 1.2 };
   }
 
   /** A Remnant Sigil pressed into the altar: the Remnant rises at once. */
@@ -3892,6 +3929,101 @@ export class World {
     this.loadMap('rift', 'town');
     this.rift.need = Math.max(6, Math.round(this.enemies.length * RIFT.need));
     this.emit('riftStart', { tier: t, name: MAPS[this.rift.theme].name });
+  }
+
+  /** A map made for one run (an Echo Rift, a delve room): no world events, chests or altars of its own. */
+  instanced() {
+    return !!this.map && (this.map.id === 'rift' || this.map.id === 'delve');
+  }
+
+  // =========================================================================
+  // Asterfell delves (0.46): down the palace stair, room by room, to the Throne Room
+  // =========================================================================
+  /** Go down the palace stair at world tier `tier` (any you have reached). The party comes too. */
+  enterDelve(tier) {
+    const p = this.player;
+    if (this.cur !== this.heroes[0] || this.mode !== 'explore' || this.trial || this.delve || !this.map || this.map.id !== 'asterfell') return;
+    const t = Math.max(1, Math.min(p.tierMax, Math.floor(Number(tier) || 1)));
+    const rooms = 3 + (t >= 3 ? 1 : 0) + (t >= 5 ? 1 : 0);
+    this.delve = { tier: t, rooms, room: 0, route: delveRoute(rooms), seed: Math.floor(this.rng() * 1e9), state: 'fight', wait: 0 };
+    this.loadMap('delve', 'asterfell');
+    this.delveSpawn();
+  }
+
+  /** The enemies of the room the delve is in, all awake at once; the last room's boss. */
+  delveSpawn() {
+    const D = this.delve;
+    const idx = D.route[D.room];
+    const last = D.room === D.rooms - 1;
+    const T = TIERS[Math.max(1, D.tier)];
+    const lvl = CONFIG.MAX_LEVEL;
+    const pools = [
+      ['glassbound', 'glassbound', 'wishling', 'courtguard'], // Bakers' Row: the city's people
+      ['courtguard', 'courtguard', 'knight', 'knight', 'wraith'], // the Guard Hall
+      ['glassbound', 'glassbound', 'wishling', 'wishling', 'courtguard'], // the Ballroom
+      ['wishling', 'wishling', 'glassbound', 'wraith'], // the Royal Nursery
+      ['courtguard', 'knight', 'glassbound'], // the Throne Room
+    ][idx];
+    const count = (last ? 4 : 7) + 2 * D.room + D.tier;
+    const scale = (e) => {
+      e.maxHp = e.hp = Math.round(e.maxHp * T.hp);
+      e.dmgMult *= T.dmg;
+      e.expValue *= T.exp;
+      e.goldValue = Math.round(e.goldValue * T.exp);
+      e.home = null;
+      e.aggro = true;
+    };
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * TAU + this.rng() * 0.6, r = 7 + this.rng() * 8;
+      const c = this.clampToArena(dCos(a) * r, dSin(a) * r, 1.5);
+      const e = this.spawnEnemy(pools[Math.floor(this.rng() * pools.length)], { x: c.x, z: c.z, level: lvl });
+      e.x = e.px = c.x;
+      e.z = e.pz = c.z;
+      scale(e);
+      if (this.rng() < T.elite * 2) this.makeElite(e, T.affixes);
+    }
+    if (last) {
+      // Something sits beside the empty throne: a different one at each tier.
+      const type = ['boss', 'boss2', 'herald', 'boss3', 'asker'][Math.min(4, D.tier - 1)];
+      const e = this.spawnEnemy(type, { x: 0, z: 9, level: lvl });
+      e.x = e.px = 0;
+      e.z = e.pz = 9;
+      scale(e);
+      e.delveBoss = true;
+    }
+    const room = DELVE_ROOMS[idx];
+    this.emit('delveRoom', { name: room.name, line: room.line, n: D.room + 1, of: D.rooms, tier: D.tier });
+  }
+
+  /** A cleared room opens the next after a breath; the last ends the delve with a radiant chest. */
+  stepDelve(dt) {
+    const D = this.delve;
+    if (D.state === 'fight') {
+      if (this.enemies.some((e) => !e.dead && !e.noLoot)) return;
+      if (D.room < D.rooms - 1) {
+        D.state = 'open';
+        D.wait = 3.5;
+        this.emit('delveClear', { n: D.room + 1, of: D.rooms });
+        return;
+      }
+      D.state = 'done';
+      const p = this.heroes[0].player;
+      this.addChestAt(0, 4, 'radiant');
+      const first = !((p.delveBest || 0) >= D.tier);
+      p.delveBest = Math.max(p.delveBest || 0, D.tier);
+      if (first) {
+        // the first time down at each tier: a Remnant Sigil and an Unwishing Glass for everyone
+        for (const h of this.heroes) this.as(h, () => { this.giveMisc('sigil', 1); this.giveMisc('glass', 1); });
+      }
+      this.emit('delveDone', { tier: D.tier, first });
+    } else if (D.state === 'open') {
+      D.wait -= dt;
+      if (D.wait > 0) return;
+      D.room++;
+      D.state = 'fight';
+      this.loadMap('delve', 'delve');
+      this.delveSpawn();
+    }
   }
 
   /** A kill in a rift fills the bar; a full bar calls the guardian. */
@@ -3977,6 +4109,55 @@ export class World {
     if (this.trial || this.heroes.length > 1 || rebirthBlock(p)) return;
     const save = rebirthSave(this.toSave(), starterWeapon);
     this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow });
+  }
+
+  /** Has the hero seen the end of the wish (0.45)? Haven changes once they have. */
+  afterWish(p = this.heroes[0].player) {
+    return !!(p.endings && (p.endings.self > 0));
+  }
+
+  /** Is this person in Haven right now? (Tomas only after the Unwish, until you have seen him.) */
+  npcHere(id) {
+    const n = NPCS[id];
+    if (!n || !n.onlyAfter) return true;
+    const p = this.heroes[0].player;
+    return this.afterWish(p) && !p.tomasMet;
+  }
+
+  /**
+   * The ending (0.45), at the Starwell once the Asker is gone. 'self': press in an Unwishing Glass and
+   * want nothing; the wish lets go, and the world carries on after it. 'place': only once 'self' has
+   * been seen; wish to keep them all, as she did: a rebirth into New Game+ in which the wish begins
+   * again, stronger, and the Unmade wears your old face. Alone only.
+   */
+  unwish(choice) {
+    const p = this.player;
+    if (this.trial || this.heroes.length > 1 || !this.map || this.map.id !== 'starwell') return;
+    if (this.enemies.some((e) => e.def.boss && !e.dead)) return;
+    if (choice === 'self') {
+      if (!((p.misc.glass || 0) > 0)) return;
+      p.misc.glass--;
+      const first = !(p.endings.self > 0);
+      p.endings.self = (p.endings.self || 0) + 1;
+      p.tomasMet = false;
+      this.unlockGlow('afterlight');
+      this.questEvent('ending', 'self');
+      this.questStamp++;
+      this.emit('ending', { choice: 'self', first });
+    } else if (choice === 'place') {
+      if (!(p.endings.self > 0) || rebirthBlock(p)) return;
+      const save = rebirthSave(this.toSave(), starterWeapon);
+      const rb = save.rebirth;
+      rb.ng = (rb.ng || 0) + 1; // New Game+: the wish begins again, stronger
+      save.endings = Object.assign({}, p.endings, { place: (p.endings.place || 0) + 1 });
+      this.emit('reborn', { save, n: rb.n, marks: rb.marks - p.rebirth.marks, glow: save.glow, ng: rb.ng });
+    }
+  }
+
+  /** New Game+ (0.45): how many times this hero took her place. */
+  ngLevel() {
+    const p = this.heroes[0] ? this.heroes[0].player : this.player;
+    return (p && p.rebirth && p.rebirth.ng) || 0;
   }
 
   /** Starmarks the hero would get for a rebirth now. */
@@ -4421,6 +4602,12 @@ export class World {
     const p = this.player;
     const level = at ? at.level : this.arenaLevel();
     const scale = enemyScale(level);
+    const ng = this.mode === 'explore' && !this.trial ? this.ngLevel() : 0;
+    if (ng > 0) {
+      // New Game+ (0.45): the wish began again, stronger. A third more health and a fifth more damage each time.
+      scale.hp *= 1 + 0.33 * ng;
+      scale.dmg *= 1 + 0.2 * ng;
+    }
     if (!at) {
       // Arena: later waves hit harder and last longer whatever the level, and pay less EXP.
       scale.hp *= 1 + CONFIG.ARENA_WAVE_HP * (this.wave.n - 1);
@@ -4494,6 +4681,15 @@ export class World {
       moving: false,
       dead: false,
     };
+    if (type === 'boss3' && ng > 0) {
+      // New Game+ (0.45): you took her place. The Unmade is the hero you were.
+      const past = (this.heroes[0].player.rebirth.past || []).slice(-1)[0];
+      const cls = past && OLD_SELVES[past.cls] ? past.cls : null;
+      if (cls) {
+        e.oldCls = cls;
+        e.kitDef = OLD_SELVES[cls];
+      }
+    }
     this.enemies.push(e);
     this.emit('spawn', { id: e.id, enemyType: type, x, z });
     return e;
@@ -4515,6 +4711,7 @@ export class World {
 
   chooseAttack(e, d) {
     const def = e.def;
+    if (def.kit) return this.pickFromKit(e, d);
     if (!def.boss) {
       const atk = def.attacks[0];
       return d <= atk.trigger ? atk : null;
@@ -4547,8 +4744,69 @@ export class World {
     return null;
   }
 
+  /**
+   * Kits (0.44): an enemy with more than one move picks among those it can use from where it stands.
+   * Each move may say how far it reaches (trigger) and how close is too close (min), how long before
+   * it comes again (cd), from which phase or below what health it is used (phase, hpBelow), and how
+   * likely it is next to the others (weight). A move only ever used as another's follow-up (chain)
+   * is never picked on its own.
+   */
+  pickFromKit(e, d) {
+    const def = e.kitDef || e.def; // (0.45) the Unmade in New Game+ fights with your old class's moves
+    const frac = e.hp / Math.max(1, e.maxHp);
+    const phase = e.phase || 1;
+    const cds = e.atkCds || (e.atkCds = {});
+    let total = 0;
+    const opts = [];
+    for (const a of def.attacks) {
+      if (def.chainOnly.has(a.name) || a.trigger < 0) continue;
+      if (a.trigger != null && d > a.trigger) continue;
+      if (a.min && d < a.min) continue;
+      if (a.phase && phase < a.phase) continue;
+      if (a.hpBelow && frac > a.hpBelow) continue;
+      if (cds[a.name] > 0) continue;
+      if (a.summon && this.enemies.filter((o) => o.summoner === e.id && !o.dead).length >= (a.summon.max || 4)) continue;
+      const w = a.weight ?? 1;
+      if (w <= 0) continue;
+      opts.push(a);
+      total += w;
+    }
+    if (!opts.length) return null;
+    let r = this.rng() * total;
+    for (const a of opts) {
+      r -= a.weight ?? 1;
+      if (r <= 0) return a;
+    }
+    return opts[opts.length - 1];
+  }
+
+  /** A boss says something (0.44): who it was, coming through. Not too often. */
+  bossLine(e, key, force = false) {
+    const lines = e.def.boss && BOSS_LINES[e.oldCls ? 'oldself' : e.type];
+    const text = lines && lines[key];
+    if (!text || (!force && e.voiceT > 0)) return;
+    e.voiceT = 9;
+    this.emit('bossLine', { id: e.id, type: e.type, name: e.def.name, key, text });
+  }
+
   startWindup(e, atk, isChain) {
     const p = this.player;
+    if (atk.cd) (e.atkCds || (e.atkCds = {}))[atk.name] = atk.cd;
+    if (e.def.boss) {
+      this.bossLine(e, atk.name);
+      if (!e.saidLow && e.hp < e.maxHp * 0.25) {
+        e.saidLow = true;
+        this.bossLine(e, 'low', true);
+      }
+    }
+    if (atk.blink) {
+      // Storm Wraiths step through the air: it reappears beside you before it strikes.
+      const ang = this.rng() * TAU;
+      const c = this.clampToArena(p.x + dCos(ang) * atk.blink, p.z + dSin(ang) * atk.blink, e.radius);
+      this.emit('blink', { id: e.id, x: e.x, z: e.z, tx: c.x, tz: c.z });
+      e.x = e.px = c.x;
+      e.z = e.pz = c.z;
+    }
     e.state = 'windup';
     e.atk = atk;
     e.t = 0;
@@ -4558,6 +4816,12 @@ export class World {
     e.facing = e.aim;
     e.moving = false;
     if (!isChain) this.lastWindupAt = this.time;
+    if (atk.shape === 'call') {
+      // a call to its own (no blow): nothing on the ground to dodge
+      e.tele = null;
+      this.emit('windup', { id: e.id, enemyType: e.type, attack: atk.name, parryable: false, call: true });
+      return;
+    }
     const tele = { id: this.nextId++, owner: e.id, kind: atk.shape, x: e.x, z: e.z, dir: e.aim, t: 0, dur: e.dur, parryable: atk.parryable, cue: false };
     if (atk.shape === 'arc') {
       tele.range = atk.range;
@@ -4577,8 +4841,29 @@ export class World {
     } else if (atk.shape === 'rect') {
       tele.length = atk.length;
       tele.width = atk.width;
+    } else if (atk.shape === 'ring') {
+      tele.radius = atk.radius;
+      tele.inner = atk.inner;
+      tele.offset = 0;
+    } else if (atk.shape === 'beam') {
+      // a still line of force; with cross, four of them from the enemy (each its own telegraph)
+      tele.kind = 'rect';
+      tele.length = atk.length;
+      tele.width = atk.width;
+      if (atk.cross) {
+        e.teles = [1, 2, 3].map((k) => {
+          const x = { ...tele, id: this.nextId++, turn: (k * Math.PI) / 2 };
+          this.telegraphs.push(x);
+          return x;
+        });
+      }
     } else if (atk.shape === 'shot') {
-      if (atk.count > 1) {
+      if (atk.around) {
+        tele.kind = 'ring';
+        tele.radius = 4;
+        tele.inner = 3.2;
+        tele.offset = 0;
+      } else if (atk.count > 1) {
         tele.kind = 'arc';
         tele.range = 13;
         tele.angle = atk.spread + 0.25;
@@ -4683,13 +4968,15 @@ export class World {
         this.emit('doomImpact', { x: f.x, z: f.z, radius: f.r });
         continue;
       }
-      this.emit('strike', { id: f.srcId, shape: 'circle', x: f.x, z: f.z, radius: f.r, parryable: false });
-      this.emit('starImpact', { x: f.x, z: f.z, radius: f.r });
+      this.emit('strike', { id: f.srcId, shape: 'circle', x: f.x, z: f.z, radius: f.r, parryable: false, fx: f.fx || null });
+      this.emit('starImpact', { x: f.x, z: f.z, radius: f.r, fx: f.fx || null });
+      if (f.pool && src) this.addPool(src, f.x, f.z, f.pool);
     }
     this.falls = this.falls.filter((f) => !f.done);
   }
 
   positionTelegraph(e, tele) {
+    if (e.teles) for (const x of e.teles) { x.x = e.x; x.z = e.z; x.dir = e.aim + x.turn; x.t = tele.t; x.cue = tele.cue; }
     if (tele.leap) {
       tele.x = e.leapX;
       tele.z = e.leapZ;
@@ -4703,6 +4990,11 @@ export class World {
   }
 
   removeTelegraph(e) {
+    if (e.teles) {
+      const xs = e.teles;
+      e.teles = null;
+      this.telegraphs = this.telegraphs.filter((x) => !xs.includes(x));
+    }
     if (!e.tele) return;
     const t = e.tele;
     e.tele = null;
@@ -4722,16 +5014,41 @@ export class World {
       hit = d <= atk.range + p.radius * 0.5 && (d < e.radius + p.radius || Math.abs(angDiff(ap, a)) <= atk.angle / 2 + 0.15);
       this.emit('strike', { id: e.id, shape: 'arc', x: e.x, z: e.z, dir: a, range: atk.range, angle: atk.angle, parryable: atk.parryable });
     } else if (atk.shape === 'rain') {
-      // Starfall: stars land on you and on where you are heading, one after another.
       const vx = (p.x - p.px) / CONFIG.TICK, vz = (p.z - p.pz) / CONFIG.TICK;
+      const ld = dist(p.x, p.z, e.x, e.z);
       for (let i = 0; i < atk.count; i++) {
-        const lead = i * 0.35;
-        const s = i === 0 ? 0 : 1 + this.rng() * 3;
-        const ang = this.rng() * TAU;
-        const c = this.clampToArena(p.x + vx * lead + dCos(ang) * s, p.z + vz * lead + dSin(ang) * s, 1);
-        this.falls.push({ x: c.x, z: c.z, r: atk.radius, t: -i * atk.gap, dur: atk.fall, dmg: atk.dmg * e.dmgMult, level: e.level, srcId: e.id, tele: null });
+        let c;
+        if (atk.line) {
+          // in a line from the enemy toward you and past you, one after another (the Warden counting)
+          const step = (ld + 4) / atk.count;
+          c = this.clampToArena(e.x + dCos(a) * step * (i + 1), e.z + dSin(a) * step * (i + 1), 1);
+        } else if (atk.scatter) {
+          // all over the ground near the enemy (spore beds, tears)
+          const ang = this.rng() * TAU, s = 2 + this.rng() * atk.scatter;
+          c = this.clampToArena((i === 0 ? p.x : e.x) + dCos(ang) * (i === 0 ? 0 : s), (i === 0 ? p.z : e.z) + dSin(ang) * (i === 0 ? 0 : s), 1);
+        } else {
+          // on you and on where you are heading (Starfall)
+          const lead = i * 0.35;
+          const s = i === 0 ? 0 : 1 + this.rng() * 3;
+          const ang = this.rng() * TAU;
+          c = this.clampToArena(p.x + vx * lead + dCos(ang) * s, p.z + vz * lead + dSin(ang) * s, 1);
+        }
+        this.falls.push({ x: c.x, z: c.z, r: atk.radius, t: -i * atk.gap, dur: atk.fall, dmg: atk.dmg * e.dmgMult, level: e.level, srcId: e.id, tele: null, pool: atk.pool || null, fx: atk.fx || null });
       }
-      this.emit('starfall', { id: e.id, x: e.x, z: e.z });
+      this.emit('starfall', { id: e.id, x: e.x, z: e.z, fx: atk.fx || null });
+    } else if (atk.shape === 'ring') {
+      // A ring: safe close in, or out past it.
+      const d = dist(p.x, p.z, e.x, e.z);
+      hit = d > atk.inner - p.radius * 0.4 && d <= atk.radius + p.radius * 0.4;
+      this.emit('strike', { id: e.id, shape: 'ring', x: e.x, z: e.z, radius: atk.radius, inner: atk.inner, parryable: atk.parryable, fx: atk.fx || null });
+    } else if (atk.shape === 'beam') {
+      const dirs = atk.cross ? [0, 1, 2, 3].map((k) => a + (k * Math.PI) / 2) : [a];
+      for (const dir of dirs) {
+        const along = (p.x - e.x) * dCos(dir) + (p.z - e.z) * dSin(dir);
+        const across = Math.abs(-(p.x - e.x) * dSin(dir) + (p.z - e.z) * dCos(dir));
+        if (along > -p.radius && along <= atk.length + p.radius && across <= atk.width / 2 + p.radius * 0.4) hit = true;
+        this.emit('strike', { id: e.id, shape: 'beam', x: e.x, z: e.z, dir, length: atk.length, width: atk.width, parryable: atk.parryable, fx: atk.fx || null });
+      }
     } else if (atk.shape === 'circle') {
       if (atk.leap) {
         const c = this.clampToArena(e.leapX, e.leapZ, e.radius);
@@ -4742,7 +5059,8 @@ export class World {
       const cx = e.x + dCos(a) * atk.offset;
       const cz = e.z + dSin(a) * atk.offset;
       hit = dist(p.x, p.z, cx, cz) <= atk.radius + p.radius * 0.4;
-      this.emit('strike', { id: e.id, shape: 'circle', x: cx, z: cz, radius: atk.radius, parryable: atk.parryable });
+      this.emit('strike', { id: e.id, shape: 'circle', x: cx, z: cz, radius: atk.radius, parryable: atk.parryable, fx: atk.fx || null });
+      if (atk.pool) this.addPool(e, cx, cz, atk.pool);
     } else if (atk.shape === 'rect') {
       e.state = 'charge';
       e.t = 0;
@@ -4752,7 +5070,7 @@ export class World {
       return;
     } else if (atk.shape === 'shot') {
       for (let i = 0; i < atk.count; i++) {
-        const off = atk.count > 1 ? (i / (atk.count - 1) - 0.5) * atk.spread : 0;
+        const off = atk.around ? (i / atk.count) * TAU : atk.count > 1 ? (i / (atk.count - 1) - 0.5) * atk.spread : 0;
         const pa = a + off;
         this.projectiles.push({
           id: this.nextId++,
@@ -4769,14 +5087,47 @@ export class World {
           level: e.level,
           parryable: atk.parryable,
           reflected: false,
-          life: 3,
+          life: atk.life || 3,
           dead: false,
+          seek: atk.seek || 0, // turns toward the hero this many radians a second (the Unmade's lullaby)
+          pool: atk.pool || null, // leaves ground that hurts where it lands (fever, spores)
+          fx: atk.fx || null,
+          speed: atk.speed,
         });
       }
-      this.emit('strike', { id: e.id, shape: 'shot', x: e.x, z: e.z, dir: a, parryable: atk.parryable });
+      this.emit('strike', { id: e.id, shape: 'shot', x: e.x, z: e.z, dir: a, parryable: atk.parryable, fx: atk.fx || null });
+    }
+    if (atk.summon) {
+      // Calls its own to fight beside it (the Warden's men, the Mycelord's garden, the Unmade's people).
+      const S = atk.summon;
+      const live = this.enemies.filter((o) => o.summoner === e.id && !o.dead).length;
+      for (let i = 0; i < Math.min(S.count, (S.max || 4) - live); i++) {
+        const ang = this.rng() * TAU;
+        const c = this.clampToArena(e.x + dCos(ang) * 3, e.z + dSin(ang) * 3, 1);
+        const o = this.spawnEnemy(S.type, { x: c.x, z: c.z, level: e.level });
+        o.x = o.px = c.x;
+        o.z = o.pz = c.z;
+        o.summoner = e.id;
+        o.exp = 0;
+        o.expValue = 0;
+        o.goldValue = 0;
+        o.noLoot = true;
+        o.home = null;
+        o.aggro = true;
+        o.state = 'chase';
+        this.emit('spawn', { id: o.id, x: c.x, z: c.z });
+      }
+    }
+    if (atk.heal) {
+      const back = Math.round(e.maxHp * atk.heal);
+      e.hp = Math.min(e.maxHp, e.hp + back);
+      this.emit('enemyHeal', { id: e.id, x: e.x, z: e.z, amount: back });
     }
 
-    if (hit) this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e });
+    if (hit) {
+      const res = this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e });
+      if (atk.chill && res === 'hit') p.chillT = Math.max(p.chillT || 0, atk.chill);
+    }
     if (this.party && (atk.shape === 'arc' || atk.shape === 'circle')) {
       // Anyone else standing in it is hit too (and can parry it too).
       const target = this.cur;
@@ -4795,7 +5146,7 @@ export class World {
 
     e.lastAtk = atk.name;
     if (atk.chain) {
-      this.startWindup(e, e.def.attackByName[atk.chain], true);
+      this.startWindup(e, (e.kitDef || e.def).attackByName[atk.chain], true);
     } else {
       e.state = 'recover';
       e.t = atk.recover;
@@ -4947,6 +5298,7 @@ export class World {
         e.rainCd = 0;
         e.collapseCd = 2;
         this.emit('bossPhase', { id: e.id, phase, name: e.def.name, x: e.x, z: e.z });
+        this.bossLine(e, 'phase' + phase, true);
       }
     }
     if (e.def.boss && !e.enraged && e.hp > 0 && e.hp < e.maxHp * 0.4) {
@@ -5015,6 +5367,7 @@ export class World {
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
+    if (e.def.boss) this.bossLine(e, 'death', true);
     if (e.def.asker) this.clearWishes();
     if (e.def.shatter) {
       // Glassbound (0.39): the glass gives way a moment after they fall.
@@ -5024,14 +5377,21 @@ export class World {
       // Volatile elites burst a moment after they fall (uses the falling-star warning circles).
       this.falls.push({ x: e.x, z: e.z, r: 3.2, t: 0, dur: 1.2, dmg: (e.def.attacks[0].dmg || 10) * e.dmgMult * 2.5, level: e.level, srcId: e.id, tele: null });
     }
-    if (this.mode === 'explore' && this.map.id === 'rift' && this.rift && !e.def.summon) this.riftKill(e);
-    if (e.remnant || e.def.herald) {
+    if (this.mode === 'explore' && this.map.id === 'rift' && this.rift && !e.def.summon && !e.noLoot) this.riftKill(e);
+    {
+      // Whatever an enemy called up goes with it: a Remnant's shades and wish-stars, the Herald's
+      // guards (0.40), and every boss's summons (0.44).
       // A Remnant's shades and wish-stars go with it (and the Herald's guards, 0.40).
       for (const o of this.enemies) {
         if (o.summoner !== e.id || o.dead) continue;
         o.dead = true;
         this.emit('death', { id: o.id, enemyType: o.type, x: o.x, z: o.z, boss: false, elite: false });
       }
+    }
+    if (e.noLoot) {
+      // Called up by a boss (0.44): it pays nothing of its own.
+      for (const h of this.heroes) if (h.player.targetId === e.id) h.player.targetId = null;
+      return;
     }
     // Everyone in the party who is up and close by gets the rewards: their own gold,
     // their own loot roll, quest credit and a share of the EXP.
@@ -5222,6 +5582,8 @@ export class World {
         if (e.frostT <= 0) e.frostStacks = 0;
       }
       if (e.frostLock > 0) e.frostLock -= dt;
+      if (e.atkCds) for (const k in e.atkCds) if (e.atkCds[k] > 0) e.atkCds[k] -= dt; // each move's own cooldown (0.44)
+      if (e.voiceT > 0) e.voiceT -= dt;
       if (e.freezeWait > 0) e.freezeWait -= dt;
       if (e.brittle && !(e.vulnT > 0)) e.brittle = false;
       if (e.bleedT > 0) {
@@ -5254,6 +5616,7 @@ export class World {
       const d = dHypot(dx, dz) || 0.001;
       const toPlayer = dAtan2(dz, dx);
 
+      if (e.home && e.aggro && e.state !== 'chase' && e.state !== 'spawn') this.drainPatience(e, dist(e.x, e.z, e.home.x, e.home.z), dt);
       switch (e.state) {
         case 'spawn':
           e.t -= dt;
@@ -5462,6 +5825,17 @@ export class World {
           pr.vz = dSin(a) * pr.speed;
         }
       }
+      if (pr.seek > 0 && pr.owner === 'enemy' && !pr.reflected) {
+        // a seeking shot leans toward the nearest hero
+        let tgt = null, td = 1e9;
+        for (const h of this.heroes) { if (h.player.dead) continue; const dd = dist(h.player.x, h.player.z, pr.x, pr.z); if (dd < td) { td = dd; tgt = h.player; } }
+        if (tgt) {
+          const cur = dAtan2(pr.vz, pr.vx);
+          const na = turnToward(cur, dAtan2(tgt.z - pr.z, tgt.x - pr.x), pr.seek * d);
+          pr.vx = dCos(na) * pr.speed;
+          pr.vz = dSin(na) * pr.speed;
+        }
+      }
       pr.px = pr.x;
       pr.pz = pr.z;
       pr.x += pr.vx * d;
@@ -5469,6 +5843,7 @@ export class World {
       pr.life -= d;
       if (pr.life <= 0 || dHypot(pr.x, pr.z) > this.radius + 4) {
         pr.dead = true;
+        if (pr.pool && pr.owner === 'enemy') this.addPool(this.enemyById(pr.srcId), pr.x, pr.z, pr.pool);
         continue;
       }
       if (pr.owner === 'enemy' && this.walls.length) {
@@ -5507,7 +5882,10 @@ export class World {
             this.emit('reflect', { x: pr.x, z: pr.z });
           }
           else if (res === 'dodged') pr.spent = true;
-          else pr.dead = true;
+          else {
+            pr.dead = true;
+            if (pr.pool) this.addPool(this.enemyById(pr.srcId), pr.x, pr.z, pr.pool);
+          }
         }
       } else {
         for (const e of this.enemies) {
@@ -5659,16 +6037,18 @@ inTown() {
    */
   loadMap(id, from = null) {
     this.clearWishes(); // the Asker's wishes stay in the Starwell (0.40)
-    if (this.map && this.mode === 'explore' && !this.trial && this.map.id !== 'rift') this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
+    if (this.map && this.mode === 'explore' && !this.trial && !this.instanced()) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     if (id !== 'rift' && this.rift) {
       // Leaving an Echo Rift ends it.
       if (this.rift.state !== 'done') this.emit('riftEnd', { tier: this.rift.tier, won: false });
       this.rift = null;
     }
-    const map = (this.map = id === 'rift' && this.rift ? buildRiftMap(this.rift.theme, this.rift.seed) : buildMap(id));
+    if (id !== 'delve' && this.delve) this.delve = null; // leaving a delve ends it (0.46)
+    const map = (this.map = id === 'rift' && this.rift ? buildRiftMap(this.rift.theme, this.rift.seed) : id === 'delve' && this.delve ? buildDelveRoom(this.delve.route[this.delve.room], this.delve.seed + this.delve.room) : buildMap(id));
     const actor = this.cur;
     const p = this.player;
     this.radius = map.radius;
+    if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id)); // (0.45) Tomas, after
     this.obstacles = map.obstacles;
     this.enemies = [];
     this.projectiles = [];
@@ -5755,6 +6135,7 @@ inTown() {
   loadMapMirror(id) {
     const map = (this.map = buildMap(id));
     this.radius = map.radius;
+    if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
     this.obstacles = map.obstacles;
     this.enemies = [];
     this.projectiles = [];
@@ -5890,13 +6271,19 @@ inTown() {
    * Camp enemies ignore you until you come close, and give up if you drag them
    * too far from home or step into town. Returns true while the enemy should fight.
    */
+  /** Patience drains while an enemy is dragged far from home, whatever it is doing (0.44: kits keep it busy). */
+  drainPatience(e, dh, dt) {
+    const boss = !!e.def.boss;
+    if (e.aggro && dh > (boss ? CONFIG.PATIENCE_RANGE_BOSS : CONFIG.PATIENCE_RANGE)) e.patience = Math.max(0, e.patience - dt / (boss ? CONFIG.PATIENCE_TIME_BOSS : CONFIG.PATIENCE_TIME));
+    else if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
+  }
+
   stepLeash(e, d, dt) {
     const p = this.player;
     const dh = dist(e.x, e.z, e.home.x, e.home.z);
     // Patience, like a jungle camp: dragged out past PATIENCE_RANGE it loses patience; back near home it recovers.
+    this.drainPatience(e, dh, dt);
     const boss = !!e.def.boss;
-    if (e.aggro && dh > (boss ? CONFIG.PATIENCE_RANGE_BOSS : CONFIG.PATIENCE_RANGE)) e.patience = Math.max(0, e.patience - dt / (boss ? CONFIG.PATIENCE_TIME_BOSS : CONFIG.PATIENCE_TIME));
-    else if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
     if (e.aggro && (p.dead || this.inTown(p) || dh > (boss ? CONFIG.LEASH_RANGE_BOSS : CONFIG.LEASH_RANGE) || e.patience <= 0)) {
       e.aggro = false;
       e.returning = true;

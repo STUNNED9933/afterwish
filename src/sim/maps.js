@@ -265,11 +265,47 @@ export function buildMap(id, custom = null) {
     return { kind: 'rock', shape: 'circle', x, z, r, scale: r, turn: rng() * 6 };
   });
 
+  if (id === 'asterfell') {
+    // The palace stair (0.46): the way down into the delves, beside the city gate.
+    const door = { kind: 'delve', shape: 'circle', id: 'delve', name: 'The palace stair', x: R - 11, z: 6, r: 1.3 };
+    const clear = (o) => dHypot(o.x - door.x, o.z - door.z) >= o.r + 3.5;
+    while (!obstacles.filter((o) => o.kind === 'sign' || o.kind === 'npc').every(clear)) door.z += 3; // never on a sign
+    for (let i = obstacles.length - 1; i >= 0; i--) if (!clear(obstacles[i]) && obstacles[i].kind !== 'sign') obstacles.splice(i, 1);
+    obstacles.push(door);
+  }
+
   return {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan,
     portals, obstacles, spawns, waygate, waystones,
   };
+}
+
+/**
+ * Asterfell delves (0.46): the palace under the city, room by room. Each room is a small round hall
+ * of the palace, its enemies placed by the world (not camps), with one way out, back up to the city.
+ */
+export const DELVE_ROOMS = [
+  { name: "Bakers' Row", line: 'The ovens are still warm. The bread in them has been rising for a hundred years.' },
+  { name: 'The Guard Hall', line: 'Every spear is polished. Every bed is made. Nobody has slept in them.' },
+  { name: 'The Ballroom', line: 'The musicians have their bows lifted, waiting for a first note that never came.' },
+  { name: 'The Royal Nursery', line: 'A cradle, a rattle, a little coat on a hook. The coat is your size, once.' },
+  { name: 'The Throne Room', line: 'Her chair is empty. Something sits beside it, waiting for her to come home.' },
+];
+/** Which rooms a delve of this many rooms goes through (the Throne Room is always last). */
+export function delveRoute(n) {
+  return n >= 5 ? [0, 1, 2, 3, 4] : n === 4 ? [0, 1, 3, 4] : [0, 3, 4];
+}
+export function buildDelveRoom(roomIdx, seed) {
+  const def = {
+    name: 'Asterfell delve · ' + DELVE_ROOMS[roomIdx].name, theme: 'glass', radius: 21, level: 100, levelSpan: 0, song: 'asterfell',
+    roster: {}, spawns: 0, trees: 0, rocks: 8, houses: 0, boss: null,
+    portals: [{ to: 'asterfell', angle: Math.PI }],
+  };
+  const map = buildMap('delve', { def, key: `delve:${roomIdx}:${seed}` });
+  map.id = 'delve';
+  map.room = roomIdx;
+  return map;
 }
 
 /**

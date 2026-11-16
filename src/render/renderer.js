@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildHero, buildEnemy, buildNpc, buildSign, buildBoard, buildAltar } from './models.js';
+import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE } from './creatures.js';
 import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
@@ -20,6 +21,9 @@ const R = CONFIG.ARENA_RADIUS;
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const SET_COLOR = 0x6fe08a; // set pieces (0.29)
+/** What an enemy's attack is made of (0.44): its trail, its pool, its burst. */
+const FX_COLOR = { fever: 0x9cff4a, spore: 0xc07aff, ember: 0xff7a2a, frost: 0x9fe6ff, storm: 0xbfd8ff, star: 0x7ff5e1, gold: 0xffd27a, tears: 0x8fd0ff, iron: 0xc9c4b0, glass: 0xffe0a0, rot: 0x7a8a3a, oath: 0xa98bff, sand: 0xe0c070 };
+
 const COLORS = {
   parry: 0x9fe8ff,
   parryable: 0xffe2a0, // attacks you can parry are drawn in pale gold
@@ -294,6 +298,7 @@ export class Renderer {
    */
   setMap(map) {
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
+    this.people = []; // Haven's people on the last map are gone with it
     const g = (this.exploreGroup = new THREE.Group());
     this.scene.add(g);
     this.mapId = map.id;
@@ -402,6 +407,29 @@ export class Renderer {
         npc.position.set(o.x, 0, o.z);
         npc.rotation.y = Math.atan2(-o.x, -o.z); // face the middle of the plaza
         g.add(npc);
+        // Haven's people, rigged (0.44): they idle, look about, and greet you when you come near.
+        const ps = PEOPLE[o.id];
+        if (ps) {
+          const person = { x: o.x, z: o.z, rig: null, next: 3 + Math.random() * 6, greeted: 0 };
+          (this.people = this.people || []).push(person);
+          loadCreature(ps).then((tpl) => {
+            if (!tpl || !npc.parent) return;
+            for (const ch of npc.children) ch.visible = false;
+            const rig = makeCreature(tpl, ps);
+            npc.add(rig.group);
+            person.rig = rig;
+          });
+        }
+      } else if (o.kind === 'delve') {
+        // The palace stair (0.46): a dark doorway of starglass going down
+        const door = buildAltar();
+        door.position.set(o.x, 0, o.z);
+        door.scale.setScalar(1.35);
+        door.traverse((m) => { if (m.material && m.material.color) m.material = m.material.clone(), m.material.color.lerp(new THREE.Color(0xffd27a), 0.5); });
+        const glow = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.8, depthWrite: false }));
+        glow.scale.setScalar(2.4);
+        glow.position.set(o.x, 0.06, o.z);
+        g.add(door, glow);
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);
@@ -1295,9 +1323,20 @@ export class Renderer {
         this.burst(ev.x, 1, ev.z, { count: 6, color: 0x9fe8ff, speed: 3, up: 2 });
         break;
       case 'starImpact':
-        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xbff2ff, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.85 });
-        this.burst(ev.x, 0.6, ev.z, { count: 22, color: 0xe6fbff, speed: 9, up: 7, life: 0.55 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: FX_COLOR[ev.fx] || 0xbff2ff, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.85 });
+        this.burst(ev.x, 0.6, ev.z, { count: 22, color: FX_COLOR[ev.fx] || 0xe6fbff, speed: 9, up: 7, life: 0.55 });
         this.shake = Math.max(this.shake, 0.25);
+        break;
+      case 'blink': {
+        // a Storm Wraith steps through the air
+        this.burst(ev.x, 1.2, ev.z, { count: 14, color: FX_COLOR.storm, speed: 4, up: 3, life: 0.4 });
+        this.burst(ev.tx, 1.2, ev.tz, { count: 14, color: FX_COLOR.storm, speed: 4, up: 3, life: 0.4 });
+        const v = this.views.get(ev.id);
+        if (v) v.model.group.position.set(ev.tx, v.model.group.position.y, ev.tz);
+        break;
+      }
+      case 'enemyHeal':
+        this.burst(ev.x, 1.5, ev.z, { count: 20, color: 0x9fe07a, speed: 2, up: 6, gravity: 2, life: 0.9 });
         break;
       case 'bossLeap':
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffe8c0, from: 0.8, to: ev.radius * 1.4, dur: 0.4, opacity: 0.9 });
@@ -1313,7 +1352,27 @@ export class Renderer {
         const v = this.views.get(ev.id);
         if (v) v.strikeT = 0.25;
         const color = ev.parryable ? 0xffe8c0 : COLORS.danger;
-        if (ev.shape === 'arc') this.flash(this.sectorGeo(ev.angle, 0.3), { x: ev.x, z: ev.z, y: 0.8, dir: ev.dir, color, from: ev.range * 0.75, to: ev.range, dur: 0.22, opacity: 0.7 });
+        const tint = FX_COLOR[ev.fx];
+        if (ev.shape === 'arc') this.flash(this.sectorGeo(ev.angle, 0.3), { x: ev.x, z: ev.z, y: 0.8, dir: ev.dir, color: tint && !ev.parryable ? tint : color, from: ev.range * 0.75, to: ev.range, dur: 0.22, opacity: 0.7 });
+        else if (ev.shape === 'ring') {
+          // a ring that breaks outward, safe in its middle (0.44)
+          this.flash(this.sectorGeo(6.283, Math.max(0.05, ev.inner / ev.radius)), { x: ev.x, z: ev.z, y: 0.1, color: tint || color, from: ev.radius, to: ev.radius * 1.04, dur: 0.35, opacity: 0.75 });
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: tint || color, from: ev.inner, to: ev.radius * 1.15, dur: 0.4, opacity: 0.9 });
+          for (let i = 0; i < 18; i++) {
+            const a = (i / 18) * Math.PI * 2, r = (ev.inner + ev.radius) / 2;
+            this.burst(ev.x + Math.cos(a) * r, 0.4, ev.z + Math.sin(a) * r, { count: 2, color: tint || 0xc9b9a0, speed: 3, up: 4, life: 0.5 });
+          }
+          this.shake = Math.max(this.shake, 0.35);
+        } else if (ev.shape === 'beam') {
+          // a still line of force: the Warden's gate, the Herald's decree, the Unmade's cross
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.12, dir: ev.dir, color: tint || color, sx: ev.length, sz: ev.width, from: 1, to: 1, dur: 0.35, opacity: 0.8 });
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.5, dir: ev.dir, color: 0xffffff, sx: ev.length, sz: ev.width * 0.35, from: 1, to: 1, dur: 0.18, opacity: 0.7 });
+          for (let i = 0; i < 10; i++) {
+            const k = (i + 0.5) / 10 * ev.length;
+            this.burst(ev.x + Math.cos(ev.dir) * k, 0.4, ev.z + Math.sin(ev.dir) * k, { count: 2, color: tint || 0xffe8c0, speed: 2.5, up: 5, life: 0.45 });
+          }
+          this.shake = Math.max(this.shake, 0.3);
+        }
         else if (ev.shape === 'circle') {
           this.flash(this.discGeo(), { x: ev.x, z: ev.z, color, from: ev.radius, to: ev.radius, dur: 0.3, opacity: 0.55 });
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color, from: ev.radius * 0.5, to: ev.radius * 1.1, dur: 0.35, opacity: 0.9 });
@@ -1354,7 +1413,12 @@ export class Renderer {
   // Per-frame sync with the simulation
   // -------------------------------------------------------------------------
   setEmissive(mats, r, g, b) {
-    for (const m of mats) m.emissive.setRGB(r, g, b);
+    for (const m of mats) {
+      const gl = m.userData.glow;
+      const k = m.userData.cue || 1;
+      if (gl) m.emissive.setRGB(r * k + gl[0], g * k + gl[1], b * k + gl[2]);
+      else m.emissive.setRGB(r * k, g * k, b * k);
+    }
   }
 
   /** Weapon glows (0.31): the weapon shines in the glow's colour, with a faint ring at the feet. */
@@ -1561,8 +1625,18 @@ export class Renderer {
         }
         this.scene.add(v.model.group);
         this.views.set(e.id, v);
+        this.upgradeCreature(v, creatureSpec(e.type, e));
       }
       const { group, parts, mats } = v.model;
+      if (v.rig) {
+        // a rigged body (0.44): its own clips for the wind-up, the walk, the stagger
+        v.rig.update(dt, {
+          moving: e.moving || e.state === 'charge',
+          speed: e.def.speed * (e.state === 'charge' ? 2.5 : 1),
+          stunned: e.state === 'stunned',
+          windup: e.state === 'windup' && e.atk ? { kind: attackKind(e.type, e.atk), k: e.t / Math.max(0.01, e.dur) } : null,
+        });
+      }
       group.position.set(lerp(e.px, e.x, alpha), 0, lerp(e.pz, e.z, alpha));
       group.rotation.y = Math.PI / 2 - e.facing;
 
@@ -1665,6 +1739,18 @@ export class Renderer {
       }
     }
     for (const c of this.corpses) {
+      if (c.rig) {
+        // a rigged body falls the way it should, then sinks away
+        c.rig.update(dt, { dead: true });
+        c.deathT += dt / 1.8;
+        const k = Math.min(1, c.deathT);
+        c.model.group.position.y = -Math.max(0, k - 0.65) * 2.2;
+        if (k >= 1) {
+          this.disposeGroup(c.model.group);
+          c.done = true;
+        }
+        continue;
+      }
       c.deathT += dt / 0.45;
       const k = Math.min(1, c.deathT);
       c.model.group.scale.setScalar(1 - easeOut(k) * 0.95);
@@ -1676,6 +1762,42 @@ export class Renderer {
       }
     }
     this.corpses = this.corpses.filter((c) => !c.done);
+  }
+
+  /** Haven's people (0.44): idle, a look about now and then, a greeting when you come close. */
+  syncPeople(world, dt) {
+    if (!this.people || !this.people.length) return;
+    const p = world.player;
+    for (const n of this.people) {
+      if (!n.rig) continue;
+      let gesture = null;
+      const near = Math.hypot(p.x - n.x, p.z - n.z) < 4.5;
+      if (near && n.greeted <= 0) {
+        gesture = 'greet';
+        n.greeted = 20;
+      } else if ((n.next -= dt) <= 0) {
+        n.next = 7 + Math.random() * 9;
+        gesture = Math.random() < 0.5 ? 'look' : Math.random() < 0.5 ? 'agree' : 'relax';
+      }
+      if (!near && n.greeted > 0) n.greeted -= dt;
+      n.rig.update(dt, { gesture });
+    }
+  }
+
+  /**
+   * Swap a hand-built body for its rigged model once that has loaded (0.44). The aura, marks and
+   * everything else on the view stay; the body's own pieces are hidden.
+   */
+  upgradeCreature(v, spec) {
+    if (!spec) return;
+    loadCreature(spec).then((tpl) => {
+      if (!tpl || v.deathT !== undefined || !v.model.group.parent) return;
+      const rig = makeCreature(tpl, spec);
+      for (const ch of v.model.group.children) if (ch !== v.aura && ch !== v.markRing) ch.visible = false;
+      v.model.group.add(rig.group);
+      v.rig = rig;
+      v.model.mats = rig.mats;
+    });
   }
 
   disposeGroup(group) {
@@ -1705,6 +1827,10 @@ export class Renderer {
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
       m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      if (!pr.kind && pr.fx && FX_COLOR[pr.fx] && Math.random() < 0.7) {
+        // an enemy's shot leaves a trail of what it is made of (bile, spores, embers, frost, tears)
+        this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: FX_COLOR[pr.fx], speed: 0.5, up: 0.4, gravity: 0.5, life: 0.45, size: 1.2 });
+      }
       if (pr.kind === 'mote') {
         m.scale.setScalar(0.8);
         if (Math.random() < 0.9) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: 0xfff3b0, speed: 0.4, up: 0.3, gravity: 0, life: 0.4, size: 1 });
@@ -1777,6 +1903,7 @@ export class Renderer {
       if (!v) {
         let geo;
         if (t.kind === 'arc') geo = this.sectorGeo(t.angle);
+        else if (t.kind === 'ring') geo = this.sectorGeo(6.283, Math.max(0.05, Math.min(0.95, (t.inner || 0) / Math.max(0.1, t.radius))));
         else if (t.kind === 'circle') geo = this.discGeo();
         else geo = this.rectGeo();
         const mk = (opacity) => new THREE.MeshBasicMaterial({ transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
@@ -1793,7 +1920,7 @@ export class Renderer {
       const k = Math.min(1, t.t / t.dur);
       v.group.position.set(t.x, 0, t.z);
       v.group.rotation.y = -t.dir;
-      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : t.pool ? 0x9cff4a : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
+      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : t.pool ? FX_COLOR[t.poolKind] || 0x9cff4a : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
       v.base.material.color.set(color);
       v.fill.material.color.set(color);
       v.fill.material.opacity = t.doom || t.pool ? 0.6 : t.cue && t.parryable ? 0.7 : 0.4;
@@ -1841,6 +1968,7 @@ export class Renderer {
     this.syncShadows(world, dt);
     this.syncWalls(world);
     this.syncEnemies(world, alpha, dt);
+    this.syncPeople(world, dt);
     this.syncProjectiles(world, alpha);
     this.syncLoot(world);
     this.syncChests(world);

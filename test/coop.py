@@ -9,11 +9,13 @@ def check(name, ok, info=''):
     print(('PASS ' if ok else 'FAIL ') + name + ('  ' + str(info) if info else ''))
     if not ok: fails.append(name)
 with sync_playwright() as pw:
-    b = pw.chromium.launch(args=['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required', '--disable-features=WebRtcHideLocalIpsWithMdns'])
+    b = pw.chromium.launch(args=['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required', '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection'])
     errs = []
     def page():
-        ctx = b.new_context(viewport={'width': 1280, 'height': 760})
+        ctx = b.new_context(viewport={'width': 960, 'height': 540})
         pg = ctx.new_page()
+        # Low graphics: software rendering in a test machine is slow enough to stall the handshake otherwise
+        pg.add_init_script("localStorage.getItem('stunned-arena-settings-v1') || localStorage.setItem('stunned-arena-settings-v1', JSON.stringify({graphics:'low', volume:0, muted:true}))")
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
         pg.goto(url); pg.wait_for_timeout(2500)

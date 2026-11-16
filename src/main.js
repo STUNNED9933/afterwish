@@ -28,7 +28,7 @@ import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
-import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor } from './net/sync.js';
+import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX } from './net/sync.js';
 
 const $ = (id) => document.getElementById(id);
 const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Breakthrough', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
@@ -1166,12 +1166,18 @@ function start(hot = {}) {
     $('btn-join').disabled = false;
     // This browser's world becomes a picture of the host's: it never steps, and commands go to the host.
     world = makeWorld({ save, mode: 'explore' });
-    world.command = (cmd) => room.send({ t: 'cmd', cmd });
+    // Every command says which moment of the host's world this screen was showing (0.41.1), so the
+    // host can judge a parry by what this player saw; moving and parrying also answer here at once.
+    world.command = (cmd) => {
+      const c = Object.assign({}, cmd, { seen: shownTick() });
+      predictLocally(c);
+      room.send({ t: 'cmd', cmd: c });
+    };
     world.runCommands = () => {};
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null };
+    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2 };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
@@ -1246,6 +1252,7 @@ function start(hot = {}) {
     const alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
     const gapTicks = net.lastTick == null || msg.tick == null ? 3 : Math.max(1, msg.tick - net.lastTick);
     net.lastTick = msg.tick;
+    net.gapTicks = gapTicks;
     net.snapGap = Math.max(16, Math.min(250, gapTicks * CONFIG.TICK * 1000));
     net.snapAt = now;
     // With more waiting, play a little faster to catch up; with none, at the host's pace.
@@ -1255,6 +1262,59 @@ function start(hot = {}) {
     for (const ev of msg.ev || []) world.events.push(ev);
     if (world.alliesList.length !== allies) updateRoomBadge();
     if (msg.heavy) refreshMenus();
+  }
+
+  /** Friend: the host tick this screen is showing right now (updates glide from one to the next). */
+  function shownTick() {
+    if (!net || net.lastTick == null) return null;
+    const alpha = Math.min(1, (performance.now() - net.snapAt) / net.snapGap);
+    return net.lastTick - net.gapTicks * (1 - alpha);
+  }
+
+  /**
+   * Friend: what a command does here before the host answers (0.41.1). Moving starts at once
+   * (drawn ahead of where the host has you, by about the round trip; see predictedOffset) and
+   * the parry stance shows the moment it is pressed. The host's next updates take over.
+   */
+  function predictLocally(c) {
+    const p = world.player;
+    if (c.type === 'move' || (c.type === 'attackMove' && c.x != null)) {
+      // (holding the button sends a new target every moment: the walk keeps going, so its lead does too)
+      const prev = net.intent;
+      net.intent = { x: c.x, z: c.z, t: prev ? prev.t : performance.now(), seenMove: prev ? prev.seenMove : false };
+    }
+    else if (c.type === 'stop' || c.type === 'attack' || c.type === 'cast' || c.type === 'warp' || c.type === 'travel') net.intent = null;
+    if (c.type === 'parry' && !(p.parryT > 0) && !(p.parryCd > 0) && !p.dead) {
+      const pre = CONFIG.PARRY_PRESETS[settings.parryPreset] || CONFIG.PARRY_PRESETS[CONFIG.DEFAULT_PARRY_PRESET];
+      p.parryT = pre.window;
+      p.parryAge = 0;
+    }
+  }
+
+  /** Friend: how far ahead of the host's position to draw this player's own hero while it walks. */
+  function predictedOffset(alpha) {
+    const p = world.player;
+    const it = net && net.intent;
+    if (!it || p.dead || p.dash || p.leap) {
+      if (net) net.intent = null;
+      return null;
+    }
+    const now = performance.now();
+    const ax = p.px + (p.x - p.px) * alpha, az = p.pz + (p.z - p.pz) * alpha;
+    const dx = it.x - ax, dz = it.z - az;
+    const d = Math.hypot(dx, dz);
+    if (p.moving && !it.seenMove) {
+      // the host has started the walk: how long that took is this connection's delay
+      it.seenMove = true;
+      net.lagEst = net.lagEst * 0.7 + Math.min(0.5, (now - it.t) / 1000) * 0.3;
+    }
+    if (d < 0.15 || now - it.t > 6000 || (it.seenMove && !p.moving && d < 1)) {
+      net.intent = null;
+      return null;
+    }
+    const speed = (p.stats && p.stats.ms) || 6;
+    const lead = Math.min(d, speed * Math.min(net.lagEst, (now - it.t) / 1000));
+    return { dx: (dx / d) * lead, dz: (dz / d) * lead, facing: Math.atan2(dz, dx) };
   }
 
   /** Leave (or close) the room. Progress is already saved. */
@@ -2149,6 +2209,7 @@ function start(hot = {}) {
         sfx.wave(false);
         break;
       case 'askerOffer':
+        if (ev.to && !ev.to.includes(net ? net.pid : 0)) break; // (fallen when it asked)
         askerOffer(ev.time);
         hud.screenFlash(0.35);
         break;
@@ -2487,6 +2548,10 @@ function start(hot = {}) {
     world.events = [];
     const me = net ? net.pid : 0;
     for (const ev of events) {
+      if ((net || world.party) && ALLY_FX.has(ev.type) && (ev.hero ?? 0) !== me) {
+        renderer.onEvent(Object.assign({}, ev, { ally: true }), world); // a friend's attack or skill: their model plays it (0.41.1)
+        continue;
+      }
       if ((net || world.party) && !(eventFor(ev, me) || ((!net || net.role === 'host') && ev.type === 'mapChange'))) continue; // in a party: only this player's own events, and everyone's public ones
       handleEvent(ev);
     }
@@ -2534,6 +2599,7 @@ function start(hot = {}) {
       playSnapshots(now);
       drainEvents();
       alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
+      world.player.predicted = predictedOffset(alpha);
     } else if (net && mode !== 'title' && mode !== 'mp') {
       hostAdvance(dt);
       alpha = Math.min(1, acc / CONFIG.TICK);

@@ -950,6 +950,48 @@ import { makeRng } from '../src/sim/rng.js';
   check('party: a friend can leave', w.heroes.length === 2 && !w.heroByPid(1));
   const save1 = w.as(w.heroByPid(2), () => w.toSave());
   check('party: a friend\'s save is their own character', save1.cls === 'rogue' && save1.visited.includes('ridge'));
+  // A friend's parry is judged by what their screen showed (0.41.1).
+  {
+    const lw = new World({ seed: 31, mode: 'explore', save: geared('warrior', 45, 2) });
+    lw.addHero(1, { save: geared('archer', 45, 2), name: 'Far', parry: 'standard' });
+    lw.loadMap('greenwood', 'town');
+    const friend = lw.heroByPid(1);
+    const fp = friend.player;
+    const stepN = (n) => { for (let i = 0; i < n; i++) lw.step(CONFIG.TICK); };
+    for (const e of lw.enemies) { e.dead = true; }
+    lw.enemies = [];
+    // the friend's screen runs 12 ticks (0.2 s) behind
+    for (let i = 0; i < 6; i++) { lw.command({ type: 'stop', pid: 1, seen: lw.ticks - 12 }); stepN(1); }
+    check('lag: the host learns how far behind a friend sees things', Math.abs(friend.lag - 0.2) < 0.03, friend.lag);
+    const hit = () => lw.as(friend, () => lw.hitPlayer(100, { parryable: true }));
+    // 1) a hit lands; the friend pressed parry 4 ticks BEFORE it on their screen: it is parried
+    fp.parryCd = 0; fp.hp = fp.stats.maxHp;
+    const hp0 = fp.hp;
+    const t0 = lw.ticks;
+    const r1 = hit();
+    stepN(8); // their parry arrives 8 ticks later, saying they pressed it 4 ticks before the hit
+    const parries0 = lw.as(friend, () => lw.stats.parries);
+    lw.command({ type: 'parry', pid: 1, seen: t0 - 4 }); stepN(1);
+    check("lag: a friend's hit waits for their parry, and a parry pressed in time on their screen counts", r1 === 'held' && lw.as(friend, () => lw.stats.parries) === parries0 + 1 && fp.hp === hp0, `${r1}, hp ${hp0} -> ${fp.hp}`);
+    // 2) pressed AFTER the hit on their screen: too late, the hit lands
+    stepN(90); fp.parryCd = 0; fp.parryT = 0; fp.hp = fp.stats.maxHp;
+    const t1 = lw.ticks;
+    hit();
+    stepN(6);
+    lw.command({ type: 'parry', pid: 1, seen: t1 + 3 }); stepN(1);
+    stepN(20);
+    check('lag: a parry pressed after the hit (on their screen) does not save them', fp.hp < fp.stats.maxHp);
+    // 3) no parry at all: the hit lands once the lag has passed, not before
+    stepN(90); fp.parryCd = 0; fp.parryT = 0; fp.hp = fp.stats.maxHp;
+    hit();
+    stepN(6);
+    const early = fp.hp;
+    stepN(12);
+    check('lag: an unparried hit lands about one lag later', early === fp.stats.maxHp && fp.hp < fp.stats.maxHp, `${early} then ${fp.hp}`);
+    // the host's own hero is never held
+    const hostHit = lw.hitPlayer(100, { parryable: true });
+    check("lag: the host's own hits land at once", hostHit !== 'held');
+  }
   // 30 seconds of three bots fighting together never breaks the world.
   const w2 = new World({ seed: 9, mode: 'explore', save: geared('archer', 45, 2) });
   w2.addHero(1, { save: geared('warrior', 45, 2), name: 'A' });

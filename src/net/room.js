@@ -100,7 +100,7 @@ export class HostRoom {
           conn.send({ t: 'reject', reason: why });
           setTimeout(() => conn.close(), 500);
         };
-        if (msg.v !== NET_VERSION) return say('The host is running a different version of the game. Both of you need the same version.');
+        if (msg.v !== NET_VERSION) return say('You and the host are on different versions of the game. Both of you: reload the page (Ctrl+F5, or pull down to refresh on a phone), then try again.');
         if (this.friends.size + 1 >= CONFIG.PARTY_MAX) return say(`That room is full (${CONFIG.PARTY_MAX} players).`);
         pid = this.nextPid++;
         const ok = this.onJoin(pid, msg);

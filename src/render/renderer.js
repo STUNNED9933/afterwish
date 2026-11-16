@@ -881,22 +881,33 @@ export class Renderer {
 
   /** React to a simulation event with visuals. */
   onEvent(ev, world) {
+    if (ev.ally && !ev.inner) {
+      // A friend's attack or skill (0.41.1): its effects show, but only this player's own shake the camera.
+      const shake = this.shake;
+      this.onEvent(Object.assign({}, ev, { inner: true }), world);
+      this.shake = shake;
+      return;
+    }
     const p = world.player;
     switch (ev.type) {
-      case 'swing':
-        this.heroAnim.swing = 0;
-        this.heroAnim.swingDur = Math.max(0.12, ev.dur * 1.5);
+      case 'swing': {
+        // (a friend's swing animates their model, not this player's: 0.41.1)
+        const an = ev.ally ? this.allyAnim(ev.hero) : this.heroAnim;
+        an.swing = 0;
+        an.swingDur = Math.max(0.12, ev.dur * 1.5);
         // the swipe only for melee swings (0.37: the Archer's draw showed a sword arc in front of her)
-        if (this.heroCls !== 'archer' && this.heroCls !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
+        if ((ev.ally ? an.cls : this.heroCls) !== 'archer' && (ev.ally ? an.cls : this.heroCls) !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
         break;
+      }
       case 'cast': {
+        const an = ev.ally ? this.allyAnim(ev.hero) : this.heroAnim;
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
-        if (fx !== 'cone') this.heroAnim.move = fx; // a skill with its own animation (rigged.js moves)
+        if (fx !== 'cone') an.move = fx; // a skill with its own animation (rigged.js moves)
         if (fx === 'cone') {
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.2;
-          if (!ev.echo) this.heroAnim.move = 'cone';
+          an.swing = 0;
+          an.swingDur = 0.2;
+          if (!ev.echo) an.move = 'cone';
           // One shape, flat on the ground, exactly the area that is hit (0.36.1: a raised copy
           // and a wider ground sweep made it unclear where the hit really was).
           this.flash(this.sectorGeo(ev.angle, 0.12), { x: ev.x, z: ev.z, y: 0.08, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xd8f2ff, from: ev.range * 0.85, to: ev.range, dur: 0.32, opacity: 0.7 });
@@ -908,10 +919,10 @@ export class Renderer {
           }
           this.shake = Math.max(this.shake, 0.22);
         } else if (fx === 'barrage') {
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.12;
+          an.swing = 0;
+          an.swingDur = 0.12;
         } else if (fx === 'nova') {
-          this.heroAnim.spin = 1;
+          an.spin = 1;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xbfeaff, from: ev.pull ? ev.radius : 1, to: ev.pull ? 1 : ev.radius, dur: 0.32, opacity: 0.9 });
           this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fd8ff, from: ev.radius, to: ev.radius, dur: 0.3, opacity: 0.22 });
           // a second, ground-level ring and dust kicked out by the spin
@@ -931,8 +942,8 @@ export class Renderer {
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffffff, from: 0.4, to: 2.6, dur: 0.3, opacity: 0.6 });
         } else if (fx === 'deadeye') {
           // A shot across the map: a long bright streak, gold on the third.
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.2;
+          an.swing = 0;
+          an.swingDur = 0.2;
           this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir: ev.dir, color: ev.last ? 0xffd27a : 0xfff6d8, sx: ev.range, sz: ev.width * 0.5, dur: 0.35, opacity: 1 });
           this.shake = Math.max(this.shake, ev.last ? 0.3 : 0.15);
         } else if (fx === 'hurricane') {
@@ -944,24 +955,24 @@ export class Renderer {
           this.burst(ev.x, 1.2, ev.z, { count: 30, color: 0xff4a4a, speed: 7, up: 5, life: 0.6 });
           this.shake = Math.max(this.shake, 0.3);
         } else if (fx === 'bastion') {
-          this.heroAnim.spin = 1;
+          an.spin = 1;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0xffd27a, from: ev.radius, to: 0.8, dur: 0.45, opacity: 1 });
           this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffe2a0, from: 0.5, to: ev.radius, dur: 0.4, opacity: 0.35 });
           this.shake = Math.max(this.shake, 0.35);
         } else if (fx === 'line') {
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.2;
+          an.swing = 0;
+          an.swingDur = 0.2;
           this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xfff0b0, sx: ev.range, sz: ev.width, dur: 0.3, opacity: 0.9 });
         } else if (fx === 'strike') {
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.14;
+          an.swing = 0;
+          an.swingDur = 0.14;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: ev.execute ? 0xff4a5c : ev.exposed ? 0xffe27a : 0xdff4ff, from: ev.execute ? 3 : 2.2, to: 0.4, dur: 0.22, opacity: 1 });
           if (ev.execute) this.burst(ev.x, 1.2, ev.z, { count: 18, color: 0xff4a5c, speed: 9, up: 4, life: 0.4 });
           this.burst(ev.x, 1.2, ev.z, { count: ev.exposed ? 22 : 10, color: ev.exposed ? 0xffe27a : 0xdff4ff, speed: 8, up: 4, life: 0.4 });
           if (ev.exposed) this.shake = Math.max(this.shake, 0.3);
         } else if (fx === 'bolt' || fx === 'zone' || fx === 'meteor' || fx === 'orb' || fx === 'kunai') {
-          this.heroAnim.swing = 0;
-          this.heroAnim.swingDur = 0.22;
+          an.swing = 0;
+          an.swingDur = 0.22;
         }
 
         break;
@@ -1385,19 +1396,21 @@ export class Renderer {
     const an = this.heroAnim;
     const g = h.group;
     const attackStart = an.swing === 0; // an attack or cast began since the last frame
-    const x = lerp(p.px, p.x, alpha);
-    const z = lerp(p.pz, p.z, alpha);
+    const pr = p.predicted; // a friend's own walk, drawn ahead of the host's word (0.41.1)
+    const x = lerp(p.px, p.x, alpha) + (pr ? pr.dx : 0);
+    const z = lerp(p.pz, p.z, alpha) + (pr ? pr.dz : 0);
     let y = 0;
     if (p.leap) y = Math.sin(Math.PI * Math.min(1, p.leap.t / p.leap.dur)) * 5.5;
     g.position.set(x, y, z);
-    g.rotation.y = Math.PI / 2 - p.facing;
+    g.rotation.y = Math.PI / 2 - (pr ? pr.facing : p.facing);
+    const walking = p.moving || !!(pr && Math.hypot(pr.dx, pr.dz) > 0.05);
 
     // Legs + bob
-    if (p.moving && !p.dash && !p.leap) an.walk += dt * 13;
-    const sw = p.moving ? Math.sin(an.walk) * 0.7 : 0;
+    if (walking && !p.dash && !p.leap) an.walk += dt * 13;
+    const sw = walking ? Math.sin(an.walk) * 0.7 : 0;
     h.parts.legL.rotation.x = lerp(h.parts.legL.rotation.x, sw, 0.3);
     h.parts.legR.rotation.x = lerp(h.parts.legR.rotation.x, -sw, 0.3);
-    h.parts.body.position.y = p.moving ? Math.abs(Math.sin(an.walk)) * 0.06 : 0;
+    h.parts.body.position.y = walking ? Math.abs(Math.sin(an.walk)) * 0.06 : 0;
     h.parts.body.rotation.x = lerp(h.parts.body.rotation.x, p.dash ? 0.55 : p.leap ? -0.3 : 0, 0.3);
 
     // Whirlwind spin
@@ -1454,7 +1467,7 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: p.moving && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
       // The blade's glowing trail.
       if (!this.heroTrail) {
@@ -1955,6 +1968,17 @@ export class Renderer {
     }
   }
 
+  /** A friend's animation state (0.41.1): their swings and skills, fed by their events. */
+  allyAnim(pid) {
+    if (!this.allyAnims) this.allyAnims = new Map();
+    let an = this.allyAnims.get(pid);
+    if (!an) {
+      an = { swing: 1, swingDur: 0.2, spin: 0, move: null, cls: null };
+      this.allyAnims.set(pid, an);
+    }
+    return an;
+  }
+
   syncAllies(world, alpha, dt) {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies() : [];
@@ -1981,10 +2005,27 @@ export class Renderer {
       g.rotation.y = Math.PI / 2 - a.facing;
       const x = lerp(a.px ?? a.x, a.x, alpha);
       const z = lerp(a.pz ?? a.z, a.z, alpha);
+      const an = this.allyAnim(a.pid);
+      an.cls = a.cls;
+      const attackStart = an.swing === 0;
+      if (an.swing < 1) an.swing = Math.min(1, an.swing + dt / an.swingDur);
+      if (an.spin > 0) an.spin = Math.max(0, an.spin - dt / 0.32);
       if (v.model.rig) {
         g.rotation.x = 0;
         g.position.set(x, 0, z);
-        v.model.rig.update(dt, { dead: a.dead, moving: a.moving });
+        // their attacks, skills, rolls and leaps, like this player's own (0.41.1)
+        let move = an.move;
+        let moveDur = 0;
+        if (a.dash && !v.prevDash && (!move || move === 'dash')) [move, moveDur] = ['dash', a.dash];
+        if (a.leap && !v.prevLeap && (!move || move === 'leap')) [move, moveDur] = ['leap', a.leap];
+        v.prevDash = !!a.dash;
+        v.prevLeap = !!a.leap;
+        an.move = null;
+        const spinning = !!a.spin || an.spin > 0;
+        if (spinning) v.spinAngle = (v.spinAngle || 0) + dt * Math.PI * 2 * 2.4;
+        else v.spinAngle = 0;
+        v.model.rig.group.rotation.y = (v.model.rig.baseTurn || 0) + v.spinAngle;
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
       } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);
@@ -1998,6 +2039,7 @@ export class Renderer {
       if (seen.has(pid)) continue;
       this.disposeGroup(v.model.group);
       this.allyViews.delete(pid);
+      if (this.allyAnims) this.allyAnims.delete(pid);
     }
   }
 

@@ -9,15 +9,21 @@
 import { ENEMIES } from '../sim/defs.js';
 import { buildRiftMap } from '../sim/maps.js';
 
-export const NET_VERSION = 8; // host and friends must run the same build of the rules (8: 0.33 bounties, fragments, sigils, the Wilds)
+import { SIM_VERSION } from '../sim/version.js';
+
+// Host and friends must run the same build of the rules: the protocol's own number, plus a
+// fingerprint of the rules themselves (0.41.1), so a friend on an older tab is told, not broken.
+export const NET_VERSION = `9:${SIM_VERSION}`;
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
-const PUBLIC = new Set(['death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'doomCast', 'doomImpact', 'spinTick', 'reckoning', 'rareSpawn', 'thiefSpawn', 'thiefFlee', 'thiefEscape', 'thiefCoins', 'thiefStumble', 'remnantRise', 'remnantCast', 'starFeeds', 'oathBlade', 'eventStart', 'meteorLands', 'shrineStart', 'eventDone', 'eventFail', 'merchantArrive', 'merchantLeave', 'nightcut', 'galeburst', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+const PUBLIC = new Set(['askerOffer', 'askerResume', 'askerLast', 'proclaim', 'wished', 'death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'doomCast', 'doomImpact', 'spinTick', 'reckoning', 'rareSpawn', 'thiefSpawn', 'thiefFlee', 'thiefEscape', 'thiefCoins', 'thiefStumble', 'remnantRise', 'remnantCast', 'starFeeds', 'oathBlade', 'eventStart', 'meteorLands', 'shrineStart', 'eventDone', 'eventFail', 'merchantArrive', 'merchantLeave', 'nightcut', 'galeburst', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);
+/** A hero's own attacks and skills: shown on everyone's screen, as that hero's (0.41.1). */
+export const ALLY_FX = new Set(['swing', 'cast']);
 export function isPublic(ev) {
-  return PUBLIC.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
+  return PUBLIC.has(ev.type) || ALLY_FX.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
 /** Should the hero `pid` see this event? */
 export function eventFor(ev, pid) {

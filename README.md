@@ -177,6 +177,35 @@ trees and stones (`src/render/species.js`, `src/render/biomes.js`).
   load) the old hand-built version stands in.
 - Lower graphics settings draw fewer far edge trees and less ground cover.
 
+### Co-op, tested and tuned (0.41.1)
+
+A host and two friends (warrior, archer, rogue) played through real browser
+connections at three network qualities (`test/coop_deep.py`). What changed:
+
+- **A friend's parry counts when they pressed it in time on their own screen.**
+  Friends see the world a little late and their button press reaches the host a
+  little late. The host now knows each friend's delay (every command says which
+  moment that friend's screen was showing) and holds a parryable hit on that
+  friend for as long as the delay (up to half a second) before it lands. A parry
+  pressed before the hit appeared on their screen still counts, perfect timing
+  included. Measured: every parry counted, up to about 0.55 s round trips.
+- **Friends' own hero answers at once.** Walking starts on their screen the
+  moment they click (it was about 0.2 s on a perfect connection, and 0.3 to 0.6 s
+  over the internet), drawn a little ahead of where the host has them until the
+  host catches up. The parry stance shows the moment it is pressed.
+- **Everyone sees everyone fight.** Friends' attacks, skills, rolls, leaps and
+  spins play on their models on every screen, with their skill effects. Before,
+  other players only ever walked or stood.
+- **The Asker asks everyone.** Its offers reached only whoever landed the hit
+  that set them off (the others were counted as refusing). The Herald's lines
+  and the Wishlings' threads now show for everyone too.
+- **No more mismatched versions.** The room check now includes a fingerprint of
+  the game's rules, so a friend with an old tab open is asked to reload instead
+  of joining and breaking.
+
+Measured on the host with two friends: about 16 KB/s to each friend in town and
+25 KB/s in a fight.
+
 ### Act II: the Frozen Court and the Starwell (0.40)
 
 - **The Frozen Court** (from Wren, after Tobin's Survey): the **Herald** stands

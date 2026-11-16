@@ -13,6 +13,9 @@ import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, rif
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
 const INTERACT_KINDS = new Set(['npc', 'sign', 'board']);
+const r2n = (n) => Math.round((n || 0) * 100) / 100;
+// How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
+const LAG_CAP = 0.5;
 const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'parry', 'potion', 'warp', 'travel']);
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
@@ -252,7 +255,9 @@ export class World {
     for (const h of this.heroes) {
       if (h === this.cur) continue;
       const p = h.player;
-      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null });
+      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null,
+        // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
+        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as) });
     }
     return out;
   }
@@ -544,6 +549,13 @@ export class World {
     for (const h of this.heroes.slice()) {
       const mine = cmds.filter((c) => (c.pid || 0) === h.pid);
       if (!mine.length || !this.heroes.includes(h)) continue;
+      // A friend's commands say which moment of the host's world their screen showed (0.41.1):
+      // how far behind that is (there and back) is how long their hits wait for a parry.
+      for (const c of mine) {
+        if (h === lead || typeof c.seen !== 'number') continue;
+        const lag = Math.max(0, Math.min(LAG_CAP, (this.ticks - c.seen) * CONFIG.TICK));
+        h.lag = h.lag == null ? lag : h.lag * 0.8 + lag * 0.2;
+      }
       this.use(h);
       this.applyCommands(mine);
       this.tagOwned();
@@ -641,7 +653,7 @@ export class World {
           this.castAbility(c.slot, c.x, c.z);
           break;
         case 'parry':
-          this.tryParry();
+          this.tryParry(c.seen);
           break;
         case 'potion':
           this.usePotion();
@@ -725,7 +737,7 @@ export class World {
     }
   }
 
-  tryParry() {
+  tryParry(seen = null) {
     const p = this.player;
     if (p.dash || p.leap) return;
     if (p.parryT > 0) return;
@@ -735,13 +747,39 @@ export class World {
       else this.emit('parryNotReady');
       return;
     }
-    p.parryT = this.parry.window * this.mods.parryWindow;
+    const window = this.parry.window * this.mods.parryWindow;
+    p.parryT = window;
     p.parryAge = 0;
     p.parryCd = this.parry.cooldown;
     p.parryHit = false;
     p.parryBuffer = 0;
     p.atkWind = 0;
     this.emit('parryStart');
+    const h = this.cur;
+    if (typeof seen === 'number' && h !== this.heroes[0] && this.party) {
+      // A friend pressed this on their screen a little while ago (0.41.1): the window opened then.
+      const age = Math.max(0, Math.min(LAG_CAP, (this.ticks - seen) * CONFIG.TICK));
+      // Hits that landed since then were held back (hitPlayer): parry the ones that fall inside it.
+      const late = (h.lateHits || []).filter((x) => x.tick >= seen - 1 && (x.tick - seen) * CONFIG.TICK <= window);
+      h.lateHits = (h.lateHits || []).filter((x) => !late.includes(x));
+      for (const x of late) {
+        p.parryAge = Math.max(0, (x.tick - seen) * CONFIG.TICK);
+        p.parryT = Math.max(p.parryT, 0.01);
+        this.hitPlayer(x.dmg, Object.assign({}, x.opts, { held: true }));
+      }
+      p.parryAge = Math.max(p.parryAge, age);
+      p.parryT = p.parryHit ? Math.max(0.15, window - age) : Math.max(0, window - age);
+    }
+  }
+
+  /** Hits held back for a friend's parry (0.41.1) land once that friend's lag has passed. */
+  landLateHits() {
+    const h = this.cur;
+    if (!h.lateHits || !h.lateHits.length) return;
+    const due = h.lateHits.filter((x) => this.time >= x.due);
+    if (!due.length) return;
+    h.lateHits = h.lateHits.filter((x) => this.time < x.due);
+    for (const x of due) this.hitPlayer(x.dmg, Object.assign({}, x.opts, { held: true, noParry: true }));
   }
 
   usePotion() {
@@ -2196,10 +2234,18 @@ export class World {
     return CONFIG.CRIT_MULT + this.mods.critMult + Math.max(0, this.player.stats.crit + bonus - 100) * CONFIG.CRIT_OVERFLOW;
   }
 
-  hitPlayer(rawDamage, { parryable = true, src = null, proj = null, doom = 0 } = {}) {
+  hitPlayer(rawDamage, { parryable = true, src = null, proj = null, doom = 0, held = false, noParry = false } = {}) {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
+    if (!held && !doom && parryable && this.party && this.cur !== this.heroes[0] && this.cur.lag > 0.02 && !(p.parryT > 0) && !p.dash && !p.leap) {
+      // A friend sees this hit late and their parry arrives late (0.41.1): hold it for as long as
+      // their lag, so a parry they pressed in time on their own screen still counts.
+      const h = this.cur;
+      (h.lateHits = h.lateHits || []).push({ tick: this.ticks, due: this.time + Math.min(LAG_CAP, h.lag), dmg: rawDamage, opts: { parryable, src, proj: proj ? { level: proj.level, srcId: proj.srcId } : null } });
+      if (proj) proj.dead = true;
+      return 'held';
+    }
     if (doom > 0) {
       // Doom (0.28): a share of your max health that nothing reduces. Only dodging helps.
       if (p.dash || p.leap) {
@@ -2211,7 +2257,7 @@ export class World {
     if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
       // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
       const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && (parryable || h.mods.blockRed) && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
-      if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj }));
+      if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj, held: true }));
     }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
@@ -2249,7 +2295,7 @@ export class World {
       }
       return 'dodged';
     }
-    if (p.parryT > 0) {
+    if (p.parryT > 0 && !noParry) {
       if (parryable) {
         const perfect = p.parryAge <= this.parry.perfect;
         p.parryHit = true;
@@ -3111,7 +3157,7 @@ export class World {
       e.state = 'recover';
       e.t = 0;
       e.offerTo = new Set(this.heroes.filter((h) => !h.player.dead).map((h) => h.pid));
-      this.emit('askerOffer', { id: e.id, n: e.askerOffers, time: A.time, x: e.x, z: e.z });
+      this.emit('askerOffer', { id: e.id, n: e.askerOffers, time: A.time, x: e.x, z: e.z, to: [...e.offerTo] });
     }
     if (!e.askerLast && e.hp <= e.maxHp * A.last) {
       // The last stretch: it grows from what was wanted of it; refusals no longer count against you.
@@ -5822,7 +5868,10 @@ inTown() {
       }
       this.use(lead);
     };
-    each(() => this.stepPlayer(dt));
+    each(() => {
+      this.stepPlayer(dt);
+      this.landLateHits(); // a friend's held hits that no parry caught (0.41.1)
+    });
     this.byOwner(this.delayed, (list) => { this.delayed = list; this.stepDelayed(dt); return this.delayed; }, (all) => (this.delayed = all));
     this.byOwner(this.zones, (list) => { this.zones = list; this.stepZones(dt); return this.zones; }, (all) => (this.zones = all));
     this.stepShadows(dt);

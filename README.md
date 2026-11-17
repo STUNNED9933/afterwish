@@ -151,6 +151,33 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Archer channels, Deadeye pierces, Culling Edge, class power (0.51)
+
+- **Arrow Storm** is drawn for a full second (you can walk, 60% slower; no attacks or other skills), and
+  only then loosed. **Skyfall:** the first arrows land together for half the storm's damage again and
+  pin everything inside (90% slower for 1.2 s), then the rain. Her animation holds the full draw and,
+  after the release, holds the follow-through still until she settles (no reaching about).
+- **Deadeye** (Sharpshooter) is drawn the same way, with a gold sightline, and **pierces up to 3 times**:
+  the 2nd enemy takes 70% and is Marked (20% more damage for 5 s), the 3rd 50% and Pinned (stunned
+  1.5 s; bosses less), the 4th 35% and Splinters (shards hit everything within 3 m for 35%).
+- **Culling Edge** (Assassin): every ability hit also deals a share of the enemy's maximum health, 10% on
+  enemies 10 or more levels below you, 6% at your level, 2% on enemies 10 or more above; on bosses,
+  Storied enemies and Remnants at most 3 times your attack damage a hit. Bleeds do not.
+- **Class power** (`src/sim/balance.js`): one damage multiplier per class and per subclass, tuned on the
+  boss bench (`node test/bench-dps.mjs`; `MID=1` for level 75, `MOBS=1` for pack clearing). Two tables,
+  level 75 and level 100, blended between. Boss damage per second after tuning:
+
+  | | Level 75 (Epic gear) | Level 100 (Immortals, tier V) |
+  |---|---|---|
+  | Warrior / Archer / Rogue / Mage | 9.6k / 9.0k / 9.1k / 8.8k | 0.63M / 0.60M / 0.74M / 0.60M |
+  | Berserker / Bulwark | 20.8k / 16.5k | 2.10M / 1.81M |
+  | Sharpshooter / Windrunner | 21.6k / 20.5k | 2.29M / 2.10M |
+  | Assassin / Shadowdancer | 16.7k / 22.5k | 1.75M / 2.46M |
+  | Pyromancer / Frostbinder | 20.4k / 20.0k | 2.10M / 2.00M |
+
+  Every subclass is within 70% of the strongest; the Assassin and Bulwark sit lowest and clear packs
+  fastest (the Assassin clears three packs in 0.9 s at level 75, 0.4 s at 100).
+
 ### Cooldowns stop at 1 second, Arrow Storm is drawn first (0.50)
 
 - **Overflow for every class.** No ability's cooldown goes below 1 second (`CD_FLOOR` in `src/config.js`).

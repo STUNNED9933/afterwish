@@ -988,7 +988,7 @@ export class Renderer {
         const an = ev.ally ? this.allyAnim(ev.hero) : this.heroAnim;
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
-        if (fx !== 'cone') an.move = fx; // a skill with its own animation (rigged.js moves)
+        if (fx !== 'cone' && !ev.noMove) an.move = fx; // a skill with its own animation (rigged.js moves; noMove: the shot that ends a channel, already animated)
         if (fx === 'cone') {
           an.swing = 0;
           an.swingDur = 0.2;
@@ -1025,6 +1025,9 @@ export class Renderer {
         } else if (fx === 'leap') {
           this.burst(ev.x, 0.3, ev.z, { count: 14, color: 0x9fe8ff, speed: 5, up: 6 });
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffffff, from: 0.4, to: 2.6, dur: 0.3, opacity: 0.6 });
+        } else if (fx === 'aim') {
+          // (0.51) Deadeye being drawn: a thin gold sightline for as long as she aims
+          this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 1.1, dir: ev.dir, color: 0xffd27a, sx: ev.range, sz: 0.12, dur: ev.channel || 1, opacity: 0.45 });
         } else if (fx === 'deadeye') {
           // One shot across the map (0.42): a white-hot core in a gold streak, a flash at the bow
           // and a burst where it lands.
@@ -1101,8 +1104,8 @@ export class Renderer {
         this.burst(ev.x, 1.4, ev.z, { count: 30, color: 0xeef6ff, speed: 10, up: 5, life: 0.6 });
         break;
       case 'burst':
-        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.ice ? 0x9fe6ff : 0xff9a3a, from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
-        this.burst(ev.x, 1, ev.z, { count: 18, color: ev.ice ? 0xd8f6ff : 0xffb060, speed: 8, up: 5, life: 0.45 });
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.color || (ev.ice ? 0x9fe6ff : 0xff9a3a), from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
+        this.burst(ev.x, 1, ev.z, { count: 18, color: ev.color || (ev.ice ? 0xd8f6ff : 0xffb060), speed: 8, up: 5, life: 0.45 });
         break;
       case 'frostShatter':
         // Hoarfrost Shatter: a ring of ice and a spray of shards.
@@ -1213,9 +1216,15 @@ export class Renderer {
         if (ev.on) this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xff3344, speed: 6, up: 5, life: 0.5 });
         break;
       case 'zoneLoose':
-        // (0.50) Arrow Storm leaves the string: a sheaf of arrows climbs from the archer
+        // (0.50) Arrow Storm leaves the string: a sheaf of arrows climbs from the archer;
+        // (0.51) Skyfall: the first of them land together, a ring of light where they pin
         this.burst(ev.x, 2.2, ev.z, { count: 16, color: 0xfff0b0, speed: 3, up: 22, life: 0.5 });
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: 0xfff0b0, from: 0.6, to: 2.2, dur: 0.25, opacity: 0.8 });
+        if (ev.tx != null) {
+          this.flash(this.discGeo(), { x: ev.tx, z: ev.tz, color: 0xffe3a0, from: 0.5, to: ev.radius || 5, dur: 0.35, opacity: 0.6 });
+          this.burst(ev.tx, 1.2, ev.tz, { count: 30, color: 0xfff0b0, speed: 7, up: 3, life: 0.45 });
+          this.shake = Math.max(this.shake, 0.25);
+        }
         break;
       case 'zoneTick':
         for (let n = 0; n < 7; n++) {

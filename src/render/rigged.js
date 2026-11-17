@@ -71,13 +71,14 @@ export const RIGGED = {
     // a whole draw-and-loose cycle, played over the time between two shots (the arrow leaves
     // 30% of the way in, when the game fires it)
     attack: { clip: 'arc_shot', cycle: true, fadeIn: 0.14 }, // (dropping to the kneel takes a moment)
-    aiming: /^arc_(shot|power|barrage|volley|storm)$/,
+    aiming: /^arc_(shot|power|barrage|volley|storm|deadeye)$/,
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
+      aim: { clip: 'arc_deadeye', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) Deadeye drawn for a second, loosed at 1 s
       ricochet: { clip: 'arc_power', keys: [[0, 0.2], [0.6, 0.85]], fade: 0.2 },
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
-      zone: { clip: 'arc_storm', keys: [[0, 0], [1.3, 1.3]], fade: 0.3 }, // (0.50) drawn first, loosed at 0.6 s with the game's shot
+      zone: { clip: 'arc_storm', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) drawn for a second, loosed at 1 s with the game's shot
       dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
     },
     recentre: ['idle', 'run', 'hit'],

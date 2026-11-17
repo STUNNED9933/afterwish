@@ -22,6 +22,9 @@ import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS } from './rebirth.js';
 import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { classPower } from './balance.js';
+// Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
+const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
 import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS, ELITE_SPOILS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
@@ -353,6 +356,7 @@ export class World {
       attackCd: 0,
       cd: { q: 0, w: 0, e: 0, r: 0 },
       castLock: 0,
+      channel: null, // (0.51) an archer's ultimate being drawn: slowed, no attacks or casts, the shot leaves at the end
       parryT: 0, // > 0 while the parry window is open
       parryAge: 0,
       parryCd: 0,
@@ -1480,7 +1484,7 @@ export class World {
         return;
       }
     }
-    if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05) return;
+    if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.channel) return;
     let a = dAtan2(z - p.z, x - p.x);
     if (!Number.isFinite(a)) a = p.facing;
     const d = dist(x, z, p.x, p.z);
@@ -1760,13 +1764,19 @@ export class World {
         const c = aimPoint();
         const ticks = Math.max(1, Math.round(def.duration / def.tick));
         const lasts = def.duration + (m[slot + 'Duration'] || 0); // Endless Rain adds ticks, each as strong as before
-        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: lasts, parryable: false };
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: lasts + (def.channel || 0), parryable: false };
         this.telegraphs.push(tele);
-        const wait = def.windup || 0; // (0.50) Arrow Storm: drawn and aimed first, rooted, then loosed
-        this.zones.push({ x: c.x, z: c.z, radius, left: lasts, dur: lasts, next: 0, tick: def.tick, dmg: dmg / ticks, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele, wait, fromX: p.x, fromZ: p.z });
+        const zone = { x: c.x, z: c.z, radius, lasts, tick: def.tick, dmg: dmg / ticks, total: dmg, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele, opening: def.opening || 0, pin: def.pin || 0 };
         p.facing = a;
-        p.castLock = 0.16 + wait;
-        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius, windup: wait });
+        if (def.channel) {
+          // (0.51) Arrow Storm is drawn for a second, slowed, and only then loosed
+          p.channel = { kind: 'zone', t: def.channel, dur: def.channel, slow: def.channelSlow || 0.6, slot, zone, tele };
+          p.castLock = 0.05;
+        } else {
+          this.startZone(zone);
+          p.castLock = 0.16;
+        }
+        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius, channel: def.channel || 0 });
         break;
       }
       case 'hurricane': {
@@ -1781,21 +1791,16 @@ export class World {
         break;
       }
       case 'deadeye': {
-        // Deadeye (Sharpshooter, 0.42): one shot across the map; it stops in the first enemy it meets.
-        let best = null, bestAlong = Infinity;
-        for (const e of this.enemies) {
-          if (e.dead || e.state === 'spawn') continue;
-          const rx = e.x - p.x, rz = e.z - p.z;
-          const along = rx * cos + rz * sin;
-          if (along < -e.radius || along > range + e.radius || along >= bestAlong) continue;
-          if (Math.abs(rz * cos - rx * sin) > def.width / 2 + e.radius) continue;
-          best = e;
-          bestAlong = along;
-        }
-        if (best) this.hitEnemy(best, dmg, { source: slot, forceCrit: true, heavy: true });
+        // Deadeye (Sharpshooter, 0.42; 0.51: drawn for a second, slowed, then loosed, and it pierces)
         p.facing = a;
-        p.castLock = 0.32;
-        this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: best ? Math.max(1, bestAlong) : range, width: def.width, last: true, hit: !!best, tx: best ? best.x : null, tz: best ? best.z : null });
+        if (def.channel) {
+          p.channel = { kind: 'deadeye', t: def.channel, dur: def.channel, slow: def.channelSlow || 0.6, slot, a, range, width: def.width, dmg };
+          p.castLock = 0.05;
+          this.emit('cast', { slot, fx: 'aim', x: p.x, z: p.z, dir: a, range, channel: def.channel });
+        } else {
+          this.fireDeadeye(a, range, def.width, dmg, slot);
+          p.castLock = 0.32;
+        }
         break;
       }
       case 'focus': {
@@ -1915,14 +1920,70 @@ export class World {
   }
 
   /** Areas that keep hurting for a while (Arrow Storm). */
+  /**
+   * A damage zone begins (Arrow Storm, Pyromancer fire...). (0.51) Arrow Storm opens with Skyfall: the
+   * first arrows land together, a heavy volley worth `opening` of the whole storm, pinning everything
+   * inside (90% slower for `pin` seconds), before the rain.
+   */
+  startZone(z) {
+    const p = this.player;
+    z.tele.t = 0;
+    z.tele.dur = z.lasts;
+    if (!this.telegraphs.includes(z.tele)) this.telegraphs.push(z.tele);
+    this.zones.push({ x: z.x, z: z.z, radius: z.radius, left: z.lasts, dur: z.lasts, next: z.opening ? z.tick : 0, tick: z.tick, dmg: z.dmg, slow: z.slow, slowDur: z.slowDur, slot: z.slot, tele: z.tele });
+    if (z.opening) {
+      this.emit('zoneLoose', { x: p.x, z: p.z, tx: z.x, tz: z.z, radius: z.radius });
+      for (const e of this.enemies) {
+        if (e.dead || e.state === 'spawn' || dist(e.x, e.z, z.x, z.z) > z.radius + e.radius) continue;
+        if (z.pin) {
+          e.slowT = Math.max(e.slowT || 0, z.pin);
+          e.slow = Math.max(e.slow || 0, 0.9);
+        }
+        this.hitEnemy(e, z.total * z.opening, { source: z.slot, heavy: true });
+      }
+    }
+  }
+
+  /**
+   * Deadeye (0.51): one shot along a line that pierces up to 3 times. Each enemy after the first takes less
+   * and something more: the 2nd is Marked (takes 20% more for 5 s), the 3rd Pinned (stunned 1.5 s), and the
+   * 4th Splinters, the arrow bursting into shards that hit everything near it.
+   */
+  fireDeadeye(a, range, width, dmg, slot) {
+    const p = this.player;
+    const cos = dCos(a), sin = dSin(a);
+    const hits = [];
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      const rx = e.x - p.x, rz = e.z - p.z;
+      const along = rx * cos + rz * sin;
+      if (along < -e.radius || along > range + e.radius) continue;
+      if (Math.abs(rz * cos - rx * sin) > width / 2 + e.radius) continue;
+      hits.push({ e, along });
+    }
+    hits.sort((x, y) => x.along - y.along);
+    const P = DEADEYE_PIERCE;
+    const struck = hits.slice(0, P.mult.length);
+    struck.forEach(({ e }, i) => {
+      if (e.dead) return;
+      this.hitEnemy(e, dmg * P.mult[i], { source: slot, forceCrit: true, heavy: true });
+      if (e.dead) return;
+      if (i === 1) {
+        e.vulnT = Math.max(e.vulnT || 0, P.markTime);
+        e.vuln = Math.max(e.vuln || 0, P.mark);
+      } else if (i === 2) this.stun(e, e.def.boss ? P.pin * 0.4 : P.pin);
+      else if (i === 3) {
+        for (const o of this.enemies) if (o !== e && !o.dead && o.state !== 'spawn' && dist(o.x, o.z, e.x, e.z) <= P.splinterR + o.radius) this.hitEnemy(o, dmg * P.splinter, { source: slot });
+        this.emit('burst', { x: e.x, z: e.z, radius: P.splinterR, color: 0xfff0b0 });
+      }
+    });
+    const last = struck.length ? struck[struck.length - 1] : null;
+    this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: last ? Math.max(1, last.along) : range, width, last: true, hit: !!last, tx: last ? last.e.x : null, tz: last ? last.e.z : null, pierced: Math.max(0, struck.length - 1), noMove: true });
+  }
+
   stepZones(dt) {
     if (!this.zones.length) return;
     for (const zn of this.zones) {
-      if (zn.wait > 0) {
-        zn.wait -= dt;
-        if (zn.wait <= 0) this.emit('zoneLoose', { x: zn.fromX, z: zn.fromZ, tx: zn.x, tz: zn.z });
-        continue;
-      }
       zn.left -= dt;
       zn.next -= dt;
       zn.tele.t = zn.dur - zn.left;
@@ -2091,6 +2152,19 @@ export class World {
       // Crown of the Undying recharges 2 minutes after it saves you.
       p.undyingT -= dt;
       if (p.undyingT <= 0) p.undyingUsed = false;
+    }
+    if (p.channel) {
+      // (0.51) an archer's ultimate, drawn: it leaves the string when the channel ends
+      const ch = p.channel;
+      ch.t -= dt;
+      if (p.dead) {
+        if (ch.tele) this.telegraphs = this.telegraphs.filter((t) => t !== ch.tele);
+        p.channel = null;
+      } else if (ch.t <= 0) {
+        p.channel = null;
+        if (ch.kind === 'zone') this.startZone(ch.zone);
+        else if (ch.kind === 'deadeye') this.fireDeadeye(ch.a, ch.range, ch.width, ch.dmg, ch.slot);
+      } else p.facing = ch.kind === 'zone' ? dAtan2(ch.zone.z - p.z, ch.zone.x - p.x) : ch.a;
     }
     p.attackCd = Math.max(0, p.attackCd - dt);
     p.parryCd = Math.max(0, p.parryCd - dt);
@@ -2306,7 +2380,7 @@ export class World {
     }
 
     const parrying = p.parryT > 0;
-    const speed = p.stats.ms * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
+    const speed = p.stats.ms * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1) * (p.channel ? 1 - p.channel.slow : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
@@ -2321,7 +2395,7 @@ export class World {
         p.facing = turnToward(p.facing, a, 14 * dt);
       } else {
         p.facing = turnToward(p.facing, a, 14 * dt);
-        if (!parrying) {
+        if (!parrying && !p.channel) {
           if (p.atkWind > 0) {
             p.atkWind -= dt;
             if (p.atkWind <= 0) {
@@ -5318,6 +5392,7 @@ export class World {
     if (!opts.raw) {
       // (raw: already-final damage, like Second Death going off, is not scaled again)
       dmg *= this.gapScale(e.level).dealt;
+      dmg *= classPower(this.cls, SPECS[p.spec] && SPECS[p.spec].cls === this.cls ? p.spec : null, p.level); // class power (0.51, balance.js)
       if (this.mods.farShot > 0 && !opts.dot) {
         // Long Watch (Sharpshooter): the further the target, the harder the hit.
         const bonus = Math.min(this.mods.farShotMax, Math.max(0, dist(p.x, p.z, e.x, e.z) - e.radius - 2) * this.mods.farShot);
@@ -5333,6 +5408,15 @@ export class World {
       if (im.bloodQW > 0 && p.bloodied && (opts.source === 'q' || opts.source === 'w')) dmg *= 1 + im.bloodQW; // Bloodreaver
       if (e.tauntT > 0 && e.tauntVuln > 0) dmg *= 1 + e.tauntVuln; // Wardbreaker (anyone's hits)
       if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
+      if (im.pctHp && !opts.dot && (opts.source === 'q' || opts.source === 'w' || opts.source === 'e' || opts.source === 'r')) {
+        // Culling Edge (Assassin, 0.51): a share of its maximum health, most on enemies below your level;
+        // capped for bosses, Storied enemies and Remnants by your attack damage
+        const H = im.pctHp;
+        const k = Math.min(1, Math.max(0, ((e.level || p.level) - p.level + H.span) / (2 * H.span)));
+        let extra = e.maxHp * (H.max + (H.min - H.max) * k);
+        if (e.def.boss || e.rare || e.remnant) extra = Math.min(extra, p.stats.ad * H.cap);
+        dmg += extra;
+      }
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
       // Nightfang: ability crits cut deeper and bring Nightstep back sooner.

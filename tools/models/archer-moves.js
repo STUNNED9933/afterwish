@@ -90,6 +90,19 @@ function drawHand(P, A, keys, t) {
   P.reach('R', target, pole);
 }
 
+/** A skill drawn for a second and loosed (0.51): an arrow from the quiver, nocked, drawn, held, loosed at 1 s. */
+function aimed({ elev, lean, yaw = 66 }) {
+  return {
+    duration: 1.45,
+    pose(P, t) {
+      wideStance(P, { yaw, spread: 1.05, crouch: curve([[0, 0.03], [0.7, 0.05], [1.0, 0.055], [1.45, 0.045]], t), lean: curve(lean, t) });
+      const kick = t < 1 ? 0 : curve([[1.0, 0], [1.04, 1], [1.2, 0.3], [1.35, 0]], t);
+      const A = arms(P, curve(elev, t), kick);
+      drawHand(P, A, [[0, 0], [0.1, 'side'], [0.2, 'over'], [0.3, 'quiver'], [0.4, 'side'], [0.5, 'front'], [0.56, 0], [0.76, 1], [0.99, 1], [1.04, 1.25], [1.45, 1.22]], t);
+    },
+  };
+}
+
 export const ARCHER_MOVES = {
   // Her run (common-moves.js): quick and urgent, the free arm swinging freely, the bow arm less,
   // later and out from her leg (it is carrying something).
@@ -146,19 +159,13 @@ export const ARCHER_MOVES = {
       drawHand(P, A, [[0, 1], [0.06, 1.25], [0.32, 1.2], [0.42, 'over'], [0.52, 'quiver'], [0.62, 'side'], [0.72, 'front'], [0.86, 0], [1, 0]], t);
     },
   },
-  // Arrow Storm (0.50): her own draw before the release, so the shot leaves when the game fires it.
-  // Over her shoulder for an arrow, nocked, drawn to full aimed high at the sky, a held breath, and
-  // loosed at 0.6 s (the cast time, classes.js windup); then she watches the arrows climb before
-  // lowering the bow. (arc_volley, the old one, loosed at once and then reached for another arrow.)
-  arc_storm: {
-    duration: 1.3,
-    pose(P, t) {
-      wideStance(P, { yaw: 66, spread: 1.05, crouch: curve([[0, 0.03], [0.5, 0.05], [0.62, 0.055], [1.3, 0.035]], t), lean: curve([[0, 4], [0.45, 16], [0.6, 19], [0.75, 14], [1.3, 2]], t) });
-      const kick = t < 0.6 ? 0 : curve([[0.6, 0], [0.64, 1], [0.8, 0.3], [0.95, 0]], t);
-      const A = arms(P, curve([[0, 18], [0.3, 38], [0.52, 58], [0.62, 60], [0.9, 56], [1.3, 12]], t), kick);
-      drawHand(P, A, [[0, 0], [0.08, 'side'], [0.16, 'over'], [0.24, 'quiver'], [0.32, 'side'], [0.38, 'front'], [0.44, 0], [0.56, 1], [0.6, 1], [0.64, 1.25], [0.9, 1.2], [1.1, 0.6], [1.3, 0]], t);
-    },
-  },
+  // Arrow Storm (0.50; 0.51: a full second's channel): her own draw before the release, so the shot leaves
+  // when the game fires it. Over her shoulder for an arrow, nocked, drawn to full aimed high at the sky, held
+  // still at full draw, and loosed at 1 s (classes.js channel); then the follow-through is held, still,
+  // until the clip fades into her idle (no reaching about after the arrow has gone).
+  arc_storm: aimed({ elev: [[0, 18], [0.4, 38], [0.7, 58], [1.0, 62], [1.15, 60], [1.45, 54]], lean: [[0, 4], [0.5, 16], [1.0, 20], [1.12, 15], [1.45, 12]] }),
+  // Deadeye (0.51): the same draw, aimed level down the line, held a second and loosed.
+  arc_deadeye: aimed({ elev: [[0, 4], [0.5, 6], [1.0, 5], [1.45, 4]], lean: [[0, 2], [0.6, 7], [1.0, 8], [1.12, 4], [1.45, 3]], yaw: 74 }),
   // Evasive Roll: a forward roll, low and tucked, bow held close, back on her feet.
   arc_roll: {
     duration: 0.55,

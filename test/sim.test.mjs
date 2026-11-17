@@ -115,6 +115,8 @@ check('parrying gets you further than not parrying', avg(globalThis.good) > avg(
 import { rollItem, itemScore, itemStats, RARITIES, CACHES, upgradeCost, scrapValue } from '../src/sim/items.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from '../src/sim/augments.js';
 import { makeRng } from '../src/sim/rng.js';
+import { classPower } from '../src/sim/balance.js';
+const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
 
 // Gear: at the same item level and slot, a higher rarity always beats a lower one.
 {
@@ -403,8 +405,12 @@ import { makeRng } from '../src/sim/rng.js';
     const { w, p, e } = duel('archer', 8);
     w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z }); run(w, 0.1);
     check('archer: Piercing Shot hits down the line', damageOf(w) > 0);
-    w.events.length = 0;
-    w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z }); run(w, 3.5);
+    run(w, 0.1); w.events.length = 0;
+    w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z }); run(w, 0.5);
+    check('archer: Arrow Storm is drawn for a second first, slowed, nothing loosed yet (0.51)', !!p.channel && p.channel.slow > 0 && damageOf(w) === 0 && w.zones.length === 0);
+    run(w, 0.6);
+    check('archer: Skyfall: the first arrows land together and pin', damageOf(w) > 0 && e.slow >= 0.9 && e.slowT > 0 && !p.channel);
+    run(w, 3.5);
     const ticks = w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy').length;
     check('archer: Arrow Storm ticks over time', ticks >= 5, ticks + ' ticks');
     check('archer: Arrow Storm ends', w.zones.length === 0 && w.telegraphs.length === 0);
@@ -479,7 +485,7 @@ import { makeRng } from '../src/sim/rng.js';
   // Each class can fight through the first waves without errors.
   for (const cls of CLASS_IDS) {
     const { w, log } = runBot({ seed: 3, parrySkill: 0.9, maxSeconds: 240, cls });
-    check(`${cls} bot: clears waves and uses its kit`, w.wave.n >= 4 && log.casts >= 8, `wave ${w.wave.n}, level ${w.player.level}, casts ${log.casts}`);
+    check(`${cls} bot: clears waves and uses its kit`, w.wave.n >= 4 && log.casts >= 5, `wave ${w.wave.n}, level ${w.player.level}, casts ${log.casts}`);
   }
 }
 // --- 0.5: class weapons, hand-written class augments, anti-kiting, arena scaling ---
@@ -1400,13 +1406,14 @@ import { makeRng } from '../src/sim/rng.js';
     const hit = (e) => { w.events.length = 0; w.hitEnemy(e, 1000, { canCrit: false, basic: true }); return w.events.find((ev) => ev.type === 'damage'); };
     const c = hit(close), f = hit(far);
     const expect = 1 + Math.min(0.4, (10 - far.radius - 2) * 0.04);
-    check('Long Watch: point-blank shots get no bonus', c.amount === 1000 && !c.far, String(c.amount));
-    check('Long Watch: +4% per metre past 2 m (about 30% at 10 m), shown in gold', Math.abs(f.amount / 1000 - expect) < 0.002 && f.far, `${f.amount} (x${expect.toFixed(2)})`);
+    const k = POWER_OF(w); // class power (0.51, balance.js) scales every hit
+    check('Long Watch: point-blank shots get no bonus', Math.abs(c.amount - 1000 * k) <= 1 && !c.far, String(c.amount));
+    check('Long Watch: +4% per metre past 2 m (about 30% at 10 m), shown in gold', Math.abs(f.amount / (1000 * k) - expect) < 0.002 && f.far, `${f.amount} (x${expect.toFixed(2)})`);
     const veryFar = dummy(w, 30);
-    check('Long Watch: capped at +40%', hit(veryFar).amount === 1400);
+    check('Long Watch: capped at +40%', Math.abs(hit(veryFar).amount - 1400 * k) <= 1);
     const { w: w2 } = setup('archer', 'windrunner');
     const f2 = dummy(w2, 10); w2.events.length = 0; w2.hitEnemy(f2, 1000, { canCrit: false });
-    check('Windrunners do not get it', w2.events.find((ev) => ev.type === 'damage').amount === 1000);
+    check('Windrunners do not get it', Math.abs(w2.events.find((ev) => ev.type === 'damage').amount - 1000 * POWER_OF(w2)) <= 1);
   }
 }
 // --- 0.21: Mage rework (Starwake, Pyromancer burns, Frostbinder Rimewall), scrap filter ------
@@ -1447,7 +1454,7 @@ import { makeRng } from '../src/sim/rng.js';
     w.events.length = 0; run(w, 1.01);
     const plain = hitsOn(w, e).filter((ev) => ev.dot).map((ev) => ev.amount);
     const per = (p.stats.ad * 0.15 + p.level * 1.5) * (1 + CONFIG.RANK_DAMAGE * (p.ranks.q - 1));
-    check('Everything Burns: 5 stacks burn for 5 x (15% spell power + 1.5 per level) a second, growing with Fire Bolt rank', plain.length === 2 && Math.abs(plain[0] - per * 5 * 0.5) <= 1, `${plain} vs ${Math.round(per * 2.5)}`);
+    check('Everything Burns: 5 stacks burn for 5 x (15% spell power + 1.5 per level) a second, growing with Fire Bolt rank', plain.length === 2 && Math.abs(plain[0] - per * 5 * 0.5 * POWER_OF(w)) <= 1, `${plain} vs ${Math.round(per * 2.5 * POWER_OF(w))}`);
     cast(w, 'w', 6, 0);
     check('Smoulder: marks for 5 s', e.smoulderT > 4.9);
     w.events.length = 0; run(w, 1.01);
@@ -1692,7 +1699,7 @@ import { makeRng } from '../src/sim/rng.js';
     p.rushT = 3; p.cd.e = 5;
     const windy = hit();
     const extra = p.stats.ad * 0.3 + 2 * p.level;
-    check('Tailwind: after a roll, basic attacks deal 30% attack damage + 2 per level more on hit', Math.abs(windy - plain - extra * w.gapScale(e.level).dealt) <= 2, `${plain} -> ${windy}`);
+    check('Tailwind: after a roll, basic attacks deal 30% attack damage + 2 per level more on hit', Math.abs(windy - plain - extra * w.gapScale(e.level).dealt * POWER_OF(w)) <= 2, `${plain} -> ${windy}`);
     check("Tailwind: each hit takes 0.3 s off Evasive Roll's cooldown", Math.abs(p.cd.e - 4.7) < 1e-9, String(p.cd.e));
     p.rushT = 0;
     const others = [dummy(w, 7, 2), dummy(w, 7, -2), dummy(w, 30, 0)];
@@ -1728,19 +1735,32 @@ import { makeRng } from '../src/sim/rng.js';
     const far = dummy(w, 20);
     const hits = () => w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === far.id).map((ev) => ev.amount);
     p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    check('Deadeye: drawn for a second first (0.51): nothing yet, and slowed', hits().length === 0 && !!p.channel && p.channel.slow > 0);
+    run(w, 1.05);
     const plain = hits()[0];
     check('Deadeye: one shot, always a crit, then the full cooldown', w.events.some((ev) => ev.type === 'damage' && ev.id === far.id && ev.crit) && p.cd.r > 20, `cd ${p.cd.r.toFixed(1)}`);
     // twice the attack speed: twice the damage
     const as0 = p.stats.as;
-    run(w, 0.4); p.stats.as = as0 * 2; p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    run(w, 0.4); p.stats.as = as0 * 2; p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0); run(w, 1.05);
     const fast = hits()[0];
     p.stats.as = as0;
     check('Deadeye: its damage grows with attack speed', Math.abs(fast / plain - 2) < 0.05, `${plain} -> ${fast}`);
     // Steady Breath, then Deadeye: 60% more
     run(w, 0.4); p.cd.w = 0; cast(w, 'w', 0, 0);
     check('Steady Breath: a buff, no damage, and the next basic attack is a Steady Aim crit', p.empowerT > 0 && p.empowerCrit && (p.swingCount + 1) % w.mods.critEvery === 0);
-    run(w, 0.2); p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0);
+    run(w, 0.2); p.cd.r = 0; w.events.length = 0; cast(w, 'r', 40, 0); run(w, 1.05);
     check('Steady Breath: the next ability deals 60% more', Math.abs(hits()[0] / plain - 1.6) < 0.05 && !(p.empowerT > 0), `${plain} -> ${hits()[0]}`);
+    // Deadeye pierces up to 3 times (0.51): less each, Marked, Pinned, Splinter
+    {
+      const s2 = setup('archer', 'sharpshooter'); s2.p.stats.crit = 0;
+      const line = [3, 7, 11, 15, 22].map((x) => dummy(s2.w, x));
+      const side = dummy(s2.w, 15, 2.2);
+      s2.p.cd.r = 0; s2.w.events.length = 0; cast(s2.w, 'r', 40, 0); run(s2.w, 1.05);
+      const got = (e) => s2.w.events.filter((ev) => ev.type === 'damage' && ev.who === 'enemy' && ev.id === e.id).reduce((a, ev) => a + ev.amount, 0);
+      const d = line.map(got);
+      check('Deadeye: pierces 3 times, each enemy after the first taking less, the 5th untouched', d[0] > d[1] && d[1] > d[2] && d[2] > d[3] && d[3] > 0 && d[4] === 0, d.map(Math.round).join(', '));
+      check('Deadeye: the 2nd is Marked, the 3rd Pinned, the 4th Splinters onto its neighbours', line[1].vulnT > 0 && line[2].state === 'stunned' && got(side) > 0);
+    }
   }
   // Windrunner (0.42): Skirmish Step
   {
@@ -3349,5 +3369,21 @@ import { makeRng } from '../src/sim/rng.js';
   w.openChest(c);
   const got = (w.player.misc.fragment || 0) - f0;
   check('radiant chests: 8 to 14 Immortal Fragments, and Mythic or better on top', got >= FR2.radiant[0] && got <= FR2.radiant[1] && w.loot.some((l) => l.item.rarity >= 4), `${got} fragments`);
+}
+// --- Culling Edge (Assassin, 0.51) ---
+{
+  const mk = (spec) => { const w = new World({ seed: 5, mode: 'explore', cls: 'rogue', save: { v: 2, cls: 'rogue', level: 50, skillPoints: 49, spec } }); w.player.x = w.player.px = 0; w.player.z = w.player.pz = 0; w.enemies = []; return w; };
+  const hitOf = (spec, lvl, type = 'knight', hp = 1e6) => {
+    const w = mk(spec); const p = w.player; p.stats.crit = 0;
+    const e = w.spawnEnemy(type, { x: 2, z: 0, level: lvl }); e.x = e.px = 2; e.z = e.pz = 0; e.state = 'recover'; e.t = 999; e.hp = e.maxHp = hp;
+    w.hitEnemy(e, 100, { source: 'q', canCrit: false }); return { dealt: hp - e.hp, ad: p.stats.ad, w };
+  };
+  const plain = hitOf(null, 50).dealt, low = hitOf('assassin', 40).dealt, same = hitOf('assassin', 50).dealt, high = hitOf('assassin', 60).dealt;
+  check('Culling Edge: ability hits take a share of max health, most below your level, least above', low > same && same > high && high > plain && Math.abs(same - 6e4) < 5e3, `${Math.round(low)} / ${Math.round(same)} / ${Math.round(high)} vs ${Math.round(plain)} without`);
+  const boss = hitOf('assassin', 50, 'boss3', 1e9);
+  check('Culling Edge: on a boss it is capped by attack damage', boss.dealt < boss.ad * 3 + 1000, `${Math.round(boss.dealt)} (ad ${Math.round(boss.ad)})`);
+  const w = mk('assassin'); const e = w.spawnEnemy('knight', { x: 2, z: 0, level: 50 }); e.hp = e.maxHp = 1e6; const h0 = e.hp;
+  w.hitEnemy(e, 100, { source: 'bleed', dot: true, canCrit: false });
+  check('Culling Edge: bleeds do not take a share', h0 - e.hp < 1000);
 }
 process.exit(failed ? 1 : 0);

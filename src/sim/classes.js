@@ -63,9 +63,9 @@ export const CLASSES = {
         desc: 'Roll toward your cursor, then attack 50% faster for 4 seconds. Nothing can hit you mid-roll.',
       },
       r: {
-        key: 'R', name: 'Arrow Storm', type: 'zone', icon: 'zone', unlock: 6, cd: 40, range: 12, radius: 5, duration: 3, tick: 0.5, slow: 0.3, slowDur: 1, windup: 0.6, // (0.50) she draws and aims first: the arrows leave at 0.6 s
+        key: 'R', name: 'Arrow Storm', type: 'zone', icon: 'zone', unlock: 6, cd: 40, range: 12, radius: 5, duration: 3, tick: 0.5, slow: 0.3, slowDur: 1, channel: 1, channelSlow: 0.6, opening: 0.5, pin: 1.2, // (0.51) drawn for 1 s (slowed 60%), then Skyfall: half the storm lands at once and pins
         dmg: (s, lvl) => 3.0 * s.ad + 60 + 14 * lvl,
-        desc: 'Draw and loose high into the sky (0.6 s, standing still), then rain arrows on an area for 3 seconds, slowing everything inside.',
+        desc: 'Draw for 1 second (you can walk, slowly), then loose high into the sky. Skyfall: the first arrows land together for half the storm\'s damage again and pin everything inside (90% slower for 1.2 s), then arrows rain on the area for 3 seconds, slowing everything inside.',
       },
     },
   },

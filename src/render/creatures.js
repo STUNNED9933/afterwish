@@ -25,7 +25,7 @@ export const CREATURES = {
   herald: { model: 'b_herald', height: 3.7, kinds: { present: 'bow', proclaim: 'cast', decree: 'cast' } },
   asker: { model: 'b_asker', height: 4.1, glow: [0.35, 0.27, 0.1], kinds: { granted: 'greet' } },
   // the Primordials (0.54)
-  cinder: { model: 'b_cinder', height: 4.6, glow: [0.4, 0.14, 0.04] },
+  cinder: { model: 'b_cinder', height: 4.6 },
   undertow: { model: 'b_undertow', height: 4.4 },
   rootmother: { model: 'b_rootmother', height: 5.0 },
   choir: { model: 'b_choir', height: 4.2, glow: [0.18, 0.26, 0.36] },
@@ -72,7 +72,7 @@ export const PEOPLE = {
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));

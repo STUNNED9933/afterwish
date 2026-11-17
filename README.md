@@ -151,7 +151,7 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
-### Act III: The Deep (0.54, Ember by investment in 0.54.1)
+### Act III: The Deep (0.54; Ember by investment 0.54.1; models 0.54.2)
 
 An optional extreme mode for heroes at level 100 who have rebirthed. It sits beside the world tiers on the
 Waygate, in a box of its own, and it does not scale to you.
@@ -176,6 +176,9 @@ Waygate, in a box of its own, and it does not scale to you.
   (the wish granter, the Asker) among them, equal to the other five. Elder Wren, Odile and Bram send you
   down Depth by Depth; quests open each one and stay done through rebirth. Ending it wins the
   **Sixfold** glow.
+- **Models** (0.54.2, made with Tripo): the five Primordials, their five kinds of enemy, and a landmark for
+  each Depth, standing in a ring beyond its edge (a spire of cracked charcoal, a sunken arch, a knot of
+  roots, a pillar of star-glass, a holed grey stone).
 - **Seals:** some Primordial blows take the last skill you used away for a few seconds (shown crossed out
   on your skill bar).
 - **The Asker, much harder:** more health, and new attacks (*Unasked*, which seals a skill; *Everywish*,

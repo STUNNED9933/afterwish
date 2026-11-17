@@ -13,6 +13,12 @@ export const PROPS = {
   asterhouse: { url: 'models/env_asterhouse.glb', turn: Math.PI / 2 },
   waygate: { url: 'models/env_waygate.glb', turn: Math.PI / 2 },
   tower: { url: 'models/env_tower.glb', turn: 0 },
+  // the Deep's landmarks (0.54)
+  ashspire: { url: 'models/env_ashspire.glb', turn: 0 },
+  drownedarch: { url: 'models/env_drownedarch.glb', turn: 0 },
+  rootheart: { url: 'models/env_rootheart.glb', turn: 0 },
+  glasspillar: { url: 'models/env_glasspillar.glb', turn: 0 },
+  stillstone: { url: 'models/env_stillstone.glb', turn: 0 },
 };
 
 const loader = new GLTFLoader();

@@ -32,8 +32,12 @@ export const CREATURES = {
   scarab: { model: 'e_scarab', height: 1.5, beast: true },
   imp: { model: 'e_imp', height: 1.25 },
   knight: { model: 'e_knight', height: 2.3 },
-  oathshade: { model: 'e_knight', height: 2.3, tint: 0x8a6ad8 }, // the Warden's men, called back as shades
-  heraldguard: { model: 'e_courtguard', height: 2.4 },
+  oathshade: { model: 'e_oathshade', height: 2.3 }, // the Warden's men, called back as shades (0.53: their own)
+  heraldguard: { model: 'e_heraldguard', height: 2.4 }, // the Herald's honour guard (0.53: their own)
+  wishthief: { model: 'e_wishthief', height: 1.3 }, // (0.53)
+  wishling: { model: 'p_wishling', height: 1.0, float: 0.9 }, // (0.53) a floating light: a prop, bobbing
+  wishstar: { model: 'p_wishstar', height: 1.9, float: 1.0, spin: 0.6 }, // (0.53) the Unmade's wish-stars
+  edric: { model: 'e_edric', height: 2.4 }, // (0.53) Edric of the Blue Trim (a knight, by name)
   courtguard: { model: 'e_courtguard', height: 2.4 },
   shaman: { model: 'e_shaman', height: 2.2 },
   golem: { model: 'e_golem', height: 3.3 },
@@ -48,12 +52,14 @@ export const PEOPLE = {
   odile: { model: 'n_odile', height: 1.75 },
   pip: { model: 'n_pip', height: 1.25 },
   tomashusk: { model: 'e_husk', height: 1.85, tint: 0x8a3a30 }, // (0.47) Pip's father on the road, the scarf gone to colour
-  lark: { model: 'n_odile', height: 1.62, tint: 0xd8b060 }, // Odile's apprentice
+  lark: { model: 'n_lark', height: 1.62 }, // Odile's apprentice (0.53: her own)
+  tomas: { model: 'n_tomas', height: 1.85 }, // (0.53) Pip's father, home
+  merchant: { model: 'n_merchant', height: 1.8 }, // (0.53) the travelling merchant
 };
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));
@@ -104,6 +110,7 @@ export function attackKind(type, atk) {
 export function creatureSpec(type, e = null) {
   // New Game+ (0.45): the Unmade wears your old hero's face, huge and gone violet
   if (e && e.oldCls) return { model: 'hero_' + e.oldCls, height: 4.0, tint: 0x8a6ad8 };
+  if (e && e.named && CREATURES[e.named]) return CREATURES[e.named]; // (0.53) Edric has his own body
   return CREATURES[type] || null;
 }
 
@@ -180,6 +187,7 @@ export function makeCreature(tpl, spec) {
   };
   fadeTo(action('idle'), 0);
   let follow = 0; // seconds of follow-through left after a blow
+  let bob = Math.random() * 6;
   let gestureLeft = 0;
   return {
     group: holder,
@@ -188,6 +196,12 @@ export function makeCreature(tpl, spec) {
     update(dt, s) {
       this.pose(dt, s);
       placeBlade();
+      if (spec.float != null) {
+        // (0.53) a floating light: it bobs, and some turn slowly
+        bob += dt;
+        root.position.y = (spec.float + 0.12 * Math.sin(bob * 2.2)) / holder.scale.y;
+        if (spec.spin) root.rotation.y += spec.spin * dt;
+      }
     },
     pose(dt, s) {
       if (s.dead) {

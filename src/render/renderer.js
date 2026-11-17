@@ -1522,11 +1522,22 @@ export class Renderer {
       g.add(pack);
       this.scene.add(g);
       this.merchantView = g;
+      if (PEOPLE.merchant) {
+        // (0.53) his own model, once it has loaded
+        loadCreature(PEOPLE.merchant).then((tpl) => {
+          if (!tpl || this.merchantView !== g) return;
+          for (const ch of g.children) ch.visible = false;
+          this.merchantRig = makeCreature(tpl, PEOPLE.merchant);
+          g.add(this.merchantRig.group);
+        });
+      }
     }
+    if (this.merchantRig && this.merchantView) this.merchantRig.update(dt, {});
     if (this.merchantView) {
       if (!mc) {
         this.disposeGroup(this.merchantView);
         this.merchantView = null;
+        this.merchantRig = null;
       } else this.merchantView.position.set(mc.x, 0, mc.z);
     }
     const ev = world.mode === 'explore' ? world.happening : null;

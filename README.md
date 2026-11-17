@@ -153,6 +153,11 @@ tickets, and your settings, and replaces whatever was there.
 
 ### Banked progress, Edric's keepsake, Echoes of past lives (0.53)
 
+- **Models for the last of them** (0.53.1, made with Tripo): the Wishthief (a hunched thief with a sack
+  of stolen wishes), the travelling merchant, Tomas come home, Lark, Edric of the Blue Trim, the Warden's
+  Oath Shades, the Herald's honour guard, and two floating lights (the Wishling and the Unmade's
+  wish-stars), which bob and turn. Every enemy and person in the game now has a model of its own.
+
 - **Banked progress.** Kills and deeds no bounty was waiting for are kept: a new bounty starts with what
   it needs from the bank (12 elites banked, a 10-elite job is done at once, and the next one needs 8
   more). The same for side quests (Bram's, Odile's, Pip's): kills of their enemies, on their maps, made

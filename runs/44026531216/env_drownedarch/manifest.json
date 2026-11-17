@@ -1,0 +1,37 @@
+{
+  "id": "env_drownedarch",
+  "prompt": "a sunken ruined archway of pale old stone covered in black water stains, barnacles and hanging river weeds, a broken carved name plaque at the top with the letters worn away. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-17T07:02:27.255Z",
+  "creditsBefore": 710,
+  "steps": {
+    "model": {
+      "task": "a6cacfbc-dbef-4f70-ad24-8d232f29101a",
+      "result": {
+        "task_id": "a6cacfbc-dbef-4f70-ad24-8d232f29101a",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_drownedarch/1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_drownedarch/1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/model.glb",
+        "preview": "out/models/env_drownedarch/1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 680,
+  "creditsUsed": 30,
+  "finished": "2026-11-17T07:06:08.382Z",
+  "files": [
+    "1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/generated_image.jpeg",
+    "1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/model.glb",
+    "1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/preview.png",
+    "1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/rendered_image.webp",
+    "1-model/tripo-out/a-sunken-ruined-archway-of-pale-a6cacfbc/task.json",
+    "manifest.json"
+  ]
+}

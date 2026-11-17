@@ -1,0 +1,30 @@
+{
+  "task_id": "8f9acebf-5fa1-4e65-a2cc-b0e416ea2c0b",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "the Undertow, the Primordial of Forgetting, a tall drowned queen made entirely of black and deep teal water, no face only a smooth dark mirror where a face should be, a long flowing gown that pours down like a waterfall, a crown of drifting pale river weeds and old silver, small fish and bubbles suspended inside her body, serene and cold. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 12000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T05:55:05.293765Z",
+  "completed_at": "2026-11-17T06:01:11.485150Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

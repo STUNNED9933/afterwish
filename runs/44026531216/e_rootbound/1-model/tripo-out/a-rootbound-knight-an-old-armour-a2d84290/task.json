@@ -1,0 +1,30 @@
+{
+  "task_id": "a2d84290-b99d-4e00-8294-5a406b1a43dc",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a Rootbound knight, an old armoured soldier grown through with thick dark roots and pale fungus, roots bursting from the joints of rusted plate armour, mushrooms on the helmet, a sword half swallowed by bark. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T06:38:57.245204Z",
+  "completed_at": "2026-11-17T06:45:08.690558Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

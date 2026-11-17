@@ -1,0 +1,37 @@
+{
+  "id": "env_stillstone",
+  "prompt": "a smooth perfectly round grey standing stone with a circular hole through its middle that is completely black inside, faint pale motes drifting into the hole, very simple and quiet. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
+  "started": "2026-11-17T07:13:29.166Z",
+  "creditsBefore": 620,
+  "steps": {
+    "model": {
+      "task": "79e4527d-8260-4bfc-aed3-56e2fc76feb4",
+      "result": {
+        "task_id": "79e4527d-8260-4bfc-aed3-56e2fc76feb4",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_stillstone/1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_stillstone/1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/model.glb",
+        "preview": "out/models/env_stillstone/1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 590,
+  "creditsUsed": 30,
+  "finished": "2026-11-17T07:17:10.136Z",
+  "files": [
+    "1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/generated_image.jpeg",
+    "1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/model.glb",
+    "1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/preview.png",
+    "1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/rendered_image.webp",
+    "1-model/tripo-out/a-smooth-perfectly-round-grey-st-79e4527d/task.json",
+    "manifest.json"
+  ]
+}

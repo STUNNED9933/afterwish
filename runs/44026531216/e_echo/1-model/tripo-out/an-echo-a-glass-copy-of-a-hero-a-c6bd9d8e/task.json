@@ -1,0 +1,30 @@
+{
+  "task_id": "c6bd9d8e-d240-4388-ae70-ad5787f89589",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "an Echo, a glass copy of a hero, a translucent star-glass human figure in a hooded adventurer's cloak and light armour, a glass sword in one hand, faint light flickering inside it, cracked edges, an expressionless glass face. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T06:46:30.825085Z",
+  "completed_at": "2026-11-17T06:51:15.428039Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

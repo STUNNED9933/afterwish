@@ -1,0 +1,96 @@
+{
+  "id": "e_hush",
+  "prompt": "a Hush, a thin tall shadow figure in a tattered dark grey hooded shroud, no face only darkness, long thin fingers, the light around it dimmed, wisps of black smoke drifting down from its hem, eerie and silent. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:52:31.611Z",
+  "creditsBefore": 845,
+  "steps": {
+    "model": {
+      "task": "1a3f88e8-3983-410e-aeda-9a503fc91699",
+      "result": {
+        "task_id": "1a3f88e8-3983-410e-aeda-9a503fc91699",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_hush/1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_hush/1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/model.glb",
+        "preview": "out/models/e_hush/1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/preview.png"
+      }
+    },
+    "check": {
+      "task": "00e9abf9-fbd0-4e2d-8b14-da05fee5e5f1",
+      "result": {
+        "task_id": "00e9abf9-fbd0-4e2d-8b14-da05fee5e5f1",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_hush/2-check/tripo-out/rig-check-10-00e9abf9",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "b7945d8e-30ad-4625-9cff-81fd4684ceb7",
+      "rigType": "biped",
+      "result": {
+        "task_id": "b7945d8e-30ad-4625-9cff-81fd4684ceb7",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_hush/3-rig/tripo-out/rig-10-b7945d8e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_hush/3-rig/tripo-out/rig-10-b7945d8e/model.glb",
+        "preview": "out/models/e_hush/3-rig/tripo-out/rig-10-b7945d8e/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "15caf2d4-0713-40e5-b3d5-2d81250c227a",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "15caf2d4-0713-40e5-b3d5-2d81250c227a",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_hush/4-anim-1/tripo-out/retarget-15-15caf2d4",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_hush/4-anim-1/tripo-out/retarget-15-15caf2d4/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 740,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T06:59:16.865Z",
+  "files": [
+    "1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/generated_image.jpeg",
+    "1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/model.glb",
+    "1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/preview.png",
+    "1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/rendered_image.webp",
+    "1-model/tripo-out/a-hush-a-thin-tall-shadow-figure-1a3f88e8/task.json",
+    "2-check/tripo-out/rig-check-10-00e9abf9/task.json",
+    "3-rig/tripo-out/rig-10-b7945d8e/model.glb",
+    "3-rig/tripo-out/rig-10-b7945d8e/preview.png",
+    "3-rig/tripo-out/rig-10-b7945d8e/rendered_image.webp",
+    "3-rig/tripo-out/rig-10-b7945d8e/task.json",
+    "4-anim-1/tripo-out/retarget-15-15caf2d4/model.glb",
+    "4-anim-1/tripo-out/retarget-15-15caf2d4/task.json",
+    "manifest.json"
+  ]
+}

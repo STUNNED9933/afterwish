@@ -1,0 +1,117 @@
+{
+  "id": "b_stillness",
+  "prompt": "the Stillness, the Primordial of Enough, an empty floating hooded robe of soft grey-white cloth around a perfect black hole of nothing where a body should be, long empty sleeves, faint pale motes drifting into the darkness, very still and quiet, peaceful and unsettling. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:18:28.460Z",
+  "creditsBefore": 1400,
+  "steps": {
+    "model": {
+      "task": "c879ec40-2366-4627-993b-0d9c37c47e00",
+      "result": {
+        "task_id": "c879ec40-2366-4627-993b-0d9c37c47e00",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_stillness/1-model/tripo-out/the-stillness-the-primordial-of-c879ec40",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_stillness/1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/model.glb",
+        "preview": "out/models/b_stillness/1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/preview.png"
+      }
+    },
+    "check": {
+      "task": "3dcd0de2-3286-4824-8f21-2541918e857d",
+      "result": {
+        "task_id": "3dcd0de2-3286-4824-8f21-2541918e857d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_stillness/2-check/tripo-out/rig-check-5-3dcd0de2",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d25d7fc4-5117-4dba-9d97-7a898ea52065",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d25d7fc4-5117-4dba-9d97-7a898ea52065",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_stillness/3-rig/tripo-out/rig-5-d25d7fc4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_stillness/3-rig/tripo-out/rig-5-d25d7fc4/model.glb",
+        "preview": "out/models/b_stillness/3-rig/tripo-out/rig-5-d25d7fc4/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "aa323c48-3b44-4b60-8c7f-571fcc405011",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "aa323c48-3b44-4b60-8c7f-571fcc405011",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_stillness/4-anim-1/tripo-out/retarget-9-aa323c48",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_stillness/4-anim-1/tripo-out/retarget-9-aa323c48/model.glb"
+        }
+      },
+      {
+        "task": "a8461e1e-f12c-4343-bd52-1425345a91a2",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "a8461e1e-f12c-4343-bd52-1425345a91a2",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_stillness/4-anim-2/tripo-out/retarget-10-a8461e1e",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_stillness/4-anim-2/tripo-out/retarget-10-a8461e1e/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1265,
+  "creditsUsed": 135,
+  "finished": "2026-11-17T06:26:06.373Z",
+  "files": [
+    "1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/generated_image.jpeg",
+    "1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/model.glb",
+    "1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/preview.png",
+    "1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/rendered_image.webp",
+    "1-model/tripo-out/the-stillness-the-primordial-of-c879ec40/task.json",
+    "2-check/tripo-out/rig-check-5-3dcd0de2/task.json",
+    "3-rig/tripo-out/rig-5-d25d7fc4/model.glb",
+    "3-rig/tripo-out/rig-5-d25d7fc4/preview.png",
+    "3-rig/tripo-out/rig-5-d25d7fc4/rendered_image.webp",
+    "3-rig/tripo-out/rig-5-d25d7fc4/task.json",
+    "4-anim-1/tripo-out/retarget-9-aa323c48/model.glb",
+    "4-anim-1/tripo-out/retarget-9-aa323c48/task.json",
+    "4-anim-2/tripo-out/retarget-10-a8461e1e/model.glb",
+    "4-anim-2/tripo-out/retarget-10-a8461e1e/task.json",
+    "manifest.json"
+  ]
+}

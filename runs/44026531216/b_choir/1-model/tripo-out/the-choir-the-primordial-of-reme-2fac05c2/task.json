@@ -1,0 +1,30 @@
+{
+  "task_id": "2fac05c2-4420-4d3d-a3d9-20dd8b2c0709",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "the Choir, the Primordial of Remembering, a tall elegant figure of clear star-glass with many faint singing faces visible inside its translucent body, flowing glass robes that ring like bells, a halo of floating glass shards, arms open as if conducting, light refracting in rainbow colours, beautiful and sad. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 12000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T06:11:11.120292Z",
+  "completed_at": "2026-11-17T06:17:05.922589Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "id": "b_rootmother",
+  "prompt": "the Rootmother, the Primordial of Growing, a huge ancient hunched figure of gnarled root and dark bark standing tall, mossy shoulders, long root fingers that trail to the ground, a hollow in her chest holding a softly glowing lantern of pale mushrooms, a crown of branches with tiny white flowers, a calm old wooden face with closed eyes, gentle and vast. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:02:40.880Z",
+  "creditsBefore": 1670,
+  "steps": {
+    "model": {
+      "task": "2fcbb2bd-e0db-45a9-ad55-7cb12f8943d7",
+      "result": {
+        "task_id": "2fcbb2bd-e0db-45a9-ad55-7cb12f8943d7",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_rootmother/1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_rootmother/1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/model.glb",
+        "preview": "out/models/b_rootmother/1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/preview.png"
+      }
+    },
+    "check": {
+      "task": "0903dfec-f432-42b4-8702-36a0ecab1ad5",
+      "result": {
+        "task_id": "0903dfec-f432-42b4-8702-36a0ecab1ad5",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_rootmother/2-check/tripo-out/rig-check-3-0903dfec",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d475ada4-9dda-4886-9e6d-f5d216dfb4bb",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d475ada4-9dda-4886-9e6d-f5d216dfb4bb",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_rootmother/3-rig/tripo-out/rig-3-d475ada4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_rootmother/3-rig/tripo-out/rig-3-d475ada4/model.glb",
+        "preview": "out/models/b_rootmother/3-rig/tripo-out/rig-3-d475ada4/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "cb74b9b0-f30f-4629-8857-414818b7cccb",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "cb74b9b0-f30f-4629-8857-414818b7cccb",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_rootmother/4-anim-1/tripo-out/retarget-5-cb74b9b0",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_rootmother/4-anim-1/tripo-out/retarget-5-cb74b9b0/model.glb"
+        }
+      },
+      {
+        "task": "4864c28b-8286-4ef8-adbe-d278a40b80de",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "4864c28b-8286-4ef8-adbe-d278a40b80de",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_rootmother/4-anim-2/tripo-out/retarget-6-4864c28b",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_rootmother/4-anim-2/tripo-out/retarget-6-4864c28b/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1535,
+  "creditsUsed": 135,
+  "finished": "2026-11-17T06:11:09.539Z",
+  "files": [
+    "1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/generated_image.jpeg",
+    "1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/model.glb",
+    "1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/preview.png",
+    "1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/rendered_image.webp",
+    "1-model/tripo-out/the-rootmother-the-primordial-of-2fcbb2bd/task.json",
+    "2-check/tripo-out/rig-check-3-0903dfec/task.json",
+    "3-rig/tripo-out/rig-3-d475ada4/model.glb",
+    "3-rig/tripo-out/rig-3-d475ada4/preview.png",
+    "3-rig/tripo-out/rig-3-d475ada4/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-d475ada4/task.json",
+    "4-anim-1/tripo-out/retarget-5-cb74b9b0/model.glb",
+    "4-anim-1/tripo-out/retarget-5-cb74b9b0/task.json",
+    "4-anim-2/tripo-out/retarget-6-4864c28b/model.glb",
+    "4-anim-2/tripo-out/retarget-6-4864c28b/task.json",
+    "manifest.json"
+  ]
+}

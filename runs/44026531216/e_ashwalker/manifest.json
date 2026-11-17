@@ -1,0 +1,96 @@
+{
+  "id": "e_ashwalker",
+  "prompt": "an Ashwalker, an undead husk burning from the inside, cracked charcoal skin with glowing orange embers showing through the cracks, tattered grey burial wraps, ash drifting upward from its shoulders, empty glowing eyes, slow heavy stance. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:26:06.374Z",
+  "creditsBefore": 1265,
+  "steps": {
+    "model": {
+      "task": "f9532d2e-4e11-49fb-b46d-06edf54fd4de",
+      "result": {
+        "task_id": "f9532d2e-4e11-49fb-b46d-06edf54fd4de",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_ashwalker/1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_ashwalker/1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/model.glb",
+        "preview": "out/models/e_ashwalker/1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/preview.png"
+      }
+    },
+    "check": {
+      "task": "1afbdd8a-bc0a-4d1d-b00f-fcd940eec7a4",
+      "result": {
+        "task_id": "1afbdd8a-bc0a-4d1d-b00f-fcd940eec7a4",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_ashwalker/2-check/tripo-out/rig-check-6-1afbdd8a",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "79980b2b-6bce-41c2-b9b0-56f00c205d37",
+      "rigType": "biped",
+      "result": {
+        "task_id": "79980b2b-6bce-41c2-b9b0-56f00c205d37",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_ashwalker/3-rig/tripo-out/rig-6-79980b2b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_ashwalker/3-rig/tripo-out/rig-6-79980b2b/model.glb",
+        "preview": "out/models/e_ashwalker/3-rig/tripo-out/rig-6-79980b2b/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "f2df2452-0254-4999-8682-33605fc49110",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "f2df2452-0254-4999-8682-33605fc49110",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_ashwalker/4-anim-1/tripo-out/retarget-11-f2df2452",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_ashwalker/4-anim-1/tripo-out/retarget-11-f2df2452/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1160,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T06:32:14.521Z",
+  "files": [
+    "1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/generated_image.jpeg",
+    "1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/model.glb",
+    "1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/preview.png",
+    "1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/rendered_image.webp",
+    "1-model/tripo-out/an-ashwalker-an-undead-husk-burn-f9532d2e/task.json",
+    "2-check/tripo-out/rig-check-6-1afbdd8a/task.json",
+    "3-rig/tripo-out/rig-6-79980b2b/model.glb",
+    "3-rig/tripo-out/rig-6-79980b2b/preview.png",
+    "3-rig/tripo-out/rig-6-79980b2b/rendered_image.webp",
+    "3-rig/tripo-out/rig-6-79980b2b/task.json",
+    "4-anim-1/tripo-out/retarget-11-f2df2452/model.glb",
+    "4-anim-1/tripo-out/retarget-11-f2df2452/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "id": "b_undertow",
+  "prompt": "the Undertow, the Primordial of Forgetting, a tall drowned queen made entirely of black and deep teal water, no face only a smooth dark mirror where a face should be, a long flowing gown that pours down like a waterfall, a crown of drifting pale river weeds and old silver, small fish and bubbles suspended inside her body, serene and cold. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T05:55:03.631Z",
+  "creditsBefore": 1805,
+  "steps": {
+    "model": {
+      "task": "8f9acebf-5fa1-4e65-a2cc-b0e416ea2c0b",
+      "result": {
+        "task_id": "8f9acebf-5fa1-4e65-a2cc-b0e416ea2c0b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_undertow/1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_undertow/1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/model.glb",
+        "preview": "out/models/b_undertow/1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/preview.png"
+      }
+    },
+    "check": {
+      "task": "e476c9e1-037d-43c7-87a5-f1fdba2da5e8",
+      "result": {
+        "task_id": "e476c9e1-037d-43c7-87a5-f1fdba2da5e8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_undertow/2-check/tripo-out/rig-check-2-e476c9e1",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "0f489313-5caf-4fb8-a619-32e448543b16",
+      "rigType": "biped",
+      "result": {
+        "task_id": "0f489313-5caf-4fb8-a619-32e448543b16",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_undertow/3-rig/tripo-out/rig-2-0f489313",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_undertow/3-rig/tripo-out/rig-2-0f489313/model.glb",
+        "preview": "out/models/b_undertow/3-rig/tripo-out/rig-2-0f489313/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "9888961e-48af-413e-837d-50b019326572",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "9888961e-48af-413e-837d-50b019326572",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_undertow/4-anim-1/tripo-out/retarget-3-9888961e",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_undertow/4-anim-1/tripo-out/retarget-3-9888961e/model.glb"
+        }
+      },
+      {
+        "task": "afe86d9e-8c6b-4b0b-b91f-e4c78fe41195",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "afe86d9e-8c6b-4b0b-b91f-e4c78fe41195",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_undertow/4-anim-2/tripo-out/retarget-4-afe86d9e",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_undertow/4-anim-2/tripo-out/retarget-4-afe86d9e/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1670,
+  "creditsUsed": 135,
+  "finished": "2026-11-17T06:02:40.879Z",
+  "files": [
+    "1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/generated_image.jpeg",
+    "1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/model.glb",
+    "1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/preview.png",
+    "1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/rendered_image.webp",
+    "1-model/tripo-out/the-undertow-the-primordial-of-f-8f9acebf/task.json",
+    "2-check/tripo-out/rig-check-2-e476c9e1/task.json",
+    "3-rig/tripo-out/rig-2-0f489313/model.glb",
+    "3-rig/tripo-out/rig-2-0f489313/preview.png",
+    "3-rig/tripo-out/rig-2-0f489313/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-0f489313/task.json",
+    "4-anim-1/tripo-out/retarget-3-9888961e/model.glb",
+    "4-anim-1/tripo-out/retarget-3-9888961e/task.json",
+    "4-anim-2/tripo-out/retarget-4-afe86d9e/model.glb",
+    "4-anim-2/tripo-out/retarget-4-afe86d9e/task.json",
+    "manifest.json"
+  ]
+}

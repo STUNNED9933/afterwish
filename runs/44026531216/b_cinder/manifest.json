@@ -1,0 +1,117 @@
+{
+  "id": "b_cinder",
+  "prompt": "the Cinder, the Primordial of Ending, an ancient towering figure made of banked glowing coals and cracked black charcoal, a heavy hooded cloak of falling grey ash that drifts upward, a calm featureless face of cooling embers with two soft orange eyes, long arms ending in smouldering fingers, one hand holding a lantern of dying embers, patient and solemn rather than evil. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T05:47:29.432Z",
+  "creditsBefore": 1940,
+  "steps": {
+    "model": {
+      "task": "b2e14bef-e7f8-4371-8163-9a84b1f40208",
+      "result": {
+        "task_id": "b2e14bef-e7f8-4371-8163-9a84b1f40208",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_cinder/1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_cinder/1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/model.glb",
+        "preview": "out/models/b_cinder/1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/preview.png"
+      }
+    },
+    "check": {
+      "task": "d037c2b7-0338-4b09-a809-3668533baa0f",
+      "result": {
+        "task_id": "d037c2b7-0338-4b09-a809-3668533baa0f",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_cinder/2-check/tripo-out/rig-check-d037c2b7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "6b34346d-3070-4b0a-a672-1be2b9668afc",
+      "rigType": "biped",
+      "result": {
+        "task_id": "6b34346d-3070-4b0a-a672-1be2b9668afc",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_cinder/3-rig/tripo-out/rig-6b34346d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_cinder/3-rig/tripo-out/rig-6b34346d/model.glb",
+        "preview": "out/models/b_cinder/3-rig/tripo-out/rig-6b34346d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "7176bec2-f2c0-4041-abac-e24b407270d5",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "7176bec2-f2c0-4041-abac-e24b407270d5",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_cinder/4-anim-1/tripo-out/retarget-7176bec2",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_cinder/4-anim-1/tripo-out/retarget-7176bec2/model.glb"
+        }
+      },
+      {
+        "task": "facbe1be-46c2-429e-977b-a67d1b1c72ad",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "facbe1be-46c2-429e-977b-a67d1b1c72ad",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_cinder/4-anim-2/tripo-out/retarget-2-facbe1be",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_cinder/4-anim-2/tripo-out/retarget-2-facbe1be/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1805,
+  "creditsUsed": 135,
+  "finished": "2026-11-17T05:55:03.629Z",
+  "files": [
+    "1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/generated_image.jpeg",
+    "1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/model.glb",
+    "1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/preview.png",
+    "1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/rendered_image.webp",
+    "1-model/tripo-out/the-cinder-the-primordial-of-end-b2e14bef/task.json",
+    "2-check/tripo-out/rig-check-d037c2b7/task.json",
+    "3-rig/tripo-out/rig-6b34346d/model.glb",
+    "3-rig/tripo-out/rig-6b34346d/preview.png",
+    "3-rig/tripo-out/rig-6b34346d/rendered_image.webp",
+    "3-rig/tripo-out/rig-6b34346d/task.json",
+    "4-anim-1/tripo-out/retarget-7176bec2/model.glb",
+    "4-anim-1/tripo-out/retarget-7176bec2/task.json",
+    "4-anim-2/tripo-out/retarget-2-facbe1be/model.glb",
+    "4-anim-2/tripo-out/retarget-2-facbe1be/task.json",
+    "manifest.json"
+  ]
+}

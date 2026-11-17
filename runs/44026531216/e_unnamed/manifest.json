@@ -1,0 +1,96 @@
+{
+  "id": "e_unnamed",
+  "prompt": "one of the Unnamed, a drowned citizen of a forgotten city, pale waterlogged body in rotted old-fashioned court clothes dripping black water, a smooth blank face with no features washed away, river weeds tangled in its hair, reaching hands. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:32:14.523Z",
+  "creditsBefore": 1160,
+  "steps": {
+    "model": {
+      "task": "45f08d9d-5718-40f9-9800-e1a488660b64",
+      "result": {
+        "task_id": "45f08d9d-5718-40f9-9800-e1a488660b64",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_unnamed/1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_unnamed/1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/model.glb",
+        "preview": "out/models/e_unnamed/1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/preview.png"
+      }
+    },
+    "check": {
+      "task": "e520f5e4-3e20-447b-bc0a-b8e56cb395f1",
+      "result": {
+        "task_id": "e520f5e4-3e20-447b-bc0a-b8e56cb395f1",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_unnamed/2-check/tripo-out/rig-check-7-e520f5e4",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "eec71f6e-7359-4bd9-a2a1-2fad03b0e8b4",
+      "rigType": "biped",
+      "result": {
+        "task_id": "eec71f6e-7359-4bd9-a2a1-2fad03b0e8b4",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_unnamed/3-rig/tripo-out/rig-7-eec71f6e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_unnamed/3-rig/tripo-out/rig-7-eec71f6e/model.glb",
+        "preview": "out/models/e_unnamed/3-rig/tripo-out/rig-7-eec71f6e/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "472b78cf-fd22-49fe-a30c-1bff16ff10c1",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "472b78cf-fd22-49fe-a30c-1bff16ff10c1",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_unnamed/4-anim-1/tripo-out/retarget-12-472b78cf",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_unnamed/4-anim-1/tripo-out/retarget-12-472b78cf/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1055,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T06:38:55.539Z",
+  "files": [
+    "1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/generated_image.jpeg",
+    "1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/model.glb",
+    "1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/preview.png",
+    "1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/rendered_image.webp",
+    "1-model/tripo-out/one-of-the-unnamed-a-drowned-cit-45f08d9d/task.json",
+    "2-check/tripo-out/rig-check-7-e520f5e4/task.json",
+    "3-rig/tripo-out/rig-7-eec71f6e/model.glb",
+    "3-rig/tripo-out/rig-7-eec71f6e/preview.png",
+    "3-rig/tripo-out/rig-7-eec71f6e/rendered_image.webp",
+    "3-rig/tripo-out/rig-7-eec71f6e/task.json",
+    "4-anim-1/tripo-out/retarget-12-472b78cf/model.glb",
+    "4-anim-1/tripo-out/retarget-12-472b78cf/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "e_rootbound",
+  "prompt": "a Rootbound knight, an old armoured soldier grown through with thick dark roots and pale fungus, roots bursting from the joints of rusted plate armour, mushrooms on the helmet, a sword half swallowed by bark. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:38:55.540Z",
+  "creditsBefore": 1055,
+  "steps": {
+    "model": {
+      "task": "a2d84290-b99d-4e00-8294-5a406b1a43dc",
+      "result": {
+        "task_id": "a2d84290-b99d-4e00-8294-5a406b1a43dc",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_rootbound/1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_rootbound/1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/model.glb",
+        "preview": "out/models/e_rootbound/1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/preview.png"
+      }
+    },
+    "check": {
+      "task": "2fafaf73-9fdb-4e81-8786-6b4a52184dbf",
+      "result": {
+        "task_id": "2fafaf73-9fdb-4e81-8786-6b4a52184dbf",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_rootbound/2-check/tripo-out/rig-check-8-2fafaf73",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "9875fc7e-8708-4d9a-a0c1-dfd524918dc1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "9875fc7e-8708-4d9a-a0c1-dfd524918dc1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_rootbound/3-rig/tripo-out/rig-8-9875fc7e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_rootbound/3-rig/tripo-out/rig-8-9875fc7e/model.glb",
+        "preview": "out/models/e_rootbound/3-rig/tripo-out/rig-8-9875fc7e/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "ab953463-c0cf-41f0-b291-78536b9fe51b",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "ab953463-c0cf-41f0-b291-78536b9fe51b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_rootbound/4-anim-1/tripo-out/retarget-13-ab953463",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_rootbound/4-anim-1/tripo-out/retarget-13-ab953463/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 950,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T06:46:29.347Z",
+  "files": [
+    "1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/generated_image.jpeg",
+    "1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/model.glb",
+    "1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/preview.png",
+    "1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/rendered_image.webp",
+    "1-model/tripo-out/a-rootbound-knight-an-old-armour-a2d84290/task.json",
+    "2-check/tripo-out/rig-check-8-2fafaf73/task.json",
+    "3-rig/tripo-out/rig-8-9875fc7e/model.glb",
+    "3-rig/tripo-out/rig-8-9875fc7e/preview.png",
+    "3-rig/tripo-out/rig-8-9875fc7e/rendered_image.webp",
+    "3-rig/tripo-out/rig-8-9875fc7e/task.json",
+    "4-anim-1/tripo-out/retarget-13-ab953463/model.glb",
+    "4-anim-1/tripo-out/retarget-13-ab953463/task.json",
+    "manifest.json"
+  ]
+}

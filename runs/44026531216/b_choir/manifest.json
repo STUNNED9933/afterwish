@@ -1,0 +1,117 @@
+{
+  "id": "b_choir",
+  "prompt": "the Choir, the Primordial of Remembering, a tall elegant figure of clear star-glass with many faint singing faces visible inside its translucent body, flowing glass robes that ring like bells, a halo of floating glass shards, arms open as if conducting, light refracting in rainbow colours, beautiful and sad. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:11:09.541Z",
+  "creditsBefore": 1535,
+  "steps": {
+    "model": {
+      "task": "2fac05c2-4420-4d3d-a3d9-20dd8b2c0709",
+      "result": {
+        "task_id": "2fac05c2-4420-4d3d-a3d9-20dd8b2c0709",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_choir/1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_choir/1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/model.glb",
+        "preview": "out/models/b_choir/1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/preview.png"
+      }
+    },
+    "check": {
+      "task": "0f22909a-ae59-492c-ad3e-3516b1d76343",
+      "result": {
+        "task_id": "0f22909a-ae59-492c-ad3e-3516b1d76343",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_choir/2-check/tripo-out/rig-check-4-0f22909a",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "4468ca0d-65cd-41c7-855d-f0a594609007",
+      "rigType": "biped",
+      "result": {
+        "task_id": "4468ca0d-65cd-41c7-855d-f0a594609007",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_choir/3-rig/tripo-out/rig-4-4468ca0d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_choir/3-rig/tripo-out/rig-4-4468ca0d/model.glb",
+        "preview": "out/models/b_choir/3-rig/tripo-out/rig-4-4468ca0d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "aa4a2e5a-1df4-44c1-af55-fc3fb3a45cf7",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "aa4a2e5a-1df4-44c1-af55-fc3fb3a45cf7",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_choir/4-anim-1/tripo-out/retarget-7-aa4a2e5a",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_choir/4-anim-1/tripo-out/retarget-7-aa4a2e5a/model.glb"
+        }
+      },
+      {
+        "task": "07871c0c-1362-4ab0-a479-002d89bc41a7",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "07871c0c-1362-4ab0-a479-002d89bc41a7",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_choir/4-anim-2/tripo-out/retarget-8-07871c0c",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_choir/4-anim-2/tripo-out/retarget-8-07871c0c/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1400,
+  "creditsUsed": 135,
+  "finished": "2026-11-17T06:18:28.458Z",
+  "files": [
+    "1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/generated_image.jpeg",
+    "1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/model.glb",
+    "1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/preview.png",
+    "1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/rendered_image.webp",
+    "1-model/tripo-out/the-choir-the-primordial-of-reme-2fac05c2/task.json",
+    "2-check/tripo-out/rig-check-4-0f22909a/task.json",
+    "3-rig/tripo-out/rig-4-4468ca0d/model.glb",
+    "3-rig/tripo-out/rig-4-4468ca0d/preview.png",
+    "3-rig/tripo-out/rig-4-4468ca0d/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-4468ca0d/task.json",
+    "4-anim-1/tripo-out/retarget-7-aa4a2e5a/model.glb",
+    "4-anim-1/tripo-out/retarget-7-aa4a2e5a/task.json",
+    "4-anim-2/tripo-out/retarget-8-07871c0c/model.glb",
+    "4-anim-2/tripo-out/retarget-8-07871c0c/task.json",
+    "manifest.json"
+  ]
+}

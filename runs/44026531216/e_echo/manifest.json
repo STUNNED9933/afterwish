@@ -1,0 +1,96 @@
+{
+  "id": "e_echo",
+  "prompt": "an Echo, a glass copy of a hero, a translucent star-glass human figure in a hooded adventurer's cloak and light armour, a glass sword in one hand, faint light flickering inside it, cracked edges, an expressionless glass face. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T06:46:29.348Z",
+  "creditsBefore": 950,
+  "steps": {
+    "model": {
+      "task": "c6bd9d8e-d240-4388-ae70-ad5787f89589",
+      "result": {
+        "task_id": "c6bd9d8e-d240-4388-ae70-ad5787f89589",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_echo/1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_echo/1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/model.glb",
+        "preview": "out/models/e_echo/1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/preview.png"
+      }
+    },
+    "check": {
+      "task": "30e6977e-1f4c-4bdf-8268-d6098acad3a5",
+      "result": {
+        "task_id": "30e6977e-1f4c-4bdf-8268-d6098acad3a5",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_echo/2-check/tripo-out/rig-check-9-30e6977e",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "da17e3eb-f0e0-4467-b25b-8fec8a87bd95",
+      "rigType": "biped",
+      "result": {
+        "task_id": "da17e3eb-f0e0-4467-b25b-8fec8a87bd95",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_echo/3-rig/tripo-out/rig-9-da17e3eb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_echo/3-rig/tripo-out/rig-9-da17e3eb/model.glb",
+        "preview": "out/models/e_echo/3-rig/tripo-out/rig-9-da17e3eb/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "ed9ab6ee-e57f-49e8-acc2-0a71cad0d052",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "ed9ab6ee-e57f-49e8-acc2-0a71cad0d052",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_echo/4-anim-1/tripo-out/retarget-14-ed9ab6ee",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_echo/4-anim-1/tripo-out/retarget-14-ed9ab6ee/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 845,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T06:52:31.610Z",
+  "files": [
+    "1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/generated_image.jpeg",
+    "1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/model.glb",
+    "1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/preview.png",
+    "1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/rendered_image.webp",
+    "1-model/tripo-out/an-echo-a-glass-copy-of-a-hero-a-c6bd9d8e/task.json",
+    "2-check/tripo-out/rig-check-9-30e6977e/task.json",
+    "3-rig/tripo-out/rig-9-da17e3eb/model.glb",
+    "3-rig/tripo-out/rig-9-da17e3eb/preview.png",
+    "3-rig/tripo-out/rig-9-da17e3eb/rendered_image.webp",
+    "3-rig/tripo-out/rig-9-da17e3eb/task.json",
+    "4-anim-1/tripo-out/retarget-14-ed9ab6ee/model.glb",
+    "4-anim-1/tripo-out/retarget-14-ed9ab6ee/task.json",
+    "manifest.json"
+  ]
+}

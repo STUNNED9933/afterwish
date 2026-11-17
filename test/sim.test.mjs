@@ -2707,6 +2707,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     w.loadMap('town');
     const ids = w.obstacles.filter((o) => o.kind === 'npc').map((o) => o.id);
     check('Haven: Lark has Odile\'s stall, and Odile is gone', ids.includes('lark') && !ids.includes('odile'));
+    p.quests.ringglass = { s: 'ready', n: 0 }; // one of Odile's, finished after she went to the garden
+    check("Odile's quests: once she stays in the garden, Lark takes them (marker, tracker) and Odile shows none", w.npcMarker('lark') === 'ready' && w.npcMarker('odile') === '' && w.questTaker('odile') === 'lark' && w.questTaker('bram') === 'bram');
+    w.command({ type: 'claimQuest', id: 'ringglass' }); w.runCommands();
+    check("Odile's quests: ...and handing one in works", w.questState('ringglass') === 'done');
     check('Haven Grows: a lantern, a banner and a stall', ['lantern', 'banner', 'stall'].every((d) => w.obstacles.some((o) => o.kind === 'decor' && o.what === d)));
     check('Haven Grows: Wren sees all three', w.questState('havengrows') === 'ready');
     w.loadMap('starwell', 'asterfell');

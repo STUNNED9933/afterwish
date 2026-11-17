@@ -737,7 +737,7 @@ export class Hud {
         const q = QUESTS[id];
         if (!q || st.s === 'done') continue;
         rows.push(st.s === 'ready'
-          ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[q.giver].name}</span></div>`
+          ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name}</span></div>`
           : `<div class="qt"><b>${q.name}</b><span>${goalText(q)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
       }
     }

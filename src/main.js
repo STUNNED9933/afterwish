@@ -1073,7 +1073,11 @@ function start(hot = {}) {
         $('talk-quests').prepend(b);
         return;
       }
-      if (world.questState('tobin') === 'done') { $('talk-line').textContent = npc.garden; return; }
+      if (world.questState('tobin') === 'done') {
+        const waitingHere = QUEST_IDS.some((id) => QUESTS[id].giver === 'odile' && world.questState(id) === 'ready');
+        $('talk-line').textContent = npc.garden + (waitingHere ? ' Anything you did for me, take to Lark at my stall in Haven. She has my notes, and the rewards.' : '');
+        return;
+      }
     }
     const ch = world.player.choices && world.player.choices.scarf;
     if (talkTo === 'pip' && ch && !shown && !after) { $('talk-line').textContent = npc[ch]; return; }
@@ -1100,9 +1104,9 @@ function start(hot = {}) {
       if (!st) continue;
       if (st.s === 'done') { done++; continue; }
       const need = world.questNeed(q);
-      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[q.giver].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[q.giver].name + ' in Haven.' : goalText(q) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
+      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
     }
-    const waiting = ['wren', 'bram', 'odile', 'pip'].filter((n) => world.npcMarker(n) === '!').map((n) => NPCS[n].name);
+    const waiting = ['wren', 'bram', 'odile', 'lark', 'pip'].filter((n) => world.npcMarker(n) === '!').map((n) => NPCS[n].name);
     $('journal-quests').innerHTML = (qs.join('') || '<p class="setting-desc">No quests in hand.</p>')
       + (waiting.length ? `<p class="setting-desc">Work waiting in Haven: ${waiting.join(', ')}.</p>` : '')
       + `<p class="setting-desc">${done} quest${done === 1 ? '' : 's'} completed.</p>`;

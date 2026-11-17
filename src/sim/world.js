@@ -3039,7 +3039,7 @@ export class World {
       const need = this.questNeed(q);
       if (st.n >= need) st.s = 'ready';
       this.questStamp++;
-      this.emit('quest', { id, what: st.s === 'ready' ? 'ready' : 'progress', name: q.name, n: st.n, need, giver: NPCS[q.giver].name });
+      this.emit('quest', { id, what: st.s === 'ready' ? 'ready' : 'progress', name: q.name, n: st.n, need, giver: NPCS[this.questTaker(q.giver)].name });
     }
     // (0.53) a kill no side quest was waiting for is kept, by enemy and map, for side quests taken later
     if (kind === 'kill' && !used && this.mode === 'explore' && !this.trial && this.map && data && !data.def.boss && !data.def.summon && !data.named) {
@@ -3186,8 +3186,10 @@ export class World {
    */
   npcMarker(npcId) {
     let mark = '';
+    if (npcId === 'odile' && this.questState('tobin') === 'done') return ''; // (0.54.6) she is in the garden; Lark keeps her quests
+    const as = (NPCS[npcId] && NPCS[npcId].as) || npcId;
     for (const id of QUEST_IDS) {
-      if (QUESTS[id].giver !== npcId) continue;
+      if (QUESTS[id].giver !== as) continue;
       const st = this.questState(id);
       if (st === 'ready') return 'ready';
       if (this.questOpen(id)) mark = 'available';
@@ -4492,6 +4494,11 @@ export class World {
   }
 
   /** Is this person in Haven right now? (Tomas only after the Unwish, until you have seen him.) */
+  /** Who takes a quest of `giver`'s now (0.54.6): once Odile stays in the garden, Lark keeps her quests at the stall. */
+  questTaker(giver) {
+    return giver === 'odile' && this.questState('tobin') === 'done' ? 'lark' : giver;
+  }
+
   npcHere(id) {
     const n = NPCS[id];
     if (!n) return true;

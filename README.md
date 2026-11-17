@@ -151,6 +151,14 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Smooth movement for friends (0.54.11)
+
+A friend's own hero is drawn a little ahead of the host's word while it walks, so it answers at once.
+That lead used to jump: turning, stopping or the host catching up moved the hero up to a body-length in a
+single frame, a few times a second. It now eases into place. Measured on a test room: the friend's walk
+went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
+also keeps its own beat instead of the frame that noticed it.
+
 ### Help for slow computers (0.54.9, 0.54.10)
 
 - **F3** shows how the game is running: frame rate, the worst recent frame, how long the game's own code

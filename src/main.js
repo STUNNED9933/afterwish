@@ -1621,11 +1621,15 @@ function start(hot = {}) {
     const gapTicks = net.lastTick == null || msg.tick == null ? 3 : Math.max(1, msg.tick - net.lastTick);
     net.lastTick = msg.tick;
     net.gapTicks = gapTicks;
-    net.snapGap = Math.max(16, Math.min(250, gapTicks * CONFIG.TICK * 1000));
-    net.snapAt = now;
-    // With more waiting, play a little faster to catch up; with none, at the host's pace.
     // Around the cushion, play at the host's pace; a little faster above it, a little slower below.
-    net.nextAt = now + net.snapGap * (q.length > cushion + 1 ? 0.8 : q.length > cushion ? 0.92 : q.length < cushion ? 1.1 : 1);
+    const pace = q.length > cushion + 1 ? 0.8 : q.length > cushion ? 0.92 : q.length < cushion ? 1.1 : 1;
+    // (0.54.11) Each glide lasts exactly until the next update is due, and keeps the beat it was due
+    // on, not the frame that happened to notice it: before, a glide ended a frame early and the
+    // picture stood still for one frame in four (the jerky movement).
+    net.snapGap = Math.max(16, Math.min(250, gapTicks * CONFIG.TICK * 1000)) * pace;
+    const due = net.nextAt && now - net.nextAt < 100 ? net.nextAt : now;
+    net.snapAt = due;
+    net.nextAt = due + net.snapGap;
     const allies = world.alliesList ? world.alliesList.length : 0;
     if (applySnapshot(world, msg, alpha)) world.events.push({ type: 'mapChange', id: world.map.id, name: world.map.name, from: null, hero: net.pid });
     for (const ev of msg.ev || []) world.events.push(ev);
@@ -1684,6 +1688,21 @@ function start(hot = {}) {
     const speed = (p.stats && p.stats.ms) || 6;
     const lead = Math.min(d, speed * Math.min(net.lagEst, (now - it.t) / 1000));
     return { dx: (dx / d) * lead, dz: (dz / d) * lead, facing: Math.atan2(dz, dx) };
+  }
+
+  /**
+   * (0.54.11) The drawn lead eases toward the predicted one instead of jumping to it: a new
+   * direction, a stop or the host catching up used to move the hero a body-length in one frame.
+   */
+  function smoothPrediction(target, dt) {
+    const s = net.predShown || (net.predShown = { dx: 0, dz: 0, facing: 0 });
+    const tx = target ? target.dx : 0, tz = target ? target.dz : 0;
+    const k = 1 - Math.exp(-dt * 9);
+    s.dx += (tx - s.dx) * k;
+    s.dz += (tz - s.dz) * k;
+    if (target) s.facing = target.facing;
+    if (!target && Math.hypot(s.dx, s.dz) < 0.02) return null;
+    return { dx: s.dx, dz: s.dz, facing: target ? target.facing : world.player.facing };
   }
 
   /** Leave (or close) the room. Progress is already saved. */
@@ -3113,7 +3132,7 @@ function start(hot = {}) {
       playSnapshots(now);
       drainEvents();
       alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
-      world.player.predicted = predictedOffset(alpha);
+      world.player.predicted = smoothPrediction(predictedOffset(alpha), dt);
     } else if (net && mode !== 'title' && mode !== 'mp') {
       hostAdvance(dt);
       alpha = Math.min(1, acc / CONFIG.TICK);

@@ -533,6 +533,116 @@
       "faceLimit": 3000,
       "rig": false,
       "prompt": "a gate-guard's longsword, a sturdy plain steel blade, a cross guard wrapped in faded royal blue cloth, a blue-trimmed leather grip, a simple round pommel with a small gold star"
+    },
+    "e_wishthief": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:run",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:swagger"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "a Wishthief, a small hunched goblin-like thief made of tarnished gold and shadow, a ragged hooded cloak of dark brown cloth glittering with stolen coins sewn into it, a bulging sack of glowing gold wishes over one shoulder, long thin fingers, wide greedy glowing yellow eyes under the hood, barefoot, sly crouched posture"
+    },
+    "n_merchant": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_01",
+        "preset:biped:look_around",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "a travelling merchant, a weathered cheerful old man with a long grey beard and a wide-brimmed brown traveller's hat, a patched brown and mustard coat, an enormous wooden frame pack on his back hung with lanterns, pots, rolled rugs, trinkets and little bottles, a walking staff, kind wrinkled eyes"
+    },
+    "n_tomas": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_01",
+        "preset:biped:sob",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "Tomas, a tired gentle woodsman father in his forties home at last, faint and slightly translucent like a fading memory with a soft pale blue glow at his edges, plain dark green work shirt and brown trousers, a long red knitted scarf wound twice around his neck, short dark hair, stubble, a calm sad smile"
+    },
+    "n_lark": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:standing_relax",
+        "preset:biped:greet_01",
+        "preset:biped:look_around",
+        "preset:biped:agree"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+      "faceLimit": 9000,
+      "prompt": "Lark, a young herbalist apprentice girl of about sixteen, short messy honey-blonde hair, freckles, a moss green tunic with rolled sleeves and a cream apron stuffed with notes and herb bundles, a pencil behind her ear, ink-stained fingers, an eager determined expression"
+    },
+    "e_edric": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "Edric of the Blue Trim, a tall undead gate captain still standing his watch: proud gaunt knight in polished but battered steel plate trimmed with royal blue cloth, a royal blue cape torn at the hem, an open-faced helmet showing a pale noble face with sad glowing blue eyes, a sturdy longsword with blue cloth wrapped at the guard, a round shield with a small gold star"
+    },
+    "e_oathshade": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "prompt": "an Oath Shade, the ghost of a gate soldier called back to fight: a translucent violet spectral knight made of smoke and pale purple light, broken half-plate armour drifting apart, a cracked greatsword of ghostly light, hollow white eyes under a visored helm, ragged violet mist trailing from the legs"
+    },
+    "e_heraldguard": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Herald's honour guard, a ceremonial palace soldier frozen mid-salute and turned to amber glass: ornate cream white and gold dress armour with gold epaulettes and a sash, a tall gold-crested helmet with a red plume, holding a long gold ceremonial spear, cracked amber glass skin glowing faintly from inside"
+    },
+    "p_wishling": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game prop, one single floating object on its own, no ground, no base, no stand, no people, clean readable silhouette, hand-painted PBR-style textures, glowing",
+      "faceLimit": 3000,
+      "prompt": "a Wishling, a small floating wisp of warm golden starlight shaped like a tiny hooded spirit with no legs, a soft glowing round face with two dark eye holes, little wispy arms, a trailing tail of golden sparkles"
+    },
+    "p_wishstar": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game prop, one single floating object on its own, no ground, no base, no stand, no people, clean readable silhouette, hand-painted PBR-style textures, glowing",
+      "faceLimit": 3000,
+      "prompt": "a wish-star, a floating crystal star of pale teal glass about the size of a person, five sharp points, a bright glowing core inside, thin cracks of light across its faces, small shards orbiting it"
     }
   }
 }

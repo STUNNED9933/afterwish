@@ -1,0 +1,13 @@
+{
+  "id": "b_rootmother",
+  "fetched": [
+    "cb74b9b0-f30f-4629-8857-414818b7cccb",
+    "4864c28b-8286-4ef8-adbe-d278a40b80de"
+  ],
+  "files": [
+    "4-anim-1/model.glb",
+    "4-anim-1/task.json",
+    "4-anim-2/model.glb",
+    "4-anim-2/task.json"
+  ]
+}

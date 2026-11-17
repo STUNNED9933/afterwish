@@ -1,0 +1,13 @@
+{
+  "id": "env_stillstone",
+  "fetched": [
+    "79e4527d-8260-4bfc-aed3-56e2fc76feb4"
+  ],
+  "files": [
+    "4-anim-1/generated_image.jpeg",
+    "4-anim-1/model.glb",
+    "4-anim-1/preview.png",
+    "4-anim-1/rendered_image.webp",
+    "4-anim-1/task.json"
+  ]
+}

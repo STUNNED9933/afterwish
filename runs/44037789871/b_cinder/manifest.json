@@ -1,0 +1,13 @@
+{
+  "id": "b_cinder",
+  "fetched": [
+    "7176bec2-f2c0-4041-abac-e24b407270d5",
+    "facbe1be-46c2-429e-977b-a67d1b1c72ad"
+  ],
+  "files": [
+    "4-anim-1/model.glb",
+    "4-anim-1/task.json",
+    "4-anim-2/model.glb",
+    "4-anim-2/task.json"
+  ]
+}

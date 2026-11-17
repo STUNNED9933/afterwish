@@ -1,0 +1,13 @@
+{
+  "id": "b_undertow",
+  "fetched": [
+    "9888961e-48af-413e-837d-50b019326572",
+    "afe86d9e-8c6b-4b0b-b91f-e4c78fe41195"
+  ],
+  "files": [
+    "4-anim-1/model.glb",
+    "4-anim-1/task.json",
+    "4-anim-2/model.glb",
+    "4-anim-2/task.json"
+  ]
+}

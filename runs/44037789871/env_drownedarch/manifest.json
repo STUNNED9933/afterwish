@@ -1,0 +1,13 @@
+{
+  "id": "env_drownedarch",
+  "fetched": [
+    "a6cacfbc-dbef-4f70-ad24-8d232f29101a"
+  ],
+  "files": [
+    "4-anim-1/generated_image.jpeg",
+    "4-anim-1/model.glb",
+    "4-anim-1/preview.png",
+    "4-anim-1/rendered_image.webp",
+    "4-anim-1/task.json"
+  ]
+}

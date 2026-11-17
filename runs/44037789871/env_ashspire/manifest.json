@@ -1,0 +1,13 @@
+{
+  "id": "env_ashspire",
+  "fetched": [
+    "4b95ae5e-2e27-485b-878b-b0b0fef4bac3"
+  ],
+  "files": [
+    "4-anim-1/generated_image.jpeg",
+    "4-anim-1/model.glb",
+    "4-anim-1/preview.png",
+    "4-anim-1/rendered_image.webp",
+    "4-anim-1/task.json"
+  ]
+}

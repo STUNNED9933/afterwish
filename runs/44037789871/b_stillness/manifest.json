@@ -1,0 +1,13 @@
+{
+  "id": "b_stillness",
+  "fetched": [
+    "aa323c48-3b44-4b60-8c7f-571fcc405011",
+    "a8461e1e-f12c-4343-bd52-1425345a91a2"
+  ],
+  "files": [
+    "4-anim-1/model.glb",
+    "4-anim-1/task.json",
+    "4-anim-2/model.glb",
+    "4-anim-2/task.json"
+  ]
+}

@@ -77,7 +77,7 @@ for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].mo
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));
 for (const id of ALL_MODELS) {
-  RIGGED[id] = { url: `models/${id}.glb`, height: 1, turn: -Math.PI / 2, recentre: [], rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis', 'Hips'] };
+  RIGGED[id] = { url: `models/${id}.glb`, height: 1, turn: -Math.PI / 2, recentre: '*', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis', 'Hips'] };
 }
 
 /** Which clip in a loaded model plays each kind of thing (by Tripo's preset names). */

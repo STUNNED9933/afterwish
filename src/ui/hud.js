@@ -17,7 +17,7 @@ import { MAPS } from '../sim/maps.js';
 export function goalText(q) {
   const g = q.goal;
   if (g.reach) return `Travel to ${MAPS[g.reach].name}`;
-  if (g.read) return `Read ${g.read} signs or notes`;
+  if (g.read) return `Read ${g.read} signs or notes (on any map)`;
   if (g.sign) return `Find and read: ${SIGNS[g.sign].title} (${MAPS[SIGNS[g.sign].map].name})`;
   if (g.signs) return `Read ${g.signs.length} ${g.what || 'signs'} in ${MAPS[SIGNS[g.signs[0]].map].name}`;
   if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
@@ -26,9 +26,19 @@ export function goalText(q) {
   if (g.meet === 'odile') return "Reach Odile at the heart of Gloomcap Hollow's garden";
   if (g.stories) return `Finish the side stories of Pip, Bram and Odile`;
   if (g.enemy === 'edric') return 'Find Edric of the Blue Trim in the Warden\'s Keep';
-  if (g.boss) return `Defeat ${ENEMIES[g.boss].name}`;
-  const who = g.enemy ? ENEMIES[g.enemy].name + (g.kill > 1 ? 's' : '') : 'enemies';
-  return `Defeat ${g.kill} ${who}${g.map ? ' in ' + MAPS[g.map].name : ''}`;
+  if (g.boss) return `Defeat ${ENEMIES[g.boss].name}${whereIs(g.boss, 'in')}`;
+  const who = g.enemy ? (g.kill > 1 ? plural(ENEMIES[g.enemy].name) : ENEMIES[g.enemy].name) : 'enemies';
+  return `Defeat ${g.kill} ${who}${g.map ? ' in ' + MAPS[g.map].name : g.enemy ? whereIs(g.enemy, 'in') : ' (on any map)'}`;
+}
+
+const plural = (n) => (/us$/.test(n) ? n.slice(0, -2) + 'i' : /f$/.test(n) ? n.slice(0, -1) + 'ves' : /(s|sh|ch)$/.test(n) ? n + 'es' : n + 's');
+
+/** (0.54.7) Where on the road an enemy or boss lives, for the quest text: " in Ashen Ridge or Spitter Fen". */
+function whereIs(type, word) {
+  const maps = Object.values(MAPS).filter((m) => !m.safe && (m.boss === type || (m.roster && m.roster[type])));
+  maps.sort((a, b) => (a.boss === type ? -1 : 0) - (b.boss === type ? -1 : 0) || (a.level || 0) - (b.level || 0));
+  if (!maps.length) return '';
+  return ` ${word} ${maps.slice(0, 2).map((m) => m.name).join(' or ')}`;
 }
 
 const $ = (id) => document.getElementById(id);
@@ -737,7 +747,7 @@ export class Hud {
         const q = QUESTS[id];
         if (!q || st.s === 'done') continue;
         rows.push(st.s === 'ready'
-          ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name}</span></div>`
+          ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name} in Haven</span></div>`
           : `<div class="qt"><b>${q.name}</b><span>${goalText(q)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
       }
     }

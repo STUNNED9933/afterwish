@@ -364,7 +364,15 @@ function prepare(spec, gltf) {
   for (const c of gltf.animations) clips[c.name] = c;
   const h = box.max.y - box.min.y;
   if (clips[spec.run]) stripDrift(clips[spec.run], spec.rootBones);
-  for (const name of spec.recentre || [spec.run]) if (clips[name]) recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
+  if (spec.recentre === '*') {
+    // (0.54.7) creatures: any clip that walks itself away (a Tripo walk with its travel left in) is put back
+    // in place, so the body stays on its hitbox. A fall keeps its own stagger back.
+    for (const name in clips) {
+      if (name === 'fall') continue;
+      if (travel(clips[name], spec.rootBones, scene) > 0.1 * h) stripDrift(clips[name], spec.rootBones);
+      recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
+    }
+  } else for (const name of spec.recentre || [spec.run]) if (clips[name]) recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
   (spec.attacks || []).forEach((a, i) => {
     if (clips[a.clip]) clips[`__attack${i}`] = THREE.AnimationUtils.subclip(clips[a.clip], a.clip, Math.round(a.from * 30), Math.round(a.to * 30), 30);
   });
@@ -375,6 +383,23 @@ function prepare(spec, gltf) {
     clips.__attack = THREE.AnimationUtils.subclip(src, 'attack', Math.round(spec.attack.from * fps), Math.round(spec.attack.to * fps), fps);
   }
   return { spec, scene, scale, clips };
+}
+
+/** How far a clip's root bone travels across the ground from its first frame to its last, in world units. */
+function travel(clip, rootBones, scene) {
+  scene.updateMatrixWorld(true);
+  let most = 0;
+  for (const t of clip.tracks) {
+    const [bone, prop] = t.name.split('.');
+    if (prop !== 'position' || !rootBones.includes(bone)) continue;
+    const node = scene.getObjectByName(bone);
+    if (!node) continue;
+    const pm = node.parent.matrixWorld;
+    const v = t.values, n = v.length / 3;
+    const a = new THREE.Vector3().fromArray(v, 0).applyMatrix4(pm), b = new THREE.Vector3().fromArray(v, (n - 1) * 3).applyMatrix4(pm);
+    most = Math.max(most, Math.hypot(b.x - a.x, b.z - a.z));
+  }
+  return most;
 }
 
 /** Remove forward travel from a run cycle, keeping its bob and sway (the game moves the character). */

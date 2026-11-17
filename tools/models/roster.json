@@ -659,7 +659,11 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000,
-      "prompt": "the Cinder, the Primordial of Ending, an ancient towering figure made of banked glowing coals and cracked black charcoal, a heavy hooded cloak of falling grey ash that drifts upward, a calm featureless face of cooling embers with two soft orange eyes, long arms ending in smouldering fingers, one hand holding a lantern of dying embers, patient and solemn rather than evil"
+      "prompt": "the Cinder, the Primordial of Ending, an ancient towering figure made of banked glowing coals and cracked black charcoal, a heavy hooded cloak of falling grey ash that drifts upward, a calm featureless face of cooling embers with two soft orange eyes, long arms ending in smouldering fingers, one hand holding a lantern of dying embers, patient and solemn rather than evil",
+      "fetchAnims": [
+        "7176bec2-f2c0-4041-abac-e24b407270d5",
+        "facbe1be-46c2-429e-977b-a67d1b1c72ad"
+      ]
     },
     "b_undertow": {
       "rigType": "biped",
@@ -676,7 +680,11 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000,
-      "prompt": "the Undertow, the Primordial of Forgetting, a tall drowned queen made entirely of black and deep teal water, no face only a smooth dark mirror where a face should be, a long flowing gown that pours down like a waterfall, a crown of drifting pale river weeds and old silver, small fish and bubbles suspended inside her body, serene and cold"
+      "prompt": "the Undertow, the Primordial of Forgetting, a tall drowned queen made entirely of black and deep teal water, no face only a smooth dark mirror where a face should be, a long flowing gown that pours down like a waterfall, a crown of drifting pale river weeds and old silver, small fish and bubbles suspended inside her body, serene and cold",
+      "fetchAnims": [
+        "9888961e-48af-413e-837d-50b019326572",
+        "afe86d9e-8c6b-4b0b-b91f-e4c78fe41195"
+      ]
     },
     "b_rootmother": {
       "rigType": "biped",
@@ -693,7 +701,11 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000,
-      "prompt": "the Rootmother, the Primordial of Growing, a huge ancient hunched figure of gnarled root and dark bark standing tall, mossy shoulders, long root fingers that trail to the ground, a hollow in her chest holding a softly glowing lantern of pale mushrooms, a crown of branches with tiny white flowers, a calm old wooden face with closed eyes, gentle and vast"
+      "prompt": "the Rootmother, the Primordial of Growing, a huge ancient hunched figure of gnarled root and dark bark standing tall, mossy shoulders, long root fingers that trail to the ground, a hollow in her chest holding a softly glowing lantern of pale mushrooms, a crown of branches with tiny white flowers, a calm old wooden face with closed eyes, gentle and vast",
+      "fetchAnims": [
+        "cb74b9b0-f30f-4629-8857-414818b7cccb",
+        "4864c28b-8286-4ef8-adbe-d278a40b80de"
+      ]
     },
     "b_choir": {
       "rigType": "biped",
@@ -710,7 +722,11 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000,
-      "prompt": "the Choir, the Primordial of Remembering, a tall elegant figure of clear star-glass with many faint singing faces visible inside its translucent body, flowing glass robes that ring like bells, a halo of floating glass shards, arms open as if conducting, light refracting in rainbow colours, beautiful and sad"
+      "prompt": "the Choir, the Primordial of Remembering, a tall elegant figure of clear star-glass with many faint singing faces visible inside its translucent body, flowing glass robes that ring like bells, a halo of floating glass shards, arms open as if conducting, light refracting in rainbow colours, beautiful and sad",
+      "fetchAnims": [
+        "aa4a2e5a-1df4-44c1-af55-fc3fb3a45cf7",
+        "07871c0c-1362-4ab0-a479-002d89bc41a7"
+      ]
     },
     "b_stillness": {
       "rigType": "biped",
@@ -727,7 +743,11 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000,
-      "prompt": "the Stillness, the Primordial of Enough, an empty floating hooded robe of soft grey-white cloth around a perfect black hole of nothing where a body should be, long empty sleeves, faint pale motes drifting into the darkness, very still and quiet, peaceful and unsettling"
+      "prompt": "the Stillness, the Primordial of Enough, an empty floating hooded robe of soft grey-white cloth around a perfect black hole of nothing where a body should be, long empty sleeves, faint pale motes drifting into the darkness, very still and quiet, peaceful and unsettling",
+      "fetchAnims": [
+        "aa323c48-3b44-4b60-8c7f-571fcc405011",
+        "a8461e1e-f12c-4343-bd52-1425345a91a2"
+      ]
     },
     "e_ashwalker": {
       "rigType": "biped",
@@ -741,7 +761,10 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 10000,
-      "prompt": "an Ashwalker, an undead husk burning from the inside, cracked charcoal skin with glowing orange embers showing through the cracks, tattered grey burial wraps, ash drifting upward from its shoulders, empty glowing eyes, slow heavy stance"
+      "prompt": "an Ashwalker, an undead husk burning from the inside, cracked charcoal skin with glowing orange embers showing through the cracks, tattered grey burial wraps, ash drifting upward from its shoulders, empty glowing eyes, slow heavy stance",
+      "fetchAnims": [
+        "f2df2452-0254-4999-8682-33605fc49110"
+      ]
     },
     "e_unnamed": {
       "rigType": "biped",
@@ -755,7 +778,10 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 10000,
-      "prompt": "one of the Unnamed, a drowned citizen of a forgotten city, pale waterlogged body in rotted old-fashioned court clothes dripping black water, a smooth blank face with no features washed away, river weeds tangled in its hair, reaching hands"
+      "prompt": "one of the Unnamed, a drowned citizen of a forgotten city, pale waterlogged body in rotted old-fashioned court clothes dripping black water, a smooth blank face with no features washed away, river weeds tangled in its hair, reaching hands",
+      "fetchAnims": [
+        "472b78cf-fd22-49fe-a30c-1bff16ff10c1"
+      ]
     },
     "e_rootbound": {
       "rigType": "biped",
@@ -769,7 +795,10 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 10000,
-      "prompt": "a Rootbound knight, an old armoured soldier grown through with thick dark roots and pale fungus, roots bursting from the joints of rusted plate armour, mushrooms on the helmet, a sword half swallowed by bark"
+      "prompt": "a Rootbound knight, an old armoured soldier grown through with thick dark roots and pale fungus, roots bursting from the joints of rusted plate armour, mushrooms on the helmet, a sword half swallowed by bark",
+      "fetchAnims": [
+        "ab953463-c0cf-41f0-b291-78536b9fe51b"
+      ]
     },
     "e_echo": {
       "rigType": "biped",
@@ -783,7 +812,10 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 10000,
-      "prompt": "an Echo, a glass copy of a hero, a translucent star-glass human figure in a hooded adventurer's cloak and light armour, a glass sword in one hand, faint light flickering inside it, cracked edges, an expressionless glass face"
+      "prompt": "an Echo, a glass copy of a hero, a translucent star-glass human figure in a hooded adventurer's cloak and light armour, a glass sword in one hand, faint light flickering inside it, cracked edges, an expressionless glass face",
+      "fetchAnims": [
+        "ed9ab6ee-e57f-49e8-acc2-0a71cad0d052"
+      ]
     },
     "e_hush": {
       "rigType": "biped",
@@ -797,37 +829,55 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 10000,
-      "prompt": "a Hush, a thin tall shadow figure in a tattered dark grey hooded shroud, no face only darkness, long thin fingers, the light around it dimmed, wisps of black smoke drifting down from its hem, eerie and silent"
+      "prompt": "a Hush, a thin tall shadow figure in a tattered dark grey hooded shroud, no face only darkness, long thin fingers, the light around it dimmed, wisps of black smoke drifting down from its hem, eerie and silent",
+      "fetchAnims": [
+        "15caf2d4-0713-40e5-b3d5-2d81250c227a"
+      ]
     },
     "env_ashspire": {
       "rig": false,
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
-      "prompt": "a jagged spire of black charcoal rock with glowing orange ember cracks running through it, grey ash drifting off its tip, a single dead burnt tree root wrapped around its base"
+      "prompt": "a jagged spire of black charcoal rock with glowing orange ember cracks running through it, grey ash drifting off its tip, a single dead burnt tree root wrapped around its base",
+      "fetchAnims": [
+        "4b95ae5e-2e27-485b-878b-b0b0fef4bac3"
+      ]
     },
     "env_drownedarch": {
       "rig": false,
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
-      "prompt": "a sunken ruined archway of pale old stone covered in black water stains, barnacles and hanging river weeds, a broken carved name plaque at the top with the letters worn away"
+      "prompt": "a sunken ruined archway of pale old stone covered in black water stains, barnacles and hanging river weeds, a broken carved name plaque at the top with the letters worn away",
+      "fetchAnims": [
+        "a6cacfbc-dbef-4f70-ad24-8d232f29101a"
+      ]
     },
     "env_rootheart": {
       "rig": false,
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
-      "prompt": "a giant twisted knot of ancient dark roots rising from nothing, pale glowing mushrooms growing on it, small white flowers, a hollow in the middle with soft light inside"
+      "prompt": "a giant twisted knot of ancient dark roots rising from nothing, pale glowing mushrooms growing on it, small white flowers, a hollow in the middle with soft light inside",
+      "fetchAnims": [
+        "cefd7ad3-225d-432f-8c0a-341b69909471"
+      ]
     },
     "env_glasspillar": {
       "rig": false,
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
-      "prompt": "a tall pillar of clear star-glass crystal with faint human faces visible inside it, rainbow light refracting through it, small shards orbiting the top"
+      "prompt": "a tall pillar of clear star-glass crystal with faint human faces visible inside it, rainbow light refracting through it, small shards orbiting the top",
+      "fetchAnims": [
+        "20a7a92b-7357-42d0-8402-e7bc1e49b3a3"
+      ]
     },
     "env_stillstone": {
       "rig": false,
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
-      "prompt": "a smooth perfectly round grey standing stone with a circular hole through its middle that is completely black inside, faint pale motes drifting into the hole, very simple and quiet"
+      "prompt": "a smooth perfectly round grey standing stone with a circular hole through its middle that is completely black inside, faint pale motes drifting into the hole, very simple and quiet",
+      "fetchAnims": [
+        "79e4527d-8260-4bfc-aed3-56e2fc76feb4"
+      ]
     }
   }
 }

@@ -319,8 +319,8 @@ Each ends with someone letting go; the choices cannot be undone.
 
 ### Unwish: the ending (0.45)
 
-- **Quest 6, Unwish** (Elder Wren, after The Starwell): she gives you the Unwishing Glass she kept for a
-  hundred years. With the Asker gone, the Starwell offers the choice:
+- **Quest 6, Unwish** (Elder Wren, after The Starwell): she gives you the Unwishing Glass she kept for
+  nineteen years. With the Asker gone, the Starwell offers the choice:
   - **Unwish yourself.** Want nothing at all. The credits roll; the husks lie down; Haven's notice board,
     Wren, Bram, Odile and Pip all have new words; Pip's father Tomas comes home, once. The world tiers
     carry on, after the wish. A weapon glow, Afterlight.

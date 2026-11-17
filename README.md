@@ -151,7 +151,7 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
-### Act III: The Deep (0.54)
+### Act III: The Deep (0.54, Ember by investment in 0.54.1)
 
 An optional extreme mode for heroes at level 100 who have rebirthed. It sits beside the world tiers on the
 Waygate, in a box of its own, and it does not scale to you.
@@ -161,13 +161,17 @@ Waygate, in a box of its own, and it does not scale to you.
   *Growing*), the Glass Choir (the Choir, *Remembering*) and the Quiet (the Stillness, *Enough*). Each
   Depth has its own ground, light, plants and landmarks, its own enemies (Ashwalkers, the Unnamed,
   Rootbound, Echoes, Hushes), and the mountain's usual dead come down darkened in its colour.
-- **Ember** decides whether you can touch what lives there: 10 for every rebirth, plus up to 5
-  **Kindling** from each Depth (bosses always drop one; elites sometimes; others rarely). Each Depth asks
-  for more (10, 25, 40, 55, 70). Short of it, your blows barely land and theirs land harder; below half
-  of it, every hit you make does 1 damage. Enemies show the Ember they need (◆) in red when you are short,
-  and the map title shows your Ember against the Depth's.
-- **Pace:** Depth VI opens after your first rebirth, as a taste; after that, about one more rebirth (and
-  that Depth's Kindling) to take on each next Depth comfortably.
+- **Ember** decides whether you can touch what lives there. Each rebirth gives Ember by what you put into
+  that life: the gear you wear when you go (rarity, +levels and stars, the Heirloom too), from about 6 for
+  plain Ancients to **30** for a full set of +10 five-star Immortals; the rebirth screen shows what yours
+  is worth. Each Depth also gives up to 5 **Kindling** (bosses always drop one; elites sometimes; others
+  rarely). The Depths ask for 15, 50, 85, 120 and 155. Short of it, your blows barely land and theirs land
+  harder; below half of it, every hit you make does 1 damage. Enemies show the Ember they need (◆) in red
+  when you are short, and the map title shows your Ember against the Depth's.
+- **Pace:** Depth VI opens after your first rebirth, as a taste. With a fully built set every life, one
+  rebirth (and that Depth's Kindling) takes you to each next Depth; with less, it takes more.
+- **The story gates each Depth:** Wren, Odile and Bram's quests open them one by one, and a Primordial
+  only counts for its quest if you meet its Depth's Ember yourself (a friend cannot carry you down).
 - **The story (Act III):** six Primordials, older than the mountain and neither good nor evil, Wanting
   (the wish granter, the Asker) among them, equal to the other five. Elder Wren, Odile and Bram send you
   down Depth by Depth; quests open each one and stay done through rebirth. Ending it wins the

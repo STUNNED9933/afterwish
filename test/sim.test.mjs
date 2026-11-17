@@ -3498,9 +3498,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
 }
 // --- Act III: the Deep, Ember and the Primordials (0.54) ---
 {
-  const { DEEP, emberScale, emberOf } = await import('../src/sim/endgame.js');
+  const { DEEP, emberScale, emberOf, emberForGear } = await import('../src/sim/endgame.js');
   const { geared } = await import('./balance.mjs');
-  check('Ember: +10 a rebirth and up to +5 Kindling a Depth', emberOf({ n: 3, kindling: { 6: 5, 7: 9 } }) === 30 + 5 + 5);
+  check('Ember: what rebirths gave, and up to +5 Kindling a Depth', emberOf({ n: 3, ember: 52, kindling: { 6: 5, 7: 9 } }) === 52 + 5 + 5);
+  check('Ember: a rebirth gives more the more built-up your gear is, up to 30', emberForGear(0) === 0 && emberForGear(200) === 10 && emberForGear(DEEP.emberFull) === 30 && emberForGear(1e6) === 30, [200, 700, 1800].map(emberForGear).join(' '));
+  check('Ember: each Depth asks for much more than the last', DEEP.depths[6].ember === 15 && DEEP.depths[10].ember > 5 * DEEP.depths[6].ember);
+  const { migrateRebirth } = await import('../src/sim/rebirth.js');
+  check('Ember: a hero reborn before 0.54.1 keeps 10 for each rebirth', migrateRebirth({ n: 3 }).ember === 30 && migrateRebirth({ n: 3, ember: 41 }).ember === 41);
   check('Ember: at the requirement, full damage; short of it, less; below half, 1 a hit', emberScale(10, 10).dealt === 1 && emberScale(9, 10).dealt < 0.8 && emberScale(4, 10).one && emberScale(13, 10).dealt === 1.25 && emberScale(4, 10).taken === 3);
   const hero = (n, extra = {}) => {
     const save = Object.assign(geared('warrior', 100, 5), { worldTier: 5, tierMax: 5, endings: { self: 1 }, rebirth: { n, deepMax: 0 } }, extra);
@@ -3519,22 +3523,34 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.loadMap('ridge', 'fen');
   const e = w.enemies.find((x) => !x.def.boss);
   check('the Deep: every map out in the world is at that Depth: level 100, an Ember requirement, tier V and more', p.depth === 6 && w.depthNow() === 6 && e.ember === DEEP.depths[6].ember && e.level === 100 && w.worldTier() === 5);
-  const hit = (ember) => { p.rebirth.n = ember / 10; e.hp = e.maxHp = 1e9; w.hitEnemy(e, 1000, { canCrit: false, source: 'q' }); return 1e9 - e.hp; };
-  const full = hit(10), short = hit(0);
+  const hit = (ember) => { p.rebirth.ember = ember; e.hp = e.maxHp = 1e9; w.hitEnemy(e, 1000, { canCrit: false, source: 'q' }); return 1e9 - e.hp; };
+  const full = hit(20), short = hit(0);
   check('the Deep: with Ember short of half its requirement, every hit is 1', short === 1 && full > 100, `${Math.round(full)} vs ${short}`);
-  p.rebirth.n = 1;
+  p.rebirth.ember = 20;
   w.loadMap('deep6', 'town');
   const cinder = w.enemies.find((x) => x.type === 'cinder');
-  check("the Deep: the Cinder waits at the bottom of the Ashen Deep, at Depth VI's requirement", cinder && cinder.ember === 10 && cinder.def.primordial);
-  check('the Deep: a Depth\'s own map knows its Depth, and its title shows your Ember against it', w.map.deep === 6 && w.zone().sub === `Depth VI · Ember ${w.ember()} of 10`, w.zone().sub);
+  check("the Deep: the Cinder waits at the bottom of the Ashen Deep, at Depth VI's requirement", cinder && cinder.ember === DEEP.depths[6].ember && cinder.def.primordial);
+  check('the Deep: a Depth\'s own map knows its Depth, and its title shows your Ember against it', w.map.deep === 6 && w.zone().sub === `Depth VI · Ember ${w.ember()} of ${DEEP.depths[6].ember}`, w.zone().sub);
   const k0 = p.rebirth.kindling[6] || 0;
   w.hitEnemy(cinder, 1e15); w.step(CONFIG.TICK);
   check('the Deep: a Primordial always gives Kindling, and the quest after opens the next Depth', (p.rebirth.kindling[6] || 0) === k0 + 1);
+  // the story asks you to stand there yourself: a Primordial counts for its quest only at its Depth's Ember
+  w.loadMap('town', 'greenwood');
+  w.command({ type: 'acceptQuest', id: 'deep2' }); w.step(CONFIG.TICK);
+  w.loadMap('deep6', 'town');
+  p.rebirth.ember = 5; p.rebirth.kindling = {};
+  let c2 = w.spawnEnemy('cinder', { x: p.x + 3, z: p.z, level: 100 });
+  w.hitEnemy(c2, 1e15); w.step(CONFIG.TICK);
+  const shortN = p.quests.deep2 && p.quests.deep2.n;
+  p.rebirth.ember = 20;
+  c2 = w.spawnEnemy('cinder', { x: p.x + 3, z: p.z, level: 100 });
+  w.hitEnemy(c2, 1e15); w.step(CONFIG.TICK);
+  check("Act III: the Cinder counts for 'What Ends' only with Depth VI's Ember of your own", p.quests.deep2 && shortN === 0 && w.questState('deep2') === 'ready', `${shortN} then ${w.questState('deep2')}`);
   // through rebirth
   const { rebirthSave } = await import('../src/sim/rebirth.js');
   const { starterWeapon } = await import('../src/sim/items.js');
   const again = new World({ seed: 9, mode: 'explore', cls: 'warrior', save: rebirthSave(JSON.parse(JSON.stringify(w.toSave())), starterWeapon) });
-  check('Act III: progress, the Depths opened and Kindling are kept through rebirth, and Ember grows by 10', again.questState('deep1') === 'done' && again.player.rebirth.deepMax === 6 && again.ember() === w.ember() + 10);
+  check('Act III: progress, the Depths opened and Kindling are kept through rebirth, and Ember grows with the gear you gave up', again.questState('deep1') === 'done' && again.player.rebirth.deepMax === 6 && again.player.rebirth.lastEmber > 0 && again.ember() === w.ember() + again.player.rebirth.lastEmber && again.player.rebirth.lastEmber === w.rebirthEmber(), `+${again.player.rebirth.lastEmber}`);
   check('the Deep: back at level 1, no Depth until level 100 again', !again.depthOpen(again.player, 6));
   // a seal
   const a = hero(1); const ap = a.player; a.loadMap('ridge', 'fen');

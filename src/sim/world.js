@@ -8,7 +8,7 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { DEEP, DEPTH_IDS, emberOf, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
+import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
@@ -3010,6 +3010,14 @@ export class World {
       if (kind === 'kill' && g.kill) {
         hit = (!g.enemy || g.enemy === data.type || g.enemy === data.named) && (!g.boss || g.boss === data.type) && (!g.map || (this.map && this.map.id === g.map));
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
+        if (hit && q.act3 && g.boss) {
+          // (0.54.1) a Primordial counts only when you meet its Depth's Ember yourself: no being carried down
+          const D = Object.values(DEEP.depths).find((d) => d.primordial === g.boss);
+          if (D && this.ember(p) < D.ember) {
+            hit = false;
+            this.emit('emberShort', { name: q.name, need: D.ember, have: this.ember(p) });
+          }
+        }
         if (hit) {
           st.n++;
           used = true;
@@ -4409,10 +4417,18 @@ export class World {
     if (this.trial || this.heroes.length > 1 || rebirthBlock(p)) return;
     if (heirloom && !(SLOTS.includes(heirloom) && p.equipped[heirloom])) heirloom = null;
     const save = rebirthSave(this.toSave(), starterWeapon, heirloom, relevelItem);
-    this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
+    this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, ember: save.rebirth.lastEmber || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
   }
 
   /** Echo Essence a rebirth would give now, keeping `heirloom` (a slot) as the Heirloom (0.53). */
+  /** Ember a rebirth now would give (0.54.1): what the gear you wear is worth, the Heirloom too. */
+  rebirthEmber() {
+    const p = this.player;
+    let n = 0;
+    for (const slot of SLOTS) if (p.equipped[slot]) n += essenceFor(p.equipped[slot]);
+    return emberForGear(n);
+  }
+
   rebirthEssence(heirloom = null) {
     const p = this.player;
     let n = 0;
@@ -4579,7 +4595,7 @@ export class World {
       const rb = save.rebirth;
       rb.ng = (rb.ng || 0) + 1; // New Game+: the wish begins again, stronger
       save.endings = Object.assign({}, p.endings, { place: (p.endings.place || 0) + 1 });
-      this.emit('reborn', { save, n: rb.n, marks: rb.marks - p.rebirth.marks, glow: save.glow, ng: rb.ng });
+      this.emit('reborn', { save, n: rb.n, marks: rb.marks - p.rebirth.marks, glow: save.glow, ng: rb.ng, ember: rb.lastEmber || 0 });
     }
   }
 

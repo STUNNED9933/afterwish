@@ -1,3 +1,4 @@
+import { emberForGear } from './endgame.js';
 // Rebirth (0.43): begin again from level 1, and keep what the star remembers of you.
 //
 // Once a hero is level 100 and has beaten The Unmade, they can ask the fallen star to begin again.
@@ -85,6 +86,9 @@ export function migrateRebirth(r) {
   // The Deep (0.54): Kindling found in each Depth, the deepest Depth opened, and Act III's quests done; all kept
   if (r.kindling && typeof r.kindling === 'object') for (const k in r.kindling) out.kindling[k] = Math.max(0, Math.floor(Number(r.kindling[k]) || 0));
   out.deepMax = Math.max(0, Math.floor(Number(r.deepMax) || 0));
+  // Ember from rebirths (0.54.1): saved from 0.54.1; a hero reborn before then keeps 10 for each rebirth
+  out.ember = r.ember != null ? Math.max(0, Math.floor(Number(r.ember) || 0)) : 10 * out.n;
+  if (r.lastEmber != null) out.lastEmber = Math.max(0, Math.floor(Number(r.lastEmber) || 0));
   if (r.act3 && typeof r.act3 === 'object') for (const k in r.act3) if (r.act3[k]) out.act3[k] = true;
   return out;
 }
@@ -120,14 +124,18 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
   const worn = old.equipped || {};
   const heir = heirloomSlot && worn[heirloomSlot] && relevel ? JSON.parse(JSON.stringify(worn[heirloomSlot])) : null;
   let essence = 0;
+  let value = 0; // what this life's gear was worth, the Heirloom too (Ember, 0.54.1)
   for (const slot in worn) {
     const it = worn[slot];
     if (!it) continue;
+    value += essenceFor(it);
     if (!heir || slot !== heirloomSlot) essence += essenceFor(it);
     if (memoryRank(it) > memoryRank(rb.memories[slot])) rb.memories[slot] = JSON.parse(JSON.stringify(it));
   }
   rb.essence += essence;
   rb.lastEssence = essence;
+  rb.lastEmber = emberForGear(value);
+  rb.ember += rb.lastEmber;
   rb.recalled = {}; // each memory can be recalled once a life
   const equipped = { weapon: starterWeapon(old.cls) };
   if (heir) {

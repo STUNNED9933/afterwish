@@ -596,7 +596,7 @@ function start(hot = {}) {
       const box = document.createElement('div');
       box.className = 'deep-box';
       const ember = world.ember();
-      box.innerHTML = `<div class="deep-title">The Deep</div><p class="deep-warn">The Deep does not scale to you. Ember decides whether you can touch what lives there: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p><p class="deep-ember">Your Ember: <b>${ember}</b> <span>(+${DEEP.emberPerRebirth} a rebirth, +${DEEP.kindlingMax} from each Depth's Kindling)</span></p>`;
+      box.innerHTML = `<div class="deep-title">The Deep</div><p class="deep-warn">The Deep does not scale to you. Ember decides whether you can touch what lives there: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p><p class="deep-ember">Your Ember: <b>${ember}</b> <span>(up to +${DEEP.emberMax} a rebirth, by how built-up your gear is when you go; +${DEEP.kindlingMax} from each Depth's Kindling)</span></p>`;
       const row = document.createElement('div');
       row.className = 'deep-row';
       const above = document.createElement('button');
@@ -1219,7 +1219,7 @@ function start(hot = {}) {
       panel.appendChild(heir);
       const ess = document.createElement('p');
       ess.className = 'setting-desc';
-      ess.innerHTML = `The rest of your gear becomes <b>${world.rebirthEssence(rebirthHeir)} Echo Essence</b>, and the star remembers the best piece of each slot: in later lives, recall them at your level and bring them back up to what they were (gear screen).${p.rebirth.essence ? ` You have ${p.rebirth.essence} now.` : ''}`;
+      ess.innerHTML = `The rest of your gear becomes <b>${world.rebirthEssence(rebirthHeir)} Echo Essence</b>, and the star remembers the best piece of each slot: in later lives, recall them at your level and bring them back up to what they were (gear screen).${p.rebirth.essence ? ` You have ${p.rebirth.essence} now.` : ''} Your gear, the Heirloom too, is worth <b>${world.rebirthEmber()} of ${DEEP.emberMax} Ember</b> for the Deep (rarity, +levels and stars).`;
       panel.appendChild(ess);
     }
     const go = document.createElement('button');
@@ -2401,7 +2401,7 @@ function start(hot = {}) {
         startExplore(true);
         sfx.levelUp();
         if (ev.ng) hud.banner(`You took her place · New Game+ ${ev.ng}`, `The wish begins again, stronger. At the top of the mountain, the Unmade wears your face. +${ev.marks} Starmarks.`);
-        else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks${ev.essence ? `, +${ev.essence} Echo Essence` : ''}${ev.heirloom ? `. ${ev.heirloom} came with you` : ''}. Spend Starmarks in Talents (T), Essence on the gear screen.`);
+        else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks${ev.essence ? `, +${ev.essence} Echo Essence` : ''}${ev.ember ? `, +${ev.ember} Ember` : ''}${ev.heirloom ? `. ${ev.heirloom} came with you` : ''}. Spend Starmarks in Talents (T), Essence on the gear screen.`);
         hintOnce('reborn', `You are reborn. ${ev.marks} Starmarks are yours to spend on perks in Talents (T)${ev.glow ? ', and a new weapon glow is on the gear screen' : ''}.`, 12);
         break;
       }
@@ -2625,6 +2625,9 @@ function start(hot = {}) {
       case 'kindling':
         hud.float(renderer, ev.x, 3, ev.z, `Kindling ${ev.n}/${ev.max} · Ember ${ev.ember}`, 'word perfect');
         sfx.pickup(5);
+        break;
+      case 'emberShort':
+        if (!ev.self || ev.self === world.player) hud.banner('It does not count', `${ev.name} needs you to stand there with Ember ${ev.need} of your own (you have ${ev.have}). Being carried down is not the same.`);
         break;
       case 'sealed':
         hud.banner(`${ev.name} is sealed`, `${ev.by} took it for ${ev.time} seconds. Use something else.`);

@@ -105,26 +105,34 @@ export function wishNeed(w) {
  * and take (EMBER_CURVE); below half of it every hit you land is 1.
  */
 export const DEEP = {
-  emberPerRebirth: 10,
+  // Ember from a rebirth (0.54.1) follows what you put into that life: the gear you wear when you go
+  // (its Echo value: rarity, +levels and stars). A full set of +10 five-star Immortals gives the most.
+  emberMax: 30, // Ember from one rebirth, at most
+  emberFull: 1800, // ...for gear worth this much (sqrt: a half-built set still gives a fair share)
   kindlingMax: 5, // Ember from each Depth's Kindling
   kindling: { normal: 0.004, elite: 0.06, boss: 1 }, // chance a kill there finds one (a Primordial: always)
   level: 100, // the least level to go down
   depths: {
-    6: { n: 6, numeral: 'VI', name: 'The Ashen Deep', map: 'deep6', ember: 10, hp: 1.5, dmg: 1.3, exp: 1.3, loot: 1.2, color: 0xff6a2a, primordial: 'cinder', title: 'Ending' },
-    7: { n: 7, numeral: 'VII', name: 'The Drowned Court', map: 'deep7', ember: 25, hp: 2.2, dmg: 1.6, exp: 1.6, loot: 1.4, color: 0x3ac0c0, primordial: 'undertow', title: 'Forgetting' },
-    8: { n: 8, numeral: 'VIII', name: 'The Undergrowth', map: 'deep8', ember: 40, hp: 3.2, dmg: 2.0, exp: 2.0, loot: 1.6, color: 0x9ad06a, primordial: 'rootmother', title: 'Growing' },
-    9: { n: 9, numeral: 'IX', name: 'The Glass Choir', map: 'deep9', ember: 55, hp: 4.5, dmg: 2.5, exp: 2.4, loot: 1.8, color: 0xc8e8ff, primordial: 'choir', title: 'Remembering' },
-    10: { n: 10, numeral: 'X', name: 'The Quiet', map: 'deep10', ember: 70, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, color: 0xb8b0d8, primordial: 'stillness', title: 'Enough' },
+    6: { n: 6, numeral: 'VI', name: 'The Ashen Deep', map: 'deep6', ember: 15, hp: 1.5, dmg: 1.3, exp: 1.3, loot: 1.2, color: 0xff6a2a, primordial: 'cinder', title: 'Ending' },
+    7: { n: 7, numeral: 'VII', name: 'The Drowned Court', map: 'deep7', ember: 50, hp: 2.2, dmg: 1.6, exp: 1.6, loot: 1.4, color: 0x3ac0c0, primordial: 'undertow', title: 'Forgetting' },
+    8: { n: 8, numeral: 'VIII', name: 'The Undergrowth', map: 'deep8', ember: 85, hp: 3.2, dmg: 2.0, exp: 2.0, loot: 1.6, color: 0x9ad06a, primordial: 'rootmother', title: 'Growing' },
+    9: { n: 9, numeral: 'IX', name: 'The Glass Choir', map: 'deep9', ember: 120, hp: 4.5, dmg: 2.5, exp: 2.4, loot: 1.8, color: 0xc8e8ff, primordial: 'choir', title: 'Remembering' },
+    10: { n: 10, numeral: 'X', name: 'The Quiet', map: 'deep10', ember: 155, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, color: 0xb8b0d8, primordial: 'stillness', title: 'Enough' },
   },
 };
 export const DEPTH_IDS = [6, 7, 8, 9, 10];
 // [your Ember / needed, damage you deal, damage you take], straight lines between; below the last, 1 a hit.
 export const EMBER_CURVE = [[1.3, 1.25, 0.8], [1, 1, 1], [0.9, 0.7, 1.3], [0.75, 0.35, 1.7], [0.6, 0.1, 2.2], [0.5, 0.04, 3]];
 
-/** A hero's Ember: rebirths, and Kindling from each Depth (kept in the rebirth record). */
+/** Ember a rebirth gives for gear worth `value` (Echo Essence, see rebirth.js essenceFor). */
+export function emberForGear(value) {
+  return Math.min(DEEP.emberMax, Math.floor(DEEP.emberMax * Math.sqrt(Math.max(0, value || 0) / DEEP.emberFull)));
+}
+
+/** A hero's Ember: what each rebirth gave, and Kindling from each Depth (kept in the rebirth record). */
 export function emberOf(rb) {
   if (!rb) return 0;
-  let n = DEEP.emberPerRebirth * (rb.n || 0);
+  let n = rb.ember || 0;
   for (const d of DEPTH_IDS) n += Math.min(DEEP.kindlingMax, (rb.kindling && rb.kindling[d]) || 0);
   return n;
 }

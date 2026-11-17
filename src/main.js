@@ -3033,8 +3033,47 @@ function start(hot = {}) {
   }
 
   // ------------------------------------------------------------- main loop
+  // (0.54.10) F3: a small readout of how the game is running (frame rate, where the time goes, the
+  // graphics chip), so a slow computer can be told apart from a slow game.
+  const perf = { on: false, el: null, frames: 0, js: 0, worst: 0, since: 0, gpu: null };
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'F3') return;
+    e.preventDefault();
+    perf.on = !perf.on;
+    if (!perf.el) {
+      perf.el = document.createElement('div');
+      perf.el.id = 'perf-meter';
+      document.body.appendChild(perf.el);
+      try {
+        const gl = renderer.renderer.getContext();
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        perf.gpu = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)).replace(/^ANGLE \((.*)\)$/, '$1');
+      } catch (err) {
+        perf.gpu = 'unknown';
+      }
+    }
+    perf.el.classList.toggle('hidden', !perf.on);
+    perf.frames = perf.js = perf.worst = 0;
+    perf.since = performance.now();
+  });
+  function perfTick(now, frameMs, jsMs) {
+    if (!perf.on) return;
+    perf.frames++;
+    perf.js += jsMs;
+    perf.worst = Math.max(perf.worst, frameMs);
+    if (now - perf.since < 500) return;
+    const secs = (now - perf.since) / 1000;
+    const info = renderer.renderer.info.render;
+    perf.el.textContent = `${Math.round(perf.frames / secs)} fps · worst frame ${Math.round(perf.worst)} ms · game code ${(perf.js / perf.frames).toFixed(1)} ms a frame\n` +
+      `graphics ${GFX_NAMES[gfx.level] || gfx.level}${settings.graphics === 'auto' ? ' (auto)' : ''} · ${renderer.renderer.getPixelRatio().toFixed(2)}x · ${renderer.renderer.domElement.width}×${renderer.renderer.domElement.height} · ${info.calls} draws, ${Math.round(info.triangles / 1000)}k triangles\n` +
+      `${perf.gpu}${softGPU ? ' (SOFTWARE: no graphics card)' : ''} · ${world.enemies ? world.enemies.filter((e) => !e.dead).length : 0} enemies · version ${typeof __VERSION__ !== 'undefined' ? __VERSION__ : ''}`;
+    perf.frames = perf.js = perf.worst = 0;
+    perf.since = now;
+  }
+
   function frame(now) {
     requestAnimationFrame(frame);
+    const jsStart = performance.now();
     const rawDt = Math.max(0, (now - last) / 1000);
     const dt = Math.min(0.1, rawDt);
     last = now;
@@ -3107,6 +3146,7 @@ function start(hot = {}) {
     if (!net && mode === 'play') alpha = Math.min(1, acc / CONFIG.TICK);
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
+    perfTick(now, rawDt * 1000, performance.now() - jsStart);
   }
 
   // Handy in the browser console while developing: game.world.player etc.

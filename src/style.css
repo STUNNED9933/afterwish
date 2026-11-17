@@ -777,3 +777,6 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 #room-badge .ping.bad { color: #ff7a6a; }
 /* (0.54.9) the browser has no graphics card to draw with */
 .gpu-warn { margin: 0 0 14px; max-width: 470px; padding: 10px 12px; border: 1px solid #f0a04a; border-radius: 6px; background: rgba(60, 30, 10, 0.75); color: #f6dcc0; font-size: 13px; line-height: 1.45; }
+/* F3: how the game is running (0.54.10) */
+#perf-meter { position: fixed; left: 8px; bottom: 8px; z-index: 99; padding: 6px 8px; background: rgba(0, 0, 0, 0.72); color: #cfe8ff; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre; border-radius: 4px; pointer-events: none; }
+#perf-meter.hidden { display: none; }

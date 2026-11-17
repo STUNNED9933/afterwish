@@ -151,6 +151,13 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Help for slow computers (0.54.9, 0.54.10)
+
+- **F3** shows how the game is running: frame rate, the worst recent frame, how long the game's own code
+  takes a frame, the graphics level, resolution, draws and triangles, and the graphics chip.
+- A browser drawing without the graphics card is detected and told how to turn hardware acceleration on.
+- **Very low** graphics: Low at a lower resolution. Auto steps High, Medium, Low, Very low.
+
 ### Smoother multiplayer between homes (0.54.8)
 
 - **No more pile-ups.** When a friend's connection cannot keep up, the host now waits for it to catch up

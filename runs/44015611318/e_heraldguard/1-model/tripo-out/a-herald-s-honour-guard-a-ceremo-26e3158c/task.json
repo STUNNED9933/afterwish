@@ -1,0 +1,30 @@
+{
+  "task_id": "26e3158c-05c1-422d-bd5d-9ac066962a84",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a Herald's honour guard, a ceremonial palace soldier frozen mid-salute and turned to amber glass: ornate cream white and gold dress armour with gold epaulettes and a sash, a tall gold-crested helmet with a red plume, holding a long gold ceremonial spear, cracked amber glass skin glowing faintly from inside. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T04:48:13.562340Z",
+  "completed_at": "2026-11-17T04:52:53.016747Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

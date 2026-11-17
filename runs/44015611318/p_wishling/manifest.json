@@ -1,0 +1,37 @@
+{
+  "id": "p_wishling",
+  "prompt": "a Wishling, a small floating wisp of warm golden starlight shaped like a tiny hooded spirit with no legs, a soft glowing round face with two dark eye holes, little wispy arms, a trailing tail of golden sparkles. stylised-realistic fantasy game prop, one single floating object on its own, no ground, no base, no stand, no people, clean readable silhouette, hand-painted PBR-style textures, glowing",
+  "started": "2026-11-17T04:54:06.803Z",
+  "creditsBefore": 500,
+  "steps": {
+    "model": {
+      "task": "4e6ad9df-aeb4-464b-8acd-00b65ca3df35",
+      "result": {
+        "task_id": "4e6ad9df-aeb4-464b-8acd-00b65ca3df35",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/p_wishling/1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/p_wishling/1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/model.glb",
+        "preview": "out/models/p_wishling/1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 470,
+  "creditsUsed": 30,
+  "finished": "2026-11-17T04:57:17.034Z",
+  "files": [
+    "1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/generated_image.jpeg",
+    "1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/model.glb",
+    "1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/preview.png",
+    "1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/rendered_image.webp",
+    "1-model/tripo-out/a-wishling-a-small-floating-wisp-4e6ad9df/task.json",
+    "manifest.json"
+  ]
+}

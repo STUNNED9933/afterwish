@@ -1,0 +1,96 @@
+{
+  "id": "n_merchant",
+  "prompt": "a travelling merchant, a weathered cheerful old man with a long grey beard and a wide-brimmed brown traveller's hat, a patched brown and mustard coat, an enormous wooden frame pack on his back hung with lanterns, pots, rolled rugs, trinkets and little bottles, a walking staff, kind wrinkled eyes. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-17T04:19:52.514Z",
+  "creditsBefore": 1130,
+  "steps": {
+    "model": {
+      "task": "31c7bb6f-78e2-4662-bd2c-2d06491bb566",
+      "result": {
+        "task_id": "31c7bb6f-78e2-4662-bd2c-2d06491bb566",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_merchant/1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_merchant/1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/model.glb",
+        "preview": "out/models/n_merchant/1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/preview.png"
+      }
+    },
+    "check": {
+      "task": "9e0568d6-4bde-42f0-8cea-284290a1a9a5",
+      "result": {
+        "task_id": "9e0568d6-4bde-42f0-8cea-284290a1a9a5",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_merchant/2-check/tripo-out/rig-check-2-9e0568d6",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "aaa84632-bb50-4276-8c32-dbae434f26ba",
+      "rigType": "biped",
+      "result": {
+        "task_id": "aaa84632-bb50-4276-8c32-dbae434f26ba",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_merchant/3-rig/tripo-out/rig-2-aaa84632",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_merchant/3-rig/tripo-out/rig-2-aaa84632/model.glb",
+        "preview": "out/models/n_merchant/3-rig/tripo-out/rig-2-aaa84632/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "1c10eeaa-fc57-4b23-bcd6-dc52f68d97d4",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_01",
+          "preset:biped:look_around",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "1c10eeaa-fc57-4b23-bcd6-dc52f68d97d4",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_merchant/4-anim-1/tripo-out/retarget-2-1c10eeaa",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_merchant/4-anim-1/tripo-out/retarget-2-1c10eeaa/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1025,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:26:24.259Z",
+  "files": [
+    "1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/generated_image.jpeg",
+    "1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/model.glb",
+    "1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/preview.png",
+    "1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/rendered_image.webp",
+    "1-model/tripo-out/a-travelling-merchant-a-weathere-31c7bb6f/task.json",
+    "2-check/tripo-out/rig-check-2-9e0568d6/task.json",
+    "3-rig/tripo-out/rig-2-aaa84632/model.glb",
+    "3-rig/tripo-out/rig-2-aaa84632/preview.png",
+    "3-rig/tripo-out/rig-2-aaa84632/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-aaa84632/task.json",
+    "4-anim-1/tripo-out/retarget-2-1c10eeaa/model.glb",
+    "4-anim-1/tripo-out/retarget-2-1c10eeaa/task.json",
+    "manifest.json"
+  ]
+}

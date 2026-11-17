@@ -1,0 +1,96 @@
+{
+  "id": "e_edric",
+  "prompt": "Edric of the Blue Trim, a tall undead gate captain still standing his watch: proud gaunt knight in polished but battered steel plate trimmed with royal blue cloth, a royal blue cape torn at the hem, an open-faced helmet showing a pale noble face with sad glowing blue eyes, a sturdy longsword with blue cloth wrapped at the guard, a round shield with a small gold star. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T04:37:34.494Z",
+  "creditsBefore": 815,
+  "steps": {
+    "model": {
+      "task": "2b7194d1-ab28-4f98-90b7-5776848db1c8",
+      "result": {
+        "task_id": "2b7194d1-ab28-4f98-90b7-5776848db1c8",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_edric/1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_edric/1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/model.glb",
+        "preview": "out/models/e_edric/1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/preview.png"
+      }
+    },
+    "check": {
+      "task": "64e1a5ad-d567-45b6-b529-2dbbb11c7483",
+      "result": {
+        "task_id": "64e1a5ad-d567-45b6-b529-2dbbb11c7483",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_edric/2-check/tripo-out/rig-check-5-64e1a5ad",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "9e9e470d-9479-47be-b39d-0c8a4042ed35",
+      "rigType": "biped",
+      "result": {
+        "task_id": "9e9e470d-9479-47be-b39d-0c8a4042ed35",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_edric/3-rig/tripo-out/rig-5-9e9e470d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_edric/3-rig/tripo-out/rig-5-9e9e470d/model.glb",
+        "preview": "out/models/e_edric/3-rig/tripo-out/rig-5-9e9e470d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "6ed261fb-47c5-46e4-9660-4504bf1485e6",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "6ed261fb-47c5-46e4-9660-4504bf1485e6",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_edric/4-anim-1/tripo-out/retarget-5-6ed261fb",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_edric/4-anim-1/tripo-out/retarget-5-6ed261fb/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 710,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:43:35.758Z",
+  "files": [
+    "1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/generated_image.jpeg",
+    "1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/model.glb",
+    "1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/preview.png",
+    "1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/rendered_image.webp",
+    "1-model/tripo-out/edric-of-the-blue-trim-a-tall-un-2b7194d1/task.json",
+    "2-check/tripo-out/rig-check-5-64e1a5ad/task.json",
+    "3-rig/tripo-out/rig-5-9e9e470d/model.glb",
+    "3-rig/tripo-out/rig-5-9e9e470d/preview.png",
+    "3-rig/tripo-out/rig-5-9e9e470d/rendered_image.webp",
+    "3-rig/tripo-out/rig-5-9e9e470d/task.json",
+    "4-anim-1/tripo-out/retarget-5-6ed261fb/model.glb",
+    "4-anim-1/tripo-out/retarget-5-6ed261fb/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "e_heraldguard",
+  "prompt": "a Herald's honour guard, a ceremonial palace soldier frozen mid-salute and turned to amber glass: ornate cream white and gold dress armour with gold epaulettes and a sash, a tall gold-crested helmet with a red plume, holding a long gold ceremonial spear, cracked amber glass skin glowing faintly from inside. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T04:48:12.213Z",
+  "creditsBefore": 605,
+  "steps": {
+    "model": {
+      "task": "26e3158c-05c1-422d-bd5d-9ac066962a84",
+      "result": {
+        "task_id": "26e3158c-05c1-422d-bd5d-9ac066962a84",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_heraldguard/1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_heraldguard/1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/model.glb",
+        "preview": "out/models/e_heraldguard/1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/preview.png"
+      }
+    },
+    "check": {
+      "task": "b2ea75a6-cfb9-4550-97c7-072ddcc8ca88",
+      "result": {
+        "task_id": "b2ea75a6-cfb9-4550-97c7-072ddcc8ca88",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_heraldguard/2-check/tripo-out/rig-check-7-b2ea75a6",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "87767705-cb05-4846-92e4-45a745a4c28f",
+      "rigType": "biped",
+      "result": {
+        "task_id": "87767705-cb05-4846-92e4-45a745a4c28f",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_heraldguard/3-rig/tripo-out/rig-7-87767705",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_heraldguard/3-rig/tripo-out/rig-7-87767705/model.glb",
+        "preview": "out/models/e_heraldguard/3-rig/tripo-out/rig-7-87767705/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "2faa1dd3-f21a-4db9-aaf9-810e06a321b6",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "2faa1dd3-f21a-4db9-aaf9-810e06a321b6",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_heraldguard/4-anim-1/tripo-out/retarget-7-2faa1dd3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_heraldguard/4-anim-1/tripo-out/retarget-7-2faa1dd3/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 500,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:54:06.802Z",
+  "files": [
+    "1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/generated_image.jpeg",
+    "1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/model.glb",
+    "1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/preview.png",
+    "1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/rendered_image.webp",
+    "1-model/tripo-out/a-herald-s-honour-guard-a-ceremo-26e3158c/task.json",
+    "2-check/tripo-out/rig-check-7-b2ea75a6/task.json",
+    "3-rig/tripo-out/rig-7-87767705/model.glb",
+    "3-rig/tripo-out/rig-7-87767705/preview.png",
+    "3-rig/tripo-out/rig-7-87767705/rendered_image.webp",
+    "3-rig/tripo-out/rig-7-87767705/task.json",
+    "4-anim-1/tripo-out/retarget-7-2faa1dd3/model.glb",
+    "4-anim-1/tripo-out/retarget-7-2faa1dd3/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "n_lark",
+  "prompt": "Lark, a young herbalist apprentice girl of about sixteen, short messy honey-blonde hair, freckles, a moss green tunic with rolled sleeves and a cream apron stuffed with notes and herb bundles, a pencil behind her ear, ink-stained fingers, an eager determined expression. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-17T04:32:25.140Z",
+  "creditsBefore": 920,
+  "steps": {
+    "model": {
+      "task": "c5d93a0b-47e8-4daa-9fa6-87a6147a9010",
+      "result": {
+        "task_id": "c5d93a0b-47e8-4daa-9fa6-87a6147a9010",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_lark/1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_lark/1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/model.glb",
+        "preview": "out/models/n_lark/1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/preview.png"
+      }
+    },
+    "check": {
+      "task": "033eae4d-fb9c-48b8-be5c-fc2affccdedc",
+      "result": {
+        "task_id": "033eae4d-fb9c-48b8-be5c-fc2affccdedc",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_lark/2-check/tripo-out/rig-check-4-033eae4d",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "4190fd65-2ceb-47bc-a94c-39966367fb5a",
+      "rigType": "biped",
+      "result": {
+        "task_id": "4190fd65-2ceb-47bc-a94c-39966367fb5a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_lark/3-rig/tripo-out/rig-4-4190fd65",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_lark/3-rig/tripo-out/rig-4-4190fd65/model.glb",
+        "preview": "out/models/n_lark/3-rig/tripo-out/rig-4-4190fd65/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "fb20ccf9-7683-42ee-8a78-cc3ff252ec73",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_01",
+          "preset:biped:look_around",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "fb20ccf9-7683-42ee-8a78-cc3ff252ec73",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_lark/4-anim-1/tripo-out/retarget-4-fb20ccf9",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_lark/4-anim-1/tripo-out/retarget-4-fb20ccf9/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 815,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:37:34.493Z",
+  "files": [
+    "1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/generated_image.jpeg",
+    "1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/model.glb",
+    "1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/preview.png",
+    "1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/rendered_image.webp",
+    "1-model/tripo-out/lark-a-young-herbalist-apprentic-c5d93a0b/task.json",
+    "2-check/tripo-out/rig-check-4-033eae4d/task.json",
+    "3-rig/tripo-out/rig-4-4190fd65/model.glb",
+    "3-rig/tripo-out/rig-4-4190fd65/preview.png",
+    "3-rig/tripo-out/rig-4-4190fd65/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-4190fd65/task.json",
+    "4-anim-1/tripo-out/retarget-4-fb20ccf9/model.glb",
+    "4-anim-1/tripo-out/retarget-4-fb20ccf9/task.json",
+    "manifest.json"
+  ]
+}

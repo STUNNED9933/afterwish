@@ -1,0 +1,96 @@
+{
+  "id": "e_wishthief",
+  "prompt": "a Wishthief, a small hunched goblin-like thief made of tarnished gold and shadow, a ragged hooded cloak of dark brown cloth glittering with stolen coins sewn into it, a bulging sack of glowing gold wishes over one shoulder, long thin fingers, wide greedy glowing yellow eyes under the hood, barefoot, sly crouched posture. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T04:13:18.811Z",
+  "creditsBefore": 1235,
+  "steps": {
+    "model": {
+      "task": "669ca354-4342-477d-8750-ad35633c45c0",
+      "result": {
+        "task_id": "669ca354-4342-477d-8750-ad35633c45c0",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_wishthief/1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wishthief/1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/model.glb",
+        "preview": "out/models/e_wishthief/1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/preview.png"
+      }
+    },
+    "check": {
+      "task": "ba4fb940-667a-42dc-aec5-273da535c428",
+      "result": {
+        "task_id": "ba4fb940-667a-42dc-aec5-273da535c428",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_wishthief/2-check/tripo-out/rig-check-ba4fb940",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d0b6dc84-a589-4b86-a470-2f1929fd534a",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d0b6dc84-a589-4b86-a470-2f1929fd534a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_wishthief/3-rig/tripo-out/rig-d0b6dc84",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_wishthief/3-rig/tripo-out/rig-d0b6dc84/model.glb",
+        "preview": "out/models/e_wishthief/3-rig/tripo-out/rig-d0b6dc84/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "4f2b9a32-7f87-475f-a0fe-3ac8b61fcdee",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:run",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:swagger"
+        ],
+        "result": {
+          "task_id": "4f2b9a32-7f87-475f-a0fe-3ac8b61fcdee",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_wishthief/4-anim-1/tripo-out/retarget-4f2b9a32",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_wishthief/4-anim-1/tripo-out/retarget-4f2b9a32/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1130,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:19:52.513Z",
+  "files": [
+    "1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/generated_image.jpeg",
+    "1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/model.glb",
+    "1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/preview.png",
+    "1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/rendered_image.webp",
+    "1-model/tripo-out/a-wishthief-a-small-hunched-gobl-669ca354/task.json",
+    "2-check/tripo-out/rig-check-ba4fb940/task.json",
+    "3-rig/tripo-out/rig-d0b6dc84/model.glb",
+    "3-rig/tripo-out/rig-d0b6dc84/preview.png",
+    "3-rig/tripo-out/rig-d0b6dc84/rendered_image.webp",
+    "3-rig/tripo-out/rig-d0b6dc84/task.json",
+    "4-anim-1/tripo-out/retarget-4f2b9a32/model.glb",
+    "4-anim-1/tripo-out/retarget-4f2b9a32/task.json",
+    "manifest.json"
+  ]
+}

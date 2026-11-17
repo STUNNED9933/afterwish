@@ -1,0 +1,30 @@
+{
+  "task_id": "c5d93a0b-47e8-4daa-9fa6-87a6147a9010",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Lark, a young herbalist apprentice girl of about sixteen, short messy honey-blonde hair, freckles, a moss green tunic with rolled sleeves and a cream apron stuffed with notes and herb bundles, a pencil behind her ear, ink-stained fingers, an eager determined expression. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 9000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-17T04:32:26.770648Z",
+  "completed_at": "2026-11-17T04:36:57.246235Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

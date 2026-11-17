@@ -1,0 +1,96 @@
+{
+  "id": "e_oathshade",
+  "prompt": "an Oath Shade, the ghost of a gate soldier called back to fight: a translucent violet spectral knight made of smoke and pale purple light, broken half-plate armour drifting apart, a cracked greatsword of ghostly light, hollow white eyes under a visored helm, ragged violet mist trailing from the legs. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-17T04:43:35.759Z",
+  "creditsBefore": 710,
+  "steps": {
+    "model": {
+      "task": "45ed9d77-1272-4e24-9332-b5e90eb1e15a",
+      "result": {
+        "task_id": "45ed9d77-1272-4e24-9332-b5e90eb1e15a",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_oathshade/1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_oathshade/1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/model.glb",
+        "preview": "out/models/e_oathshade/1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/preview.png"
+      }
+    },
+    "check": {
+      "task": "3bcbdd6f-28ec-42c0-aa24-274032b4fb47",
+      "result": {
+        "task_id": "3bcbdd6f-28ec-42c0-aa24-274032b4fb47",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_oathshade/2-check/tripo-out/rig-check-6-3bcbdd6f",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d0ea7e5d-fdf9-48c2-8d03-e54c770e57d3",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d0ea7e5d-fdf9-48c2-8d03-e54c770e57d3",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_oathshade/3-rig/tripo-out/rig-6-d0ea7e5d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_oathshade/3-rig/tripo-out/rig-6-d0ea7e5d/model.glb",
+        "preview": "out/models/e_oathshade/3-rig/tripo-out/rig-6-d0ea7e5d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "bfeebd04-5107-4003-9522-f883d025db1b",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "bfeebd04-5107-4003-9522-f883d025db1b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_oathshade/4-anim-1/tripo-out/retarget-6-bfeebd04",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_oathshade/4-anim-1/tripo-out/retarget-6-bfeebd04/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 605,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:48:12.212Z",
+  "files": [
+    "1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/generated_image.jpeg",
+    "1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/model.glb",
+    "1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/preview.png",
+    "1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/rendered_image.webp",
+    "1-model/tripo-out/an-oath-shade-the-ghost-of-a-gat-45ed9d77/task.json",
+    "2-check/tripo-out/rig-check-6-3bcbdd6f/task.json",
+    "3-rig/tripo-out/rig-6-d0ea7e5d/model.glb",
+    "3-rig/tripo-out/rig-6-d0ea7e5d/preview.png",
+    "3-rig/tripo-out/rig-6-d0ea7e5d/rendered_image.webp",
+    "3-rig/tripo-out/rig-6-d0ea7e5d/task.json",
+    "4-anim-1/tripo-out/retarget-6-bfeebd04/model.glb",
+    "4-anim-1/tripo-out/retarget-6-bfeebd04/task.json",
+    "manifest.json"
+  ]
+}

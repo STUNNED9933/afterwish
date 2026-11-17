@@ -1,0 +1,37 @@
+{
+  "id": "p_wishstar",
+  "prompt": "a wish-star, a floating crystal star of pale teal glass about the size of a person, five sharp points, a bright glowing core inside, thin cracks of light across its faces, small shards orbiting it. stylised-realistic fantasy game prop, one single floating object on its own, no ground, no base, no stand, no people, clean readable silhouette, hand-painted PBR-style textures, glowing",
+  "started": "2026-11-17T04:57:17.034Z",
+  "creditsBefore": 470,
+  "steps": {
+    "model": {
+      "task": "719d1e7f-241e-4a08-8dd8-5cb5c8b53be7",
+      "result": {
+        "task_id": "719d1e7f-241e-4a08-8dd8-5cb5c8b53be7",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/p_wishstar/1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/p_wishstar/1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/model.glb",
+        "preview": "out/models/p_wishstar/1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 440,
+  "creditsUsed": 30,
+  "finished": "2026-11-17T05:00:26.724Z",
+  "files": [
+    "1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/generated_image.jpeg",
+    "1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/model.glb",
+    "1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/preview.png",
+    "1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/rendered_image.webp",
+    "1-model/tripo-out/a-wish-star-a-floating-crystal-s-719d1e7f/task.json",
+    "manifest.json"
+  ]
+}

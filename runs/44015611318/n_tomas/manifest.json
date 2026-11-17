@@ -1,0 +1,96 @@
+{
+  "id": "n_tomas",
+  "prompt": "Tomas, a tired gentle woodsman father in his forties home at last, faint and slightly translucent like a fading memory with a soft pale blue glow at his edges, plain dark green work shirt and brown trousers, a long red knitted scarf wound twice around his neck, short dark hair, stubble, a calm sad smile. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures, warm and grounded",
+  "started": "2026-11-17T04:26:24.260Z",
+  "creditsBefore": 1025,
+  "steps": {
+    "model": {
+      "task": "99b34e5f-67cb-470b-8998-56dec49f990f",
+      "result": {
+        "task_id": "99b34e5f-67cb-470b-8998-56dec49f990f",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/n_tomas/1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_tomas/1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/model.glb",
+        "preview": "out/models/n_tomas/1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/preview.png"
+      }
+    },
+    "check": {
+      "task": "8b2372b9-b861-438b-ba51-70f9e2c86fe8",
+      "result": {
+        "task_id": "8b2372b9-b861-438b-ba51-70f9e2c86fe8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/n_tomas/2-check/tripo-out/rig-check-3-8b2372b9",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "dc49771b-6d00-4738-956d-506029d29021",
+      "rigType": "biped",
+      "result": {
+        "task_id": "dc49771b-6d00-4738-956d-506029d29021",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/n_tomas/3-rig/tripo-out/rig-3-dc49771b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/n_tomas/3-rig/tripo-out/rig-3-dc49771b/model.glb",
+        "preview": "out/models/n_tomas/3-rig/tripo-out/rig-3-dc49771b/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "56191340-5e2c-4f3d-af3b-46f15361e3ae",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:standing_relax",
+          "preset:biped:greet_01",
+          "preset:biped:sob",
+          "preset:biped:agree"
+        ],
+        "result": {
+          "task_id": "56191340-5e2c-4f3d-af3b-46f15361e3ae",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/n_tomas/4-anim-1/tripo-out/retarget-3-56191340",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/n_tomas/4-anim-1/tripo-out/retarget-3-56191340/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 920,
+  "creditsUsed": 105,
+  "finished": "2026-11-17T04:32:25.139Z",
+  "files": [
+    "1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/generated_image.jpeg",
+    "1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/model.glb",
+    "1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/preview.png",
+    "1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/rendered_image.webp",
+    "1-model/tripo-out/tomas-a-tired-gentle-woodsman-fa-99b34e5f/task.json",
+    "2-check/tripo-out/rig-check-3-8b2372b9/task.json",
+    "3-rig/tripo-out/rig-3-dc49771b/model.glb",
+    "3-rig/tripo-out/rig-3-dc49771b/preview.png",
+    "3-rig/tripo-out/rig-3-dc49771b/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-dc49771b/task.json",
+    "4-anim-1/tripo-out/retarget-3-56191340/model.glb",
+    "4-anim-1/tripo-out/retarget-3-56191340/task.json",
+    "manifest.json"
+  ]
+}

@@ -121,18 +121,84 @@ let gearSpec = null;
 export const gearSpecNow = () => gearSpec;
 export const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.hero}</svg>`;
 
-/** Tooltip text for an ability, including its rank and any augments changing it. */
-export function abilityTooltip(world, slot) {
+const fmtN = (n) => Math.round(n).toLocaleString('en-US');
+const pctN = (x) => `${Math.round(x * 100)}%`;
+const numN = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? String(Math.round(x)) : x.toFixed(2).replace(/0$/, ''));
+
+/** What one number of a skill's damage is: per arrow, over the storm, to each enemy hit... (0.52) */
+function damageUnit(world, def) {
+  const m = world.mods;
+  switch (def.type) {
+    case 'barrage': return `per arrow, ${def.count + (m.wExtra || 0)} arrows`;
+    case 'zone': return `over ${numN(def.duration + (m.rDuration || 0))} s, to everything inside`;
+    case 'ricochet': return `to each of up to ${def.bounces + 1} enemies`;
+    case 'kunai': return 'per kunai';
+    case 'deadeye': return 'to the first enemy (70%, 50%, 35% to the next three)';
+    case 'dash': return def.motes ? `per mote, ${def.motes.count} motes` : def.width > 0 ? 'to each enemy passed through' : '';
+    case 'strike': case 'bolt': return '';
+    default: return 'to each enemy hit';
+  }
+}
+
+/** A skill that deals no damage itself: what it gives instead, Overflow included (0.52). */
+function buffLines(world, def, slot, b) {
+  const m = world.mods, out = [];
+  if (def.rush) out.push(`+${pctN((def.rush.as + (m.eRush || 0)) * b.over)} attack speed for ${numN(def.rush.time + (m.eRushTime || 0))} s`);
+  if (def.empower) out.push(`your next ability within ${numN(def.empower.time)} s deals +${pctN((def.empower.mult - 1 + (m[slot + 'Empower'] || 0)) * b.over)}`);
+  if (def.quick) out.push(`your next ${def.quick.shots} shots leave the string at once, +${pctN((def.quick.mult - 1) * b.over)} damage`);
+  if (def.type === 'focus') out.push(`your next ability within ${numN(def.time)} s deals +${pctN(def.mult - 1)} and always crits`);
+  return out;
+}
+
+/**
+ * Tooltip text for an ability (0.52, after LoL's): the damage it deals now, worked out with every
+ * multiplier (rank, talents and augments, Overflow, class power), and with Shift held the calculation
+ * itself: the flat part, the per-level part and the attack-damage ratio, then each multiplier, and how
+ * the cooldown comes out.
+ */
+export function abilityTooltip(world, slot, detail = Tooltip.shift) {
   const a = world.kit[slot];
   const p = world.player;
   const rank = p.ranks[slot];
   const unlocked = world.abilityUnlocked(slot);
+  const b = world.abilityBreakdown(slot);
+  const unit = damageUnit(world, a);
+  const adName = world.cls === 'mage' ? 'spell power' : 'attack damage';
   const augs = world.augments.filter((id) => AUGMENTS[id].slot === slot).map((id) => `<div class="plus">${AUGMENTS[id].name}: ${AUGMENTS[id].desc}</div>`);
-  let html = `<div class="tt-name">${a.name}</div><div class="tt-meta">Rank ${rank} of ${CONFIG.MAX_RANK} &middot; ${world.abilityCooldown(slot).toFixed(1)}s cooldown`;
-  html += unlocked ? ` &middot; ${Math.round(world.abilityDamage(slot))} damage</div>` : ` &middot; unlocks at level ${a.unlock}</div>`;
+  let html = `<div class="tt-name">${a.name}</div><div class="tt-meta">Rank ${rank} of ${CONFIG.MAX_RANK} &middot; ${b.cd.final.toFixed(1)} s cooldown${a.range ? ` &middot; ${numN(a.range * (world.mods[slot + 'Range'] || 1))} m` : ''}`;
+  html += unlocked ? '</div>' : ` &middot; unlocks at level ${a.unlock}</div>`;
+  if (b.final > 0) html += `<div class="tt-dmg"><b>${fmtN(b.final)}</b> damage${unit ? ` <span>${unit}</span>` : ''}</div>`;
+  for (const line of buffLines(world, a, slot, b)) html += `<div class="tt-dmg"><span>${line[0].toUpperCase() + line.slice(1)}</span></div>`;
   html += `<div>${a.desc}</div>`;
+  if (detail) {
+    if (b.final > 0) {
+      const rows = [];
+      if (b.exact) {
+        rows.push(`<div><span>${fmtN(b.flat)}</span> base</div>`);
+        if (b.perLevel) rows.push(`<div>+ <span>${numN(b.perLevel)}</span> per level <i>(level ${b.level}: ${fmtN(b.perLevel * b.level)})</i></div>`);
+        if (b.adRatio) rows.push(`<div>+ <span class="r-ad">${pctN(b.adRatio)} ${adName}</span> <i>(${fmtN(b.ad)}${b.iron ? `, ${fmtN(b.iron)} of it from armor` : ''}: ${fmtN(b.adRatio * b.ad)})</i></div>`);
+        if (b.asScales) rows.push(`<div>&times; <span class="r-as">your attacks per second</span> <i>(${b.as.toFixed(2)})</i></div>`);
+        rows.push(`<div class="sum">= ${fmtN(b.formula)}</div>`);
+      } else rows.push(`<div>${fmtN(b.formula)} from the skill itself</div>`);
+      rows.push(`<div>&times; ${b.rank.toFixed(2)} <i>rank ${rank} (+${Math.round(CONFIG.RANK_DAMAGE * 100)}% a rank past the first)</i></div>`);
+      if (Math.abs(b.mods - 1) > 1e-6) rows.push(`<div>&times; ${b.mods.toFixed(2)} <i>talents and augments</i></div>`);
+      if (b.over > 1) rows.push(`<div>&times; <span class="r-haste">${b.over.toFixed(2)}</span> <i>Overflow: haste past the ${numN(b.cd.floor)} s floor</i></div>`);
+      if (Math.abs(b.power - 1) > 1e-6) rows.push(`<div>&times; ${b.power.toFixed(2)} <i>class power</i></div>`);
+      rows.push(`<div class="sum">= ${fmtN(b.final)}${unit ? ` ${unit}` : ''}</div>`);
+      rows.push(`<div class="note">Crits: ${Math.round(b.crit)}% chance, ${pctN(b.critMult)} damage. Enemies above your level take less, below it more.</div>`);
+      html += `<div class="tt-calc"><b>Damage</b>${rows.join('')}</div>`;
+    }
+    const c = b.cd;
+    let cd = `${numN(c.base)} s`;
+    if (Math.abs(c.mods - 1) > 1e-6) cd += ` &times; ${c.mods.toFixed(2)} <i>talents</i>`;
+    if (Math.abs(c.rank - 1) > 1e-6) cd += ` &times; ${c.rank.toFixed(2)} <i>rank</i>`;
+    cd += ` &divide; <span class="r-haste">${numN(1 + c.haste / 100)}</span> <i>(${fmtN(c.haste)} ability haste)</i> = ${c.raw.toFixed(2)} s`;
+    if (c.raw < c.floor && c.base > c.floor) cd += `, held at the ${numN(c.floor)} s floor`;
+    html += `<div class="tt-calc"><b>Cooldown</b><div>${cd}</div></div>`;
+  }
   if (augs.length) html += `<div class="tt-diff"><b>Augments</b>${augs.join('')}</div>`;
   if (rank < CONFIG.MAX_RANK) html += `<div class="tt-desc">Next rank: +${Math.round(CONFIG.RANK_DAMAGE * 100)}% damage, ${Math.round(CONFIG.RANK_COOLDOWN * 100)}% shorter cooldown.</div>`;
+  if (!detail) html += `<div class="tt-hint">Hold <kbd>Shift</kbd> for the calculation</div>`;
   return html;
 }
 
@@ -160,7 +226,7 @@ export class Hud {
       const el = document.createElement('div');
       el.className = 'slot ' + cls;
       el.innerHTML = `${svg(icon)}<div class="cd"></div><div class="num"></div><div class="lock"></div><kbd>${label}</kbd>`;
-      el.addEventListener('mouseenter', () => this.tooltip.show(tipHtml(), el));
+      el.addEventListener('mouseenter', () => this.tooltip.show(tipHtml, el)); // (0.52: a function, so Shift can rebuild it)
       el.addEventListener('mouseleave', () => this.tooltip.hide());
       root.appendChild(el);
       this.slots[key] = { el, cd: el.querySelector('.cd'), num: el.querySelector('.num'), lock: el.querySelector('.lock'), last: '' };
@@ -807,10 +873,24 @@ export class Hud {
 
 /** One shared tooltip element that follows whatever is hovered. */
 export class Tooltip {
+  /** Shift held: ability tooltips show their calculation (0.52). */
+  static shift = false;
   constructor() {
     this.el = $('tooltip');
+    this.last = null;
+    const flip = (on) => {
+      if (Tooltip.shift === on) return;
+      Tooltip.shift = on;
+      // a tooltip built from a function is built again, so it shows (or hides) the details at once
+      if (this.last && !this.el.classList.contains('hidden')) this.show(...this.last);
+    };
+    window.addEventListener('keydown', (e) => e.key === 'Shift' && flip(true));
+    window.addEventListener('keyup', (e) => e.key === 'Shift' && flip(false));
+    window.addEventListener('blur', () => flip(false));
   }
-  show(html, anchor, rarityColor, immortal = false) {
+  show(content, anchor, rarityColor, immortal = false) {
+    this.last = typeof content === 'function' ? [content, anchor, rarityColor, immortal] : null;
+    const html = typeof content === 'function' ? content() : content;
     if (!html) return;
     this.el.innerHTML = html;
     this.el.style.setProperty('--rarity', rarityColor || '');

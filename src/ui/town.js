@@ -179,7 +179,7 @@ export class Town {
       const icon = document.createElement('div');
       icon.className = 'cell';
       icon.innerHTML = svg(a.icon || s);
-      icon.addEventListener('mouseenter', () => this.tooltip.show(abilityTooltip(world, s), icon));
+      icon.addEventListener('mouseenter', () => this.tooltip.show(() => abilityTooltip(world, s), icon));
       icon.addEventListener('mouseleave', () => this.tooltip.hide());
       const text = document.createElement('div');
       text.className = 'town-row-text';

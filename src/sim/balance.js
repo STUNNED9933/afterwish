@@ -12,11 +12,11 @@
 export const POWER = {
   mid: {
     base: { warrior: 1, archer: 1.05, rogue: 1, mage: 1.55 },
-    spec: { berserker: 1.52, bulwark: 1.36, sharpshooter: 1.04, windrunner: 1.06, assassin: 0.89, shadowdancer: 1, pyromancer: 1.18, frostbinder: 0.92 },
+    spec: { berserker: 1.52, bulwark: 1.36, sharpshooter: 0.9, windrunner: 1.06, assassin: 0.89, shadowdancer: 1, pyromancer: 1.18, frostbinder: 0.92 },
   },
   late: {
     base: { warrior: 1.6, archer: 1.95, rogue: 1, mage: 2.55 },
-    spec: { berserker: 1.79, bulwark: 1.08, sharpshooter: 0.81, windrunner: 1.1, assassin: 1.71, shadowdancer: 0.98, pyromancer: 2.01, frostbinder: 1.14 },
+    spec: { berserker: 1.79, bulwark: 1.08, sharpshooter: 0.61, windrunner: 1.1, assassin: 1.71, shadowdancer: 0.98, pyromancer: 2.01, frostbinder: 1.14 },
   },
 };
 

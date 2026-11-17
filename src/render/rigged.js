@@ -75,7 +75,7 @@ export const RIGGED = {
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
-      aim: { clip: 'arc_deadeye', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) Deadeye drawn for a second, loosed at 1 s
+      aim: { clip: 'arc_deadeye', keys: [[0, 0.5], [0.5, 1.0], [0.95, 1.45]], fade: 0.35 }, // (0.52) Deadeye: from the nock (the arrow is already in hand), drawn in half a second, loosed at 0.5 s
       ricochet: { clip: 'arc_power', keys: [[0, 0.2], [0.6, 0.85]], fade: 0.2 },
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
       zone: { clip: 'arc_storm', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) drawn for a second, loosed at 1 s with the game's shot
@@ -768,7 +768,6 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
   };
   const rest = new THREE.Vector3(-0.19, 0, 0);
   const nock = new THREE.Vector3();
-  let loosed = false;
   return {
     update(aimW) {
       root.updateMatrixWorld(true);
@@ -791,11 +790,9 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
       group.updateMatrix();
       // the string: to the drawing hand while it is pulled back behind the bow
       tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());
-      // (0.50) once the hand has gone past full draw (the arrow is loosed), the string stays empty until
-      // the hand comes back to the bow: a hand passing back along the arrow is not drawing another
-      if (aimW <= 0.4 || tmp.x >= -0.24) loosed = false;
-      else if (tmp.x <= -0.72) loosed = true;
-      const drawn = !loosed && aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
+      // (0.52: the arrow shows again whenever the hand is drawing, as before 0.50: it is the next arrow
+      // coming from the quiver to the string, which is what she is doing)
+      const drawn = aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
       nock.copy(drawn ? tmp.set(tmp.x, 0, 0) : rest);
       seg(upper, nock, top);
       seg(lower, nock, bottom);

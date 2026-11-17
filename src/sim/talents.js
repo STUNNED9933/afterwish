@@ -97,10 +97,10 @@ export const SPECS = {
         desc: 'Slow your breathing. Your next ability within 6 seconds deals 60% more and always crits, and your next basic attack is a Steady Aim crit. Breathe before Deadeye.',
       },
       r: {
-        key: 'R', name: 'Deadeye', type: 'deadeye', icon: 'deadeye', unlock: 6, cd: 40, range: 44, width: 1.3, channel: 1, channelSlow: 0.6, // (0.51) drawn for 1 s, slowed
+        key: 'R', name: 'Deadeye', type: 'deadeye', icon: 'deadeye', unlock: 6, cd: 40, range: 44, width: 1.3, channel: 0.5, channelSlow: 0.6, // (0.51) drawn, slowed (0.52: half a second)
         // one shot, multiplied by attacks per second: the faster your hands, the harder the one shot lands
         dmg: (s, lvl) => (2.4 * s.ad + 45 + 12 * lvl) * Math.max(1, s.as || 1),
-        desc: 'Draw for 1 second (you can walk, slowly), then one shot across the whole map at your cursor. It always crits, its damage is multiplied by your attacks per second, and it pierces up to 3 times: the 2nd enemy takes 70% and is Marked (20% more damage for 5 s), the 3rd takes 50% and is Pinned (stunned 1.5 s; bosses less), the 4th takes 35% and Splinters, shards hitting everything within 3 m for 35%. Long Watch makes a far one hurt most.',
+        desc: 'Draw for half a second (you can walk, slowly), then one shot across the whole map at your cursor. It always crits, its damage is multiplied by your attacks per second, and it pierces up to 3 times: the 2nd enemy takes 70% and is Marked (20% more damage for 5 s), the 3rd takes 50% and is Pinned (stunned 1.5 s; bosses less), the 4th takes 35% and Splinters, shards hitting everything within 3 m for 35%. Long Watch makes a far one hurt most.',
       },
     },
     talents: [

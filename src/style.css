@@ -394,6 +394,20 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 #tooltip .plus { color: var(--life); }
 #tooltip .minus { color: var(--danger); }
 #tooltip .tt-desc { color: var(--muted); margin-top: 4px; font-size: 14px; }
+/* Ability damage (0.52): the number up top, and with Shift the calculation */
+#tooltip .tt-dmg { margin: 0 0 6px; font-size: 15px; }
+#tooltip .tt-dmg b { color: #ffb38a; font-size: 18px; font-weight: 600; }
+#tooltip .tt-dmg span { color: var(--muted); font-size: 13px; }
+#tooltip .tt-calc { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; }
+#tooltip .tt-calc b { display: block; font-weight: 500; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+#tooltip .tt-calc i { color: var(--muted); font-style: normal; }
+#tooltip .tt-calc .sum { color: var(--bone); font-weight: 600; }
+#tooltip .tt-calc .note { color: var(--muted); font-size: 12px; margin-top: 4px; }
+#tooltip .r-ad { color: #ff9a5c; }
+#tooltip .r-as { color: #f2d36b; }
+#tooltip .r-haste { color: #8fd0ff; }
+#tooltip .tt-hint { margin-top: 8px; color: var(--muted); font-size: 12px; }
+#tooltip .tt-hint kbd { font: inherit; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; }
 #tooltip .tt-effect { margin-top: 8px; padding: 6px 8px; border-left: 2px solid var(--rarity, var(--steel)); background: rgba(127, 245, 225, 0.08); font-size: 14px; }
 #tooltip .tt-effect b { display: block; color: var(--rarity, var(--steel)); }
 #tooltip .tt-from { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }

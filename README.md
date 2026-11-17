@@ -151,6 +151,18 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Skill tooltips with the numbers, Deadeye drawn faster (0.52)
+
+- **Skill tooltips** show the damage the skill deals now, with everything counted: rank, talents and
+  augments, Overflow and class power (what lands on an enemy of your level, before crits). Hold
+  **Shift** for the calculation, like LoL's: the flat part, the per-level part and the attack-damage (or
+  spell-power) ratio, Deadeye's attacks-per-second multiplier, each multiplier on top, and how the
+  cooldown comes out of your ability haste. Buff skills show what they give, Overflow included.
+  (`abilityBreakdown` in `src/sim/world.js`; a test checks every skill's numbers add up to what it deals.)
+- **Deadeye** is drawn in half a second (was 1 s); its class power is lowered to match (2.34M late, 21.5k
+  at level 75 on the boss bench).
+- The arrow shows on the string again whenever her hand is drawing, after a shot too (0.50 had hidden it).
+
 ### Archer channels, Deadeye pierces, Culling Edge, class power (0.51)
 
 - **Arrow Storm** is drawn for a full second (you can walk, 60% slower; no attacks or other skills), and

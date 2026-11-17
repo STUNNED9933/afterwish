@@ -886,6 +886,39 @@ export class World {
     return this.kit[slot].dmg(s, p.level) * this.mods[slot + 'Dmg'] * (1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1)) * this.overflowMult(slot);
   }
 
+  /**
+   * A skill's damage taken apart for its tooltip (0.52): the formula's own parts (a flat amount, an
+   * amount per level, a share of attack damage, and for Deadeye your attacks per second), then each
+   * multiplier on top, ending at the number abilityDamage gives times class power (what lands on an
+   * enemy of your level, before crits and Steady Breath or Ambush). Every skill formula in the game has
+   * that shape; one that did not would come back with `exact: false` and only its total shown.
+   */
+  abilityBreakdown(slot) {
+    const p = this.player, def = this.kit[slot], m = this.mods;
+    const s = p.stats;
+    const iron = m.ironWeight > 0 ? s.armor * m.ironWeight : 0;
+    const f = (ad, lvl, as) => def.dmg(Object.assign({}, s, { ad, as }), lvl);
+    const flat = f(0, 0, 1), perLevel = f(0, 1, 1) - flat, adRatio = f(1, 0, 1) - flat;
+    const asScales = Math.abs(f(1, 0, 2) / Math.max(1e-9, f(1, 0, 1)) - 2) < 1e-6;
+    const ad = s.ad + iron;
+    const formula = (flat + perLevel * p.level + adRatio * ad) * (asScales ? Math.max(1, s.as || 1) : 1);
+    const real = def.dmg(Object.assign({}, s, { ad }), p.level);
+    const rank = 1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1);
+    const mods = m[slot + 'Dmg'];
+    const over = this.overflowMult(slot);
+    const power = classPower(this.cls, SPECS[p.spec] && SPECS[p.spec].cls === this.cls ? p.spec : null, p.level);
+    // cooldown: base, talents and augments, rank, haste, and the 1 s floor
+    const cdMods = m[slot + 'Cd'];
+    const cdRank = 1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1);
+    return {
+      flat, perLevel, adRatio, ad, iron, level: p.level, asScales, as: s.as, formula: real,
+      exact: Math.abs(formula - real) <= Math.max(1e-6, Math.abs(real) * 1e-9),
+      rank, mods, over, power, final: real * rank * mods * over * power,
+      crit: Math.min(100, s.crit), critMult: this.critMultiplier(),
+      cd: { base: def.cd, mods: cdMods, rank: cdRank, haste: s.haste, raw: this.rawCooldown(slot), final: this.abilityCooldown(slot), floor: this.overflowFloor() },
+    };
+  }
+
   /** Damage every enemy in a cone in front of the hero (Cleave and its echo). */
   cleaveHit(dir, range, angle, dmg, slot = 'q', def = null) {
     const p = this.player;

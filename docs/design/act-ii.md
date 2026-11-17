@@ -109,6 +109,7 @@ Story first; delves next (reuse Asterfell); then side stories; a new class last 
 | 5g | EXP by level band (10x within 3 levels, 2x at 10+, levels need 4x), elite spoils, rarer and richer radiant chests and world events; closed fists on weapons (added) | 0.49 | Done |
 | 5h | 1 s cooldown floor for every class (haste past it: more damage or stronger buffs), Arrow Storm cast and animation, Mage hand fix (added) | 0.50 | Done |
 | 5i | Arrow Storm and Deadeye channels (1 s, slowed), Skyfall, Deadeye pierces, Assassin Culling Edge, class power tuned on the boss bench (added) | 0.51 | Done |
+| 5j | Skill tooltips with final damage and a Shift calculation, Deadeye drawn in 0.5 s (added) | 0.52 | Done |
 | 6 | Unwish: the ending choice (quest 6); Take her place as a special rebirth | 0.45 | Done |
 | 7 | Asterfell delves | 0.46 | Done |
 | 8 | Side stories: Tomas, Edric, Tobin, Haven grows | 0.47 | Done |

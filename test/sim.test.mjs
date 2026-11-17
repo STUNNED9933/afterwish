@@ -3386,4 +3386,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.hitEnemy(e, 100, { source: 'bleed', dot: true, canCrit: false });
   check('Culling Edge: bleeds do not take a share', h0 - e.hp < 1000);
 }
+// --- Tooltips (0.52): the damage shown is the damage dealt, and every formula comes apart ---
+{
+  const { SPECS: SP } = await import('../src/sim/talents.js');
+  let bad = [], n = 0;
+  const combos = [['warrior', null], ['archer', null], ['rogue', null], ['mage', null], ...Object.entries(SP).map(([id, d]) => [d.cls, id])];
+  for (const [cls, spec] of combos) {
+    const w = new World({ seed: 2, mode: 'explore', cls, save: { v: 2, cls, level: 60, skillPoints: 59, spec } });
+    w.player.stats.haste = 900; // past the floor, so Overflow shows too
+    for (const slot of ['q', 'w', 'e', 'r']) {
+      const b = w.abilityBreakdown(slot); n++;
+      const want = w.abilityDamage(slot) * classPower(cls, spec, w.player.level);
+      if (!b.exact || Math.abs(b.final - want) > Math.max(1e-6, want * 1e-9)) bad.push(`${spec || cls} ${slot}`);
+    }
+  }
+  check('tooltips: every skill of every class and subclass comes apart into base, per level and ratio, and adds up to what it deals', bad.length === 0 && n === 48, bad.join(', ') || `${n} skills`);
+  const d = new World({ seed: 2, mode: 'explore', cls: 'archer', save: { v: 2, cls: 'archer', level: 60, skillPoints: 59, spec: 'sharpshooter' } });
+  check("tooltips: Deadeye's damage is shown as scaling with attacks per second", d.abilityBreakdown('r').asScales && !d.abilityBreakdown('q').asScales);
+}
 process.exit(failed ? 1 : 0);

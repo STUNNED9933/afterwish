@@ -780,3 +780,18 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* F3: how the game is running (0.54.10) */
 #perf-meter { position: fixed; left: 8px; bottom: 8px; z-index: 99; padding: 6px 8px; background: rgba(0, 0, 0, 0.72); color: #cfe8ff; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre; border-radius: 4px; pointer-events: none; }
 #perf-meter.hidden { display: none; }
+/* the server world (0.55): chat and the players panel */
+#chat-log { position: fixed; left: 12px; bottom: 150px; z-index: 40; width: min(440px, 60vw); display: flex; flex-direction: column; gap: 2px; pointer-events: none; font-size: 13px; }
+.chat-line { padding: 3px 8px; background: rgba(8, 12, 20, 0.62); color: #e8eef8; border-radius: 4px; transition: opacity 1s; text-shadow: 0 1px 2px #000; overflow-wrap: anywhere; }
+.chat-line.note { color: #f0d49a; font-style: italic; }
+.chat-line.old { opacity: 0; }
+#chat-log.open .chat-line.old { opacity: 0.85; }
+#chat-input { position: fixed; left: 12px; bottom: 116px; z-index: 41; width: min(440px, 60vw); padding: 7px 9px; background: rgba(8, 12, 20, 0.9); color: #fff; border: 1px solid #6fa8ff; border-radius: 4px; font-size: 13px; }
+#chat-input.hidden, #players-panel.hidden { display: none; }
+#players-panel { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 45; min-width: 460px; max-width: 92vw; max-height: 70vh; overflow: auto; padding: 14px 16px; background: rgba(10, 14, 24, 0.95); border: 1px solid #3a4a66; border-radius: 8px; color: #e8eef8; }
+#players-panel h3 { margin: 0 0 8px; font-size: 16px; }
+#players-panel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#players-panel td { padding: 5px 6px; border-bottom: 1px solid #222c3e; white-space: nowrap; }
+#players-panel tr.me td { color: #9fd0ff; }
+#players-panel .tag { font-size: 11px; padding: 1px 5px; border-radius: 3px; background: #2e5a3a; color: #bff0c8; }
+#players-panel button { margin-left: 4px; padding: 3px 8px; font-size: 12px; }

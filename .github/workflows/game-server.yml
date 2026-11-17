@@ -1,0 +1,50 @@
+# Updates the server world (game-server/) on your VPS whenever the game rules or the server change.
+# One-time setup: README "Server world". Until the VPS_HOST and VPS_SSH_KEY secrets exist, this does nothing.
+name: Update server world
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/sim/**', 'src/net/**', 'src/config.js', 'game-server/**', '.github/workflows/game-server.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: game-server
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+    steps:
+      - name: Check for the server's secrets
+        id: secrets
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ]; then
+            echo "::notice::VPS_HOST and VPS_SSH_KEY are not set yet, so the server world was not updated. See README: Server world."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - if: steps.secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm ci && npm test # the rules and the server world's checks must pass first
+      - if: steps.secrets.outputs.ready == 'true'
+        name: Update and restart on the server
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vps
+          chmod 600 ~/.ssh/id_vps
+          ssh -i ~/.ssh/id_vps -o StrictHostKeyChecking=accept-new "${VPS_USER:-root}@$VPS_HOST" 'bash /opt/afterwish/game-server/deploy/update.sh'

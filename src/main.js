@@ -31,7 +31,9 @@ import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
-import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX } from './net/sync.js';
+import { ServerRoom } from './net/server-room.js';
+import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX, compactEvents } from './net/sync.js';
+import { FRIEND_CMDS } from './net/cmds.js';
 
 const $ = (id) => document.getElementById(id);
 const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Breakthrough', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
@@ -1371,7 +1373,8 @@ function start(hot = {}) {
       relay = !!net.relay;
     }
     else if (net) for (const f of net.room.friends.values()) ping = Math.max(ping, f.rtt || 0);
-    hud.setRoom(net ? { code: net.code, players: net.role === 'host' ? world.heroes.length : (world.allies().length + 1), host: net.role === 'host', ping: Math.round(ping), relay } : null);
+    const players = net && net.server ? (net.roster ? net.roster.players.length : 1) : net && net.role === 'host' ? world.heroes.length : world.allies().length + 1;
+    hud.setRoom(net ? { code: net.code, players, host: net.role === 'host', server: !!net.server, ping: Math.round(ping), relay } : null);
   }
   function openMp() {
     if (!settings.name) settings.name = 'Player ' + Math.floor(100 + Math.random() * 900);
@@ -1381,9 +1384,6 @@ function start(hot = {}) {
     mpMsg('');
     setMode('mp');
   }
-
-  /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['recall', 'echoUp', 'askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend', 'enterDelve', 'metTomas']);
 
   async function hostGame() {
     const name = playerName();
@@ -1420,19 +1420,6 @@ function start(hot = {}) {
     updateRoomBadge();
     hud.banner(`Room ${code}`, 'Tell your friends this code. They join from "Play with friends".');
     hud.feedText(`Hosting room ${code}. Click the room code at the top to copy it.`);
-  }
-
-  /** (0.54.8) Events on their way to a friend, with positions and times cut to two decimals (half the bytes). */
-  function compactEvents(list) {
-    return list.map((ev) => {
-      const o = {};
-      for (const k in ev) {
-        const v = ev[k];
-        if (v === false || v === undefined || v === null) continue;
-        o[k] = typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 100) / 100 : v;
-      }
-      return o;
-    });
   }
 
   /** Host: after every step, queue events for each friend; send snapshots 20 times a second and saves every few seconds. */
@@ -1483,19 +1470,47 @@ function start(hot = {}) {
       mpMsg('A room code has five letters and numbers.', false);
       return;
     }
-    const name = playerName();
     mpMsg(`Joining room ${code}...`);
-    $('btn-join').disabled = true;
-    const room = new JoinRoom({ onMessage: onNetMessage, onClose: (why) => leaveRoom(why) });
+    return joinWith(new JoinRoom({ onMessage: onNetMessage, onClose: (why) => leaveRoom(why) }), code, code, $('btn-join'));
+  }
+
+  // (0.55) The server world: an always-on place on the game server, joined with its passcode.
+  const DEFAULT_SERVER = (() => {
+    try {
+      const q = new URLSearchParams(location.search).get('server');
+      if (q) return q;
+    } catch (err) {
+      /* no address bar */
+    }
+    return typeof __GAME_SERVER__ !== 'undefined' && __GAME_SERVER__ ? __GAME_SERVER__ : 'wss://play.stunnedgames.net';
+  })();
+  async function joinServer() {
+    const url = $('mp-server').value.trim() || DEFAULT_SERVER;
+    const pass = $('mp-pass').value;
+    if (!pass) {
+      mpMsg('Type the server world\'s passcode (ask whoever runs it).', false);
+      return;
+    }
+    settings.serverUrl = url === DEFAULT_SERVER ? undefined : url;
+    settings.serverPass = pass;
+    storeSettings(settings);
+    mpMsg('Joining the server world...');
+    return joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why) => leaveRoom(why) }), url, null, $('btn-server'), { pass });
+  }
+
+  async function joinWith(room, target, code, button, extra = {}) {
+    const name = playerName();
+    button.disabled = true;
     let welcome;
     try {
-      welcome = await room.join(code, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets });
+      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, ...extra });
     } catch (err) {
-      $('btn-join').disabled = false;
+      button.disabled = false;
       mpMsg(err.message, false);
       return;
     }
-    $('btn-join').disabled = false;
+    button.disabled = false;
+    if (welcome.server) code = welcome.code;
     // This browser's world becomes a picture of the host's: it never steps, and commands go to the host.
     world = makeWorld({ save, mode: 'explore' });
     // Every command says which moment of the host's world this screen was showing (0.41.1), so the
@@ -1509,7 +1524,7 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
+    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
@@ -1571,6 +1586,16 @@ function start(hot = {}) {
       account.gold = msg.gold;
       account.tickets = msg.tickets;
       storeAccount(account);
+    } else if (msg.t === 'chat') {
+      chatLine(msg.from ? `${msg.from}: ${msg.text}` : msg.text, !msg.from);
+    } else if (msg.t === 'roster') {
+      net.roster = msg;
+      updateRoomBadge();
+      if (playersOpen) renderPlayers();
+    } else if (msg.t === 'invite') {
+      sfx.ui();
+      hud.banner(`${msg.name} invites you`, 'to their party. Press O to see players and accept.');
+      chatLine(`${msg.name} invites you to their party (O: Players).`, true);
     } else if (msg.t === 'pong') {
       const rtt = performance.now() - msg.at;
       net.ping = net.ping ? net.ping * 0.6 + rtt * 0.4 : rtt;
@@ -1719,6 +1744,8 @@ function start(hot = {}) {
     }
     was.room.close();
     hud.setRoom(null);
+    closePlayers();
+    closeChat();
     save = loadSave(settings.cls);
     world = makeWorld({ save });
     resetViews();
@@ -1742,6 +1769,112 @@ function start(hot = {}) {
   $('btn-mp-close').addEventListener('click', () => setMode('title'));
   $('btn-host').addEventListener('click', hostGame);
   $('btn-join').addEventListener('click', joinGame);
+  $('btn-server').addEventListener('click', joinServer);
+  $('mp-server').value = settings.serverUrl || DEFAULT_SERVER;
+  $('mp-pass').value = settings.serverPass || '';
+  for (const id of ['mp-server', 'mp-pass']) $(id).addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') joinServer();
+  });
+
+  // ---------------------------------------------------------------------------
+  // The server world (0.55): chat (Enter) and the players panel (O)
+  // ---------------------------------------------------------------------------
+  const chatLog = document.createElement('div');
+  chatLog.id = 'chat-log';
+  document.body.appendChild(chatLog);
+  const chatBox = document.createElement('input');
+  chatBox.id = 'chat-input';
+  chatBox.maxLength = 140;
+  chatBox.placeholder = 'Say something to everyone (Enter to send, Esc to close)';
+  chatBox.autocomplete = 'off';
+  chatBox.className = 'hidden';
+  document.body.appendChild(chatBox);
+  function chatLine(text, note = false) {
+    const el = document.createElement('div');
+    el.className = 'chat-line' + (note ? ' note' : '');
+    el.textContent = text;
+    chatLog.appendChild(el);
+    while (chatLog.children.length > 8) chatLog.firstChild.remove();
+    setTimeout(() => el.classList.add('old'), 15000);
+  }
+  function openChat() {
+    chatBox.classList.remove('hidden');
+    chatLog.classList.add('open');
+    chatBox.focus();
+  }
+  function closeChat() {
+    chatBox.value = '';
+    chatBox.classList.add('hidden');
+    chatLog.classList.remove('open');
+    chatBox.blur();
+    if (!net) chatLog.textContent = '';
+  }
+  chatBox.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      const text = chatBox.value.trim();
+      if (text && net && net.server) net.room.send({ t: 'cmd', cmd: { type: 'chat', text } });
+      closeChat();
+    } else if (e.key === 'Escape') closeChat();
+  });
+
+  let playersOpen = false;
+  const playersPanel = document.createElement('div');
+  playersPanel.id = 'players-panel';
+  playersPanel.className = 'hidden';
+  document.body.appendChild(playersPanel);
+  const MAP_NAME = (id) => (MAPS[id] ? MAPS[id].name : id === 'rift' ? 'an Echo Rift' : id === 'delve' ? 'a delve' : id);
+  function renderPlayers() {
+    const r = net && net.roster;
+    if (!r) {
+      playersPanel.innerHTML = '<p>Waiting for the server...</p>';
+      return;
+    }
+    const me = net.pid;
+    const party = r.party ? new Set(r.party.members) : new Set();
+    const rows = r.players.map((pl) => {
+      const mine = pl.pid === me;
+      const inParty = party.has(pl.pid);
+      let btn = '';
+      if (!mine && r.invites.includes(pl.pid)) btn = `<button type="button" data-act="partyAccept" data-pid="${pl.pid}" class="primary">Accept invite</button><button type="button" data-act="partyDecline" data-pid="${pl.pid}" class="ghost">No</button>`;
+      else if (!mine && inParty) btn = `<button type="button" data-act="joinMember" data-pid="${pl.pid}" class="ghost" title="Travel to their map, into their copy of it (a map you have been to)">Go to them</button>`;
+      else if (!mine && !(r.party && r.party.members.length >= 4)) btn = `<button type="button" data-act="partyInvite" data-pid="${pl.pid}" class="ghost">Invite</button>`;
+      return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(MAP_NAME(pl.map))}</td><td>${btn}</td></tr>`;
+    });
+    playersPanel.innerHTML = `<h3>${esc(r.world)} · ${r.players.length} online</h3><table>${rows.join('')}</table>` +
+      `<p class="setting-desc">Haven is shared by everyone here. Out on the road, your party has its own copy of each map: invite friends to fight together. Enter: chat.</p>` +
+      (r.party ? `<button type="button" data-act="partyLeave" class="ghost">Leave the party</button>` : '') + ` <button type="button" data-act="close" class="ghost">Close <kbd>O</kbd></button>`;
+  }
+  playersPanel.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !net) return;
+    if (b.dataset.act === 'close') return closePlayers();
+    net.room.send({ t: 'cmd', cmd: { type: b.dataset.act, pid: Number(b.dataset.pid) || 0 } });
+  });
+  function closePlayers() {
+    playersOpen = false;
+    playersPanel.classList.add('hidden');
+  }
+  function togglePlayers() {
+    playersOpen = !playersOpen;
+    playersPanel.classList.toggle('hidden', !playersOpen);
+    if (playersOpen) renderPlayers();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!net || !net.server || mode !== 'play') return;
+    const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+    if (typing) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      openChat();
+    } else if ((e.key === 'o' || e.key === 'O') && !e.repeat) {
+      e.preventDefault();
+      e.stopPropagation();
+      togglePlayers();
+    }
+  }, true);
   $('mp-code').addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') joinGame();
@@ -1749,6 +1882,7 @@ function start(hot = {}) {
   $('mp-name').addEventListener('keydown', (e) => e.stopPropagation());
   $('room-badge').addEventListener('click', async () => {
     if (!net) return;
+    if (net.server) return togglePlayers(); // (0.55) the server world has no code to share: show who is on
     try {
       await navigator.clipboard.writeText(net.code);
       hud.feedText(`Room code ${net.code} copied`);

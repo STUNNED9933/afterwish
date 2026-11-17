@@ -95,6 +95,7 @@ export class World {
     this.recorder = null; // an array while a run is being recorded: [tick, command] pairs
     // Weekly Echo: fixed rules (see sim/trial.js). Normal play leaves this null.
     this.trial = opts.trial || null;
+    this.travelHook = null; // the server world sets this (see goMap)
     this.offerCount = 0;
     this.parryPreset = opts.parryPreset || CONFIG.DEFAULT_PARRY_PRESET;
     this.time = 0;
@@ -170,6 +171,64 @@ export class World {
     return this.heroes.length > 1;
   }
 
+  // -------------------------------------------------------------------------
+  // The server world (0.55): one World per map copy. A hero who leaves goes alone, to another
+  // copy, through travelHook(hero, to, from, extra), which the server answers after the step.
+  // Without a hook (single player, a host's room) the whole party goes, as always.
+  // -------------------------------------------------------------------------
+  /** The acting hero leaves for map `to` (from `from`); `extra` carries a rift or delve to start. */
+  goMap(to, from, extra = null) {
+    if (this.travelHook) {
+      this.travelHook(this.cur, to, from, extra);
+      this.portalArmed = false;
+      this.portalT = 0;
+      return true;
+    }
+    if (extra && extra.rift) return this.startRift(extra.rift);
+    if (extra && extra.delve) return this.startDelve(extra.delve);
+    this.loadMap(to, from);
+    return false;
+  }
+
+  /** Everyone here leaves for `to` (the whole party down, a run over). */
+  goMapAll(to, from) {
+    if (this.travelHook) {
+      for (const h of this.heroes) this.travelHook(h, to, from, null);
+      return true;
+    }
+    this.loadMap(to, from);
+    return false;
+  }
+
+  /** Server: hero `h` (just added) arrives on this copy's map from `from`, as loadMap would place them. */
+  arriveHero(h, from) {
+    this.as(h, (p) => {
+      const map = this.map;
+      const gate = map.portals.find((g) => g.to === from);
+      const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0;
+      const a = this.rng() * TAU;
+      p.x = p.px = (gate ? gate.x * k : 0) + dCos(a) * 1.2;
+      p.z = p.pz = (gate ? gate.z * k : 0) + dSin(a) * 1.2;
+      if (gate) p.facing = dAtan2(-gate.z, -gate.x);
+      this.pushOut(p, p.radius);
+      p.moveTarget = null;
+      p.targetId = null;
+      p.dash = null;
+      p.leap = null;
+      p.atkWind = 0;
+      this.portalT = this.wayT = 0;
+      this.portalOn = null;
+      this.portalArmed = this.wayArmed = false;
+      if (!p.visited.includes(map.id) && map.id !== 'rift' && map.id !== 'delve') {
+        p.visited.push(map.id);
+        this.emit('discovered', { id: map.id, name: map.name });
+      }
+      if (map.safe) this.fillBounties();
+      this.emit('mapChange', { id: map.id, name: map.name, from });
+      this.questEvent('reach', map.id);
+    });
+  }
+
   /** Make `h` the acting hero (see HERO_KEYS). */
   use(h) {
     if (!h || h === this.cur) return;
@@ -238,9 +297,9 @@ export class World {
 
   removeHero(pid) {
     const h = this.heroByPid(pid);
-    if (!h || h === this.heroes[0]) return;
+    if (!h || (h === this.heroes[0] && !(this.travelHook && this.heroes.length > 1))) return;
     if (this.tradeFor(pid)) this.as(h, () => this.tradeCancel('gone'));
-    this.use(this.heroes[0]);
+    this.use(this.heroes.find((x) => x !== h)); // (0.55) on the server, the first hero can leave a copy too
     this.heroes = this.heroes.filter((x) => x !== h);
     this.loot = this.loot.filter((l) => l.owner !== pid);
     this.projectiles = this.projectiles.filter((pr) => pr.pid !== pid);
@@ -723,16 +782,16 @@ export class World {
           // Waygate: jump to a discovered map, arriving at its entrance.
           if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].deep) {
             // The Deep (0.54): a Primordial's domain, once its Depth is open (the party's leader decides)
-            const lead = this.heroes[0].player;
-            if (this.depthOpen(lead, MAPS[c.to].deep)) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+            const lead = this.travelHook ? p : this.heroes[0].player; // (0.55) on the server, each hero for themselves
+            if (this.depthOpen(lead, MAPS[c.to].deep)) this.goMap(c.to, MAPS[c.to].portals[0].to);
             else this.emit('depthLocked', { depth: MAPS[c.to].deep, name: MAPS[c.to].name });
           } else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
           else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier, name: MAPS[c.to].name });
-          else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+          else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.goMap(c.to, MAPS[c.to].portals[0].to);
           break;
         case 'setDepth':
           // The Deep (0.54): choose a Depth (0: back to the world above), in Haven, by the party's leader
-          if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
+          if ((this.cur === this.heroes[0] || this.travelHook) && this.mode === 'explore' && this.map.safe) {
             const d = Math.floor(Number(c.depth) || 0);
             if (d === 0 || this.depthOpen(p, d)) {
               p.depth = d;
@@ -741,7 +800,7 @@ export class World {
           }
           break;
         case 'setTier':
-          if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
+          if ((this.cur === this.heroes[0] || this.travelHook) && this.mode === 'explore' && this.map.safe) {
             p.depth = 0; // a world tier is the world above
             p.worldTier = Math.max(1, Math.min(p.tierMax, Math.floor(Number(c.tier) || 1)));
             this.emit('tierSet', { tier: p.worldTier, numeral: TIERS[p.worldTier].numeral, name: TIERS[p.worldTier].name });
@@ -4224,7 +4283,7 @@ export class World {
   /** Echo Rifts: the leader spends a shard in Haven and takes the party in. */
   enterRift(tier) {
     const p = this.player;
-    if (this.cur !== this.heroes[0] || this.mode !== 'explore' || !this.map.safe || this.rift) return;
+    if ((this.cur !== this.heroes[0] && !this.travelHook) || this.mode !== 'explore' || !this.map.safe || this.rift) return;
     if (!(p.bossKills.boss > 0)) {
       this.emit('riftLocked'); // rifts open once The Warden has fallen
       return;
@@ -4235,10 +4294,16 @@ export class World {
       return;
     }
     p.tickets--;
-    this.rift = { tier: t, theme: RIFT.themes[Math.floor(this.rng() * RIFT.themes.length)], seed: Math.floor(this.rng() * 1e9), progress: 0, need: 0, timeLeft: RIFT.time, state: 'run', guardianId: null, won: false };
+    const rift = { tier: t, theme: RIFT.themes[Math.floor(this.rng() * RIFT.themes.length)], seed: Math.floor(this.rng() * 1e9), progress: 0, need: 0, timeLeft: RIFT.time, state: 'run', guardianId: null, won: false };
+    this.goMap('rift', 'town', { rift });
+  }
+
+  /** Begin a rift on this World (its party goes in). On the server, in the rift's own copy. */
+  startRift(rift) {
+    this.rift = rift;
     this.loadMap('rift', 'town');
     this.rift.need = Math.max(6, Math.round(this.enemies.length * RIFT.need));
-    this.emit('riftStart', { tier: t, name: MAPS[this.rift.theme].name });
+    this.emit('riftStart', { tier: rift.tier, name: MAPS[rift.theme].name });
   }
 
   /** A map made for one run (an Echo Rift, a delve room): no world events, chests or altars of its own. */
@@ -4252,10 +4317,16 @@ export class World {
   /** Go down the palace stair at world tier `tier` (any you have reached). The party comes too. */
   enterDelve(tier) {
     const p = this.player;
-    if (this.cur !== this.heroes[0] || this.mode !== 'explore' || this.trial || this.delve || !this.map || this.map.id !== 'asterfell') return;
+    if ((this.cur !== this.heroes[0] && !this.travelHook) || this.mode !== 'explore' || this.trial || this.delve || !this.map || this.map.id !== 'asterfell') return;
     const t = Math.max(1, Math.min(p.tierMax, Math.floor(Number(tier) || 1)));
     const rooms = 3 + (t >= 3 ? 1 : 0) + (t >= 5 ? 1 : 0);
-    this.delve = { tier: t, rooms, room: 0, route: delveRoute(rooms), seed: Math.floor(this.rng() * 1e9), state: 'fight', wait: 0 };
+    const delve = { tier: t, rooms, room: 0, route: delveRoute(rooms), seed: Math.floor(this.rng() * 1e9), state: 'fight', wait: 0 };
+    this.goMap('delve', 'asterfell', { delve });
+  }
+
+  /** Begin a delve on this World. On the server, in the delve's own copy. */
+  startDelve(delve) {
+    this.delve = delve;
     this.loadMap('delve', 'asterfell');
     this.delveSpawn();
   }
@@ -6865,7 +6936,7 @@ inTown() {
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
         p.dead = false;
-        this.loadMap(MAPS_START, null); // wake up in town
+        this.goMap(MAPS_START, null); // wake up in town
         p.hp = p.stats.maxHp;
         this.emit('respawn');
       }
@@ -6926,7 +6997,7 @@ inTown() {
       this.portalT = 0;
     } else if (this.portalArmed) {
       this.portalT += dt;
-      if (this.portalT >= CONFIG.PORTAL_TIME) this.loadMap(on.to, this.map.id);
+      if (this.portalT >= CONFIG.PORTAL_TIME) this.goMap(on.to, this.map.id);
     }
   }
 
@@ -7109,8 +7180,8 @@ inTown() {
       } else if (this.portalArmed) {
         this.portalT += dt;
         if (this.portalT >= CONFIG.PORTAL_TIME) {
-          // One hero takes the portal and the whole party goes with them.
-          this.loadMap(on.to, this.map.id);
+          // One hero takes the portal and the whole party goes with them (on the server, just them).
+          this.goMap(on.to, this.map.id);
           this.use(lead);
           return;
         }
@@ -7119,7 +7190,7 @@ inTown() {
     this.use(lead);
     if (allDown && this.heroes.every((h) => (h === this.cur ? this.respawnT : h.respawnT) <= 0)) {
       // The whole party is down: everyone wakes up in Haven.
-      this.loadMap(MAPS_START, null);
+      this.goMapAll(MAPS_START, null);
       for (const h of this.heroes) {
         this.use(h);
         this.player.dead = false;

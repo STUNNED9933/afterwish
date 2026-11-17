@@ -334,3 +334,16 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.merchant = snap.merchant || null;
   return mapChanged;
 }
+
+/** (0.54.8) Events on their way to a friend, with positions and times cut to two decimals (half the bytes). */
+export function compactEvents(list) {
+  return list.map((ev) => {
+    const o = {};
+    for (const k in ev) {
+      const v = ev[k];
+      if (v === false || v === undefined || v === null) continue;
+      o[k] = typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 100) / 100 : v;
+    }
+    return o;
+  });
+}

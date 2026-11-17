@@ -1,0 +1,22 @@
+[Unit]
+Description=Afterwish server world
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=afterwish
+Group=afterwish
+EnvironmentFile=/etc/afterwish.env
+WorkingDirectory=/opt/afterwish/game-server
+ExecStart=/usr/bin/node server.mjs
+Restart=always
+RestartSec=2
+# Locked down: it only needs to read the game and talk on its port
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=600M
+
+[Install]
+WantedBy=multi-user.target

@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The server world (0.55)
+
+An always-on world on a rented server, beside host-run rooms (which still work as before): join
+with a passcode, meet everyone in Haven, chat with **Enter**, see who is on with **O**, invite
+friends to a party, and play on different maps at once; each party has its own copy of a map
+outside Haven, and rifts, delves and the Deep take just the party. Setup: "Server world" below.
+
 ### Help for slow computers (0.54.9, 0.54.10)
 
 - **F3** shows how the game is running: frame rate, the worst recent frame, how long the game's own code
@@ -1472,6 +1479,42 @@ only its hash is stored. Only a display name is kept, no email or account.
 against SQLite in Node. `node test/determinism.mjs` plays the same runs in
 Chromium, Firefox and WebKit and compares them with Node (the
 `determinism.yml` workflow does this on every rules change).
+
+## Server world
+
+An always-on place to play with friends, run on a small server you rent instead of one player's
+browser (0.55). It stays open with nobody hosting: friends join any time with a passcode, meet in
+Haven (shared by everyone, with chat), and each party gets its own copy of every map outside, so
+parties can be on different maps at once. Rifts, delves and the Deep take just your party. Each
+player's progress still saves in their own browser, as in a host's room. In the game: Play with
+friends → Server world. **Enter** chats, **O** shows who is on (invite, accept, go to a party member).
+
+**Setting it up (once, about 15 minutes):**
+
+1. Rent a small Linux server in **Singapore** (for the lowest ping): for example DigitalOcean
+   ("Basic" droplet, Ubuntu 24.04, 1 GB) or Vultr ("Cloud Compute", 1 GB). About US$5 a month.
+   Choose SSH-key login when it asks.
+2. In your domain's DNS (stunnedgames.net), add an **A record**: name `play`, value = the server's
+   IP address. If your DNS is on Cloudflare, leave it **grey (DNS only)** for now.
+3. Log in to the server (`ssh root@<its IP>`) and run:
+   `curl -fsSL https://raw.githubusercontent.com/STUNNED9933/afterwish/main/game-server/deploy/setup.sh | bash -s -- play.stunnedgames.net`
+   It asks for the passcode your friends will type. Then `https://play.stunnedgames.net/health`
+   should show `"open":true`.
+4. **DDoS protection (recommended, free):** put Cloudflare's proxy in front, so nobody sees the
+   server's real address: in Cloudflare, switch the `play` record to **orange (Proxied)**, and set
+   SSL/TLS to **Full (strict)**. WebSockets pass through; ping barely changes (Cloudflare is in Singapore).
+5. **Automatic updates:** in GitHub → the repo → Settings → Secrets and variables → Actions, add
+   `VPS_HOST` (the server's IP) and `VPS_SSH_KEY` (a private key whose public half is in the
+   server's `~/.ssh/authorized_keys`). After that, every change to the game rules updates the server
+   (players get their save and a "restarting" message, and rejoin a few seconds later).
+
+**Change the passcode:** on the server, edit `/etc/afterwish.env`, then `systemctl restart afterwish`.
+**Is it running?** `systemctl status afterwish`, or open `/health`.
+
+Safety: only people with the passcode get in; each address may open 4 connections; messages are
+size- and rate-limited (a flood closes the connection); the game runs as its own locked-down user;
+the firewall opens only SSH and the web. Measured: 24 players across 17 map copies use about 3 ms of
+each 16.7 ms step on one core, so a 1 GB server has plenty of room.
 
 ## Share it with friends
 

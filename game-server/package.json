@@ -1,0 +1,15 @@
+{
+  "name": "afterwish-game-server",
+  "private": true,
+  "type": "module",
+  "description": "The Afterwish server world: an always-on place for friends to play together (see README).",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

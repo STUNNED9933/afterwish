@@ -29,6 +29,12 @@ export const GROUND = {
   storm: { path: '#5a5e66', a: '#38404c', b: '#20252e', c: '#56606e', top: '#6a7484', grass: ['#3a4448', '#6a7a78'], dry: true, sparse: 0.5, debris: 'rubble', light: 0xc8dcff },
   volcano: { lavaEdge: true, a: '#3a2a26', b: '#1c1210', c: '#4c3630', top: '#5a4038', crack: ['#ff5a14', 2.2], grass: ['#2a1c18', '#4a2a20'], dry: true, sparse: 0.3, debris: 'rubble', light: 0xffa060 },
   astral: { voidEdge: true, poolGlow: '#3a6aff', a: '#201e44', b: '#0e0d24', c: '#2e2c5e', top: '#5a5aa8', crack: ['#6aa8ff', 1.0], grass: ['#3a3a7a', '#8fd8ff'], shards: true, sparse: 0.6, debris: 'pebble', light: 0xb8c8ff },
+  // The Deep (0.54): each Primordial's domain, darker than anything above it
+  deepash: { path: '#1a1210', a: '#221a16', b: '#0e0a08', c: '#3a2e28', top: '#6a605a', crack: ['#ff4a0a', 2.6], grass: ['#1a1210', '#3a2418'], dry: true, sparse: 0.2, debris: 'rubble', light: 0xff8a50 },
+  drowned: { path: '#1a2a2a', poolColor: '#0a2a2e', poolGlow: '#0a4a4a', a: '#16282a', b: '#0a1416', c: '#2a3a36', top: '#3a5a52', wet: 0.95, stones: true, grass: ['#1a3430', '#3a5a4a'], tall: 1.6, sparse: 0.4, debris: 'rubble', light: 0x9ae8e0 },
+  rootdeep: { path: '#24180e', poolColor: '#141a08', poolGlow: '#2a4a10', crackKind: 2, a: '#241c12', b: '#120c06', c: '#3a2a18', top: '#4a5a2a', crack: ['#8ad04a', 0.9], grass: ['#2a3418', '#5a7a2a'], tall: 2, debris: 'pebble', light: 0xd8ffa0 },
+  choir: { path: '#5a6878', a: '#3a4452', b: '#202832', c: '#6a7a8c', top: '#c8dcf0', crack: ['#9ad0ff', 1.2], grass: ['#5a6a7a', '#c8e0f8'], shards: true, sparse: 0.3, debris: 'rubble', light: 0xd8ecff },
+  quiet: { voidEdge: true, a: '#16141a', b: '#08070a', c: '#222028', top: '#3a3842', grass: ['#18161c', '#2a2830'], dry: true, sparse: 0.1, debris: 'pebble', light: 0x8a84a0 },
   // Asterfell (0.39): paved streets of the Queen's city, star-glass glowing gold in the cracks.
   // The Shattered Wilds (0.41): drawn per region (see biomes.js shardField); these are the verdant pieces.
   shattered: { path: '#5a4a3a', a: '#3e5a30', b: '#26381f', c: '#5a4a32', top: '#4a7a36', grass: ['#3a5a26', '#7aa840'], sparse: 0.5, debris: 'rubble', light: 0xd8c8ff },
@@ -49,7 +55,7 @@ export const MOODS = {
   moon: { sky: 1.35, skyTint: 0xa8bcff, bounce: 0x22222c, sun: 2.4, sunColor: 0xc8d8ff, hero: 30, haze: 0x3a4258, hazeMix: 0.5, near: 40, far: 112, vignette: 0.26, bloom: 0.4 },
   night: { sky: 0.75, skyTint: 0x9db4ff, bounce: 0x1a1414, sun: 2.1, sunColor: 0xffe0c0, hero: 70, haze: 0x000000, hazeMix: 0, near: 34, far: 92, vignette: 0.32, bloom: 0.55 },
 };
-export const THEME_MOOD = { shattered: 'rift', town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'moon', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night', glass: 'amber' };
+export const THEME_MOOD = { shattered: 'rift', town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'moon', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night', glass: 'amber', deepash: 'night', drowned: 'night', rootdeep: 'night', choir: 'moon', quiet: 'night' };
 
 // --- Shared GLSL ----------------------------------------------------------------------
 const NOISE_GLSL = /* glsl */ `

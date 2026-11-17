@@ -1,6 +1,6 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
-import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS } from './sim/endgame.js';
+import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
 import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand } from './sim/trial.js';
@@ -590,6 +590,44 @@ function start(hot = {}) {
       root.appendChild(row);
       note(lead ? 'Every map out in the world uses this tier. Beat The Unmade on your highest tier to open the next.' : 'The party leader picks the world tier.');
     }
+    // The Deep (0.54, Act III): not a world tier. Its own box, its own rule.
+    const rb = p.rebirth || {};
+    if ((rb.deepMax || 0) > 0 || (p.endings && p.endings.self > 0 && rb.n >= 1)) {
+      const box = document.createElement('div');
+      box.className = 'deep-box';
+      const ember = world.ember();
+      box.innerHTML = `<div class="deep-title">The Deep</div><p class="deep-warn">The Deep does not scale to you. Ember decides whether you can touch what lives there: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p><p class="deep-ember">Your Ember: <b>${ember}</b> <span>(+${DEEP.emberPerRebirth} a rebirth, +${DEEP.kindlingMax} from each Depth's Kindling)</span></p>`;
+      const row = document.createElement('div');
+      row.className = 'deep-row';
+      const above = document.createElement('button');
+      above.type = 'button';
+      above.className = 'ghost tiny' + (!p.depth ? ' on' : '');
+      above.textContent = 'The world above';
+      above.disabled = !lead;
+      above.addEventListener('click', () => {
+        applyNow({ type: 'setDepth', depth: 0 });
+        renderTravel();
+      });
+      row.appendChild(above);
+      for (const d of DEPTH_IDS) {
+        const D = DEEP.depths[d];
+        const open = world.depthOpen(p, d);
+        const s = emberScale(ember, D.ember);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'deep-btn' + (p.depth === d ? ' on' : '') + (open && s.dealt < 1 ? ' short' : '');
+        b.innerHTML = `<b>${D.numeral}</b> ${D.name}<span>Ember ${D.ember}${open ? (s.one ? ' · you cannot hurt anything' : s.dealt < 1 ? ` · ${Math.round(s.dealt * 100)}% damage` : '') : ''}</span>`;
+        b.disabled = !open || !lead;
+        b.title = open ? `Every map at Depth ${D.numeral}: enemies ${D.hp}x tier V health and ${D.dmg}x damage, ${D.exp}x EXP, an Ember requirement of ${D.ember}. ${D.name}, the domain of the Primordial of ${D.title}, is by the Waygate.` : p.level < DEEP.level ? 'Level 100 first, in this life' : 'Opened by the story (Elder Wren knows where it begins)';
+        b.addEventListener('click', () => {
+          applyNow({ type: 'setDepth', depth: d });
+          renderTravel();
+        });
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+      root.appendChild(box);
+    }
     sub('Echo Rift');
     if (!(p.bossKills.boss > 0)) {
       note('Rifts open once you have beaten The Warden out in the world.');
@@ -685,6 +723,23 @@ function start(hot = {}) {
         btn.disabled = !open;
         const why = !told ? `Finish ${QUESTS[m.unlock].name} first` : `Opens on world tier ${['', 'I', 'II', 'III', 'IV', 'V'][m.fromTier] || m.fromTier}`;
         btn.innerHTML = `<b>${m.name}</b><span class="lv">World tier ${m.fromTier === 2 ? 'II' : m.fromTier}+</span><span>${open ? m.blurb : why}</span>`;
+        btn.addEventListener('click', () => {
+          setMode('play');
+          applyNow({ type: 'travel', to: id });
+        });
+        list.appendChild(btn);
+        continue;
+      }
+      if (m.deep) {
+        // The Deep (0.54): each Primordial's domain, once its Depth is open
+        if (!((p.rebirth && p.rebirth.deepMax) >= m.deep)) continue;
+        const open = world.depthOpen(p, m.deep);
+        const D = DEEP.depths[m.deep];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'travel-row deep-travel' + (open ? ' fit' : '');
+        btn.disabled = !open;
+        btn.innerHTML = `<b>${m.name}</b><span class="lv">Depth ${D.numeral} · Ember ${D.ember}</span><span>${open ? m.blurb : 'Level 100 first, in this life'}</span>`;
         btn.addEventListener('click', () => {
           setMode('play');
           applyNow({ type: 'travel', to: id });
@@ -2480,10 +2535,14 @@ function start(hot = {}) {
         sfx.levelUp();
         break;
       case 'ending':
-        // the Unwish (0.45)
         sfx.levelUp();
         hud.screenFlash(0.9);
-        rollCredits(ev.first);
+        if (ev.kind === 'primordial') {
+          // Act III's end (0.54): you carry Ending now; the fever is over, and your name holds still
+          hud.banner('Enough', 'The fever is over, for good. Your name holds still. The Deep stays open.');
+          break;
+        }
+        rollCredits(ev.first); // the Unwish (0.45)
         break;
       case 'bossLine': {
         // a boss speaks (0.44): over its head, and in the hint line so it is not missed
@@ -2551,6 +2610,24 @@ function start(hot = {}) {
         break;
       case 'keepsake':
         hud.banner(ev.name, 'A keepsake: its own slot, always your level, and it stays with you through rebirth');
+        break;
+      case 'depthSet':
+        if (ev.depth) hud.banner(`Depth ${ev.numeral} · ${ev.name}`, ev.ember < ev.need ? `Ember ${ev.ember} of ${ev.need}. You are not ready. Go anyway, if you must.` : `Ember ${ev.ember} of ${ev.need}. Every map out in the world is the Deep now.`);
+        else hud.feedText('Back to the world above.');
+        break;
+      case 'depthOpened':
+        hud.banner(`Depth ${ev.numeral} is open`, `${ev.name}: Ember ${ev.need} needed (you have ${ev.ember}). Choose it at the Waygate.`);
+        sfx.levelUp();
+        break;
+      case 'depthLocked':
+        hud.feedText(`${ev.name} is not open to you yet (level 100, and the story first).`);
+        break;
+      case 'kindling':
+        hud.float(renderer, ev.x, 3, ev.z, `Kindling ${ev.n}/${ev.max} · Ember ${ev.ember}`, 'word perfect');
+        sfx.pickup(5);
+        break;
+      case 'sealed':
+        hud.banner(`${ev.name} is sealed`, `${ev.by} took it for ${ev.time} seconds. Use something else.`);
         break;
       case 'eliteSpoils':
         hintOnce('elite', 'Elites are worth hunting: Wishdust every time, often an Immortal Fragment, a piece that leans Mythic, and once in a while the radiant chest they were guarding.', 9);

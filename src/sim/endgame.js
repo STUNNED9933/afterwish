@@ -93,3 +93,56 @@ export const WISH_IDS = Object.keys(WISH_STATS);
 export function wishNeed(w) {
   return Math.round(expToNext(CONFIG.MAX_LEVEL - 1) * 0.6 * (1 + 0.03 * w));
 }
+
+/**
+ * The Deep (0.54, Act III; docs: the Act III design doc). Five Depths, VI to X, under the world tiers:
+ * an optional extreme mode for heroes past tier V. Choosing a Depth changes every map out in the world,
+ * as a world tier does (level 100, tier V's numbers times the Depth's own), and gives every enemy an Ember
+ * requirement; each Depth also has its Primordial's own domain, reached from the crack under the Starwell.
+ *
+ * Ember is what a hero has learned from ending: +10 for every rebirth, and up to +5 a Depth from Kindling
+ * found there, all kept through rebirth. Your Ember against an enemy's requirement scales what you deal
+ * and take (EMBER_CURVE); below half of it every hit you land is 1.
+ */
+export const DEEP = {
+  emberPerRebirth: 10,
+  kindlingMax: 5, // Ember from each Depth's Kindling
+  kindling: { normal: 0.004, elite: 0.06, boss: 1 }, // chance a kill there finds one (a Primordial: always)
+  level: 100, // the least level to go down
+  depths: {
+    6: { n: 6, numeral: 'VI', name: 'The Ashen Deep', map: 'deep6', ember: 10, hp: 1.5, dmg: 1.3, exp: 1.3, loot: 1.2, color: 0xff6a2a, primordial: 'cinder', title: 'Ending' },
+    7: { n: 7, numeral: 'VII', name: 'The Drowned Court', map: 'deep7', ember: 25, hp: 2.2, dmg: 1.6, exp: 1.6, loot: 1.4, color: 0x3ac0c0, primordial: 'undertow', title: 'Forgetting' },
+    8: { n: 8, numeral: 'VIII', name: 'The Undergrowth', map: 'deep8', ember: 40, hp: 3.2, dmg: 2.0, exp: 2.0, loot: 1.6, color: 0x9ad06a, primordial: 'rootmother', title: 'Growing' },
+    9: { n: 9, numeral: 'IX', name: 'The Glass Choir', map: 'deep9', ember: 55, hp: 4.5, dmg: 2.5, exp: 2.4, loot: 1.8, color: 0xc8e8ff, primordial: 'choir', title: 'Remembering' },
+    10: { n: 10, numeral: 'X', name: 'The Quiet', map: 'deep10', ember: 70, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, color: 0xb8b0d8, primordial: 'stillness', title: 'Enough' },
+  },
+};
+export const DEPTH_IDS = [6, 7, 8, 9, 10];
+// [your Ember / needed, damage you deal, damage you take], straight lines between; below the last, 1 a hit.
+export const EMBER_CURVE = [[1.3, 1.25, 0.8], [1, 1, 1], [0.9, 0.7, 1.3], [0.75, 0.35, 1.7], [0.6, 0.1, 2.2], [0.5, 0.04, 3]];
+
+/** A hero's Ember: rebirths, and Kindling from each Depth (kept in the rebirth record). */
+export function emberOf(rb) {
+  if (!rb) return 0;
+  let n = DEEP.emberPerRebirth * (rb.n || 0);
+  for (const d of DEPTH_IDS) n += Math.min(DEEP.kindlingMax, (rb.kindling && rb.kindling[d]) || 0);
+  return n;
+}
+
+/** What your Ember does against a requirement: { dealt, taken, one } (one: every hit you land is 1). */
+export function emberScale(ember, need) {
+  if (!(need > 0)) return { dealt: 1, taken: 1, one: false };
+  const r = ember / need;
+  const C = EMBER_CURVE;
+  if (r >= C[0][0]) return { dealt: C[0][1], taken: C[0][2], one: false };
+  const last = C[C.length - 1];
+  if (r < last[0]) return { dealt: 0, taken: last[2], one: true };
+  for (let i = 1; i < C.length; i++) {
+    const [r0, d0, t0] = C[i - 1], [r1, d1, t1] = C[i];
+    if (r >= r1) {
+      const k = (r - r1) / (r0 - r1);
+      return { dealt: d1 + (d0 - d1) * k, taken: t1 + (t0 - t1) * k, one: false };
+    }
+  }
+  return { dealt: last[1], taken: last[2], one: false };
+}

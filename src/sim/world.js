@@ -8,7 +8,7 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
+import { DEEP, DEPTH_IDS, emberOf, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
@@ -407,6 +407,7 @@ export class World {
       misc: Object.assign({}, save?.misc), // stackable things in the pouch (0.32): { glass: 2, ... }
       bounties: Array.isArray(save?.bounties) ? save.bounties.map((b) => Object.assign({}, b)) : [], // jobs from the board (0.33)
       bank: { b: Object.assign({}, save?.bank?.b), q: Object.assign({}, save?.bank?.q) }, // (0.53) progress no job was waiting for
+      depth: Math.max(0, Math.floor(Number(save?.depth) || 0)), // (0.54) the Depth chosen (0: the world above)
       keepsake: save?.keepsake ? migrateItem(save.keepsake) : null, // (0.53) the keepsake slot: Edric's Colours, kept through rebirth, at your level
       bountyN: save?.bountyN ?? 0,
       lsPool: 0, // lifesteal you can still heal this second (0.32)
@@ -564,6 +565,7 @@ export class World {
       bounties: p.bounties,
       bank: p.bank,
       keepsake: p.keepsake,
+      depth: p.depth,
       bountyN: p.bountyN,
       bestWave: this.bestWave,
       maxCheckpoint,
@@ -719,12 +721,28 @@ export class World {
           break;
         case 'travel':
           // Waygate: jump to a discovered map, arriving at its entrance.
-          if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
+          if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].deep) {
+            // The Deep (0.54): a Primordial's domain, once its Depth is open (the party's leader decides)
+            const lead = this.heroes[0].player;
+            if (this.depthOpen(lead, MAPS[c.to].deep)) this.loadMap(c.to, MAPS[c.to].portals[0].to);
+            else this.emit('depthLocked', { depth: MAPS[c.to].deep, name: MAPS[c.to].name });
+          } else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
           else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier, name: MAPS[c.to].name });
           else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.loadMap(c.to, MAPS[c.to].portals[0].to);
           break;
+        case 'setDepth':
+          // The Deep (0.54): choose a Depth (0: back to the world above), in Haven, by the party's leader
+          if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
+            const d = Math.floor(Number(c.depth) || 0);
+            if (d === 0 || this.depthOpen(p, d)) {
+              p.depth = d;
+              this.emit('depthSet', d ? { depth: d, numeral: DEEP.depths[d].numeral, name: DEEP.depths[d].name, need: DEEP.depths[d].ember, ember: this.ember(p) } : { depth: 0 });
+            }
+          }
+          break;
         case 'setTier':
           if (this.cur === this.heroes[0] && this.mode === 'explore' && this.map.safe) {
+            p.depth = 0; // a world tier is the world above
             p.worldTier = Math.max(1, Math.min(p.tierMax, Math.floor(Number(c.tier) || 1)));
             this.emit('tierSet', { tier: p.worldTier, numeral: TIERS[p.worldTier].numeral, name: TIERS[p.worldTier].name });
           }
@@ -1530,7 +1548,7 @@ export class World {
         return;
       }
     }
-    if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.channel) return;
+    if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.channel || (p.sealT > 0 && p.sealSlot === slot)) return;
     let a = dAtan2(z - p.z, x - p.x);
     if (!Number.isFinite(a)) a = p.facing;
     const d = dist(x, z, p.x, p.z);
@@ -1550,6 +1568,7 @@ export class World {
     }
 
     p.cd[slot] = this.abilityCooldown(slot);
+    p.lastSlot = slot; // (0.54) what a seal takes
     if (slot === 'q' && m.bloodQcd && p.bloodied) p.cd.q *= 0.5; // Bloodreaver
     if (m.bloodCost > 0 && (slot === 'q' || slot === 'w')) {
       // Blood Rage: Cleave and Whirlwind are paid for in health, but never below 10%.
@@ -2212,6 +2231,7 @@ export class World {
         else if (ch.kind === 'deadeye') this.fireDeadeye(ch.a, ch.range, ch.width, ch.dmg, ch.slot);
       } else p.facing = ch.kind === 'zone' ? dAtan2(ch.zone.z - p.z, ch.zone.x - p.x) : ch.a;
     }
+    if (p.sealT > 0) p.sealT = Math.max(0, p.sealT - dt);
     p.attackCd = Math.max(0, p.attackCd - dt);
     p.parryCd = Math.max(0, p.parryCd - dt);
     p.potionCd = Math.max(0, p.potionCd - dt);
@@ -2549,6 +2569,8 @@ export class World {
       if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj, held: true }));
     }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
+    const from = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
+    if (from && from.ember > 0) rawDamage *= emberScale(this.ember(p), from.ember).taken; // Ember (0.54)
     // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
     const holder = this.heroes.find((h) => h.player.bastionT > 0 && !h.player.dead && dist(h.player.x, h.player.z, p.x, p.z) <= 8);
     if (holder) rawDamage *= 1 - Math.min(0.75, (holder.kit.r.dr || 0.35) + (holder.mods.bastionDr || 0)); // (Bastion Plate: 50%)
@@ -2912,6 +2934,8 @@ export class World {
   // =========================================================================
   /** null (never taken) | 'active' | 'ready' (go and hand it in) | 'done' */
   questState(id) {
+    const q = QUESTS[id];
+    if (q && q.act3 && this.player.rebirth && this.player.rebirth.act3[id]) return 'done'; // (0.54) kept through rebirth
     return this.player.quests[id] ? this.player.quests[id].s : null;
   }
 
@@ -2921,6 +2945,11 @@ export class World {
     const st = this.questState(id);
     if (!q || (st && !(q.repeat && st === 'done'))) return false;
     if (q.after && this.questState(q.after) !== 'done') return false;
+    if (q.act3) {
+      // Act III (0.54): after the Unwish ending, and at least one rebirth; level 100 every life
+      const p = this.player;
+      if (!(p.endings && p.endings.self > 0) || !(p.rebirth && p.rebirth.n >= 1) || p.level < q.level) return false;
+    }
     return this.player.level >= q.level - 4;
   }
 
@@ -3036,6 +3065,15 @@ export class World {
     if (!q || this.questState(id) !== 'ready') return;
     const r = this.questReward(id);
     p.quests[id] = { s: 'done', n: this.questNeed(q) };
+    if (q.act3 && p.rebirth) {
+      // (0.54) Act III stays done through rebirth, and opens the next Depth for good
+      p.rebirth.act3[id] = true;
+      if (q.deep) {
+        p.rebirth.deepMax = Math.max(p.rebirth.deepMax || 0, q.deep);
+        this.emit('depthOpened', { depth: q.deep, numeral: DEEP.depths[q.deep].numeral, name: DEEP.depths[q.deep].name, need: DEEP.depths[q.deep].ember, ember: this.ember(p) });
+      }
+      if (id === 'deep6q') this.emit('ending', { kind: 'primordial' });
+    }
     p.gold += r.gold;
     p.scrap += r.scrap;
     p.keys += r.keys;
@@ -3304,8 +3342,31 @@ export class World {
   /** The world tier the party plays on (the leader's choice). */
   worldTier() {
     if (this.syncTier) return this.syncTier; // a joiner's copy: the host says
+    if (this.depthNow()) return MAX_TIER; // the Deep is built on tier V (0.54)
     const lead = this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
     return Math.max(1, Math.min(MAX_TIER, (lead && lead.worldTier) || 1));
+  }
+
+  /**
+   * The Depth this map is at (0.54): a Primordial's own domain is always its Depth; any other map out in
+   * the world is at the Depth the party's leader has chosen, if they may be there; 0 is the world above.
+   */
+  depthNow() {
+    if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.map.id === 'rift') return 0;
+    if (this.map.deep) return this.map.deep;
+    if (this.syncDepth != null) return this.syncDepth;
+    const lead = this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
+    return lead && lead.depth && this.depthOpen(lead, lead.depth) ? lead.depth : 0;
+  }
+
+  /** May this hero go down to Depth d? Level 100, and its story quest done (kept through rebirth). */
+  depthOpen(p, d) {
+    return !!DEEP.depths[d] && p.level >= DEEP.level && ((p.rebirth && p.rebirth.deepMax) || 0) >= d;
+  }
+
+  /** This hero's Ember (0.54). */
+  ember(p = this.player) {
+    return emberOf(p.rebirth);
   }
 
   /** Spawn a camp's enemy, at the world tier's level and strength (or the rift's), maybe as an elite. */
@@ -3327,6 +3388,16 @@ export class World {
       hp = TIERS[tier].hp;
       dmg = TIERS[tier].dmg;
       exp = TIERS[tier].exp;
+    }
+    const depth = rift ? 0 : this.depthNow();
+    if (depth) {
+      // The Deep (0.54): tier V times the Depth's own, and an Ember requirement on everything
+      const D = DEEP.depths[depth];
+      hp *= D.hp;
+      dmg *= D.dmg;
+      exp *= D.exp;
+      e.ember = D.ember;
+      e.depth = depth;
     }
     const T = TIERS[tier];
     const chance = (rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0) + (this.map.wilds ? WILDS.elite : 0);
@@ -5189,6 +5260,12 @@ export class World {
     } else if (atk.shape === 'circle') {
       tele.radius = atk.radius;
       tele.offset = atk.offset;
+      if (atk.at === 'target') {
+        // (0.54) it opens under you, where you stand as it begins
+        tele.x = e.atX = p.x;
+        tele.z = e.atZ = p.z;
+        tele.offset = 0;
+      }
       if (atk.leap) {
         tele.leap = true; // drawn where it will land, on you
         e.leapX = p.x;
@@ -5416,8 +5493,8 @@ export class World {
         e.z = e.pz = c.z;
         this.emit('bossLeap', { id: e.id, x: e.x, z: e.z, radius: atk.radius });
       }
-      const cx = e.x + dCos(a) * atk.offset;
-      const cz = e.z + dSin(a) * atk.offset;
+      const cx = atk.at === 'target' ? e.atX : e.x + dCos(a) * atk.offset;
+      const cz = atk.at === 'target' ? e.atZ : e.z + dSin(a) * atk.offset;
       hit = dist(p.x, p.z, cx, cz) <= atk.radius + p.radius * 0.4;
       this.emit('strike', { id: e.id, shape: 'circle', x: cx, z: cz, radius: atk.radius, parryable: atk.parryable, fx: atk.fx || null });
       if (atk.pool) this.addPool(e, cx, cz, atk.pool);
@@ -5487,6 +5564,12 @@ export class World {
     if (hit) {
       const res = this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e });
       if (atk.chill && res === 'hit') p.chillT = Math.max(p.chillT || 0, atk.chill);
+      if (atk.seal && res === 'hit' && p.lastSlot) {
+        // (0.54) Unasked, Forget, Enough: the last skill you used is sealed for a while
+        p.sealSlot = p.lastSlot;
+        p.sealT = atk.seal;
+        this.emit('sealed', { slot: p.sealSlot, name: this.kit[p.sealSlot] ? this.kit[p.sealSlot].name : '', time: atk.seal, by: e.def.name });
+      }
     }
     if (this.party && (atk.shape === 'arc' || atk.shape === 'circle')) {
       // Anyone else standing in it is hit too (and can parry it too).
@@ -5581,6 +5664,12 @@ export class World {
         let extra = e.maxHp * (H.max + (H.min - H.max) * k);
         if (e.def.boss || e.rare || e.remnant) extra = Math.min(extra, p.stats.ad * H.cap);
         dmg += extra;
+      }
+      if (e.ember > 0) {
+        // Ember (0.54): short of what it needs, your blows barely land; below half, every one is 1
+        const es = emberScale(this.ember(p), e.ember);
+        dmg = es.one ? 1 : Math.max(1, dmg * es.dealt);
+        if (es.one) opts = Object.assign({}, opts, { emberOne: true });
       }
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
@@ -5818,6 +5907,14 @@ export class World {
       if (e.remnant) {
         this.bountyEvent('remnant');
         this.giveMisc('fragment', FRAGMENTS.remnant);
+      }
+      if (e.depth && p.rebirth) {
+        // Kindling (0.54): each Depth's own, up to +5 Ember for good (a Primordial always gives one)
+        const K = DEEP.kindling, have = p.rebirth.kindling[e.depth] || 0;
+        if (have < DEEP.kindlingMax && this.rng() < (e.def.boss ? K.boss : e.elite || e.rare ? K.elite : K.normal)) {
+          p.rebirth.kindling[e.depth] = have + 1;
+          this.emit('kindling', { depth: e.depth, n: have + 1, max: DEEP.kindlingMax, ember: this.ember(p), x: e.x, z: e.z });
+        }
       }
       if (e.elite && !e.rare && !e.def.boss) {
         // Elite spoils (0.49): Wishdust, maybe a fragment, and once in a while the radiant chest it was guarding.
@@ -6408,6 +6505,8 @@ inTown() {
       const sub = r.state === 'done' ? (r.won ? 'cleared · step into the portal to go home' : 'finished') : r.state === 'guardian' ? `the guardian has come · ${clock}` : r.state === 'late' ? 'out of time · you can still finish it' : `${Math.min(100, Math.floor((100 * r.progress) / r.need))}% · ${clock}`;
       return { name: `Echo Rift · Tier ${r.tier}`, sub };
     }
+    const dn = this.depthNow();
+    if (dn) return { name: m.name, sub: `Depth ${DEEP.depths[dn].numeral} · Ember ${this.ember()} of ${DEEP.depths[dn].ember}` }; // (0.54)
     const tier = this.worldTier();
     if (tier >= 2 && !m.safe) return { name: m.name, sub: `Tier ${TIERS[tier].numeral} · ${TIERS[tier].name} · enemy level ${CONFIG.MAX_LEVEL}` };
     if (this.portalOn && this.portalArmed) return { name: m.name, sub: `travelling to ${this.portalOn.name}…` };

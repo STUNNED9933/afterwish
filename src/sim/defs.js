@@ -464,7 +464,89 @@ ENEMIES.asker.attacks = [
   { name: 'granted', shape: 'shot', around: true, trigger: 20, windup: 1.0, recover: 1.1, dmg: 18, parryable: true, lockAt: 0, speed: 8, count: 16, spread: 0, seek: 0.6, life: 4, cd: 12, fx: 'gold' },
   ...CHASE_KIT({ size: 1.15, pace: 0.85, dmg: 32 }),
 ];
-for (const id of ['boss', 'boss2', 'boss3', 'herald', 'asker']) ENEMIES[id].kit = true;
+// The Asker, again (0.54, Act III): the first of six Primordials, and it fights like one. Far more health,
+// and three new answers: Unasked (a circle that, if it catches you, seals the last skill you used for 6 s),
+// Every Wish at Once (wishlings that give it what it wants), and below half health, the Answer.
+Object.assign(ENEMIES.asker, { hp: 5600, exp: 520, title: 'Wanting, the first of six' });
+ENEMIES.asker.attacks.push(
+  { name: 'unasked', shape: 'circle', trigger: 16, radius: 3.6, offset: 0, at: 'target', windup: 1.1, recover: 1.0, dmg: 40, parryable: false, lockAt: 0, seal: 6, cd: 9, fx: 'gold' },
+  CALL('everywish', { summon: { type: 'wishling', count: 4, max: 6 }, cd: 22 }),
+  { name: 'answer', shape: 'ring', trigger: 14, radius: 11, inner: 4, windup: 1.4, recover: 1.2, dmg: 60, parryable: false, lockAt: 0, hpBelow: 0.5, cd: 8, fx: 'gold' },
+  { name: 'granted2', shape: 'shot', around: true, trigger: 22, windup: 0.8, recover: 1.0, dmg: 22, parryable: true, lockAt: 0, speed: 10, count: 22, spread: 0, seek: 0.8, life: 4, hpBelow: 0.5, cd: 9, fx: 'gold' },
+);
+
+// --- Act III: the Primordials and the Deep (0.54) ---------------------------------------------
+// Five more of the oldest things in the world, equals of the star: neither cruel nor kind, only what the
+// world does, given a will. Each waits at the bottom of its Depth (sim/endgame.js DEEP, maps.js deep6..10).
+const PRIMORDIAL = (name, title, colors, hp, more) => ({
+  name, model: 'boss', look: { scale: 1.3, colors }, title,
+  hp, speed: 3.1, radius: 1.7, height: 4.4, heavy: true, boss: true, primordial: true, exp: 560, poise: 5, parryStun: 3.5, drop: 1, cost: 0, ai: 'boss', atkCd: [0.6, 1.0],
+  attacks: [], ...more,
+});
+Object.assign(ENEMIES, {
+  cinder: PRIMORDIAL('The Cinder', 'Ending', [0x2a1a14, 0xff7a2a, 0x0c0806], 6000),
+  undertow: PRIMORDIAL('The Undertow', 'Forgetting', [0x0c2a30, 0x3ac0c0, 0x041014], 6400),
+  rootmother: PRIMORDIAL('The Rootmother', 'Growing', [0x2a2014, 0x9ad06a, 0x100c08], 7200),
+  choir: PRIMORDIAL('The Choir', 'Remembering', [0xd8e8f0, 0xc8e8ff, 0x1c2430], 6800),
+  stillness: PRIMORDIAL('The Stillness', 'Enough', [0xd8d4e0, 0x1a1828, 0x08080c], 8000),
+  // Their own: the mountain's dead, changed by each Depth
+  ashwalker: { ...ENEMIES.brute, name: 'Ashwalker', look: { scale: 1.0, colors: [0x2a1a14, 0xff7a2a, 0x0c0806] }, exp: 60, drop: 0.5 },
+  unnamed: { ...ENEMIES.grunt, name: 'The Unnamed', look: { scale: 1.05, colors: [0x2a3a40, 0x8ab0b8, 0x0c1418] }, hp: 90, exp: 40, drop: 0.35 },
+  rootbound: { ...ENEMIES.knight, name: 'Rootbound', look: { scale: 0.66, colors: [0x3a3020, 0x9ad06a, 0x14100c] }, hp: 190, exp: 50, drop: 0.45 },
+  echo: { ...ENEMIES.knight, name: 'Echo', look: { scale: 0.6, colors: [0xd8e8f0, 0xc8e8ff, 0x1c2430] }, hp: 130, speed: 4.4, exp: 50, drop: 0.45 },
+  hush: { ...ENEMIES.wraith, name: 'Hush', look: { scale: 1.3, colors: [0x2a2834, 0x0c0a14] }, hp: 80, exp: 45, drop: 0.35 },
+});
+// The Cinder: the ash-fever was its breath. It does not hate you. It is only very late.
+ENEMIES.cinder.attacks = [
+  ...BOSS_BASE({ size: 1.3, pace: 0.85, dmg: 34, slam: 8.5, shots: 11, spread: 2, shotSpeed: 13 }).map((a) => (a.name === 'slam' ? { ...a, pool: POOL('ash', 4, 5, 0.2), fx: 'ash' } : a)),
+  { name: 'fever', shape: 'shot', around: true, trigger: 18, windup: 1.0, recover: 1.0, dmg: 20, parryable: true, lockAt: 0, speed: 7, count: 14, spread: 0, seek: 0.5, life: 5, cd: 9, fx: 'ember' },
+  { name: 'ashfall', shape: 'rain', scatter: 9, trigger: 26, windup: 0.9, recover: 1.0, dmg: 30, parryable: false, lockAt: 0, count: 9, gap: 0.14, fall: 0.9, radius: 2.4, pool: POOL('ash', 2.2, 5, 0.2), cd: 10, fx: 'ash' },
+  { name: 'banked', shape: 'beam', cross: true, trigger: 16, length: 16, width: 2.6, windup: 1.2, recover: 1.2, dmg: 52, parryable: false, lockAt: 0.6, cd: 9, fx: 'ember' },
+  { name: 'lastbreath', shape: 'circle', trigger: 14, radius: 7, offset: 0, windup: 1.8, recover: 1.6, dmg: 80, parryable: false, lockAt: 0, pull: 4, hpBelow: 0.5, cd: 12, fx: 'ember' },
+  CALL('kindle', { summon: { type: 'ashwalker', count: 2, max: 3 }, hpBelow: 0.75, cd: 24 }),
+  ...CHASE_KIT({ size: 1.3, pace: 0.85, dmg: 34 }),
+];
+// The Undertow: the low water the fever came up with. It took the first city's name and wants yours.
+ENEMIES.undertow.attacks = [
+  ...BOSS_BASE({ size: 1.3, pace: 0.9, dmg: 32, slam: 8, shots: 9, spread: 1.8, shotSpeed: 12 }),
+  { name: 'tide', shape: 'beam', trigger: 20, length: 20, width: 4.2, windup: 1.2, recover: 1.3, dmg: 50, parryable: false, lockAt: 0.3, cd: 8, fx: 'tears' },
+  { name: 'lowwater', shape: 'ring', trigger: 10, radius: 10, inner: 3, windup: 1.3, recover: 1.2, dmg: 44, parryable: false, lockAt: 0, pool: POOL('tears', 3, 4, 0.12, { slow: 0.6 }), cd: 9, fx: 'tears' },
+  { name: 'drown', shape: 'circle', trigger: 14, radius: 5, offset: 0, windup: 1.6, recover: 1.5, dmg: 62, parryable: false, lockAt: 0, pull: 4.4, cd: 12, fx: 'tears' },
+  { name: 'forget', shape: 'circle', trigger: 16, radius: 3.4, offset: 0, at: 'target', windup: 1.0, recover: 1.0, dmg: 36, parryable: false, lockAt: 0, seal: 5, hpBelow: 0.6, cd: 10, fx: 'tears' },
+  CALL('nameless', { summon: { type: 'unnamed', count: 3, max: 5 }, cd: 22 }),
+  ...CHASE_KIT({ size: 1.3, pace: 0.9, dmg: 32 }),
+];
+// The Rootmother: growth, which is why things rot. Tobin's cure was her touch.
+ENEMIES.rootmother.attacks = [
+  ...BOSS_BASE({ size: 1.35, pace: 0.95, dmg: 34, slam: 9, shots: 8, spread: 1.6, shotSpeed: 10 }).map((a) => (a.name === 'slam' ? { ...a, pool: POOL('spore', 4.5, 5, 0.18), fx: 'spore' } : a)),
+  { name: 'roots', shape: 'rain', line: true, trigger: 20, windup: 0.8, recover: 1.1, dmg: 38, parryable: false, lockAt: 0.1, count: 8, gap: 0.16, fall: 0.7, radius: 2.4, cd: 8, fx: 'rot' },
+  { name: 'thicket', shape: 'ring', trigger: 9, radius: 9, inner: 3.5, windup: 1.3, recover: 1.3, dmg: 48, parryable: false, lockAt: 0, cd: 9, fx: 'rot' },
+  { name: 'bloom', shape: 'rain', scatter: 8, trigger: 22, windup: 1.0, recover: 1.1, dmg: 24, parryable: false, lockAt: 0, count: 7, gap: 0.15, fall: 1.0, radius: 2.4, pool: POOL('spore', 2.4, 6, 0.2), cd: 11, fx: 'spore' },
+  { name: 'embrace', shape: 'circle', trigger: 14, radius: 5.5, offset: 0, windup: 1.7, recover: 1.6, dmg: 70, parryable: false, lockAt: 0, pull: 4, hpBelow: 0.6, cd: 13, fx: 'rot' },
+  CALL('grow', { summon: { type: 'rootbound', count: 2, max: 3 }, heal: 0.03, hpBelow: 0.7, cd: 24 }),
+  ...CHASE_KIT({ size: 1.35, pace: 0.95, dmg: 34 }),
+];
+// The Choir: every voice the mountain ever lost, still singing. It sings yours back to you.
+ENEMIES.choir.attacks = [
+  ...BOSS_BASE({ size: 1.25, pace: 0.85, dmg: 32, slam: 8, shots: 13, spread: 2.6, shotSpeed: 15 }),
+  { name: 'chorus', shape: 'shot', around: true, trigger: 20, windup: 0.9, recover: 1.0, dmg: 20, parryable: true, lockAt: 0, speed: 11, count: 20, spread: 0, cd: 8, fx: 'glass' },
+  { name: 'refrain', shape: 'beam', cross: true, trigger: 16, length: 16, width: 2.2, windup: 1.1, recover: 1.1, dmg: 50, parryable: false, lockAt: 0.6, cd: 8, fx: 'glass' },
+  { name: 'requiem', shape: 'ring', trigger: 12, radius: 11, inner: 5, windup: 1.4, recover: 1.2, dmg: 56, parryable: false, lockAt: 0, cd: 10, fx: 'star' },
+  { name: 'recall', shape: 'rain', trigger: 28, windup: 0.6, recover: 0.9, dmg: 34, parryable: false, lockAt: 0, count: 10, gap: 0.2, fall: 0.8, radius: 2.3, hpBelow: 0.6, cd: 8, fx: 'star' },
+  CALL('echoes', { summon: { type: 'echo', count: 2, max: 4 }, cd: 20 }),
+  ...CHASE_KIT({ size: 1.25, pace: 0.85, dmg: 32 }),
+];
+// The Stillness: Enough, the counterweight to Wanting. It asks what you do not want.
+ENEMIES.stillness.attacks = [
+  ...BOSS_BASE({ size: 1.3, pace: 0.8, dmg: 36, slam: 9, shots: 12, spread: 2.2, shotSpeed: 14 }),
+  { name: 'hush', shape: 'circle', trigger: 16, radius: 8, offset: 0, windup: 2.0, recover: 1.6, dmg: 90, parryable: false, lockAt: 0, pull: 5, cd: 12, fx: 'oath' },
+  { name: 'quiet', shape: 'ring', trigger: 12, radius: 12, inner: 4.5, windup: 1.4, recover: 1.2, dmg: 60, parryable: false, lockAt: 0, cd: 9, fx: 'oath' },
+  { name: 'nothing', shape: 'beam', cross: true, trigger: 18, length: 18, width: 2.8, windup: 1.2, recover: 1.2, dmg: 58, parryable: false, lockAt: 0.6, cd: 9, fx: 'oath' },
+  { name: 'enough', shape: 'circle', trigger: 18, radius: 3.8, offset: 0, at: 'target', windup: 1.0, recover: 1.0, dmg: 44, parryable: false, lockAt: 0, seal: 6, hpBelow: 0.5, cd: 9, fx: 'oath' },
+  CALL('stillmore', { summon: { type: 'hush', count: 3, max: 5 }, cd: 22 }),
+  ...CHASE_KIT({ size: 1.3, pace: 0.8, dmg: 36 }),
+];
+for (const id of ['boss', 'boss2', 'boss3', 'herald', 'asker', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness']) ENEMIES[id].kit = true;
 
 // New Game+ (0.45): the Unmade wears your old face. It fights with your old class's moves, and in its
 // later phases with the wish's own (the same as Maren's). These are kits only: the boss is still boss3.

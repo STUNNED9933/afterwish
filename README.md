@@ -151,6 +151,32 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Act III: The Deep (0.54)
+
+An optional extreme mode for heroes at level 100 who have rebirthed. It sits beside the world tiers on the
+Waygate, in a box of its own, and it does not scale to you.
+
+- **Five Depths, VI to X**, each a map of its own with a Primordial waiting at the bottom: the Ashen Deep
+  (the Cinder, *Ending*), the Drowned Court (the Undertow, *Forgetting*), the Undergrowth (the Rootmother,
+  *Growing*), the Glass Choir (the Choir, *Remembering*) and the Quiet (the Stillness, *Enough*). Each
+  Depth has its own ground, light, plants and landmarks, its own enemies (Ashwalkers, the Unnamed,
+  Rootbound, Echoes, Hushes), and the mountain's usual dead come down darkened in its colour.
+- **Ember** decides whether you can touch what lives there: 10 for every rebirth, plus up to 5
+  **Kindling** from each Depth (bosses always drop one; elites sometimes; others rarely). Each Depth asks
+  for more (10, 25, 40, 55, 70). Short of it, your blows barely land and theirs land harder; below half
+  of it, every hit you make does 1 damage. Enemies show the Ember they need (◆) in red when you are short,
+  and the map title shows your Ember against the Depth's.
+- **Pace:** Depth VI opens after your first rebirth, as a taste; after that, about one more rebirth (and
+  that Depth's Kindling) to take on each next Depth comfortably.
+- **The story (Act III):** six Primordials, older than the mountain and neither good nor evil, Wanting
+  (the wish granter, the Asker) among them, equal to the other five. Elder Wren, Odile and Bram send you
+  down Depth by Depth; quests open each one and stay done through rebirth. Ending it wins the
+  **Sixfold** glow.
+- **Seals:** some Primordial blows take the last skill you used away for a few seconds (shown crossed out
+  on your skill bar).
+- **The Asker, much harder:** more health, and new attacks (*Unasked*, which seals a skill; *Everywish*,
+  which calls wishlings; *Answer*, a ring when she is low; a stronger *Granted*).
+
 ### Banked progress, Edric's keepsake, Echoes of past lives (0.53)
 
 - **Models for the last of them** (0.53.1, made with Tripo): the Wishthief (a hunched thief with a sack

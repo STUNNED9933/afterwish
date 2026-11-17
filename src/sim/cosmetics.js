@@ -14,6 +14,7 @@ export const GLOWS = {
   eternal: { name: 'The Star Remembers', color: 0xffffff, how: 'Be reborn ten times' },
   gloomcap: { name: 'Gloomcap', color: 0xb98aff, how: 'An Ending for Tobin' }, // (0.47)
   hearth: { name: 'Hearthlight', color: 0xffb060, how: 'Haven Grows' },
+  primordial: { name: 'Sixfold', color: 0xff9a5a, how: 'Answer the Stillness at the bottom of the Deep' }, // (0.54)
   afterlight: { name: 'Afterlight', color: 0xfff6d6, how: 'Unwish yourself at the Starwell' }, // (0.45)
 };
 export const GLOW_IDS = Object.keys(GLOWS);

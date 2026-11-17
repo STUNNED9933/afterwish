@@ -68,7 +68,7 @@ export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'etern
 
 /** A hero's rebirth record, from a save (or a fresh one). */
 export function migrateRebirth(r) {
-  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {} };
+  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {}, kindling: {}, deepMax: 0, act3: {} };
   if (!r || typeof r !== 'object') return out;
   out.n = Math.max(0, Math.floor(Number(r.n) || 0));
   out.marks = Math.max(0, Math.floor(Number(r.marks) || 0));
@@ -82,6 +82,10 @@ export function migrateRebirth(r) {
   out.essence = Math.max(0, Math.floor(Number(r.essence) || 0)); // Echoes (0.53)
   if (r.memories && typeof r.memories === 'object') for (const k in r.memories) if (r.memories[k]) out.memories[k] = JSON.parse(JSON.stringify(r.memories[k]));
   if (r.recalled && typeof r.recalled === 'object') for (const k in r.recalled) if (r.recalled[k]) out.recalled[k] = true;
+  // The Deep (0.54): Kindling found in each Depth, the deepest Depth opened, and Act III's quests done; all kept
+  if (r.kindling && typeof r.kindling === 'object') for (const k in r.kindling) out.kindling[k] = Math.max(0, Math.floor(Number(r.kindling[k]) || 0));
+  out.deepMax = Math.max(0, Math.floor(Number(r.deepMax) || 0));
+  if (r.act3 && typeof r.act3 === 'object') for (const k in r.act3) if (r.act3[k]) out.act3[k] = true;
   return out;
 }
 

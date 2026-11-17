@@ -105,6 +105,38 @@ export const MAPS = {
     roster: {}, spawns: 0, trees: 14, rocks: 10, boss: 'asker',
     portals: [{ to: 'town', angle: 0 }],
   },
+  // The Deep (0.54, Act III): each Primordial's own domain, at the bottom of its Depth (sim/endgame.js DEEP).
+  // Reached by the Waygate once that Depth is open; always at its own Depth, whatever is chosen in Haven.
+  deep6: {
+    name: 'The Ashen Deep', theme: 'deepash', radius: 44, level: 100, levelSpan: 0, deep: 6, song: 'starwell',
+    blurb: 'Embers that never cool, and ash falling upward. The Cinder is waiting',
+    roster: { ashwalker: 4, grunt: 3, brute: 2, imp: 3 }, spawns: 22, trees: 18, rocks: 30, boss: 'cinder',
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  deep7: {
+    name: 'The Drowned Court', theme: 'drowned', radius: 46, level: 100, levelSpan: 0, deep: 7, song: 'starwell',
+    blurb: 'The first Asterfell, under the second, forgotten on purpose',
+    roster: { unnamed: 5, glassbound: 3, courtguard: 2, wraith: 2 }, spawns: 24, trees: 16, rocks: 26, houses: 10, boss: 'undertow',
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  deep8: {
+    name: 'The Undergrowth', theme: 'rootdeep', radius: 46, level: 100, levelSpan: 0, deep: 8, song: 'starwell',
+    blurb: 'Roots older than the mountain. Everything here is still growing',
+    roster: { rootbound: 4, sporecap: 3, shaman: 2, golem: 2 }, spawns: 24, trees: 40, rocks: 20, boss: 'rootmother',
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  deep9: {
+    name: 'The Glass Choir', theme: 'choir', radius: 44, level: 100, levelSpan: 0, deep: 9, song: 'starwell',
+    blurb: 'Every voice the mountain lost, still singing. Yours among them',
+    roster: { echo: 4, wishling: 3, stalker: 2, spitter: 2 }, spawns: 22, trees: 24, rocks: 24, boss: 'choir',
+    portals: [{ to: 'town', angle: 0 }],
+  },
+  deep10: {
+    name: 'The Quiet', theme: 'quiet', radius: 42, level: 100, levelSpan: 0, deep: 10, song: 'starwell',
+    blurb: 'Nothing, and room for it',
+    roster: { hush: 5, ashwalker: 1, unnamed: 1, rootbound: 1, echo: 1 }, spawns: 20, trees: 6, rocks: 14, boss: 'stillness',
+    portals: [{ to: 'town', angle: 0 }],
+  },
 };
 export const MAP_IDS = Object.keys(MAPS);
 
@@ -276,7 +308,7 @@ export function buildMap(id, custom = null) {
 
   return {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
-    level: def.level, levelMax: def.level + def.levelSpan,
+    level: def.level, levelMax: def.level + def.levelSpan, deep: def.deep || 0,
     portals, obstacles, spawns, waygate, waystones,
   };
 }

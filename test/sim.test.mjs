@@ -226,7 +226,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const seen = new Set(['town']); const queue = ['town'];
   while (queue.length) for (const g of buildMap(queue.shift()).portals) if (!seen.has(g.to)) { seen.add(g.to); queue.push(g.to); }
   // (The Wilds is reached by the Waygate only, from world tier II: its one portal leads home.)
-  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier);
+  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep);
   check('maps: every map on the road can be reached from town', road.every((id) => seen.has(id)), [...seen].join(' > '));
   check('maps: every portal on the road has a way back', road.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
   check('maps: the Waygate-only maps lead home', MAP_IDS.filter((id) => MAPS[id].fromTier).every((id) => buildMap(id).portals.every((g) => g.to === 'town')));
@@ -243,7 +243,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const chain = ['town'];
     for (;;) { const next = MAPS[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => !chain.includes(to)); if (!next) break; chain.push(next); }
     const fields = chain.slice(1).map((id) => MAPS[id]);
-    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier).length, chain.join(' > '));
+    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep).length, chain.join(' > '));
     check('maps: each map picks up where the last one ended, up to level 100', fields.every((m, i) => m.level === (i === 0 ? 1 : fields[i - 1].level + fields[i - 1].levelSpan + 1)) && buildMap(chain[chain.length - 1]).spawns.some((sp) => sp.level === 100));
     check('maps: three bosses, each in its own map', ['keep', 'hollow', 'sanctum'].map((id) => buildMap(id).spawns.find((sp) => DEFS.ENEMIES[sp.type].boss).type).join() === 'boss,boss2,boss3');
     check('maps: enemies get tougher the deeper in you go', (() => { const m = buildMap('frost'); const near = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) < 30); const far = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) > 60); const av = (l) => l.reduce((a, sp) => a + sp.level, 0) / l.length; return near.length && far.length && av(far) > av(near) + 2; })());
@@ -654,7 +654,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const { farm } = await import('./balance.mjs');
   for (const id of Object.keys(MAPS)) {
     const m = MAPS[id];
-    if (m.safe || m.bossOnly) continue; // (a boss's chamber is not for farming)
+    if (m.safe || m.bossOnly || m.deep) continue; // (a boss's chamber is not for farming)
     const level = Math.min(99, m.level + Math.round(m.levelSpan / 2));
     const o = farm({ cls: 'warrior', map: id, level, minutes: 1.5, rarity: 2, parrySkill: 0.6 });
     check(`balance: a level ${level} warrior can farm ${m.name}`, o.kills >= 8 && o.downs <= 1, `${o.kills} kills, knocked out ${o.downs}x, lowest health ${Math.round(o.minHp * 100)}%`);
@@ -3495,5 +3495,55 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const e2 = rp.rebirth.essence, g2 = rp.gold, key = Object.keys(rp.equipped.weapon.stats)[0];
   r.command({ type: 'enchant', slot: 'weapon', key, essence: true }); r.step(CONFIG.TICK);
   check('echoes: a reroll for 1 Essence instead of gold', rp.rebirth.essence === e2 - 1 && rp.gold === g2);
+}
+// --- Act III: the Deep, Ember and the Primordials (0.54) ---
+{
+  const { DEEP, emberScale, emberOf } = await import('../src/sim/endgame.js');
+  const { geared } = await import('./balance.mjs');
+  check('Ember: +10 a rebirth and up to +5 Kindling a Depth', emberOf({ n: 3, kindling: { 6: 5, 7: 9 } }) === 30 + 5 + 5);
+  check('Ember: at the requirement, full damage; short of it, less; below half, 1 a hit', emberScale(10, 10).dealt === 1 && emberScale(9, 10).dealt < 0.8 && emberScale(4, 10).one && emberScale(13, 10).dealt === 1.25 && emberScale(4, 10).taken === 3);
+  const hero = (n, extra = {}) => {
+    const save = Object.assign(geared('warrior', 100, 5), { worldTier: 5, tierMax: 5, endings: { self: 1 }, rebirth: { n, deepMax: 0 } }, extra);
+    const w = new World({ seed: 9, mode: 'explore', cls: 'warrior', save }); return w;
+  };
+  const w = hero(1); const p = w.player;
+  w.loadMap('town', 'greenwood');
+  check('Act III: The Low Water opens after the Unwish and a rebirth', w.questOpen('deep1') && !hero(0).questOpen('deep1'));
+  w.command({ type: 'acceptQuest', id: 'deep1' }); w.step(CONFIG.TICK);
+  w.command({ type: 'readSign', id: 'sealed' }); w.step(CONFIG.TICK);
+  w.claimQuest('deep1');
+  check('Act III: reading Tobin\'s sealed notes opens Depth VI, for good', p.rebirth.deepMax === 6 && p.rebirth.act3.deep1 && w.questState('deep1') === 'done');
+  w.command({ type: 'setDepth', depth: 7 }); w.step(CONFIG.TICK);
+  check('the Deep: a Depth not yet opened cannot be chosen', p.depth === 0);
+  w.command({ type: 'setDepth', depth: 6 }); w.step(CONFIG.TICK);
+  w.loadMap('ridge', 'fen');
+  const e = w.enemies.find((x) => !x.def.boss);
+  check('the Deep: every map out in the world is at that Depth: level 100, an Ember requirement, tier V and more', p.depth === 6 && w.depthNow() === 6 && e.ember === DEEP.depths[6].ember && e.level === 100 && w.worldTier() === 5);
+  const hit = (ember) => { p.rebirth.n = ember / 10; e.hp = e.maxHp = 1e9; w.hitEnemy(e, 1000, { canCrit: false, source: 'q' }); return 1e9 - e.hp; };
+  const full = hit(10), short = hit(0);
+  check('the Deep: with Ember short of half its requirement, every hit is 1', short === 1 && full > 100, `${Math.round(full)} vs ${short}`);
+  p.rebirth.n = 1;
+  w.loadMap('deep6', 'town');
+  const cinder = w.enemies.find((x) => x.type === 'cinder');
+  check("the Deep: the Cinder waits at the bottom of the Ashen Deep, at Depth VI's requirement", cinder && cinder.ember === 10 && cinder.def.primordial);
+  check('the Deep: a Depth\'s own map knows its Depth, and its title shows your Ember against it', w.map.deep === 6 && w.zone().sub === `Depth VI · Ember ${w.ember()} of 10`, w.zone().sub);
+  const k0 = p.rebirth.kindling[6] || 0;
+  w.hitEnemy(cinder, 1e15); w.step(CONFIG.TICK);
+  check('the Deep: a Primordial always gives Kindling, and the quest after opens the next Depth', (p.rebirth.kindling[6] || 0) === k0 + 1);
+  // through rebirth
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const { starterWeapon } = await import('../src/sim/items.js');
+  const again = new World({ seed: 9, mode: 'explore', cls: 'warrior', save: rebirthSave(JSON.parse(JSON.stringify(w.toSave())), starterWeapon) });
+  check('Act III: progress, the Depths opened and Kindling are kept through rebirth, and Ember grows by 10', again.questState('deep1') === 'done' && again.player.rebirth.deepMax === 6 && again.ember() === w.ember() + 10);
+  check('the Deep: back at level 1, no Depth until level 100 again', !again.depthOpen(again.player, 6));
+  // a seal
+  const a = hero(1); const ap = a.player; a.loadMap('ridge', 'fen');
+  ap.cd.q = 0; a.command({ type: 'cast', slot: 'q', x: ap.x + 3, z: ap.z }); a.step(CONFIG.TICK);
+  const asker = a.spawnEnemy('asker', { x: ap.x + 2, z: ap.z, level: 100 });
+  const unasked = asker.def.attackByName.unasked;
+  check('the Asker: far stronger, with Unasked, Every Wish at Once and the Answer', asker.def.hp >= 5600 && unasked && asker.def.attackByName.everywish && asker.def.attackByName.answer);
+  ap.sealSlot = ap.lastSlot; ap.sealT = 6; ap.cd.q = 0; ap.castLock = 0;
+  const before = ap.cd.q; a.command({ type: 'cast', slot: 'q', x: ap.x + 3, z: ap.z }); a.step(CONFIG.TICK);
+  check('a seal: the last skill you used cannot be cast until it wears off', ap.lastSlot === 'q' && ap.cd.q === before);
 }
 process.exit(failed ? 1 : 0);

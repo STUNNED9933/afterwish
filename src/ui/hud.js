@@ -354,6 +354,7 @@ export class Hud {
       const again = (s === 'e' && world.mods.shadowStep && (world.shadows || []).some((x) => x.pid === me && x.src === 'e' && !x.swapped))
         || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
       slot.el.classList.toggle('recast', !!again);
+      slot.el.classList.toggle('sealed', p.sealT > 0 && p.sealSlot === s); // (0.54) a Primordial took it for a while
       slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Nightstep: the next ability hits harder
       // Reckoning (Bulwark): stacks for the next Whirlwind, shown on W.
       const stacks = s === 'w' && p.reck > 0 ? String(p.reck) : '';
@@ -549,10 +550,13 @@ export class Hud {
       }
       // The level, coloured by how dangerous the gap is.
       const gap = (e.level || world.player.level) - world.player.level;
-      if (bar.gap !== gap) {
+      const short = e.ember > 0 && world.ember() < e.ember ? e.ember : 0; // (0.54) the Deep: its Ember requirement, in red, when you are short of it
+      if (bar.gap !== gap || bar.short !== short) {
         bar.gap = gap;
-        bar.lvl.textContent = e.level || '';
-        bar.lvl.className = 'lvl ' + (gap >= 10 ? 'skull' : gap >= 5 ? 'red' : gap >= 2 ? 'orange' : gap <= -10 ? 'grey' : gap <= -3 ? 'green' : '');
+        bar.short = short;
+        bar.lvl.textContent = short ? `◆${short}` : e.level || '';
+        bar.lvl.title = short ? `Ember ${short} needed (you have ${world.ember()})` : '';
+        bar.lvl.className = 'lvl ' + (short ? 'skull' : gap >= 10 ? 'skull' : gap >= 5 ? 'red' : gap >= 2 ? 'orange' : gap <= -10 ? 'grey' : gap <= -3 ? 'green' : '');
       }
       // One status word above the bar: the most important one wins.
       // Burns and Hoarfrost show their stacks; a mage's Ignite is a burn, not a bleed.

@@ -92,6 +92,39 @@ export const BIOMES = {
     decor: [S('pottery', {}, 2), S('smallCrystals', { color: '#ffd890', seed: 4 }, 1)], decorDensity: 0.015,
     edge: { kind: 'wall', species: [S('ruinWall', { stone: '#b8986a', mortar: '#6a4a2a', moss: '#d8c090', seed: 31 })] },
   },
+  // The Deep (0.54): the Primordials' domains
+  deepash: {
+    trees: [S('dead', { bark: '#100a08', ember: '#ff4a0a', seed: 3, tall: 1.3 }, 3), S('obsidian', {}, 1)],
+    rocks: [S('lavaRock', {}, 2), S('boulder', { stone: '#2a2220', top: '#8a807a', topAmt: 0.9 }, 2)],
+    decor: [S('ashPile', {}, 3), S('embers', {}, 3)], decorDensity: 0.04,
+    edge: { kind: 'cliff', species: [S('boulder', { stone: '#1e1816', top: '#6a605a', topAmt: 0.9, flat: 1.2, seed: 100 })], also: [S('dead', { bark: '#100a08', ember: '#ff4a0a', seed: 101 })] },
+  },
+  drowned: {
+    trees: [S('pillar', {}, 2), S('willow', { leaves: ['#0e2224', '#22403a'], seed: 6 }, 2), S('dead', { bark: '#1a2a2a', seed: 9 }, 1)],
+    rocks: [S('ruinWall', { stone: '#3a5050', mortar: '#1a2a2a', moss: '#2a5a4a', seed: 7 }, 3), S('boulder', { stone: '#2a3a3c', top: '#3a5a4a', topAmt: 0.9 }, 1)],
+    decor: [S('reeds', {}, 3), S('lilypads', {}, 0)], decorDensity: 0.04,
+    pools: { kind: 'water', count: 12, size: [5, 11], edge: [S('reeds', {}, 3), S('lilypads', {}, 2)] },
+    edge: { kind: 'wall', species: [S('ruinWall', { stone: '#2a4040', mortar: '#122020', moss: '#2a5a4a', seed: 102 })] },
+  },
+  rootdeep: {
+    trees: [S('dead', { bark: '#2a1e12', seed: 11, tall: 1.6 }, 3), S('mushroom', { cap: '#3a4a1a', gills: '#9ad04a', seed: 12, h: 3.2, w: 2 }, 1)],
+    rocks: [S('stump', { bark: '#2a1e12', wood: '#5a4428' }, 2), S('boulder', { stone: '#3a3426', top: '#4a6a2a', topAmt: 1 }, 2)],
+    decor: [S('fern', { color: ['#1e2a12', '#4a6a24'] }, 3), S('sporeCaps', { cap: '#9ad04a', seed: 13 }, 2), S('log', {}, 1)], decorDensity: 0.07,
+    pools: { kind: 'glow', count: 4, size: [3, 6], edge: [S('fern', { color: ['#1e2a12', '#4a6a24'] }, 1)] },
+    edge: { kind: 'trees', species: [S('dead', { bark: '#22180e', seed: 103, tall: 2 }, 2), S('mushroom', { cap: '#3a4a1a', gills: '#9ad04a', seed: 104, h: 4.4, w: 2.6 }, 1)] },
+  },
+  choir: {
+    trees: [S('glassSpire', {}, 3), S('crystal', { color: '#cfe4ff', core: '#ffffff', seed: 5 }, 2)],
+    rocks: [S('cityRubble', {}, 2), S('iceRock', {}, 1)],
+    decor: [S('smallCrystals', { color: '#cfe4ff' }, 3)], decorDensity: 0.03,
+    edge: { kind: 'cliff', species: [S('crystal', { color: '#a8c8f0', seed: 105 }), S('iceRock', { seed: 106 })] },
+  },
+  quiet: {
+    trees: [S('dead', { bark: '#1a181e', seed: 14, tall: 1.1 }, 1)],
+    rocks: [S('boulder', { stone: '#2a2830', top: '#3a3842', topAmt: 0.4 }, 2), S('tombstone', {}, 1)],
+    decor: [S('bones', {}, 1)], decorDensity: 0.004,
+    edge: { kind: 'void', species: [S('floating', { seed: 107 })] },
+  },
   // The Shattered Wilds: each region keeps the plants of the land it broke from.
   shattered: {
     shards: {

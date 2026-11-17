@@ -14,7 +14,7 @@ import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, groundMask, buildRain, pebbleGeometry, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
 import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook } from './rigged.js';
-import { propInstances } from './props.js';
+import { propInstances, PROPS } from './props.js';
 import { SlashTrail } from './slash.js';
 
 const R = CONFIG.ARENA_RADIUS;
@@ -22,7 +22,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const SET_COLOR = 0x6fe08a; // set pieces (0.29)
 /** What an enemy's attack is made of (0.44): its trail, its pool, its burst. */
-const FX_COLOR = { fever: 0x9cff4a, spore: 0xc07aff, ember: 0xff7a2a, frost: 0x9fe6ff, storm: 0xbfd8ff, star: 0x7ff5e1, gold: 0xffd27a, tears: 0x8fd0ff, iron: 0xc9c4b0, glass: 0xffe0a0, rot: 0x7a8a3a, oath: 0xa98bff, sand: 0xe0c070 };
+const FX_COLOR = { fever: 0x9cff4a, spore: 0xc07aff, ember: 0xff7a2a, frost: 0x9fe6ff, storm: 0xbfd8ff, star: 0x7ff5e1, gold: 0xffd27a, tears: 0x8fd0ff, iron: 0xc9c4b0, glass: 0xffe0a0, rot: 0x7a8a3a, oath: 0xa98bff, sand: 0xe0c070, ash: 0x8a6a5a, hush: 0x2a2440 };
 
 const COLORS = {
   parry: 0x9fe8ff,
@@ -51,6 +51,12 @@ const MAP_THEMES = {
   astral: { ground: '#1c1a3a', hue: 250, sky: 0x06061a, tree: 0x8fe8ff, trunk: 0x2a2a5a, rock: 0x3a3a7a, edge: 0x0c0c24, crown: 'crystal', crownGlow: 0x2a8aa8, rockGlow: 0x2a2a8a, glossGlow: 0x1a5a8a },
   // Asterfell (0.39): sandstone, and spires of gold star-glass where trees would be.
   glass: { ground: '#988266', hue: 36, light: 44, sky: 0x2a1a0c, tree: 0xffe2a0, trunk: 0xc8a060, rock: 0xd8b070, edge: 0x6a4a28, crown: 'crystal', crownGlow: 0xc89030, rockGlow: 0x8a6020, glossGlow: 0x8a5a14 },
+  // The Deep (0.54): each Primordial's domain
+  deepash: { ground: '#1e1612', hue: 14, sky: 0x0a0504, tree: 0x2a1a14, trunk: 0x140c0a, rock: 0x3a2620, edge: 0x0a0606, crown: 'spike', rockGlow: 0xff5a1a, glossGlow: 0x6a1a08 },
+  drowned: { ground: '#14262a', hue: 188, sky: 0x040c10, tree: 0x1a3a40, trunk: 0x0c1a1c, rock: 0x2a4a50, edge: 0x060e10, rockGlow: 0x1a6a6a, glossGlow: 0x0a3a3a },
+  rootdeep: { ground: '#1e1a10', hue: 70, sky: 0x080804, tree: 0x3a4a1a, trunk: 0x2a1e12, rock: 0x3a3420, edge: 0x0a0806, crown: 'cap', crownGlow: 0x6aa04a },
+  choir: { ground: '#2a3038', hue: 205, light: 40, sky: 0x0c1018, tree: 0xd8eaff, trunk: 0x8aa0b8, rock: 0xa8c0d8, edge: 0x141a22, crown: 'crystal', crownGlow: 0x6a9ac8, glossGlow: 0x3a5a7a },
+  quiet: { ground: '#18161e', hue: 260, sky: 0x020204, tree: 0x2a2830, trunk: 0x14121a, rock: 0x2a2832, edge: 0x040406, crown: 'spike', glossGlow: 0x14102a },
   // The Shattered Wilds (0.41): pieces of four lands, with violet light in the seams between them.
   shattered: { ground: '#3a3a30', hue: 270, sky: 0x120c1c, tree: 0x3a5a2a, trunk: 0x3a2c22, rock: 0x5a5466, edge: 0x140c1c, glossGlow: 0x3a1a6a },
 };
@@ -349,7 +355,8 @@ export class Renderer {
     // instances once they arrive; the hand-built ones stand in until then.
     const houseFallback = new THREE.Group();
     const houseList = [];
-    const sandstone = look === 'glass';
+    const drowned = look === 'drowned'; // (0.54) the first Asterfell, under the water
+    const sandstone = look === 'glass' || drowned;
     if (sandstone) {
       wall.color.set(0xc8a878);
       roof.color.set(0xb89868);
@@ -496,8 +503,26 @@ export class Renderer {
     if (houseList.length) {
       propInstances(sandstone ? 'asterhouse' : 'cottage', houseList).then((mesh) => {
         if (!mesh || this.exploreGroup !== g) return;
+        if (drowned) {
+          mesh.material = mesh.material.clone(); // its own copy: Asterfell above keeps its gold
+          mesh.material.color.set(0x5a7a78);
+        }
         g.add(mesh);
         houseFallback.visible = false;
+      });
+    }
+    // The Deep (0.54): each domain's own landmark, in a ring beyond its edge
+    const DEEP_PROP = { deepash: 'ashspire', drowned: 'drownedarch', rootdeep: 'rootheart', choir: 'glasspillar', quiet: 'stillstone' };
+    if (DEEP_PROP[look] && PROPS[DEEP_PROP[look]]) {
+      const ring = [];
+      const n = 9;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + 0.2;
+        const big = 5 + (i % 3) * 1.5;
+        ring.push({ x: Math.cos(a) * (R + 5), z: Math.sin(a) * (R + 5), rot: -a, sx: big, sz: big }); // height follows the model's own shape
+      }
+      propInstances(DEEP_PROP[look], ring).then((mesh) => {
+        if (mesh && this.exploreGroup === g) g.add(mesh);
       });
     }
     // The Keep's ruined towers stand along its walls (0.41).

@@ -6,6 +6,7 @@
 // walk, slash, chop, cast, fire, hurt, fall, and a few gestures. Every attack in an enemy's kit
 // plays one of them, timed so the blow lands when the game resolves it: the wind-up runs the clip
 // up to its strike, and the follow-through plays out after.
+import { DEEP } from '../sim/endgame.js';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RIGGED, loadRigged, loadWeapon } from './rigged.js';
@@ -23,6 +24,12 @@ export const CREATURES = {
   boss3: { model: 'b_unmade', height: 4.3, kinds: { weep: 'sob', people: 'angry', cradle: 'cast', lullaby: 'cast' } },
   herald: { model: 'b_herald', height: 3.7, kinds: { present: 'bow', proclaim: 'cast', decree: 'cast' } },
   asker: { model: 'b_asker', height: 4.1, glow: [0.35, 0.27, 0.1], kinds: { granted: 'greet' } },
+  // the Primordials (0.54)
+  cinder: { model: 'b_cinder', height: 4.6, glow: [0.4, 0.14, 0.04] },
+  undertow: { model: 'b_undertow', height: 4.4 },
+  rootmother: { model: 'b_rootmother', height: 5.0 },
+  choir: { model: 'b_choir', height: 4.2, glow: [0.18, 0.26, 0.36] },
+  stillness: { model: 'b_stillness', height: 4.8 },
   // enemies
   grunt: { model: 'e_husk', height: 1.85 },
   spitter: { model: 'e_spitter', height: 1.9 },
@@ -44,6 +51,12 @@ export const CREATURES = {
   sporecap: { model: 'e_sporecap', height: 2.0 },
   wraith: { model: 'e_wraith', height: 2.5 },
   glassbound: { model: 'e_glassbound', height: 2.1 },
+  // the Deep's own (0.54)
+  ashwalker: { model: 'e_ashwalker', height: 2.0 },
+  unnamed: { model: 'e_unnamed', height: 2.1 },
+  rootbound: { model: 'e_rootbound', height: 2.3 },
+  echo: { model: 'e_echo', height: 1.9 },
+  hush: { model: 'e_hush', height: 2.2 },
 };
 /** Haven's people. */
 export const PEOPLE = {
@@ -107,11 +120,18 @@ export function attackKind(type, atk) {
   return 'slash';
 }
 
+const DEEP_OWN = new Set(['ashwalker', 'unnamed', 'rootbound', 'echo', 'hush']); // the Deep's own enemies keep their colours
 export function creatureSpec(type, e = null) {
   // New Game+ (0.45): the Unmade wears your old hero's face, huge and gone violet
   if (e && e.oldCls) return { model: 'hero_' + e.oldCls, height: 4.0, tint: 0x8a6ad8 };
   if (e && e.named && CREATURES[e.named]) return CREATURES[e.named]; // (0.53) Edric has his own body
-  return CREATURES[type] || null;
+  const c = CREATURES[type] || null;
+  if (c && e && e.ember > 0 && !(e.def && e.def.primordial) && !DEEP_OWN.has(type)) {
+    // (0.54) the mountain's own, changed by the Deep: darkened, in the Depth's colour
+    const D = Object.values(DEEP.depths).find((d) => d.ember === e.ember);
+    if (D) return { ...c, tint: D.color, dark: 0.55 };
+  }
+  return c;
 }
 
 /** Load the model for an enemy type or a person (null if there is none, or it cannot load). */
@@ -132,6 +152,7 @@ export function makeCreature(tpl, spec) {
     if (!o.isMesh) return;
     o.material = addRim(o.material.clone(), spec.tint || 0x9fb8ff, spec.tint ? 0.6 : 0.3);
     if (spec.tint) o.material.color.lerp(new THREE.Color(spec.tint), 0.45);
+    if (spec.dark) o.material.color.multiplyScalar(spec.dark); // (0.54) darkened in the Deep
     if (spec.glow) o.material.userData.glow = spec.glow; // a light of its own (the Asker)
     o.material.userData.cue = 0.4; // flashes and warnings, softer on a painted body than on a flat one
     mats.push(o.material);

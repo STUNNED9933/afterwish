@@ -45,7 +45,7 @@ export const NPCS = {
     look: { robe: 0x5a3a2a, trim: 0x2a2a30, hair: 0x3a2a20, scale: 1.1 },
     greet: 'Forge is hot. If it came off the mountain, I can use it. If it came off the Keep, don\'t tell me whose it was.',
     idle: 'Nothing I need just now. Come back when you have a few more levels on you.',
-    after: 'Forge went cold this morning for the first time in a hundred years. I just stood there and let it. Then I lit it again. Some things you keep.',
+    after: 'Forge went cold this morning for the first time in nineteen years. I just stood there and let it. Then I lit it again. Some things you keep.',
   },
   odile: {
     name: 'Sister Odile', role: 'Herbalist', at: [-6.4, 1.8],
@@ -68,7 +68,7 @@ export const NPCS = {
   tomashusk: {
     name: 'Tomas', role: 'a husk with a red scarf', where: 'greenwood', husk: true,
     look: { robe: 0x5a5a4a, trim: 0xb02a2a, hair: 0x2a2a2a, scale: 1 },
-    greet: "He does not look at you. He is walking, slowly, toward Haven, the way he has walked every evening for a hundred years. The red scarf is wound twice round his neck. His lips move: a name, over and over. Pip's name.",
+    greet: "He does not look at you. He is walking, slowly, toward Haven, the way he has walked every evening for nineteen years. The red scarf is wound twice round his neck. His lips move: a name, over and over. Pip's name.",
     idle: 'He keeps walking.',
   },
   // An Ending for Tobin (0.47): Odile's apprentice, at her stall once she has gone to the garden.
@@ -82,7 +82,7 @@ export const NPCS = {
   tomas: {
     name: 'Tomas', role: "Pip's father, home", at: [4.6, 4.9], onlyAfter: true,
     look: { robe: 0x4a5a3a, trim: 0x8a7a5a, hair: 0x3a2a1a, scale: 1.02 },
-    greet: 'I walked past this door every dusk for a hundred years. I could never remember why I should not come in. Tonight I remembered I could.\n\nWhere is my boy? No, do not tell me. I can hear him. I will just sit with him a while.',
+    greet: 'I walked past this door every dusk for nineteen years. I could never remember why I should not come in. Tonight I remembered I could.\n\nWhere is my boy? No, do not tell me. I can hear him. I will just sit with him a while.',
     idle: 'I will just sit with him a while.',
   },
 };
@@ -456,14 +456,14 @@ export const QUESTS = {
   },
   unwish: {
     giver: 'wren', level: 100, after: 'starwell', name: 'Unwish', goal: { ending: 1 }, give: { glass: 1 },
-    offer: 'I kept one of these for a hundred years. An Unwishing Glass. I never had the courage to use it, and it was never mine to use.\n\nIt is yours. Take it down to the well, where the star fell. Press it in, and want nothing. Or... no. I will not tell you what else you could ask. You will know.',
+    offer: 'I kept one of these for nineteen years. An Unwishing Glass. I never had the courage to use it, and it was never mine to use.\n\nIt is yours. Take it down to the well, where the star fell. Press it in, and want nothing. Or... no. I will not tell you what else you could ask. You will know.',
     done: 'You came back. I did not think you would. I am so glad you did.\n\nSit. The fire is warm, and for the first time in a long time, it is only a fire.',
     reward: { exp: 0, gold: 5000, keys: 5, tickets: 5 },
   },
 
   edric: {
     giver: 'bram', level: 45, after: 'knights', name: "Edric's Colours", side: true, goal: { kill: 1, enemy: 'edric', map: 'keep' },
-    offer: "I lied to you. I said don't tell me. I've changed my mind.\n\nThere's one in the Keep who still stands his watch. Blue trim on the pauldron. He'll not have moved from his post in a hundred years; Edric never could stand to be relieved early.\n\nBring me his colours. And his sword. I made that sword.",
+    offer: "I lied to you. I said don't tell me. I've changed my mind.\n\nThere's one in the Keep who still stands his watch. Blue trim on the pauldron. He'll not have moved from his post in nineteen years; Edric never could stand to be relieved early.\n\nBring me his colours. And his sword. I made that sword.",
     done: "That's my work on the hilt. That's his blue.\n\nI'll hang the colours by the forge, where he can see the fire. Wear a bit of his blue, too. Not on your finger with the rest: somewhere it'll stay, whatever comes. He'd want someone still standing the watch.\n\nAnd the sword. He'd want it used, not hung on a wall. He hated walls. He was a gate-guard. Go figure.",
     reward: { exp: 1, gold: 900, scrap: 120, unique: { warrior: 'edric' }, keepsake: 'bluetrim' }, // (0.53) the ring for everyone, in its own slot
   },
@@ -502,7 +502,7 @@ export const QUESTS = {
 
   tobin: {
     giver: 'odile', level: 75, name: 'An Ending for Tobin', side: true, goal: { meet: 'odile' },
-    offer: "I was his apprentice. Did Wren tell you? I was the one he sent away, the day he went into the garden. He said someone had to keep the herbs.\n\nI have kept them a hundred years. I am going to him now. I will go ahead; you come behind, through Gloomcap Hollow, to the heart of the garden. Do not let anything follow me in.",
+    offer: "I was his apprentice. Did Wren tell you? I was the one he sent away, the day he went into the garden. He said someone had to keep the herbs.\n\nI have kept them nineteen years. I am going to him now. I will go ahead; you come behind, through Gloomcap Hollow, to the heart of the garden. Do not let anything follow me in.",
     done: "He knew me. Under all of it, he knew me. He said I had let the thyme go woody.\n\nI am staying. Somebody should sit with him while it finishes; it was always going to be me. Lark has my stall in Haven, and my notes, and she is better with the pestle than I ever was. Go on. Go home.",
     reward: { exp: 1, gold: 1500, glow: 'gloomcap' },
   },

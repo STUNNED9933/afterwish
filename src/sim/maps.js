@@ -318,7 +318,7 @@ export function buildMap(id, custom = null) {
  * of the palace, its enemies placed by the world (not camps), with one way out, back up to the city.
  */
 export const DELVE_ROOMS = [
-  { name: "Bakers' Row", line: 'The ovens are still warm. The bread in them has been rising for a hundred years.' },
+  { name: "Bakers' Row", line: 'The ovens are still warm. The bread in them has been rising for nineteen years.' },
   { name: 'The Guard Hall', line: 'Every spear is polished. Every bed is made. Nobody has slept in them.' },
   { name: 'The Ballroom', line: 'The musicians have their bows lifted, waiting for a first note that never came.' },
   { name: 'The Royal Nursery', line: 'A cradle, a rattle, a little coat on a hook. The coat is your size, once.' },

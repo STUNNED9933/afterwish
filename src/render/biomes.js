@@ -251,7 +251,7 @@ export function buildBiome(map, { quality, mats }) {
 
   // Ground cover: walk-through plants and odds and ends.
   const area = Math.PI * R * R;
-  const density = (B.decorDensity ?? 0.03) * (quality === 'low' ? 0.35 : quality === 'medium' ? 0.75 : 1);
+  const density = (B.decorDensity ?? 0.03) * (quality === 'low' || quality === 'lowest' ? 0.35 : quality === 'medium' ? 0.75 : 1);
   const nDecor = Math.min(1600, Math.round(area * density));
   if (nDecor) {
     const spots = scatterSpots(map, nDecor, map.id.length * 7919 + 17, { minGap: 0.6 });
@@ -280,7 +280,7 @@ export function buildBiome(map, { quality, mats }) {
     };
     const circ = Math.PI * 2 * R;
     // the far rings are mostly hidden by the near ones: fewer of them on lower settings
-    const far = quality === 'low' ? 0 : quality === 'medium' ? 0.6 : 1;
+    const far = quality === 'low' || quality === 'lowest' ? 0 : quality === 'medium' ? 0.6 : 1;
     if (E.kind === 'trees') {
       ring(R + 1.8, Math.round(circ / 2.5), E.species, [1.1, 1.7]);
       if (far) ring(R + 5.5, Math.round((circ / 3.4) * far), E.species, [1.4, 2.1]);

@@ -65,8 +65,17 @@ function start(hot = {}) {
     music.attach(sfx.ctx);
   });
   // Graphics quality (0.34). Auto starts on High and steps down once or twice if frames are slow.
-  const gfx = { level: settings.graphics === 'auto' ? 'high' : settings.graphics, t: 0, frames: 0, warm: 3, drops: 0 };
+  // (0.54.9) without the graphics chip, Auto starts at the bottom, and says why the game is slow
+  const softGPU = renderer.softwareGPU();
+  const GFX_STEPS = ['high', 'medium', 'low', 'lowest'];
+  const GFX_NAMES = { high: 'High', medium: 'Medium', low: 'Low', lowest: 'Very low' };
+  const gfx = { level: settings.graphics === 'auto' ? (softGPU ? 'lowest' : 'high') : settings.graphics, t: 0, frames: 0, warm: 3, drops: 0 };
   renderer.setQuality(gfx.level);
+  if (softGPU) {
+    const w = document.getElementById('gpu-warn');
+    w.innerHTML = '<b>This browser is drawing the game without your graphics card</b>, so it will be slow. Turn on <b>hardware acceleration</b>: in Chrome, Settings → System → "Use graphics acceleration when available" (in Opera: Settings → Browser → System), then restart the browser. On a laptop, plug it in, and in Windows Settings → Display → Graphics, set the browser to High performance. (Until then, Auto graphics starts on Very low.)';
+    w.classList.remove('hidden');
+  }
 
   // One character per class, used in both exploration and the arena.
   if (!CLASSES[settings.cls]) settings.cls = 'warrior';
@@ -2183,7 +2192,7 @@ function start(hot = {}) {
   $('graphics').value = settings.graphics;
   $('graphics').addEventListener('change', (e) => {
     settings.graphics = e.target.value;
-    gfx.level = settings.graphics === 'auto' ? 'high' : settings.graphics;
+    gfx.level = settings.graphics === 'auto' ? (softGPU ? 'lowest' : 'high') : settings.graphics;
     gfx.t = gfx.frames = gfx.drops = 0;
     gfx.warm = 3;
     renderer.setQuality(gfx.level);
@@ -3029,7 +3038,7 @@ function start(hot = {}) {
     const rawDt = Math.max(0, (now - last) / 1000);
     const dt = Math.min(0.1, rawDt);
     last = now;
-    if (settings.graphics === 'auto' && gfx.drops < 2 && mode === 'play' && !document.hidden && rawDt < 3) {
+    if (settings.graphics === 'auto' && gfx.drops < 3 && mode === 'play' && !document.hidden && rawDt < 3) {
       // (frames up to 3 s long still count: a very slow machine must step down too; longer is a tab switch)
       // Auto graphics: after a few seconds of play, average the frame rate over six seconds.
       if (gfx.warm > 0) gfx.warm -= rawDt;
@@ -3039,13 +3048,13 @@ function start(hot = {}) {
         if (gfx.t >= 6) {
           const fps = gfx.frames / gfx.t;
           gfx.t = gfx.frames = 0;
-          if (fps < 45 && gfx.level !== 'low') {
-            gfx.level = gfx.level === 'high' ? 'medium' : 'low';
+          if (fps < 45 && gfx.level !== 'lowest') {
+            gfx.level = GFX_STEPS[Math.min(GFX_STEPS.length - 1, GFX_STEPS.indexOf(gfx.level) + 1)];
             gfx.drops++;
             gfx.warm = 3;
             renderer.setQuality(gfx.level);
-            hud.hint(`Graphics stepped down to ${gfx.level === 'medium' ? 'Medium' : 'Low'} for a smoother game (${Math.round(fps)} frames a second). Change it any time in the Menu.`, 6);
-          } else gfx.drops = 2; // fast enough: stop checking
+            hud.hint(`Graphics stepped down to ${GFX_NAMES[gfx.level]} for a smoother game (${Math.round(fps)} frames a second). Change it any time in the Menu.`, 6);
+          } else gfx.drops = 3; // fast enough: stop checking
         }
       }
     }

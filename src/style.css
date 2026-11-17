@@ -775,3 +775,5 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 #room-badge .ping.good { color: #8ee08e; }
 #room-badge .ping.meh { color: #f0c45a; }
 #room-badge .ping.bad { color: #ff7a6a; }
+/* (0.54.9) the browser has no graphics card to draw with */
+.gpu-warn { margin: 0 0 14px; max-width: 470px; padding: 10px 12px; border: 1px solid #f0a04a; border-radius: 6px; background: rgba(60, 30, 10, 0.75); color: #f6dcc0; font-size: 13px; line-height: 1.45; }

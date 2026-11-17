@@ -11,6 +11,8 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 export const QUALITY = {
   low: { shadows: false, grass: 0, pebbles: 0.4, bump: false, octaves: 3, post: false, pixelRatio: 1, motes: 80, shadowMap: 1024 },
   medium: { shadows: true, grass: 0.55, pebbles: 0.8, bump: true, octaves: 4, post: false, pixelRatio: 1.25, motes: 160, shadowMap: 1536 },
+  // (0.54.9) for a weak or software-only graphics chip: Low, drawn at a lower resolution and scaled up
+  lowest: { shadows: false, grass: 0, pebbles: 0.2, bump: false, octaves: 2, post: false, pixelRatio: 0.6, motes: 0, shadowMap: 512 },
   high: { shadows: true, grass: 1, pebbles: 1, bump: true, octaves: 5, post: true, pixelRatio: 1.75, motes: 260, shadowMap: 2048 },
 };
 

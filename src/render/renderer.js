@@ -150,6 +150,21 @@ export class Renderer {
    * Graphics quality (0.34): shadows, ground detail, grass, bloom and resolution.
    * Rebuilds the current map's scenery so the change shows at once. Drawing only.
    */
+  /**
+   * (0.54.9) Is the browser drawing without the graphics chip (hardware acceleration off, or the chip
+   * blocked)? Then everything is drawn by the processor, many times slower. Returns its name, or ''.
+   */
+  softwareGPU() {
+    try {
+      const gl = this.renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      return /swiftshader|llvmpipe|softpipe|basic render|software/i.test(name) ? name : '';
+    } catch (err) {
+      return '';
+    }
+  }
+
   setQuality(q) {
     if (!QUALITY[q]) q = 'high';
     const Q = QUALITY[q];

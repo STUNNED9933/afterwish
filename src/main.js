@@ -1355,7 +1355,14 @@ function start(hot = {}) {
     return n;
   }
   function updateRoomBadge() {
-    hud.setRoom(net ? { code: net.code, players: net.role === 'host' ? world.heroes.length : (world.allies().length + 1), host: net.role === 'host' } : null);
+    // (0.54.8) the round trip: the friend's own, or the slowest friend's for the host
+    let ping = 0, relay = false;
+    if (net && net.role === 'client') {
+      ping = net.ping || 0;
+      relay = !!net.relay;
+    }
+    else if (net) for (const f of net.room.friends.values()) ping = Math.max(ping, f.rtt || 0);
+    hud.setRoom(net ? { code: net.code, players: net.role === 'host' ? world.heroes.length : (world.allies().length + 1), host: net.role === 'host', ping: Math.round(ping), relay } : null);
   }
   function openMp() {
     if (!settings.name) settings.name = 'Player ' + Math.floor(100 + Math.random() * 900);
@@ -1406,6 +1413,19 @@ function start(hot = {}) {
     hud.feedText(`Hosting room ${code}. Click the room code at the top to copy it.`);
   }
 
+  /** (0.54.8) Events on their way to a friend, with positions and times cut to two decimals (half the bytes). */
+  function compactEvents(list) {
+    return list.map((ev) => {
+      const o = {};
+      for (const k in ev) {
+        const v = ev[k];
+        if (v === false || v === undefined || v === null) continue;
+        o[k] = typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 100) / 100 : v;
+      }
+      return o;
+    });
+  }
+
   /** Host: after every step, queue events for each friend; send snapshots 20 times a second and saves every few seconds. */
   function hostTick() {
     if (!net || net.role !== 'host') return;
@@ -1417,20 +1437,35 @@ function start(hot = {}) {
     }
     if (net.tick % 3 === 0) {
       for (const [pid, f] of net.room.friends) {
+        // (0.54.8) A connection that is not keeping up gets no new update until it has caught up:
+        // otherwise updates pile up in the send queue and everything that friend sees (and does)
+        // falls further and further behind. The changes carry over, so nothing is lost.
+        if (net.room.congested(pid)) {
+          if (f.pending && f.pending.length > 400) f.pending.splice(0, f.pending.length - 400);
+          continue;
+        }
         const snap = makeSnapshot(world, pid, f.memo);
         if (!snap) continue;
-        snap.ev = f.pending || [];
+        snap.ev = compactEvents(f.pending || []);
         f.pending = [];
         net.room.sendTo(pid, snap);
       }
     }
     if (net.tick % 300 === 0) {
-      for (const pid of net.room.friends.keys()) {
+      // every five seconds, only when something in it changed (0.54.8), and not into a backed-up connection
+      for (const [pid, f] of net.room.friends) {
         const h = world.heroByPid(pid);
-        if (h) net.room.sendTo(pid, { t: 'save', save: world.as(h, () => world.toSave()), gold: h === world.cur ? world.player.gold : h.player.gold, tickets: h.player.tickets });
+        if (!h || net.room.congested(pid)) continue;
+        const sv = world.as(h, () => world.toSave());
+        const gold = h === world.cur ? world.player.gold : h.player.gold;
+        const key = JSON.stringify(sv) + gold + ':' + h.player.tickets;
+        if (f.savedKey === key) continue;
+        f.savedKey = key;
+        net.room.sendTo(pid, { t: 'save', save: sv, gold, tickets: h.player.tickets });
       }
       persist();
     }
+    if (net.tick % 120 === 0) updateRoomBadge();
   }
 
   async function joinGame() {
@@ -1465,7 +1500,7 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2 };
+    net = { role: 'client', room, pid: welcome.pid, code, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
@@ -1512,6 +1547,14 @@ function start(hot = {}) {
         return;
       }
       net.resyncAt = 0;
+      // (0.54.8) how unevenly updates arrive: the playback stays that far behind, so it never runs dry
+      const now = performance.now();
+      if (net.arriveAt) {
+        const late = Math.abs(now - net.arriveAt - (msg.tick != null && net.arriveTick != null ? (msg.tick - net.arriveTick) * CONFIG.TICK * 1000 : 50));
+        net.jitter = net.jitter * 0.9 + Math.min(400, late) * 0.1;
+      }
+      net.arriveAt = now;
+      net.arriveTick = msg.tick;
       net.queue.push(msg);
     } else if (msg.t === 'save') {
       save = msg.save;
@@ -1519,15 +1562,43 @@ function start(hot = {}) {
       account.gold = msg.gold;
       account.tickets = msg.tickets;
       storeAccount(account);
+    } else if (msg.t === 'pong') {
+      const rtt = performance.now() - msg.at;
+      net.ping = net.ping ? net.ping * 0.6 + rtt * 0.4 : rtt;
+      updateRoomBadge();
     } else if (msg.t === 'closed') leaveRoom('The host closed the room.');
   }
+
+  // (0.54.8) Friend: measure the round trip every two seconds (shown in the room badge), and whether
+  // the connection goes straight between the two browsers or through a relay server.
+  setInterval(() => {
+    if (!net || net.role !== 'client') return;
+    net.room.send({ t: 'ping', at: performance.now(), rtt: Math.round(net.ping || 0) });
+    const pc = net.room.conn && net.room.conn.peerConnection;
+    if (pc && pc.getStats && !net.relayChecked) {
+      net.relayChecked = true;
+      pc.getStats().then((stats) => {
+        let pair = null;
+        stats.forEach((s) => { if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') pair = s; });
+        const local = pair && stats.get(pair.localCandidateId), remote = pair && stats.get(pair.remoteCandidateId);
+        if (net) net.relay = !!((local && local.candidateType === 'relay') || (remote && remote.candidateType === 'relay'));
+        updateRoomBadge();
+      }).catch(() => {});
+    }
+  }, 2000);
 
   /** Friend side: play queued host updates back at an even pace, a little behind, so movement glides. */
   function playSnapshots(now) {
     const q = net.queue;
+    // (0.54.8) keep a small cushion of updates in hand, sized to how unevenly they arrive; after
+    // running dry, wait for it to refill rather than start and stop with every arrival
+    const cushion = Math.max(1, Math.min(3, Math.ceil(1 + (net.jitter || 0) / 40)));
+    if (!q.length) net.dry = true;
+    if (net.dry && q.length < cushion) return;
+    net.dry = false;
     if (!q.length || now < net.nextAt) return;
     // Running far behind (a long hitch): skip ahead, keeping the events of the skipped updates.
-    while (q.length > 4) {
+    while (q.length > cushion + 2) {
       const old = q.shift();
       for (const ev of old.ev || []) world.events.push(ev);
       if (old.heavy) q[0].heavy = { ...old.heavy, ...(q[0].heavy || {}) }; // heavy parts come one by one: keep every one
@@ -1544,7 +1615,8 @@ function start(hot = {}) {
     net.snapGap = Math.max(16, Math.min(250, gapTicks * CONFIG.TICK * 1000));
     net.snapAt = now;
     // With more waiting, play a little faster to catch up; with none, at the host's pace.
-    net.nextAt = now + net.snapGap * (q.length >= 2 ? 0.7 : q.length === 1 ? 0.9 : 1);
+    // Around the cushion, play at the host's pace; a little faster above it, a little slower below.
+    net.nextAt = now + net.snapGap * (q.length > cushion + 1 ? 0.8 : q.length > cushion ? 0.92 : q.length < cushion ? 1.1 : 1);
     const allies = world.alliesList ? world.alliesList.length : 0;
     if (applySnapshot(world, msg, alpha)) world.events.push({ type: 'mapChange', id: world.map.id, name: world.map.name, from: null, hero: net.pid });
     for (const ev of msg.ev || []) world.events.push(ev);

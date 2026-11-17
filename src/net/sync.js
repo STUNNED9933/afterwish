@@ -13,7 +13,7 @@ import { SIM_VERSION } from '../sim/version.js';
 
 // Host and friends must run the same build of the rules: the protocol's own number, plus a
 // fingerprint of the rules themselves (0.41.1), so a friend on an older tab is told, not broken.
-export const NET_VERSION = `9:${SIM_VERSION}`;
+export const NET_VERSION = `10:${SIM_VERSION}`; // 10 (0.54.8): ping and pong
 
 /** Hero fields that rarely change and are big: sent only when they change. */
 const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];

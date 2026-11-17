@@ -771,3 +771,7 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* a sealed skill (0.54): Unasked, Forget, Enough */
 .slot.sealed { filter: grayscale(1) brightness(0.55); box-shadow: 0 0 0 2px #ff5a2a inset; }
 .slot.sealed::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #ff6a3a; font-size: 26px; font-weight: 700; text-shadow: 0 0 6px #000; pointer-events: none; }
+/* the round trip in the room badge (0.54.8) */
+#room-badge .ping.good { color: #8ee08e; }
+#room-badge .ping.meh { color: #f0c45a; }
+#room-badge .ping.bad { color: #ff7a6a; }

@@ -151,6 +151,18 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Smoother multiplayer between homes (0.54.8)
+
+- **No more pile-ups.** When a friend's connection cannot keep up, the host now waits for it to catch up
+  instead of queueing more updates behind it. Before, the queue could grow to megabytes, so that friend's
+  screen and controls fell further and further behind the longer you played.
+- **A cushion against hiccups.** A friend's screen now keeps a small buffer of updates, sized to how
+  unevenly they arrive, so movement keeps gliding through a network hiccup instead of stopping and starting.
+- **Lighter updates.** Event numbers are rounded before sending, and saves only go out when they change.
+- **Ping in the room badge.** The round trip (yours, or the slowest friend's for the host), green, amber
+  or red, and "relay" when the browsers could not connect directly and go through a relay server.
+- For testing: `?lag=150&jitter=60` in the address delays every message, as a connection between two homes would.
+
 ### A faster middle of the climb (0.54.3)
 
 The 40s felt stagnant. Levels 38 to 48 now need 40% less EXP, easing in from level 28 and back out by 66:

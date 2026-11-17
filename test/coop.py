@@ -55,9 +55,8 @@ with sync_playwright() as pw:
     check("the friend's screen has the new map's scenery", friend.evaluate("() => game.renderer.mapId") == 'greenwood')
     # The friend kills an enemy (with help: make it one hit) and gets their own rewards.
     before = friend.evaluate("() => ({ exp: game.world.player.exp, gold: game.world.player.gold, lvl: game.world.player.level })")
-    host.evaluate("""() => { const w = game.world; const f = w.heroByPid(1).player; const e = w.enemies.find(x => !x.def.boss);
-        e.x = f.x + 2; e.z = f.z; e.hp = 1; e.aggro = true; }""")
-    eid = host.evaluate("() => game.world.enemies.find(x => x.hp === 1).id")
+    eid = host.evaluate("""() => { const w = game.world; const f = w.heroByPid(1).player; const e = w.enemies.find(x => !x.def.boss && !x.dead);
+        e.x = e.px = f.x + 2; e.z = e.pz = f.z; e.hp = 1; e.aggro = true; return e.id; }""")
     friend.wait_for_timeout(500)
     friend.evaluate(f"() => game.world.command({{ type: 'attack', id: {eid} }})")
     friend.wait_for_function(f"() => !game.world.enemies.some(e => e.id === {eid})", timeout=15000)

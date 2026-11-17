@@ -45,6 +45,36 @@ const REASONS = {
   'browser-incompatible': 'This browser cannot do peer-to-peer connections.',
   'ssl-unavailable': 'The connection needs a secure page.',
 };
+/**
+ * Testing on one computer (0.54.8): ?lag=150&jitter=60 holds every message for that long (in order,
+ * as a real connection would), to try the game the way it plays between two homes.
+ */
+function lagged(conn) {
+  let lag = 0, jitter = 0;
+  try {
+    const q = new URLSearchParams(location.search);
+    lag = Number(q.get('lag')) || 0;
+    jitter = Number(q.get('jitter')) || 0;
+  } catch (err) {
+    /* no address bar (tests) */
+  }
+  if (!lag && !jitter) return conn;
+  const send = conn.send.bind(conn);
+  let last = 0;
+  conn.send = (msg) => {
+    const at = Math.max(last, performance.now() + lag + Math.random() * jitter);
+    last = at;
+    setTimeout(() => conn.open && send(msg), at - performance.now());
+  };
+  return conn;
+}
+
+/** How full a connection's outgoing queue is, in bytes (the browser's and PeerJS's own). */
+export function backlog(conn) {
+  const dc = conn && conn.dataChannel;
+  return (dc ? dc.bufferedAmount : 0) + ((conn && conn._buffer && conn._buffer.length) || 0) * 4096;
+}
+
 const reason = (err) => REASONS[err && err.type] || (err && err.message) || 'Something went wrong with the connection.';
 
 /**
@@ -91,6 +121,7 @@ export class HostRoom {
   }
 
   accept(conn) {
+    lagged(conn);
     let pid = null;
     conn.on('data', (msg) => {
       if (!msg || typeof msg !== 'object') return;
@@ -113,6 +144,12 @@ export class HostRoom {
         return;
       }
       if (msg.t === 'cmd' && msg.cmd && typeof msg.cmd.type === 'string') this.onCmd(pid, msg.cmd);
+      // (0.54.8) the friend measures the round trip; the host keeps it to show in the room badge
+      else if (msg.t === 'ping') {
+        const f = this.friends.get(pid);
+        if (f) f.rtt = msg.rtt || 0;
+        conn.send({ t: 'pong', at: msg.at });
+      }
       // The friend missed an update (they arrive as changes): the next one goes in full.
       else if (msg.t === 'resync') { const f = this.friends.get(pid); if (f) f.memo = {}; }
       else if (msg.t === 'bye') conn.close();
@@ -125,6 +162,12 @@ export class HostRoom {
     };
     conn.on('close', gone);
     conn.on('error', gone);
+  }
+
+  /** Is this friend's connection keeping up? Not when a few updates' worth is still waiting to go out. */
+  congested(pid) {
+    const f = this.friends.get(pid);
+    return !!(f && backlog(f.conn) > 24 * 1024);
   }
 
   sendTo(pid, msg) {
@@ -177,7 +220,7 @@ export class JoinRoom {
         if (!done) fail(reason(err));
       });
       peer.on('open', () => {
-        const conn = peer.connect(PREFIX + cleanCode(code), { reliable: true, serialization: 'json' });
+        const conn = lagged(peer.connect(PREFIX + cleanCode(code), { reliable: true, serialization: 'json' }));
         this.conn = conn;
         conn.on('open', () => conn.send(Object.assign({ t: 'hello', v: NET_VERSION }, hello)));
         conn.on('data', (msg) => {

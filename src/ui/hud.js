@@ -870,7 +870,10 @@ export class Hud {
     const el = $('room-badge');
     el.classList.toggle('hidden', !info);
     document.body.classList.toggle('in-room', !!info);
-    if (info) el.innerHTML = `Room <b>${info.code}</b> · ${info.players} player${info.players === 1 ? '' : 's'}${info.host ? ' · hosting' : ''}`;
+    if (!info) return;
+    const ping = info.ping ? ` · <span class="ping ${info.ping > 250 ? 'bad' : info.ping > 120 ? 'meh' : 'good'}" title="Round trip to ${info.host ? 'your slowest friend' : 'the host'}${info.relay ? ', through a relay server (a direct connection could not be made)' : ''}">${info.ping} ms${info.relay ? ' · relay' : ''}</span>` : '';
+    const html = `Room <b>${info.code}</b> · ${info.players} player${info.players === 1 ? '' : 's'}${info.host ? ' · hosting' : ''}${ping}`;
+    if (el.innerHTML !== html) el.innerHTML = html;
   }
 
   reset() {

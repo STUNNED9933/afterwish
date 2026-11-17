@@ -19,7 +19,8 @@ function copyModels() {
 
 function writeHtml() {
   const css = readFileSync('src/style.css', 'utf8');
-  const html = readFileSync('src/index.html', 'utf8').replace('/*__CSS__*/', () => css);
+  const version = JSON.parse(readFileSync('package.json', 'utf8')).version; // the title screen always shows the real version
+  const html = readFileSync('src/index.html', 'utf8').replace('/*__CSS__*/', () => css).replace('__VERSION__', version);
   mkdirSync('dist', { recursive: true });
   writeFileSync('dist/index.html', html);
 }

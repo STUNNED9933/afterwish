@@ -65,10 +65,11 @@ The eight enemies added in 0.8:
 | Storm Wraith | Very fast bolt | Parry on reaction, or keep moving |
 
 - **Levels.** The cap is 100. Inside a map, enemies near the entrance are at
-  the bottom of its range and those by the far portal at the top. EXP per kill
-  and EXP per level both grow, so fighting enemies around your own level is
-  always the quickest way up. `EXP_PACE` in `src/config.js` makes the whole
-  climb longer or shorter.
+  the bottom of its range and those by the far portal at the top. A kill pays
+  **10x EXP** when the enemy is within 3 levels of you, sliding down to **2x**
+  at 10 or more levels apart (above or below), never less (0.49,
+  `levelBandMult` in `src/sim/defs.js`). `EXP_PACE` in `src/config.js` (4 since
+  0.49) makes the whole climb longer or shorter.
 - **Enemy strength** is one formula, `enemyScale` in `src/sim/defs.js`. It
   keeps pace with a hero in ordinary gear of the same level, then adds a ramp:
   by level 100 an enemy takes about three times as long to kill and hits about
@@ -149,6 +150,18 @@ Saves live in the browser you play in. On the title screen, **Move saves to
 another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
+
+### Fight near your level, and rarer, richer finds (0.49)
+
+- **EXP by level band.** Enemies within 3 levels of you pay 10x EXP, sliding to 2x at 10 or more levels
+  apart. Levels need 4x the EXP they did, so fighting at your level is about 2.5x faster than before and
+  fighting far below (or far above) you about 2x slower. Quests and bosses keep their share. Saves made
+  before 0.49 keep how far along their bar they were. Wishborne levels past 100 follow the same pace.
+- **Elite spoils.** Every elite gives 1 or 2 Wishdust, a 25% chance of an Immortal Fragment (on any world
+  tier), a sure piece that leans Mythic (Epic 55%, Mythic 37%, Ancient 8%), and a 3% chance it was guarding
+  a radiant chest, which appears where it falls.
+- **Radiant chests** are about 3x rarer and much richer (see *Treasure chests*). **World events** come
+  less than half as often and pay 12 Immortal Fragments, a Remnant Sigil half the time and a richer chest.
 
 ### Weapon looks (0.48)
 
@@ -639,7 +652,7 @@ Drawing only: the rules, collisions and what co-op sends are unchanged.
 - **Immortals are endgame only.** No more from ordinary drops or the Iron and
   Gilded caches. They come from The Unmade (guaranteed the first time, then 5%
   for its best piece), the Remnants' own Immortals, the Warden's Cache (1%) and
-  radiant chests on world tier IV and up (3%).
+  radiant chests (0.49: 1.5%, 4% on world tier IV and up).
 - **Lifesteal budget.** Lifesteal heals at most 15% of your max health a second
   (it holds one second's worth; double during Crimson Oath). Late in the game a
   single hit deals hundreds of times your health, so one Barrage used to heal
@@ -673,13 +686,13 @@ Drawing only: the rules, collisions and what co-op sends are unchanged.
   within 6 m, up to 9%), *The Unwished Crown* (helm: Doom takes half, and
   avoiding one gives 20% more damage for 5 s). And 30% of the time, a weapon
   glow.
-- **World events.** After 45 s on a map, and every 90 s after, a 30% chance of:
+- **World events.** After 45 s on a map, and every 90 s after, a 12% chance (0.49: rarer, better paid: 12 Immortal Fragments and a Remnant Sigil half the time) of:
   - **a meteor**: it lands somewhere near (an orange pillar of light and an
     orange minimap dot), a pack crawls out; clear it within 2 minutes for a
     radiant chest in the crater.
   - **a shrine**: step into its ring (a gold pillar) and hold it 60 seconds
     while waves come at you; leave it empty 6 s and it goes dark. Holding it
-    gives a radiant chest, 5 Wishdust and a shard (not to anyone idle).
+    gives a radiant chest, 10 Wishdust and 2 shards (not to anyone idle).
 - **The travelling merchant.** On 15% of the maps you arrive at (at most once
   every 6 minutes) he sets up for 3 minutes (a brown minimap dot). Walk up and
   press G: two pieces of Epic-or-better mystery gear and 5 Wishdust for gold, a
@@ -738,7 +751,7 @@ Drawing only: the rules, collisions and what co-op sends are unchanged.
   Nightcut, Veilweave, Ashen, Rimeheart). Set pieces are Ancient items (just below Immortal) of
   their class with a green glow on the ground; two worn give the first bonus,
   four the second (see each piece's tooltip). From Remnants (always), Storied
-  enemies (12%) and radiant chests (10%); usually your own subclass's set.
+  enemies (12%) and radiant chests (20%); usually your own subclass's set.
 - **Enchanting** (Gear, Tab: *Enchant* on an equipped item). Turn one bonus stat
   into a different one at a fresh roll, for gold and Wishdust. After the first
   enchant only that line can be enchanted again, and each time costs more.
@@ -962,9 +975,10 @@ Drawing only: the rules, collisions and what co-op sends are unchanged.
 - **Treasure chests** on every map out in the world (not in Haven): 2 or 3
   per map, gold dots on the minimap. Walk over one to open it. Plain chests
   hold gold and a piece of gear; **gilded** ones (about 1 in 4) two better
-  pieces and refill your potions; **radiant** ones (about 1 in 20) a
-  Mythic or better, with a 12% chance of an **Immortal**, plus a starglass
-  shard. An opened chest comes back somewhere else on the map after 2.5
+  pieces and refill your potions; **radiant** ones (about 1 in 70 since 0.49)
+  hold 8 to 14 **Immortal Fragments**, a Mythic or Ancient piece and two more
+  good ones, two starglass shards, and a 1.5% chance of an **Immortal** (4% on
+  world tier IV and up). An opened chest comes back somewhere else on the map after 2.5
   minutes. In a party, the opener gets the gear.
 - **Fixes:** burns show as BURNING ×stacks (not "bleeding"), with Hoarfrost,
   Brittle and Frozen shown too; the Weekly Echo no longer shows a talent

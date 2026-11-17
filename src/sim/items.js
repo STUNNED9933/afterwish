@@ -563,11 +563,11 @@ export const CACHES = {
 /**
  * Treasure chests out in the world (world.js openChest). Gold is (12 + 3 per level) times `gold`.
  * Each entry in `items` is one piece of gear: at least rarity `min`, or rolled on `weights`
- * (one weight per rarity, Common to Immortal). A radiant chest has a 12% chance of an Immortal.
+ * (one weight per rarity, Common to Immortal). A radiant chest (0.49) holds Immortal Fragments too, and
+ * its first piece is an Immortal 1.5% of the time (4% on world tier IV and up).
  */
 export const CHEST_TIERS = {
   wooden: { name: 'Chest', gold: 1, items: [{ min: 1 }] },
   gilded: { name: 'Gilded chest', gold: 3, potions: true, items: [{ min: 3 }, { min: 2 }] },
-  // (an Immortal only on world tier IV and up, 3%: world.js openChest)
-  radiant: { name: 'Radiant chest', gold: 6, tickets: 1, potions: true, items: [{ weights: [0, 0, 0, 0, 64, 36, 0], immortalFromTier: 4, immortal: 3 }, { min: 3 }] },
+  radiant: { name: 'Radiant chest', gold: 10, tickets: 2, potions: true, fragments: true, items: [{ weights: [0, 0, 0, 0, 40, 60, 0], immortal: 1.5, immortalFromTier: 4, immortalHigh: 4 }, { min: 4 }, { min: 3 }] },
 };

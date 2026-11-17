@@ -109,7 +109,7 @@ export const CONFIG = {
   PARTY_SHARE_RANGE: 30, // party members this close to a kill share its rewards
   PARTY_EXP: 0.75, // ... each getting this much of its EXP (a party of two earns 150% between them)
   PARTY_MAX: 4, // how close you must stand to talk to someone or read a sign
-  EXP_PACE: 1, // 2 = levelling takes twice as many kills, 0.5 = half as many
+  EXP_PACE: 4, // 2 = levelling takes twice as many kills, 0.5 = half as many (4 since 0.49: kills pay 2x to 10x by level band)
   BAG_SIZE: 24,
   MAX_POTIONS: 3,
   POTION_HEAL: 0.35,
@@ -147,6 +147,6 @@ export const CONFIG = {
   // --- Treasure chests out in the world (0.23) --------------------------
   CHESTS_PER_MAP: 2, // plus one more half the time
   CHEST_GILDED: 0.24, // chance a chest is gilded
-  CHEST_RADIANT: 0.05, // chance a chest is radiant (12% of those hold an Immortal)
+  CHEST_RADIANT: 0.015, // chance a chest is radiant (0.49: rarer, and richer: Immortal Fragments, Mythic or Ancient gear, a small chance of an Immortal)
   CHEST_RESPAWN: 150, // seconds before an opened chest comes back somewhere else on the map
 };

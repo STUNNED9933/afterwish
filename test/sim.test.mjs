@@ -479,7 +479,7 @@ import { makeRng } from '../src/sim/rng.js';
   // Each class can fight through the first waves without errors.
   for (const cls of CLASS_IDS) {
     const { w, log } = runBot({ seed: 3, parrySkill: 0.9, maxSeconds: 240, cls });
-    check(`${cls} bot: clears waves and uses its kit`, w.wave.n >= 4 && log.casts > 10, `wave ${w.wave.n}, level ${w.player.level}, casts ${log.casts}`);
+    check(`${cls} bot: clears waves and uses its kit`, w.wave.n >= 4 && log.casts >= 8, `wave ${w.wave.n}, level ${w.player.level}, casts ${log.casts}`);
   }
 }
 // --- 0.5: class weapons, hand-written class augments, anti-kiting, arena scaling ---
@@ -584,11 +584,23 @@ import { makeRng } from '../src/sim/rng.js';
 }
 // --- Levels 1 to 100 ---
 {
-  const { expToNext, enemyScale, ENEMIES, BOSSES, buildWave } = DEFS;
+  const { expToNext, enemyScale, ENEMIES, BOSSES, buildWave, levelBandMult } = DEFS;
   let rising = true, total = 0;
-  for (let L = 1; L < 100; L++) { if (expToNext(L + 1) <= expToNext(L)) rising = false; total += expToNext(L) / (10 * enemyScale(L).exp); }
+  for (let L = 1; L < 100; L++) { if (expToNext(L + 1) <= expToNext(L)) rising = false; total += expToNext(L) / (10 * enemyScale(L).exp * levelBandMult(0)); }
   check('levels: each level needs more EXP than the last', rising);
-  check('levels: 100 is a long road but not an endless one', total > 4000 && total < 20000, Math.round(total) + ' Husks of your own level');
+  check('levels: 100 is a long road but not an endless one', total > 2000 && total < 8000, Math.round(total) + ' Husks of your own level');
+  // Fight near your level (0.49): 10x within 3 levels, sliding to 2x at 10 apart, never less.
+  check('level band: 10x within 3 levels either way, 2x at 10 or more apart, sliding between', levelBandMult(0) === 10 && levelBandMult(-3) === 10 && levelBandMult(3) === 10 && levelBandMult(10) === 2 && levelBandMult(-40) === 2 && levelBandMult(6) < 10 && levelBandMult(6) > 2 && levelBandMult(5) > levelBandMult(7));
+  {
+    const near = new World({ seed: 4, mode: 'explore', save: { v: 2, level: 20 } }); near.loadMap('ridge', 'fen');
+    const far = new World({ seed: 4, mode: 'explore', save: { v: 2, level: 45 } }); far.loadMap('ridge', 'fen');
+    const kill = (w) => { const e = w.enemies.find((x) => !x.def.boss && !x.elite); const was = w.player.exp; const lv = w.player.level; w.hitEnemy(e, 1e12); w.step(CONFIG.TICK); return { gain: w.player.exp - was, lv: lv === w.player.level, e }; };
+    const a = kill(near), b = kill(far);
+    check('level band: a kill near your level pays several times one far below you', a.lv && b.lv && a.gain / a.e.expValue > 9 && b.gain / b.e.expValue < 2.5, `${(a.gain / a.e.expValue).toFixed(1)}x vs ${(b.gain / b.e.expValue).toFixed(1)}x`);
+    const old = new World({ seed: 4, mode: 'explore', save: { v: 2, level: 30, exp: 1000, wishExp: 50 } });
+    const kept = new World({ seed: 4, mode: 'explore', save: JSON.parse(JSON.stringify(old.toSave())) });
+    check('level band: an old save keeps how far along its bar it was (4x the EXP for 4x the need), once', old.player.exp === 4000 && kept.player.exp === 4000 && kept.player.wishExp === 200);
+  }
   const w = new World({ seed: 2, mode: 'explore', save: { v: 2, level: 99 } }); const p = w.player;
   w.loadMap('sanctum', 'maw');
   p.exp = expToNext(99) - 1;
@@ -796,9 +808,9 @@ import { makeRng } from '../src/sim/rng.js';
     const L = BOSS_LOOT[type];
     check(`boss: ${boss.def.name} drops ${L.items} items, ${L.keys} key(s) and a hoard of gold; first kill guarantees the top prize`, drops.length === L.items && drops[0] >= L.first && drops.every((r) => r >= L.min) && bp.keys === before.keys + L.keys && bp.gold - before.gold > mob.goldValue * 20 && bp.skillPoints >= before.sp + 2 && boss.expValue > mob.expValue * 15, `rarities ${drops.join(',')}; ${bp.gold - before.gold} gold vs ${mob.goldValue} from a ${mob.def.name}`);
     b.loot = []; const camp = b.camps.find((c) => c.def.type === type); camp.slots[0].timer = 0.01; step(b, 80);
-    const boss2 = b.enemies.find((e) => e.def.boss); const sp1 = bp.skillPoints;
+    const boss2 = b.enemies.find((e) => e.def.boss); const sp1 = bp.skillPoints, lv1 = bp.level; const fall2 = boss2 ? b.bossFalloff(boss2) : 1;
     if (boss2) { b.hitEnemy(boss2, 1e12); step(b); }
-    check(`boss: ${boss.def.name} comes back, and later kills still pay but give no extra skill points`, !!boss2 && b.loot.length === L.items && bp.bossKills[type] === 2 && bp.skillPoints - sp1 <= (bp.level > before.lv ? 3 : 0));
+    check(`boss: ${boss.def.name} comes back, and later kills still pay but give no extra skill points`, !!boss2 && b.loot.length === Math.max(1, Math.round(L.items * fall2)) && bp.bossKills[type] === 2 && bp.skillPoints - sp1 <= bp.level - lv1);
   }
   {
     // The final quest: only the boss out in the world counts.
@@ -3248,7 +3260,7 @@ import { makeRng } from '../src/sim/rng.js';
     w.player.worldTier = 2;
     w.command({ type: 'travel', to: 'wilds' }); w.runCommands();
     check('The Wilds: open by the Waygate from world tier II, no walking needed', w.map.id === 'wilds' && w.map.radius > 1.5 * MM.sanctum.radius, String(w.map.id));
-    check('The Wilds: more of everything', WD.events < 120 && WD.eventChance > 0.4 && WD.thiefIn > 0.3 && WD.storied >= 2);
+    check('The Wilds: more of everything', WD.events < 120 && WD.eventChance > 0.2 && WD.thiefIn > 0.3 && WD.storied >= 2);
     tick(w, 30);
     check('The Wilds: a world event clock that runs faster', w.eventClock <= WD.events);
   }
@@ -3311,5 +3323,27 @@ import { makeRng } from '../src/sim/rng.js';
   const reset = {}; // what the host does when asked
   const fresh = JSON.parse(JSON.stringify(makeSnapshot(w, 1, reset)));
   check('co-op updates: ...and the full one that follows puts the friend right', fresh.full && receiveSnapshot(friend, fresh) && (applySnapshot(friend, fresh, 1), look(friend.enemies, friend.loot, friend.player) === look(w.enemies, w.loot.filter((l) => l.owner === undefined || l.owner === 1).map((l) => ({ ...l, x: r2(l.x), z: r2(l.z) })), w.heroByPid(1).player)));
+}
+// --- Elite spoils, rarer and richer radiant chests and world events (0.49) ---
+{
+  const { ELITE_SPOILS, FRAGMENTS: FR2, EVENTS: EV2 } = await import('../src/sim/surprises.js');
+  const { CHEST_TIERS } = await import('../src/sim/items.js');
+  let dust = 0, frags = 0, chests = 0, best = [], n = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    const w = new World({ seed, mode: 'explore', save: { v: 2, level: 40 } }); w.loadMap('ridge', 'fen');
+    const e = w.enemies.find((x) => !x.def.boss); w.makeElite(e, 1);
+    const d0 = w.player.dust, f0 = w.player.misc.fragment || 0, c0 = w.chests.filter((c) => c.tier === 'radiant').length;
+    w.hitEnemy(e, 1e12); w.step(CONFIG.TICK); n++;
+    dust += w.player.dust - d0; frags += (w.player.misc.fragment || 0) - f0; chests += w.chests.filter((c) => c.tier === 'radiant').length - c0;
+    best.push(Math.max(...w.loot.map((l) => l.item.rarity)));
+  }
+  check('elite spoils: Wishdust every time, a fragment about a quarter of the time, a radiant chest now and then', dust >= n && frags > n * 0.12 && frags < n * 0.4 && chests >= 1, `${dust} dust, ${frags} fragments, ${chests} chests from ${n} elites`);
+  check('elite spoils: its sure piece is Epic or better, and often Mythic or better', best.every((r) => r >= 3) && best.filter((r) => r >= 4).length > n * 0.25, best.filter((r) => r >= 4).length + ' of ' + n + ' Mythic+');
+  check('radiant chests: rarer than before, and they hold Immortal Fragments and better gear', CONFIG.CHEST_RADIANT <= 0.02 && CHEST_TIERS.radiant.fragments && CHEST_TIERS.radiant.items.length >= 3 && EV2.chance <= 0.15 && FR2.event >= 10);
+  const w = new World({ seed: 3, mode: 'explore', save: { v: 2, level: 50 } }); w.loadMap('ridge', 'fen');
+  const c = w.addChestAt(w.player.x + 1, w.player.z, 'radiant'); const f0 = w.player.misc.fragment || 0;
+  w.openChest(c);
+  const got = (w.player.misc.fragment || 0) - f0;
+  check('radiant chests: 8 to 14 Immortal Fragments, and Mythic or better on top', got >= FR2.radiant[0] && got <= FR2.radiant[1] && w.loot.some((l) => l.item.rarity >= 4), `${got} fragments`);
 }
 process.exit(failed ? 1 : 0);

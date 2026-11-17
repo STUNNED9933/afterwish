@@ -71,11 +71,11 @@ export const REMNANT = {
 export const EVENTS = {
   first: 45, // seconds on a map before the first chance
   every: 90, // then a chance this often
-  chance: 0.3,
+  chance: 0.12, // (0.49: rarer, and better paid: 12 fragments, a sigil half the time, a richer radiant chest)
   // A meteor: it lands, a pack crawls out of the crater; clear it for a radiant chest.
   meteor: { warn: 3, r: 9, pack: 6, time: 120, hit: 3, impact: 1.5 },
   // A shrine: step in and hold it 60 s against waves; leave it empty 6 s and it goes dark.
-  shrine: { r: 6, wait: 90, hold: 60, wave: 8, per: 3, grace: 6, dust: 5, tickets: 1 },
+  shrine: { r: 6, wait: 90, hold: 60, wave: 8, per: 3, grace: 6, dust: 10, tickets: 2 },
 };
 
 // The travelling merchant (0.31): shows up on a map now and then for 3 minutes.
@@ -112,11 +112,15 @@ export const BOUNTY = {
   },
 };
 // Immortal Fragments (0.33): from bounties and the best of the road; enough of them craft an Immortal.
-export const FRAGMENTS = { craft: 250, craftLevel: 70, storied: 2, remnant: 4, thief: 2, event: 3, elite: 0.05 };
+export const FRAGMENTS = { craft: 250, craftLevel: 70, storied: 2, remnant: 4, thief: 2, event: 12, radiant: [8, 14] };
+// Elite spoils (0.49): an elite is worth finding. Its sure piece leans to Mythic and Ancient (weights,
+// Epic to Ancient); a fair chance of an Immortal Fragment and Wishdust; and now and then it was guarding
+// a radiant chest, which drops where it falls.
+export const ELITE_SPOILS = { weights: [0, 0, 0, 55, 37, 8, 0], fragment: 0.25, dust: [1, 2], chest: 0.03 };
 // Remnant Sigils (0.33): call a Remnant at its boss's altar, no waiting.
-export const SIGIL = { storied: 0.1, event: 0.25, altar: 4 };
+export const SIGIL = { storied: 0.1, event: 0.5, altar: 4 };
 // The Wilds (0.33): a big open map for world tier II and up, busier than the rest.
-export const WILDS = { events: 45, eventChance: 0.6, thiefIn: 0.6, thiefAgain: 0.35, merchant: 0.4, storied: 2, elite: 0.03 };
+export const WILDS = { events: 45, eventChance: 0.25, thiefIn: 0.6, thiefAgain: 0.35, merchant: 0.4, storied: 2, elite: 0.03 };
 
 // Where an Unwishing Glass turns up (0.32), besides the merchant.
 export const GLASS = { remnant: 0.15, thief: 0.1, storied: 0.04 };

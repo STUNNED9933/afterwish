@@ -19,10 +19,10 @@ const LAG_CAP = 0.5;
 const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'parry', 'potion', 'warp', 'travel']);
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
-import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor } from './defs.js';
+import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS } from './rebirth.js';
 import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
-import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS } from './surprises.js';
+import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS, ELITE_SPOILS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
@@ -337,7 +337,7 @@ export class World {
       facing: Math.PI / 2,
       radius: 0.6,
       level: save?.level ?? 1,
-      exp: save?.exp ?? 0,
+      exp: (save?.exp ?? 0) * (save && !save.pace4 ? 4 : 1), // (0.49) levels need 4x the EXP: keep how far along the bar you were
       hp: 1,
       stats: {},
       equipped: { weapon: null, helm: null, chest: null, boots: null, ring: null },
@@ -386,7 +386,7 @@ export class World {
       riftMax: Math.max(1, save?.riftMax ?? 1),
       riftBest: save?.riftBest || null, // { tier, secs }
       wish: save?.wish ?? 0,
-      wishExp: save?.wishExp ?? 0,
+      wishExp: (save?.wishExp ?? 0) * (save && !save.pace4 ? 4 : 1),
       wishPts: save?.wishPts ?? 0,
       wishStats: Object.assign({}, save?.wishStats),
       rebirth: migrateRebirth(save?.rebirth), // Rebirth (0.43): Starmarks, perks, past lives
@@ -508,6 +508,7 @@ export class World {
     const maxCheckpoint = Math.max(this.maxCheckpoint, checkpointFor(this.wave.cleared + 1));
     return {
       v: 2,
+      pace4: true, // EXP saved at the 0.49 pace
       cls: this.cls,
       level: p.level,
       exp: p.exp,
@@ -2732,6 +2733,7 @@ export class World {
     const ilvl = Math.max(1, Math.round(e.level || this.wave.n));
     for (let i = 0; i < count; i++) {
       let opts = { minRarity: Math.max(floor, def.boss ? 2 : 0, e.elite && i === count - 1 ? 3 : 0), cls: this.cls };
+      if (e.elite && !e.rare && !def.boss && i === count - 1 && this.mode === 'explore') opts = { weights: ELITE_SPOILS.weights.map((w, r) => (r < floor ? 0 : w)), cls: this.cls }; // its sure piece leans Mythic (0.49)
       if (hoard) {
         // The first item is the prize: guaranteed top rarity on your first kill, good odds after.
         if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoard.top, cls: this.cls };
@@ -4342,9 +4344,11 @@ export class World {
     if (T.tickets) p.tickets += T.tickets;
     if (T.potions) p.potions = CONFIG.MAX_POTIONS;
     const tierNow = this.worldTier();
-    const odds = (o) => (o.immortal && tierNow >= o.immortalFromTier ? o.weights.map((w, i) => (i === IMMORTAL ? o.immortal : w)) : o.weights);
+    const odds = (o) => (o.immortal ? o.weights.map((w, i) => (i === IMMORTAL ? (tierNow >= o.immortalFromTier ? o.immortalHigh : o.immortal) : w)) : o.weights);
     const items = T.items.map((o) => rollItem(rng, c.level, o.weights ? { weights: odds(o), cls: this.cls } : { minRarity: o.min, cls: this.cls }));
-    if (c.tier === 'radiant' && !this.trial && rng() < 0.1) items.push(rollSetPiece(rng, c.level, this.cls, this.player.spec)); // a set piece, now and then (0.29)
+    if (c.tier === 'radiant' && !this.trial && rng() < 0.2) items.push(rollSetPiece(rng, c.level, this.cls, this.player.spec)); // a set piece, now and then (0.29; 0.49: more often)
+    const frags = T.fragments && !this.trial ? FRAGMENTS.radiant[0] + Math.floor(rng() * (FRAGMENTS.radiant[1] - FRAGMENTS.radiant[0] + 1)) : 0;
+    if (frags) this.giveMisc('fragment', frags); // (0.49)
     items.forEach((item, i) => {
       const a = (i / items.length) * TAU + 0.6;
       const at = this.clampToArena(c.x + dCos(a) * 1.1, c.z + dSin(a) * 1.1, 1);
@@ -4353,7 +4357,7 @@ export class World {
       this.emit('lootDrop', { id: drop.id, x: at.x, z: at.z, rarity: item.rarity });
     });
     const best = items.reduce((m, it) => Math.max(m, it.rarity), 0);
-    this.emit('chestOpen', { id: c.id, x: c.x, z: c.z, tier: c.tier, gold, tickets: T.tickets || 0, best });
+    this.emit('chestOpen', { id: c.id, x: c.x, z: c.z, tier: c.tier, gold, tickets: T.tickets || 0, best, frags });
   }
 
   stepLoot(dt) {
@@ -5558,7 +5562,17 @@ export class World {
         this.bountyEvent('remnant');
         this.giveMisc('fragment', FRAGMENTS.remnant);
       }
-      if (e.elite && !e.rare && this.worldTier() >= 4 && this.rng() < FRAGMENTS.elite) this.giveMisc('fragment', 1);
+      if (e.elite && !e.rare && !e.def.boss) {
+        // Elite spoils (0.49): Wishdust, maybe a fragment, and once in a while the radiant chest it was guarding.
+        const S = ELITE_SPOILS;
+        const dust = S.dust[0] + Math.floor(this.rng() * (S.dust[1] - S.dust[0] + 1));
+        p.dust += dust;
+        const frag = this.rng() < S.fragment;
+        if (frag) this.giveMisc('fragment', 1);
+        const chest = !this.instanced() && this.rng() < S.chest;
+        if (chest) this.addChestAt(e.x, e.z, 'radiant');
+        this.emit('eliteSpoils', { x: e.x, z: e.z, dust, frag, chest });
+      }
     }
     if (this.mode === 'explore' && !this.trial) {
       // Exploration surprises (0.29): Wishdust, and a shard from the Wishthief.
@@ -5598,7 +5612,9 @@ export class World {
         }
       } else if (!e.riftGuardian) this.bossRewards(e, fall);
     }
-    this.gainExp(e.expValue * fall * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
+    const band = levelBandMult((e.level || p.level) - p.level); // near your level pays most (0.49)
+    if (band <= 4 && !e.def.boss) this.emit('farLevel', { gap: (e.level || p.level) - p.level });
+    this.gainExp(e.expValue * fall * band * (partySize > 1 ? CONFIG.PARTY_EXP : 1));
     this.dropLoot(e, fall);
     if (e.def.boss && this.mode === 'explore' && !e.riftGuardian && this.worldTier() >= 2 && !this.trial) {
       // A streak: tier bosses beaten without being knocked out in between drop more.

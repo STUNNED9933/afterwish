@@ -548,6 +548,19 @@ export function expWorth(level) {
  * Most enemies are worth more than a Husk, so the real number of kills is about
  * half that. CONFIG.EXP_PACE stretches or shrinks the whole climb.
  */
+/**
+ * Fight near your own level (0.49): a kill pays 10x EXP when the enemy is within 3 levels of you, sliding
+ * down to 2x at 10 or more levels apart (above or below), never less. CONFIG.EXP_PACE is 4 to match, so
+ * at-level fighting levels you about 2.5x faster than before and fighting far off level about 2x slower.
+ */
+export const LEVEL_BAND = { full: 3, far: 10, top: 10, least: 2 };
+export function levelBandMult(gap) {
+  const g = Math.abs(gap || 0);
+  if (g <= LEVEL_BAND.full) return LEVEL_BAND.top;
+  if (g >= LEVEL_BAND.far) return LEVEL_BAND.least;
+  return LEVEL_BAND.top - ((LEVEL_BAND.top - LEVEL_BAND.least) * (g - LEVEL_BAND.full)) / (LEVEL_BAND.far - LEVEL_BAND.full);
+}
+
 export function expToNext(level) {
   return Math.round(10 * expWorth(level) * (3 + 0.6 * level + 0.015 * level * level) * CONFIG.EXP_PACE);
 }

@@ -2396,7 +2396,8 @@ function start(hot = {}) {
         hud.float(renderer, ev.x, 2.6, ev.z, name, ev.tier === 'radiant' ? 'word perfect' : 'word');
         sfx.pickup(ev.tier === 'radiant' ? 6 : ev.tier === 'gilded' ? 4 : 2);
         if (ev.tier === 'radiant') hud.screenFlash(0.35);
-        if (ev.gold) hud.feedText(`${name}: ${ev.gold.toLocaleString()} gold${ev.tickets ? `, ${ev.tickets} starglass shard` : ''}${ev.tier !== 'wooden' ? ', potions refilled' : ''}`);
+        if (ev.gold) hud.feedText(`${name}: ${ev.gold.toLocaleString()} gold${ev.tickets ? `, ${ev.tickets} starglass shard${ev.tickets > 1 ? 's' : ''}` : ''}${ev.frags ? `, ${ev.frags} Immortal Fragments` : ''}${ev.tier !== 'wooden' ? ', potions refilled' : ''}`);
+        if (ev.tier === 'radiant') hud.banner('Radiant chest', ev.best >= 6 ? 'An Immortal!' : `${ev.frags || 0} Immortal Fragments inside`);
         if (world.mode === 'explore') persist();
         break;
       }
@@ -2525,6 +2526,18 @@ function start(hot = {}) {
         hud.feedText(`A Storied enemy roams ${ev.map}: ${ev.name}.`);
         hintOnce('rare', 'A Storied enemy: a gold name, tougher than any elite, and worth it: good gear, Wishdust for enchanting, and sometimes a set piece. Look for the gold dot on the minimap.', 9);
         break;
+      case 'farLevel':
+        hintOnce('levelband', ev.gap < 0 ? 'These enemies are well below your level: they pay little EXP. Enemies within 3 levels of you pay ten times as much; head somewhere tougher.' : 'These enemies are well above your level: they pay less EXP than ones within 3 levels of you, which pay ten times as much.', 10);
+        break;
+      case 'eliteSpoils':
+        hintOnce('elite', 'Elites are worth hunting: Wishdust every time, often an Immortal Fragment, a piece that leans Mythic, and once in a while the radiant chest they were guarding.', 9);
+        // (0.49) an elite pays out where it falls
+        hud.float(renderer, ev.x, 2.9, ev.z, ev.chest ? 'It was guarding a radiant chest!' : ev.frag ? '+1 Immortal Fragment' : `+${ev.dust} Wishdust`, 'word perfect');
+        if (ev.chest) {
+          hud.screenFlash(0.3);
+          sfx.levelUp();
+        } else sfx.pickup(ev.frag ? 5 : 3);
+        break;
       case 'rareSlain':
         hud.banner(`${ev.name} falls`, `Storied · +${ev.dust} Wishdust`);
         sfx.levelUp();
@@ -2586,7 +2599,7 @@ function start(hot = {}) {
         break;
       case 'eventDone':
         sfx.levelUp();
-        hud.banner(ev.kind === 'meteor' ? 'The crater is quiet' : 'The shrine holds', ev.kind === 'meteor' ? 'A radiant chest waits in it' : `A radiant chest · +${ev.dust} Wishdust · +${ev.tickets} shard`);
+        hud.banner(ev.kind === 'meteor' ? 'The crater is quiet' : 'The shrine holds', ev.kind === 'meteor' ? 'A radiant chest waits in it' : `A radiant chest · +${ev.dust} Wishdust · +${ev.tickets} shards`);
         break;
       case 'eventFail':
         hud.feedText(ev.kind === 'meteor' ? 'The meteor pack scattered.' : ev.faded ? 'The shrine went dark again.' : 'The shrine went dark: no one held it.');
@@ -2777,7 +2790,7 @@ function start(hot = {}) {
         hud.screenFlash(0.5);
         sfx.cast('e');
         if (ev.from === 'town') hintOnce('maps', 'Each map is ten levels tougher than the last, and enemies get stronger the deeper in you go. Stand in a portal to travel on.', 9);
-        else if (world.chests && world.chests.length) hintOnce('chests', 'Treasure chests lie around every map (gold dots on the minimap). Walk over one to open it. Gilded and radiant chests hold better gear, and a radiant one can even hold an Immortal.', 9);
+        else if (world.chests && world.chests.length) hintOnce('chests', 'Treasure chests lie around every map (gold dots on the minimap). Walk over one to open it. Gilded chests hold better gear. Radiant ones are rare: Immortal Fragments, Mythic or Ancient gear, and once in a long while an Immortal.', 9);
         persist();
         break;
       case 'playerDown':

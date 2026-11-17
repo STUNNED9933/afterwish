@@ -23,7 +23,7 @@ import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName, STATS, formatStat, MISC } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS } from './sim/items.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
 import { GLOWS } from './sim/cosmetics.js';
@@ -720,7 +720,8 @@ function start(hot = {}) {
     if (r.tickets) parts.push(`${r.tickets} starglass shard${r.tickets > 1 ? 's' : ''}`);
     if (r.skill) parts.push(`${r.skill} skill points`);
     const q = QUESTS[id];
-    if (q.reward.unique) parts.push(`<span style="color:${RARITIES[6].color}">${world.cls === 'warrior' ? "Edric's Sword (unique)" : "Edric's Colours (unique ring)"}</span>`);
+    if (q.reward.unique && q.reward.unique[world.cls]) parts.push(`<span style="color:${RARITIES[6].color}">Edric's Sword (unique)</span>`);
+    if (q.reward.keepsake) parts.push(`<span style="color:${RARITIES[6].color}">Edric's Colours: a keepsake ring in its own slot, always your level, kept through rebirth</span>`);
     if (q.reward.glow) parts.push(`${GLOWS[q.reward.glow].name} weapon glow`);
     if (id === 'scarf2') parts.push('a keepsake, maybe');
     return parts.join(' · ');
@@ -783,7 +784,7 @@ function start(hot = {}) {
     p.bounties.forEach((b, i) => {
       const el = document.createElement('div');
       el.className = 'quest' + (b.done ? ' ready done-bounty' : '');
-      el.innerHTML = `<h4>${esc(b.text)}</h4><div class="bounty-prog">${b.done ? 'Done: take the reward' : b.need > 1 ? `${b.n} / ${b.need}` : 'Not yet'}</div><div class="rewards">Reward: ${rewardLine(b.reward)}</div>`;
+      el.innerHTML = `<h4>${esc(b.text)}</h4><div class="bounty-prog">${b.done ? 'Done: take the reward' : b.need > 1 ? `${b.n} / ${b.need}` : 'Not yet'}${b.pre ? ` <span class="muted">(${b.pre} from what you had already done)</span>` : ''}</div><div class="rewards">Reward: ${rewardLine(b.reward)}</div>`;
       const row = document.createElement('div');
       row.className = 'bounty-btns';
       const btn = document.createElement('button');
@@ -1115,6 +1116,7 @@ function start(hot = {}) {
 
   /** Rebirth (0.43): Starmarks, perks, and the choice to begin again. */
   let rebirthSure = false;
+  let rebirthHeir = null; // (0.53) the slot kept as an Heirloom
   function renderRebirth() {
     const p = world.player;
     const panel = $('rebirth-panel');
@@ -1147,6 +1149,24 @@ function start(hot = {}) {
       row.appendChild(b);
       panel.appendChild(row);
     }
+    // Echoes (0.53): one piece to keep as an Heirloom, and the Essence the rest turns into
+    if (!block) {
+      const heir = document.createElement('div');
+      heir.className = 'perk-row heir-row';
+      const sel = document.createElement('select');
+      sel.innerHTML = `<option value="">No Heirloom</option>` + SLOTS.filter((s) => p.equipped[s]).map((s) => `<option value="${s}"${rebirthHeir === s ? ' selected' : ''}>${esc(itemName(p.equipped[s]))}</option>`).join('');
+      sel.addEventListener('change', () => {
+        rebirthHeir = sel.value || null;
+        renderTalents();
+      });
+      heir.innerHTML = '<span>Heirloom</span><span class="v">kept, back at level 1, grows with you</span>';
+      heir.appendChild(sel);
+      panel.appendChild(heir);
+      const ess = document.createElement('p');
+      ess.className = 'setting-desc';
+      ess.innerHTML = `The rest of your gear becomes <b>${world.rebirthEssence(rebirthHeir)} Echo Essence</b>, and the star remembers the best piece of each slot: in later lives, recall them at your level and bring them back up to what they were (gear screen).${p.rebirth.essence ? ` You have ${p.rebirth.essence} now.` : ''}`;
+      panel.appendChild(ess);
+    }
     const go = document.createElement('button');
     go.type = 'button';
     go.className = 'ghost rb-go' + (rebirthSure ? ' sure' : '');
@@ -1163,13 +1183,13 @@ function start(hot = {}) {
         return;
       }
       rebirthSure = false;
-      applyNow({ type: 'rebirth' });
+      applyNow({ type: 'rebirth', heirloom: rebirthHeir });
     });
     panel.appendChild(go);
     if (!block) {
       const note = document.createElement('p');
       note.className = 'setting-desc';
-      note.textContent = `Begin again: level 1, nothing in your hands but a starter weapon. Your gear, scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, and your weapon glows (gold belongs to the account).`;
+      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear turns into Echo Essence; scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Edric's Colours, and your weapon glows (gold belongs to the account).`;
       panel.appendChild(note);
     }
   }
@@ -1288,7 +1308,7 @@ function start(hot = {}) {
   }
 
   /** Commands a joiner may send: everything a hero can do out in the world. */
-  const FRIEND_CMDS = new Set(['askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend', 'enterDelve', 'metTomas']);
+  const FRIEND_CMDS = new Set(['recall', 'echoUp', 'askerAnswer', 'autoTalents', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'wishReset', 'enchant', 'reforge', 'rebirthPerk', 'ascend', 'setGlow', 'buyMerchant', 'move', 'attack', 'stop', 'cast', 'parry', 'potion', 'equip', 'discard', 'scrap', 'upgrade', 'rankUp', 'acceptQuest', 'claimQuest', 'readSign', 'chooseSpec', 'talent', 'respec', 'travel', 'warp', 'attackMove', 'setAutoAttack', 'dropItem', 'tradeAsk', 'tradeAnswer', 'tradeSet', 'tradeOk', 'tradeCancel', 'setTier', 'enterRift', 'wishSpend', 'enterDelve', 'metTomas']);
 
   async function hostGame() {
     const name = playerName();
@@ -2326,7 +2346,7 @@ function start(hot = {}) {
         startExplore(true);
         sfx.levelUp();
         if (ev.ng) hud.banner(`You took her place · New Game+ ${ev.ng}`, `The wish begins again, stronger. At the top of the mountain, the Unmade wears your face. +${ev.marks} Starmarks.`);
-        else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks. Spend them in Talents (T).`);
+        else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks${ev.essence ? `, +${ev.essence} Echo Essence` : ''}${ev.heirloom ? `. ${ev.heirloom} came with you` : ''}. Spend Starmarks in Talents (T), Essence on the gear screen.`);
         hintOnce('reborn', `You are reborn. ${ev.marks} Starmarks are yours to spend on perks in Talents (T)${ev.glow ? ', and a new weapon glow is on the gear screen' : ''}.`, 12);
         break;
       }
@@ -2409,7 +2429,7 @@ function start(hot = {}) {
         persist();
         break;
       case 'quest':
-        if (ev.what === 'accepted') hud.feedText(`Quest accepted: ${ev.name}`);
+        if (ev.what === 'accepted') hud.feedText(`Quest accepted: ${ev.name}${ev.pre ? ` (${ev.pre} already done from before${ev.state === 'ready' ? ': ready to hand in' : ''})` : ''}`);
         else if (ev.what === 'ready') {
           sfx.pickup(4);
           hud.banner(ev.name, `Done. Return to ${ev.giver} in Haven`);
@@ -2528,6 +2548,9 @@ function start(hot = {}) {
         break;
       case 'farLevel':
         hintOnce('levelband', ev.gap < 0 ? 'These enemies are well below your level: they pay little EXP. Enemies within 3 levels of you pay ten times as much; head somewhere tougher.' : 'These enemies are well above your level: they pay less EXP than ones within 3 levels of you, which pay ten times as much.', 10);
+        break;
+      case 'keepsake':
+        hud.banner(ev.name, 'A keepsake: its own slot, always your level, and it stays with you through rebirth');
         break;
       case 'eliteSpoils':
         hintOnce('elite', 'Elites are worth hunting: Wishdust every time, often an Immortal Fragment, a piece that leans Mythic, and once in a while the radiant chest they were guarding.', 9);

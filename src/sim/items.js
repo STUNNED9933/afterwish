@@ -460,6 +460,22 @@ export function rollQuality(item, key) {
   if (hi <= lo) return 1;
   return Math.max(0, Math.min(1, (item.stats[key] - lo) / (hi - lo)));
 }
+/**
+ * An item made again for another level (0.53: Edric's Colours in the keepsake slot, heirlooms, recalled
+ * pieces): every line keeps how good its roll was, at the new level's numbers. +levels, stars, enchants
+ * and its effect stay as they were.
+ */
+export function relevelItem(item, ilvl) {
+  if (!item || item.ilvl === ilvl) return item;
+  const q = {};
+  for (const k in item.stats) q[k] = rollQuality(item, k);
+  item.ilvl = ilvl;
+  for (const k in item.stats) {
+    const { lo, hi } = statRange(item, k);
+    item.stats[k] = Math.max(1, Math.round(lo + q[k] * (hi - lo)));
+  }
+  return item;
+}
 /** Roll quality as a rarity index, Common (0) to Immortal (6): Immortal is the very top of the range. */
 export const ROLL_TIER_AT = [0.3, 0.5, 0.68, 0.82, 0.92, 0.98];
 export function rollTier(q) {
@@ -537,7 +553,7 @@ export function itemScore(item) {
 export function sumGearStats(equipped) {
   const total = {};
   for (const k of STAT_KEYS) total[k] = 0;
-  for (const slot of SLOTS) {
+  for (const slot of [...SLOTS, 'keepsake']) {
     const it = equipped[slot];
     if (!it) continue;
     const stats = itemStats(it);

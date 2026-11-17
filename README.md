@@ -151,6 +151,27 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Banked progress, Edric's keepsake, Echoes of past lives (0.53)
+
+- **Banked progress.** Kills and deeds no bounty was waiting for are kept: a new bounty starts with what
+  it needs from the bank (12 elites banked, a 10-elite job is done at once, and the next one needs 8
+  more). The same for side quests (Bram's, Odile's, Pip's): kills of their enemies, on their maps, made
+  before you took the quest count. Elder Wren's story quests start from nothing.
+- **Edric's Colours** is now a keepsake for every class: a ring in a slot of its own (beside your five),
+  always your level (each line keeps how good its roll was, at your level's numbers), kept through
+  rebirth. Warriors still get Edric's Sword as well. Heroes who finished the quest before have it now.
+- **Echoes** (rebirth): the gear you wear turns into **Echo Essence** (1 to 30 a piece by rarity, times
+  1 + 25% a +level and 1 + 50% a star: a full set of +10 five-star Immortals is about 1,800), and the star
+  remembers the best piece you ever wore in each slot. In later lives, on the gear screen:
+  - **Recall** a remembered piece, once a life: made again at your level, with its rarity, effect, roll
+    quality and enchant (+levels and stars start again). 300 Essence for an Immortal (from level 40),
+    150 for an Ancient (from 30), less for the rest.
+  - **Echo** any piece in that slot back up to the +level and stars you once had there: 4 Essence a
+    +level, 40 a star (no duplicate Immortal needed).
+  - **Reroll** a line for 1 Essence instead of gold and scrap.
+- **Heirloom** (rebirth): choose one piece you wear to keep. It comes back at level 1 and grows with you,
+  with its rarity, effect, +levels and stars.
+
 ### Skill tooltips with the numbers, Deadeye drawn faster (0.52)
 
 - **Skill tooltips** show the damage the skill deals now, with everything counted: rank, talents and

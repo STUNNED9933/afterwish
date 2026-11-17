@@ -364,8 +364,8 @@ export const QUESTS = {
   edric: {
     giver: 'bram', level: 45, after: 'knights', name: "Edric's Colours", side: true, goal: { kill: 1, enemy: 'edric', map: 'keep' },
     offer: "I lied to you. I said don't tell me. I've changed my mind.\n\nThere's one in the Keep who still stands his watch. Blue trim on the pauldron. He'll not have moved from his post in a hundred years; Edric never could stand to be relieved early.\n\nBring me his colours. And his sword. I made that sword.",
-    done: "That's my work on the hilt. That's his blue.\n\nI'll hang the colours by the forge, where he can see the fire. The sword's yours. He'd want it used, not hung on a wall. He hated walls. He was a gate-guard. Go figure.",
-    reward: { exp: 1, gold: 900, scrap: 120, unique: { warrior: 'edric', other: 'bluetrim' } },
+    done: "That's my work on the hilt. That's his blue.\n\nI'll hang the colours by the forge, where he can see the fire. Wear a bit of his blue, too. Not on your finger with the rest: somewhere it'll stay, whatever comes. He'd want someone still standing the watch.\n\nAnd the sword. He'd want it used, not hung on a wall. He hated walls. He was a gate-guard. Go figure.",
+    reward: { exp: 1, gold: 900, scrap: 120, unique: { warrior: 'edric' }, keepsake: 'bluetrim' }, // (0.53) the ring for everyone, in its own slot
   },
 
   // --- Bram the smith ---------------------------------------------------------

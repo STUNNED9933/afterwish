@@ -1,5 +1,6 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
+import { ECHOES } from '../sim/rebirth.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
@@ -193,6 +194,22 @@ export class Inventory {
           btns.appendChild(a);
         }
       }
+      const mem = p.rebirth && p.rebirth.memories && p.rebirth.memories[slot];
+      if (item && mem && !world.trial) {
+        // Echoes (0.53): back up to the +level and stars you had in this slot, for Echo Essence
+        const plusTo = Math.min(10, mem.plus || 0), starsTo = item.rarity === 6 && item.effect ? mem.stars || 0 : 0;
+        const what = (item.plus || 0) < plusTo ? [ECHOES.plusCost, `+${(item.plus || 0) + 1}`] : (item.stars || 0) < starsTo ? [ECHOES.starCost, `★${(item.stars || 0) + 1}`] : null;
+        if (what) {
+          const a = document.createElement('button');
+          a.type = 'button';
+          a.className = 'ghost tiny ench-btn echo-btn';
+          a.textContent = `Echo ${what[1]} · ${what[0]}`;
+          a.disabled = p.rebirth.essence < what[0];
+          a.title = `Your hands remember: you had this slot at +${mem.plus || 0}${mem.stars ? ` and ${mem.stars} stars` : ''} in a past life. Up to that, +levels cost ${ECHOES.plusCost} Echo Essence and stars ${ECHOES.starCost} (no duplicate needed). You have ${p.rebirth.essence}.`;
+          a.addEventListener('click', () => this.send({ type: 'echoUp', slot }));
+          btns.appendChild(a);
+        }
+      }
       if (item && !world.trial) {
         // Rerolling and reforging (0.43; enchanting since 0.29)
         const b = document.createElement('button');
@@ -210,6 +227,41 @@ export class Inventory {
       if (btns.children.length) row.appendChild(btns);
       eq.appendChild(row);
       if (item && this.enchantSlot === slot) eq.appendChild(this.enchantPanel(world, slot, item));
+    }
+    if (p.keepsake) {
+      // (0.53) the keepsake slot: Edric's Colours, always your level, kept through rebirth
+      const row = document.createElement('div');
+      row.className = 'eq-row keepsake';
+      const cell = itemCell(this.tooltip, p.keepsake);
+      const text = document.createElement('div');
+      text.innerHTML = `<div class="eq-slot">Keepsake · always your level · kept through rebirth</div><div class="eq-name immortal" style="color:${RARITIES[p.keepsake.rarity].color}">${itemName(p.keepsake)}</div>`;
+      row.append(cell, text);
+      eq.appendChild(row);
+    }
+    const rb = p.rebirth;
+    if (rb && !world.trial && (rb.essence > 0 || Object.keys(rb.memories || {}).length)) {
+      // Echoes (0.53): the pieces the star remembers, to recall at your level
+      const box = document.createElement('div');
+      box.className = 'echoes';
+      box.innerHTML = `<div class="eq-slot">Echoes · <b>${rb.essence}</b> Echo Essence</div><p class="setting-desc">The best piece you wore in each slot, in past lives. Recall one (once a life) and it is made again at your level: its rarity, effect, how good its rolls were and its enchant. +levels and stars start again, but Essence brings them back to what you had.</p>`;
+      for (const slot of SLOTS) {
+        const mem = rb.memories && rb.memories[slot];
+        if (!mem) continue;
+        const row = document.createElement('div');
+        row.className = 'echo-row';
+        const cost = ECHOES.recall[mem.rarity] || 0, from = ECHOES.recallFrom[mem.rarity] || 1;
+        row.innerHTML = `<span class="eq-name" style="color:${RARITIES[mem.rarity].color}">${itemName(mem)}</span>`;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny echo-btn';
+        b.textContent = rb.recalled[slot] ? 'Recalled' : p.level < from ? `Recall from level ${from}` : `Recall · ${cost}`;
+        b.disabled = !!rb.recalled[slot] || p.level < from || rb.essence < cost;
+        b.title = `Make it again at level ${p.level} for ${cost} Echo Essence`;
+        b.addEventListener('click', () => this.send({ type: 'recall', slot }));
+        row.appendChild(b);
+        box.appendChild(row);
+      }
+      eq.appendChild(box);
     }
 
     // Combat Power, worked out once per render; item tooltips compare against it.
@@ -354,6 +406,16 @@ export class Inventory {
       b.title = q >= 1 ? 'Already the best roll this line can have' : `A fresh roll between ${lo} and ${hi}`;
       b.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k }));
       btns.appendChild(b);
+      if (p.rebirth && p.rebirth.essence >= ECHOES.reroll && q < 1) {
+        // Echoes (0.53): the same reroll for Echo Essence
+        const eb = document.createElement('button');
+        eb.type = 'button';
+        eb.className = 'ghost tiny echo-btn';
+        eb.textContent = `${ECHOES.reroll} Essence`;
+        eb.title = `Reroll for ${ECHOES.reroll} Echo Essence instead of gold and scrap (you have ${p.rebirth.essence})`;
+        eb.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k, essence: true }));
+        btns.appendChild(eb);
+      }
       if (!isMainStat(item, k) && open.includes(k) && choices.length) {
         const f = document.createElement('button');
         f.type = 'button';

@@ -20,8 +20,8 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
-import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS } from './rebirth.js';
-import { SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor } from './rebirth.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -78,7 +78,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -406,6 +406,8 @@ export class World {
       thieves: save?.thieves ?? 0, // Wishthieves caught
       misc: Object.assign({}, save?.misc), // stackable things in the pouch (0.32): { glass: 2, ... }
       bounties: Array.isArray(save?.bounties) ? save.bounties.map((b) => Object.assign({}, b)) : [], // jobs from the board (0.33)
+      bank: { b: Object.assign({}, save?.bank?.b), q: Object.assign({}, save?.bank?.q) }, // (0.53) progress no job was waiting for
+      keepsake: save?.keepsake ? migrateItem(save.keepsake) : null, // (0.53) the keepsake slot: Edric's Colours, kept through rebirth, at your level
       bountyN: save?.bountyN ?? 0,
       lsPool: 0, // lifesteal you can still heal this second (0.32)
       unwishedT: 0, // The Unwished Crown: > 0 after avoiding a Doom
@@ -434,6 +436,11 @@ export class World {
       p.equipped.weapon = starterWeapon(this.cls);
     }
     this.player = p;
+    if (!p.keepsake && p.quests && p.quests.edric && p.quests.edric.s === 'done') {
+      // (0.53) Edric's Colours already earned before the keepsake slot existed: it is yours now too
+      p.keepsake = rollUnique(this.streamRng('keepsake', 1), p.level, 'bluetrim', this.cls);
+      p.keepsake.keepsake = true;
+    }
     this.recalcStats();
     p.hp = p.stats.maxHp;
     p.lsPool = p.stats.maxHp * CONFIG.LIFESTEAL_RATE; // the lifesteal budget starts full
@@ -459,8 +466,8 @@ export class World {
       if (sets[id] >= 4) set.four.apply(m);
     }
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
-    for (const slot of SLOTS) {
-      const it = this.player.equipped[slot];
+    for (const slot of [...SLOTS, 'keepsake']) {
+      const it = slot === 'keepsake' ? this.player.keepsake : this.player.equipped[slot];
       if (!it || !it.effect) continue;
       // From level 15 an Immortal's effect is its subclass version (0.32); a Remnant's own is the same for all.
       const spc = this.player.spec && SPEC_IMMORTALS[this.player.spec];
@@ -481,7 +488,9 @@ export class World {
     const p = this.player;
     this.recalcMods();
     const m = this.mods;
-    const g = sumGearStats(p.equipped);
+    if (p.keepsake) relevelItem(p.keepsake, p.level); // (0.53) the keepsake is always your level
+    for (const slot of SLOTS) if (p.equipped[slot] && p.equipped[slot].heirloom) relevelItem(p.equipped[slot], p.level); // ...and an Heirloom
+    const g = sumGearStats(p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped);
     const L = p.level - 1;
     const prevMax = p.stats.maxHp || 0;
     const slip = p.slipT > 0;
@@ -553,6 +562,8 @@ export class World {
       thieves: p.thieves,
       misc: p.misc,
       bounties: p.bounties,
+      bank: p.bank,
+      keepsake: p.keepsake,
       bountyN: p.bountyN,
       bestWave: this.bestWave,
       maxCheckpoint,
@@ -598,7 +609,9 @@ export class World {
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
-      else if (c.type === 'enchant') this.rerollLine(c.slot, c.key);
+      else if (c.type === 'enchant') this.rerollLine(c.slot, c.key, !!c.essence);
+      else if (c.type === 'recall') this.recallMemory(c.slot);
+      else if (c.type === 'echoUp') this.echoUpgrade(c.slot);
       else if (c.type === 'reforge') this.enchantItem(c.slot, c.key, c.to);
       else if (c.type === 'ascend') this.ascendItem(c.slot, c.index);
       else if (c.type === 'setGlow') { if (c.id === null || p.glows.includes(c.id)) p.glow = c.id; }
@@ -720,7 +733,7 @@ export class World {
           this.enterRift(c.tier);
           break;
         case 'rebirth':
-          this.rebirth();
+          this.rebirth(c.heirloom || null);
           break;
         case 'unwish':
           this.unwish(c.choice);
@@ -2936,14 +2949,29 @@ export class World {
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
     if (q.goal.read || q.goal.sign || q.goal.signs) st.n = Math.min(this.questNeed(q), this.signsFor(q.goal));
     if (q.goal.wave && this.bestWave >= q.goal.wave) st.n = 1;
+    if (q.goal.kill && !q.goal.boss && this.isSideQuest(q) && !(q.goal.enemy && !ENEMIES[q.goal.enemy])) {
+      // (0.53) kills you made before taking it count: taken from the bank, enemy by enemy, map by map
+      const need = this.questNeed(q);
+      for (const key of Object.keys(p.bank.q)) {
+        if (st.n >= need) break;
+        const [type, map] = key.split('@');
+        if ((q.goal.enemy && q.goal.enemy !== type) || (q.goal.map && q.goal.map !== map)) continue;
+        const take = Math.min(need - st.n, p.bank.q[key]);
+        p.bank.q[key] -= take;
+        if (!p.bank.q[key]) delete p.bank.q[key];
+        st.n += take;
+        st.pre = (st.pre || 0) + take;
+      }
+    }
     if (st.n >= this.questNeed(q)) st.s = 'ready';
     this.questStamp++;
-    this.emit('quest', { id, what: 'accepted', name: q.name, state: st.s });
+    this.emit('quest', { id, what: 'accepted', name: q.name, state: st.s, pre: st.pre || 0 });
   }
 
   /** Something happened that quests might care about: 'kill' (an enemy), 'reach' (a map id), 'read'. */
   questEvent(kind, data) {
     const p = this.player;
+    let used = false;
     for (const id in p.quests) {
       const st = p.quests[id];
       const q = QUESTS[id];
@@ -2953,7 +2981,10 @@ export class World {
       if (kind === 'kill' && g.kill) {
         hit = (!g.enemy || g.enemy === data.type || g.enemy === data.named) && (!g.boss || g.boss === data.type) && (!g.map || (this.map && this.map.id === g.map));
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
-        if (hit) st.n++;
+        if (hit) {
+          st.n++;
+          used = true;
+        }
       } else if (kind === 'reach' && g.reach === data) {
         hit = true;
         st.n = 1;
@@ -2973,6 +3004,16 @@ export class World {
       this.questStamp++;
       this.emit('quest', { id, what: st.s === 'ready' ? 'ready' : 'progress', name: q.name, n: st.n, need, giver: NPCS[q.giver].name });
     }
+    // (0.53) a kill no side quest was waiting for is kept, by enemy and map, for side quests taken later
+    if (kind === 'kill' && !used && this.mode === 'explore' && !this.trial && this.map && data && !data.def.boss && !data.def.summon && !data.named) {
+      const key = `${data.type}@${this.map.id}`;
+      p.bank.q[key] = (p.bank.q[key] || 0) + 1;
+    }
+  }
+
+  /** (0.53) The story's own quests (Elder Wren's) start from nothing; side quests can use banked kills. */
+  isSideQuest(q) {
+    return q.giver !== 'wren';
   }
 
   /** What a quest pays, with the numbers worked out for its level. */
@@ -3008,10 +3049,20 @@ export class World {
       this.giveItem(item);
     }
     if (q.reward.unique) {
-      // Edric's Colours: his sword for a warrior, his colours (a ring) for anyone else
-      const key = q.reward.unique[this.cls] || q.reward.unique.other;
-      item = rollUnique(this.rng, Math.max(q.level, Math.min(p.level, q.level + 12)), key, this.cls);
-      this.giveItem(item);
+      // Edric's Colours: his sword for a warrior (0.47)...
+      const key = q.reward.unique[this.cls];
+      if (key) {
+        item = rollUnique(this.rng, Math.max(q.level, Math.min(p.level, q.level + 12)), key, this.cls);
+        this.giveItem(item);
+      }
+    }
+    if (q.reward.keepsake && !p.keepsake) {
+      // ...and (0.53) for everyone his colours, in a slot of their own that stays through rebirth, always at your level
+      p.keepsake = rollUnique(this.rng, p.level, q.reward.keepsake, this.cls);
+      p.keepsake.keepsake = true;
+      this.recalcStats();
+      this.emit('keepsake', { name: p.keepsake.name });
+      if (!item) item = p.keepsake;
     }
     if (q.reward.glow) this.unlockGlow(q.reward.glow);
     if (q.side) this.sideStoryCount();
@@ -3426,17 +3477,23 @@ export class World {
   }
 
   /** Rerolling (0.43): a fresh number for one line of an equipped item, the same stat, for gold and scrap. */
-  rerollLine(slot, key) {
+  rerollLine(slot, key, essence = false) {
     const p = this.player;
     const item = p.equipped[slot];
     if (!item || !(key in item.stats)) return;
-    const cost = rerollCost(item);
-    if (p.gold < cost.gold || p.scrap < cost.scrap) {
-      this.emit('cantAfford');
-      return;
+    if (essence) {
+      // Echoes (0.53): a reroll for Echo Essence instead of gold and scrap
+      if (!p.rebirth || p.rebirth.essence < ECHOES.reroll) return this.emit('cantAfford');
+      p.rebirth.essence -= ECHOES.reroll;
+    } else {
+      const cost = rerollCost(item);
+      if (p.gold < cost.gold || p.scrap < cost.scrap) {
+        this.emit('cantAfford');
+        return;
+      }
+      p.gold -= cost.gold;
+      p.scrap -= cost.scrap;
     }
-    p.gold -= cost.gold;
-    p.scrap -= cost.scrap;
     const from = item.stats[key];
     item.stats[key] = rollLine(key, item, this.rng);
     item.rerolls = (item.rerolls || 0) + 1;
@@ -3956,6 +4013,15 @@ export class World {
       glass: rng() < BOUNTY.glass ? 1 : 0,
     };
     b.text = BOUNTY.kinds[b.kind].text(b);
+    // (0.53) what you already did counts: the job takes what it needs from the bank, the rest stays there
+    const key = b.kind === 'kill' ? `kill@${b.map}` : b.kind;
+    const have = Math.min(b.need, (p.bank && p.bank.b[key]) || 0);
+    if (have > 0) {
+      p.bank.b[key] -= have;
+      b.n = have;
+      b.pre = have;
+      if (b.n >= b.need) b.done = true;
+    }
     return b;
   }
 
@@ -3971,14 +4037,21 @@ export class World {
   bountyEvent(kind, ctx = {}) {
     const p = this.player;
     if (!p.bounties || this.trial) return;
+    let used = false;
     for (const b of p.bounties) {
       if (b.done || b.kind !== kind) continue;
       if (kind === 'kill' && b.map !== ctx.map) continue;
       b.n++;
+      used = true;
       if (b.n >= b.need) {
         b.done = true;
         this.emit('bountyDone', { text: b.text });
       }
+    }
+    // (0.53) nothing on the board wanted it: it is kept, and a job like it later starts with it done
+    if (!used) {
+      const key = kind === 'kill' ? `kill@${ctx.map}` : kind;
+      p.bank.b[key] = (p.bank.b[key] || 0) + 1;
     }
   }
 
@@ -4260,11 +4333,70 @@ export class World {
    * Rebirth (0.43): ask the star to begin again. The world does not rebuild itself: it hands the new
    * save to the game (main.js), which stores it and starts the new life in Haven. Alone only.
    */
-  rebirth() {
+  rebirth(heirloom = null) {
     const p = this.player;
     if (this.trial || this.heroes.length > 1 || rebirthBlock(p)) return;
-    const save = rebirthSave(this.toSave(), starterWeapon);
-    this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow });
+    if (heirloom && !(SLOTS.includes(heirloom) && p.equipped[heirloom])) heirloom = null;
+    const save = rebirthSave(this.toSave(), starterWeapon, heirloom, relevelItem);
+    this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
+  }
+
+  /** Echo Essence a rebirth would give now, keeping `heirloom` (a slot) as the Heirloom (0.53). */
+  rebirthEssence(heirloom = null) {
+    const p = this.player;
+    let n = 0;
+    for (const slot of SLOTS) if (p.equipped[slot] && slot !== heirloom) n += essenceFor(p.equipped[slot]);
+    return n;
+  }
+
+  /** Echoes (0.53): make a remembered piece again at your level, once a life, for Echo Essence. */
+  recallMemory(slot) {
+    const p = this.player, rb = p.rebirth;
+    const mem = rb && rb.memories && rb.memories[slot];
+    if (!mem || rb.recalled[slot]) return;
+    const cost = ECHOES.recall[mem.rarity] || 0;
+    if (p.level < (ECHOES.recallFrom[mem.rarity] || 1) || rb.essence < cost) {
+      this.emit('cantAfford');
+      return;
+    }
+    if (p.bag.length >= this.bagSize(p)) {
+      this.emit('bagFull');
+      return;
+    }
+    const item = JSON.parse(JSON.stringify(mem));
+    item.id = `r${rb.n}-${slot}-${p.level}`;
+    item.plus = 0;
+    item.stars = 0;
+    delete item.heirloom;
+    relevelItem(item, p.level);
+    rb.essence -= cost;
+    rb.recalled[slot] = true;
+    this.giveItem(item);
+    this.emit('recalled', { name: item.name, rarity: item.rarity, cost });
+  }
+
+  /**
+   * Echoes (0.53): one more +level (or, at the most +level you once had, one more star) for the piece in
+   * this slot, for Echo Essence, up to what you had there in a past life.
+   */
+  echoUpgrade(slot) {
+    const p = this.player, rb = p.rebirth;
+    const item = p.equipped[slot];
+    const mem = rb && rb.memories && rb.memories[slot];
+    if (!item || !mem) return;
+    let cost = 0, what = null;
+    if ((item.plus || 0) < Math.min(MAX_PLUS, mem.plus || 0)) [cost, what] = [ECHOES.plusCost, 'plus'];
+    else if (item.rarity === IMMORTAL && item.effect && (item.stars || 0) < Math.min(MAX_STARS, mem.stars || 0)) [cost, what] = [ECHOES.starCost, 'star'];
+    if (!what) return;
+    if (rb.essence < cost) {
+      this.emit('cantAfford');
+      return;
+    }
+    rb.essence -= cost;
+    if (what === 'plus') item.plus = (item.plus || 0) + 1;
+    else item.stars = (item.stars || 0) + 1;
+    this.recalcStats();
+    this.emit(what === 'plus' ? 'upgrade' : 'ascended', { item, slot, stars: item.stars, name: item.name, echo: true });
   }
 
   /** Has the hero seen the end of the wish (0.45)? Haven changes once they have. */

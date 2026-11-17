@@ -3404,4 +3404,96 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const d = new World({ seed: 2, mode: 'explore', cls: 'archer', save: { v: 2, cls: 'archer', level: 60, skillPoints: 59, spec: 'sharpshooter' } });
   check("tooltips: Deadeye's damage is shown as scaling with attacks per second", d.abilityBreakdown('r').asScales && !d.abilityBreakdown('q').asScales);
 }
+// --- Banked progress (0.53): bounties and side quests count what you already did ---
+{
+  const w = new World({ seed: 4, mode: 'explore', save: { v: 2, level: 40, visited: ['town', 'greenwood', 'ridge', 'fen', 'keep'] } });
+  const p = w.player;
+  w.loadMap('ridge', 'fen');
+  p.bounties = [];
+  for (let i = 0; i < 13; i++) w.bountyEvent('elite');
+  for (let i = 0; i < 3; i++) w.bountyEvent('storied');
+  check('bank: progress with no job waiting for it is kept', p.bank.b.elite === 13 && p.bank.b.storied === 3, JSON.stringify(p.bank.b));
+  for (const k of ['elite', 'storied', 'event', 'thief', 'remnant', 'rift']) p.bank.b[k] = Math.max(p.bank.b[k] || 0, 50);
+  for (const id of ['ridge', 'fen', 'keep', 'greenwood']) p.bank.b[`kill@${id}`] = 100;
+  const before = JSON.parse(JSON.stringify(p.bank.b));
+  w.fillBounties();
+  const ok = p.bounties.every((b) => b.done && b.pre === b.need);
+  const used = p.bounties.every((b) => { const key = b.kind === 'kill' ? `kill@${b.map}` : b.kind; return before[key] - p.bank.b[key] === b.need; });
+  check('bank: a new job starts with banked progress, and only what it needs is taken (the rest waits for the next)', ok && used, p.bounties.map((b) => `${b.kind} ${b.n}/${b.need}`).join(', '));
+  // side quests
+  const q = new World({ seed: 4, mode: 'explore', save: { v: 2, level: 40 } }); const qp = q.player;
+  q.loadMap('frost', 'town');
+  const wolf = q.spawnEnemy('wolf', { x: 5, z: 5, level: 40 });
+  for (let i = 0; i < 13; i++) q.questEvent('kill', wolf);
+  const grunt = q.spawnEnemy('grunt', { x: 5, z: 5, level: 40 });
+  for (let i = 0; i < 15; i++) q.questEvent('kill', grunt);
+  check('bank: kills no side quest wanted are kept by enemy and map', qp.bank.q['wolf@frost'] === 13 && qp.bank.q['grunt@frost'] === 15, JSON.stringify(qp.bank.q));
+  qp.quests.wolves = undefined; delete qp.quests.wolves;
+  const open = q.questOpen.bind(q); q.questOpen = () => true; // (just the bank here, not when the quest is offered)
+  q.acceptQuest('wolves');
+  check('bank: a side quest taken later counts them, and is ready at once if there were enough', q.questState('wolves') === 'ready' && qp.quests.wolves.pre === 10 && qp.bank.q['wolf@frost'] === 3);
+  q.acceptQuest('husks');
+  check("bank: Elder Wren's story quests start from nothing", qp.quests.husks.n === 0 && qp.bank.q['grunt@frost'] === 15);
+  q.questOpen = open;
+  const again = new World({ seed: 4, mode: 'explore', save: JSON.parse(JSON.stringify(q.toSave())) });
+  check('bank: saved with the character', again.player.bank.q['wolf@frost'] === 3);
+}
+// --- The keepsake slot (0.53): Edric's Colours for everyone, at your level, kept through rebirth ---
+{
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const { starterWeapon, itemStats } = await import('../src/sim/items.js');
+  const claim = (cls) => {
+    const w = new World({ seed: 6, mode: 'explore', cls, save: { v: 2, cls, level: 50 } });
+    w.loadMap('town', 'greenwood');
+    w.player.quests.edric = { s: 'ready', n: 1 };
+    w.claimQuest('edric');
+    return w;
+  };
+  const r = claim('rogue'), wa = claim('warrior');
+  check("keepsake: Edric's Colours goes to its own slot, for every class; warriors still get his sword too", r.player.keepsake && r.player.keepsake.effect === 'bluetrim' && wa.player.keepsake && [...wa.player.bag, ...Object.values(wa.player.equipped)].some((it) => it && it.effect === 'edric') && !r.player.bag.some((it) => it.effect === 'bluetrim'));
+  check('keepsake: its effect and stats count', r.mods.bluetrim === true && r.player.stats.haste > new World({ seed: 6, mode: 'explore', cls: 'rogue', save: { v: 2, cls: 'rogue', level: 50 } }).player.stats.haste + 50);
+  const k = r.player.keepsake; const before = Object.values(itemStats(k)).reduce((a, b) => a + b, 0);
+  r.player.level = 80; r.recalcStats();
+  const after = Object.values(itemStats(k)).reduce((a, b) => a + b, 0);
+  check('keepsake: it grows with you', k.ilvl === 80 && after > before * 1.3, `${before} -> ${after}`);
+  const reborn = new World({ seed: 6, mode: 'explore', cls: 'rogue', save: rebirthSave(JSON.parse(JSON.stringify(r.toSave())), starterWeapon) });
+  check('keepsake: kept through rebirth, back at level 1', reborn.player.keepsake && reborn.player.keepsake.effect === 'bluetrim' && reborn.player.keepsake.ilvl === 1 && reborn.player.level === 1);
+  const old = new World({ seed: 6, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 60, quests: { edric: { s: 'done', n: 1 } } } });
+  check('keepsake: a hero who finished the quest before 0.53 has it too', old.player.keepsake && old.player.keepsake.ilvl === 60);
+}
+// --- Echoes (0.53): what giving up your gear is worth ---
+{
+  const { ECHOES, essenceFor } = await import('../src/sim/rebirth.js');
+  const { geared } = await import('./balance.mjs');
+  const save = geared('warrior', 100, 6);
+  for (const k in save.equipped) { save.equipped[k].plus = 10; save.equipped[k].stars = 5; }
+  save.bossKills = { boss3: 1 };
+  const w = new World({ seed: 8, mode: 'explore', cls: 'warrior', save });
+  const worth = w.rebirthEssence('ring');
+  w.events.length = 0;
+  w.command({ type: 'rebirth', heirloom: 'ring' }); w.step(CONFIG.TICK);
+  const ev = w.events.find((e) => e.type === 'reborn');
+  check('echoes: a rebirth turns the gear you wear into Echo Essence (not the Heirloom) and remembers each piece', ev && ev.essence === worth && worth === 4 * essenceFor(save.equipped.weapon) && Object.keys(ev.save.rebirth.memories).length === 5, `${ev && ev.essence} essence`);
+  const r = new World({ seed: 8, mode: 'explore', cls: 'warrior', save: JSON.parse(JSON.stringify(ev.save)) });
+  const rp = r.player, heir = rp.equipped.ring;
+  check('echoes: the Heirloom comes with you, back at your level, keeping its rarity, effect, +levels and stars', heir && heir.heirloom && heir.ilvl === 1 && heir.rarity === 6 && heir.plus === 10 && heir.stars === 5 && rp.equipped.weapon && rp.equipped.weapon.rarity === 0);
+  rp.level = 30; r.recalcStats();
+  check('echoes: ...and grows with you', heir.ilvl === 30);
+  r.command({ type: 'recall', slot: 'weapon' }); r.step(CONFIG.TICK);
+  const ess0 = rp.rebirth.essence;
+  check('echoes: an Immortal cannot be recalled before level 40', !rp.bag.some((it) => it.rarity === 6) && ess0 === worth);
+  rp.level = 40; r.recalcStats();
+  r.command({ type: 'recall', slot: 'weapon' }); r.step(CONFIG.TICK);
+  const got = rp.bag.find((it) => it.rarity === 6 && it.slot === 'weapon');
+  check('echoes: from 40 it can: made again at your level, +levels and stars to earn back, for Essence', got && got.ilvl === 40 && got.plus === 0 && !got.stars && got.effect === save.equipped.weapon.effect && rp.rebirth.essence === ess0 - ECHOES.recall[6]);
+  r.command({ type: 'recall', slot: 'weapon' }); r.step(CONFIG.TICK);
+  check('echoes: once a life', rp.bag.filter((it) => it.rarity === 6 && it.slot === 'weapon').length === 1);
+  r.command({ type: 'equip', index: rp.bag.indexOf(got) }); r.step(CONFIG.TICK);
+  const e1 = rp.rebirth.essence;
+  for (let i = 0; i < 20; i++) { r.command({ type: 'echoUp', slot: 'weapon' }); r.step(CONFIG.TICK); }
+  check('echoes: Essence brings it back up to the +level and stars you had, and no further', rp.equipped.weapon.plus === 10 && rp.equipped.weapon.stars === 5 && e1 - rp.rebirth.essence === 10 * ECHOES.plusCost + 5 * ECHOES.starCost);
+  const e2 = rp.rebirth.essence, g2 = rp.gold, key = Object.keys(rp.equipped.weapon.stats)[0];
+  r.command({ type: 'enchant', slot: 'weapon', key, essence: true }); r.step(CONFIG.TICK);
+  check('echoes: a reroll for 1 Essence instead of gold', rp.rebirth.essence === e2 - 1 && rp.gold === g2);
+}
 process.exit(failed ? 1 : 0);

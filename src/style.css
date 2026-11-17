@@ -343,6 +343,7 @@ body.slowmo #slowtint { opacity: 1; }
 .inv-left h3:not(:first-child) { margin-top: 20px; }
 #equipped { display: flex; flex-direction: column; gap: 6px; }
 .eq-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 5px; background: var(--slate); border: 1px solid var(--line); border-radius: 5px; min-height: 52px; }
+.eq-row.keepsake { border-top: 1px dashed rgba(74, 122, 255, 0.5); padding-top: 8px; margin-top: 4px; }
 .eq-row .cell { width: 40px; height: 40px; }
 .eq-name { font-size: 15px; line-height: 1.2; overflow-wrap: anywhere; }
 .eq-slot { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
@@ -744,3 +745,9 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .credits-skip { position: absolute; right: 18px; bottom: 12px; color: var(--muted); font-size: 13px; }
 @keyframes credits-up { to { top: -160%; } }
 .well-choice p { color: #e8dcc0; font-style: italic; }
+/* Echoes (0.53): Echo Essence on the gear screen and at rebirth */
+.echoes { margin-top: 8px; padding: 8px; border: 1px dashed rgba(160, 200, 255, 0.35); border-radius: 5px; }
+.echoes .eq-slot b { color: #a8d4ff; }
+.echo-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 14px; }
+.echo-btn { border-color: rgba(160, 200, 255, 0.45) !important; color: #a8d4ff !important; }
+.heir-row select { background: var(--slate); color: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; max-width: 180px; }

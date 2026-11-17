@@ -36,12 +36,39 @@ export const PERKS = {
 };
 export const PERK_IDS = Object.keys(PERKS);
 
+/**
+ * Echoes (0.53): what giving up your gear is worth. At a rebirth every piece you wear turns into Echo
+ * Essence (more for rarer pieces, +levels and stars) and the star remembers the best piece you have
+ * worn in each slot. Later lives spend Essence to:
+ *   - recall a remembered piece, made again at your level (rarity, effect, how good its rolls were,
+ *     its enchant; +levels and stars start again), Ancients from level 30 and Immortals from 40;
+ *   - bring any piece in that slot back up to the +level and stars you once had (Essence instead of
+ *     gold, scrap and duplicate Immortals);
+ *   - reroll a line (1 Essence instead of gold and scrap).
+ * And one piece can go with you as an Heirloom: chosen at the rebirth, back at level 1, growing with you.
+ */
+export const ECHOES = {
+  rarity: [0, 1, 2, 4, 8, 15, 30], // Essence a piece gives, by rarity...
+  plus: 0.25, // ...times (1 + 0.25 a +level)
+  star: 0.5, // ...times (1 + 0.5 a star)
+  recall: [0, 10, 20, 40, 80, 150, 300], // Essence to recall a remembered piece, by rarity
+  recallFrom: [1, 1, 1, 10, 20, 30, 40], // the least level to recall it at
+  plusCost: 4, // Essence for each +level, up to the remembered one
+  starCost: 40, // Essence for each star, up to the remembered ones (no duplicate needed)
+  reroll: 1, // Essence for a reroll
+};
+export function essenceFor(item) {
+  if (!item) return 0;
+  return Math.round((ECHOES.rarity[item.rarity] || 0) * (1 + ECHOES.plus * (item.plus || 0)) * (1 + ECHOES.star * (item.stars || 0)));
+}
+const memoryRank = (it) => (it ? it.rarity * 1000 + (it.stars || 0) * 100 + (it.plus || 0) : -1);
+
 /** Weapon glows for some rebirths (see sim/cosmetics.js). */
 export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'eternal' };
 
 /** A hero's rebirth record, from a save (or a fresh one). */
 export function migrateRebirth(r) {
-  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0 };
+  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {} };
   if (!r || typeof r !== 'object') return out;
   out.n = Math.max(0, Math.floor(Number(r.n) || 0));
   out.marks = Math.max(0, Math.floor(Number(r.marks) || 0));
@@ -52,6 +79,9 @@ export function migrateRebirth(r) {
     if (v > 0) out.perks[id] = Math.min(PERKS[id].max, v);
   }
   if (Array.isArray(r.past)) out.past = r.past.slice(-REBIRTH.pastMax).map((x) => Object.assign({}, x));
+  out.essence = Math.max(0, Math.floor(Number(r.essence) || 0)); // Echoes (0.53)
+  if (r.memories && typeof r.memories === 'object') for (const k in r.memories) if (r.memories[k]) out.memories[k] = JSON.parse(JSON.stringify(r.memories[k]));
+  if (r.recalled && typeof r.recalled === 'object') for (const k in r.recalled) if (r.recalled[k]) out.recalled[k] = true;
   return out;
 }
 
@@ -79,8 +109,28 @@ export function expMult(rb, acctRebirths = 0) {
  * The save a hero wakes up with after a rebirth: a full fresh start that keeps only what the star
  * remembers. `old` is the hero's save now (World#toSave); `extra` is what the account carries.
  */
-export function rebirthSave(old, starterWeapon) {
+export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = null) {
   const rb = migrateRebirth(old.rebirth);
+  // Echoes (0.53): the gear you wear turns into Essence (all but the Heirloom you take with you), and the
+  // best piece ever worn in each slot is remembered
+  const worn = old.equipped || {};
+  const heir = heirloomSlot && worn[heirloomSlot] && relevel ? JSON.parse(JSON.stringify(worn[heirloomSlot])) : null;
+  let essence = 0;
+  for (const slot in worn) {
+    const it = worn[slot];
+    if (!it) continue;
+    if (!heir || slot !== heirloomSlot) essence += essenceFor(it);
+    if (memoryRank(it) > memoryRank(rb.memories[slot])) rb.memories[slot] = JSON.parse(JSON.stringify(it));
+  }
+  rb.essence += essence;
+  rb.lastEssence = essence;
+  rb.recalled = {}; // each memory can be recalled once a life
+  const equipped = { weapon: starterWeapon(old.cls) };
+  if (heir) {
+    heir.heirloom = true;
+    relevel(heir, 1);
+    equipped[heirloomSlot] = heir;
+  }
   const marks = starmarksFor(old.level, old.wish || 0);
   rb.n += 1;
   rb.marks += marks;
@@ -95,7 +145,7 @@ export function rebirthSave(old, starterWeapon) {
     cls: old.cls,
     level: 1,
     exp: 0,
-    equipped: { weapon: starterWeapon(old.cls) },
+    equipped,
     bag: [],
     gold: old.gold, // (the account's: shared by every hero)
     tickets: old.tickets,
@@ -108,5 +158,6 @@ export function rebirthSave(old, starterWeapon) {
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,
     endings: Object.assign({}, old.endings), // (0.45) the endings you have seen stay seen
+    keepsake: old.keepsake || null, // (0.53) Edric's Colours stays, made again at your new level
   };
 }

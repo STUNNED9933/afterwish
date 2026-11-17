@@ -644,7 +644,22 @@ export function levelBandMult(gap) {
 }
 
 export function expToNext(level) {
-  return Math.round(10 * expWorth(level) * (3 + 0.6 * level + 0.015 * level * level) * CONFIG.EXP_PACE);
+  return Math.round(10 * expWorth(level) * (3 + 0.6 * level + 0.015 * level * level) * CONFIG.EXP_PACE * midgameEase(level));
+}
+
+/**
+ * The middle of the climb (0.54.3): the 40s felt stagnant, so the bar there is shorter. Levels 38 to 48 need
+ * 40% less EXP, easing in from 28 and back out by 66, so the climb keeps its pace instead of sagging in the middle.
+ */
+export const MIDGAME_EASE = { from: 28, full: 38, until: 48, to: 66, cut: 0.4 };
+export function midgameEase(level) {
+  const E = MIDGAME_EASE;
+  const ease = (t) => t * t * (3 - 2 * t);
+  let w = 0;
+  if (level >= E.full && level <= E.until) w = 1;
+  else if (level > E.from && level < E.full) w = ease((level - E.from) / (E.full - E.from));
+  else if (level > E.until && level < E.to) w = ease((E.to - level) / (E.to - E.until));
+  return 1 - E.cut * w;
 }
 
 /** Which wave you restart from if you die on `wave` (the wave after the last boss). */

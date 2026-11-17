@@ -151,6 +151,12 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### A faster middle of the climb (0.54.3)
+
+The 40s felt stagnant. Levels 38 to 48 now need 40% less EXP, easing in from level 28 and back out by 66:
+about 30% less EXP across the 30s, 40% less across the 40s, 26% less across the 50s. The start and the end
+of the climb are unchanged (the whole climb to 100 is about 3% shorter).
+
 ### Act III: The Deep (0.54; Ember by investment 0.54.1; models 0.54.2)
 
 An optional extreme mode for heroes at level 100 who have rebirthed. It sits beside the world tiers on the

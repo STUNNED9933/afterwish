@@ -1212,6 +1212,11 @@ export class Renderer {
       case 'bloodied':
         if (ev.on) this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xff3344, speed: 6, up: 5, life: 0.5 });
         break;
+      case 'zoneLoose':
+        // (0.50) Arrow Storm leaves the string: a sheaf of arrows climbs from the archer
+        this.burst(ev.x, 2.2, ev.z, { count: 16, color: 0xfff0b0, speed: 3, up: 22, life: 0.5 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.0, color: 0xfff0b0, from: 0.6, to: 2.2, dur: 0.25, opacity: 0.8 });
+        break;
       case 'zoneTick':
         for (let n = 0; n < 7; n++) {
           const a = Math.random() * 6.283;

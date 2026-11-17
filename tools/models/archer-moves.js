@@ -146,6 +146,19 @@ export const ARCHER_MOVES = {
       drawHand(P, A, [[0, 1], [0.06, 1.25], [0.32, 1.2], [0.42, 'over'], [0.52, 'quiver'], [0.62, 'side'], [0.72, 'front'], [0.86, 0], [1, 0]], t);
     },
   },
+  // Arrow Storm (0.50): her own draw before the release, so the shot leaves when the game fires it.
+  // Over her shoulder for an arrow, nocked, drawn to full aimed high at the sky, a held breath, and
+  // loosed at 0.6 s (the cast time, classes.js windup); then she watches the arrows climb before
+  // lowering the bow. (arc_volley, the old one, loosed at once and then reached for another arrow.)
+  arc_storm: {
+    duration: 1.3,
+    pose(P, t) {
+      wideStance(P, { yaw: 66, spread: 1.05, crouch: curve([[0, 0.03], [0.5, 0.05], [0.62, 0.055], [1.3, 0.035]], t), lean: curve([[0, 4], [0.45, 16], [0.6, 19], [0.75, 14], [1.3, 2]], t) });
+      const kick = t < 0.6 ? 0 : curve([[0.6, 0], [0.64, 1], [0.8, 0.3], [0.95, 0]], t);
+      const A = arms(P, curve([[0, 18], [0.3, 38], [0.52, 58], [0.62, 60], [0.9, 56], [1.3, 12]], t), kick);
+      drawHand(P, A, [[0, 0], [0.08, 'side'], [0.16, 'over'], [0.24, 'quiver'], [0.32, 'side'], [0.38, 'front'], [0.44, 0], [0.56, 1], [0.6, 1], [0.64, 1.25], [0.9, 1.2], [1.1, 0.6], [1.3, 0]], t);
+    },
+  },
   // Evasive Roll: a forward roll, low and tucked, bow held close, back on her feet.
   arc_roll: {
     duration: 0.55,

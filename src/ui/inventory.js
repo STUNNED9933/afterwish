@@ -254,7 +254,7 @@ export class Inventory {
       ['Armor', `${s.armor} (${reduction}% less damage)`],
       ['Attack Speed', s.as.toFixed(2) + ' / s'],
       ['Move Speed', s.ms.toFixed(1)],
-      ['Ability Haste', s.haste],
+      ['Ability Haste', s.haste + (world.rawCooldown && world.overflowMult('q') > 1 ? ` (cooldowns at 1 s; ${world.kit.q.name} ${Math.round(world.overflowMult('q') * 100)}% power)` : '')],
       ['Crit Chance', Math.min(100, s.crit) + '%'],
       ['Crit Damage', Math.round(world.critMultiplier() * 100) + '%' + (s.crit > 100 ? ` (+${s.crit - 100}% from overflow)` : '')],
       ['Lifesteal', s.lifesteal > CONFIG.LIFESTEAL_CAP ? `${CONFIG.LIFESTEAL_CAP}% (${s.lifesteal}%, capped)` : s.lifesteal + '%'],

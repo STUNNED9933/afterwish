@@ -71,13 +71,13 @@ export const RIGGED = {
     // a whole draw-and-loose cycle, played over the time between two shots (the arrow leaves
     // 30% of the way in, when the game fires it)
     attack: { clip: 'arc_shot', cycle: true, fadeIn: 0.14 }, // (dropping to the kneel takes a moment)
-    aiming: /^arc_(shot|power|barrage|volley)$/,
+    aiming: /^arc_(shot|power|barrage|volley|storm)$/,
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       ricochet: { clip: 'arc_power', keys: [[0, 0.2], [0.6, 0.85]], fade: 0.2 },
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
-      zone: { clip: 'arc_volley', keys: [[0, 0], [1, 1]], fade: 0.3 },
+      zone: { clip: 'arc_storm', keys: [[0, 0], [1.3, 1.3]], fade: 0.3 }, // (0.50) drawn first, loosed at 0.6 s with the game's shot
       dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
     },
     recentre: ['idle', 'run', 'hit'],
@@ -274,6 +274,7 @@ export function loadRigged(id) {
  * Done in the bind pose: the palm faces down there, so "down" is the side the fingers close to.
  */
 const FIST = { knuckle: 0.42, radius: 0.3, most: 2.9 }; // knuckles at 42% of the hand; curl radius 30% of it; at most ~165°
+const IDENTITY_Q = new THREE.Quaternion();
 const FIST_AT = new Map(); // model url -> { hand bone name: [x, y, z] }, the middle of the fist in the bone's own space
 function closeHands(scene, names, url) {
   const at = {};
@@ -517,6 +518,8 @@ export function instantiate(tpl) {
   const fistAt = FIST_AT.get(spec.url) || {};
   const gripAt = (h) => (fistAt[h.name] ? new THREE.Vector3(...fistAt[h.name].at) : palmOf(h, spec.palm)); // in the fist (or the palm)
   const fistHole = hand && fistAt[hand.name] ? new THREE.Vector3(...fistAt[hand.name].hole) : null;
+  const handRest = new THREE.Quaternion(); // the wrist as the clips left it, before the staff bend
+  let handBent = null;
   const holeW = new THREE.Vector3(), wantW = new THREE.Vector3(), twistQ = new THREE.Quaternion();
   const palm = hand ? gripAt(hand) : new THREE.Vector3(); // weapons sit in the hand, not at the wrist joint
   const aiming = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.aiming && spec.aiming.test(a.getClip().name));
@@ -647,6 +650,12 @@ export function instantiate(tpl) {
         } else fadeTo(actions.idle, endFade || (current === actions.run ? 0.35 : current === actions.spin ? 0.2 : 0.25)); // ease into a stop
         if (!move) endFade = 0;
       }
+      // (0.50) put back the wrist the clips posed before they pose it again: while clips fade in and out
+      // they blend from the bone's current turn, so a bend left in place built up frame on frame
+      if (handBent) {
+        handBent.quaternion.copy(handRest);
+        handBent = null;
+      }
       mixer.update(dt);
       if (bow) {
         let aimW = 0;
@@ -694,7 +703,11 @@ export function instantiate(tpl) {
               wantW.copy(staffUp);
               if (holeW.dot(wantW) < 0) wantW.negate(); // the hole runs both ways: turn the short way
               twistQ.setFromUnitVectors(holeW, wantW); // in the model's space...
+              const ang = holeW.angleTo(wantW);
+              if (ang > 1.4) twistQ.slerp(IDENTITY_Q, 1 - 1.4 / ang); // at most ~80°: a wrist bends only so far
               twistQ.premultiply(tmpQ.clone().invert()).multiply(tmpQ); // ...as a turn of the hand itself
+              handRest.copy(h.hand.quaternion);
+              handBent = h.hand;
               h.hand.quaternion.multiply(twistQ);
               h.hand.updateMatrixWorld(true);
             }
@@ -754,6 +767,7 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
   };
   const rest = new THREE.Vector3(-0.19, 0, 0);
   const nock = new THREE.Vector3();
+  let loosed = false;
   return {
     update(aimW) {
       root.updateMatrixWorld(true);
@@ -776,7 +790,11 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
       group.updateMatrix();
       // the string: to the drawing hand while it is pulled back behind the bow
       tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());
-      const drawn = aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
+      // (0.50) once the hand has gone past full draw (the arrow is loosed), the string stays empty until
+      // the hand comes back to the bow: a hand passing back along the arrow is not drawing another
+      if (aimW <= 0.4 || tmp.x >= -0.24) loosed = false;
+      else if (tmp.x <= -0.72) loosed = true;
+      const drawn = !loosed && aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
       nock.copy(drawn ? tmp.set(tmp.x, 0, 0) : rest);
       seg(upper, nock, top);
       seg(lower, nock, bottom);

@@ -71,6 +71,7 @@ export const CONFIG = {
   CRIT_MULT: 1.75,
   // Crit chance over 100% is not wasted: each extra 1% becomes +1% crit damage.
   CRIT_OVERFLOW: 0.01,
+  CD_FLOOR: 1, // (0.50) no ability cooldown goes below this; haste past it makes the ability stronger (world.js overflowMult)
 
   // --- Level gap (like MapleStory) ---
   // Enemies above your level hit harder and shrug off more of your damage;

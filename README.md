@@ -151,6 +151,20 @@ another browser** lets you download a save file (or copy a save code), then
 load it in another browser. It carries every character, the shared gold and
 tickets, and your settings, and replaces whatever was there.
 
+### Cooldowns stop at 1 second, Arrow Storm is drawn first (0.50)
+
+- **Overflow for every class.** No ability's cooldown goes below 1 second (`CD_FLOOR` in `src/config.js`).
+  Haste past that is not wasted: damage skills hit harder by the same factor (a cooldown that would be a
+  quarter of a second hits 4 times as hard), and skills that deal no damage get a stronger effect:
+  Evasive Roll's attack speed, Nightstep's and Ambush's empower, Skirmish Step's quick shots. The
+  stats panel shows the power when it applies. (0.43 gave this to the Warrior and Mage only.)
+- **Arrow Storm** has a 0.6 s cast: she stands, reaches over her shoulder for an arrow, draws to full aimed at
+  the sky and looses, and the storm begins as the arrows leave (a sheaf of light climbs from her). Its new
+  animation is `arc_storm` in `tools/models/archer-moves.js`. After any shot the string stays empty until
+  her hand comes back to the bow, so no ghost arrow appears as the hand returns.
+- **Fixed:** the Mage's staff hand could twist into a stretched shape when she stopped running (the wrist
+  bend that closes her fist round the staff piled up while the run faded into the idle).
+
 ### Fight near your level, and rarer, richer finds (0.49)
 
 - **EXP by level band.** Enemies within 3 levels of you pay 10x EXP, sliding to 2x at 10 or more levels

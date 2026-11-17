@@ -849,10 +849,9 @@ export class World {
     return this.kit[slot].cd * this.mods[slot + 'Cd'] * (1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1)) * (100 / (100 + p.stats.haste));
   }
 
-  /** Overflow (Warrior and Mage, 0.43): the shortest a cooldown can be; 0 for the other classes. */
+  /** Overflow (0.43 for Warrior and Mage; every class since 0.50): the shortest a cooldown can be. */
   overflowFloor() {
-    const ps = CLASSES[this.cls].passive;
-    return (ps && ps.overflow) || 0;
+    return CONFIG.CD_FLOOR;
   }
 
   /** Cooldown in seconds after ranks, augments and ability haste. */
@@ -865,6 +864,8 @@ export class World {
   /**
    * Overflow (0.43): haste that would take a cooldown below the floor is not lost, it becomes
    * damage. A cooldown that would be 0.25 s stays at 1 s and the ability hits 4 times as hard.
+   * (0.50) Skills that deal no damage get a stronger effect instead: Evasive Roll's attack speed,
+   * Nightstep's empower, Skirmish Step's quick shots (see the dash's end in stepPlayer).
    */
   overflowMult(slot) {
     const floor = this.overflowFloor();
@@ -1761,10 +1762,11 @@ export class World {
         const lasts = def.duration + (m[slot + 'Duration'] || 0); // Endless Rain adds ticks, each as strong as before
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: lasts, parryable: false };
         this.telegraphs.push(tele);
-        this.zones.push({ x: c.x, z: c.z, radius, left: lasts, dur: lasts, next: 0, tick: def.tick, dmg: dmg / ticks, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele });
+        const wait = def.windup || 0; // (0.50) Arrow Storm: drawn and aimed first, rooted, then loosed
+        this.zones.push({ x: c.x, z: c.z, radius, left: lasts, dur: lasts, next: 0, tick: def.tick, dmg: dmg / ticks, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele, wait, fromX: p.x, fromZ: p.z });
         p.facing = a;
-        p.castLock = 0.16;
-        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius });
+        p.castLock = 0.16 + wait;
+        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius, windup: wait });
         break;
       }
       case 'hurricane': {
@@ -1916,6 +1918,11 @@ export class World {
   stepZones(dt) {
     if (!this.zones.length) return;
     for (const zn of this.zones) {
+      if (zn.wait > 0) {
+        zn.wait -= dt;
+        if (zn.wait <= 0) this.emit('zoneLoose', { x: zn.fromX, z: zn.fromZ, tx: zn.x, tz: zn.z });
+        continue;
+      }
       zn.left -= dt;
       zn.next -= dt;
       zn.tele.t = zn.dur - zn.left;
@@ -2195,9 +2202,10 @@ export class World {
       }
       if (k >= 1) {
         p.dash = null;
+        const over = this.overflowMult(ds.slot); // (0.50) haste past the 1 s floor makes the buff stronger
         if (ds.rush) {
           p.rushT = ds.rush.time + (this.mods.eRushTime || 0);
-          p.rushAs = ds.rush.as + (this.mods.eRush || 0);
+          p.rushAs = (ds.rush.as + (this.mods.eRush || 0)) * over;
           this.recalcStats();
           this.emit('rush', { time: p.rushT });
         }
@@ -2206,14 +2214,14 @@ export class World {
           // Skirmish Step (Windrunner): the next shots leave the string at once.
           p.quickShots = ds.quick.shots;
           p.quickT = ds.quick.time;
-          p.quickMult = ds.quick.mult;
+          p.quickMult = 1 + (ds.quick.mult - 1) * over;
           p.attackCd = 0;
           p.atkWind = 0;
           p.autoAcquire = true;
         }
         if (ds.empower) {
           p.empowerT = ds.empower.time;
-          p.empowerMult = ds.empower.mult + (this.mods[ds.slot + 'Empower'] || 0);
+          p.empowerMult = 1 + (ds.empower.mult - 1 + (this.mods[ds.slot + 'Empower'] || 0)) * over;
         }
         if (ds.veil) {
           p.veilT = ds.veil + (this.mods.veilTime || 0);

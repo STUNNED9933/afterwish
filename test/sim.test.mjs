@@ -2329,7 +2329,11 @@ import { makeRng } from '../src/sim/rng.js';
     check('Overflow: without that much haste nothing changes', w.overflowMult('q') === 1);
     const a = setup('archer', 'sharpshooter');
     a.p.stats.haste = 4000;
-    check('Overflow: archers do not have it', a.w.abilityCooldown('q') < 0.5 && a.w.overflowMult('q') === 1);
+    check('Overflow: every class has it since 0.50 (archers too)', Math.abs(a.w.abilityCooldown('q') - 1) < 1e-9 && a.w.overflowMult('q') > 1);
+    // A skill with no damage gets a stronger effect: Evasive Roll's attack speed
+    const roll = (haste) => { const r = setup('archer'); r.p.stats.haste = haste; r.p.level = 10; r.w.recalcStats(); r.p.stats.haste = haste; r.p.cd.e = 0; r.w.command({ type: 'cast', slot: 'e', x: r.p.x + 5, z: r.p.z }); for (let i = 0; i < 20; i++) r.w.step(CONFIG.TICK); return r.p.rushAs; };
+    const plain = roll(0), hasted = roll(4000);
+    check('Overflow: a buff skill past the floor buffs harder (Evasive Roll attack speed)', plain > 0 && hasted > plain * 3, `${plain} -> ${hasted?.toFixed(2)}`);
   }
   // Weight of Iron (Bulwark), Searing (Pyromancer), Deep Winter (Frostbinder), Crosswind (Windrunner)
   {

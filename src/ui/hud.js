@@ -12,9 +12,14 @@ import { AUGMENTS } from '../sim/augments.js';
 import { QUESTS, NPCS, SIGNS } from '../sim/story.js';
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
+import { TIERS } from '../sim/endgame.js';
 
 /** A quest's goal in a few words: "Defeat 12 Husks on the Greenwood Trail". */
-export function goalText(q) {
+export function goalText(q, tier = 0) {
+  const t = q.perTier && tier && TIERS[tier] ? ` on world tier ${TIERS[tier].numeral}` : ''; // (0.58)
+  return goalWords(q) + t;
+}
+function goalWords(q) {
   const g = q.goal;
   if (g.reach) return `Travel to ${MAPS[g.reach].name}`;
   if (g.read) return `Find ${g.read} glimmers (on any map)`;
@@ -748,7 +753,7 @@ export class Hud {
         if (!q || st.s === 'done') continue;
         rows.push(st.s === 'ready'
           ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name} in Haven</span></div>`
-          : `<div class="qt"><b>${q.name}</b><span>${goalText(q)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
+          : `<div class="qt"><b>${q.name}</b><span>${goalText(q, st.tier)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
       }
     }
     this.trackOn = rows.length > 0;

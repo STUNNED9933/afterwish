@@ -67,6 +67,38 @@ const memoryRank = (it) => (it ? it.rarity * 1000 + (it.stars || 0) * 100 + (it.
 /** Weapon glows for some rebirths (see sim/cosmetics.js). */
 export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'eternal' };
 
+/**
+ * (0.58) What a rebirth turns this hero's gear into: Echo Essence from everything worn (but the
+ * Heirloom) and everything in the bag, Ember from what is worn (the Heirloom too). A gift from a
+ * friend (`gift`) gives nothing: otherwise friends could hold gear through a rebirth, or pour theirs
+ * into one hero's. `save` is a save or a player (equipped, bag).
+ */
+export function rebirthGear(save, heirloomSlot = null) {
+  const out = { essence: 0, worn: 0, bag: 0, value: 0, gifts: 0, bagPieces: 0 };
+  const worn = save.equipped || {};
+  for (const slot in worn) {
+    const it = worn[slot];
+    if (!it) continue;
+    if (it.gift) {
+      out.gifts++;
+      continue;
+    }
+    out.value += essenceFor(it);
+    if (slot !== heirloomSlot) out.worn += essenceFor(it);
+  }
+  for (const it of save.bag || []) {
+    if (!it) continue;
+    if (it.gift) {
+      out.gifts++;
+      continue;
+    }
+    out.bag += essenceFor(it);
+    out.bagPieces++;
+  }
+  out.essence = out.worn + out.bag;
+  return out;
+}
+
 /** A hero's rebirth record, from a save (or a fresh one). */
 export function migrateRebirth(r) {
   const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {}, kindling: {}, deepMax: 0, act3: {}, gifts: {} };
@@ -126,13 +158,12 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
   // best piece ever worn in each slot is remembered
   const worn = old.equipped || {};
   const heir = heirloomSlot && worn[heirloomSlot] && relevel ? JSON.parse(JSON.stringify(worn[heirloomSlot])) : null;
-  let essence = 0;
-  let value = 0; // what this life's gear was worth, the Heirloom too (Ember, 0.54.1)
+  const sum = rebirthGear(old, heirloomSlot);
+  const essence = sum.essence;
+  const value = sum.value; // what this life's worn gear was worth, the Heirloom too (Ember, 0.54.1)
   for (const slot in worn) {
     const it = worn[slot];
-    if (!it) continue;
-    value += essenceFor(it);
-    if (!heir || slot !== heirloomSlot) essence += essenceFor(it);
+    if (!it || it.gift) continue; // (0.58) a gift is not the star's to remember
     if (memoryRank(it) > memoryRank(rb.memories[slot])) rb.memories[slot] = JSON.parse(JSON.stringify(it));
   }
   rb.essence += essence;

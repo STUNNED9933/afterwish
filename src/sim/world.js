@@ -21,7 +21,7 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
-import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor } from './rebirth.js';
+import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
 import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
@@ -814,6 +814,9 @@ export class World {
           break;
         case 'enterRift':
           this.enterRift(c.tier);
+          break;
+        case 'riftHome':
+          this.riftHome();
           break;
         case 'rebirth':
           this.rebirth(c.heirloom || null);
@@ -3043,12 +3046,25 @@ export class World {
     return this.player.quests[id] ? this.player.quests[id].s : null;
   }
 
+  /** (0.58) The world tiers a once-per-tier quest has been handed in on, this life. */
+  questTiersDone(id) {
+    const st = this.player.quests[id];
+    return (st && Array.isArray(st.tiers) && st.tiers) || [];
+  }
+
+  /** (0.58) The world tier a once-per-tier quest is for: the one it was taken on, else the one you are on. */
+  questTier(id) {
+    const st = this.player.quests[id];
+    return st && st.s !== 'done' && st.tier ? st.tier : this.worldTier();
+  }
+
   /** Can this quest be taken right now? */
   questOpen(id) {
     const q = QUESTS[id];
     const st = this.questState(id);
     if (!q || (st && !(q.repeat && st === 'done'))) return false;
     if (q.after && this.questState(q.after) !== 'done') return false;
+    if (q.perTier && this.questTiersDone(id).includes(this.worldTier())) return false; // (0.58) once on each world tier, each life
     if (q.act3) {
       // Act III (0.54): after the Unwish ending, and at least one rebirth; level 100 every life
       const p = this.player;
@@ -3074,7 +3090,9 @@ export class World {
     if (!this.questOpen(id)) return;
     const q = QUESTS[id];
     const p = this.player;
+    const tiersBefore = q.perTier ? this.questTiersDone(id).slice() : null;
     const st = (p.quests[id] = { s: 'active', n: 0 });
+    if (q.perTier) Object.assign(st, { tier: this.worldTier(), tiers: tiersBefore }); // (0.58) it counts on the tier it was taken on
     if (q.give && q.give.glass) this.giveMisc('glass', q.give.glass); // Wren's own Unwishing Glass (0.45)
     if (q.goal.ending && (p.endings.self || p.endings.place)) st.n = 1;
     if (q.goal.stories) this.sideStoryCount();
@@ -3114,6 +3132,7 @@ export class World {
       if (kind === 'kill' && g.kill) {
         hit = (!g.enemy || g.enemy === data.type || g.enemy === data.named) && (!g.boss || g.boss === data.type) && (!g.map || (this.map && this.map.id === g.map));
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
+        if (hit && q.perTier && st.tier && this.worldTier() !== st.tier) hit = false; // (0.58) on the tier it was taken on
         if (hit && q.act3 && g.boss) {
           // (0.54.1) a Primordial counts only when you meet its Depth's Ember yourself: no being carried down
           const D = Object.values(DEEP.depths).find((d) => d.primordial === g.boss);
@@ -3160,13 +3179,13 @@ export class World {
   /** What a quest pays, with the numbers worked out for its level. */
   questReward(id) {
     const q = QUESTS[id];
-    const r = q.reward || {};
+    const r = (q.tiers && q.tiers[this.questTier(id)]) || q.reward || {};
     const scale = 1 + 0.12 * (q.level - 1);
     return {
       exp: r.exp ? Math.round(expToNext(Math.min(Math.max(q.level, Math.min(this.player.level, q.level + CONFIG.QUEST_EXP_LATE)), CONFIG.MAX_LEVEL - 1)) * r.exp * CONFIG.QUEST_EXP) : 0,
       gold: r.gold ? Math.round((r.gold * scale) / 5) * 5 : 0,
       scrap: r.scrap ? Math.round(r.scrap * scale) : 0,
-      keys: r.keys || 0, tickets: r.tickets || 0, skill: r.skill || 0,
+      keys: r.keys || 0, tickets: r.tickets || 0, skill: r.skill || 0, fragments: r.fragments || 0, dust: r.dust || 0,
       item: r.item ?? null, slot: r.slot || null,
       ember: r.ember && !(this.player.rebirth && this.player.rebirth.gifts && this.player.rebirth.gifts[id]) ? r.ember : 0, // (0.57.6) once per hero
     };
@@ -3177,7 +3196,9 @@ export class World {
     const q = QUESTS[id];
     if (!q || this.questState(id) !== 'ready') return;
     const r = this.questReward(id);
+    const was = p.quests[id] || {};
     p.quests[id] = { s: 'done', n: this.questNeed(q) };
+    if (q.perTier) p.quests[id].tiers = [...new Set([...(was.tiers || []), was.tier || this.worldTier()])]; // (0.58)
     if (q.act3 && p.rebirth) {
       // (0.54) Act III stays done through rebirth, and opens the next Depth for good
       p.rebirth.act3[id] = true;
@@ -3199,6 +3220,8 @@ export class World {
     p.keys += r.keys;
     p.tickets += r.tickets;
     p.skillPoints += r.skill;
+    if (r.fragments) this.giveMisc('fragment', r.fragments); // (0.58) Immortal Fragments
+    if (r.dust) p.dust += r.dust;
     let item = null;
     if (r.item !== null) {
       // Gear of your own level (within reason), so a quest handed in late is still worth having.
@@ -4369,6 +4392,43 @@ export class World {
     this.emit('riftStart', { tier: rift.tier, name: MAPS[rift.theme].name });
   }
 
+  /**
+   * (0.58) A rift that is over: straight home, without the walk back to the portal. Its loot comes
+   * with you (worn if the slot is empty, else into the bag; anything that does not fit is scrapped).
+   * On the server each hero goes alone; in a room the host takes everyone.
+   */
+  riftHome() {
+    if (this.mode !== 'explore' || !this.rift || !this.map || this.map.id !== 'rift' || this.rift.state !== 'done') return;
+    if (!this.travelHook && this.heroes.length > 1 && this.cur !== this.heroes[0]) return;
+    const movers = this.travelHook ? [this.cur] : this.heroes;
+    for (const h of movers) this.as(h, () => this.sweepLoot());
+    if (this.travelHook) this.goMap('town', 'rift');
+    else this.loadMap('town', 'rift');
+  }
+
+  /** (0.58) Take every piece on the ground that is this hero's, as walking over it would. */
+  sweepLoot() {
+    const p = this.player;
+    let got = 0, scrapped = 0;
+    for (const l of this.loot) {
+      if (l.taken || (l.owner !== undefined && l.owner !== this.cur.pid) || l.droppedBy !== undefined) continue;
+      l.taken = true;
+      if (!p.equipped[l.item.slot]) {
+        p.equipped[l.item.slot] = l.item;
+        this.recalcStats();
+        got++;
+      } else if (p.bag.length < this.bagSize(p)) {
+        p.bag.push(l.item);
+        got++;
+      } else {
+        p.scrap += scrapValue(l.item);
+        scrapped++;
+      }
+    }
+    this.loot = this.loot.filter((l) => !l.taken);
+    if (got || scrapped) this.emit('lootSwept', { got, scrapped });
+  }
+
   /** A map made for one run (an Echo Rift, a delve room): no world events, chests or altars of its own. */
   instanced() {
     return !!this.map && (this.map.id === 'rift' || this.map.id === 'delve');
@@ -4556,20 +4616,37 @@ export class World {
     this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, ember: save.rebirth.lastEmber || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
   }
 
-  /** Echo Essence a rebirth would give now, keeping `heirloom` (a slot) as the Heirloom (0.53). */
-  /** Ember a rebirth now would give (0.54.1): what the gear you wear is worth, the Heirloom too. */
+  /** Ember a rebirth now would give (0.54.1): what the gear you wear is worth, the Heirloom too (gifts aside). */
   rebirthEmber() {
-    const p = this.player;
-    let n = 0;
-    for (const slot of SLOTS) if (p.equipped[slot]) n += essenceFor(p.equipped[slot]);
-    return emberForGear(n);
+    return emberForGear(rebirthGear(this.player).value);
   }
 
+  /** Echo Essence a rebirth would give now (0.53), keeping `heirloom` (a slot): worn gear and, from 0.58, the bag too. */
   rebirthEssence(heirloom = null) {
-    const p = this.player;
-    let n = 0;
-    for (const slot of SLOTS) if (p.equipped[slot] && slot !== heirloom) n += essenceFor(p.equipped[slot]);
-    return n;
+    return rebirthGear(this.player, heirloom).essence;
+  }
+
+  /** (0.58) Everything a rebirth now would give, and what it would leave behind, for the Begin again panel. */
+  rebirthPreview(heirloom = null) {
+    const p = this.player, rb = p.rebirth;
+    const g = rebirthGear(p, heirloom);
+    const next = (rb.n || 0) + 1;
+    const acctNow = Math.min(REBIRTH.acctExpMax, REBIRTH.acctExp * (p.acctRebirths || 0));
+    const acctNext = Math.min(REBIRTH.acctExpMax, REBIRTH.acctExp * ((p.acctRebirths || 0) + 1));
+    let remembered = 0;
+    for (const slot of SLOTS) {
+      const it = p.equipped[slot];
+      if (it && !it.gift && (!rb.memories[slot] || it.rarity * 1000 + (it.stars || 0) * 100 + (it.plus || 0) > rb.memories[slot].rarity * 1000 + (rb.memories[slot].stars || 0) * 100 + (rb.memories[slot].plus || 0))) remembered++;
+    }
+    return {
+      marks: this.rebirthMarks(),
+      essence: g.essence, essenceWorn: g.worn, essenceBag: g.bag, bagPieces: g.bagPieces, gifts: g.gifts,
+      ember: emberForGear(g.value), emberNow: this.ember(p),
+      glow: REBIRTH_GLOWS[next] || null,
+      acctExp: acctNext > acctNow ? Math.round((acctNext - acctNow) * 100) : 0,
+      remembered,
+      left: { fragments: (p.misc && p.misc.fragment) || 0, dust: p.dust || 0, scrap: p.scrap || 0, keys: p.keys || 0, sigils: (p.misc && p.misc.sigil) || 0 },
+    };
   }
 
   /** Echoes (0.53): make a remembered piece again at your level, once a life, for Echo Essence. */
@@ -4858,6 +4935,7 @@ export class World {
           continue;
         }
         l.taken = true;
+        if (l.droppedBy !== undefined && l.droppedBy !== this.cur.pid) l.item.gift = true; // (0.58) dropped by a friend: a gift
         const current = p.equipped[l.item.slot];
         const upgrade = itemScore(l.item) > itemScore(current);
         if (!current) {
@@ -4882,6 +4960,7 @@ export class World {
     const p = this.player;
     const item = p.bag[index];
     if (!item || !this.party || this.mode !== 'explore' || p.dead) return;
+    if (item.gift) return this.emit('giftBound', { name: item.name }); // (0.58)
     p.bag.splice(index, 1);
     this.tradeItemGone(item.id);
     const a = this.rng() * TAU;
@@ -4938,7 +5017,7 @@ export class World {
     const t = this.tradeFor(me);
     if (!t || !t.open) return;
     const p = this.player;
-    const list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => p.bag.some((it) => it.id === id)).slice(0, 8) : [];
+    const list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => p.bag.some((it) => it.id === id && !it.gift)).slice(0, 8) : []; // (0.58) not a gift
     t.items[me] = list;
     t.gold[me] = Math.max(0, Math.min(p.gold, Math.floor(Number(gold) || 0)));
     t.ok[t.a] = t.ok[t.b] = false;
@@ -4958,6 +5037,7 @@ export class World {
     const ia = take(pa, t.items[t.a]), ib = take(pb, t.items[t.b]);
     if (ia.some((x) => !x) || ib.some((x) => !x) || pa.gold < t.gold[t.a] || pb.gold < t.gold[t.b]) return this.tradeCancel('changed');
     if (pa.bag.length - ia.length + ib.length > this.bagSize(pa) || pb.bag.length - ib.length + ia.length > this.bagSize(pb)) return this.tradeCancel('full');
+    for (const it of [...ia, ...ib]) it.gift = true; // (0.58) a gift stays with whoever it was given to
     pa.bag = pa.bag.filter((it) => !ia.includes(it)).concat(ib);
     pb.bag = pb.bag.filter((it) => !ib.includes(it)).concat(ia);
     pa.gold += t.gold[t.b] - t.gold[t.a];
@@ -6661,7 +6741,7 @@ inTown() {
     const r = this.rift;
     if (m.id === 'rift' && r) {
       const clock = `${Math.floor(r.timeLeft / 60)}:${String(Math.floor(r.timeLeft % 60)).padStart(2, '0')}`;
-      const sub = r.state === 'done' ? (r.won ? 'cleared · step into the portal to go home' : 'finished') : r.state === 'guardian' ? `the guardian has come · ${clock}` : r.state === 'late' ? 'out of time · you can still finish it' : `${Math.min(100, Math.floor((100 * r.progress) / r.need))}% · ${clock}`;
+      const sub = r.state === 'done' ? (r.won ? 'cleared · H or the portal to go home' : 'finished · H or the portal to go home') : r.state === 'guardian' ? `the guardian has come · ${clock}` : r.state === 'late' ? 'out of time · you can still finish it' : `${Math.min(100, Math.floor((100 * r.progress) / r.need))}% · ${clock}`;
       return { name: `Echo Rift · Tier ${r.tier}`, sub };
     }
     const dn = this.depthNow();

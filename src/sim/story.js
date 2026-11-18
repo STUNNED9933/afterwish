@@ -375,11 +375,19 @@ export const QUESTS = {
     done: 'She will rise again. The wish holds for as long as there is something left that she loves, and she will never stop loving you, and you cannot die.\n\nSo there is no ending. There is only the kindness of letting her sleep, two minutes at a time.\n\nI am sorry. I should have told you when you were small.',
     reward: { exp: 0, gold: 2000, item: 6, keys: 3, skill: 3 },
   },
+  // (0.58) Once on each world tier, every life: the higher the tier, the more she has kept for you.
   again: {
-    giver: 'wren', level: 100, after: 'unmade', repeat: true, name: 'Come Home', goal: { kill: 1, boss: 'boss3' },
-    offer: 'She asks every knight who reaches her whether the child is safe. Go up and let her see that you are. Then let her sleep.',
-    done: 'Two minutes of quiet on the mountain. It is not nothing. It is all any of us have managed in nineteen years.',
-    reward: { exp: 0, gold: 900, item: 4, keys: 1 },
+    giver: 'wren', level: 100, after: 'unmade', repeat: true, perTier: true, name: 'Come Home', goal: { kill: 1, boss: 'boss3' },
+    offer: 'She asks every knight who reaches her whether the child is safe. Go up and let her see that you are. Then let her sleep. On a harder road she will have more to give you; she keeps what the knights before you left behind.',
+    done: 'Two minutes of quiet on the mountain. It is not nothing. It is all any of us have managed in nineteen years. Take these. They were left for whoever came home.',
+    reward: { exp: 0, gold: 900, item: 4, keys: 2 },
+    tiers: {
+      1: { exp: 0, gold: 900, item: 4, keys: 2, tickets: 1, fragments: 20, dust: 6 },
+      2: { exp: 0, gold: 1300, item: 4, keys: 3, tickets: 2, fragments: 30, dust: 9 },
+      3: { exp: 0, gold: 1800, item: 5, keys: 4, tickets: 2, fragments: 45, dust: 12 },
+      4: { exp: 0, gold: 2400, item: 5, keys: 5, tickets: 3, fragments: 60, dust: 16 },
+      5: { exp: 0, gold: 3000, item: 5, keys: 6, tickets: 4, fragments: 80, dust: 20 },
+    },
   },
 
   // --- Act II: The Asker (0.39; see docs/design/act-ii.md) ----------------------

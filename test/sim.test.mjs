@@ -831,8 +831,25 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     f.command({ type: 'acceptQuest', id: 'again' }); step(f);
     const camp = f.camps.find((c) => c.def.type === 'boss3'); camp.slots[0].timer = 0.01; step(f, 80);
     f.hitEnemy(f.enemies.find((e) => e.type === 'boss3'), 1e12); step(f);
+    const fr0 = f.player.misc.fragment || 0, dust0 = f.player.dust, r1 = f.questReward('again');
     f.command({ type: 'claimQuest', id: 'again' }); step(f);
-    check('quests: a repeatable quest can be taken again after it is handed in', f.questState('again') === 'done' && f.questOpen('again'));
+    check('Come Home (0.58): handed in on tier I gives Immortal Fragments and Wishdust', f.player.misc.fragment === fr0 + 20 && f.player.dust === dust0 + 6, `${f.player.misc.fragment} ${f.player.dust}`);
+    check('Come Home: once on each world tier, so not again on tier I', f.questState('again') === 'done' && !f.questOpen('again') && f.player.tierMax >= 2);
+    const tier = (t) => { f.loadMap('town', 'sanctum'); f.command({ type: 'setTier', tier: t }); step(f); f.loadMap('sanctum', 'maw'); };
+    const unmade = () => { const e = f.enemies.find((x) => x.type === 'boss3' && !x.dead) || (f.camps.find((c) => c.def.type === 'boss3').slots[0].timer = 0.01, step(f, 80), f.enemies.find((x) => x.type === 'boss3')); f.hitEnemy(e, 1e12); step(f); };
+    tier(2);
+    const r2 = f.questReward('again');
+    check('Come Home: open again on tier II, and it gives more there', f.questOpen('again') && r2.fragments > r1.fragments && r2.gold > r1.gold && r2.keys > r1.keys, `${r1.fragments} -> ${r2.fragments}`);
+    f.command({ type: 'acceptQuest', id: 'again' }); step(f);
+    tier(1);
+    unmade();
+    check('Come Home: taken on tier II, The Unmade on tier I does not count', f.questState('again') === 'active' && f.questReward('again').fragments === r2.fragments);
+    tier(2);
+    unmade();
+    f.command({ type: 'claimQuest', id: 'again' }); step(f);
+    check('Come Home: done on tier II too, remembered for this life', f.questTiersDone('again').join() === '1,2' && !f.questOpen('again'), f.questTiersDone('again').join());
+    const after = new World({ seed: 5, mode: 'explore', save: f.toSave() });
+    check('...and remembered after a save and load', after.questTiersDone('again').join() === '1,2');
   }
 }
 {
@@ -2054,17 +2071,29 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     cmd(friend, { type: 'tradeOk' });
     check('trade: an item scrapped mid-trade comes off the offer (nothing swaps by surprise)', !host.player.bag.some((i) => i.id === 'sw1'));
     cmd(host, { type: 'tradeCancel' });
-    // Dropping for a friend
-    const idx = host.player.bag.findIndex((i) => i.id === 'rg1');
+    // Dropping for a friend (something the host found: what came by trade is a gift and stays, 0.58)
+    host.player.bag.push(Object.assign({}, ring, { id: 'rg2', gift: false }));
+    const idx = host.player.bag.findIndex((i) => i.id === 'rg2');
     cmd(host, { type: 'dropItem', index: idx });
-    const drop = w.loot.find((l) => l.item.id === 'rg1');
+    const drop = w.loot.find((l) => l.item.id === 'rg2');
     check('drop: Ctrl-click drops a bag item on the ground for anyone in the party', drop && drop.owner === undefined);
     host.player.x = drop.x; host.player.z = drop.z;
     run(w, 1);
-    check('drop: the one who dropped it does not snatch it straight back', !host.player.bag.some((i) => i.id === 'rg1'));
+    check('drop: the one who dropped it does not snatch it straight back', !host.player.bag.some((i) => i.id === 'rg2'));
     host.player.x = 30; friend.player.x = drop.x; friend.player.z = drop.z; friend.player.dead = false;
     run(w, 1);
-    check('drop: the friend picks it up', friend.player.bag.some((i) => i.id === 'rg1') || (friend.player.equipped.ring && friend.player.equipped.ring.id === 'rg1'));
+    check('drop: the friend picks it up', friend.player.bag.some((i) => i.id === 'rg2') || (friend.player.equipped.ring && friend.player.equipped.ring.id === 'rg2'));
+    // (0.58) Gifts stay with whoever they were given to: no holding gear for a friend through a rebirth
+    const rg = friend.player.bag.find((i) => i.id === 'rg2') || friend.player.equipped.ring;
+    const r1 = host.player.bag.find((i) => i.id === 'rg1');
+    check('gifts: what came by trade or a drop is a gift', rg.gift && r1 && r1.gift);
+    friend.player.bag.push(Object.assign({}, ring, { id: 'gf1', gift: true }));
+    cmd(friend, { type: 'tradeAsk', to: 0 }); cmd(host, { type: 'tradeAnswer', yes: true });
+    cmd(friend, { type: 'tradeSet', items: ['gf1'], gold: 0 });
+    check('gifts: cannot be offered in a trade', w.trades[0] && w.trades[0].items[1].length === 0);
+    cmd(friend, { type: 'tradeCancel' });
+    cmd(friend, { type: 'dropItem', index: friend.player.bag.findIndex((i) => i.id === 'gf1') });
+    check('gifts: or dropped for someone', friend.player.bag.some((i) => i.id === 'gf1') && w.events.some((e) => e.type === 'giftBound'));
   }
   // Co-op playback: updates carry the host's clock, and a glide starts from where things are drawn
   {
@@ -2179,6 +2208,21 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     for (const e of w.enemies.slice()) { if (r2.guardianId) break; w.killEnemy(e, 'basic'); }
     w.killEnemy(w.enemies.find((e) => e.riftGuardian), 'basic');
     check('...but you can still finish it', r2.state === 'done' && !r2.won && p.riftMax === 2);
+    // (0.58) Home at once, spoils and all
+    p.bag = p.bag.slice(0, 3);
+    const onGround = w.loot.filter((l) => l.owner === undefined || l.owner === w.cur.pid).length, bag0 = p.bag.length + Object.values(p.equipped).filter(Boolean).length;
+    w.command({ type: 'riftHome' }); w.runCommands();
+    check('rifts: when it is over, home at once', !w.rift && w.map.id === 'town' && w.events.some((e) => e.type === 'lootSwept'));
+    check('...and its spoils come too', onGround > 0 && p.bag.length + Object.values(p.equipped).filter(Boolean).length === bag0 + onGround, `${onGround} on the ground`);
+    w.command({ type: 'enterRift', tier: 1 }); w.runCommands();
+    w.command({ type: 'riftHome' }); w.runCommands();
+    check('rifts: not while it is still running', w.rift && w.map.id === 'rift');
+    for (const e of w.enemies.slice()) { if (w.rift.guardianId) break; w.killEnemy(e, 'basic'); }
+    p.bag = []; while (p.bag.length < w.bagSize(p)) p.bag.push(JSON.parse(JSON.stringify(Object.values(p.equipped).find(Boolean))));
+    const scrap0 = p.scrap;
+    w.killEnemy(w.enemies.find((e) => e.riftGuardian), 'basic');
+    w.command({ type: 'riftHome' }); w.runCommands();
+    check('rifts: with a full bag, what does not fit is scrapped, not lost', w.map.id === 'town' && p.scrap > scrap0 && p.bag.length === w.bagSize(p), p.scrap - scrap0);
     check('rifts: each tier is tougher than the last', riftScale(10).hp > riftScale(5).hp * 2 && riftScale(1).hp === 1);
     const m1 = buildRiftMap('frost', 5), m2 = buildRiftMap('frost', 5);
     check('rifts: the same seed builds the same rift (so a co-op friend sees the host\'s)', JSON.stringify(m1.spawns) === JSON.stringify(m2.spawns) && m1.portals.length === 1 && m1.portals[0].to === 'town');
@@ -3508,6 +3552,23 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'rebirth', heirloom: 'ring' }); w.step(CONFIG.TICK);
   const ev = w.events.find((e) => e.type === 'reborn');
   check('echoes: a rebirth turns the gear you wear into Echo Essence (not the Heirloom) and remembers each piece', ev && ev.essence === worth && worth === 4 * essenceFor(save.equipped.weapon) && Object.keys(ev.save.rebirth.memories).length === 5, `${ev && ev.essence} essence`);
+  {
+    // (0.58) the bag counts too, gifts give nothing, and the panel can say all of it
+    const { rebirthGear } = await import('../src/sim/rebirth.js');
+    const s2 = geared('warrior', 100, 6); s2.bossKills = { boss3: 1 };
+    const spare = JSON.parse(JSON.stringify(s2.equipped.weapon)); spare.id = 'spare';
+    const gift = JSON.parse(JSON.stringify(s2.equipped.chest || s2.equipped.weapon)); gift.id = 'gift'; gift.gift = true;
+    s2.bag = [spare, gift];
+    const w2 = new World({ seed: 8, mode: 'explore', cls: 'warrior', save: s2 });
+    const pv = w2.rebirthPreview(null);
+    check('echoes (0.58): gear left in the bag becomes Echo Essence too', pv.essenceBag === essenceFor(spare) && pv.essence === pv.essenceWorn + pv.essenceBag && pv.bagPieces === 1, JSON.stringify(pv));
+    check('echoes: a gift from a friend gives nothing', pv.gifts === 1 && rebirthGear({ equipped: {}, bag: [gift] }).essence === 0);
+    check('the preview says what is left behind', pv.left && typeof pv.left.fragments === 'number' && pv.marks > 0 && pv.ember >= 0);
+    w2.events.length = 0;
+    w2.command({ type: 'rebirth' }); w2.step(CONFIG.TICK);
+    const e2 = w2.events.find((e) => e.type === 'reborn');
+    check('echoes: the rebirth gives what the preview said', e2 && e2.essence === pv.essence && e2.ember === pv.ember, `${e2 && e2.essence} vs ${pv.essence}`);
+  }
   const r = new World({ seed: 8, mode: 'explore', cls: 'warrior', save: JSON.parse(JSON.stringify(ev.save)) });
   const rp = r.player, heir = rp.equipped.ring;
   check('echoes: the Heirloom comes with you, back at your level, keeping its rarity, effect, +levels and stars', heir && heir.heirloom && heir.ilvl === 1 && heir.rarity === 6 && heir.plus === 10 && heir.stars === 5 && rp.equipped.weapon && rp.equipped.weapon.rarity === 0);

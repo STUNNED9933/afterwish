@@ -159,6 +159,22 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Time well spent (0.58)
+
+- **Come Home** is once on each world tier, every life (it starts again after a rebirth), and pays far
+  more the higher the tier: Immortal Fragments (20 on tier I up to 80 on tier V, about one Immortal a
+  life in all), Wishdust, keys, starglass shards, gold and Mythic or Ancient gear. It counts only on
+  the tier it was taken on.
+- **Echo Rifts**: once a rift is over, *Return to Haven* (or H) takes you straight home with its
+  spoils (worn if the slot is empty, else in the bag; what does not fit is scrapped), or *Stay*.
+  On the server each hero goes alone; in a room the host takes everyone.
+- **Rebirth** shows everything a new life gives: Starmarks, Echo Essence (from what you wear and,
+  now, everything in your bag), Ember, the pieces the star will remember, the Heirloom, a weapon
+  glow, the account's EXP bonus, and what is left behind (Immortal Fragments, Wishdust, scrap, keys).
+- **Gifts**: gear that came from a friend (a trade or a drop) stays with you. It cannot be passed on
+  again and gives the star nothing at a rebirth, so a friend cannot hold your gear through a rebirth
+  and hand it back, or pour theirs into your Echo Essence.
+
 ### Always the newest version, in every browser (0.57.9)
 
 - Some browsers (Firefox, Safari) can hand back their cached copy of the page, even on a reload,

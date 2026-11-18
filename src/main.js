@@ -246,6 +246,8 @@ function start(hot = {}) {
   }, {
     offered: () => (trade && trade.state === 'open' ? new Set(trade.mine.ids) : null),
     toggle: (id) => {
+      const it = world.player.bag.find((x) => x.id === id);
+      if (it && it.gift) return hud.feedText('A gift stays with you: it cannot be passed on.');
       const ids = new Set(trade.mine.ids);
       if (ids.has(id)) ids.delete(id);
       else ids.add(id);
@@ -908,6 +910,8 @@ function start(hot = {}) {
     if (r.keys) parts.push(`${r.keys} Warden key${r.keys > 1 ? 's' : ''}`);
     if (r.tickets) parts.push(`${r.tickets} starglass shard${r.tickets > 1 ? 's' : ''}`);
     if (r.skill) parts.push(`${r.skill} skill points`);
+    if (r.fragments) parts.push(`<span style="color:${RARITIES[6].color}">${r.fragments} Immortal Fragments</span>`);
+    if (r.dust) parts.push(`${r.dust} Wishdust`);
     const q = QUESTS[id];
     if (q.reward.unique && q.reward.unique[world.cls]) parts.push(`<span style="color:${RARITIES[6].color}">Edric's Sword (unique)</span>`);
     if (r.ember) parts.push(`<span style="color:#ff8a4a">+${r.ember} Ember, kept through every rebirth</span>`);
@@ -1173,7 +1177,7 @@ function start(hot = {}) {
       el.className = 'quest' + (st === 'ready' ? ' ready' : '');
       const need = world.questNeed(q);
       const prog = st === 'active' && need > 1 ? ` · ${world.player.quests[id].n}/${need}` : '';
-      el.innerHTML = `<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? (id === 'scarf2' && world.player.choices && world.player.choices.scarf === 'walk' ? q.doneAlt : q.done) : q.offer)}</p><div class="goal">${goalText(q)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
+      el.innerHTML = `<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? (id === 'scarf2' && world.player.choices && world.player.choices.scarf === 'walk' ? q.doneAlt : q.done) : q.offer)}</p><div class="goal">${goalText(q, q.perTier ? world.questTier(id) : 0)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
       const btn = document.createElement('button');
       btn.type = 'button';
       if (st === 'ready') {
@@ -1239,7 +1243,7 @@ function start(hot = {}) {
       if (!st) continue;
       if (st.s === 'done') { done++; continue; }
       const need = world.questNeed(q);
-      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
+      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q, st.tier) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
     }
     const waiting = ['wren', 'bram', 'odile', 'lark', 'pip'].filter((n) => world.npcMarker(n) === '!').map((n) => NPCS[n].name);
     $('journal-quests').innerHTML = (qs.join('') || '<p class="setting-desc">No quests in hand.</p>')
@@ -1413,10 +1417,23 @@ function start(hot = {}) {
       heir.innerHTML = '<span>Heirloom</span><span class="v">kept, back at level 1, grows with you</span>';
       heir.appendChild(sel);
       panel.appendChild(heir);
-      const ess = document.createElement('p');
-      ess.className = 'setting-desc';
-      ess.innerHTML = `The rest of your gear becomes <b>${world.rebirthEssence(rebirthHeir)} Echo Essence</b>, and the star remembers the best piece of each slot: in later lives, recall them at your level and bring them back up to what they were (gear screen).${p.rebirth.essence ? ` You have ${p.rebirth.essence} now.` : ''} Your gear, the Heirloom too, is worth <b>${world.rebirthEmber()} of ${DEEP.emberMax} Ember</b> for the Deep (rarity, +levels and stars).`;
-      panel.appendChild(ess);
+      // (0.58) Everything it gives, and what stays behind
+      const pv = world.rebirthPreview(rebirthHeir);
+      const gains = [`<li><b class="rb-marks">+${pv.marks} Starmarks</b> for perks that last every life</li>`];
+      gains.push(`<li><b>+${pv.essence} Echo Essence</b> <span>(${pv.essenceWorn} from what you wear${rebirthHeir ? ', the Heirloom aside' : ''}, ${pv.essenceBag} from ${pv.bagPieces} piece${pv.bagPieces === 1 ? '' : 's'} in your bag)${rb.essence ? `; you have ${rb.essence}` : ''}. Spend it on the gear screen to recall what the star remembers.</span></li>`);
+      gains.push(`<li><b style="color:#ff8a4a">+${pv.ember} Ember</b> <span>(of ${DEEP.emberMax}, from what you wear: rarer pieces, +levels and stars are worth more), kept for good: ${pv.emberNow} now, ${pv.emberNow + pv.ember} after</span></li>`);
+      if (pv.remembered) gains.push(`<li><b>${pv.remembered} piece${pv.remembered === 1 ? '' : 's'} remembered</b> <span>(the best you have worn in ${pv.remembered === 1 ? 'that slot' : 'those slots'}), to recall in later lives</span></li>`);
+      if (rebirthHeir && p.equipped[rebirthHeir]) gains.push(`<li><b>${esc(itemName(p.equipped[rebirthHeir]))}</b> <span>comes with you as your Heirloom, back at level 1</span></li>`);
+      if (pv.glow && GLOWS[pv.glow]) gains.push(`<li><b>${GLOWS[pv.glow].name}</b> <span>weapon glow</span></li>`);
+      if (pv.acctExp) gains.push(`<li><b>+${pv.acctExp}% EXP</b> <span>for every hero on this account</span></li>`);
+      const L = pv.left;
+      const lost = [L.fragments && `${L.fragments} Immortal Fragments`, L.dust && `${L.dust} Wishdust`, L.scrap && `${L.scrap.toLocaleString()} scrap`, L.keys && `${L.keys} Warden key${L.keys === 1 ? '' : 's'}`, L.sigils && `${L.sigils} Remnant Sigil${L.sigils === 1 ? '' : 's'}`].filter(Boolean);
+      const box = document.createElement('div');
+      box.className = 'rb-gains';
+      box.innerHTML = `<div class="rb-gains-h">Begin again now and the star gives you</div><ul>${gains.join('')}</ul>` +
+        (lost.length ? `<p class="rb-lose">Left behind (spend them first): ${lost.join(', ')}.</p>` : '') +
+        (pv.gifts ? `<p class="rb-lose">${pv.gifts} gift${pv.gifts === 1 ? '' : 's'} from friends give${pv.gifts === 1 ? 's' : ''} the star nothing.</p>` : '');
+      panel.appendChild(box);
     }
     const go = document.createElement('button');
     go.type = 'button';
@@ -1425,7 +1442,7 @@ function start(hot = {}) {
     go.disabled = !!why;
     go.textContent = why ? `Begin again: ${why}` : rebirthSure
       ? `Are you sure? Click again to begin again with ${marks} Starmarks`
-      : `Begin again · +${marks} Starmarks`;
+      : `Begin again · +${marks} Starmarks${block ? '' : ` · +${world.rebirthEssence(rebirthHeir)} Essence · +${world.rebirthEmber()} Ember`}`;
     go.title = 'A full fresh start for this hero: level 1, no gear, scrap or Wishdust, the story, quests, world tiers, talents and Wishborne levels from the beginning. Gold is the account\'s and stays. Kept: Starmarks and perks, weapon glows. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels.';
     go.addEventListener('click', () => {
       if (!rebirthSure) {
@@ -1440,7 +1457,7 @@ function start(hot = {}) {
     if (!block) {
       const note = document.createElement('p');
       note.className = 'setting-desc';
-      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear turns into Echo Essence; scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Edric's Colours, and your weapon glows (gold belongs to the account).`;
+      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear, worn and in the bag, turns into Echo Essence; scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Edric's Colours, and your weapon glows (gold belongs to the account).`;
       panel.appendChild(note);
     }
   }
@@ -2083,6 +2100,25 @@ function start(hot = {}) {
     clearInterval(noticeWatch);
   }
   $('btn-notice-ok').addEventListener('click', hideNotice);
+  // (0.58) A rift that is over: home at once (its spoils come too), or stay and walk out when ready
+  function showRiftHome(won) {
+    const host = !net || net.server || net.role === 'host';
+    $('rift-home-text').textContent = won ? 'Rift cleared. Your spoils come with you.' : 'The rift is over. Your spoils come with you.';
+    $('btn-rift-home').disabled = !host;
+    $('btn-rift-home').title = host ? '' : 'The host takes everyone home';
+    $('rift-home').classList.remove('hidden');
+  }
+  function riftHome() {
+    if ($('rift-home').classList.contains('hidden') || $('btn-rift-home').disabled) return false;
+    $('rift-home').classList.add('hidden');
+    applyNow({ type: 'riftHome' });
+    return true;
+  }
+  $('btn-rift-home').addEventListener('click', riftHome);
+  $('btn-rift-stay').addEventListener('click', () => {
+    $('rift-home').classList.add('hidden');
+    hud.feedText('Stay as long as you like. Step into the portal, or press H, to go home.');
+  });
   /**
    * (0.57.8) Reload into the newest page and rejoin by yourself. What to rejoin rides in the address
    * (not sessionStorage, which Firefox can refuse when the site's storage is full, so the page came
@@ -2631,6 +2667,11 @@ function start(hot = {}) {
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
+      // (0.58) H: home from a rift that is over
+      if (key === 'h' && mode === 'play' && world.rift && world.rift.state === 'done' && world.map.id === 'rift') {
+        $('rift-home').classList.remove('hidden');
+        return riftHome() || true;
+      }
       // The Asker's offer (0.40): 1 to 4 answer it (before the potion key gets them).
       if (!$('asker-offer').classList.contains('hidden') && /^[1-4]$/.test(key)) {
         answerAsker(['power', 'shield', 'speed', 'none'][Number(key) - 1]);
@@ -3306,10 +3347,18 @@ function start(hot = {}) {
         if (ev.won) sfx.levelUp();
         tune();
         persist();
+        showRiftHome(ev.won);
         break;
       }
       case 'riftEnd':
         hud.feedText('You left the rift.');
+        break;
+      case 'giftBound':
+        hud.feedText(`${ev.name} was a gift: it stays with you.`);
+        sfx.denied();
+        break;
+      case 'lootSwept':
+        hud.feedText(`The rift's spoils came with you: ${ev.got} piece${ev.got === 1 ? '' : 's'}${ev.scrapped ? `, and ${ev.scrapped} scrapped for want of room` : ''}.`);
         break;
       case 'riftNoShard':
         hud.feedText('A rift costs a starglass shard. The things on the road carry them.');
@@ -3823,6 +3872,7 @@ function start(hot = {}) {
         if (ev.id !== 'town') hud.feedText(`Discovered ${ev.name}. The Waygate in Haven can take you back here.`);
         break;
       case 'mapChange':
+        $('rift-home').classList.add('hidden'); // (0.58)
         // Arrived on another exploration map: swap the scenery and forget the old map's enemies.
         // (the same map object already built only needs showing: building scenery is not free)
         if (renderer.mapRef !== world.map || renderer.mapId !== world.map.id) renderer.setMap(world.map);

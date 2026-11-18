@@ -759,6 +759,15 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 #import-code { width: 100%; box-sizing: border-box; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 4px; color: var(--bone); font: 12px monospace; padding: 8px; resize: vertical; }
 #transfer-msg.ok { color: #7fe0a0; } #transfer-msg.bad { color: #ff8a7a; }
 
+/* (0.58) An Echo Rift that is over: go home now, or stay */
+#rift-home {
+  position: fixed; left: 50%; top: 150px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: rgba(10, 13, 22, 0.86); border: 1px solid rgba(233, 211, 161, 0.55); border-radius: 6px; font: 500 15px var(--body); color: var(--bone);
+}
+#rift-home.hidden { display: none; }
+#rift-home button { padding: 6px 12px; font-size: 14px; }
+body:not([data-mode="play"]) #rift-home { display: none; }
+
 /* ---------- Multiplayer ---------- */
 #mp { align-items: flex-start; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.85); }
 #mp input { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 4px; color: var(--bone); padding: 8px 10px; font: 600 16px var(--body); }
@@ -929,3 +938,12 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .menu-card select option { background: var(--slate); color: var(--bone); }
 #mp-server-pick { min-width: 280px; }
 .acct-import .primary { padding: 9px 18px; font-size: 14px; letter-spacing: 0.06em; }
+
+/* (0.58) Rebirth: everything a new life gives */
+.rb-gains { margin: 10px 0 6px; padding: 10px 12px; border: 1px solid rgba(233, 211, 161, 0.35); border-radius: 6px; background: rgba(233, 211, 161, 0.05); }
+.rb-gains-h { font: 600 13px var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.rb-gains ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rb-gains li { font-size: 14px; line-height: 1.35; }
+.rb-gains li span { color: var(--dim, #aab); }
+.rb-lose { margin: 8px 0 0; font-size: 13px; color: #e0a890; }
+.tt-gift { margin-top: 6px; font-size: 13px; color: #9fd6ff; }

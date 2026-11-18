@@ -49,6 +49,7 @@ export function itemTooltip(item, compareTo) {
   } else if (!compareTo && powerProbe && powerProbe.empty(item)) {
     html += `<div class="tt-diff">${cpLine(item)}</div>`;
   }
+  if (item.gift) html += '<div class="tt-gift">A gift from a friend: yours to use. It cannot be passed on, and gives the star nothing at a rebirth.</div>'; // (0.58)
   const dust = dustValue(item);
   html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ''}</div>`;
   return html;
@@ -93,6 +94,7 @@ function miscSources(id) {
       `Storied enemies (${FRAGMENTS.storied})`,
       `Wishthieves (${FRAGMENTS.thief})`,
       `Elites on world tier IV and up (${pct(FRAGMENTS.elite)} chance of 1)`,
+      'Come Home, once on each world tier every life (20 to 80)',
     ];
   if (id === 'sigil') return [`World events (${pct(SIGIL.event)})`, `Storied enemies (${pct(SIGIL.storied)})`, 'Some bounties in Haven'];
   return [];

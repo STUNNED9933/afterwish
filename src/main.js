@@ -712,6 +712,16 @@ function start(hot = {}) {
   /** The Waygate's list: every map in order, with the ones not yet reached locked. */
   let travelStone = null; // the waystone the travel menu was opened from (null: the town Waygate)
   let riftPick = null; // the rift tier chosen at the Waygate
+  /**
+   * (0.61.3) The world tier you are on, for the Waygate. In Haven your own choice counts at once (on the server
+   * world the copy's tier only catches up with the next update, so the picker showed the old one).
+   */
+  function myTier() {
+    const p = world.player;
+    const lead = !(net && net.role === 'client') || !!(net && net.server);
+    if (lead && world.map && world.map.safe && p && p.worldTier) return Math.max(1, Math.min(MAX_TIER, p.worldTier));
+    return world.worldTier();
+  }
   /** The Waygate's endgame part (0.26): the world tier and Echo Rifts. */
   function renderEndgame(root) {
     const p = world.player;
@@ -732,7 +742,7 @@ function start(hot = {}) {
       sub('World tier');
       const row = document.createElement('div');
       row.className = 'tier-row';
-      const cur = world.worldTier();
+      const cur = myTier();
       for (let t = 1; t <= MAX_TIER; t++) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -742,6 +752,7 @@ function start(hot = {}) {
         b.title = t > p.tierMax ? 'Beat The Unmade on the tier before to open this one' : t === 1 ? 'The world as it was' : `Every map at level 100: enemies ${TIERS[t].hp}x health, ${TIERS[t].dmg}x damage; ${TIERS[t].exp}x EXP, more and better loot, more elites`;
         b.addEventListener('click', () => {
           applyNow({ type: 'setTier', tier: t });
+          if (net && net.server && t <= p.tierMax) p.worldTier = t; // (0.61.3) shown at once; the server's next update agrees
           renderTravel();
         });
         row.appendChild(b);
@@ -923,7 +934,7 @@ function start(hot = {}) {
         // only once Wren has told you about it (unseen until her quest is taken).
         const told = !m.unlock || world.questState(m.unlock) === 'done';
         if (m.unlock && !world.questState(m.unlock)) continue;
-        const open = told && world.worldTier() >= m.fromTier;
+        const open = told && myTier() >= m.fromTier;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'travel-row' + (open ? ' fit' : '');

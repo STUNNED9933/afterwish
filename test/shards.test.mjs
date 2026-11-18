@@ -216,6 +216,26 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check("Edric of the Blue Trim comes for whoever has his quest, not only the first one there", w.enemies.some((e) => e.named === 'edric'));
 }
 
+
+// (0.61.3) A shared Haven: each hero's world tier is their own, in their snapshots and at the Waygate
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 17 });
+  const mk = (name, save) => { const k = { name }; box.set(k, []); sv.message(k, hello(name, 'warrior', { save })); return k; };
+  const pidOf = (k) => box.get(k).find((m) => m.t === 'welcome').pid;
+  const low = geared('warrior', 100, 4); low.tierMax = 1; low.worldTier = 1;
+  const high = geared('warrior', 100, 4); high.tierMax = 4; high.worldTier = 1;
+  const a = mk('Low', low), b = mk('High', high);
+  sv.message(b, { t: 'cmd', cmd: { type: 'setTier', tier: 3 } });
+  for (let i = 0; i < 8; i++) sv.tick();
+  const lastSnap = (k) => box.get(k).filter((m) => m.t === 'snap' && m.tier).pop();
+  const pa = sv.players.get(pidOf(a)), pb = sv.players.get(pidOf(b));
+  check('two heroes on different tiers share one Haven', pa.copy === pb.copy);
+  check("each one's updates carry their own world tier", lastSnap(b) && lastSnap(b).tier === 3 && lastSnap(a) && lastSnap(a).tier === 1, `${lastSnap(a) && lastSnap(a).tier} / ${lastSnap(b) && lastSnap(b).tier}`);
+  const w = pb.copy.world;
+  check('...and the server reads each one as their own (the Wilds open for one, not the other)', w.as(w.heroByPid(pidOf(b)), () => w.worldTier()) === 3 && w.as(w.heroByPid(pidOf(a)), () => w.worldTier()) === 1);
+}
+
 // (0.59) The Echo Ring on the server world: a run of your own, spoils and all
 {
   const box = new Map();

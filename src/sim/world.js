@@ -3557,7 +3557,10 @@ export class World {
   worldTier() {
     if (this.syncTier) return this.syncTier; // a joiner's copy: the host says
     if (this.depthNow()) return MAX_TIER; // the Deep is built on tier V (0.54)
-    const lead = this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
+    // (0.61.3) On the server, Haven is shared with strangers on every tier: there each hero's tier is their
+    // own (out on a map, a copy is one party's, and its first hero's tier holds for everyone in it).
+    const own = this.travelHook && this.map && this.map.safe;
+    const lead = !own && this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
     return Math.max(1, Math.min(MAX_TIER, (lead && lead.worldTier) || 1));
   }
 

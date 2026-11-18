@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Fixed: the world tier picker on the server world (0.61.4)
+
+- In Haven on the server world, the Waygate's tier picker lit up the tier of whoever had come into
+  Haven first, not your own, and the Wilds and Asterfell could stay locked on a tier that opens them.
+  Haven is shared by everyone, so each hero's tier there is now their own; the picker also lights your
+  choice at once instead of after the next update.
+
 ### Ex Voto shows what each enemy leaves (0.61.3)
 
 - **Drop rates in the detailed view**: every page you have completed now ends with *What it leaves*,

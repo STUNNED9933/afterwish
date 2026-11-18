@@ -197,7 +197,7 @@ export class ServerWorld {
       w.travelHook = (h, dest, src, ex) => this.moves.push({ pid: h.pid, copy, to: dest, from: src, extra: ex });
       if (extra && extra.rift) w.startRift(extra.rift);
       else if (extra && extra.delve) w.startDelve(extra.delve);
-      else if (to !== 'town') w.loadMap(to, from);
+      else w.loadMap(to, from); // (0.58.1) Haven too: loaded again now it is a shared copy (nobody's own story on it)
       this.copies.set(key, copy);
     } else {
       const h = copy.world.addHero(pl.pid, hello);

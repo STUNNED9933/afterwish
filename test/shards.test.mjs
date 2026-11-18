@@ -176,6 +176,45 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('the roster says which Haven', small.players.size === 2);
 }
 
+// (0.58.1) A shared map: each hero's story is their own, whoever got there first
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 11 });
+  const mk = (name, save) => { const k = { name }; box.set(k, []); sv.message(k, hello(name, 'warrior', { save })); return k; };
+  const pidOf = (k) => box.get(k).find((m) => m.t === 'welcome').pid;
+  const heroOf = (k) => { const pl = sv.players.get(pidOf(k)); const w = pl.copy.world; return { w, h: w.heroByPid(pidOf(k)) }; };
+  const fresh = geared('warrior', 60, 4); fresh.visited = ['town', 'greenwood', 'hollow', 'keep'];
+  const mid = geared('warrior', 60, 4); mid.visited = fresh.visited.slice();
+  mid.quests = { scarf2: { s: 'active', n: 0 }, tobin: { s: 'active', n: 0 }, edric: { s: 'active', n: 0 } };
+  const first = mk('First', fresh), second = mk('Second', mid);
+  const t = heroOf(first).w;
+  check('a shared Haven keeps everyone who might be there for someone (and they block nobody)', ['tomas', 'lark', 'odile'].every((id) => t.obstacles.some((o) => o.id === id && o.soft)));
+  sv.message(first, { t: 'cmd', cmd: { type: 'partyInvite', pid: pidOf(second) } });
+  sv.message(second, { t: 'cmd', cmd: { type: 'partyAccept', pid: pidOf(first) } });
+  for (const k of [first, second]) sv.message(k, { t: 'cmd', cmd: { type: 'travel', to: 'hollow' } });
+  for (let i = 0; i < 6; i++) sv.tick();
+  let { w, h } = heroOf(second);
+  check('a party in the same Gloomcap copy, which has no story people of its own', heroOf(first).w === w && !w.obstacles.some((o) => o.id === 'odile'));
+  const od = w.as(h, () => w.storyObject('odile'));
+  check('...but the hero on that story has Odile in the garden', !!od && !w.as(heroOf(first).h, () => w.storyObject('odile')));
+  h.player.x = od.x + 1; h.player.z = od.z;
+  sv.message(second, { t: 'cmd', cmd: { type: 'meetOdile' } });
+  for (let i = 0; i < 2; i++) sv.tick();
+  check('An Ending for Tobin can be finished on a map someone else got to first', h.player.quests.tobin.s === 'ready', h.player.quests.tobin.s);
+  for (const k of [first, second]) sv.message(k, { t: 'cmd', cmd: { type: 'travel', to: 'greenwood' } });
+  for (let i = 0; i < 6; i++) sv.tick();
+  ({ w, h } = heroOf(second));
+  const tm = w.as(h, () => w.storyObject('tomashusk'));
+  h.player.x = tm.x + 1; h.player.z = tm.z;
+  sv.message(second, { t: 'cmd', cmd: { type: 'scarfChoice', choice: 'rest' } });
+  for (let i = 0; i < 2; i++) sv.tick();
+  check('...and so can Red Scarf, Part Two', h.player.quests.scarf2.s === 'ready' && h.player.choices.scarf === 'rest');
+  for (const k of [first, second]) sv.message(k, { t: 'cmd', cmd: { type: 'travel', to: 'keep' } });
+  for (let i = 0; i < 20; i++) sv.tick();
+  ({ w } = heroOf(second));
+  check("Edric of the Blue Trim comes for whoever has his quest, not only the first one there", w.enemies.some((e) => e.named === 'edric'));
+}
+
 // (0.57.4) Every action the game sends from its menus must be one a server (or a friend's room) accepts,
 // or it silently does nothing there (Tomas's scarf and Odile's garden once did exactly that).
 {

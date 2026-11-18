@@ -2366,7 +2366,7 @@ export class World {
     if (p.bloodSaveT > 0) p.bloodSaveT -= dt;
     if (p.chillT > 0) p.chillT -= dt;
     if (this.delve && this.map.id === 'delve' && this.cur === this.heroes[0]) this.stepDelve(dt);
-    if (this.map && this.map.id === 'keep' && !this.edricHere && this.mode === 'explore' && this.cur === this.heroes[0] && this.questState('edric') === 'active') this.spawnEdric();
+    if (this.map && this.map.id === 'keep' && !this.edricHere && this.mode === 'explore' && (this.cur === this.heroes[0] || this.travelHook) && this.questState('edric') === 'active') this.spawnEdric(); // (0.58.1) on the server: anyone who has the quest
     if (this.rift && this.map.id === 'rift' && (this.rift.state === 'run' || this.rift.state === 'guardian') && this.cur === this.heroes[0]) {
       // The rift's clock (counted once, on the party leader's step).
       this.rift.timeLeft -= dt;
@@ -4727,22 +4727,39 @@ export class World {
    * has gone to Tobin; a lantern, Edric's banner and a herb stall in Haven as the stories end.
    */
   sideStoryProps(map) {
-    const h0 = this.heroes[0];
-    const st = (id) => this.as(h0, () => this.questState(id));
-    const p = h0.player;
-    if (map.id === 'greenwood' && st('scarf2') === 'active' && !(p.choices && p.choices.scarf)) {
+    if (this.travelHook) return; // (0.58.1) the server's shared maps: each hero's story is their own (see storyObjects)
+    map.obstacles.push(...this.storyObjects(map.id, map, this.heroes[0]));
+  }
+
+  /**
+   * (0.58.1) The story's people and things on `mapId` as hero `h`'s own story has them. On the server
+   * a map is shared, so they are not put on it: each player's game draws its own, and what a hero
+   * does with them (untie Tomas's scarf, reach Odile) is checked against that hero's own.
+   */
+  storyObjects(mapId, map, h) {
+    if (!h || !map) return [];
+    const st = (id) => this.as(h, () => this.questState(id));
+    const p = h.player;
+    const out = [];
+    if (mapId === 'greenwood' && st('scarf2') === 'active' && !(p.choices && p.choices.scarf)) {
       const g = map.portals[0];
-      map.obstacles.push({ kind: 'npc', shape: 'circle', id: 'tomashusk', name: 'Tomas', x: g.x * 0.55 + 3, z: g.z * 0.55, r: 0.6 });
+      out.push({ kind: 'npc', shape: 'circle', id: 'tomashusk', name: 'Tomas', x: g.x * 0.55 + 3, z: g.z * 0.55, r: 0.6, soft: true });
     }
-    if (map.id === 'hollow' && (st('tobin') === 'active' || st('tobin') === 'ready' || st('tobin') === 'done')) {
+    if (mapId === 'hollow' && (st('tobin') === 'active' || st('tobin') === 'ready' || st('tobin') === 'done')) {
       const sp = map.spawns.find((s) => s.type === 'boss2');
-      if (sp) map.obstacles.push({ kind: 'npc', shape: 'circle', id: 'odile', name: 'Sister Odile', x: sp.x + 3.5, z: sp.z + 2, r: 0.55 });
+      if (sp) out.push({ kind: 'npc', shape: 'circle', id: 'odile', name: 'Sister Odile', x: sp.x + 3.5, z: sp.z + 2, r: 0.55, soft: true });
     }
-    if (map.id === 'town') {
-      if (st('scarf2') === 'done') map.obstacles.push({ kind: 'decor', what: 'lantern', shape: 'circle', id: 'lantern', x: 3.4, z: 6.6, r: 0.3 });
-      if (st('edric') === 'done') map.obstacles.push({ kind: 'decor', what: 'banner', shape: 'circle', id: 'banner', x: NPCS.bram.at[0] + 1.8, z: NPCS.bram.at[1] - 1.6, r: 0.3 });
-      if (st('tobin') === 'done') map.obstacles.push({ kind: 'decor', what: 'stall', shape: 'circle', id: 'stall', x: NPCS.odile.at[0] - 1.6, z: NPCS.odile.at[1] - 0.6, r: 1.0 });
+    if (mapId === 'town') {
+      if (st('scarf2') === 'done') out.push({ kind: 'decor', what: 'lantern', shape: 'circle', id: 'lantern', x: 3.4, z: 6.6, r: 0.3, soft: true });
+      if (st('edric') === 'done') out.push({ kind: 'decor', what: 'banner', shape: 'circle', id: 'banner', x: NPCS.bram.at[0] + 1.8, z: NPCS.bram.at[1] - 1.6, r: 0.3, soft: true });
+      if (st('tobin') === 'done') out.push({ kind: 'decor', what: 'stall', shape: 'circle', id: 'stall', x: NPCS.odile.at[0] - 1.6, z: NPCS.odile.at[1] - 0.6, r: 1.0, soft: true });
     }
+    return out;
+  }
+
+  /** (0.58.1) One of the story's people where this hero's own story has them (or null). */
+  storyObject(id) {
+    return this.storyObjects(this.map && this.map.id, this.map, this.cur).find((o) => o.id === id) || null;
   }
 
   /** Red Scarf, Part Two: untie his scarf and let him lie down, or let him keep walking. For good. */
@@ -4750,7 +4767,7 @@ export class World {
     const p = this.player;
     if (choice !== 'rest' && choice !== 'walk') return;
     if (this.questState('scarf2') !== 'active' || (p.choices && p.choices.scarf) || !this.map || this.map.id !== 'greenwood') return;
-    const t = this.obstacles.find((o) => o.id === 'tomashusk');
+    const t = this.storyObject('tomashusk');
     if (!t || dist(p.x, p.z, t.x, t.z) > 5) return;
     p.choices = Object.assign({}, p.choices, { scarf: choice });
     p.quests.scarf2.n = 1;
@@ -4765,7 +4782,7 @@ export class World {
   meetOdile() {
     const p = this.player;
     if (this.questState('tobin') !== 'active' || !this.map || this.map.id !== 'hollow') return;
-    const o = this.obstacles.find((x) => x.id === 'odile');
+    const o = this.storyObject('odile');
     if (!o || dist(p.x, p.z, o.x, o.z) > 5) return;
     p.quests.tobin.n = 1;
     p.quests.tobin.s = 'ready';
@@ -6770,7 +6787,7 @@ inTown() {
     const actor = this.cur;
     const p = this.player;
     this.radius = map.radius;
-    if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id)); // (0.45) Tomas, after
+    if (id === 'town' && !this.travelHook) map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id)); // (0.45) Tomas, after; (0.58.1) on the server, each player's game shows its own
     if (this.mode === 'explore' && !this.trial) this.sideStoryProps(map);
     this.edricHere = false;
     this.obstacles = map.obstacles;
@@ -6878,6 +6895,7 @@ inTown() {
   pushOut(o, rad) {
     let pushed = false;
     for (const ob of this.obstacles) {
+      if (ob.soft) continue; // (0.58.1) story people and things: seen by some, in nobody's way
       const dx = o.x - ob.x;
       const dz = o.z - ob.z;
       if (ob.shape === 'box') {

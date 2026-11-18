@@ -208,7 +208,9 @@ export function buildMap(id, custom = null) {
     }
   }
   if (def.theme === 'town') {
-    for (const nid in NPCS) if (NPCS[nid].at) obstacles.push({ kind: 'npc', shape: 'circle', id: nid, name: NPCS[nid].name, x: NPCS[nid].at[0], z: NPCS[nid].at[1], r: 0.55 });
+    // (0.58.1) Someone who is here for some heroes and not others (by their own story) never blocks the
+    // way, so a shared Haven on the server moves everyone the same way whatever each of them sees.
+    for (const nid in NPCS) if (NPCS[nid].at) obstacles.push({ kind: 'npc', shape: 'circle', id: nid, name: NPCS[nid].name, x: NPCS[nid].at[0], z: NPCS[nid].at[1], r: 0.55, ...(NPCS[nid].onlyAfter || NPCS[nid].onlyFlag || nid === 'odile' ? { soft: true } : {}) });
   }
   for (const sid in SIGNS) {
     const sg = SIGNS[sid];

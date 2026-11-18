@@ -159,6 +159,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Everyone's own story in a shared world (0.58.1)
+
+- On the server world, Haven and party maps are shared, but the story's people were placed by
+  whoever got there first: a friend further along could stop you untying Tomas's scarf or reaching
+  Odile in the garden, and Edric only came for the first one into the Keep. Now each hero's story
+  is their own: your game shows the people and things your story has (Tomas home, Lark's stall,
+  the lantern, the banner), what you do with them is checked against your own story, and Edric
+  comes for anyone with his quest. People who are there for some and not others block nobody.
+
 ### Time well spent (0.58)
 
 - **Come Home** is once on each world tier, every life (it starts again after a rebirth), and pays far

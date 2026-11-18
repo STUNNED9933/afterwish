@@ -3506,7 +3506,8 @@ function start(hot = {}) {
         hud.banner('Enraged', `${world.enemies.find((e) => e.id === ev.id)?.def.name || 'The boss'} attacks faster`);
         break;
       case 'npcGone':
-        // (0.47) Tomas lies down, or walks on
+        // (0.47) Tomas lies down, or walks on ((0.58.1) on the server this game's own copy lets him go too)
+        world.map.obstacles = world.obstacles = world.obstacles.filter((o) => o.id !== ev.id);
         renderer.setMap(world.map);
         hud.banner(ev.choice === 'rest' ? 'He lies down' : 'He keeps walking', ev.choice === 'rest' ? 'You have the red scarf. Take it to Pip.' : 'Tell Pip.');
         break;

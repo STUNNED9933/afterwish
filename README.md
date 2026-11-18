@@ -159,6 +159,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Updates load cleanly (0.57.3)
+
+- Each build's game script carries a tag of its own, so a browser can no longer pair a new page with
+  an old cached script after an update (which left the title screen half-built, with no music).
+
 ### A new title screen, and the Deep on its own (0.57.2)
 
 - **Title screen:** signed out, Explore is marked **Offline** (saved in this browser only), with an

@@ -20,7 +20,11 @@ function copyModels() {
 function writeHtml() {
   const css = readFileSync('src/style.css', 'utf8');
   const version = JSON.parse(readFileSync('package.json', 'utf8')).version; // the title screen always shows the real version
-  const html = readFileSync('src/index.html', 'utf8').replace('/*__CSS__*/', () => css).replace('__VERSION__', version);
+  // (0.57.3) game.js gets a tag unique to this build, so a browser can never pair a new page with an
+  // old cached script (that broke the title screen once: the old script looked for a button the new
+  // page no longer has). The styles are inside the page itself, so they always match it.
+  const tag = `${version}-${Date.now().toString(36)}`;
+  const html = readFileSync('src/index.html', 'utf8').replace('/*__CSS__*/', () => css).replace('__VERSION__', version).replace('<script src="game.js"></script>', `<script src="game.js?v=${tag}"></script>`);
   mkdirSync('dist', { recursive: true });
   writeFileSync('dist/index.html', html);
 }

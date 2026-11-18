@@ -10,6 +10,7 @@ import { ABILITY_SLOTS } from '../sim/defs.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, RARITIES, CACHES, MAX_PLUS, itemName, itemScore, scrapValue, upgradeCost } from '../sim/items.js';
 import { svg, abilityTooltip, gearIcon } from './hud.js';
 import { itemCell } from './inventory.js';
+import { RING_FOCUS, RING_FOCUS_IDS } from '../sim/ring.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,9 +28,10 @@ export class Town {
    * @param {function} send    send(command) -> applies a command to the world
    * @param {function} onEnter onEnter(startWave) -> start a run
    */
-  constructor(tooltip, send, onEnter) {
+  constructor(tooltip, send, onEnter, focus = null) {
     this.tooltip = tooltip;
     this.send = send;
+    this.focus = focus; // (0.59) { get(), set(f) }: what the run's spoils are
     this.startWave = null;
     this.lastCache = null;
     $('btn-enter').addEventListener('click', () => onEnter(this.startWave));
@@ -67,6 +69,40 @@ export class Town {
       gate.appendChild(b);
     }
     $('gate-best').textContent = world.bestWave ? `Best wave cleared: ${world.bestWave}. A new checkpoint opens after every boss.` : 'A new checkpoint opens after every boss.';
+    if (this.focus) {
+      // (0.59) what you are here for
+      const f = this.focus.get();
+      const fb = $('gate-focus');
+      fb.innerHTML = '';
+      for (const id of RING_FOCUS_IDS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = RING_FOCUS[id].name;
+        b.setAttribute('aria-pressed', f.kind === id ? 'true' : 'false');
+        b.addEventListener('click', () => {
+          this.focus.set({ kind: id, slot: f.slot || 'weapon' });
+          this.render(world);
+        });
+        fb.appendChild(b);
+      }
+      const sb = $('gate-slot');
+      sb.classList.toggle('hidden', f.kind !== 'gear');
+      sb.innerHTML = '';
+      if (f.kind === 'gear') {
+        for (const slot of SLOTS) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = SLOT_NAMES[slot];
+          b.setAttribute('aria-pressed', (f.slot || 'weapon') === slot ? 'true' : 'false');
+          b.addEventListener('click', () => {
+            this.focus.set({ kind: 'gear', slot });
+            this.render(world);
+          });
+          sb.appendChild(b);
+        }
+      }
+      $('gate-focus-desc').textContent = `${RING_FOCUS[f.kind].desc} Every wave adds some, a boss three times as much. Safe after every boss: take it home, or push on.`;
+    }
     $('btn-enter').textContent = p.tickets > 0 ? `Wake it at wave ${this.startWave} · 1 shard (you have ${p.tickets})` : 'No starglass shards · they are found on the road';
     $('btn-enter').disabled = p.tickets <= 0;
 

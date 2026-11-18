@@ -10,6 +10,7 @@ import { ENEMIES, OLD_SELVES } from '../sim/defs.js';
 import { buildRiftMap, buildDelveRoom } from '../sim/maps.js';
 
 import { SIM_VERSION } from '../sim/version.js';
+import { CONFIG } from '../config.js';
 
 // Host and friends must run the same build of the rules: the protocol's own number, plus a
 // fingerprint of the rules themselves (0.41.1), so a friend on an older tab is told, not broken.
@@ -208,10 +209,11 @@ export function makeSnapshot(world, pid, memo) {
       t: 'snap',
       seq: memo.seq,
       full: full || undefined,
-      map: world.map.id,
+      map: world.mode === 'arena' ? 'ring' : world.map.id, // (0.59) an Echo Ring run has no map
+      arena: world.mode === 'arena' ? { wave: { n: world.wave.n, phase: world.wave.phase, timer: r2(world.wave.timer), cleared: world.wave.cleared, total: world.wave.total || 0, qn: world.wave.queue.length }, ring: world.ring ? { kind: world.ring.kind, slot: world.ring.slot, pot: world.ring.pot, safe: world.ring.safe, safeWave: world.ring.safeWave, hold: !!world.ring.hold } : null, offer: world.offer, augments: world.augments, rerolls: world.rerolls, bestWave: world.bestWave, over: !!world.gameOver } : undefined,
       slowT: r2(world.slowT),
       me: changedOnly(lightPlayer(p), memo),
-      hero: { portalT: r2(world.portalT), portalArmed: world.portalArmed, portalOn: world.portalOn ? world.map.portals.indexOf(world.portalOn) : -1, wayT: r2(world.wayT), wayArmed: world.wayArmed, respawnT: r2(world.respawnT), stats: world.stats },
+      hero: { portalT: r2(world.portalT), portalArmed: world.portalArmed, portalOn: world.portalOn && world.map ? world.map.portals.indexOf(world.portalOn) : -1, wayT: r2(world.wayT), wayArmed: world.wayArmed, respawnT: r2(world.respawnT), stats: world.stats },
       allies: world.allies().map((a) => ({ ...a, x: r2(a.x), z: r2(a.z), px: r2(a.px), pz: r2(a.pz), facing: r2(a.facing), hp: Math.round(a.hp) })),
       enemies: enemyRows(world, memo),
       fixed: fixedEnemies(world, memo),
@@ -258,7 +260,32 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.rift = snap.rift || null;
   world.syncTier = snap.tier || 1;
   world.syncDepth = snap.depth || 0;
-  if (!world.map || world.map.id !== snap.map || ((snap.map === 'rift' || snap.map === 'delve') && world.riftKey !== riftKey)) {
+  if (snap.map === 'ring') {
+    // (0.59) an Echo Ring run on the server: the arena, no map
+    if (world.mode !== 'arena') {
+      world.mode = 'arena';
+      world.map = null;
+      world.obstacles = [];
+      world.radius = CONFIG.ARENA_RADIUS;
+      mapChanged = true;
+    }
+    const a = snap.arena || {};
+    world.wave = Object.assign(world.wave || {}, a.wave || {}, { queue: new Array((a.wave && a.wave.qn) || 0).fill(0) });
+    world.ring = a.ring || null;
+    world.offer = a.offer || null;
+    world.augments = a.augments || [];
+    world.rerolls = a.rerolls || 0;
+    world.bestWave = a.bestWave || world.bestWave;
+    world.gameOver = !!a.over;
+  } else if (!world.map || world.mode === 'arena' || world.map.id !== snap.map || ((snap.map === 'rift' || snap.map === 'delve') && world.riftKey !== riftKey)) {
+    if (world.mode === 'arena') {
+      world.mode = 'explore'; // (0.59) home from the Ring
+      world.ring = null;
+      world.offer = null;
+      world.augments = [];
+      world.gameOver = false;
+      world.wave = Object.assign(world.wave || {}, { phase: 'explore', queue: [] });
+    }
     world.loadMapMirror(snap.map);
     if (snap.map === 'rift' && snap.rift) {
       // The rift's layout is built from its theme and seed, the same as on the host.
@@ -292,7 +319,7 @@ export function applySnapshot(world, snap, alpha = 1) {
   const hs = snap.hero;
   world.portalT = hs.portalT;
   world.portalArmed = hs.portalArmed;
-  world.portalOn = hs.portalOn >= 0 ? world.map.portals[hs.portalOn] : null;
+  world.portalOn = hs.portalOn >= 0 && world.map ? world.map.portals[hs.portalOn] : null;
   world.wayT = hs.wayT;
   world.wayArmed = hs.wayArmed;
   world.respawnT = hs.respawnT;

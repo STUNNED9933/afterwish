@@ -13,6 +13,7 @@ import { QUESTS, NPCS, SIGNS } from '../sim/story.js';
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { TIERS } from '../sim/endgame.js';
+import { ringWhole, ringText } from '../sim/ring.js';
 
 /** A quest's goal in a few words: "Defeat 12 Husks on the Greenwood Trail". */
 export function goalText(q, tier = 0) {
@@ -431,10 +432,16 @@ export class Hud {
     if (zone) {
       sub = p.dead ? 'knocked out' : zone.sub;
     } else if (w.phase === 'intermission') {
-      sub = world.offer ? 'choose an augment' : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press Enter to start now`;
+      sub = world.offer ? 'choose an augment' : world.ring && world.ring.hold ? 'your spoils are safe · H to take them home, Enter to push on' : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press Enter to start now`;
     } else {
       const left = world.remaining;
       sub = `${left} ${left === 1 ? 'enemy' : 'enemies'} left`;
+    }
+    if (!zone && world.ring && world.mode === 'arena') {
+      // (0.59) the run's spoils, and how much of them is safe
+      const r = world.ring;
+      const safe = ringWhole(r.safe), pot = ringWhole(r.pot);
+      sub += ` · spoils ${ringText(r, pot)}${pot > safe ? ` (${safe ? ringText(r, safe) : 'none'} safe)` : pot ? ', safe' : ''}`;
     }
     if (sub !== this.lastSub) {
       $('wave-sub').textContent = sub;

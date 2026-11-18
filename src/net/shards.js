@@ -22,6 +22,9 @@ export const SERVER_LIMITS = { players: 24, perCopy: 8, haven: 16, chatLen: 140,
 
 const clean = (text, n) => String(text || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, n);
 
+/** (0.59) The map a copy is on ('ring' for an Echo Ring run, which has no map). */
+const mapOf = (w) => (w ? (w.mode === 'arena' ? 'ring' : w.map ? w.map.id : '') : '');
+
 export class ServerWorld {
   /**
    * send(conn, msg): deliver a message to one connection. close(conn, reason): drop it.
@@ -124,6 +127,11 @@ export class ServerWorld {
     this.byConn.delete(conn);
     const pl = this.players.get(pid);
     if (!pl) return;
+    if (pl.copy && pl.copy.world.mode === 'arena' && pl.copy.world.ring) {
+      // (0.59) gone in the middle of an Echo Ring run: what was safe still comes home
+      const w = pl.copy.world, h = w.heroByPid(pid);
+      if (h) w.as(h, () => w.ringPay());
+    }
     if (polite || pl.accountId) this.sendSave(pl, true); // (an online character is kept even if they just vanish)
     this.partyLeave(pl, true);
     for (const other of this.players.values()) other.invites.delete(pid);
@@ -157,22 +165,23 @@ export class ServerWorld {
 
   keyFor(pl, to, extra) {
     if (to === 'town') return this.havenKey(pl);
+    if (extra && extra.ring) return `ring:${pl.pid}:${this.ticks}`; // (0.59) an Echo Ring run: always a copy of your own
     if (extra && extra.rift) return `rift:${this.partyKey(pl)}:${extra.rift.seed}`;
     if (extra && extra.delve) return `delve:${this.partyKey(pl)}:${extra.delve.seed}`;
-    if (to === 'rift' || to === 'delve') return null; // (only ever entered with a run to start)
+    if (to === 'rift' || to === 'delve' || to === 'ring') return null; // (only ever entered with a run to start)
     return `${to}:${this.partyKey(pl)}`;
   }
 
   /** Put a hero (described by `hello`: save, name, class...) into the copy for `to`. */
   place(pl, to, from, extra, hello) {
     let key = this.keyFor(pl, to, extra);
-    if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve')) key = this.havenKey(pl);
+    if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve' && to !== 'ring')) key = this.havenKey(pl);
     if (extra && extra.joinKey && this.copies.has(extra.joinKey)) key = extra.joinKey; // party members going into a rift or delve
-    else if (pl.party && key !== 'town' && !(extra && (extra.rift || extra.delve))) {
+    else if (pl.party && key !== 'town' && !(extra && (extra.rift || extra.delve || extra.ring))) {
       // a party member is already on that map: join their copy
       for (const pid of this.parties.get(pl.party).members) {
         const m = this.players.get(pid);
-        if (m && m !== pl && m.copy && m.copy.world.map.id === to && this.copies.has(m.copy.key)) {
+        if (m && m !== pl && m.copy && mapOf(m.copy.world) === to && this.copies.has(m.copy.key)) {
           key = m.copy.key;
           break;
         }
@@ -184,7 +193,8 @@ export class ServerWorld {
       copy = this.copies.get(key);
     }
     if (!copy) {
-      const w = new World({ mode: 'explore', save: hello.save, cls: hello.cls, name: hello.name, parryPreset: hello.parry, signs: hello.signs, seed: (this.seed + this.copies.size * 7919 + this.ticks) >>> 0 });
+      const ring = extra && extra.ring; // (0.59) an Echo Ring run: the arena, with this hero's spoils
+      const w = new World({ mode: ring ? 'arena' : 'explore', save: hello.save, cls: hello.cls, name: hello.name, parryPreset: hello.parry, signs: hello.signs, seed: (this.seed + this.copies.size * 7919 + this.ticks) >>> 0, ...(ring ? { startWave: ring.startWave, focus: ring.focus } : {}) });
       w.cur.pid = pl.pid;
       w.cur.name = hello.name;
       const p = w.player;
@@ -197,7 +207,7 @@ export class ServerWorld {
       w.travelHook = (h, dest, src, ex) => this.moves.push({ pid: h.pid, copy, to: dest, from: src, extra: ex });
       if (extra && extra.rift) w.startRift(extra.rift);
       else if (extra && extra.delve) w.startDelve(extra.delve);
-      else w.loadMap(to, from); // (0.58.1) Haven too: loaded again now it is a shared copy (nobody's own story on it)
+      else if (!ring) w.loadMap(to, from); // (0.58.1) Haven too: loaded again now it is a shared copy (nobody's own story on it)
       this.copies.set(key, copy);
     } else {
       const h = copy.world.addHero(pl.pid, hello);
@@ -336,7 +346,7 @@ export class ServerWorld {
   joinMember(pl, pid) {
     const o = this.players.get(pid);
     if (!o || !pl.party || o.party !== pl.party || !o.copy || o.copy === pl.copy) return;
-    const to = o.copy.world.map.id;
+    const to = mapOf(o.copy.world);
     if (to === 'rift' || to === 'delve') return this.send(pl.conn, { t: 'chat', text: `${o.name} is in a ${to === 'rift' ? 'rift' : 'delve'}: it cannot be joined part-way.` });
     pl.copy.world.as(pl.copy.world.heroByPid(pl.pid), () => pl.copy.world.command({ type: 'travel', to, pid: pl.pid }));
   }
@@ -347,14 +357,14 @@ export class ServerWorld {
       const h = w && w.heroByPid(o.pid);
       const p = h && (h === w.cur ? w.player : h.player);
       const haven = o.copy && o.copy.key.startsWith('town#') ? Number(o.copy.key.slice(5)) : 0;
-      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: w ? w.map.id : '', haven, party: o.party || 0 };
+      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: mapOf(w), haven, party: o.party || 0 };
     });
     for (const o of this.players.values()) {
       const party = o.party && this.parties.get(o.party);
       if (o.alone) {
         // (0.57.1) someone playing alone sees only themselves
         const w = o.copy && o.copy.world, h = w && w.heroByPid(o.pid), p = h && (h === w.cur ? w.player : h.player);
-        this.send(o.conn, { t: 'roster', world: this.name, alone: true, players: [{ pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: w ? w.map.id : '', haven: 0, party: 0 }], party: null, invites: [] });
+        this.send(o.conn, { t: 'roster', world: this.name, alone: true, players: [{ pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: mapOf(w), haven: 0, party: 0 }], party: null, invites: [] });
         continue;
       }
       this.send(o.conn, { t: 'roster', world: this.name, players, party: party ? { id: party.id, leader: party.leader, members: [...party.members] } : null, invites: [...o.invites] });

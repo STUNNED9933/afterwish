@@ -760,13 +760,14 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 #transfer-msg.ok { color: #7fe0a0; } #transfer-msg.bad { color: #ff8a7a; }
 
 /* (0.58) An Echo Rift that is over: go home now, or stay */
-#rift-home {
+#rift-home, #ring-bank {
   position: fixed; left: 50%; top: 150px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; background: rgba(10, 13, 22, 0.86); border: 1px solid rgba(233, 211, 161, 0.55); border-radius: 6px; font: 500 15px var(--body); color: var(--bone);
 }
-#rift-home.hidden { display: none; }
-#rift-home button { padding: 6px 12px; font-size: 14px; }
-body:not([data-mode="play"]) #rift-home { display: none; }
+#rift-home.hidden, #ring-bank.hidden { display: none; }
+#rift-home button, #ring-bank button { padding: 6px 12px; font-size: 14px; white-space: nowrap; }
+#ring-bank-text, #rift-home-text { max-width: 320px; }
+body:not([data-mode="play"]) #rift-home, body:not([data-mode="play"]) #ring-bank { display: none; }
 
 /* ---------- Multiplayer ---------- */
 #mp { align-items: flex-start; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.85); }
@@ -947,3 +948,7 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .rb-gains li span { color: var(--dim, #aab); }
 .rb-lose { margin: 8px 0 0; font-size: 13px; color: #e0a890; }
 .tt-gift { margin-top: 6px; font-size: 13px; color: #9fd6ff; }
+
+/* (0.59) The Ring: what you are here for */
+.gate-focus-h { margin-top: 10px; font: 600 12px var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+#gate-focus, #gate-slot { margin-top: 6px; flex-wrap: wrap; }

@@ -159,6 +159,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Echo Ring, reworked and online (0.59)
+
+- **Choose what you are here for** before waking the Ring: gold, Immortal Fragments, Wishdust, or
+  gear for one slot. Every wave you clear adds to the run's spoils in that, more the deeper the
+  wave (each wave is worth 25% more than the first, a boss three times a wave). Gear comes Epic,
+  Mythic from wave 10, Ancient from wave 20.
+- **After every boss the spoils are safe**, and the Ring waits: *Take them home* (H) or *Push on*
+  (Enter). Fall, or leave between bosses, and you keep what was safe at the last boss.
+- **Whatever drops in the Ring comes home with you** (what does not fit is scrapped).
+- **Online characters**: the Ring's stones stand in Haven, on the rise behind the well. Press G
+  there to choose and wake it: a run of your own on the server world, augments and all. Leave from
+  the menu, take the spoils home after a boss, or fall: you are back in Haven with what was safe
+  (even if you disconnect mid-run). Offline, the stones lead up to the Ring's camp as before.
+
 ### A rebirth pays for what you give up (0.58.2)
 
 - **Ember, Starmarks and Echo Essence all follow what you give up**: everything you wear (not the
@@ -256,7 +270,7 @@ also keeps its own beat instead of the frame that noticed it.
   online" on the title screen (or "Play alone" under Your account). It runs on the server world, in a
   Haven of their own: off the player list, no chat or invites, saved to the account like any online
   play. Browser characters stay for playing offline.
-- Next: the Echo Ring and the Weekly Echo for online characters (they still run in the browser).
+- Next: the Weekly Echo for online characters.
 
 ### Accounts and online characters (0.57.0)
 

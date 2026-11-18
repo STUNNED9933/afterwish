@@ -13,7 +13,7 @@ const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve']);
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring']);
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
@@ -80,6 +80,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
 const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+import { newRing, ringGain, ringWhole, RING } from './ring.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -148,6 +149,7 @@ export class World {
     this.rerolls = CONFIG.AUGMENT_REROLLS;
     this.mods = defaultMods();
     this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1 };
+    this.ring = this.mode === 'arena' && opts.focus ? newRing(opts.focus) : null; // (0.59) the run's spoils (ring.js)
     this.knownSigns = opts.signs; // (0.56.4) what the account has already read: signs are read once per account
     this.player = this.makePlayer(save);
     this.knownSigns = null;
@@ -695,6 +697,7 @@ export class World {
       else if (c.type === 'reroll') this.rerollOffer();
       else if (c.type === 'nextWave') {
         if (this.wave.phase === 'intermission' && !this.offer) this.wave.timer = Math.min(this.wave.timer, 0.05);
+        if (this.ring) this.ring.hold = false; // (0.59) pushing on
       }
       if (p.dead) continue;
       switch (c.type) {
@@ -817,6 +820,21 @@ export class World {
           break;
         case 'riftHome':
           this.riftHome();
+          break;
+        case 'ringLeave':
+          if (this.mode === 'arena' && this.ring) {
+            this.ringPay();
+            if (this.travelHook && !this.ringGone) {
+              this.ringGone = true; // (0.59) on the server: home to Haven
+              this.travelHook(this.cur, 'town', 'ring', null);
+            }
+          }
+          break;
+        case 'enterRing':
+          this.enterRing(c.startWave, c.focus);
+          break;
+        case 'ringOn':
+          if (this.ring) this.ring.hold = false;
           break;
         case 'rebirth':
           this.rebirth(c.heirloom || null);
@@ -2882,6 +2900,7 @@ export class World {
       this.telegraphs = [];
       this.delayed = [];
       this.falls = []; // the final boss's falling stars (stepFalls)
+      if (this.mode === 'arena' && this.ring) this.ringPay(); // (0.59) what was safe at the last boss comes home
       this.emit('playerDeath', { wave: this.wave.n, foe: this.fellTo(p, src) });
     }
     return 'hit';
@@ -4390,6 +4409,56 @@ export class World {
     this.loadMap('rift', 'town');
     this.rift.need = Math.max(6, Math.round(this.enemies.length * RIFT.need));
     this.emit('riftStart', { tier: rift.tier, name: MAPS[rift.theme].name });
+  }
+
+  /**
+   * (0.59) On the server world: wake the Echo Ring from Haven (a shard), with what you are here for.
+   * The run is a copy of its own (shards.js); in the browser the camp starts one instead (main.js).
+   */
+  enterRing(startWave, focus) {
+    const p = this.player;
+    if (!this.travelHook || this.mode !== 'explore' || !this.map || !this.map.safe || this.trial) return;
+    if (p.tickets < 1) {
+      this.emit('riftNoShard');
+      return;
+    }
+    p.tickets--;
+    const max = Math.max(1, this.maxCheckpoint || 1);
+    const wave = Math.max(1, Math.min(max, Math.floor(Number(startWave) || max)));
+    const f = focus && typeof focus === 'object' ? { kind: String(focus.kind || 'gold'), slot: SLOTS.includes(focus.slot) ? focus.slot : 'weapon' } : { kind: 'gold', slot: 'weapon' };
+    this.travelHook(this.cur, 'ring', 'town', { ring: { startWave: wave, focus: f } });
+  }
+
+  /**
+   * (0.59) The Echo Ring's spoils come home with this hero: everything that was safe at the last boss
+   * (all of it, if you leave right after one), and whatever dropped, gathered up. Once a run.
+   */
+  ringPay() {
+    const r = this.ring;
+    const p = this.player;
+    if (!r || r.paid[this.cur.pid]) return;
+    r.paid[this.cur.pid] = true;
+    const n = ringWhole(r.safe);
+    let scrapped = 0;
+    if (r.kind === 'gold') p.gold += n;
+    else if (r.kind === 'fragment' && n) this.giveMisc('fragment', n);
+    else if (r.kind === 'dust') p.dust += n;
+    else if (r.kind === 'gear') {
+      const rar = RING.gearRarity(r.safeWave);
+      for (let i = 0; i < n; i++) {
+        const item = rollItem(this.rng, Math.max(1, p.level), { minRarity: rar, weights: RARITY_ONLY(rar), slot: r.slot, cls: this.cls });
+        if (!p.equipped[item.slot]) {
+          p.equipped[item.slot] = item;
+          this.recalcStats();
+        } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
+        else {
+          p.scrap += scrapValue(item);
+          scrapped++;
+        }
+      }
+    }
+    this.sweepLoot();
+    this.emit('ringPaid', { kind: r.kind, slot: r.slot, n, wave: r.safeWave, lost: ringWhole(r.pot) - n, scrapped });
   }
 
   /**
@@ -6701,6 +6770,7 @@ export class World {
     if (p.dead) return;
     if (w.phase === 'intermission') {
       if (this.offer) return; // the next wave waits for the augment pick
+      if (this.ring && this.ring.hold) return; // (0.59) ...and, after a boss, for you to take the spoils home or push on
       w.timer -= dt;
       if (w.timer <= 0) this.startWave();
       return;
@@ -6739,6 +6809,18 @@ export class World {
         this.use(was);
       }
       this.emit('waveClear', { n: w.n, boss, gold, flawless, swift, secs: Math.round(secs), par: Math.round(par) });
+      if (this.ring) {
+        // (0.59) the run's spoils grow; after a boss they are safe, and you may take them home
+        const r = this.ring;
+        r.pot += ringGain(r, w.n, boss, this.player.level);
+        r.wave = w.n;
+        if (boss) {
+          r.safe = r.pot;
+          r.safeWave = w.n;
+          r.hold = true;
+        }
+        this.emit('ringGain', { n: w.n, boss, kind: r.kind, pot: ringWhole(r.pot), safe: ringWhole(r.safe) });
+      }
       this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.
       if (w.n % 2 === 1 || boss) this.makeOffer(boss);
@@ -7172,6 +7254,14 @@ inTown() {
   // =========================================================================
   step(dt) {
     this.runCommands();
+    if (this.gameOver && this.travelHook && this.mode === 'arena') {
+      // (0.59) on the server, a fallen hero goes home from the Ring after a moment (spoils already paid)
+      this.ringOutT = (this.ringOutT ?? 2.5) - dt;
+      if (this.ringOutT <= 0 && !this.ringGone) {
+        this.ringGone = true;
+        this.travelHook(this.heroes[0], 'town', 'ring', null);
+      }
+    }
     if (this.gameOver) return;
     this.ticks++;
     this.time += dt;

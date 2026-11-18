@@ -37,6 +37,11 @@
 <div id="prompt" class="hidden"></div>
 <aside id="quest-track" class="hidden" aria-label="Quests"></aside>
 <div id="room-badge" class="hidden"></div>
+<div id="ring-bank" class="hidden" role="group" aria-label="The Ring's spoils are safe">
+  <span id="ring-bank-text"></span>
+  <button type="button" id="btn-ring-leave" class="primary">Take them home <kbd>H</kbd></button>
+  <button type="button" id="btn-ring-on" class="ghost">Push on</button>
+</div>
 <div id="rift-home" class="hidden" role="group" aria-label="The rift is over">
   <span id="rift-home-text">The rift is over.</span>
   <button type="button" id="btn-rift-home" class="primary">Return to Haven <kbd>H</kbd></button>
@@ -149,9 +154,13 @@
   <div class="town-grid">
     <article class="town-card" id="card-gate">
       <h3>The Ring</h3>
-      <p class="setting-desc">Seven standing stones set with star-glass. Press a shard into the stones and they call up what the mountain remembers, wave after wave. Echoes are paid for in gold by those who collect what they leave behind. Start from any checkpoint you have reached.</p>
+      <p class="setting-desc">Seven standing stones set with star-glass. Press a shard into the stones and they call up what the mountain remembers, wave after wave. Choose what you are here for: every wave adds to the run's spoils, more the deeper you go. After every boss they are safe, and you may take them home or push on. Fall, and you keep what was safe.</p>
       <div id="gate-waves" class="segmented" role="group" aria-label="Starting wave"></div>
       <p class="setting-desc" id="gate-best"></p>
+      <div class="gate-focus-h">What you are here for</div>
+      <div id="gate-focus" class="segmented" role="group" aria-label="What the run's spoils are"></div>
+      <div id="gate-slot" class="segmented hidden" role="group" aria-label="Which slot"></div>
+      <p class="setting-desc" id="gate-focus-desc"></p>
       <button type="button" id="btn-enter" class="primary">Wake the Ring</button>
     </article>
     <article class="town-card" id="card-smith">

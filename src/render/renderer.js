@@ -499,6 +499,14 @@ export class Renderer {
         glow.scale.setScalar(2.4);
         glow.position.set(o.x, 0.06, o.z);
         g.add(door, glow);
+      } else if (o.kind === 'ring') {
+        // (0.59) The Echo Ring's stones: a small circle of star-glass, the way up to the Ring
+        const stones = buildAltar();
+        stones.position.set(o.x, 0, o.z);
+        stones.scale.setScalar(0.62);
+        stones.traverse((m) => { if (m.material && m.material.color && m !== stones.userData.rune) m.material = m.material.clone(), m.material.color.lerp(new THREE.Color(0x9fd6ff), 0.35); });
+        if (stones.userData.rune) stones.userData.rune.material.color.set(0x9fd6ff);
+        g.add(stones);
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);

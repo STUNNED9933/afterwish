@@ -23,10 +23,11 @@ import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES } from './sim/items.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
 import { GLOWS } from './sim/cosmetics.js';
+import { RING_FOCUS, ringText } from './sim/ring.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { clearAllOffline, loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -309,7 +310,15 @@ function start(hot = {}) {
     $('trade-ask').classList.add('hidden');
     applyNow({ type: 'tradeAnswer', yes: false });
   });
-  const town = new Town(tooltip, applyNow, (startWave) => startRun(save, startWave));
+  // (0.59) What the Echo Ring's spoils are, kept with the settings
+  const ringFocus = () => (settings.ringFocus && RING_FOCUS[settings.ringFocus.kind] ? settings.ringFocus : { kind: 'gold', slot: 'weapon' });
+  const town = new Town(tooltip, applyNow, (startWave) => startRun(save, startWave), {
+    get: ringFocus,
+    set: (f) => {
+      settings.ringFocus = f;
+      storeSettings(settings);
+    },
+  });
 
   /** Pick the music for where the player is right now. */
   function tune() {
@@ -355,6 +364,7 @@ function start(hot = {}) {
     // "ends this run" is only true of an Echo Ring run (exploring just saves; the Weekly Echo says so on its button).
     if (mode === 'pause') $('pause-run-note').classList.toggle('hidden', world.mode !== 'arena' || !!trialRun);
     if (mode === 'pause' && trialRun) $('btn-town').textContent = 'End this Weekly Echo run';
+    else if (mode === 'pause' && net && net.server && world.mode === 'arena') $('btn-town').textContent = 'Leave the Ring (keep what is safe)';
     else if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
     if (mode === 'pause') renderSwitch();
@@ -438,7 +448,7 @@ function start(hot = {}) {
     }
     account.tickets--; // every arena run costs one ticket
     storeAccount(account);
-    world = makeWorld({ save: fromSave, startWave });
+    world = makeWorld({ save: fromSave, startWave, focus: ringFocus() });
     renderer.setEnvironment('arena');
     resetViews();
     sfx.unlock();
@@ -452,6 +462,7 @@ function start(hot = {}) {
     renderer.setEnvironment('arena');
     resetViews();
     sfx.unlock();
+    $('ring-bank').classList.add('hidden');
     town.lastCache = null;
     setMode('town');
   }
@@ -1055,6 +1066,88 @@ function start(hot = {}) {
     }
   }
 
+  /**
+   * (0.59) The Echo Ring's stones in Haven. On the server world: choose what you are here for and a
+   * checkpoint, and wake it (a run of your own, on the server). In the browser: up to the camp.
+   */
+  function renderRingStones() {
+    const p = world.player;
+    $('talk-role').textContent = 'On the rise behind the well';
+    $('talk-name').textContent = 'The Echo Ring';
+    $('talk-keys').classList.add('hidden');
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    $('talk-line').textContent = talkNote || 'Seven stones set with star-glass. Press a shard into them and they call up what the mountain remembers, wave after wave. Every wave adds to the spoils of what you came for; after every boss they are safe, to take home or push on.';
+    if (!net) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'primary';
+      b.textContent = 'Go up to the Ring (its camp)';
+      b.addEventListener('click', () => {
+        persist();
+        enterTown();
+      });
+      list.appendChild(b);
+      return;
+    }
+    if (!net.server) {
+      const el = document.createElement('p');
+      el.className = 'setting-desc';
+      el.textContent = 'The Ring is woken alone, or on the server world. Leave the room to go up.';
+      list.appendChild(el);
+      return;
+    }
+    const f = ringFocus();
+    const box = document.createElement('div');
+    box.className = 'quest ring-pick';
+    const row = (label, items, on) => {
+      const h = document.createElement('div');
+      h.className = 'gate-focus-h';
+      h.textContent = label;
+      const seg = document.createElement('div');
+      seg.className = 'segmented';
+      for (const [id, text, pressed] of items) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        b.addEventListener('click', () => on(id));
+        seg.appendChild(b);
+      }
+      box.append(h, seg);
+    };
+    row('What you are here for', Object.keys(RING_FOCUS).map((id) => [id, RING_FOCUS[id].name, f.kind === id]), (id) => {
+      settings.ringFocus = { kind: id, slot: f.slot || 'weapon' };
+      storeSettings(settings);
+      renderTalk();
+    });
+    if (f.kind === 'gear') row('Which slot', SLOTS.map((sl) => [sl, SLOT_NAMES[sl], (f.slot || 'weapon') === sl]), (sl) => {
+      settings.ringFocus = { kind: 'gear', slot: sl };
+      storeSettings(settings);
+      renderTalk();
+    });
+    const max = Math.max(1, (net.lastSave && net.lastSave.maxCheckpoint) || world.maxCheckpoint || 1);
+    if (!ringStart || ringStart > max) ringStart = max;
+    const waves = [];
+    for (let wv = 1; wv <= max; wv += CONFIG.BOSS_EVERY) waves.push([wv, `Wave ${wv}`, wv === ringStart]);
+    row('Start from', waves, (wv) => {
+      ringStart = wv;
+      renderTalk();
+    });
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'primary';
+    go.textContent = p.tickets > 0 ? `Wake it at wave ${ringStart} · 1 shard (you have ${p.tickets})` : 'No starglass shards · they are found on the road';
+    go.disabled = p.tickets <= 0;
+    go.addEventListener('click', () => {
+      setMode('play');
+      applyNow({ type: 'enterRing', startWave: ringStart, focus: ringFocus() });
+    });
+    box.appendChild(go);
+    list.appendChild(box);
+  }
+  let ringStart = 0;
+
   /** The Starwell after the Asker (0.45): the ending's choice. */
   function renderWell() {
     const p = world.player;
@@ -1152,6 +1245,7 @@ function start(hot = {}) {
     if (talkTo === 'bounties') return renderBounties();
     if (talkTo === 'altar') return renderAltar();
     if (talkTo === 'delve') return renderDelve();
+    if (talkTo === 'ringstones') return renderRingStones();
     if (talkTo === 'tomashusk') return renderTomasHusk();
     const npc = NPCS[talkTo];
     if (!npc) return;
@@ -1846,6 +1940,7 @@ function start(hot = {}) {
       net.arriveTick = msg.tick;
       net.queue.push(msg);
     } else if (msg.t === 'save') {
+      net.lastSave = msg.save; // (0.59) e.g. how far this hero has reached in the Echo Ring
       if (msg.online) {
         // (0.57) an online character: the server keeps it; this browser's own characters stay as they were
         Online.cacheChar(net.base, world.cls, msg.save);
@@ -1935,7 +2030,7 @@ function start(hot = {}) {
     net.snapAt = due;
     net.nextAt = due + net.snapGap;
     const allies = world.alliesList ? world.alliesList.length : 0;
-    if (applySnapshot(world, msg, alpha)) world.events.push({ type: 'mapChange', id: world.map.id, name: world.map.name, from: null, hero: net.pid });
+    if (applySnapshot(world, msg, alpha)) world.events.push({ type: 'mapChange', id: world.map ? world.map.id : 'ring', name: world.map ? world.map.name : 'The Echo Ring', from: null, hero: net.pid });
     for (const ev of msg.ev || []) world.events.push(ev);
     if (world.alliesList.length !== allies) updateRoomBadge();
     if (msg.heavy) refreshMenus();
@@ -2100,6 +2195,27 @@ function start(hot = {}) {
     clearInterval(noticeWatch);
   }
   $('btn-notice-ok').addEventListener('click', hideNotice);
+  // (0.59) After an Echo Ring boss: the spoils are safe. Take them home, or push on.
+  let lastRingPaid = null;
+  function showRingBank(ev) {
+    if (!world.ring || (net && !net.server)) return;
+    $('ring-bank-text').textContent = `Wave ${ev.n} cleared. Safe now: ${ringText(world.ring, ev.safe)}.`;
+    $('ring-bank').classList.remove('hidden');
+  }
+  function ringLeave() {
+    if ($('ring-bank').classList.contains('hidden') || !world.ring || world.mode !== 'arena') return false;
+    $('ring-bank').classList.add('hidden');
+    applyNow({ type: 'ringLeave' });
+    if (net && net.server) return true; // (0.59) the server takes you home, spoils and all
+    enterTown();
+    if (lastRingPaid) hud.banner('Home from the Ring', `${lastRingPaid.got}, after wave ${lastRingPaid.wave}`);
+    return true;
+  }
+  $('btn-ring-leave').addEventListener('click', ringLeave);
+  $('btn-ring-on').addEventListener('click', () => {
+    $('ring-bank').classList.add('hidden');
+    applyNow({ type: 'ringOn' });
+  });
   // (0.58) A rift that is over: home at once (its spoils come too), or stay and walk out when ready
   function showRiftHome(won) {
     const host = !net || net.server || net.role === 'host';
@@ -2525,6 +2641,7 @@ function start(hot = {}) {
     if (net.alone) return; // (0.57.1) playing alone: no chat, no players panel
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
     if (typing) return;
+    if (e.key === 'Enter' && world.mode === 'arena' && world.wave && world.wave.phase === 'intermission') return; // (0.59) in the Ring, Enter starts the next wave
     if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
@@ -2667,6 +2784,7 @@ function start(hot = {}) {
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
+      if (key === 'h' && mode === 'play' && world.ring && !$('ring-bank').classList.contains('hidden')) return ringLeave() || true; // (0.59)
       // (0.58) H: home from a rift that is over
       if (key === 'h' && mode === 'play' && world.rift && world.rift.state === 'done' && world.map.id === 'rift') {
         $('rift-home').classList.remove('hidden');
@@ -2984,6 +3102,12 @@ function start(hot = {}) {
       return;
     }
     if (net) {
+      if (net.server && world.mode === 'arena') {
+        // (0.59) leave an Echo Ring run: home to Haven with what was safe
+        applyNow({ type: 'ringLeave' });
+        setMode('play');
+        return;
+      }
       if (net.server) {
         // (0.56.4) wait for the server's last save first
         const was = net;
@@ -3000,7 +3124,10 @@ function start(hot = {}) {
     if (world.mode === 'explore') {
       persist();
       setMode('title');
-    } else enterTown();
+    } else {
+      if (world.ring && !world.gameOver) applyNow({ type: 'ringLeave' }); // (0.59) what was safe comes home
+      enterTown();
+    }
   });
   $('btn-wipe').addEventListener('click', (e) => armThenRun(e.currentTarget, 'Click again to delete everything', wipe));
   $('btn-retry').addEventListener('click', () => startRun(save));
@@ -3129,6 +3256,7 @@ function start(hot = {}) {
     const p = world.player;
     switch (ev.type) {
       case 'waveStart':
+        $('ring-bank').classList.add('hidden'); // (0.59) pushed on
         tune();
         hud.banner(`Wave ${ev.n}`, ev.boss ? `An echo of ${ev.bossName} rises` : ev.n === 1 ? 'The stones remember' : '');
         if (ev.n === 1) hintOnce('ring', 'The Echo Ring calls up what the mountain remembers. Echoes fall like anything else; they just keep coming.', 9);
@@ -3357,6 +3485,16 @@ function start(hot = {}) {
         hud.feedText(`${ev.name} was a gift: it stays with you.`);
         sfx.denied();
         break;
+      case 'ringGain':
+        if (ev.boss) showRingBank(ev);
+        break;
+      case 'ringPaid': {
+        const r = { kind: ev.kind, slot: ev.slot };
+        const got = ev.n ? ringText(r, ev.n) : 'nothing yet (nothing was safe)';
+        hud.feedText(`The Ring gives you ${got}${ev.lost > 0 ? `; ${ringText(r, ev.lost)} since the last boss stayed behind` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
+        lastRingPaid = { got, wave: ev.wave };
+        break;
+      }
       case 'lootSwept':
         hud.feedText(`The rift's spoils came with you: ${ev.got} piece${ev.got === 1 ? '' : 's'}${ev.scrapped ? `, and ${ev.scrapped} scrapped for want of room` : ''}.`);
         break;
@@ -3874,6 +4012,17 @@ function start(hot = {}) {
         break;
       case 'mapChange':
         $('rift-home').classList.add('hidden'); // (0.58)
+        $('ring-bank').classList.add('hidden');
+        if (world.mode === 'arena') {
+          // (0.59) an Echo Ring run on the server world
+          renderer.setEnvironment('arena');
+          renderer.reset();
+          renderer.camTarget.set(p.x, 0, p.z);
+          tune();
+          hud.reset();
+          hud.banner('The Echo Ring', world.ring ? `Here for ${RING_FOCUS[world.ring.kind].name.toLowerCase()}${world.ring.kind === 'gear' ? ` (${world.ring.slot})` : ''}` : '');
+          break;
+        }
         // Arrived on another exploration map: swap the scenery and forget the old map's enemies.
         // (the same map object already built only needs showing: building scenery is not free)
         if (renderer.mapRef !== world.map || renderer.mapId !== world.map.id) renderer.setMap(world.map);
@@ -3891,7 +4040,7 @@ function start(hot = {}) {
           if (D) {
             const ember = world.ember();
             const sc = emberScale(ember, D.ember);
-            hintOnce('deepEmber', `Depth ${D.numeral} asks for ${D.ember} Ember, and you have ${ember}. ${sc.one ? 'Below half of what it asks, every blow you land is 1: nothing here can be hurt by you yet.' : sc.dealt < 1 ? `Short of it, your blows land at ${Math.round(sc.dealt * 100)}% and you take more.` : 'You have enough: you fight here at full strength.'} Ember is what you let go of: every rebirth adds up to ${DEEP.emberMax}, by how built-up your gear was, and it stays with you.`, 16);
+            hintOnce('deepEmber', `Depth ${D.numeral} asks for ${D.ember} Ember, and you have ${ember}. ${sc.one ? 'Below half of what it asks, every blow you land is 1: nothing here can be hurt by you yet.' : sc.dealt < 1 ? `Short of it, your blows land at ${Math.round(sc.dealt * 100)}% and you take more.` : 'You have enough: you fight here at full strength.'} Ember is what you let go of: every rebirth adds up to ${DEEP.emberMax}, by everything you give up, and it stays with you.`, 16);
           }
         }
         if (ev.from === 'town') hintOnce('maps', 'Each map is ten levels tougher than the last, and enemies get stronger the deeper in you go. Stand in a portal to travel on.', 9);
@@ -3915,6 +4064,11 @@ function start(hot = {}) {
         if (world.trial) {
           // A Weekly Echo run (or a replay being watched) ends here; nothing is saved to the character.
           if (trialRun && !trialRun.done) defeatTimer = setTimeout(finishTrial, 1600);
+          break;
+        }
+        if (net && net.server) {
+          // (0.59) the Ring on the server world: home to Haven in a moment, with what was safe
+          hud.banner(`You fell on wave ${ev.wave}`, 'Back to Haven, with what was safe');
           break;
         }
         persist();
@@ -4044,6 +4198,7 @@ function start(hot = {}) {
       // A joiner never runs the rules: it shows what the host sends, gliding between updates.
       playSnapshots(now);
       drainEvents();
+      if (mode === 'play' && world.mode === 'arena' && world.offer && !world.gameOver && now >= offerAt) setMode('augment'); // (0.59) the Ring online
       alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
       world.player.predicted = smoothPrediction(predictedOffset(alpha), dt);
     } else if (net && mode !== 'title' && mode !== 'mp') {

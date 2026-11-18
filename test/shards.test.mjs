@@ -215,12 +215,65 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check("Edric of the Blue Trim comes for whoever has his quest, not only the first one there", w.enemies.some((e) => e.named === 'edric'));
 }
 
+// (0.59) The Echo Ring on the server world: a run of your own, spoils and all
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 13 });
+  const k = { name: 'ringer' }; box.set(k, []);
+  sv.message(k, hello('Ringer', 'warrior', { tickets: 2 }));
+  const pid = box.get(k).find((m) => m.t === 'welcome').pid;
+  const pl = () => sv.players.get(pid);
+  const heroP = () => { const w = pl().copy.world; const h = w.heroByPid(pid); return w.as(h, (p) => p); };
+  sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'fragment' } } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const w = pl().copy.world;
+  check('Ring online: waking it takes you to an Echo Ring of your own, for a shard', w.mode === 'arena' && pl().copy.key.startsWith('ring:') && w.ring && w.ring.kind === 'fragment' && heroP().tickets === 1);
+  const snap = [...box.get(k)].reverse().find((m) => m.t === 'snap');
+  check('Ring online: the game is told it is in the Ring, with the wave and the spoils', snap && snap.map === 'ring' && snap.arena && snap.arena.ring && snap.arena.ring.kind === 'fragment');
+  for (let i = 0; i < 40000 && w.wave.cleared < 5; i++) {
+    if (w.offer) sv.message(k, { t: 'cmd', cmd: { type: 'augment', id: w.offer.choices[0] } });
+    if (w.wave.phase === 'intermission' && !(w.ring && w.ring.hold)) sv.message(k, { t: 'cmd', cmd: { type: 'nextWave' } });
+    for (const e of w.enemies.slice()) if (!e.dead) w.hitEnemy(e, 1e12);
+    w.player.hp = w.player.stats.maxHp;
+    sv.tick();
+  }
+  for (let i = 0; i < 30 && w.offer; i++) { sv.message(k, { t: 'cmd', cmd: { type: 'augment', id: w.offer.choices[0] } }); sv.tick(); }
+  check('Ring online: after the boss the spoils are safe and the Ring waits', w.wave.cleared === 5 && w.ring.hold && w.ring.safe > 0);
+  const want = Math.floor(w.ring.safe), f0 = (heroP().misc.fragment || 0);
+  sv.message(k, { t: 'cmd', cmd: { type: 'ringLeave' } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('Ring online: take them home, and you are back in Haven with them', pl().copy.world.mode === 'explore' && pl().copy.world.map.id === 'town' && (heroP().misc.fragment || 0) === f0 + want, `${heroP().misc.fragment} (+${want})`);
+  // and falling: home after a moment, with what was safe
+  sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'gold' } } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const w2 = pl().copy.world;
+  const g0 = heroP().gold;
+  w2.player.hp = 1; w2.player.dead = false;
+  const foe = w2.spawnEnemy ? w2.enemies[0] : null;
+  w2.as(w2.heroes[0], () => { w2.player.hp = 0; w2.gameOver = true; w2.ringPay(); });
+  for (let i = 0; i < 200; i++) sv.tick();
+  check('Ring online: fall, and you are home in Haven a moment later (nothing was safe yet)', pl().copy.world.map && pl().copy.world.map.id === 'town' && heroP().gold === g0 && heroP().hp > 0);
+  {
+    // gone mid-run: what was safe still comes home (it is in the save that is kept)
+    heroP().tickets = 3;
+    sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'dust' } } });
+    for (let i = 0; i < 4; i++) sv.tick();
+    const w3 = pl().copy.world;
+    w3.ring.safe = 7; w3.ring.pot = 9;
+    const d0 = w3.player.dust;
+    let saved = null;
+    sv.send = ((orig) => (c, m) => { if (m.t === 'save') saved = m.save; orig(c, m); })(sv.send);
+    sv.leave(k, true);
+    check('Ring online: disconnect mid-run and what was safe is still yours', saved && saved.dust === d0 + 7, saved && saved.dust);
+  }
+}
+
 // (0.57.4) Every action the game sends from its menus must be one a server (or a friend's room) accepts,
 // or it silently does nothing there (Tomas's scarf and Odile's garden once did exactly that).
 {
   const src = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const sent = new Set([...src.matchAll(/(?:applyNow|world\.command)\(\{ type: '([a-zA-Z]+)'/g)].map((m) => m[1]));
-  const offlineOnly = new Set(['augment', 'reroll']); // the Echo Ring, which only runs in the browser
+  const offlineOnly = new Set([]); // (0.59: the Echo Ring runs on the server world too)
   const serverOnly = new Set(['setDepth', 'rebirth', 'unwish']); // a hero's own, on the server world (SERVER_CMDS)
   const missing = [...sent].filter((t) => !FRIEND_CMDS.has(t) && !offlineOnly.has(t) && !serverOnly.has(t));
   check('every action the game sends is accepted online', missing.length === 0, missing.join(', '));

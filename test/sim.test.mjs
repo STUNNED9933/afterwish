@@ -3541,6 +3541,50 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const old = new World({ seed: 6, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 60, quests: { edric: { s: 'done', n: 1 } } } });
   check('keepsake: a hero who finished the quest before 0.53 has it too', old.player.keepsake && old.player.keepsake.ilvl === 60);
 }
+// --- The Echo Ring's spoils (0.59) ---
+{
+  const { ringGain, newRing, RING } = await import('../src/sim/ring.js');
+  const { geared } = await import('./balance.mjs');
+  const play = (focus, waves, opts = {}) => {
+    const save = geared('warrior', 60, 5); save.maxCheckpoint = 1;
+    const w = new World({ seed: 4, mode: 'arena', cls: 'warrior', save, focus, startWave: 1 });
+    const p = w.player;
+    for (let i = 0; i < 60000 && w.wave.cleared < waves; i++) {
+      if (w.offer) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); }
+      if (w.ring && w.ring.hold && w.wave.cleared < waves) { w.command({ type: 'ringOn' }); w.runCommands(); }
+      if (w.wave.phase === 'intermission') { w.command({ type: 'nextWave' }); w.runCommands(); }
+      for (const e of w.enemies.slice()) if (!e.dead) w.hitEnemy(e, 1e12);
+      p.hp = p.stats.maxHp;
+      w.step(CONFIG.TICK);
+    }
+    w.events.length = 0;
+    return { w, p };
+  };
+  let { w, p } = play({ kind: 'fragment' }, 5);
+  for (let i = 0; i < 200 && w.offer; i++) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); w.step(CONFIG.TICK); }
+  const n5 = w.wave.n;
+  for (let i = 0; i < 600; i++) w.step(CONFIG.TICK);
+  check('Ring: after a boss the next wave waits for you to choose', w.ring.hold && w.wave.n === n5 && w.wave.phase === 'intermission');
+  const want = Math.floor(w.ring.safe);
+  check('Ring: five waves of the Fragment focus add up, a boss three times a wave', w.ring.safe === w.ring.pot && want >= 6 && Math.abs(w.ring.pot - [1, 2, 3, 4].reduce((a, n) => a + ringGain(newRing({ kind: 'fragment' }), n, false, 60), 0) - ringGain(newRing({ kind: 'fragment' }), 5, true, 60)) < 1e-6, w.ring.pot.toFixed(2));
+  const f0 = p.misc.fragment || 0;
+  w.command({ type: 'ringLeave' }); w.runCommands();
+  check('Ring: take them home after a boss, and you get all of it', (p.misc.fragment || 0) === f0 + want && w.events.some((e) => e.type === 'ringPaid' && e.lost === 0));
+  w.command({ type: 'ringLeave' }); w.runCommands();
+  check('Ring: only once a run', (p.misc.fragment || 0) === f0 + want);
+  ({ w, p } = play({ kind: 'gold' }, 7));
+  const safe = Math.floor(w.ring.safe), pot = Math.floor(w.ring.pot), g0 = p.gold;
+  p.hp = 1; w.damagePlayer ? w.damagePlayer(1e9) : (p.hp = 0);
+  if (!w.events.some((e) => e.type === 'ringPaid')) { w.command({ type: 'ringLeave' }); w.runCommands(); }
+  check('Ring: fall (or leave) between bosses and you keep what was safe at the last one', p.gold - g0 === safe && pot > safe, `${p.gold - g0} of ${pot} (safe ${safe})`);
+  ({ w, p } = play({ kind: 'gear', slot: 'boots' }, 10));
+  const bag0 = p.bag.length;
+  w.command({ type: 'ringLeave' }); w.runCommands();
+  const ev = w.events.find((e) => e.type === 'ringPaid');
+  const boots = p.bag.slice(bag0).filter((it) => it.slot === 'boots');
+  check('Ring: the Gear focus gives pieces for the slot you chose, Mythic from wave 10', ev && ev.n >= 4 && boots.length >= ev.n - (ev.scrapped || 0) && boots.every((it) => it.rarity >= RING.gearRarity(10)), ev && `${ev.n} pieces`);
+  check('Ring: and what dropped in the Ring comes home with you', w.loot.length === 0);
+}
 // --- Echoes (0.53): what giving up your gear is worth ---
 {
   const { ECHOES, essenceFor } = await import('../src/sim/rebirth.js');

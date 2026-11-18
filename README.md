@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Link previews (0.61.7)
+
+- Sharing the link on Discord, WhatsApp and the like shows a **1200 x 630 card**: the icon, the name
+  and "Nothing you cut down stays down." over the starglass of the Sanctum, with what the game is and
+  that it is free in the browser. Discord's embed stripe is the icon's gold. The card is
+  `assets/icon/share.jpg` (85 KB, inside WhatsApp's limit); the tags are in the head of `src/index.html`.
+
 ### A game icon (0.61.6)
 
 - **The Cut Wish**: a gold four-pointed star, the wish, split by a steel parry stroke, its two halves

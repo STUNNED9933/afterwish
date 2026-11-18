@@ -1626,7 +1626,11 @@ function start(hot = {}) {
     const q = net.queue;
     // (0.54.8) keep a small cushion of updates in hand, sized to how unevenly they arrive; after
     // running dry, wait for it to refill rather than start and stop with every arrival
-    const cushion = Math.max(1, Math.min(3, Math.ceil(1 + (net.jitter || 0) / 40)));
+    // (0.55.1) sized in time: about twice the jitter, so 60 updates a second from a nearby server
+    // keep one in hand (~17 ms), and 20 a second from a host across the city keep one or two
+    const snapMs = Math.max(16, (net.gapTicks || 3) * CONFIG.TICK * 1000);
+    const cushion = Math.max(1, Math.min(8, Math.ceil(Math.min(150, 8 + (net.jitter || 0) * 2) / snapMs)));
+    net.cushion = cushion;
     if (!q.length) net.dry = true;
     if (net.dry && q.length < cushion) return;
     net.dry = false;
@@ -3219,9 +3223,22 @@ function start(hot = {}) {
     const info = renderer.renderer.info.render;
     perf.el.textContent = `${Math.round(perf.frames / secs)} fps · worst frame ${Math.round(perf.worst)} ms · game code ${(perf.js / perf.frames).toFixed(1)} ms a frame\n` +
       `graphics ${GFX_NAMES[gfx.level] || gfx.level}${settings.graphics === 'auto' ? ' (auto)' : ''} · ${renderer.renderer.getPixelRatio().toFixed(2)}x · ${renderer.renderer.domElement.width}×${renderer.renderer.domElement.height} · ${info.calls} draws, ${Math.round(info.triangles / 1000)}k triangles\n` +
-      `${perf.gpu}${softGPU ? ' (SOFTWARE: no graphics card)' : ''} · ${world.enemies ? world.enemies.filter((e) => !e.dead).length : 0} enemies · version ${typeof __VERSION__ !== 'undefined' ? __VERSION__ : ''}`;
+      `${perf.gpu}${softGPU ? ' (SOFTWARE: no graphics card)' : ''} · ${world.enemies ? world.enemies.filter((e) => !e.dead).length : 0} enemies · version ${typeof __VERSION__ !== 'undefined' ? __VERSION__ : ''}` +
+      (net && net.role === 'client' ? `\n${netLine()}` : '');
     perf.frames = perf.js = perf.worst = 0;
     perf.since = now;
+  }
+
+  /**
+   * (0.55.1) For F3 when joined to someone: the round trip, how often updates come, and roughly how
+   * long a click takes to show (half the round trip there, a step, the wait for an update, half back,
+   * then the cushion and the glide on this screen).
+   */
+  function netLine() {
+    const gapMs = Math.max(16, (net.gapTicks || 3) * CONFIG.TICK * 1000);
+    const ping = net.ping || 0;
+    const click = ping + CONFIG.TICK * 500 + gapMs / 2 + (net.cushion || 1) * gapMs + gapMs / 2;
+    return `ping ${Math.round(ping)} ms · ${Math.round(1000 / gapMs)} updates a second · a click shows after about ${Math.round(click)} ms · jitter ${Math.round(net.jitter || 0)} ms${net.relay ? ' · via relay' : ''}`;
   }
 
   function frame(now) {

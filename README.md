@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Quicker clicks on the server world (0.55.1)
+
+The server sends updates every step (60 a second) while 8 or fewer are on (30 a second up to 16,
+then 20), and a friend's screen keeps a cushion sized in time (about twice the network's jitter)
+instead of in updates. On a nearby server a click now shows after roughly 40–60 ms, not ~160.
+**F3** now also shows the ping, updates a second, the jitter and about how long a click takes to
+show; the room badge's ping is green up to 50 ms, amber to 120, red above.
+
 ### The server world (0.55)
 
 An always-on world on a rented server, beside host-run rooms (which still work as before): join

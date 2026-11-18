@@ -335,7 +335,10 @@ export class ServerWorld {
       seen.add(mv.pid);
       this.move(pl, mv.to, mv.from, mv.extra);
     }
-    if (this.ticks % 3 === 0) {
+    // (0.55.1) Updates every step while few are on (the server is close by, so this is what makes
+    // a click feel immediate), every second step up to 16 players, then every third.
+    const every = this.players.size <= 8 ? 1 : this.players.size <= 16 ? 2 : 3;
+    if (this.ticks % every === 0) {
       for (const pl of this.players.values()) {
         if (!pl.copy) continue;
         if (this.congested(pl.conn)) {

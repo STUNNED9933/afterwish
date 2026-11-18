@@ -1301,7 +1301,9 @@ export class Renderer {
         this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xc8b8ff, speed: 11, up: 3, life: 0.4 });
         break;
       case 'sporeHeal':
-        this.burst(ev.x, 1, ev.z, { count: 6 + ev.n * 2, color: 0x9fe07a, speed: 3, up: 4, life: 0.6 });
+        // (0.61.5) Sporeheart bursts: a ring of spores out to 6 m
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.5, color: 0x9fe07a, from: 0.8, to: 6, dur: 0.45, opacity: 0.8 });
+        this.burst(ev.x, 1, ev.z, { count: 14 + ev.n * 2, color: 0x9fe07a, speed: 9, up: 3, life: 0.6 });
         break;
       case 'starFeeds':
         this.burst(ev.x, 1.4, ev.z, { count: 18, color: 0x7ff5e1, speed: 6, up: 5, life: 0.5 });

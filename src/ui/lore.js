@@ -160,21 +160,21 @@ const IMMORTAL = {
   Nightfang: 'Two teeth from something that hunted the Greenwood before there was a Greenwood. They do not cut so much as remember being bitten. A contract was paid in them once, long ago. Nobody remembers who took the job, only that it was done.',
   Wishfall: 'A splinter of the falling star, set into a staff by someone who wanted it to stop falling. It never has. Speak through it often enough and it remembers the sky and comes down again, exactly where you were looking.',
   // class armour
-  'Crown of the Undying': 'The Queen had it made for the Captain of her guard on the day the child was blessed, so that he would always come home. When the star heard her wish, it made the crown mean it. He always comes home. That was the trouble.',
+  'Crown of the Undying': 'The Queen had it made for the Captain of her guard on the day the child was blessed, so that he would always come home. When the star heard her wish, it made the crown mean it: every life that ends near its wearer comes home to him, as strength. He has had nineteen years of practice.',
   'Aegis of Retribution': 'Hesper Hale\'s last commission for the Keep: armour for a knight who wanted to hit back. She made it, and cut one line inside the plate where only the wearer would see it. Answer. Do not keep answering.',
   'Slipstream Treads': 'Cut for the Queen\'s runners, who carried word from Asterfell to the Keep in a single day. The last of them is still running the pass, nineteen years late, with a letter nobody alive can read.',
   'The Timekeeper': 'A clockmaker in Asterfell wished, in the same breath as the Queen, for just a little more time. The star gave the whole city all of it. He made this from the hands of his own clock so he would know when it was finally over. It still ticks. It slows down near anything that is dying.',
   // uniques
   "Oathbreaker's Signet": 'Captain Aldric\'s seal, pressed into the wax of every order that kept the gate shut. The oath outlived his memory of why, and the ring has outlived the oath. Break it on a perfect parry and the oath comes down one last time, wanting only to be finished.',
-  Sporeheart: 'Brother Tobin grew it in his own chest. Trial thirty-two. It was meant to teach a body to rot, so that it could rest. Instead it learned to keep growing, gently, out of whatever is near. Odile cannot bear to look at it. She asks you to wear it anyway.',
-  'The Unwished Crown': 'Maren\'s crown, with the wish taken out of it. It weighs almost nothing now. The Doom that falls across the Sanctum floor was only ever the crown remembering what it was asked for. Worn by her child, it flinches from the memory.',
+  Sporeheart: 'Brother Tobin grew it in his own chest. Trial thirty-two. It was meant to teach a body to rot, so that it could rest. Instead it learned to spread. Whatever stands too close to it begins, very gently, to rot. Odile cannot bear to look at it. She asks you to wear it anyway.',
+  'The Unwished Crown': 'Maren\'s crown, with the wish taken out of it. It weighs almost nothing now. The Doom that falls across the Sanctum floor was only ever the crown remembering what it was asked for. Worn by her child, it flinches from the memory, and it remembers who climbed the mountain to take it from her: it bites hardest at the things that wait at the tops of roads.',
   "Edric's Sword": 'Bram made it when he was fifteen, badly, and Edric would not carry anything else. The hare on the guard, their mother\'s mark, is crooked. Edric wore it on the far side of the gate for nineteen years, counting. It is the only thing Bram ever made that he will not take back to the forge.',
   "Edric's Colours": 'A strip of the Keep\'s blue, knotted round a band of gate iron. Edric tied it on before the gate shut, so that somebody below would know which one was him. Bram knew. He kept the forge lit.',
 
   // --- Berserker: the blade of grudge, and the men who carried it ---
   Bloodreaver: 'The blade of grudge. Corran of the gate garrison had a wife and two daughters on the low road the night Captain Aldric shut the gate. He swore he would never forgive it, and the star, which grants exactly, made sure he never could. He forged this from one of the gate\'s own bars, by hand, for years, badly. It drinks because he is still thirsty.',
   'Crown of the Last Breath': 'Worn by the gate guard who took the last breath anyone on the mountain needed. He breathed out as the star fell and never had to breathe in again. The crown is still waiting for the other half.',
-  'Scarred Hauberk': 'Every scar in this mail is a killing blow that did not take. Hesper Hale stopped mending it after the first year. It closes on its own now, and it closes tighter when you bleed.',
+  'Scarred Hauberk': 'Every scar in this mail is a killing blow that did not take. Hesper Hale stopped mending it after the first year. It closes on its own now, and the worse you are hurt, the harder the arm inside it swings.',
   'Red Stride': 'The boots of a soldier who ran toward the fighting every time and was never once allowed to fall. The soles are worn through to red. They never get tired. That is what frightens people about them.',
   'Oathblood Signet': 'Corran\'s second oath, cut with the same knife as the first: I will not stop. The star took him at his word. If you let it, so will the ring.',
   // --- Bulwark ---
@@ -186,13 +186,13 @@ const IMMORTAL = {
   // --- Sharpshooter ---
   Farstring: 'Strung with gut from a white hart that ran the Greenwood for a hundred years without being caught. It wants to reach things that are very far away, and it is extremely patient about it.',
   "Hawk's Hood": 'The hood of the Queen\'s own huntress, who could see a sparrow land on the far side of the valley. She saw the star coming a full minute before anyone else. She did not look away.',
-  "Rangekeeper's Coat": 'The rangekeepers walked the edges of the kingdom and never let anything get close enough to ask them a question. The coat was cut to keep that distance. It is very good at it.',
+  "Rangekeeper's Coat": 'The rangekeepers walked the edges of the kingdom and never let anything get close enough to ask them a question. The coat was cut to keep that distance, and to make every arrow loosed across it count.',
   'Quickstep Boots': 'Light enough to forget you are wearing them. A huntress\'s boots, made to roll out of reach and be somewhere else by the time anything arrives.',
   'Bullseye Loop': 'The prize at the last midsummer contest in Asterfell, the year before the star. The winner put three arrows through the same hole at two hundred paces. The fourth is still in the air.',
   // --- Windrunner ---
   Galestring: 'Strung with a thread of the west wind, plucked off the rocks of the Frost Pass where it snags. It does not like being still, and it will not let its arrows be still either.',
   'Eye of the Gale': 'There is a quiet place at the middle of every storm. The woman who wore this learned to stand in it. Odile says she is standing there still, somewhere over the pass, and the storm goes round and round her.',
-  'Windwoven Vest': 'Woven on a loom left out in a gale for a whole winter. The wind got into the weave and never found its way out. It turns aside what comes at you, the way wind turns aside rain.',
+  'Windwoven Vest': 'Woven on a loom left out in a gale for a whole winter. The wind got into the weave and never found its way out. It hurries every arrow you loose, the way a gale hurries rain.',
   'Zephyr Treads': 'Hesper Hale\'s lightest work. There is no iron in them at all, only grey felt and a single gull\'s feather sewn into each heel. She said the wind would do the rest, and it has.',
   'Storm Sigil': 'Cut in storm glass during the last thunder before the star. Lightning has not struck the mountain since. It is all in here, waiting for a bowstring.',
   // --- Assassin ---
@@ -203,19 +203,19 @@ const IMMORTAL = {
   // --- Shadowdancer ---
   'Starglass Edge': 'Cut from the starglass that holds up the streets of Asterfell, by a thief who wanted to steal something from a city where nothing ever changes. Your reflection in it moves half a heartbeat late. Use the gap.',
   'Mirror Veil': 'A veil of mirrored glass. Look at the wearer and you see yourself, which is the last thing anyone expects. The afterimages it leaves are never quite gone when they go.',
-  Shadowweave: 'Woven at dusk from the shadows the husks cast, which never quite keep up with them. It hides you in the half step between where you are and where you were.',
+  Shadowweave: 'Woven at dusk from the shadows the husks cast, which never quite keep up with them. It hides you in the half step between where you are and where you were, and a blade from there lands before anyone sees it coming.',
   Twinstep: 'Two pairs of boots that were once one pair, cut apart and sewn back together the wrong way round. Neither of them is sure which one is wearing you.',
   'Loop of the Second Death': 'Nobody on the mountain stays dead, so the dancers of the Keep\'s court made dying into a step you take twice. This ring keeps count of the second one.',
   // --- Pyromancer ---
   Emberheart: 'A coal from the hearth of Asterfell\'s great bakery, still burning after nineteen years, because the bread in its ovens is still warm. It remembers every fire it has ever touched, and it wants them all back.',
   'Crown of Cinders': 'The crown of the Ember Court, who served what ends before anyone in Asterfell had a name for it. When the star fell, no fire on the mountain was allowed to go out. The crown has been hungry ever since.',
-  'Ashen Robe': 'Woven from the ash of the Greenwood, which burned in a single breath when the star passed over. The ash remembers the fire fondly. It keeps you warm in proportion to how much is burning around you.',
+  'Ashen Robe': 'Woven from the ash of the Greenwood, which burned in a single breath when the star passed over. The ash remembers the fire fondly. The more that burns around you, the brighter it glows, and so do you.',
   Cinderwalk: 'Hesper Hale shod these in iron she heated nineteen times, once for each name on the well. They leave footprints that smoke. The ground does not seem to mind.',
   'Seal of the Second Sun': 'For one moment, as the star came down, there were two suns over Asterfell. This seal was struck in that moment, by someone who was already looking up. It calls the second sun back, briefly.',
   // --- Frostbinder ---
   Rimecaller: 'Carved from the heart of a tree on the Frost Pass that froze solid in the first winter and never thawed. Odile says it is still alive in there, very slowly. It calls the cold the way a lost child calls for its mother.',
   'Glacial Crown': 'The ice it is cut from fell as snow on the night the Queen carried the child up the pass. It has not melted since. It holds still whatever it touches, the way she held on.',
-  'Rimeguard Mantle': 'Worn by the wardens of the high pass, where the cold is the only thing that keeps the husks slow. The mantle learned to make a wall of it. Everything that shatters feeds it.',
+  'Rimeguard Mantle': 'Worn by the wardens of the high pass, where the cold is the only thing that keeps the husks slow. The mantle learned to make a weapon of it. Everything that shatters feeds it, and it hits harder for every one.',
   Frostwalkers: 'Someone wore boots like these up the pass behind the Queen, as far as the cairn, and no further. Where they turned back, frost grew in their footprints in the shape of stars. Elder Wren will not say whose they were.',
   "Winter's Loop": 'A ring of ice around a single snowflake from the first winter, the winter of the nineteen names. It has never melted, because nothing on the mountain is allowed to. It is very, very cold.',
 };

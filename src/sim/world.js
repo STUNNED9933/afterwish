@@ -997,11 +997,25 @@ export class World {
     return raw < floor ? floor / raw : 1;
   }
 
+  /** Weight of Iron's share of armor (Bulwark), more while Hold the Line holds with Bastion Plate (0.61.5). */
+  ironWeightNow() {
+    const m = this.mods;
+    return m.ironWeight * (1 + (this.player.bastionT > 0 ? m.bastionIron || 0 : 0));
+  }
+
+  /** A damage streak (0.61.5): `per` more damage for each stack, up to `max` stacks, for `dur` seconds from the last. */
+  addSurge(per, max, dur) {
+    const p = this.player;
+    p.surgeN = Math.min(max, (p.surgeT > 0 ? p.surgeN || 0 : 0) + 1);
+    p.surgePer = per;
+    p.surgeT = dur;
+  }
+
   abilityDamage(slot) {
     const p = this.player;
     let s = p.stats;
     // Weight of Iron (Bulwark, 0.43): armor counts toward ability damage
-    if (this.mods.ironWeight > 0) s = Object.assign({}, s, { ad: s.ad + s.armor * this.mods.ironWeight });
+    if (this.mods.ironWeight > 0) s = Object.assign({}, s, { ad: s.ad + s.armor * this.ironWeightNow() });
     return this.kit[slot].dmg(s, p.level) * this.mods[slot + 'Dmg'] * (1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1)) * this.overflowMult(slot);
   }
 
@@ -1015,7 +1029,7 @@ export class World {
   abilityBreakdown(slot) {
     const p = this.player, def = this.kit[slot], m = this.mods;
     const s = p.stats;
-    const iron = m.ironWeight > 0 ? s.armor * m.ironWeight : 0;
+    const iron = m.ironWeight > 0 ? s.armor * this.ironWeightNow() : 0;
     const f = (ad, lvl, as) => def.dmg(Object.assign({}, s, { ad, as }), lvl);
     const flat = f(0, 0, 1), perLevel = f(0, 1, 1) - flat, adRatio = f(1, 0, 1) - flat;
     const asScales = Math.abs(f(1, 0, 2) / Math.max(1e-9, f(1, 0, 1)) - 2) < 1e-6;
@@ -1240,11 +1254,7 @@ export class World {
     // Shards fly further as Ice Bolt grows (0.28): 3 m, plus half a metre a rank.
     const reach = (m.frostReach || 3) + 0.5 * ((p.ranks.q || 1) - 1);
     this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
-    if (m.shatterWard > 0) {
-      // Rimeguard Mantle: every Shatter puts some of the Arcane Ward back.
-      const cps = CLASSES[this.cls].passive;
-      if (cps && cps.ward) p.ward = Math.min(p.stats.maxHp * cps.ward, (p.ward || 0) + p.stats.maxHp * cps.ward * m.shatterWard);
-    }
+    if (m.shatterSurge > 0) this.addSurge(m.shatterSurge, 5, 6); // Rimeguard Mantle (0.61.5)
     this.hitEnemy(e, dmg, { source: 'shatter' });
     if (!e.dead) {
       if (e.def.boss) {
@@ -2325,16 +2335,30 @@ export class World {
     p.lsPool = Math.min(p.stats.maxHp * CONFIG.LIFESTEAL_RATE, (p.lsPool || 0) + p.stats.maxHp * CONFIG.LIFESTEAL_RATE * dt);
     if (p.unwishedT > 0) p.unwishedT -= dt;
     if (p.nightcutT > 0) p.nightcutT -= dt;
+    if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
+    if (this.mods.farDmg > 0) p.farClear = !this.enemies.some((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 6 + o.radius); // Rangekeeper's Coat
+    if (this.mods.burnRage > 0) {
+      // Ashen Robe: burning enemies close by (counted once a tick, not once a hit)
+      let n = 0;
+      for (const o of this.enemies) if (!o.dead && o.burnT > 0 && o.burnStacks > 0 && dist(o.x, o.z, p.x, p.z) <= 8 + o.radius) n++;
+      p.ashN = n;
+    }
     if (this.mods.sporeheart) {
-      // Sporeheart: spores heal you for every enemy close by.
+      // Sporeheart (0.61.5): every 4 seconds the spores burst, hurting and weakening everything close by.
       p.sporeT = (p.sporeT || 0) - dt;
       if (p.sporeT <= 0) {
         p.sporeT = 4;
-        let n = 0;
-        for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 6 + e.radius) n++;
-        if (n > 0) {
-          this.healPlayer(p.stats.maxHp * Math.min(0.09, 0.015 * n), true);
-          this.emit('sporeHeal', { x: p.x, z: p.z, n });
+        const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 6 + e.radius);
+        if (near.length) {
+          const dmg = 1.2 * Math.max(p.stats.ad || 0, p.stats.sp || 0);
+          for (const e of near) {
+            this.hitEnemy(e, dmg, { source: 'spore' });
+            if (!e.dead) {
+              e.vulnT = Math.max(e.vulnT || 0, 4);
+              e.vuln = Math.max(e.vuln || 0, 0.1);
+            }
+          }
+          this.emit('sporeHeal', { x: p.x, z: p.z, n: near.length, burst: true });
         }
       }
     }
@@ -2713,7 +2737,7 @@ export class World {
         this.emit('dodge', { x: p.x, z: p.z });
         return 'dodged';
       }
-      return this.takeDamage(Math.round(p.stats.maxHp * doom * (m.unwished ? 0.5 : 1)), src, true); // The Unwished Crown: half
+      return this.takeDamage(Math.round(p.stats.maxHp * doom), src, true);
     }
     if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
       // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
@@ -2727,16 +2751,8 @@ export class World {
     else if (this.twist === 'haste') rawDamage *= 1.3; // (0.60) Haste
     // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
     const holder = this.heroes.find((h) => h.player.bastionT > 0 && !h.player.dead && dist(h.player.x, h.player.z, p.x, p.z) <= 8);
-    if (holder) rawDamage *= 1 - Math.min(0.75, (holder.kit.r.dr || 0.35) + (holder.mods.bastionDr || 0)); // (Bastion Plate: 50%)
+    if (holder) rawDamage *= 1 - Math.min(0.75, holder.kit.r.dr || 0.35);
     // Subclass Immortals that make you harder to hurt in the right moment (0.32).
-    if (m.farGuard > 0 && !this.enemies.some((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 6 + o.radius)) rawDamage *= 1 - m.farGuard; // Rangekeeper's Coat
-    if (m.tailGuard > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) rawDamage *= 1 - m.tailGuard; // Windwoven Vest
-    if (m.veilGuard > 0 && p.veilT > 0) rawDamage *= 1 - m.veilGuard; // Shadowweave
-    if (m.burnGuard > 0) {
-      let n = 0;
-      for (const o of this.enemies) if (!o.dead && o.burnT > 0 && dist(o.x, o.z, p.x, p.z) <= 8 + o.radius) n++;
-      rawDamage *= 1 - Math.min(0.24, n * m.burnGuard); // Ashen Robe
-    }
     if (p.bloodied && m.bloodGuard > 0) rawDamage *= 1 - m.bloodGuard; // Blood Rage
     const chiller = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
     if (chiller && chiller.chillWeak > 0 && (chiller.slowT > 0 || chiller.state === 'stunned')) rawDamage *= 1 - chiller.chillWeak; // Deep Winter
@@ -2766,7 +2782,6 @@ export class World {
         p.parryHit = true;
         p.parryT = Math.max(p.parryT, 0.15); // also catches the rest of a multi-hit
         this.stats.parries++;
-        if (m.bluetrim) this.healPlayer(p.stats.maxHp * 0.04, true); // Edric's Colours (0.47)
         if (perfect) {
           this.stats.perfects++;
           if (this.twist === 'riposte') this.healPlayer(p.stats.maxHp * 0.1, true); // (0.60) Riposte
@@ -2855,11 +2870,10 @@ export class World {
           if (who.def.boss) this.addPosture(who, 2, true);
           else this.stun(who, 1.5);
           who.vulnT = Math.max(who.vulnT, 4);
-          who.vuln = Math.max(who.vuln || 0, 0.2);
+          who.vuln = Math.max(who.vuln || 0, 0.2 + (m.brokenVuln || 0)); // (Crown of the Iron Answer: 35%)
         }
         this.emit('ironAnswer', { x: p.x, z: p.z, srcId: who ? who.id : null });
         this.addReckoning(1 + (m.blockReckon || 0));
-        if (m.blockHeal > 0) this.healPlayer(p.stats.maxHp * m.blockHeal, true); // Crown of the Iron Answer
         if (m.parryCdrW > 0) p.cd.w = Math.max(0, p.cd.w - m.parryCdrW);
         return 'parried';
       }
@@ -2924,14 +2938,6 @@ export class World {
       if (m.lastBreathOath > 0) p.frenzyT = Math.max(p.frenzyT || 0, m.lastBreathOath); // Crown of the Last Breath
     }
     if (p.hp <= 0) {
-      if (m.undying && !p.undyingUsed) {
-        p.undyingUsed = true;
-        p.undyingT = 120;
-        p.hp = Math.round(p.stats.maxHp * 0.35);
-        p.cd.e = 0; // and the escape is ready
-        this.emit('undying', { x: p.x, z: p.z });
-        return 'hit';
-      }
       p.hp = 0;
       p.dead = true;
       p.parryT = 0;
@@ -5792,7 +5798,7 @@ export class World {
         if (h.player.dead || dist(h.player.x, h.player.z, f.x, f.z) > f.r + h.player.radius * 0.4) {
           // The Unwished Crown: a Doom aimed at you that you got away from.
           if (f.doom && h.pid === f.hero && !h.player.dead && h.mods.unwished) {
-            h.player.unwishedT = 5;
+            h.player.unwishedT = 6;
             this.emit('unwishedBoon', { x: h.player.x, z: h.player.z, hero: h.pid });
           }
           continue;
@@ -6025,7 +6031,7 @@ export class World {
     if (this.twist === 'glass') dmg *= 1.5; // (0.60) Glass Cannon
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
     if (p.edricT > 0) dmg *= 1 + 0.12 * (p.edricStacks || 0); // Edric's Sword (0.47)
-    if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.8) dmg *= 1.15; // Edric's Colours
+    if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.7) dmg *= 1.18; // Edric's Colours (0.61.5: 18% above 70%)
     if (opts.basic && !opts.noTail && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) {
       // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
       dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
@@ -6053,8 +6059,16 @@ export class World {
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
       if (e.exposedT > 0 && e.exposedPid === this.cur.pid) dmg *= 1.15;
-      if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.2; // The Unwished Crown, after a Doom avoided
+      if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.25; // The Unwished Crown, after a Doom avoided
       const im = this.mods;
+      // (0.61.5) Immortals that turn a situation into damage
+      if (im.unwished && e.def.boss) dmg *= 1.12; // The Unwished Crown: against bosses
+      if (im.missingDmg > 0) dmg *= 1 + Math.min(9 * im.missingDmg, im.missingDmg * Math.floor(Math.max(0, 1 - p.hp / p.stats.maxHp) * 10 + 1e-9)); // Crown of the Last Breath
+      if (im.farDmg > 0 && p.farClear) dmg *= 1 + im.farDmg; // Rangekeeper's Coat
+      if (im.rushDmg > 0 && p.rushT > 0) dmg *= 1 + im.rushDmg; // Quickstep Boots
+      if (im.veilDmg > 0 && p.veilT > 0) dmg *= 1 + im.veilDmg; // Shadowweave
+      if (im.burnRage > 0 && p.ashN > 0) dmg *= 1 + Math.min(0.24, p.ashN * im.burnRage); // Ashen Robe
+      if (p.surgeT > 0 && p.surgeN > 0) dmg *= 1 + p.surgeN * (p.surgePer || 0); // Undying, Shroud of Last Rites, Rimeguard Mantle
       if (im.bloodQW > 0 && p.bloodied && (opts.source === 'q' || opts.source === 'w')) dmg *= 1 + im.bloodQW; // Bloodreaver
       if (opts.source === 'basic' || opts.source === 'q' || opts.source === 'w') {
         // (0.60.3) Red Embrace: a Bloodied Berserker hits far harder up close (more in Crimson Oath), the risk paid for
@@ -6231,9 +6245,10 @@ export class World {
       }
       if (m.killResetR > 0 && p.cd.r > 0) p.cd.r = Math.max(0, p.cd.r - m.killResetR);
       if (m.nightcutChain) p.nightcutT = 3; // Nightcut: the next Shadowstrike cuts a crowd
-      if (m.killHeal > 0) this.healPlayer(p.stats.maxHp * m.killHeal, true); // Shroud of Last Rites
+      if (m.killSurge > 0) this.addSurge(m.killSurge, 5, 6); // Shroud of Last Rites (0.61.5)
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
+    if (m.undying && dist(e.x, e.z, p.x, p.z) <= 8 + e.radius) this.addSurge(0.04, 10, 6); // Crown of the Undying (0.61.5)
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite, remnant: e.remnant ? 1 : undefined, old: e.oldCls || undefined });
     if (e.def.boss) this.bossLine(e, 'death', true);
     if (e.def.asker) this.clearWishes();

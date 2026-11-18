@@ -159,6 +159,29 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Every Immortal is about damage (0.61.5)
+
+Immortal effects now raise your damage; only the Bulwark's turn its defence into damage.
+- **Crown of the Undying**: every enemy that falls within 8 m: +4% damage for 6 s, up to 40% (no
+  longer a second life).
+- **Sporeheart**: every 4 s the spores burst for 120% of attack damage or spell power on everything
+  within 6 m, and they take 10% more for 4 s (no longer a heal).
+- **The Unwished Crown**: 12% more to bosses, and a dodged Doom gives 25% for 6 s (Doom is no longer
+  halved). **Edric's Colours**: 18% more above 70% health (no heal on parry).
+- **Berserker**: Crown of the Last Breath, 3% per 10% of health missing (up to 27%); Scarred Hauberk,
+  a further 15% while Bloodied; Red Stride, Bloodied Cleave and Whirlwind 15% more.
+- **Bulwark**: Bastion Plate, Weight of Iron counts armor 60% more while Hold the Line holds (and it
+  lasts 3 s longer); Crown of the Iron Answer, 3 Reckoning per block and Broken foes take 35%.
+- **Sharpshooter**: Rangekeeper's Coat, 15% more with no enemy within 6 m; Quickstep Boots, 20% more
+  while the roll's attack speed lasts. **Windrunner**: Windwoven Vest, +12% attack speed and stronger
+  Hurricane arrows; Zephyr Treads, Tailwind 25% stronger.
+- **Assassin**: Shroud of Last Rites, +8% per Clean Kill for 6 s (up to 40%); Silent Step, Shadowstrike
+  20% more. **Shadowdancer**: Shadowweave, 20% more while Veiled.
+- **Pyromancer**: Ashen Robe, 4% more per burning enemy within 8 m (up to 24%); Cinderwalk, Fire Bolt
+  25% more. **Frostbinder**: Rimeguard Mantle, +4% per Shatter for 6 s (up to 20%).
+- Boss damage with full Immortals (bench): every subclass up, by 6% (Assassin, whose new chest pays
+  in packs) to about 20% (Bulwark, Frostbinder, Shadowdancer); a Bloodied Berserker by about 40%.
+
 ### Fixed: the world tier picker on the server world (0.61.4)
 
 - In Haven on the server world, the Waygate's tier picker lit up the tier of whoever had come into

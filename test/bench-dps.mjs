@@ -1,6 +1,7 @@
 // Boss DPS bench (0.51): level 100, Immortals +10/5 stars, 120 Wish, world tier V.
 // Single target: 60 s on The Unmade (frozen, huge health). Also packs (mob clearing), optional.
-// node test/bench-dps.mjs [filter]   env MID=1: level 75 in Epic gear instead; MOBS=1: pack clear times too
+// node test/bench-dps.mjs [filter]   env MID=1: level 75 in Epic gear instead; MOBS=1: pack clear times too;
+//   HP=0.45: fight at that share of health (0.61.5: a Bloodied Berserker; the default is full health)
 const repo = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const { World } = await import(repo + '/src/sim/world.js');
 const { CONFIG } = await import(repo + '/src/config.js');
@@ -15,6 +16,7 @@ function lateSave(cls) {
 }
 const MID = process.env.MID === '1';
 const LV = MID ? 75 : 100;
+const HPF = Number(process.env.HP) || 1;
 function hero(cls, spec) {
   const w = new World({ seed: 3, mode: 'explore', cls, save: MID ? geared(cls, 75, 3) : lateSave(cls) });
   const p = w.player;
@@ -44,9 +46,9 @@ function single(cls, spec) {
   let at30 = 0;
   for (let t = 0; t < 60 * 60; t++) {
     if (t === 30 * 60) at30 = 1e11 - e.hp;
-    e.state = 'recover'; e.t = 1e9; e.x = e.px = bx; e.z = e.pz = hz;
+    e.state = 'recover'; e.t = 1e9; e.x = e.px = bx; e.z = e.pz = hz; e.doomT = 1e9; // (0.61.5) and no Doom: at low health (HP=) it would end the fight
     if (t % 10 === 0) bot(w, e, Math.hypot(e.x - p.x, e.z - p.z), ranged);
-    p.hp = p.stats.maxHp;
+    p.hp = p.stats.maxHp * HPF;
     w.step(CONFIG.TICK); w.events.length = 0;
     if (!p.dash && !p.leap && !p.channel) { p.x = p.px = hx; p.z = p.pz = hz; }
   }

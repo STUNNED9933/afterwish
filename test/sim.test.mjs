@@ -1333,12 +1333,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   // Helm, chest, boots, ring
   {
+    // (0.61.5) no longer a cheat-death: deaths close by make you hit harder
     const { w, p } = setup('rogue', ['undying']);
-    p.cd.e = 9;
+    const e = dummy(w, 30);
+    const base = () => { e.hp = 1e9; w.events.length = 0; w.hitEnemy(e, 1000, { canCrit: false }); return 1e9 - e.hp; };
+    const before = base();
+    for (let i = 0; i < 12; i++) { const v = dummy(w, 3 + (i % 3)); v.hp = 1; w.hitEnemy(v, 10, { canCrit: false }); }
+    const after = base();
+    check('Crown of the Undying: enemies falling near you add 4% each, up to 40%', Math.abs(after / before - 1.4) < 0.01 && p.surgeN === 10, `${before} -> ${after}`);
+    const far = dummy(w, 20); far.hp = 1; p.surgeT = 0; p.surgeN = 0; w.hitEnemy(far, 10, { canCrit: false });
+    check('...not ones that fall far away', !(p.surgeN > 0));
     w.hitPlayer(1e9, { parryable: false });
-    check('Crown of the Undying: saves you and readies your escape', !p.dead && p.cd.e === 0 && p.undyingUsed);
-    run(w, 121);
-    check('Crown of the Undying: ready again 2 minutes later', !p.undyingUsed);
+    check('...and it no longer saves you', p.dead);
   }
   {
     const { w, p } = setup('mage', ['retribution']);
@@ -3078,7 +3084,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     p.ward = 0; p.wardT = 99;
     const hp = p.hp;
     w.hitPlayer(0, { doom: 0.35, src: b });
-    check('The Unwished Crown: Doom takes half', Math.abs(hp - p.hp - Math.round(p.stats.maxHp * 0.175)) <= 1, `${hp - p.hp} of ${p.stats.maxHp}`);
+    check('The Unwished Crown (0.61.5): Doom is not softened any more', Math.abs(hp - p.hp - Math.round(p.stats.maxHp * 0.35)) <= 1, `${hp - p.hp} of ${p.stats.maxHp}`);
+    p.unwishedT = 0; b.hp = b.maxHp = 1e12; const d0 = b.hp; w.hitEnemy(b, 1000, { canCrit: false }); const vsBoss = d0 - b.hp;
+    w.mods.unwished = false; const d1 = b.hp; w.hitEnemy(b, 1000, { canCrit: false }); const plain = d1 - b.hp; w.mods.unwished = true;
+    check('The Unwished Crown: 12% more damage to bosses', Math.abs(vsBoss / plain - 1.12) < 0.01, `${vsBoss} / ${plain}`);
   }
   {
     const save = geared('warrior', 60, 3);
@@ -3230,6 +3239,105 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     }
   }
 }
+
+// --- 0.61.5: every Immortal is about damage (defence only where it turns into damage) ---------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { SPEC_IMMORTALS, EFFECTS, rollItem: roll, RARITIES: RR, IMMORTAL: IMM, rollUnique } = await import('../src/sim/items.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const imm = (slot, cls) => roll(mk(slot.length + 5), 100, { weights: RR.map((_, i) => (i === IMM ? 1 : 0)), slot, cls });
+  const make = (cls, spec, slot, item) => {
+    const save = Object.assign(geared(cls, 100, 3), { spec, talents: {} });
+    save.equipped[slot] = item || imm(slot, cls);
+    const w = new World({ seed: 5, cls, save });
+    w.wave.phase = 'explore'; w.enemies = []; w.events.length = 0;
+    const p = w.player; p.x = p.px = 0; p.z = p.pz = 0; p.hp = p.stats.maxHp;
+    const e = w.spawnEnemy('grunt', { x: 9, z: 0, level: 100 }); e.state = 'recover'; e.t = 999; e.hp = e.maxHp = 1e12; e.x = e.px = 9; e.z = e.pz = 0;
+    const hit = () => { const h0 = e.hp; w.hitEnemy(e, 1000, { canCrit: false }); return h0 - e.hp; };
+    return { w, p, e, hit };
+  };
+  const words = /less damage|heals? you|take \d+% less|cuts damage/i;
+  const bad = [];
+  for (const spec in SPEC_IMMORTALS) for (const slot in SPEC_IMMORTALS[spec]) if (spec !== 'bulwark' && words.test(SPEC_IMMORTALS[spec][slot].desc)) bad.push(SPEC_IMMORTALS[spec][slot].name);
+  for (const k in EFFECTS) if (words.test(EFFECTS[k].desc)) bad.push(EFFECTS[k].name);
+  check('no Immortal outside the Bulwark is about taking less damage or healing', bad.length === 0, bad.join(', '));
+  {
+    const { w, p, hit } = make('warrior', 'berserker', 'helm');
+    const full = hit(); p.hp = p.stats.maxHp * 0.45; const low = hit(); p.hp = p.stats.maxHp * 0.02; const lowest = hit();
+    // (below half you are Bloodied as well: compare against the same health without the crown)
+    w.mods.missingDmg = 0; const plain = hit(); w.mods.missingDmg = 0.03;
+    check('Crown of the Last Breath: 3% for every 10% of health missing, up to 27%', Math.abs(lowest / plain - 1.27) < 0.01 && low > full, `${full} ${low} ${lowest} / ${plain}`);
+  }
+  {
+    const { w, p, hit } = make('warrior', 'berserker', 'chest');
+    const L = w.mods.lowHpDmg;
+    const full = hit(); p.hp = p.stats.maxHp * 0.4; const bl = hit(); w.mods.lowHpDmg -= 0.15; const plain = hit();
+    check('Scarred Hauberk: a further 15% while Bloodied', Math.abs(bl / plain - (1 + L) / (1 + L - 0.15)) < 0.01 && full < bl, `${bl} / ${plain}`);
+  }
+  {
+    const { w, p, e } = make('warrior', 'bulwark', 'chest');
+    const before = w.abilityDamage('q'); p.bastionT = 3; const during = w.abilityDamage('q');
+    const iron = p.stats.armor * w.mods.ironWeight * 0.6;
+    check('Bastion Plate: Weight of Iron counts armor 60% more while Hold the Line holds', during > before && Math.abs(during - before - (w.kit.q.dmg(Object.assign({}, p.stats, { ad: p.stats.ad + p.stats.armor * w.mods.ironWeight * 1.6 }), p.level) - w.kit.q.dmg(Object.assign({}, p.stats, { ad: p.stats.ad + p.stats.armor * w.mods.ironWeight }), p.level)) * w.mods.qDmg) < 1, `${before} -> ${during} (iron +${Math.round(iron)})`);
+  }
+  {
+    const { w, p, e } = make('warrior', 'bulwark', 'helm');
+    e.state = 'windup'; p.parryT = 1; p.parryHit = false;
+    const got = w.hitPlayer(50, { parryable: false, src: e });
+    check('Crown of the Iron Answer: a Broken enemy takes 35% more, and Reckoning gains 3', got === 'parried' && Math.abs(e.vuln - 0.35) < 1e-9 && p.reck >= 3, `${got} ${e.vuln} ${p.reck}`);
+  }
+  {
+    const { w, p, hit } = make('archer', 'sharpshooter', 'boots');
+    const plain = hit(); p.rushT = 2; const rush = hit();
+    check('Quickstep Boots: 20% more while the roll\'s attack speed lasts', Math.abs(rush / plain - 1.2) < 0.01, `${rush} / ${plain}`);
+  }
+  {
+    const { w, hit } = make('archer', 'windrunner', 'chest');
+    check('Windwoven Vest: +12% attack speed and stronger Hurricane arrows', w.mods.asMult >= 1.12 - 1e-9 && w.mods.hurricaneDmg > 1.14);
+  }
+  {
+    const { w, p, e, hit } = make('rogue', 'assassin', 'chest');
+    const plain = hit();
+    for (let i = 0; i < 7; i++) { const v = w.spawnEnemy('grunt', { x: 2, z: 0, level: 100 }); v.hp = 1; w.hitEnemy(v, 10, { canCrit: false, source: 'q' }); }
+    const after = hit();
+    check('Shroud of Last Rites: each Clean Kill +8% for 6 s, up to 40%', Math.abs(after / plain - 1.4) < 0.01, `${plain} -> ${after}`);
+    for (let i = 0; i < 6.5 / CONFIG.TICK; i++) w.step(CONFIG.TICK);
+    check('...and it wears off', !(p.surgeN > 0));
+  }
+  {
+    const { w, p, hit } = make('rogue', 'shadowdancer', 'chest');
+    const plain = hit(); p.veilT = 2; const veiled = hit();
+    check('Shadowweave: 20% more while Veiled', Math.abs(veiled / plain - 1.2) < 0.01, `${veiled} / ${plain}`);
+  }
+  {
+    const { w, p, e, hit } = make('mage', 'pyromancer', 'chest');
+    const plain = hit();
+    for (let i = 0; i < 3; i++) { const v = w.spawnEnemy('grunt', { x: 3, z: i, level: 100 }); v.state = 'recover'; v.t = 999; v.hp = v.maxHp = 1e9; w.addBurn(v, 5, true); }
+    w.step(CONFIG.TICK);
+    const burning = hit();
+    check('Ashen Robe: 4% more for each burning enemy within 8 m', Math.abs(burning / plain - 1.12) < 0.012, `${burning} / ${plain} (${p.ashN})`);
+  }
+  {
+    const { w, p, e, hit } = make('mage', 'frostbinder', 'chest');
+    const plain = hit();
+    for (let i = 0; i < 3; i++) w.addSurge(w.mods.shatterSurge, 5, 6);
+    check('Rimeguard Mantle: Shatters stack 4% more damage', w.mods.shatterSurge === 0.04 && Math.abs(hit() / plain - 1.12) < 0.01);
+  }
+  {
+    const ring = rollUnique(mk(3), 100, 'bluetrim', 'warrior');
+    const { w, p, hit } = make('mage', 'pyromancer', 'ring', ring);
+    const top = hit(); p.hp = p.stats.maxHp * 0.6; const mid = hit();
+    check("Edric's Colours: 18% more above 70% health", Math.abs(top / mid - 1.18) < 0.01, `${top} / ${mid}`);
+  }
+  {
+    const chest = rollUnique(mk(4), 100, 'sporeheart', 'mage');
+    const { w, p, e } = make('mage', 'frostbinder', 'chest', chest);
+    const v = w.spawnEnemy('grunt', { x: 3, z: 0, level: 100 }); v.state = 'recover'; v.t = 999; v.hp = v.maxHp = 1e9; v.x = v.px = 3; v.z = v.pz = 0;
+    for (let i = 0; i < 4.2 / CONFIG.TICK; i++) w.step(CONFIG.TICK);
+    check('Sporeheart: the spores burst, hurting and weakening enemies close by', v.hp < 1e9 && v.vulnT > 0 && Math.abs(v.vuln - 0.1) < 1e-9, `${1e9 - v.hp} ${v.vuln}`);
+  }
+}
+
 // --- 0.32: subclass Immortals, endgame-only Immortals, lifesteal budget, Unwishing Glass --------
 {
   const { geared } = await import('./balance.mjs');
@@ -3242,7 +3350,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const save = Object.assign(geared('warrior', 60, 3), { spec: 'berserker', talents: {} });
     save.equipped.helm = immortal('helm', 'warrior');
     const w = new World({ seed: 3, cls: 'warrior', save });
-    check("Subclass Immortals: a Berserker's helm is the Crown of the Last Breath, not Undying", !w.mods.undying && w.mods.bloodSave === 15 && w.mods.lastBreathOath === 3 && effectFor(save.equipped.helm.effect, 'warrior', 'berserker').name === 'Crown of the Last Breath');
+    check("Subclass Immortals: a Berserker's helm is the Crown of the Last Breath, not Undying", !w.mods.undying && w.mods.missingDmg === 0.03 && w.mods.lastBreathOath === 3 && effectFor(save.equipped.helm.effect, 'warrior', 'berserker').name === 'Crown of the Last Breath');
     const save2 = Object.assign(geared('warrior', 12, 3), { talents: {} });
     save2.equipped.helm = immortal('helm', 'warrior');
     const w2 = new World({ seed: 3, cls: 'warrior', save: save2 });
@@ -3258,11 +3366,14 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const w = new World({ seed: 3, cls: 'archer', save });
     w.wave.phase = 'explore'; w.enemies = [];
     const p = w.player; p.x = p.px = 0; p.z = p.pz = 0;
-    const far = w.spawnEnemy('grunt', { x: 9, z: 0, level: 60 }); far.x = far.px = 9; far.z = far.pz = 0;
-    let hp = p.hp; w.hitPlayer(100, { parryable: false, src: far }); const alone = hp - p.hp;
+    const far = w.spawnEnemy('grunt', { x: 9, z: 0, level: 60 }); far.x = far.px = 9; far.z = far.pz = 0; far.state = 'recover'; far.t = 999; far.hp = far.maxHp = 1e9;
+    w.step(CONFIG.TICK);
+    const hit = () => { far.hp = 1e9; w.hitEnemy(far, 1000, { canCrit: false }); return 1e9 - far.hp; };
+    const alone = hit();
     const near = w.spawnEnemy('grunt', { x: 2, z: 0, level: 60 }); near.x = near.px = 2; near.z = near.pz = 0; near.state = 'recover'; near.t = 999;
-    hp = p.hp; w.hitPlayer(100, { parryable: false, src: far }); const crowded = hp - p.hp;
-    check("Rangekeeper's Coat: 25% less damage while no enemy is within 6 m", Math.abs(alone / crowded - 0.75) < 0.03, `${alone} vs ${crowded}`);
+    w.step(CONFIG.TICK);
+    const crowded = hit();
+    check("Rangekeeper's Coat (0.61.5): 15% more damage while no enemy is within 6 m", Math.abs(alone / crowded - 1.15) < 0.01, `${alone} vs ${crowded}`);
   }
   // Endgame-only sources
   {

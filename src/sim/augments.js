@@ -52,6 +52,8 @@ export function defaultMods() {
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
     // (0.61.1) the augment overhaul
     qExtra: 0, crescentFar: 1, crescentWide: 1, closeExtra: 0, reckonPer: 0,
+    // (0.61.5) Immortals deal in damage: missing health, distance, the roll, the Veil, burning crowds, kill and Shatter streaks, Broken foes, Hold the Line's iron
+    missingDmg: 0, farDmg: 0, rushDmg: 0, veilDmg: 0, burnRage: 0, killSurge: 0, shatterSurge: 0, brokenVuln: 0, bastionIron: 0,
   };
 }
 

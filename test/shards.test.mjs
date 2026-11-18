@@ -1,5 +1,6 @@
 // Tests for the server world (src/net/shards.js), run in Node with fake connections.
 // Run with: node test/shards.test.mjs (part of npm test).
+import { CONFIG } from '../src/config.js';
 import { ServerWorld } from '../src/net/shards.js';
 import { NET_VERSION } from '../src/net/sync.js';
 import { geared } from './balance.mjs';
@@ -301,6 +302,39 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('a token that is not one is not even sent to the boards', asked === n0);
   clearTimeout(store.timer);
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+// (0.61) Sharing a map: enemies come back faster, bosses grow (and you still win faster together)
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 31 });
+  const mk = (name) => { const k = { name }; box.set(k, []); const sv0 = geared('warrior', 60, 4); sv0.visited = ['town', 'greenwood', 'hollow', 'keep', 'sanctum']; sv.message(k, hello(name, 'warrior', { save: sv0 })); return k; };
+  const pidOf = (k) => box.get(k).find((m) => m.t === 'welcome').pid;
+  const a = mk('A'), b = mk('B');
+  sv.message(a, { t: 'cmd', cmd: { type: 'partyInvite', pid: pidOf(b) } });
+  sv.message(b, { t: 'cmd', cmd: { type: 'partyAccept', pid: pidOf(a) } });
+  sv.message(a, { t: 'cmd', cmd: { type: 'travel', to: 'hollow' } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const w = sv.players.get(pidOf(a)).copy.world;
+  const boss = w.enemies.find((e) => e.def.boss);
+  const solo = boss && boss.maxHp;
+  check('alone on a map, a boss is as it always was', boss && !(boss.partyN > 1));
+  sv.message(b, { t: 'cmd', cmd: { type: 'travel', to: 'hollow' } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('a friend arrives: the boss grows to 170% health, and steadier', sv.players.get(pidOf(b)).copy.world === w && boss.partyN === 2 && Math.abs(boss.maxHp / solo - 1.7) < 0.01 && boss.poiseMult === 1.5, `${boss.maxHp} / ${solo}`);
+  check('...and both are told why (the lore, once)', box.get(a).concat(box.get(b)).filter((m) => m.t === 'snap').some((m) => (m.ev || []).some((e) => e.type === 'partyBoss')));
+  // respawns: twice the heroes, (nearly) twice as fast
+  const camp = w.camps.find((c) => c.slots[0].id != null && !w.enemyById(c.slots[0].id).def.boss);
+  const e = w.enemyById(camp.slots[0].id);
+  w.as(w.heroes[0], () => w.hitEnemy(e, 1e12));
+  for (const h of w.heroes) { h.player.x = camp.def.x + 40; h.player.z = camp.def.z; }
+  const t0 = camp.slots[0].timer;
+  for (let i = 0; i < 60; i++) sv.tick();
+  const used = t0 - camp.slots[0].timer;
+  check('two heroes on a map: enemies come back 1.9 times as fast', Math.abs(used / (60 * CONFIG.TICK) - 1.9) < 0.05 || camp.slots[0].id != null, used.toFixed(2));
+  sv.message(b, { t: 'cmd', cmd: { type: 'travel', to: 'town' } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('the friend goes: the boss is back to itself (its share of health kept)', boss.partyN === 1 && boss.maxHp === solo && !(boss.poiseMult > 1));
 }
 
 // (0.57.4) Every action the game sends from its menus must be one a server (or a friend's room) accepts,

@@ -668,6 +668,7 @@ export class Hud {
       dot(gate.x, gate.z, 2.5, '#0a0d16');
     }
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
+    for (const ob of world.map.obstacles) if (ob.kind === 'ring') dot(ob.x, ob.z, 4, '#9fe7ff'); // (0.61) the Echo Ring
     for (const ws of world.map.waystones || []) dot(ws.x, ws.z, 3.5, '#9fe6ff');
     for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
     if (world.happening) dot(world.happening.x, world.happening.z, 5, world.happening.kind === 'shrine' ? '#ffd27a' : '#ff8a3a');
@@ -706,6 +707,15 @@ export class Hud {
           el.textContent = 'Waystone';
           this.worldUi.appendChild(el);
           this.portalLabels.push({ el, gate: ws, stone: true });
+        }
+        for (const ob of world.map.obstacles) {
+          if (ob.kind !== 'ring') continue;
+          // (0.61) the Echo Ring's stones: say what they are and how to wake them
+          const el = document.createElement('div');
+          el.className = 'plabel way ring';
+          el.innerHTML = 'The Echo Ring <kbd>G</kbd>';
+          this.worldUi.appendChild(el);
+          this.portalLabels.push({ el, gate: ob });
         }
         // People (with a quest marker) and signs you have not read yet.
         for (const ob of world.map.obstacles) {

@@ -113,7 +113,7 @@ function start(hot = {}) {
   const tooltip = new Tooltip();
 
   const settings = Object.assign(loadSettings(), hot.settings || {});
-  if (!CONFIG.PARRY_PRESETS[settings.parryPreset]) settings.parryPreset = CONFIG.DEFAULT_PARRY_PRESET;
+  settings.parryPreset = CONFIG.DEFAULT_PARRY_PRESET; // (0.61) Standard for everyone
   sfx.setVolume(settings.volume);
   sfx.setMuted(settings.muted);
   // Background music: one original theme per map, plus the arena's battle theme.
@@ -3201,26 +3201,6 @@ function start(hot = {}) {
   $('btn-reroll').addEventListener('click', () => applyNow({ type: 'reroll' }));
 
   // Settings controls
-  const presetRoot = $('parry-presets');
-  const refreshPresets = () => {
-    for (const b of presetRoot.children) b.setAttribute('aria-pressed', b.dataset.key === settings.parryPreset ? 'true' : 'false');
-    const pr = CONFIG.PARRY_PRESETS[settings.parryPreset];
-    $('parry-desc').textContent = `You have ${Math.round(pr.window * 1000)} ms to catch a hit after pressing Space. A missed parry locks you out for ${pr.cooldown.toFixed(2)} s.`;
-  };
-  for (const key in CONFIG.PARRY_PRESETS) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.key = key;
-    b.textContent = CONFIG.PARRY_PRESETS[key].label;
-    b.addEventListener('click', () => {
-      settings.parryPreset = key;
-      world.parryPreset = key;
-      storeSettings(settings);
-      refreshPresets();
-    });
-    presetRoot.appendChild(b);
-  }
-  refreshPresets();
   $('volume').value = Math.round(settings.volume * 100);
   $('volume').addEventListener('input', (e) => {
     settings.volume = e.target.value / 100;
@@ -3277,6 +3257,7 @@ function start(hot = {}) {
   }
 
   // ---------------------------------------------------------------- events
+  let lastGapNote = 0; // (0.61) when the level-gap reminder last showed
   function hintOnce(key, text, seconds) {
     if (hints[key]) return;
     hints[key] = true;
@@ -3791,9 +3772,27 @@ function start(hot = {}) {
         hud.feedText(`A Storied enemy roams ${ev.map}: ${ev.name}.`);
         hintOnce('rare', 'A Storied enemy: a gold name, tougher than any elite, and worth it: good gear, Wishdust for enchanting, and sometimes a set piece. Look for the gold dot on the minimap.', 9);
         break;
-      case 'farLevel':
-        hintOnce('levelband', ev.gap < 0 ? 'These enemies are well below your level: they pay little EXP. Enemies within 3 levels of you pay ten times as much; head somewhere tougher.' : 'These enemies are well above your level: they pay less EXP than ones within 3 levels of you, which pay ten times as much.', 10);
+      case 'partyEchoes':
+        // (0.61) the lore of sharing a map
+        hintOnce('partyEchoes', 'Wishes answered together. Where more than one of you walks a road, its echoes wake sooner, enough for each of you to hold a stretch of it. But the great ones feel every wish raised against them, and grow to meet it: a boss gains health and steadiness for each hero beside you. Together you still bring it down faster than alone.', 14);
         break;
+      case 'partyBoss':
+        hud.feedText(`${ev.name} feels ${ev.n} wishes against it: ${Math.round(ev.hp * 100)}% health, and harder to stagger.`);
+        hintOnce('partyEchoes', 'Wishes answered together. Where more than one of you walks a road, its echoes wake sooner, enough for each of you to hold a stretch of it. But the great ones feel every wish raised against them, and grow to meet it: a boss gains health and steadiness for each hero beside you. Together you still bring it down faster than alone.', 14);
+        break;
+      case 'farLevel': {
+        // (0.61) the first time a longer word; after that, a reminder at most every 30 seconds, for 5
+        const text = ev.gap < 0 ? 'These enemies are well below your level: they pay little EXP. Enemies within 3 levels of you pay ten times as much; head somewhere tougher.' : 'These enemies are well above your level: they pay less EXP than ones within 3 levels of you, which pay ten times as much.';
+        const now = performance.now();
+        if (!hints.levelband) {
+          hintOnce('levelband', text, 10);
+          lastGapNote = now;
+        } else if (now - lastGapNote >= 30000) {
+          lastGapNote = now;
+          hud.hint(ev.gap < 0 ? `Still ${-ev.gap} levels below you: little EXP here. Enemies within 3 levels pay ten times as much.` : `${ev.gap} levels above you: less EXP than enemies within 3 levels of you.`, 5);
+        }
+        break;
+      }
       case 'keepsake':
         hud.banner(ev.name, 'A keepsake: its own slot, always your level, and it stays with you through rebirth');
         break;

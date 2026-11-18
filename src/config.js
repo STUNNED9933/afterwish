@@ -2,6 +2,12 @@
 // Change a value, run `npm run build`, refresh the page.
 
 export const CONFIG = {
+  // (0.61) Sharing a map: for each hero beyond the first in the same copy, enemies come back this much
+  // faster (so each can farm a stretch of it), and a boss has this much more health and poise (still
+  // faster to kill together: two heroes deal twice as much against 1.7 times the health)
+  PARTY_RESPAWN: 0.9,
+  PARTY_BOSS_HP: 0.7,
+  PARTY_BOSS_POISE: 0.5,
   // (0.60.2) Crimson Reach (Berserker): by level (0 none, 1 Bloodied, 2 Crimson Oath)
   CRESCENT: {
     reach: [0, 6, 9.5], // a swing reaches this far as a red crescent
@@ -39,7 +45,7 @@ export const CONFIG = {
     standard: { label: 'Standard', window: 0.3, perfect: 0.11, cooldown: 1.25 },
     strict: { label: 'Strict', window: 0.18, perfect: 0.07, cooldown: 1.6 },
   },
-  DEFAULT_PARRY_PRESET: 'relaxed',
+  DEFAULT_PARRY_PRESET: 'standard', // (0.61) everyone parries on Standard; the choice is gone
   PARRY_CUE_LEAD: 0.33, // enemies flash this long before their hit lands
   PARRY_BUFFER: 0.2, // pressing parry slightly early (during cooldown) still counts
   PARRY_MOVE_MULT: 0.45, // movement speed while the parry stance is up

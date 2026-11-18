@@ -100,7 +100,7 @@ export class World {
     this.trial = opts.trial || null;
     this.travelHook = null; // the server world sets this (see goMap)
     this.offerCount = 0;
-    this.parryPreset = opts.parryPreset || CONFIG.DEFAULT_PARRY_PRESET;
+    this.parryPreset = CONFIG.DEFAULT_PARRY_PRESET; // (0.61) Standard for everyone: no parry-timing choice any more
     this.time = 0;
     this.nextId = 1;
     this.enemies = [];
@@ -263,7 +263,6 @@ export class World {
   addHero(pid, hello = {}) {
     const save = hello.save && hello.save.level >= 1 ? hello.save : null;
     const name = hello.name;
-    const parryPreset = hello.parry;
     const back = this.cur;
     for (const k of HERO_KEYS) back[k] = this[k];
     const h = { pid, name: String(name || 'Friend').slice(0, 16) };
@@ -282,7 +281,7 @@ export class World {
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
     this.bestWave = save?.bestWave ?? 0;
     this.maxCheckpoint = save?.maxCheckpoint ?? 1;
-    this.parryPreset = CONFIG.PARRY_PRESETS[parryPreset] ? parryPreset : CONFIG.DEFAULT_PARRY_PRESET;
+    this.parryPreset = CONFIG.DEFAULT_PARRY_PRESET; // (0.61) Standard for everyone
     this.knownSigns = hello.signs; // (0.56.4) the friend's account's signs
     const p = this.makePlayer(save);
     this.knownSigns = null;
@@ -5988,7 +5987,7 @@ export class World {
   addPosture(e, amount, perfect) {
     if (e.dead || e.state === 'stunned') return;
     e.posture += amount;
-    if (e.posture >= e.def.poise) this.stun(e, e.def.parryStun * (perfect ? 1.25 : 1));
+    if (e.posture >= e.def.poise * (e.poiseMult || 1)) this.stun(e, e.def.parryStun * (perfect ? 1.25 : 1)); // (0.61) a party's boss is steadier
     else this.emit('postureHit', { id: e.id, x: e.x, z: e.z });
   }
 
@@ -7272,6 +7271,7 @@ inTown() {
       p.potions = CONFIG.MAX_POTIONS;
       p.undyingUsed = false;
     }
+    if (this.partySeen > 1 || this.enemies.some((e) => e.partyN > 1)) this.scaleBossesForParty(); // (0.61) the party went: back to one
     // Enemies come back a while after they are killed, but not right on top of you.
     for (const camp of this.camps) {
       const away = dist(p.x, p.z, camp.def.x, camp.def.z) > 10;
@@ -7406,6 +7406,7 @@ inTown() {
     each(() => this.stepLoot(dt));
     if (this.mode === 'explore') {
       this.stepChests();
+      this.scaleBossesForParty(); // (0.61)
       this.stepPartyExplore(dt);
     }
     this.use(lead);
@@ -7435,15 +7436,42 @@ inTown() {
     store(out);
   }
 
+  /**
+   * (0.61) Wishes against a boss: for each hero beyond the first sharing its map, a boss has more health
+   * and poise. Taken again whenever the number changes (a friend arrives or leaves mid-fight), keeping
+   * its share of health. The heroes hear why the first time (main.js, 'partyBoss').
+   */
+  scaleBossesForParty() {
+    const n = Math.max(1, this.heroes.length);
+    if (n > 1 && n > (this.partySeen || 1)) {
+      for (const h of this.heroes) this.as(h, () => this.emit('partyEchoes', { n }));
+    }
+    this.partySeen = n;
+    for (const e of this.enemies) {
+      if (e.dead || !e.def.boss) continue;
+      const was = e.partyN || 1;
+      if (was === n) continue;
+      const hpOf = (k) => 1 + CONFIG.PARTY_BOSS_HP * (k - 1);
+      const ratio = hpOf(n) / hpOf(was);
+      e.maxHp = Math.round(e.maxHp * ratio);
+      e.hp = Math.max(1, Math.round(e.hp * ratio));
+      e.poiseMult = 1 + CONFIG.PARTY_BOSS_POISE * (n - 1);
+      e.partyN = n;
+      if (n > was) for (const h of this.heroes) this.as(h, () => this.emit('partyBoss', { name: e.def.name, n, hp: hpOf(n), id: e.id }));
+    }
+  }
+
   /** Exploration upkeep in a party: shared enemy respawns, then each hero's own portals and knockouts. */
   stepPartyExplore(dt) {
     const lead = this.heroes[0];
-    // Enemies come back a while after they are killed, but not right on top of anyone.
+    // Enemies come back a while after they are killed, but not right on top of anyone; (0.61) faster
+    // the more heroes share the map (not the bosses), so each can hold a stretch of it.
+    const faster = 1 + CONFIG.PARTY_RESPAWN * (this.heroes.length - 1);
     for (const camp of this.camps) {
       const away = this.heroes.every((h) => dist(h.player.x, h.player.z, camp.def.x, camp.def.z) > 10);
       for (const slot of camp.slots) {
         if (slot.id != null) continue;
-        slot.timer -= dt;
+        slot.timer -= dt * (camp.def.boss || (ENEMIES[slot.type] && ENEMIES[slot.type].boss) ? 1 : faster);
         if (slot.timer <= 0 && away) slot.id = this.spawnCamp(slot, camp).id;
       }
     }

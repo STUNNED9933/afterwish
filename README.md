@@ -159,6 +159,23 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Sharing a map, reminders, Standard parry, and new gates (0.61)
+
+- **Sharing a map** (the server world, or friends in a room): for each hero beyond the first in the
+  same copy, enemies come back 90% faster (not bosses), so each can farm a stretch of it. A **boss**
+  gains 70% health and 50% poise (harder to stagger) per extra hero, taken again whenever someone
+  arrives or leaves (keeping its share of health); together you still win faster (two heroes: twice
+  the damage against 1.7 times the health). The lore, once: the great ones feel every wish raised
+  against them. Numbers: `PARTY_RESPAWN`, `PARTY_BOSS_HP`, `PARTY_BOSS_POISE` in `src/config.js`.
+- **Level-gap reminders**: after the first explanation, a short reminder at most every 30 seconds
+  (for 5) while you fight enemies far from your level.
+- **Parry timing is gone**: everyone parries on Standard (the server too).
+- **The Echo Ring's stones** moved to the west side of Haven, away from the Waygate: a circle of
+  seven standing stones with star-glass and a swirling gate you walk into (G), with a label and a
+  minimap mark. **The Waygate** is a dais with four obelisks and rings of light that turn (faster
+  and lower as it carries you); **Waystones** have a turning crystal and a band of runes rising up
+  the pillar.
+
 ### Berserker: the risk pays (0.60.3)
 
 - **Red Embrace**: while Bloodied, his basic attacks, Cleave and Whirlwind deal 30% more to enemies

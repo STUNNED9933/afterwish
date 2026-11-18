@@ -319,6 +319,7 @@ export class Renderer {
    * map.obstacles, the same list the simulation uses to stop you walking through it.
    */
   setMap(map) {
+    this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
     this.glimmers = []; // (0.56.4) and its glimmers
@@ -500,13 +501,41 @@ export class Renderer {
         glow.position.set(o.x, 0.06, o.z);
         g.add(door, glow);
       } else if (o.kind === 'ring') {
-        // (0.59) The Echo Ring's stones: a small circle of star-glass, the way up to the Ring
-        const stones = buildAltar();
-        stones.position.set(o.x, 0, o.z);
-        stones.scale.setScalar(0.62);
-        stones.traverse((m) => { if (m.material && m.material.color && m !== stones.userData.rune) m.material = m.material.clone(), m.material.color.lerp(new THREE.Color(0x9fd6ff), 0.35); });
-        if (stones.userData.rune) stones.userData.rune.material.color.set(0x9fd6ff);
-        g.add(stones);
+        // (0.61) The Echo Ring: seven standing stones, star-glass on each, round a swirling gate you walk into
+        const ring = new THREE.Group();
+        const R = o.r || 2.3;
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(R + 0.5, 28).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3a3f4c, roughness: 0.95 }));
+        floor.position.y = 0.03;
+        floor.receiveShadow = true;
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6b7180, roughness: 0.85 });
+        const glassMat = new THREE.MeshBasicMaterial({ color: 0x9fe7ff });
+        const shards = [];
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + 0.2;
+          const st = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2 + (i % 3) * 0.25, 0.38), stoneMat);
+          st.position.set(Math.cos(a) * R, 1 + (i % 3) * 0.12, Math.sin(a) * R);
+          st.rotation.y = -a;
+          st.rotation.z = 0.08 * (i % 2 ? 1 : -1);
+          st.castShadow = true;
+          const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.17, 0), glassMat);
+          shard.position.set(Math.cos(a) * R, 2.45 + (i % 3) * 0.25, Math.sin(a) * R);
+          shard.scale.y = 1.7;
+          shards.push(shard);
+          ring.add(st, shard);
+        }
+        const add = (geo, color, opacity) => new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+        const swirlA = add(new THREE.RingGeometry(0.4, R * 0.78, 28, 1, 0, Math.PI * 1.3).rotateX(-Math.PI / 2), 0x6fc8ff, 0.42);
+        const swirlB = add(new THREE.RingGeometry(0.2, R * 0.55, 24, 1, 0, Math.PI * 1.1).rotateX(-Math.PI / 2), 0xc8f0ff, 0.5);
+        swirlA.position.y = 0.08;
+        swirlB.position.y = 0.1;
+        const glow = add(new THREE.CircleGeometry(R * 0.85, 28).rotateX(-Math.PI / 2), 0x3aa9ff, 0.22);
+        glow.position.y = 0.06;
+        const column = add(new THREE.CylinderGeometry(R * 0.5, R * 0.75, 4.5, 20, 1, true), 0x7fd0ff, 0.12);
+        column.position.y = 2.25;
+        ring.add(floor, glow, swirlA, swirlB, column);
+        ring.position.set(o.x, 0, o.z);
+        g.add(ring);
+        this.ringViews.push({ swirlA, swirlB, column, glow, shards });
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);
@@ -601,7 +630,8 @@ export class Renderer {
         veil.position.y = 1.75;
       });
     }
-    // The Waygate in town: a ring of standing stones around a glowing pad.
+    // The Waygate in town (0.61): a round dais, four gold-veined obelisks, and a ring of light that turns
+    // above it (faster, lower and brighter while it carries you off).
     this.wayView = null;
     if (map.waygate) {
       const wg = map.waygate;
@@ -609,22 +639,39 @@ export class Renderer {
       const gold = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.85, depthWrite: false });
       const pad = new THREE.Mesh(this.ringGeo(), gold);
       pad.scale.setScalar(wg.r);
-      pad.position.y = 0.06;
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(wg.r * 0.8, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffb84a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }));
-      disc.position.y = 0.05;
-      gate.add(pad, disc);
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
-        const stone = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshBasicMaterial({ color: 0xffe2a0 }));
-        stone.position.set(Math.cos(a) * wg.r, 1.2, Math.sin(a) * wg.r);
-        stone.scale.y = 1.8;
-        gate.add(stone);
+      pad.position.y = 0.2;
+      const dais = new THREE.Mesh(new THREE.CylinderGeometry(wg.r + 0.5, wg.r + 0.75, 0.18, 32), new THREE.MeshStandardMaterial({ color: 0x4f4a44, roughness: 0.95 }));
+      dais.position.y = 0.09;
+      dais.receiveShadow = true;
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(wg.r * 0.85, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffb84a, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
+      disc.position.y = 0.19;
+      gate.add(dais, disc, pad);
+      const obeliskMat = new THREE.MeshStandardMaterial({ color: 0x5d564c, roughness: 0.8, emissive: 0xffb84a, emissiveIntensity: 0.12 });
+      const caps = [];
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const ob = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 2.6, 4), obeliskMat);
+        ob.position.set(Math.cos(a) * (wg.r + 0.35), 1.48, Math.sin(a) * (wg.r + 0.35));
+        ob.castShadow = true;
+        const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0xffe2a0 }));
+        cap.position.set(ob.position.x, 3.0, ob.position.z);
+        caps.push(cap);
+        gate.add(ob, cap);
       }
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(wg.r * 0.7, 0.07, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 2.2;
+      const halo2 = new THREE.Mesh(new THREE.TorusGeometry(wg.r * 0.45, 0.05, 8, 32), halo.material);
+      halo2.rotation.x = Math.PI / 2;
+      halo2.position.y = 2.6;
+      gate.add(halo, halo2);
       gate.position.set(wg.x, 0, wg.z);
       g.add(gate);
-      this.wayView = { gate, pad, disc, wg };
+      this.wayView = { gate, pad, disc, wg, halo, halo2, caps };
     }
-    // Waystones out in the world: a pale pad with one tall, glowing stone.
+    // Waystones out in the world (0.61): a carved pillar with a turning crystal over it and a band of
+    // runes that breathes; the pad shrinks as it carries you.
+    this.stoneViews = [];
     for (const ws of map.waystones || []) {
       const stone = new THREE.Group();
       const pad = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.75, depthWrite: false }));
@@ -632,14 +679,22 @@ export class Renderer {
       pad.position.y = 0.06;
       const disc = new THREE.Mesh(new THREE.CircleGeometry(ws.r * 0.85, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
       disc.position.y = 0.05;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x5c6a7a, roughness: 0.8, emissive: 0x3aa9ff, emissiveIntensity: 0.25 }));
-      pillar.position.set(ws.r + 0.5, 1.2, 0);
+      const px = ws.r + 0.55;
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0x4d5562, roughness: 0.9 }));
+      base.position.set(px, 0.15, 0);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 2.3, 6), new THREE.MeshStandardMaterial({ color: 0x5c6a7a, roughness: 0.8, emissive: 0x3aa9ff, emissiveIntensity: 0.2 }));
+      pillar.position.set(px, 1.45, 0);
       pillar.castShadow = true;
-      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0xbff2ff }));
-      rune.position.set(ws.r + 0.5, 2.7, 0);
-      stone.add(pad, disc, pillar, rune);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.05, 6, 20), new THREE.MeshBasicMaterial({ color: 0x9fe7ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+      band.rotation.x = Math.PI / 2;
+      band.position.set(px, 1.7, 0);
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.36, 0), new THREE.MeshBasicMaterial({ color: 0xbff2ff }));
+      crystal.scale.y = 1.6;
+      crystal.position.set(px, 3.05, 0);
+      stone.add(pad, disc, base, pillar, band, crystal);
       stone.position.set(ws.x, 0, ws.z);
       g.add(stone);
+      this.stoneViews.push({ ws, pad, disc, band, crystal });
     }
 
     // Ground cover (0.34): grass tufts that sway, and pebbles or rubble. One draw call each.
@@ -2211,11 +2266,40 @@ export class Renderer {
       }
     }
     if (this.wayView && this.exploreGroup && this.exploreGroup.visible) {
+      // (0.61) the Waygate's rings turn; faster, lower and brighter while it carries you off
       const v = this.wayView;
       const on = world.wayArmed && world.wayT > 0;
-      v.gate.children.forEach((c, i) => { if (i >= 2) c.position.y = 1.2 + Math.sin(this.time * 2 + i) * 0.18; });
-      v.disc.material.opacity = on ? 0.6 : 0.18 + Math.sin(this.time * 2) * 0.06;
-      v.pad.scale.setScalar(v.wg.r * (on ? 1 - 0.5 * Math.min(1, world.wayT / 0.9) : 1));
+      const k = on ? Math.min(1, world.wayT / 0.9) : 0;
+      v.halo.rotation.z += dt * (0.6 + 4 * k);
+      v.halo2.rotation.z -= dt * (0.9 + 5 * k);
+      v.halo.position.y = 2.2 - 1.4 * k + Math.sin(this.time * 1.6) * 0.08;
+      v.halo2.position.y = 2.6 - 1.8 * k + Math.sin(this.time * 1.6 + 1) * 0.08;
+      v.halo.material.opacity = 0.6 + 0.4 * k + Math.sin(this.time * 3) * 0.1;
+      v.caps.forEach((c, i) => { c.position.y = 3.0 + Math.sin(this.time * 2 + i * 1.6) * 0.12; c.rotation.y += dt * 1.2; });
+      v.disc.material.opacity = on ? 0.55 : 0.14 + Math.sin(this.time * 2) * 0.05;
+      v.pad.scale.setScalar(v.wg.r * (on ? 1 - 0.5 * k : 1));
+    }
+    if (this.stoneViews && this.exploreGroup && this.exploreGroup.visible) {
+      for (let i = 0; i < this.stoneViews.length; i++) {
+        const v = this.stoneViews[i];
+        const on = world.stoneArmed && world.stoneT > 0 && world.stoneOn === v.ws;
+        const k = on ? Math.min(1, world.stoneT / 0.9) : 0;
+        v.crystal.rotation.y += dt * (1 + 6 * k);
+        v.crystal.position.y = 3.05 + Math.sin(this.time * 1.8 + i) * 0.15;
+        v.band.position.y = 0.6 + ((this.time * 0.6 + i * 0.3) % 1) * 2.0; // a band of runes that rises up the pillar
+        v.band.material.opacity = 0.85 * (1 - ((this.time * 0.6 + i * 0.3) % 1)) + 0.15;
+        v.disc.material.opacity = on ? 0.55 : 0.16 + Math.sin(this.time * 2 + i) * 0.05;
+        v.pad.scale.setScalar(v.ws.r * (on ? 1 - 0.5 * k : 1));
+      }
+    }
+    for (let i = 0; i < (this.ringViews || []).length; i++) {
+      // (0.61) the Echo Ring's gate swirls, its column breathes, the star-glass bobs
+      const v = this.ringViews[i];
+      v.swirlA.rotation.y += dt * 1.1;
+      v.swirlB.rotation.y -= dt * 1.7;
+      v.column.material.opacity = 0.1 + Math.sin(this.time * 2.2) * 0.05;
+      v.glow.material.opacity = 0.2 + Math.sin(this.time * 1.5) * 0.06;
+      v.shards.forEach((sh, j) => { sh.position.y += Math.sin(this.time * 2 + j) * 0.002; sh.rotation.y += dt * 1.5; });
     }
     for (let i = 0; i < this.braziers.length; i++) {
       const b = this.braziers[i];

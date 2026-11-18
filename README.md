@@ -159,6 +159,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Side-story choices work online (0.57.4)
+
+- Tomas's scarf (Red Scarf, Part Two) and meeting Odile in the garden (An Ending for Tobin) now work on
+  the server world and in friends' rooms; before, the choice was dropped and the dialog just closed. A
+  test now checks that every action the game sends is one the server accepts.
+
 ### Updates load cleanly (0.57.3)
 
 - Each build's game script carries a tag of its own, so a browser can no longer pair a new page with

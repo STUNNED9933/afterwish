@@ -3,6 +3,8 @@
 import { ServerWorld } from '../src/net/shards.js';
 import { NET_VERSION } from '../src/net/sync.js';
 import { geared } from './balance.mjs';
+import { FRIEND_CMDS } from '../src/net/cmds.js';
+import fs from 'node:fs';
 
 let pass = 0, failed = 0;
 function check(name, ok, info = '') {
@@ -172,6 +174,17 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('going back to Haven, a party member joins the Haven their party is in', keyOf(p3) === keyOf(p1), `${keyOf(p3)} / ${keyOf(p1)}`);
   small.tick();
   check('the roster says which Haven', small.players.size === 2);
+}
+
+// (0.57.4) Every action the game sends from its menus must be one a server (or a friend's room) accepts,
+// or it silently does nothing there (Tomas's scarf and Odile's garden once did exactly that).
+{
+  const src = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const sent = new Set([...src.matchAll(/(?:applyNow|world\.command)\(\{ type: '([a-zA-Z]+)'/g)].map((m) => m[1]));
+  const offlineOnly = new Set(['augment', 'reroll']); // the Echo Ring, which only runs in the browser
+  const serverOnly = new Set(['setDepth', 'rebirth', 'unwish']); // a hero's own, on the server world (SERVER_CMDS)
+  const missing = [...sent].filter((t) => !FRIEND_CMDS.has(t) && !offlineOnly.has(t) && !serverOnly.has(t));
+  check('every action the game sends is accepted online', missing.length === 0, missing.join(', '));
 }
 
 console.log(`${pass} passed, ${failed} failed`);

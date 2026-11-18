@@ -60,6 +60,10 @@ export const CONFIG = {
   // --- Ability ranks and augments --------------------------------------
   MAX_RANK: 20,
   RANK_DAMAGE: 0.06, // +6% ability damage per rank above 1
+  // Pyromancer burns (0.56.3): ten times the stacks, each a fifth as hot, and gaining heat as they pile up
+  // (roar: at a full burn every stack burns this much more, in a straight line from none). Applications add
+  // ADD times the stacks they name; caps and haste stacks are CAP times theirs.
+  BURN: { cap: 10, add: 2, dmg: 0.2, roar: 1 },
   RANK_COOLDOWN: 0.015, // -1.5% cooldown per rank above 1
   AUGMENT_REROLLS: 1, // free rerolls of an augment offer per run
   TOME_BASE_COST: 300, // gold for the first extra skill point at the trainer

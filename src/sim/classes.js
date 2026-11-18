@@ -107,28 +107,28 @@ export const CLASSES = {
     role: 'Ranged · abilities',
     blurb: 'Weak basic attacks, strong spells on short cooldowns. Keep your distance and aim.',
     stats: { hp: 0.82, ad: 1.32, as: 0.85, armor: 0.65, ms: 1.06, crit: 0, haste: 25 },
-    basic: { range: 8.5, mult: 0.6, shot: 'spark', speed: 26 },
+    basic: { range: 10, mult: 0.6, shot: 'spark', speed: 30 }, // (0.56.3) reach 8.5 -> 10
     passive: { name: 'Attunement', desc: '+25 ability haste. Basic attacks deal 60% damage. Arcane Ward: a barrier worth 15% of your health takes damage before you do, and comes back 5 seconds after you were last hurt.', ward: 0.15 },
     abilities: {
       q: {
-        key: 'Q', name: 'Fire Bolt', type: 'bolt', icon: 'bolt', unlock: 1, cd: 3, range: 14, speed: 24, splash: 2.2, splashMult: 0.6,
+        key: 'Q', name: 'Fire Bolt', type: 'bolt', icon: 'bolt', unlock: 1, cd: 3, range: 16, speed: 30, splash: 2.6, splashMult: 0.6,
         dmg: (s, lvl) => 1.7 * s.ad + 18 + 6 * lvl,
         desc: 'Hurl a bolt at your cursor. It bursts on the first enemy and scorches others nearby for 60%.',
       },
       w: {
-        key: 'W', name: 'Frozen Orb', type: 'orb', icon: 'orb', unlock: 2, cd: 9, range: 13, minRange: 2.5, speed: 8, radius: 2.6, burst: 4.2,
+        key: 'W', name: 'Frozen Orb', type: 'orb', icon: 'orb', unlock: 2, cd: 9, range: 15, minRange: 2.5, speed: 9.5, radius: 2.9, burst: 4.6,
         tick: 0.25, shard: 0.16, chill: 0.3, slow: 0.5, slowDur: 3,
         dmg: (s, lvl) => 1.05 * s.ad + 14 + 5 * lvl,
         desc: 'Send a slow orb of ice drifting to your cursor. Everything it passes is cut by shards and chilled, then it shatters for heavy damage, slowing by 50% and interrupting normal enemies. Press W again to shatter it early.',
       },
       e: {
-        key: 'E', name: 'Starwake', type: 'dash', icon: 'e', unlock: 3, cd: 8, range: 7.5, minRange: 2, duration: 0.08, width: 0,
-        motes: { count: 3, range: 10, speed: 19 },
+        key: 'E', name: 'Starwake', type: 'dash', icon: 'e', unlock: 3, cd: 8, range: 8.5, minRange: 2, duration: 0.08, width: 0,
+        motes: { count: 3, range: 13, speed: 22 },
         dmg: (s, lvl) => 0.65 * s.ad + 10 + 4 * lvl, // per mote
         desc: 'Blink toward your cursor and loose 3 motes of starlight that seek out the nearest enemies (a different one each, when there are three). They cannot be parried or sent back.',
       },
       r: {
-        key: 'R', name: 'Meteor', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 13, radius: 5.5, delay: 0.9, stun: 1,
+        key: 'R', name: 'Meteor', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 16, radius: 6.2, delay: 0.9, stun: 1,
         dmg: (s, lvl) => 3.8 * s.ad + 80 + 18 * lvl,
         desc: 'Call a meteor onto your cursor. It lands after a moment for heavy damage and a stun.',
       },

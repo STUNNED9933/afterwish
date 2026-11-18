@@ -1156,6 +1156,26 @@ export class Renderer {
           an.swing = 0;
           an.swingDur = 0.22;
         }
+        const caster = ev.ally ? this.allyViews && [...this.allyViews.entries()].find(([pid]) => pid === ev.hero) : null;
+        const isMage = ev.ally ? !!(caster && caster[1].cls === 'mage') : this.heroCls === 'mage';
+        if (isMage && (fx === 'bolt' || fx === 'orb' || fx === 'meteor')) {
+          // (0.56.3) A Mage's spells have weight: a flare at the hands as each one leaves.
+          const ice = !ev.ally && world.mods && world.mods.frostMax > 0;
+          const col = fx === 'orb' || ice ? 0xbff2ff : 0xffa040;
+          const hx = ev.ally && caster ? caster[1].model.group.position.x : this.hero.group.position.x;
+          const hz = ev.ally && caster ? caster[1].model.group.position.z : this.hero.group.position.z;
+          this.flash(this.ringGeo(), { x: hx, z: hz, y: 1.3, color: col, from: 0.4, to: 1.9, dur: 0.22, opacity: 0.9 });
+          this.burst(hx, 1.4, hz, { count: 8, color: col, speed: 5, up: 2, life: 0.3, gravity: 0 });
+          if (fx === 'meteor') {
+            // a star falling onto the mark, landing as it hits
+            const tint = ice ? 0xbff2ff : 0xffb060;
+            this.later(0.45, () => {
+              const col2 = this.flash(this.geo('bolt', () => new THREE.CylinderGeometry(0.25, 0.1, 16, 5, 1, true).translate(0, 8, 0)), { x: ev.x, z: ev.z, y: 0, color: tint, from: 2.2, to: 0.6, dur: 0.45, opacity: 0.9 });
+              col2.scale.y = 1;
+              this.burst(ev.x, 9, ev.z, { count: 16, color: tint, speed: 2, up: -12, gravity: 10, life: 0.45, size: 1.4 });
+            });
+          }
+        }
 
         break;
       }
@@ -1169,7 +1189,10 @@ export class Renderer {
         break;
       case 'burst':
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: ev.color || (ev.ice ? 0x9fe6ff : 0xff9a3a), from: 0.4, to: ev.radius, dur: 0.3, opacity: 0.7 });
-        this.burst(ev.x, 1, ev.z, { count: 18, color: ev.color || (ev.ice ? 0xd8f6ff : 0xffb060), speed: 8, up: 5, life: 0.45 });
+        // (0.56.3) a ring that outruns the blast, and more of it flying
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.4, color: ev.color || (ev.ice ? 0xe6fbff : 0xffd08a), from: ev.radius * 0.4, to: ev.radius * 1.25, dur: 0.3, opacity: 0.9 });
+        this.burst(ev.x, 1, ev.z, { count: 26, color: ev.color || (ev.ice ? 0xd8f6ff : 0xffb060), speed: 9, up: 5, life: 0.5, size: 1.2 });
+        this.shake = Math.max(this.shake, 0.12);
         break;
       case 'frostShatter':
         // Hoarfrost Shatter: a ring of ice and a spray of shards.
@@ -1366,11 +1389,13 @@ export class Renderer {
         break;
       }
       case 'wallRise':
-        for (let n = -3; n <= 3; n++) {
-          const k = (n / 3) * ev.hw;
-          this.burst(ev.x + Math.cos(ev.rot) * k, 0.3, ev.z + Math.sin(ev.rot) * k, { count: 6, color: 0xdff6ff, speed: 4, up: 6, life: 0.5 });
+        // (0.56.3) it erupts out of the ground: a hard line of ice, spray along its length
+        this.flash(this.rectGeo(), { x: ev.x - Math.cos(ev.rot) * ev.hw, z: ev.z - Math.sin(ev.rot) * ev.hw, y: 0.1, dir: ev.rot, color: 0xbff2ff, sx: ev.hw * 2, sz: 3.2, dur: 0.35, opacity: 0.7 });
+        for (let n = -4; n <= 4; n++) {
+          const k = (n / 4) * ev.hw;
+          this.burst(ev.x + Math.cos(ev.rot) * k, 0.3, ev.z + Math.sin(ev.rot) * k, { count: 7, color: n % 2 ? 0xdff6ff : 0x9fe6ff, speed: 5, up: 9, life: 0.6, size: 1.3 });
         }
-        this.shake = Math.max(this.shake, 0.3);
+        this.shake = Math.max(this.shake, 0.45);
         break;
       case 'wallShatter':
         for (let n = -4; n <= 4; n++) {
@@ -1842,7 +1867,14 @@ export class Renderer {
         this.setEmissive(mats, 0.25 * k, 0.2 * k, 0.08 * k);
       } else if (e.vulnT > 0) this.setEmissive(mats, 0.2, 0.03, 0.28); // Sunder: purple
       else if (e.state === 'stunned' && e.frostLock > 0.3) this.setEmissive(mats, 0.35, 0.6, 0.8); // frozen solid
-      else if (e.burnT > 0) this.setEmissive(mats, 0.38 + 0.08 * Math.sin(this.time * 14), 0.13, 0.0); // burning: orange flicker
+      else if (e.burnT > 0) {
+        const k = Math.min(1, (e.burnStacks || 1) / (e.burnCap || 50)); // (0.56.3) hotter as the burn piles up
+        this.setEmissive(mats, 0.38 + 0.35 * k + 0.08 * Math.sin(this.time * 14), 0.13 + 0.12 * k, 0.0); // burning: orange flicker
+        if (Math.random() < 0.2 + 0.8 * k) {
+          const a = Math.random() * 6.283, r = (e.def.radius || 0.7) * 0.8;
+          this.burst(e.x + Math.cos(a) * r, 0.5 + Math.random() * (v.height || 2) * 0.8, e.z + Math.sin(a) * r, { count: k > 0.66 ? 2 : 1, color: Math.random() < 0.5 ? 0xff6a1a : 0xffc060, speed: 0.6, up: 3 + 3 * k, gravity: -2, life: 0.5, size: 1 + k });
+        }
+      }
       else if (e.frostT > 0 && e.frostStacks > 0) {
         const k = e.frostStacks / (world.mods.frostMax || 6); // whiter the closer it is to shattering
         this.setEmissive(mats, 0.06 + 0.25 * k, 0.15 + 0.35 * k, 0.3 + 0.4 * k);
@@ -1964,7 +1996,12 @@ export class Renderer {
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
-      m.scale.setScalar(pr.kind === 'orb' ? 2.1 : pr.kind === 'bolt' ? 1.3 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      m.scale.setScalar(pr.kind === 'orb' ? 2.5 : pr.kind === 'bolt' ? 1.7 : pr.kind === 'spark' ? 0.75 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
+      if (pr.kind === 'bolt' || pr.kind === 'spark') {
+        // (0.56.3) a Mage's bolts burn a trail behind them
+        const big = pr.kind === 'bolt';
+        this.burst(m.position.x, 1.2, m.position.z, { count: big ? 2 : 1, color: own, speed: big ? 1.4 : 0.8, up: 0.6, gravity: big && !pr.ice ? -1.5 : 0, life: big ? 0.5 : 0.3, size: big ? 1.5 : 1 });
+      }
       if (!pr.kind && pr.fx && FX_COLOR[pr.fx] && Math.random() < 0.7) {
         // an enemy's shot leaves a trail of what it is made of (bile, spores, embers, frost, tears)
         this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: FX_COLOR[pr.fx], speed: 0.5, up: 0.4, gravity: 0.5, life: 0.45, size: 1.2 });

@@ -1449,12 +1449,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const { w, p } = setup('pyromancer', { py_power: 5, py_burn: 3 });
     check('Pyromancer: W is Smoulder and R is Cinderfall', w.kit.w.name === 'Smoulder' && w.kit.r.name === 'Cinderfall' && w.kit.q.name === 'Fire Bolt');
     const e = dummy(w, 6);
-    for (let i = 0; i < 7; i++) { p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4); }
-    check('Everything Burns: Fire Bolt stacks burns, up to 5', e.burnT > 0 && e.burnStacks === 5, String(e.burnStacks));
+    p.autoAttack = false;
+    for (let i = 0; i < 3; i++) { p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4); }
+    check('Everything Burns: each Fire Bolt adds 2 stacks (0.56.3)', e.burnT > 0 && e.burnStacks === 6, String(e.burnStacks));
+    w.events.length = 0; run(w, 1.01);
+    const few = hitsOn(w, e).filter((ev) => ev.dot).map((ev) => ev.amount);
+    for (let i = 0; i < 40; i++) { p.cd.q = 0; p.castLock = 0; cast(w, 'q', 6, 0); run(w, 0.4); }
+    check('Everything Burns: burns stack up to 50 (ten times the old 5)', e.burnStacks === 50 && w.burnCap() === 50, `${e.burnStacks}/${w.burnCap()}`);
     w.events.length = 0; run(w, 1.01);
     const plain = hitsOn(w, e).filter((ev) => ev.dot).map((ev) => ev.amount);
-    const per = (p.stats.ad * 0.15 + p.level * 1.5) * (1 + CONFIG.RANK_DAMAGE * (p.ranks.q - 1));
-    check('Everything Burns: 5 stacks burn for 5 x (15% spell power + 1.5 per level) a second, growing with Fire Bolt rank', plain.length === 2 && Math.abs(plain[0] - per * 5 * 0.5 * POWER_OF(w)) <= 1, `${plain} vs ${Math.round(per * 2.5 * POWER_OF(w))}`);
+    const per = 0.2 * (p.stats.ad * 0.15 + p.level * 1.5) * (1 + CONFIG.RANK_DAMAGE * (p.ranks.q - 1));
+    check('Everything Burns: 50 stacks burn for 50 x (3% spell power + 0.3 per level) a second, twice as hot when full', plain.length === 2 && Math.abs(plain[0] - per * 50 * 2 * 0.5 * POWER_OF(w)) <= 2, `${plain} vs ${Math.round(per * 50 * POWER_OF(w))}`);
+    check('Roaring: a full burn does far more than its stacks alone (6 -> 50 stacks: over 8x)', plain[0] / few[0] > (50 / 6) * 1.7, `${few[0]} -> ${plain[0]}`);
     cast(w, 'w', 6, 0);
     check('Smoulder: marks for 5 s', e.smoulderT > 4.9);
     w.events.length = 0; run(w, 1.01);
@@ -1463,7 +1469,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     // Wildfire: a burning enemy's death passes its burn on
     const n1 = dummy(w, 7, 1), n2 = dummy(w, 7, -1), n3 = dummy(w, 7, 2.5), far = dummy(w, 30);
     w.hitEnemy(e, 1e10, { canCrit: false });
-    check('Wildfire (3 ranks): the burn jumps to the 3 nearest enemies, every stack', [n1, n2, n3].every((o) => o.burnStacks === 5) && !(far.burnT > 0));
+    check('Wildfire (3 ranks): the burn jumps to the 3 nearest enemies, every stack', [n1, n2, n3].every((o) => o.burnStacks === 50) && !(far.burnT > 0), [n1, n2, n3].map((o) => o.burnStacks).join());
     // Cinderfall
     w.enemies = []; const f = dummy(w, 8);
     p.cd.r = 0; cast(w, 'r', 8, 0); run(w, 1.0);
@@ -1536,6 +1542,11 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     run(w, 5);
     check('Rimewall: when it melts it shatters, freezing what is beside it', w.walls.length === 0 && !w.obstacles.some((o) => o.kind === 'icewall') && beside.hp < 1e9 && (beside.state === 'stunned' || beside.stunT > 0));
     check('the map\'s own obstacle list is never changed by a wall', !w.map || !w.map.obstacles || !w.map.obstacles.some((o) => o.kind === 'icewall'));
+    // (0.56.3) It hits as it rises, too
+    w.enemies = []; run(w, 0.2);
+    const at = dummy(w, 6.6, 0.5);
+    p.cd.r = 0; p.castLock = 0; cast(w, 'r', 6, 0);
+    check('Rimewall: rising, it strikes what stands beside it and gives Hoarfrost', at.hp < 1e9 && at.frostStacks >= 2, `${at.hp} ${at.frostStacks}`);
   }
   // Scrap filter
   {
@@ -2363,7 +2374,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('Weight of Iron: armor adds to Bulwark ability damage', w.abilityDamage('q') > d0 + 1.5 * 700 * 0.9);
     const py = setup('mage', 'pyromancer');
     py.p.stats.haste = 600;
-    check('Searing: 120 ability haste is one more burn stack', py.w.burnCap() === 10, py.w.burnCap());
+    check('Searing: 120 ability haste is ten more burn stacks', py.w.burnCap() === 100, py.w.burnCap());
     check('Searing: burns can crit', py.w.mods.burnCrit === true);
     const fb = setup('mage', 'frostbinder');
     fb.p.stats.haste = 900;
@@ -3343,7 +3354,8 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     }
   }
   check('co-op updates: after thousands of updates, skips and a map change, the friend sees exactly what the host has', wrong === 0 && applied > 1000 && friend.map.id === 'fen', `${wrong} wrong of ${applied}; ${firstWrong}`);
-  check('co-op updates: about a kilobyte each at world tier III', bytes / sent < 1500, Math.round(bytes / sent) + ' bytes');
+  // (0.56.3: the Mage clears more slowly now, so more enemies are about: 1500 -> 1650)
+  check('co-op updates: about a kilobyte and a half each at world tier III', bytes / sent < 1650, Math.round(bytes / sent) + ' bytes');
   // A lost update (say, one that came while the friend was still joining): the friend notices and asks for a full one.
   makeSnapshot(w, 1, memo); // never arrives
   const after = JSON.parse(JSON.stringify(makeSnapshot(w, 1, memo)));

@@ -216,20 +216,20 @@ export const SPECS = {
     blurb: 'Everything burns, and keeps burning. Stack fire on your enemies, make the burns bite harder, and leave the ground itself on fire.',
     perk: {
       name: 'Everything Burns',
-      desc: "Fire Bolt and your basic attacks set their target burning. Burns stack up to 5 times and last 4 seconds; a new stack renews them all. Each stack burns for 15% spell power plus 1.5 per level every second, and grows with Fire Bolt's rank. When a burning enemy dies, its burn jumps to the nearest enemy within 5 m, every stack of it. Searing: your burns can crit, and an enemy can carry one more stack for every 120 ability haste you have. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
+      desc: "Fire Bolt and your basic attacks set their target burning, 2 stacks a hit. Burns stack up to 50 times and last 4 seconds; a new stack renews them all. Each stack burns for 3% spell power plus 0.3 per level every second, growing with Fire Bolt's rank. Roaring: a burn gets hotter as it piles up; at a full burn every stack burns twice as hot. When a burning enemy dies, its burn jumps to the nearest enemy within 5 m, every stack of it. Searing: your burns can crit, and an enemy can carry 10 more stacks for every 120 ability haste you have. Frozen Orb becomes Smoulder and Meteor becomes Cinderfall.",
       apply: (m) => { m.burnCrit = true; m.burnHaste = Math.max(m.burnHaste, 120); m.burnSpread = Math.max(m.burnSpread, 1); m.qBurn = Math.max(m.qBurn, 1); m.basicBurn = 1; m.burnPerStack = Math.max(m.burnPerStack, 0.15); m.burnPerLevel = Math.max(m.burnPerLevel, 1.5); m.burnMax = Math.max(m.burnMax, 5); m.burnTime = Math.max(m.burnTime, 4); m.smoulderAmp = Math.max(m.smoulderAmp, 0.5); },
     },
     kit: {
       w: {
-        key: 'W', name: 'Smoulder', type: 'smoulder', icon: 'smoulder', unlock: 2, cd: 8, range: 12, radius: 3.5,
+        key: 'W', name: 'Smoulder', type: 'smoulder', icon: 'smoulder', unlock: 2, cd: 8, range: 15, radius: 4,
         dmg: (s, lvl) => 0.7 * s.ad + 10 + 4 * lvl,
-        desc: 'Throw a cinder at your cursor. Everything in the burst catches 2 stacks of burn and Smoulders for 5 seconds: burns on a Smouldering enemy deal 50% more.',
+        desc: 'Throw a cinder at your cursor. Everything in the burst catches 4 stacks of burn and Smoulders for 5 seconds: burns on a Smouldering enemy deal 50% more.',
       },
       r: {
-        key: 'R', name: 'Cinderfall', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 13, radius: 5.5, delay: 0.9, stun: 0.5,
+        key: 'R', name: 'Cinderfall', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 16, radius: 6.2, delay: 0.9, stun: 0.5,
         burnZone: { time: 4, tick: 0.5, stacks: 1 },
         dmg: (s, lvl) => 3.2 * s.ad + 70 + 16 * lvl,
-        desc: 'Call down a burning star on your cursor. It lands after a moment for heavy damage, and leaves the ground on fire for 4 seconds: everything standing in it gains a burn stack every half second.',
+        desc: 'Call down a burning star on your cursor. It lands after a moment for heavy damage, and leaves the ground on fire for 4 seconds: everything standing in it gains 2 burn stacks every half second.',
       },
     },
     talents: [
@@ -238,7 +238,7 @@ export const SPECS = {
       { id: 'py_haste', row: 'minor', name: 'Quick Burn', max: 5, desc: (r) => `+${3 * r} ability haste.`, apply: (m, r) => { m.haste += 3 * r; } },
       { id: 'py_ball', row: 'major', name: 'Fireball', max: 3, desc: (r) => `Fire Bolt deals ${8 * r}% more damage and bursts ${15 * r}% wider.`, apply: (m, r) => { m.qDmg *= 1 + 0.08 * r; m.qRadius *= 1 + 0.15 * r; } },
       { id: 'py_burn', row: 'major', name: 'Wildfire', max: 3, desc: (r) => `A dying enemy's burn jumps to ${r} more enem${r > 1 ? 'ies' : 'y'} (${r + 1} in all).`, apply: (m, r) => { m.burnSpread += r; } },
-      { id: 'py_cap', row: 'capstone', name: 'Second Sun', max: 1, desc: () => 'One second after Cinderfall lands, the ground erupts again for 50% damage. Cinderfall is 15% wider, and Fire Bolt adds 2 burn stacks instead of 1.', apply: (m) => { m.rAftershock = Math.max(m.rAftershock, 0.5); m.rRadius *= 1.15; m.qBurn = Math.max(m.qBurn, 2); } },
+      { id: 'py_cap', row: 'capstone', name: 'Second Sun', max: 1, desc: () => 'One second after Cinderfall lands, the ground erupts again for 50% damage. Cinderfall is 15% wider, and Fire Bolt adds 4 burn stacks instead of 2.', apply: (m) => { m.rAftershock = Math.max(m.rAftershock, 0.5); m.rRadius *= 1.15; m.qBurn = Math.max(m.qBurn, 2); } },
     ],
   },
   frostbinder: {
@@ -251,14 +251,14 @@ export const SPECS = {
     },
     kit: {
       q: {
-        key: 'Q', name: 'Ice Bolt', type: 'bolt', icon: 'icebolt', ice: true, unlock: 1, cd: 2.6, range: 14, speed: 26, splash: 1.8, splashMult: 0.5,
+        key: 'Q', name: 'Ice Bolt', type: 'bolt', icon: 'icebolt', ice: true, unlock: 1, cd: 2.6, range: 16, speed: 32, splash: 2.2, splashMult: 0.5,
         dmg: (s, lvl) => 1.45 * s.ad + 16 + 5 * lvl,
         desc: 'Hurl a shard of ice at your cursor. It gives the first enemy 2 Hoarfrost and splinters into those nearby for 50% damage and 1 Hoarfrost.',
       },
       r: {
-        key: 'R', name: 'Rimewall', type: 'wall', icon: 'wall', unlock: 6, cd: 32, range: 10, length: 8, duration: 5, stun: 1.2,
+        key: 'R', name: 'Rimewall', type: 'wall', icon: 'wall', unlock: 6, cd: 32, range: 14, length: 10, duration: 5, stun: 1.2, rise: 0.6,
         dmg: (s, lvl) => 2.4 * s.ad + 40 + 10 * lvl,
-        desc: 'Raise a wall of ice across your cursor for 5 seconds. Nothing can walk through it, and enemy shots that hit it fly back and Shatter what they hit. When it melts it bursts, damaging everything beside it and giving it 3 Hoarfrost.',
+        desc: 'Raise a wall of ice across your cursor for 5 seconds. Nothing can walk through it, and enemy shots that hit it fly back and Shatter what they hit. It rises hard, striking everything beside it for 60% damage and giving it 2 Hoarfrost. When it melts it bursts, damaging everything beside it and giving it 3 Hoarfrost.',
       },
     },
     talents: [

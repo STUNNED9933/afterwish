@@ -1158,21 +1158,29 @@ export class World {
     this.shadows.push({ id: this.nextId++, pid, src, x, z, t: dur, dur, facing, cls: this.cls, throwT: 0 });
   }
 
-  /** Most burn stacks an enemy can carry: 5, plus one for every 150 ability haste with Searing (0.43). */
+  /**
+   * Most burn stacks an enemy can carry: 50, plus ten for every 120 ability haste with Searing (0.43;
+   * tenfold, 0.56.3: talents and gear still name the old numbers, CONFIG.BURN scales them).
+   */
   burnCap() {
     const m = this.mods;
-    return (m.burnMax || 5) + (m.burnHaste > 0 ? Math.floor(this.player.stats.haste / m.burnHaste) : 0);
+    return CONFIG.BURN.cap * ((m.burnMax || 5) + (m.burnHaste > 0 ? Math.floor(this.player.stats.haste / m.burnHaste) : 0));
   }
 
-  /** Pyromancer burns: stacks (up to burnMax) that all renew when a new one lands. */
-  addBurn(e, stacks) {
+  /**
+   * Pyromancer burns: stacks (up to burnCap) that all renew when a new one lands. `stacks` is as talents
+   * and gear name it (CONFIG.BURN.add times that many land); `exact` for a burn passed on whole (Wildfire).
+   */
+  addBurn(e, stacks, exact = false) {
     const m = this.mods;
     if (!(m.burnPerStack > 0) || e.dead) return;
     const p = this.player;
     // Like an ability: spell power plus a bit per level, and it grows with Fire Bolt's rank.
-    const per = (p.stats.ad * m.burnPerStack + p.level * (m.burnPerLevel || 0)) * (m.burnMult || 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1));
+    const per = CONFIG.BURN.dmg * (p.stats.ad * m.burnPerStack + p.level * (m.burnPerLevel || 0)) * (m.burnMult || 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1));
     const live = e.burnT > 0;
-    e.burnStacks = Math.min(this.burnCap(), (live ? e.burnStacks : 0) + stacks);
+    const cap = this.burnCap();
+    e.burnStacks = Math.min(cap, (live ? e.burnStacks : 0) + (exact ? stacks : stacks * CONFIG.BURN.add));
+    e.burnCap = cap; // (the roar is measured against it, and the health bar shows it)
     e.burnDps = Math.max(live ? e.burnDps : 0, per);
     e.burnT = m.burnTime || 4;
     e.burnPid = this.cur.pid;
@@ -1796,6 +1804,16 @@ export class World {
         const ob = { shape: 'box', x: c.x, z: c.z, hw, hd: 0.45, rot, kind: 'icewall' };
         this.obstacles = this.obstacles.concat([ob]); // a new array: the map's own list is never changed
         this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: def.stun || 1, ob });
+        // (0.56.3) It rises hard: everything it comes up beside is hit, given Hoarfrost and staggered.
+        const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && this.wallDist(this.walls[this.walls.length - 1], e.x, e.z) <= 1.4 + e.radius);
+        for (const e of near) {
+          this.hitEnemy(e, dmg * (def.rise || 0.6), { source: 'r' });
+          if (e.dead) continue;
+          if (m.frostMax > 0) this.addFrost(e, 2);
+          if (e.dead) continue;
+          if (e.def.boss) this.addPosture(e, 1, false);
+          else this.stun(e, 0.5);
+        }
         // Anyone standing where it rises is pushed aside.
         for (const e of this.enemies) if (!e.dead) this.pushOut(e, e.radius);
         for (const h of this.heroes) if (!h.player.dead) this.pushOut(h.player, h.player.radius);
@@ -5898,7 +5916,7 @@ export class World {
           .sort((a, b) => dist(a.x, a.z, e.x, e.z) - dist(b.x, b.z, e.x, e.z)).slice(0, n);
         if (near.length) this.as(h, () => {
           for (const o of near) {
-            this.addBurn(o, e.burnStacks);
+            this.addBurn(o, e.burnStacks, true);
             this.emit('burnSpread', { x: e.x, z: e.z, tx: o.x, tz: o.z });
           }
         });
@@ -6165,7 +6183,9 @@ export class World {
         if (e.burnAcc >= 0.5) {
           e.burnAcc -= 0.5;
           const h = this.heroByPid(e.burnPid) || this.heroes[0];
-          const amount = e.burnDps * e.burnStacks * 0.5 * (e.smoulderT > 0 ? 1 + e.smoulderAmp : 1);
+          // Roaring (0.56.3): a burn gets hotter as it piles up, every stack burning more the fuller it is.
+          const roar = 1 + CONFIG.BURN.roar * Math.min(1, e.burnStacks / (e.burnCap || 50));
+          const amount = e.burnDps * e.burnStacks * roar * 0.5 * (e.smoulderT > 0 ? 1 + e.smoulderAmp : 1);
           // Searing (0.43): a Pyromancer's burns can crit
           this.as(h, () => this.hitEnemy(e, amount, { canCrit: !!this.mods.burnCrit, source: 'burn', dot: true, burn: true }));
           if (e.dead) continue;

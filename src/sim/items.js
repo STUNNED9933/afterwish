@@ -192,8 +192,8 @@ export const SPEC_IMMORTALS = {
     ring: { name: 'Loop of the Second Death', desc: 'Second Death repeats a further 25%, and Last Rites comes back 25% sooner.', apply: (m) => { m.rMark += 0.25; m.rCd *= 0.75; } },
   },
   pyromancer: {
-    weapon: { name: 'Emberheart', desc: 'Burns stack 3 higher, and every stack burns 20% more.', apply: (m) => { m.burnMax += 3; m.burnMult *= 1.2; } },
-    helm: { name: 'Crown of Cinders', desc: 'Smoulder bursts 50% wider and gives 3 burn stacks instead of 2.', apply: (m) => { m.wRadius *= 1.5; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
+    weapon: { name: 'Emberheart', desc: 'Burns stack 30 higher, and every stack burns 20% more.', apply: (m) => { m.burnMax += 3; m.burnMult *= 1.2; } },
+    helm: { name: 'Crown of Cinders', desc: 'Smoulder bursts 50% wider and gives 6 burn stacks instead of 4.', apply: (m) => { m.wRadius *= 1.5; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
     chest: { name: 'Ashen Robe', desc: 'For each burning enemy within 8 m, you take 4% less damage (up to 24%).', apply: (m) => { m.burnGuard += 0.04; } },
     boots: { name: 'Cinderwalk', desc: '+15% move speed, and Fire Bolt comes back 30% sooner.', apply: (m) => { m.msPct += 0.15; m.qCd *= 0.7; } },
     ring: { name: 'Seal of the Second Sun', desc: 'Cinderfall comes back 40% sooner and erupts again for 70%.', apply: (m) => { m.rCd *= 0.6; m.rAftershock = Math.max(m.rAftershock, 0.7); } },

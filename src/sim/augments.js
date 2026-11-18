@@ -116,8 +116,8 @@ const CLASS_AUGMENTS = {
   mage_e_motes: { name: 'Constellation', slot: 'e', cls: 'mage', tier: 1, desc: 'Starwake looses 2 more motes.', apply: (m) => { m.eMotes = (m.eMotes || 0) + 2; } },
   mage_r_fast: { name: 'Falling Star', slot: 'r', cls: 'mage', tier: 1, desc: 'Meteor lands twice as fast and its cooldown is 20% shorter.', apply: (m) => { m.rDelay *= 0.5; m.rCd *= 0.8; } },
   // Subclass augments (offered only to that subclass).
-  py_pyre: { name: 'Pyre', slot: 'w', cls: 'mage', spec: 'pyromancer', tier: 1, desc: 'Smoulder bursts 30% wider and adds 3 burn stacks instead of 2.', apply: (m) => { m.wRadius *= 1.3; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
-  py_inferno: { name: 'Inferno', slot: 'hero', cls: 'mage', spec: 'pyromancer', tier: 2, desc: 'Burns stack up to 3 more times.', apply: (m) => { m.burnMax += 3; } },
+  py_pyre: { name: 'Pyre', slot: 'w', cls: 'mage', spec: 'pyromancer', tier: 1, desc: 'Smoulder bursts 30% wider and adds 6 burn stacks instead of 4.', apply: (m) => { m.wRadius *= 1.3; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
+  py_inferno: { name: 'Inferno', slot: 'hero', cls: 'mage', spec: 'pyromancer', tier: 2, desc: 'Burns stack up to 30 more times.', apply: (m) => { m.burnMax += 3; } },
   fb_hard: { name: 'Hard Frost', slot: 'q', cls: 'mage', spec: 'frostbinder', tier: 1, desc: 'Ice Bolt gives 1 more Hoarfrost, and its splinters give 2 instead of 1.', apply: (m) => { m.qFrost += 1; m.qSplashFrost = Math.max(m.qSplashFrost, 2); } },
   fb_avalanche: { name: 'Avalanche', slot: 'hero', cls: 'mage', spec: 'frostbinder', tier: 2, desc: 'Shatter deals 40% more, and its shards reach 1.5 m further.', apply: (m) => { m.frostDmg *= 1.4; m.frostReach += 1.5; } },
   mage_r_twin: { name: 'Second Impact', slot: 'r', cls: 'mage', tier: 2, desc: 'One second after Meteor lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },

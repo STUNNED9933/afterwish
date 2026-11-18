@@ -33,18 +33,25 @@ function clear(w) { w.loadMap('spire', MAPS.spire.portals[0].to); for (const e o
 function single(cls, spec) {
   const w = hero(cls, spec); const p = w.player; clear(w);
   const ranged = w.basic.range > 5;
-  const e = w.spawnEnemy('boss3', { x: p.x + (ranged ? 9 : 2.5), z: p.z, level: LV });
-  e.x = e.px = p.x + (ranged ? 9 : 2.5); e.z = e.pz = p.z;
+  // (0.56.3) Both stay where they start: a dash or blink toward the boss used to carry the fight off
+  // the map edge, where shots stopped landing (it undercounted every class that moves as it fights).
+  const hx = p.x, hz = p.z, bx = hx + (ranged ? 9 : 2.5);
+  const e = w.spawnEnemy('boss3', { x: bx, z: hz, level: LV });
+  e.x = e.px = bx; e.z = e.pz = hz;
   e.hp = e.maxHp = 1e11; e.state = 'recover'; e.t = 1e9; e.atkCds = {};
   const by = {}; const orig = w.hitEnemy.bind(w);
   w.hitEnemy = (en, dmg, opts = {}) => { const h0 = en.hp; const r = orig(en, dmg, opts); if (en === e) { const k = opts.basic ? 'basic' : opts.source || '?'; by[k] = (by[k] || 0) + (h0 - en.hp); } return r; };
+  let at30 = 0;
   for (let t = 0; t < 60 * 60; t++) {
-    e.state = 'recover'; e.t = 1e9; e.x = e.px = p.x + (ranged ? 9 : 2.5); e.z = e.pz = p.z;
+    if (t === 30 * 60) at30 = 1e11 - e.hp;
+    e.state = 'recover'; e.t = 1e9; e.x = e.px = bx; e.z = e.pz = hz;
     if (t % 10 === 0) bot(w, e, Math.hypot(e.x - p.x, e.z - p.z), ranged);
     p.hp = p.stats.maxHp;
     w.step(CONFIG.TICK); w.events.length = 0;
+    if (!p.dash && !p.leap && !p.channel) { p.x = p.px = hx; p.z = p.pz = hz; }
   }
   const tot = 1e11 - e.hp;
+  single.late = Math.round((1e11 - e.hp - at30) / 30);
   single.last = Object.entries(by).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round((100 * v) / tot)}%`).join(' ');
   return Math.round(tot / 60);
 }
@@ -76,5 +83,5 @@ const pick = f ? ALL.filter(([c, s]) => f.includes(s || c)) : ALL;
 for (const [cls, spec] of pick) {
   const st = hero(cls, spec).player.stats;
   const d = single(cls, spec);
-  console.log(`${(spec || cls + ' (base)').padEnd(15)} ad ${Math.round(st.ad)} as ${st.as.toFixed(2)} crit ${Math.round(st.crit)} haste ${Math.round(st.haste)} | boss dps ${String(d).padStart(9)}${process.env.MOBS ? ' | 3 packs ' + mobs(cls, spec) : ''} | ${single.last}`);
+  console.log(`${(spec || cls + ' (base)').padEnd(15)} ad ${Math.round(st.ad)} as ${st.as.toFixed(2)} crit ${Math.round(st.crit)} haste ${Math.round(st.haste)} | boss dps ${String(d).padStart(9)} (last 30 s ${String(single.late).padStart(9)})${process.env.MOBS ? ' | 3 packs ' + mobs(cls, spec) : ''} | ${single.last}`);
 }

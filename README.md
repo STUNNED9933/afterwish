@@ -159,6 +159,23 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Mage, reworked (0.56.3)
+
+- **Reach:** basic attacks 8.5 -> 10 m; Fire/Ice Bolt 14 -> 16 m and faster; Frozen Orb 15 m, faster and
+  bigger; Starwake's blink and motes reach further; Meteor and Cinderfall 16 m and wider; Smoulder 15 m;
+  Rimewall 14 m away and 10 m long.
+- **Weight:** a flare at the hands on every spell, bigger bolts with burning trails, impacts with a ring
+  and a jolt, a star falling onto each Meteor, a hard eruption of ice when Rimewall rises, and burning
+  enemies that blaze hotter the more stacks they carry.
+- **Pyromancer:** ten times the stacks (50, plus 10 for every 120 haste), each hit adds 2, each stack a
+  fifth as hot, and **Roaring**: a burn gets hotter as it piles up, every stack twice as hot when full.
+  It takes about 8 seconds to build on a boss, then it leads the table.
+- **Frostbinder:** Rimewall strikes as it rises (60%, 2 Hoarfrost, a stagger), not only when it melts.
+- **Balance:** the boss bench no longer lets a blink carry the fight off the map (it undercounted the
+  Mage, whose power had been raised to make up for it). Measured fairly, the Mage was far ahead; its
+  power is now set so Pyromancer leads once burning, Frostbinder is close behind, and the base Mage is
+  just ahead of the other base classes. Assassin +5% on bosses.
+
 ### No more blocks (0.56.2)
 
 - Heroes, enemies, bosses and Haven's people no longer flash up as the old block shapes while their

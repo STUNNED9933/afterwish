@@ -150,6 +150,10 @@ Sign-in turns on as soon as Google (or Discord) is set. Players then see "Your a
 **For each new server:** the same Google client works (add nothing); in Discord add the new server's
 `/auth/discord/callback` redirect. Each server keeps its own accounts.
 
+**Playing alone (0.57.1):** signed-in players can play their online character with nobody else
+around (a private Haven, `town~<pid>`, off the player list, no chat). They still count toward
+`MAX_PLAYERS`, and each one is a world copy on the server: watch `/health` `copies` and `stepMs`.
+
 **Checks:** `https://play.../health` shows `"accounts":"required"`. Accounts live in
 `/var/lib/afterwish/accounts.json` (sign-in tokens only as hashes) and `chars/<id>.json`.
 

@@ -203,5 +203,43 @@ function idToken(claims, key = privateKey) {
   check('a sign-in that ran out is refused, with a reason', inbox.get(c3).some((m) => m.t === 'reject' && /run out/.test(m.reason)));
 }
 
+// (0.57.1) Playing alone on the server: a Haven of your own, off the player list, no chat or invites
+{
+  const store = new AccountStore(tmp());
+  const a = store.signIn('google', 'g-alone', 'Solo');
+  const token = store.newSession(a.id);
+  const inbox = new Map();
+  const sw = new ServerWorld({ send: (c, m) => inbox.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', name: 'Test', seed: 4, accounts: store, requireAccount: false });
+  const conn = () => {
+    const c = {};
+    inbox.set(c, []);
+    return c;
+  };
+  const base = { t: 'hello', v: NET_VERSION, pass: 'stun', cls: 'warrior' };
+  const crowd = conn();
+  sw.message(crowd, { ...base, name: 'Crowd', save: geared('warrior', 20, 2) });
+  const solo = conn();
+  sw.message(solo, { ...base, name: 'Solo', session: token, alone: true });
+  const pc = [...sw.players.values()].find((o) => o.name === 'Crowd');
+  const ps = [...sw.players.values()].find((o) => o.name === 'Solo');
+  check('playing alone: told so on joining', inbox.get(solo).find((m) => m.t === 'welcome').alone === true);
+  check('playing alone: a Haven of your own', ps.copy !== pc.copy && ps.copy.key.startsWith('town~') && ps.copy.world.map.id === 'town');
+  check('no one is told you arrived', !inbox.get(crowd).some((m) => m.t === 'chat' && /Solo/.test(m.text || '')));
+  sw.tick();
+  sw.roster();
+  const r1 = inbox.get(crowd).filter((m) => m.t === 'roster').pop();
+  const r2 = inbox.get(solo).filter((m) => m.t === 'roster').pop();
+  check('others do not see you in the player list', r1 && !r1.players.some((x) => x.name === 'Solo'));
+  check('you see only yourself', r2 && r2.alone && r2.players.length === 1 && r2.players[0].name === 'Solo');
+  sw.command(pc, { type: 'chat', text: 'hello all' });
+  sw.command(ps, { type: 'chat', text: 'hi' });
+  check('no chat reaches you, and yours goes nowhere', !inbox.get(solo).some((m) => m.t === 'chat' && m.from) && !inbox.get(crowd).some((m) => m.t === 'chat' && m.text === 'hi'));
+  sw.command(pc, { type: 'partyInvite', pid: ps.pid });
+  check('no one can invite you to a party', !inbox.get(solo).some((m) => m.t === 'invite') && !ps.invites.size);
+  ps.copy.world.heroByPid(ps.pid).player.gold = 123;
+  sw.leave(solo, true);
+  check('and it is still your online character, saved to the account', a.wallet.gold === 123);
+}
+
 console.log(`\n${pass} passed, ${failed} failed`);
 if (failed) process.exit(1);

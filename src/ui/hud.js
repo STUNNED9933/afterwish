@@ -872,7 +872,9 @@ export class Hud {
     document.body.classList.toggle('in-room', !!info);
     if (!info) return;
     const ping = info.ping ? ` · <span class="ping ${info.ping > 120 ? 'bad' : info.ping > 50 ? 'meh' : 'good'}" title="Round trip to ${info.host ? 'your slowest friend' : 'the host'}${info.relay ? ', through a relay server (a direct connection could not be made)' : ''}">${info.ping} ms${info.relay ? ' · relay' : ''}</span>` : '';
-    const html = info.server
+    const html = info.alone
+      ? `Playing alone · <b>online</b>${ping}` // (0.57.1) your online character, a Haven of your own
+      : info.server
       ? `Server world <b>${info.code}</b> · ${info.players} online${ping} · <kbd>O</kbd> players · <kbd>Enter</kbd> chat`
       : `Room <b>${info.code}</b> · ${info.players} player${info.players === 1 ? '' : 's'}${info.host ? ' · hosting' : ''}${ping}`;
     if (el.innerHTML !== html) el.innerHTML = html;

@@ -318,6 +318,16 @@ function start(hot = {}) {
     $('btn-explore').textContent = has ? `Explore · ${c.name} level ${save.level}` : `Explore as ${c.name}`;
     $('btn-continue').classList.toggle('hidden', !has);
     if (has) $('btn-continue').textContent = 'The Echo Ring';
+    // (0.57.1) signed in on the server world: your online character, one click away
+    let online = null;
+    try {
+      const base = Online.baseOf(DEFAULT_SERVER);
+      if (Online.sessionFor(base)) online = Online.cachedChars(base)[settings.cls] || { level: 0 };
+    } catch (err) {
+      online = null; // (before the server list is set up, at the very start)
+    }
+    $('btn-online').classList.toggle('hidden', !online);
+    if (online) $('btn-online').textContent = online.level ? `Play online · ${c.name} level ${online.level}` : `Play online as ${c.name}`;
     const fresh = $('btn-new');
     fresh.textContent = has ? `Start a new ${c.name}` : 'Wake the Echo Ring · 1 shard';
     // A brand-new character starts on the road: the Echo Ring button only shows once there are shards to spend.
@@ -1453,7 +1463,7 @@ function start(hot = {}) {
     }
     else if (net) for (const f of net.room.friends.values()) ping = Math.max(ping, f.rtt || 0);
     const players = net && net.server ? (net.roster ? net.roster.players.length : 1) : net && net.role === 'host' ? world.heroes.length : world.allies().length + 1;
-    hud.setRoom(net ? { code: net.code, players, host: net.role === 'host', server: !!net.server, ping: Math.round(ping), relay } : null);
+    hud.setRoom(net ? { code: net.code, players, host: net.role === 'host', server: !!net.server, alone: !!net.alone, ping: Math.round(ping), relay } : null);
   }
   function openMp() {
     if (!settings.name) settings.name = 'Player ' + Math.floor(100 + Math.random() * 900);
@@ -1604,13 +1614,14 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, online: !!welcome.online, base: Online.baseOf(target), url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
+    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, online: !!welcome.online, alone: !!welcome.alone, base: Online.baseOf(target), url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
     setMode('play');
     updateRoomBadge();
-    hud.banner(welcome.server ? 'The server world' : `Room ${code}`, welcome.server ? `Joined as ${CLASSES[settings.cls].name}${welcome.online ? ' · your online character' : ''}` : 'Joined the party');
+    if (welcome.alone) hud.banner('Playing alone', `Your online ${CLASSES[settings.cls].name}, a Haven of your own`);
+    else hud.banner(welcome.server ? 'The server world' : `Room ${code}`, welcome.server ? `Joined as ${CLASSES[settings.cls].name}${welcome.online ? ' · your online character' : ''}` : 'Joined the party');
     return true;
   }
 
@@ -1646,7 +1657,7 @@ function start(hot = {}) {
     save = loadSave(cls);
     world = makeWorld({ save });
     resetViews();
-    const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why, code) => serverDropped(why, code) }), was.url, null, $('btn-server'), { pass: was.pass });
+    const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why, code) => serverDropped(why, code) }), was.url, null, $('btn-server'), { pass: was.pass, ...(was.alone ? { alone: true } : {}) });
     switching = false;
     if (!ok) {
       const why = $('mp-msg').textContent;
@@ -1917,6 +1928,7 @@ function start(hot = {}) {
     const was = net;
     const url = was && was.url;
     const pass = was && was.pass;
+    const alone = !!(was && was.alone);
     leaveRoom(why);
     const update = code === 1012;
     showNotice({
@@ -1928,14 +1940,14 @@ function start(hot = {}) {
       onGo: () => {
         if (update) {
           try {
-            sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url, at: Date.now() }));
+            sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url, at: Date.now(), alone }));
           } catch (err) {
             /* (private mode: just reload) */
           }
           location.reload();
         } else if (url) {
           hideNotice();
-          joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), url, null, $('btn-server'), { pass }).then((ok) => {
+          joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), url, null, $('btn-server'), { pass, ...(alone ? { alone: true } : {}) }).then((ok) => {
             if (!ok) {
               const msg = $('mp-msg').textContent;
               openMp();
@@ -1988,12 +2000,12 @@ function start(hot = {}) {
       setTimeout(async () => {
         openMp();
         mpMsg('Rejoining the server world...');
-        const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass });
+        const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass, ...(rj.alone ? { alone: true } : {}) });
         const tries = (rj.tries || 0) + 1;
         if (!ok && tries < 8 && /different versions|did not answer|Could not reach/.test($('mp-msg').textContent)) {
           // The server came back before the website finished publishing the new version (or is still
           // starting): wait a little, then reload and try again.
-          sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url: rj.url, at: rj.at, tries }));
+          sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url: rj.url, at: rj.at, tries, alone: rj.alone }));
           mpMsg('The new version of the game is still on its way. Trying again in 20 seconds...');
           setTimeout(() => location.reload(), 20000);
         }
@@ -2136,7 +2148,7 @@ function start(hot = {}) {
     const canImport = !a.imported && here.length > 0;
     $('acct-import').classList.toggle('hidden', !canImport);
     if (canImport) {
-      $('acct-import-desc').textContent = `Once only, so do it from the browser with your most progress. This browser has: ${here.join(', ')}; ${account.gold} gold and ${account.tickets} shards. They become your online characters (any you have started online are replaced), and stay here too for playing alone.`;
+      $('acct-import-desc').textContent = `Once only, so do it from the browser with your most progress. This browser has: ${here.join(', ')}; ${account.gold} gold and ${account.tickets} shards. They become your online characters (any you have started online are replaced), and copies stay in this browser for playing offline.`;
     }
     const online = Object.entries(a.chars || {}).map(([c, v]) => `${CLASSES[c] ? CLASSES[c].name : c} ${v.level}`);
     $('acct-chars').textContent = online.length ? `Your online characters: ${online.join(' · ')} · ${a.wallet.gold} gold, ${a.wallet.tickets} shards.` : 'No online characters yet. Join to start one, or bring yours from this browser.';
@@ -2188,6 +2200,26 @@ function start(hot = {}) {
     }
   }
   $('btn-acct-discord').addEventListener('click', () => discordSignIn('login'));
+  /**
+   * (0.57.1) Play alone: your online character on the server world, in a Haven of your own, so a
+   * signed-in player has one character everywhere (playing alone in the browser keeps its own).
+   */
+  async function playAlone(url, button) {
+    const pass = ($('mp-pass').value || settings.serverPass || '').trim();
+    if (!pass) {
+      openMp();
+      mpMsg('Type the server world\'s passcode once (ask whoever runs it), then Play alone.', false);
+      return;
+    }
+    settings.serverPass = pass;
+    storeSettings(settings);
+    if (mode !== 'mp') openMp();
+    mpMsg('Going online...');
+    const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), url, null, button, { pass, alone: true });
+    if (!ok && mode !== 'mp') openMp();
+  }
+  $('btn-acct-alone').addEventListener('click', (e) => playAlone($('mp-server').value.trim() || DEFAULT_SERVER, e.currentTarget));
+  $('btn-online').addEventListener('click', (e) => playAlone(DEFAULT_SERVER, e.currentTarget));
   $('btn-acct-out').addEventListener('click', async () => {
     try {
       await Online.call(acct.base, '/auth/logout', { method: 'POST', body: {} });
@@ -2303,6 +2335,7 @@ function start(hot = {}) {
   }
   document.addEventListener('keydown', (e) => {
     if (!net || !net.server || mode !== 'play') return;
+    if (net.alone) return; // (0.57.1) playing alone: no chat, no players panel
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
     if (typing) return;
     if (e.key === 'Enter') {

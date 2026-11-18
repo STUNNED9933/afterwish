@@ -95,11 +95,11 @@ export class ServerWorld {
     let name = clean(hello.name, 16) || 'Player';
     const taken = new Set([...this.players.values()].map((p) => p.name));
     for (let i = 2; taken.has(name); i++) name = `${clean(hello.name, 13) || 'Player'} ${i}`;
-    const pl = { pid, conn, name, memo: {}, pending: [], copy: null, party: null, invites: new Set(), seen: 0, rtt: 0, chatAt: -1e9, savedKey: '' };
+    const pl = { pid, conn, name, memo: {}, pending: [], copy: null, party: null, invites: new Set(), seen: 0, rtt: 0, chatAt: -1e9, savedKey: '', alone: !!hello.alone };
     this.players.set(pid, pl);
     this.byConn.set(conn, pid);
     const cls = CLASSES[hello.cls] ? hello.cls : 'warrior';
-    this.send(conn, { t: 'welcome', pid, code: this.name, server: true, online: !!acct });
+    this.send(conn, { t: 'welcome', pid, code: this.name, server: true, online: !!acct, alone: pl.alone });
     let save = hello.save && typeof hello.save === 'object' ? hello.save : null;
     let gold = hello.gold, tickets = hello.tickets;
     pl.acctRebirths = Math.max(0, Math.floor(Number(hello.acctRebirths) || 0));
@@ -113,7 +113,7 @@ export class ServerWorld {
     }
     const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
     this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs });
-    this.chatAll(`${name} arrived in Haven.`);
+    if (!pl.alone) this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }
 
@@ -129,7 +129,7 @@ export class ServerWorld {
     for (const other of this.players.values()) other.invites.delete(pid);
     if (pl.copy) this.removeFrom(pl.copy, pid);
     this.players.delete(pid);
-    this.chatAll(`${pl.name} left.`);
+    if (!pl.alone) this.chatAll(`${pl.name} left.`);
     this.rosterDirty = true;
   }
 
@@ -142,6 +142,7 @@ export class ServerWorld {
 
   /** Which copy of Haven: one with party members in it, else the first with room, else a new one. */
   havenKey(pl) {
+    if (pl.alone) return `town~${pl.pid}`; // (0.57.1) playing alone: a Haven of their own
     const havens = [...this.copies.values()].filter((c) => c.key === 'town' || c.key.startsWith('town#'));
     if (pl.party) {
       const members = this.parties.get(pl.party).members;
@@ -216,7 +217,7 @@ export class ServerWorld {
   }
 
   isHaven(key) {
-    return key === 'town' || key.startsWith('town#');
+    return key === 'town' || key.startsWith('town#') || key.startsWith('town~');
   }
 
   removeFrom(copy, pid) {
@@ -277,19 +278,20 @@ export class ServerWorld {
   }
 
   chat(pl, text) {
+    if (pl.alone) return; // (0.57.1) playing alone: no chat either way
     const t = clean(text, SERVER_LIMITS.chatLen);
     if (!t || this.ticks - pl.chatAt < SERVER_LIMITS.chatGap / CONFIG.TICK) return;
     pl.chatAt = this.ticks;
-    for (const o of this.players.values()) this.send(o.conn, { t: 'chat', from: pl.name, pid: pl.pid, text: t });
+    for (const o of this.players.values()) if (!o.alone) this.send(o.conn, { t: 'chat', from: pl.name, pid: pl.pid, text: t });
   }
 
   chatAll(text) {
-    for (const o of this.players.values()) this.send(o.conn, { t: 'chat', text });
+    for (const o of this.players.values()) if (!o.alone) this.send(o.conn, { t: 'chat', text });
   }
 
   partyInvite(pl, pid) {
     const o = this.players.get(pid);
-    if (!o || o === pl || (pl.party && pl.party === o.party)) return;
+    if (!o || o === pl || o.alone || pl.alone || (pl.party && pl.party === o.party)) return;
     const party = pl.party && this.parties.get(pl.party);
     if (party && party.members.size >= SERVER_LIMITS.partyMax) return this.send(pl.conn, { t: 'chat', text: `Your party is full (${SERVER_LIMITS.partyMax}).` });
     o.invites.add(pl.pid);
@@ -340,7 +342,7 @@ export class ServerWorld {
   }
 
   roster() {
-    const players = [...this.players.values()].map((o) => {
+    const players = [...this.players.values()].filter((o) => !o.alone).map((o) => {
       const w = o.copy && o.copy.world;
       const h = w && w.heroByPid(o.pid);
       const p = h && (h === w.cur ? w.player : h.player);
@@ -349,6 +351,12 @@ export class ServerWorld {
     });
     for (const o of this.players.values()) {
       const party = o.party && this.parties.get(o.party);
+      if (o.alone) {
+        // (0.57.1) someone playing alone sees only themselves
+        const w = o.copy && o.copy.world, h = w && w.heroByPid(o.pid), p = h && (h === w.cur ? w.player : h.player);
+        this.send(o.conn, { t: 'roster', world: this.name, alone: true, players: [{ pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: w ? w.map.id : '', haven: 0, party: 0 }], party: null, invites: [] });
+        continue;
+      }
       this.send(o.conn, { t: 'roster', world: this.name, players, party: party ? { id: party.id, leader: party.leader, members: [...party.members] } : null, invites: [...o.invites] });
     }
   }

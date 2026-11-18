@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Play alone, online (0.57.1)
+
+- **One character everywhere:** signed-in players can play their online character alone: "Play
+  online" on the title screen (or "Play alone" under Your account). It runs on the server world, in a
+  Haven of their own: off the player list, no chat or invites, saved to the account like any online
+  play. Browser characters stay for playing offline.
+- Next: the Echo Ring and the Weekly Echo for online characters (they still run in the browser).
+
 ### Accounts and online characters (0.57.0)
 
 - **Sign in on the server world** with Google (or Discord), under Play with friends → Server world →

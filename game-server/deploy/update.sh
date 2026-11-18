@@ -9,5 +9,10 @@ git fetch --depth 1 origin main
 git reset --hard origin/main
 cd game-server && npm ci --omit=dev
 chown -R afterwish:afterwish /opt/afterwish
+# the service file can change with the game (0.57: a folder for accounts); install it if it did
+if ! cmp -s /opt/afterwish/game-server/deploy/afterwish.service /etc/systemd/system/afterwish.service; then
+  cp /opt/afterwish/game-server/deploy/afterwish.service /etc/systemd/system/afterwish.service
+  systemctl daemon-reload
+fi
 systemctl restart afterwish
 echo "Updated to $(git -C /opt/afterwish log -1 --format=%h) and restarted."

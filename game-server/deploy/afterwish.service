@@ -17,6 +17,9 @@ ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 MemoryMax=600M
+# (0.57) Accounts and online characters live here, the one place it may write (/var/lib/afterwish)
+StateDirectory=afterwish
+StateDirectoryMode=0700
 
 [Install]
 WantedBy=multi-user.target

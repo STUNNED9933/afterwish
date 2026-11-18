@@ -17,6 +17,20 @@ function copyModels() {
   for (const f of readdirSync('assets/models')) if (f.endsWith('.glb')) copyFileSync(`assets/models/${f}`, `dist/models/${f}`);
 }
 
+/** The game's icon (0.61.6): assets/icon/* sit next to index.html (tab icon, home screen, link previews). */
+function copyIcons() {
+  if (!existsSync('assets/icon')) return;
+  for (const f of readdirSync('assets/icon')) copyFileSync(`assets/icon/${f}`, `dist/${f}`);
+  writeFileSync('dist/manifest.webmanifest', JSON.stringify({
+    name: 'Afterwish', short_name: 'Afterwish', start_url: './', display: 'standalone', background_color: '#06080f', theme_color: '#10142a',
+    icons: [
+      { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
+    ],
+  }, null, 2));
+}
+
 function writeHtml() {
   const css = readFileSync('src/style.css', 'utf8');
   const version = JSON.parse(readFileSync('package.json', 'utf8')).version; // the title screen always shows the real version
@@ -46,6 +60,7 @@ const options = {
 
 writeHtml();
 copyModels();
+copyIcons();
 if (watching) {
   const ctx = await context(options);
   await ctx.watch();

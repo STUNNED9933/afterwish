@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A game icon (0.61.6)
+
+- **The Cut Wish**: a gold four-pointed star, the wish, split by a steel parry stroke, its two halves
+  pushed apart. It is the browser tab icon (a bolder version for 16 to 32 pixels), the home screen icon
+  on phones (the page now has a web manifest), and the picture shown when a link to the game is shared.
+  The sources are `assets/icon/`; the build copies them next to the game.
+
 ### Every Immortal is about damage (0.61.5)
 
 Immortal effects now raise your damage; only the Bulwark's turn its defence into damage.

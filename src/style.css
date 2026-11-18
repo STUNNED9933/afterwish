@@ -428,6 +428,18 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 
 /* ---------- Full-screen overlays ---------- */
 .screen { position: fixed; inset: 0; z-index: 20; display: flex; overflow-y: auto; }
+/* (0.57) Your account on a server world */
+.acct { margin: 6px 0 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255, 255, 255, 0.03); display: flex; flex-direction: column; gap: 8px; }
+.acct.hidden { display: none; }
+.acct-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.acct-who { margin: 0; }
+.acct-who b { color: var(--gold); }
+.acct-ways { color: var(--muted); font-size: 13px; }
+.acct-discord { border-color: #5865f2; }
+.acct-import { padding: 10px 12px; border-left: 2px solid var(--gold); background: rgba(233, 211, 161, 0.06); }
+.acct-import.hidden { display: none; }
+#acct-msg.bad { color: var(--danger); }
+#acct-msg.ok { color: var(--life); }
 /* (0.56.4) A pop-up over everything: why the server world let you go */
 #notice { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.72); }
 #notice.hidden { display: none; }

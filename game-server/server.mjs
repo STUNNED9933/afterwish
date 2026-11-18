@@ -9,11 +9,20 @@
 //   WORLD_NAME          shown to players (default "Haven")
 //   MAX_PLAYERS         players on this server at once (default 24; see docs/ops/server-runbook.md)
 //   HAVEN_MAX           players in one copy of Haven before another opens (default 16)
+// Accounts and online characters (0.57; see docs/ops/server-runbook.md, "Sign-in"):
+//   GOOGLE_CLIENT_ID    the Google sign-in client id (public). With it (or Discord), accounts are on.
+//   DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   the Discord app (the secret stays in this file only)
+//   PUBLIC_URL          this server's https address, for Discord's redirect (https://play.stunnedgames.net)
+//   ACCOUNTS            'required' (default once sign-in is set up: only online characters may join)
+//                       or 'optional' (signed-in players get online characters, others bring their own)
+//   STATE_DIRECTORY     where accounts are kept (systemd sets it: /var/lib/afterwish); DATA_DIR otherwise
 import http from 'node:http';
 import { performance } from 'node:perf_hooks';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ServerWorld, SERVER_LIMITS } from '../src/net/shards.js';
 import { CONFIG } from '../src/config.js';
+import { AccountStore } from './accounts.mjs';
+import { createApi } from './api.mjs';
 
 const PORT = Number(process.env.PORT) || 8787;
 const PASSCODE = process.env.AFTERWISH_PASSCODE || '';
@@ -23,7 +32,14 @@ const HELLO_WITHIN = 10000; // ms to say hello before being dropped
 const BURST = 240, REFILL = 90; // messages: a burst, then this many a second (moves while holding the button are ~10)
 const BACKLOG = 256 * 1024; // bytes waiting to go out before a connection counts as backed up
 
+// Accounts (0.57): on once a way to sign in is set up.
+const AUTH = { googleId: process.env.GOOGLE_CLIENT_ID || '', discordId: process.env.DISCORD_CLIENT_ID || '', discordSecret: process.env.DISCORD_CLIENT_SECRET || '', publicUrl: process.env.PUBLIC_URL || '' };
+const accountsOn = !!(AUTH.googleId || (AUTH.discordId && AUTH.discordSecret));
+const accounts = accountsOn ? new AccountStore(process.env.STATE_DIRECTORY || process.env.DATA_DIR || new URL('./data', import.meta.url).pathname) : null;
+
 const world = new ServerWorld({
+  accounts,
+  requireAccount: accountsOn && process.env.ACCOUNTS !== 'optional',
   name: process.env.WORLD_NAME || 'Haven',
   passcode: PASSCODE,
   maxPlayers: Number(process.env.MAX_PLAYERS) || SERVER_LIMITS.players,
@@ -43,15 +59,19 @@ const originOk = (origin) => !origin || ORIGINS.some((o) => origin === o || (o.s
 
 // How the world is doing, for a quick look in a browser (no player details).
 const stats = { stepMs: 0, worst: 0, started: Date.now() };
-const httpServer = http.createServer((req, res) => {
+let api = null; // (made below, once originOk exists)
+const httpServer = http.createServer(async (req, res) => {
+  if (api && (await api(req, res, ipOf(req)))) return;
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ ok: true, name: world.name, open: !!PASSCODE, players: world.size, max: world.maxPlayers, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
+    res.end(JSON.stringify({ ok: true, name: world.name, open: !!PASSCODE, accounts: accountsOn ? (world.requireAccount ? 'required' : 'optional') : 'off', players: world.size, max: world.maxPlayers, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
     return;
   }
   res.writeHead(404);
   res.end();
 });
+
+if (accounts) api = createApi({ store: accounts, cfg: AUTH, originOk: (o) => o !== 'null' && originOk(o) });
 
 const wss = new WebSocketServer({
   server: httpServer,
@@ -143,6 +163,7 @@ setInterval(() => {
 // Stopping (an update): everyone gets their latest save first.
 const stop = () => {
   for (const pl of world.players.values()) world.sendSave(pl, true);
+  if (accounts) accounts.flush(); // (0.57) every online character written before stopping
   // 1012 = "service restart": the game shows a pop-up saying it is an update and the hero is saved (0.56.4)
   for (const ws of wss.clients) ws.close(1012, 'The server world is restarting for an update. Your progress is saved.');
   setTimeout(() => process.exit(0), 500);

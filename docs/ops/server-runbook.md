@@ -102,15 +102,56 @@ Pick a short id and name first, e.g. `sg2` / "Haven 2" / `play2.stunnedgames.net
 ## 4. Before a server is public (no passcode)
 
 Not built yet; do these first (each is a code change, ask Claude):
-- **Accounts and saves on the server.** Today each player's browser sends its own save when it
-  joins, so a public server would trust whatever a stranger sends (edited gear, levels). Online
-  progress (sign in with Discord or Google, saves kept on the server, nightly save backups) fixes
-  that and is planned anyway.
+- **Accounts and saves on the server:** done in 0.57 (section 4a). Close the one-time import before
+  going public (or make public servers start everyone fresh).
 - **Moderation:** kick, ban (by account), mute, a report button, and a chat filter.
 - **A public mode switch** (`AFTERWISH_PUBLIC=1`) that allows no passcode, only once the above exist.
 - DDoS proxy (step 8) on, and a short privacy note and rules page on the site.
 
 Until then, keep a passcode on every server.
+
+## 4a. Sign-in and online characters (0.57)
+
+With sign-in set up, a server world keeps each player's characters itself: players sign in with Google
+(or Discord), bring their characters over **once** from the browser with the most progress, and from
+then on their saves live on the server (`/var/lib/afterwish`, covered by the server's backups). The
+browser's copy is never trusted, so an edited save cannot get in. Playing alone or in a friend's room
+never needs an account.
+
+**Settings** (`/etc/afterwish.env`, then `systemctl restart afterwish`):
+
+| Setting | What it is |
+|---|---|
+| `GOOGLE_CLIENT_ID` | the Google sign-in client id (ends in `.apps.googleusercontent.com`; public) |
+| `DISCORD_CLIENT_ID` | the Discord app's id (public) |
+| `DISCORD_CLIENT_SECRET` | the Discord app's secret: **only ever in this file**, never in the repo or a chat |
+| `PUBLIC_URL` | this server's address, e.g. `https://play.stunnedgames.net` (Discord sends players back here) |
+| `ACCOUNTS` | leave unset (sign-in required once set up), or `optional` to also let unsigned players bring their own |
+
+Sign-in turns on as soon as Google (or Discord) is set. Players then see "Your account" under Server world.
+
+**Google (the main one):**
+1. https://console.cloud.google.com → pick or create a project (e.g. "Afterwish").
+2. Google Auth Platform → Branding: app name "Afterwish", support email, home page
+   `https://afterwish.stunnedgames.net`. Audience: External. While it says "Testing", only the test
+   users you add can sign in (fine for the beta: add your friends' Gmail addresses); "Publish app" opens
+   it to everyone (the game only asks for the basic profile, which needs no review).
+3. Clients → Create client → Web application. Authorized JavaScript origins:
+   `https://afterwish.stunnedgames.net` (no redirect URI needed). Create, and copy the **Client ID**.
+4. On the server: add `GOOGLE_CLIENT_ID=...` to `/etc/afterwish.env`, restart.
+
+**Discord (second way in, and for linking):**
+1. https://discord.com/developers/applications → New Application ("Afterwish").
+2. OAuth2 → Redirects → add `https://play.stunnedgames.net/auth/discord/callback` → Save.
+3. Copy the **Client ID**; Reset Secret and copy the **Client Secret** straight into the server's file:
+   `DISCORD_CLIENT_ID=...`, `DISCORD_CLIENT_SECRET=...`, `PUBLIC_URL=https://play.stunnedgames.net`.
+   Restart. (If the secret ever leaks, Reset Secret again and update the file.)
+
+**For each new server:** the same Google client works (add nothing); in Discord add the new server's
+`/auth/discord/callback` redirect. Each server keeps its own accounts.
+
+**Checks:** `https://play.../health` shows `"accounts":"required"`. Accounts live in
+`/var/lib/afterwish/accounts.json` (sign-in tokens only as hashes) and `chars/<id>.json`.
 
 ## 5. Running it
 

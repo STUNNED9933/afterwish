@@ -159,6 +159,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Accounts and online characters (0.57.0)
+
+- **Sign in on the server world** with Google (or Discord), under Play with friends → Server world →
+  Your account. Add the other one later to sign in with either. Playing alone or in a friend's room
+  never needs an account.
+- **Your characters live on the server:** bring them over **once** from the browser with your most
+  progress; after that the server keeps them (safe from a cleared browser, the same on any computer).
+  A server world with sign-in on never trusts a browser's save, so edited characters cannot get in.
+- Setting it up (Google and Discord consoles, the server's settings): docs/ops/server-runbook.md, 4a.
+
 ### Glimmers, and smoother server worlds (0.56.4)
 
 - **Signs are now glimmers:** slivers of the fallen star that remember what they saw, floating and

@@ -6,3 +6,4 @@ server/wrangler.generated.toml
 
 # Tripo model runs (tools/models), downloaded for review
 out/
+game-server/data/

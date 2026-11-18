@@ -33,6 +33,7 @@ import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { ServerRoom } from './net/server-room.js';
 import { SERVERS, serverHealth } from './net/servers.js';
+import * as Online from './net/online.js';
 import * as Casebook from './ui/casebook.js';
 import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX, compactEvents } from './net/sync.js';
 import { FRIEND_CMDS } from './net/cmds.js';
@@ -1581,7 +1582,8 @@ function start(hot = {}) {
     button.disabled = true;
     let welcome;
     try {
-      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, signs: account.signs, ...extra });
+      const session = room.server ? Online.sessionFor(Online.baseOf(target)) : ''; // (0.57) an online character, if signed in
+      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, signs: account.signs, ...(session ? { session } : {}), ...extra });
     } catch (err) {
       button.disabled = false;
       mpMsg(err.message, false);
@@ -1602,13 +1604,13 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
+    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, online: !!welcome.online, base: Online.baseOf(target), url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
     setMode('play');
     updateRoomBadge();
-    hud.banner(welcome.server ? 'The server world' : `Room ${code}`, welcome.server ? `Joined as ${CLASSES[settings.cls].name}` : 'Joined the party');
+    hud.banner(welcome.server ? 'The server world' : `Room ${code}`, welcome.server ? `Joined as ${CLASSES[settings.cls].name}${welcome.online ? ' · your online character' : ''}` : 'Joined the party');
     return true;
   }
 
@@ -1662,7 +1664,7 @@ function start(hot = {}) {
     for (const c of CLASS_IDS) {
       const b = document.createElement('button');
       b.type = 'button';
-      const sv = c === settings.cls ? null : loadSave(c);
+      const sv = c === settings.cls ? null : net.online ? Online.cachedChars(net.base)[c] : loadSave(c);
       b.textContent = c === settings.cls ? `${CLASSES[c].name} (now)` : sv ? `${CLASSES[c].name} · ${sv.level}` : `${CLASSES[c].name} · new`;
       b.disabled = c === settings.cls || switching;
       b.setAttribute('aria-pressed', c === settings.cls ? 'true' : 'false');
@@ -1719,11 +1721,16 @@ function start(hot = {}) {
       net.arriveTick = msg.tick;
       net.queue.push(msg);
     } else if (msg.t === 'save') {
-      save = msg.save;
-      storeSave(save, world.cls);
-      account.gold = msg.gold;
-      account.tickets = msg.tickets;
-      storeAccount(account);
+      if (msg.online) {
+        // (0.57) an online character: the server keeps it; this browser's own characters stay as they were
+        Online.cacheChar(net.base, world.cls, msg.save);
+      } else {
+        save = msg.save;
+        storeSave(save, world.cls);
+        account.gold = msg.gold;
+        account.tickets = msg.tickets;
+        storeAccount(account);
+      }
       if (net.onSave) {
         const done = net.onSave;
         net.onSave = null;
@@ -2038,6 +2045,172 @@ function start(hot = {}) {
     });
   }
   $('mp-pass').value = settings.serverPass || '';
+
+  // ---------------------------------------------------------------------------
+  // (0.57) Your account on the server world: Google first, Discord as well, and the one-time import
+  // ---------------------------------------------------------------------------
+  const acct = { base: '', cfg: null, info: null, googleMode: 'login', busy: false };
+  const acctMsg = (text, ok) => {
+    const el = $('acct-msg');
+    el.textContent = text || '';
+    el.className = 'setting-desc' + (ok === undefined ? '' : ok ? ' ok' : ' bad');
+  };
+  async function refreshAccount() {
+    const base = Online.baseOf($('mp-server').value.trim() || DEFAULT_SERVER);
+    acct.base = base;
+    let cfg = null;
+    try {
+      cfg = await Online.call(base, '/auth/config', { auth: false });
+    } catch (err) {
+      cfg = null; // (no accounts on this server: it takes characters from this browser, as before)
+    }
+    if (acct.base !== base) return;
+    acct.cfg = cfg && (cfg.google || cfg.discord) ? cfg : null;
+    acct.info = null;
+    if (acct.cfg && Online.sessionFor(base)) {
+      try {
+        acct.info = (await Online.call(base, '/account')).account;
+      } catch (err) {
+        if (err.status === 401) Online.setSession(base, '');
+      }
+    }
+    renderAccount();
+  }
+  function localChars() {
+    const out = [];
+    for (const c of CLASS_IDS) {
+      const sv = loadSave(c);
+      if (sv) out.push(`${CLASSES[c].name} level ${sv.level}${sv.rebirth && sv.rebirth.n ? ` (${sv.rebirth.n} rebirth${sv.rebirth.n === 1 ? '' : 's'})` : ''}`);
+    }
+    return out;
+  }
+  function renderAccount() {
+    const box = $('acct');
+    box.classList.toggle('hidden', !acct.cfg);
+    if (!acct.cfg) return;
+    const inn = !!acct.info;
+    $('acct-out').classList.toggle('hidden', inn);
+    $('acct-in').classList.toggle('hidden', !inn);
+    $('btn-acct-discord').classList.toggle('hidden', !acct.cfg.discord);
+    if (!inn) {
+      acct.googleMode = 'login';
+      drawGoogle($('acct-google'), 'signin_with');
+      return;
+    }
+    const a = acct.info;
+    $('acct-name').textContent = a.name;
+    $('acct-ways').textContent = '· ' + [a.google && 'Google', a.discord && 'Discord'].filter(Boolean).join(' and ');
+    // add the other way to sign in, or take one away (only while another remains)
+    const link = $('acct-link');
+    link.innerHTML = '';
+    if (!a.google && acct.cfg.google) {
+      const g = document.createElement('div');
+      link.appendChild(g);
+      acct.googleMode = 'link';
+      drawGoogle(g, 'continue_with');
+      const note = document.createElement('span');
+      note.className = 'setting-desc';
+      note.textContent = 'Add Google, to sign in with either.';
+      link.appendChild(note);
+    }
+    if (!a.discord && acct.cfg.discord) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ghost acct-discord';
+      b.textContent = 'Add Discord';
+      b.addEventListener('click', () => discordSignIn('link'));
+      link.appendChild(b);
+    }
+    if (a.google && a.discord) {
+      for (const pv of ['google', 'discord']) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'link-btn';
+        b.textContent = `Remove ${pv === 'google' ? 'Google' : 'Discord'}`;
+        b.addEventListener('click', (e) => armThenRun(e.currentTarget, `Click again: stop signing in with ${pv === 'google' ? 'Google' : 'Discord'}`, () => acctDo('/account/unlink', { provider: pv }, 'Removed.')));
+        link.appendChild(b);
+      }
+    }
+    // the one-time import
+    const here = localChars();
+    const canImport = !a.imported && here.length > 0;
+    $('acct-import').classList.toggle('hidden', !canImport);
+    if (canImport) {
+      $('acct-import-desc').textContent = `Once only, so do it from the browser with your most progress. This browser has: ${here.join(', ')}; ${account.gold} gold and ${account.tickets} shards. They become your online characters (any you have started online are replaced), and stay here too for playing alone.`;
+    }
+    const online = Object.entries(a.chars || {}).map(([c, v]) => `${CLASSES[c] ? CLASSES[c].name : c} ${v.level}`);
+    $('acct-chars').textContent = online.length ? `Your online characters: ${online.join(' · ')} · ${a.wallet.gold} gold, ${a.wallet.tickets} shards.` : 'No online characters yet. Join to start one, or bring yours from this browser.';
+    for (const c in a.chars || {}) Online.cacheChar(acct.base, c, a.chars[c]);
+  }
+  function drawGoogle(el, text) {
+    if (!acct.cfg || !acct.cfg.google) return;
+    el.innerHTML = '';
+    Online.loadGoogle()
+      .then((gid) => {
+        gid.initialize({ client_id: acct.cfg.google, callback: (r) => googleSignIn(r.credential), ux_mode: 'popup', auto_select: false });
+        gid.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text });
+      })
+      .catch((err) => acctMsg(err.message, false));
+  }
+  async function googleSignIn(credential) {
+    const mode = acct.googleMode;
+    try {
+      const r = await Online.call(acct.base, '/auth/google', { method: 'POST', body: { credential, mode }, auth: mode === 'link' });
+      if (r.session) Online.setSession(acct.base, r.session);
+      acct.info = r.account;
+      acctMsg(mode === 'link' ? 'Google added: you can sign in with either now.' : `Signed in. Welcome, ${r.account.name}.`, true);
+      renderAccount();
+    } catch (err) {
+      acctMsg(err.message, false);
+    }
+  }
+  async function discordSignIn(mode) {
+    try {
+      const d = await Online.discordPopup(acct.base, mode);
+      if (d.session) Online.setSession(acct.base, d.session);
+      if (d.ticket) await Online.call(acct.base, '/auth/discord/link', { method: 'POST', body: { ticket: d.ticket } });
+      acctMsg(mode === 'link' ? 'Discord added: you can sign in with either now.' : 'Signed in with Discord.', true);
+      await refreshAccount();
+    } catch (err) {
+      acctMsg(err.message, false);
+    }
+  }
+  async function acctDo(path, body, okText) {
+    try {
+      const r = await Online.call(acct.base, path, { method: 'POST', body });
+      if (r.account) acct.info = r.account;
+      acctMsg(okText, true);
+      renderAccount();
+      return r;
+    } catch (err) {
+      acctMsg(err.message, false);
+      return null;
+    }
+  }
+  $('btn-acct-discord').addEventListener('click', () => discordSignIn('login'));
+  $('btn-acct-out').addEventListener('click', async () => {
+    try {
+      await Online.call(acct.base, '/auth/logout', { method: 'POST', body: {} });
+    } catch (err) {
+      /* signed out here either way */
+    }
+    Online.setSession(acct.base, '');
+    acct.info = null;
+    acctMsg('Signed out.');
+    renderAccount();
+  });
+  $('btn-acct-import').addEventListener('click', (e) => armThenRun(e.currentTarget, 'Click again: bring them (once only)', async () => {
+    const saves = {};
+    for (const c of CLASS_IDS) {
+      const sv = loadSave(c);
+      if (sv) saves[c] = sv;
+    }
+    const r = await acctDo('/account/import', { saves, wallet: { gold: account.gold, tickets: account.tickets, rebirths: account.rebirths || 0 } }, 'Your characters are online now. Join the server world to play them.');
+    if (r) acctMsg(`Brought over: ${r.classes.map((c) => CLASSES[c].name).join(', ')}. Join the server world to play them.`, true);
+  }));
+  $('mp-server-pick').addEventListener('change', () => refreshAccount());
+  $('mp-server').addEventListener('change', () => refreshAccount());
+  $('btn-mp').addEventListener('click', () => refreshAccount());
   for (const id of ['mp-server', 'mp-pass']) $(id).addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') joinServer();
@@ -2942,6 +3115,12 @@ function start(hot = {}) {
         sfx.denied();
         break;
       case 'reborn': {
+        if (net && net.online) {
+          // (0.57) an online character's new life is kept by the server
+          sfx.levelUp();
+          hud.banner('Reborn', 'Your online character wakes in Haven, a new life.');
+          break;
+        }
         // Rebirth (0.43): keep a backup, store the new life, and wake in Haven.
         backupNow('before a rebirth');
         account.rebirths = (account.rebirths || 0) + 1;

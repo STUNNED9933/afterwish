@@ -346,6 +346,23 @@
     <p class="setting-desc">Always open, no host needed: everyone meets in Haven, and each party gets its own copy of the maps outside. Ask whoever runs it for the passcode.</p>
     <div class="transfer-row"><select id="mp-server-pick"></select></div>
     <div class="transfer-row hidden" id="mp-server-row"><input id="mp-server" placeholder="wss://play.example.com" autocomplete="off" spellcheck="false" /></div>
+    <div id="acct" class="acct hidden" aria-live="polite">
+      <div id="acct-out">
+        <p class="setting-desc">This server world keeps your characters for you: sign in, and they live on the server (safe from a cleared browser, and the same on any computer). Playing alone or in a friend's room never needs an account.</p>
+        <div class="acct-row"><div id="acct-google"></div><button type="button" id="btn-acct-discord" class="ghost acct-discord">Sign in with Discord</button></div>
+      </div>
+      <div id="acct-in" class="hidden">
+        <p class="acct-who">Signed in as <b id="acct-name"></b> <span id="acct-ways"></span></p>
+        <div class="acct-row" id="acct-link"></div>
+        <div id="acct-import" class="acct-import hidden">
+          <p class="setting-desc" id="acct-import-desc"></p>
+          <button type="button" id="btn-acct-import" class="primary">Bring my characters from this browser</button>
+        </div>
+        <p class="setting-desc" id="acct-chars"></p>
+        <button type="button" id="btn-acct-out" class="link-btn">Sign out</button>
+      </div>
+      <p id="acct-msg" class="setting-desc"></p>
+    </div>
     <div class="transfer-row"><input id="mp-pass" type="password" placeholder="Passcode" autocomplete="off" spellcheck="false" /><button type="button" id="btn-server" class="primary">Join the server world</button></div>
     <p id="mp-msg" class="setting-desc"></p>
     <p class="setting-desc">Rooms: friends join through a free matchmaking service and then connect straight to the host. Some school or work networks block this; home internet and phone hotspots usually work.</p>

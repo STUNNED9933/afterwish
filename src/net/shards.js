@@ -8,6 +8,7 @@
 // Each copy is an ordinary World (the same rules as single player); a hero who leaves one is moved
 // to another by goMap's travelHook, carried across in their save.
 import { World } from '../sim/world.js';
+import { CLASSES } from '../sim/classes.js';
 import { CONFIG } from '../config.js';
 import { MAPS } from '../sim/maps.js';
 import { makeSnapshot, eventFor, compactEvents, NET_VERSION } from './sync.js';
@@ -28,8 +29,12 @@ export class ServerWorld {
    * congested(conn): true while that connection's outgoing queue is backed up (it gets no new update
    * until it has caught up, so it never falls further and further behind).
    */
-  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now(), maxPlayers = SERVER_LIMITS.players, havenMax = SERVER_LIMITS.haven }) {
+  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now(), maxPlayers = SERVER_LIMITS.players, havenMax = SERVER_LIMITS.haven, accounts = null, requireAccount = false }) {
     Object.assign(this, { send, close, congested, passcode: String(passcode || ''), name });
+    // (0.57) Online characters: with an account store, a signed-in hero's save and wallet come from the
+    // store and go back to it; the browser's own copy is never trusted. requireAccount: no other way in.
+    this.accounts = accounts;
+    this.requireAccount = !!(accounts && requireAccount);
     this.maxPlayers = Math.max(1, Math.floor(maxPlayers) || SERVER_LIMITS.players);
     this.havenMax = Math.max(2, Math.floor(havenMax) || SERVER_LIMITS.haven);
     this.seed = seed >>> 0;
@@ -80,6 +85,12 @@ export class ServerWorld {
     if (!this.passcode) return say('The server world is not open yet (its owner has not set a passcode).');
     if (String(hello.pass || '') !== this.passcode) return say('Wrong passcode.');
     if (this.players.size >= this.maxPlayers) return say(`This server is full (${this.maxPlayers} players). Try again later, or another server.`);
+    let acct = null;
+    if (this.accounts && hello.session) {
+      acct = this.accounts.bySession(String(hello.session));
+      if (!acct) return say('Your sign-in has run out. Sign in again (Play with friends, Your account).');
+      if ([...this.players.values()].some((o) => o.accountId === acct.id)) return say('You are already in this server world, in another tab or on another computer.');
+    } else if (this.requireAccount) return say('Sign in with Google or Discord to play in this server world (Play with friends, Your account). Your characters come with you once.');
     const pid = this.nextPid++;
     let name = clean(hello.name, 16) || 'Player';
     const taken = new Set([...this.players.values()].map((p) => p.name));
@@ -87,11 +98,21 @@ export class ServerWorld {
     const pl = { pid, conn, name, memo: {}, pending: [], copy: null, party: null, invites: new Set(), seen: 0, rtt: 0, chatAt: -1e9, savedKey: '' };
     this.players.set(pid, pl);
     this.byConn.set(conn, pid);
-    this.send(conn, { t: 'welcome', pid, code: this.name, server: true });
-    const save = hello.save && typeof hello.save === 'object' ? hello.save : null;
+    const cls = CLASSES[hello.cls] ? hello.cls : 'warrior';
+    this.send(conn, { t: 'welcome', pid, code: this.name, server: true, online: !!acct });
+    let save = hello.save && typeof hello.save === 'object' ? hello.save : null;
+    let gold = hello.gold, tickets = hello.tickets;
     pl.acctRebirths = Math.max(0, Math.floor(Number(hello.acctRebirths) || 0));
+    if (acct) {
+      // (0.57) an online character: everything from the account, nothing from the browser
+      pl.accountId = acct.id;
+      save = this.accounts.getChar(acct.id, cls);
+      gold = acct.wallet.gold;
+      tickets = acct.wallet.tickets;
+      pl.acctRebirths = acct.wallet.rebirths || 0;
+    }
     const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
-    this.place(pl, 'town', null, null, { save, name, cls: hello.cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold: hello.gold, tickets: hello.tickets, signs });
+    this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs });
     this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }
@@ -103,7 +124,7 @@ export class ServerWorld {
     this.byConn.delete(conn);
     const pl = this.players.get(pid);
     if (!pl) return;
-    if (polite) this.sendSave(pl, true);
+    if (polite || pl.accountId) this.sendSave(pl, true); // (an online character is kept even if they just vanish)
     this.partyLeave(pl, true);
     for (const other of this.players.values()) other.invites.delete(pid);
     if (pl.copy) this.removeFrom(pl.copy, pid);
@@ -413,6 +434,11 @@ export class ServerWorld {
     const key = JSON.stringify(out);
     if (!force && key === pl.savedKey) return;
     pl.savedKey = key;
-    this.send(pl.conn, { t: 'save', ...out });
+    if (pl.accountId && this.accounts) {
+      // (0.57) kept on the server: this is the copy that counts
+      this.accounts.putChar(pl.accountId, out.save.cls, out.save);
+      this.accounts.setWallet(pl.accountId, { gold: out.gold, tickets: out.tickets, rebirths: pl.acctRebirths });
+    }
+    this.send(pl.conn, { t: 'save', ...out, online: !!pl.accountId });
   }
 }

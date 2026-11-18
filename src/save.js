@@ -98,7 +98,7 @@ const PREFIX = 'stunned-';
 const TAG = 'stunned-games-save';
 
 // Keys that belong to this browser only and never travel in an export.
-const LOCAL_ONLY = new Set(['stunned-backups-v1', 'stunned-session-v1']);
+const LOCAL_ONLY = new Set(['stunned-backups-v1', 'stunned-session-v1', 'stunned-online-v1']); // (0.57: a sign-in never travels)
 
 export function exportSaves() {
   const data = {};

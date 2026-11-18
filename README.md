@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Ex Voto shows what each enemy leaves (0.61.3)
+
+- **Drop rates in the detailed view**: every page you have completed now ends with *What it leaves*,
+  worked out from the game's own loot tables for the world tier you are on: how often it drops gear
+  and at what rarity odds, shards, Kindling in the Deep, what it gives as an elite or a Storied enemy,
+  and for bosses the first-kill prize, the odds for the best piece, keys and shards, and what its
+  Remnant can drop (its Immortal is named once you have met it). Lucky Star is counted in.
+
 ### Every item has a face and a story; Deadeye is aimed (0.61.2)
 
 - **Item pictures**: every one of the ten names per weapon and armour slot has its own icon (40

@@ -121,5 +121,31 @@ check('every enemy on the road has a page', ['grunt', 'spitter', 'brute', 'stalk
   check('...up to ten levels above the quest', w.questReward(id).exp === Math.round(expToNext(Math.min(q.level + CONFIG.QUEST_EXP_LATE, 99)) * 4));
 }
 
+
+// (0.61.2) The detailed page says what each enemy leaves, worked out from the game's own tables.
+{
+  const b = C.freshBook();
+  for (const id of C.CASE_IDS) b.kills[id] = 30;
+  const bad = [];
+  for (const id of C.CASE_IDS) for (const tier of [1, 3, 5]) {
+    const html = C.pageHtml(b, id, true, [], { tier, luck: tier === 5 ? 0.2 : 0 });
+    if (!html.includes('What it leaves') || /undefined|NaN|Infinity/.test(html)) bad.push(id + '@' + tier);
+  }
+  check('every detailed page says what it leaves, on every tier', bad.length === 0, bad.join(', '));
+  check('...and the simple view does not', !C.pageHtml(b, 'grunt', false, [], { tier: 1 }).includes('What it leaves'));
+  const sums = [C.rarityOdds({ ilvl: 1 }), C.rarityOdds({ ilvl: 100, minRarity: 3, luck: 0.2 }), C.rarityOdds({ weights: [0, 0, 0, 0, 55, 40, 5], luck: 0.12 })].map((o) => o.reduce((a, x) => a + x, 0));
+  check('rarity odds add up to 100%', sums.every((x) => Math.abs(x - 1) < 1e-9), sums.join(', '));
+  const t4 = C.rarityOdds({ ilvl: 100, minRarity: 3 });
+  check('a world tier floor leaves nothing below it', t4[0] === 0 && t4[1] === 0 && t4[2] === 0 && t4[3] > 0.5);
+  const lucky = C.rarityOdds({ weights: [0, 0, 0, 0, 55, 40, 5], luck: 0.2 });
+  check('Lucky Star lifts a step, never past Ancient into Immortal', Math.abs(lucky[6] - 0.05) < 1e-9 && lucky[5] > 0.4);
+  const unmade = C.spoilsHtml(b, 'boss3', { tier: 1 });
+  check('the Unmade: an Immortal on the first kill, 5% after', /first one <span[^>]*>Immortal<\/span> for certain/.test(unmade) && /Immortal 5%/.test(unmade), unmade.slice(0, 200));
+  check('a Remnant\'s Immortal is not named until you have met it', !unmade.includes('Unwished') && (b.rem.boss3 = 1, C.spoilsHtml(b, 'boss3', {}).includes('The Unwished Crown')));
+  check('the Deep is always read as world tier V', /tier V/.test(C.spoilsHtml(b, 'ashwalker', { tier: 1 })));
+  check('a summoned shade leaves nothing', /Nothing/.test(C.spoilsHtml(b, 'oathshade', {})));
+  check('a grunt drops gear a fifth of the time on tier I', /Gear<\/th><td>20% of kills/.test(C.spoilsHtml(b, 'grunt', { tier: 1 })));
+}
+
 console.log(`\n${pass} passed, ${failed} failed`);
 if (failed) process.exit(1);

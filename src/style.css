@@ -712,6 +712,12 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 .case-rest { margin: 0; font-size: 16px; line-height: 1.5; }
 .case-hint { margin: 0 0 6px; font-size: 15px; line-height: 1.5; color: var(--bone); }
 .case-tips { margin: 8px 0 0; padding-left: 18px; font-size: 15px; line-height: 1.5; color: #d8dce6; }
+/* (0.61.2) what an enemy leaves */
+.case-spoils { width: 100%; border-collapse: collapse; font-size: 14px; }
+.case-spoils th { text-align: left; font-weight: 600; color: var(--gold); white-space: nowrap; padding: 6px 10px 6px 6px; vertical-align: top; border-top: 1px solid var(--line); }
+.case-spoils td { padding: 6px; border-top: 1px solid var(--line); color: #c4cad8; line-height: 1.5; }
+.case-spoils td.note { color: var(--muted); font-size: 13px; }
+.case-r { color: var(--r); white-space: nowrap; font-weight: 600; }
 .case-moves { width: 100%; border-collapse: collapse; font-size: 14px; }
 .case-moves td { padding: 6px 6px; border-top: 1px solid var(--line); vertical-align: top; }
 .case-moves td span { color: #c4cad8; }

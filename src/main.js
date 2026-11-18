@@ -1422,7 +1422,9 @@ function start(hot = {}) {
     $('case-list').innerHTML = list.html;
     $('case-count').textContent = `${list.rested} of ${list.total} laid to rest`;
     $('case-detail').checked = !!settings.caseDetail;
-    $('case-page').innerHTML = Casebook.pageHtml(b, caseSel, detail, visited);
+    const p = world.player;
+    const ctx = { tier: world.worldTier ? world.worldTier() : 1, luck: p && p.rebirth ? 0.04 * perkRank(p.rebirth, 'luck') : 0 }; // (0.61.2) for its drop rates
+    $('case-page').innerHTML = Casebook.pageHtml(b, caseSel, detail, visited, ctx);
     $('case-page').classList.toggle('detail', detail);
   }
   function caseBadge() {

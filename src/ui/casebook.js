@@ -15,6 +15,11 @@
 
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
+import { CONFIG } from '../config.js';
+import { RARITIES, REMNANT_UNIQUE, EFFECTS } from '../sim/items.js';
+import { TIERS, ELITE_FROM_LEVEL, DEEP } from '../sim/endgame.js';
+import { BOSS_LOOT } from '../sim/story.js';
+import { RARE, THIEF, REMNANT, GLASS, FRAGMENTS, SIGIL, ELITE_SPOILS } from '../sim/surprises.js';
 
 export const BOOK = 'Ex Voto'; // the name players see
 export const KEPT = 25; // kills of an ordinary enemy before Odile's second note
@@ -468,6 +473,104 @@ function movesOf(id) {
   return out;
 }
 
+
+// ---------------------------------------------------------------- what it leaves (0.61.2)
+// Worked out from the same tables the game rolls with (dropLoot and killEnemy in sim/world.js), for the
+// world tier you are on, so the page never drifts from the game.
+const pct = (x) => {
+  const v = x * 100;
+  if (v >= 99.95) return '100%';
+  if (v >= 10) return Math.round(v) + '%';
+  if (v >= 1) return (Math.round(v * 10) / 10) + '%';
+  return (Math.round(v * 100) / 100) + '%';
+};
+const rname = (i) => RARITIES[i].name;
+const rchip = (i, txt) => `<span class="case-r" style="--r:${RARITIES[i].color}">${txt}</span>`;
+
+/** Chance of each rarity for one roll, as rollItem does it (and Lucky Star after it). */
+export function rarityOdds({ minRarity = 0, weights = null, ilvl = 1, luck = 0 }) {
+  const w = weights || RARITIES.map((r, i) => (i < minRarity ? 0 : r.weight * (1 + Math.min(ilvl, 30) * 0.035 * i)));
+  const sum = w.reduce((a, b) => a + b, 0);
+  let p = sum > 0 ? w.map((x) => x / sum) : RARITIES.map((_, i) => (i === minRarity ? 1 : 0));
+  if (luck > 0) {
+    // Lucky Star: below Ancient, a chance to be one rarity higher
+    const q = p.map((x, i) => (i < 5 ? x * (1 - luck) : x));
+    for (let i = 0; i < 5; i++) q[i + 1] += p[i] * luck;
+    p = q;
+  }
+  return p;
+}
+function oddsRow(odds) {
+  return odds.map((x, i) => (x >= 0.00005 ? rchip(i, `${rname(i)} ${pct(x)}`) : '')).filter(Boolean).join(' ');
+}
+const orBetter = (i) => (i >= RARITIES.length - 1 ? rname(i) : `${rname(i)} or better`);
+
+/** The level its gear drops at: 100 from world tier II, else the middle of the first map it lives on. */
+function dropLevel(id, tier) {
+  if (tier >= 2) return CONFIG.MAX_LEVEL;
+  const m = (WHERE[id] || []).filter((k) => k !== 'wilds').map((k) => MAPS[k])[0];
+  return m ? Math.max(1, (m.level || 1) + Math.round((m.levelSpan || 0) * 0.5)) : 30;
+}
+
+/**
+ * The drops part of a detailed page.
+ * @param {object} b     the book (a Remnant's Immortal is named only once you have met the Remnant)
+ * @param {string} id
+ * @param {{ tier?: number, luck?: number }} [ctx]  the world tier you are on, and Lucky Star's chance
+ */
+export function spoilsHtml(b, id, ctx = {}) {
+  const def = ENEMIES[id];
+  // the Deep and the five Primordials below the Starwell are only ever met on world tier V
+  const deep = GROUPS.find((g) => g.title === 'The Deep').ids.includes(id) || (def.boss && GROUPS[GROUPS.length - 1].ids.includes(id) && id !== 'asker');
+  const tier = deep ? TIERS.length - 1 : Math.max(1, Math.min(TIERS.length - 1, ctx.tier || 1));
+  const T = TIERS[tier];
+  const luck = ctx.luck || 0;
+  const floor = T.minRarity;
+  const ilvl = dropLevel(id, tier);
+  const rows = [];
+  const row = (label, body) => rows.push(`<tr><th>${label}</th><td>${body}</td></tr>`);
+  const K = DEEP.kindling;
+
+  if (def.summon) {
+    rows.push(`<tr><td colspan="2">Nothing. It is only a shade of something else.</td></tr>`);
+  } else if (def.thief) {
+    row('When caught', `${THIEF.items} pieces of gear, a shard, ${THIEF.dust} Wishdust and ${FRAGMENTS.thief} Immortal Fragments`);
+    row('First piece', oddsRow(rarityOdds({ minRarity: Math.max(floor, 4), ilvl })));
+    row('The others', oddsRow(rarityOdds({ minRarity: Math.max(floor, 2), ilvl })));
+    row('Also', `${pct(GLASS.thief)} an Unwishing Glass`);
+  } else if (def.boss) {
+    const L = BOSS_LOOT[id];
+    if (L) {
+      row('First kill', `${L.items} pieces, the first one ${rchip(L.first, rname(L.first))} for certain; and 2 skill points`);
+      row('Its best piece', oddsRow(rarityOdds({ weights: L.top, luck })));
+      row('The rest', `${L.items - 1} more: ${orBetter(L.min)}${L.better ? `, ${L.better === 1 ? 'one' : L.better} of them ${orBetter(L.min + 1)}` : ''}`);
+      row('Also', `${L.keys} Warden key${L.keys > 1 ? 's' : ''} and ${L.tickets} shard${L.tickets > 1 ? 's' : ''}`);
+      if (REMNANT_UNIQUE[id]) {
+        const imm = b && b.rem && b.rem[id] && EFFECTS[REMNANT_UNIQUE[id]] ? EFFECTS[REMNANT_UNIQUE[id]].itemName : 'its own Immortal';
+        row('Its Remnant', `(after ${REMNANT.after} kills, ${pct(REMNANT.chance)} of its returns) one more piece, a set piece, ${FRAGMENTS.remnant} Immortal Fragments and ${REMNANT.dust} Wishdust; ${pct(REMNANT.unique)} ${esc(imm)}, ${pct(REMNANT.glow)} its weapon glow, ${pct(GLASS.remnant)} an Unwishing Glass`);
+      }
+      rows.push(`<tr><td colspan="2" class="note">A boss far below your level pays less. ${tier >= 2 ? `A streak (bosses beaten without falling) adds ${Math.round(CONFIG.STREAK_LOOT * 100)}% more gear each.` : 'From world tier II, a streak of bosses beaten without falling adds more.'}</td></tr>`);
+    } else {
+      row('Gear', `2 pieces`);
+      row('Each', oddsRow(rarityOdds({ minRarity: Math.max(floor, 2), ilvl, luck })));
+      if (deep) row('Kindling', `always, until its Depth has given you ${DEEP.kindlingMax}`);
+    }
+  } else {
+    const chance = Math.min(1, (def.drop || 0) * T.loot);
+    row('Gear', chance > 0 ? `${pct(chance)} of kills` : 'none');
+    if (chance > 0) row('Its rarity', oddsRow(rarityOdds({ minRarity: floor, ilvl, luck })));
+    row('Shards', def.heavy ? 'one every kill' : `${pct(CONFIG.TICKET_CHANCE)} of kills`);
+    if (deep) row('Kindling', `${pct(K.normal)} of kills, ${pct(K.elite)} from an elite or a Storied one (up to ${DEEP.kindlingMax} from each Depth)`);
+    if (tier > 1 || ilvl >= ELITE_FROM_LEVEL) {
+      const ew = ELITE_SPOILS.weights.map((w, r) => (r < floor ? 0 : w));
+      row('As an elite', `one more piece (${oddsRow(rarityOdds({ weights: ew, luck }))}), ${ELITE_SPOILS.dust[0]} to ${ELITE_SPOILS.dust[1]} Wishdust, ${pct(ELITE_SPOILS.fragment)} an Immortal Fragment, ${pct(ELITE_SPOILS.chest)} a radiant chest`);
+    }
+    row('If Storied', `a piece ${orBetter(Math.max(floor, 3))} (${pct(RARE.better)} ${orBetter(Math.max(floor, 4))}), ${pct(RARE.set)} a set piece, ${FRAGMENTS.storied} Immortal Fragments, ${RARE.dust[0]} to ${RARE.dust[1]} Wishdust, ${pct(SIGIL.storied)} a Remnant Sigil, ${pct(GLASS.storied)} an Unwishing Glass`);
+  }
+  const at = def.summon ? '' : `<p class="setting-desc">${deep ? 'In the Deep, which is always' : 'On'} world tier ${T.numeral}${floor ? ` (nothing below ${rname(floor)})` : ''}, for gear of level ${ilvl}${luck ? `, with Lucky Star (${pct(luck)} a step higher)` : ''}.</p>`;
+  return `<h4>What it leaves</h4><table class="case-spoils"><tbody>${rows.join('')}</tbody></table>${at}`;
+}
+
 // ---------------------------------------------------------------- drawing
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -489,8 +592,8 @@ export function listHtml(b, sel, visited) {
   return { html: parts.join(''), rested, total: CASE_IDS.length, hint: visited };
 }
 
-/** The page on the right. `detail`: the detailed view. */
-export function pageHtml(b, id, detail, visited) {
+/** The page on the right. `detail`: the detailed view. `ctx`: { tier, luck } for the drop rates. */
+export function pageHtml(b, id, detail, visited, ctx = {}) {
   const c = CASES[id];
   const def = ENEMIES[id];
   const s = stage(b, id);
@@ -542,6 +645,7 @@ export function pageHtml(b, id, detail, visited) {
       }
       h.push(`</tbody></table><p class="setting-desc">Parry: press parry as it flashes white. Red: cannot be parried; walk out or dash through. The last column is how long it warns you.</p>`);
     }
+    h.push(spoilsHtml(b, id, ctx)); // (0.61.2) its drop rates
   } else if (c.tips && c.tips.length) {
     h.push(`<p class="setting-desc">More in the detailed view.</p>`);
   }

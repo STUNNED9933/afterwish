@@ -46,7 +46,7 @@ check('every enemy on the road has a page', ['grunt', 'spitter', 'brute', 'stalk
   check('the Herald\'s guards count as Court Guards', C.note(b, 'kill', 'heraldguard') !== '' && b.kills.courtguard === 1);
   check('things outside the book are ignored', C.note(b, 'kill', 'wishstar') === '' && !b.kills.wishstar);
 
-  check('seeing a boss adds it', C.note(b, 'seen', 'asker') !== '' && /listening/.test(C.pageHtml(b, 'asker', false, [])));
+  check('seeing a boss adds it', C.note(b, 'seen', 'asker') !== '' && /waiting a long time/.test(C.pageHtml(b, 'asker', false, [])));
   check('seeing it again does not', C.note(b, 'seen', 'asker') === '');
   check('no hint before it beats you', !/Odile's thoughts/.test(C.pageHtml(b, 'asker', true, [])));
   const lines = [1, 2, 3, 4, 5, 6, 7].map(() => C.note(b, 'fall', 'asker'));

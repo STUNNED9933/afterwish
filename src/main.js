@@ -2703,7 +2703,7 @@ function start(hot = {}) {
         break;
       case 'death':
         sfx.death(ev.boss);
-        // The Casebook: a death close to your hero is one you helped with (in the Echo Ring, all of them).
+        // Ex Voto: a death close to your hero is one you helped with (in the Echo Ring, all of them).
         if (world.mode === 'arena' || Casebook.near(world.player, ev.x, ev.z, Casebook.RANGES.kill)) caseNote('kill', ev.enemyType, { remnant: ev.remnant, old: ev.old });
         break;
       case 'partyJoin':

@@ -625,6 +625,8 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 #case-list { display: flex; flex-direction: column; max-height: 62vh; overflow-y: auto; padding-right: 6px; }
 #case-list h3 { font: 600 12px var(--body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin: 12px 0 4px; }
 #case-list h3:first-child { margin-top: 0; }
+#case-list h3 small { display: block; font: italic 400 13px var(--display); letter-spacing: 0.04em; text-transform: none; color: var(--muted); margin-top: 1px; }
+.case-group-note { margin: 0 0 4px; padding: 0 8px; font: italic 400 13px/1.4 var(--body); color: #b9a8d8; }
 .case-item { display: flex; justify-content: space-between; gap: 8px; text-align: left; background: none; border: 0; border-left: 2px solid transparent; color: var(--bone); font: 400 15px var(--body); padding: 4px 8px; cursor: pointer; }
 .case-item:hover { background: rgba(255, 255, 255, 0.04); }
 .case-item.on { border-left-color: var(--gold); background: rgba(233, 211, 161, 0.08); }

@@ -1,6 +1,7 @@
-// The Casebook (0.56): Sister Odile's notes on everything the wish made, kept by the account, so every
-// class and every life adds to the same book. A physician's apprentice keeps a casebook: to her, every
-// one of these was a patient once. "To give it rest" is how to beat it.
+// Ex Voto (0.56; the code calls it the casebook): Sister Odile's notes on everything the wish made, kept
+// by the account, so every class and every life adds to the same book. An ex-voto is what is left at a
+// shrine once a wish has been granted: every one of these is what a granted wish left behind. To Odile,
+// a physician's apprentice, each was a patient once. "To give it rest" is how to beat it.
 //
 // What unlocks what:
 //   ordinary enemies  first time you lay one to rest: who it was and how to fight it. At KEPT kills,
@@ -15,6 +16,7 @@
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 
+export const BOOK = 'Ex Voto'; // the name players see
 export const KEPT = 25; // kills of an ordinary enemy before Odile's second note
 export const HINTS = [1, 3, 6]; // falls to a boss that unlock each hint
 const SEEN_RANGE = 26; // m: close enough to say you have seen it
@@ -241,13 +243,13 @@ const CASES = {
     ],
   },
   asker: {
-    seen: `A shape of light at the bottom of the Starwell. It is the star. It is listening to everything you have ever wanted.`,
+    seen: `Light at the bottom of the well, in the shape of whoever is looking at it. It has been waiting a long time for someone to want something.`,
     hints: [
       `Three times it stops and asks what you want. While it waits for your answer, nothing can hurt it.`,
       `"The star grants exactly." Tobin wrote that. Odile has underlined "exactly" three times.`,
       `What it gives, it does not give away. Near the end it remembers every wish it granted in the fight, yours and your friends'.`,
     ],
-    lore: `The star itself, the first of six. It gives exactly what is asked, never more and never less, and it is not cruel. It is only what the world does when something wants.`,
+    lore: `Wanting. The only one of the six that came from above, and the only one that asks. Tobin's sealed notes say the star did not fall by chance: something below was waking, and something above answered. Odile has written one line under that and crossed it out so many times that the page has worn through.`,
     rest: `A wish makes the middle of the fight easier and the end harder. Refusing makes the middle harder and the end clean. Either way, save your strongest skills for its last fifth.`,
     tips: [
       `It asks at 75%, 50% and 25% health. You have 10 seconds; no answer counts as refusing.`,
@@ -261,57 +263,57 @@ const CASES = {
   },
   // ------------------------------------------------------------- the Six
   cinder: {
-    seen: `A slow heat that walks, at the bottom of the Ashen Deep. It is not angry. It is only very late.`,
+    seen: `Heat at the bottom of the Ashen Deep, moving the way breath moves. Around it, the ash falls upward.`,
     hints: [
       `Its fever is slow lights that drift after you. Parry them, or keep moving.`,
       `Banked fire is four lines in a cross, aimed where you stood a moment ago. Move while it glows.`,
       `Below half, its last breath drags you in and burns. Dash out early.`,
     ],
-    lore: `Ending. The ash-fever was its breath, coming up through the mountain. The star's fall held it back for nineteen years. It does not hate anyone. Everything ends, and it comes to help.`,
+    lore: `Ending. The miners at Asterfell's root counted its breathing for forty days, in and out, until the star fell and it held its breath. It has held it for nineteen years. Odile asked Bram what a fire wants. He thought for a long time, and said: to finish.`,
     rest: `Keep moving and keep out of the ash. Leave the pull the moment it starts.`,
     tips: [`Ashfall and its slam leave ash on the ground.`, `From three quarters it calls Ashwalkers.`, `Down here your Ember counts: below what a Depth needs, you hit softer and take more.`],
   },
   undertow: {
-    seen: `Water where there should be stone, and a court under it. Something in the water is wearing the shape of a city.`,
+    seen: `Water standing where no water should be, deep enough to hold a city. Something under it says your name, and then forgets it.`,
     hints: [
       `The low water is a ring. Stand close to it. It leaves water that slows you.`,
       `Below 60%, Forget lands under you: if it catches you, the last skill you used is sealed for a while. Do not lead with your escape.`,
       `Drown drags you in. The tide is a wide line. Its Unnamed come three at a time: thin them fast.`,
     ],
-    lore: `Forgetting. The low water the fever rode up the mountain. It took the first city's name, and it would like yours. It is not greedy. Names are heavy, and it thinks you would like to put yours down.`,
+    lore: `Forgetting. There was a city on this rock before Asterfell, and it took that one first. All that is left of it is a plaque that reads HERE STOOD. Since she went down there, Odile reads aloud every name she has ever known, each night, before she sleeps.`,
     rest: `Stay close, keep your escape for the pull, and never stand in its water.`,
     tips: [`Forget seals your last skill: use a lesser one when it lands.`, `Down here your Ember counts: below what a Depth needs, you hit softer and take more.`],
   },
   rootmother: {
-    seen: `Roots, all the way down, and in the middle of them something that is very gently growing.`,
+    seen: `Roots, all the way down, and in the middle of them something being very patient.`,
     hints: [
       `Roots come up in a line toward you. Step off the line.`,
       `From 70% she calls Rootbound and mends herself each time. Do not leave them standing.`,
       `Her embrace (below 60%) drags you in. The thicket is safe only close to her.`,
     ],
-    lore: `Growing, which is why things rot. Tobin's cure was her touch. A label in his hand is pushed into her roots: "Not a cure. A kindness. She lets things finish."`,
+    lore: `Growing. Tobin went down to her once and came back with a label in his own hand: "Not a cure. A kindness. She lets things finish." Everything that grows is growing toward her, a little. Odile has stopped keeping cut flowers.`,
     rest: `Kill what she grows, fight close, and keep out of her blooms.`,
     tips: [`Bloom scatters spores that stay on the ground.`, `Down here your Ember counts: below what a Depth needs, you hit softer and take more.`],
   },
   choir: {
-    seen: `Glass that sings. In the singing you can pick out voices: the Queen humming, a soldier counting, a man saying a name.`,
+    seen: `Glass that sings. Somewhere in the third row, a voice you have heard before.`,
     hints: [
       `The chorus is twenty notes in every direction. Find a gap or parry one.`,
       `The requiem is a ring: safe within a few paces of it.`,
       `Below 60%, Recall drops stars on you one after another. Keep moving one way, then turn.`,
     ],
-    lore: `Remembering. Every voice the mountain ever lost, still singing. Your own voice is in there too, from the lives you have let go of.`,
+    lore: `Remembering. Every voice the mountain ever lost is in it, and some it has not lost yet. Odile went down once to listen for Tobin. She will not say whether she heard him. She only says the Choir is never out of tune.`,
     rest: `Parry through the chorus, stay close for the requiem, and keep moving under the recall.`,
     tips: [`The refrain is a cross of four lines aimed early: walk off its lines.`, `It calls Echoes. They look like you, once.`, `Down here your Ember counts: below what a Depth needs, you hit softer and take more.`],
   },
   stillness: {
-    seen: `Nothing, at the very bottom. You can feel it noticing you.`,
+    seen: `At the very bottom, nothing. You can feel it noticing you.`,
     hints: [
       `Hush is a huge pull and burst with two seconds' warning. Start running the moment everything goes quiet.`,
       `Quiet is a ring twelve paces wide. The safe place is close, inside four.`,
       `Below half, Enough lands under you and seals your last skill. Its Hush come three at a time.`,
     ],
-    lore: `Enough. The counterweight to Wanting. The star asked you what you wanted. This one asks what you can do without, and it will wait as long as you need.`,
+    lore: `Enough. The stone above it is blank, and everyone who reads it reads something different. Odile's page for it is blank too, but for one line at the foot, very small: "It asked me what I could do without. I am still answering."`,
     rest: `Respect the hush: leave the moment it pulls. Stay close for the quiet.`,
     tips: [`Nothing is a cross of four long lines, aimed early.`, `Down here your Ember counts: below what a Depth needs, you hit softer and take more.`],
   },
@@ -322,8 +324,10 @@ export const GROUPS = [
   { title: 'Asterfell', ids: ['glassbound', 'courtguard', 'wishling'] },
   { title: 'The Deep', ids: ['ashwalker', 'unnamed', 'rootbound', 'echo', 'hush'] },
   { title: 'Strays', ids: ['wishthief', 'oathshade'] },
-  { title: 'Those who wait', ids: ['boss', 'boss2', 'boss3', 'herald', 'asker'] },
-  { title: 'The other five', ids: ['cinder', 'undertow', 'rootmother', 'choir', 'stillness'] },
+  { title: 'Those who wait', ids: ['boss', 'boss2', 'boss3', 'herald'] },
+  // The six Primordials. The note under the name shows once one of the five below the Starwell is met.
+  { title: 'Arcana Mundi', sub: 'the secrets of the world', ids: ['asker', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness'],
+    note: 'Six of them. The star was only the one that fell.', noteAfter: ['cinder', 'undertow', 'rootmother', 'choir', 'stillness'] },
 ];
 export const CASE_IDS = GROUPS.flatMap((g) => g.ids);
 const isBoss = (id) => !!(ENEMIES[id] && ENEMIES[id].boss);
@@ -356,7 +360,7 @@ export function note(b, kind, type, extra = {}) {
     b.seen[id] = 1;
     if (!isBoss(id)) return '';
     b.unread++;
-    return `${name} added to the Casebook`;
+    return `${BOOK}: ${name}`;
   }
   if (kind === 'kill') {
     const was = b.kills[id] || 0;
@@ -365,14 +369,14 @@ export function note(b, kind, type, extra = {}) {
     let line = '';
     if (extra.remnant && !b.rem[id] && CASES[id].remnant) {
       b.rem[id] = 1;
-      line = `The Casebook: a note on ${name}'s Remnant`;
+      line = `${BOOK}: a note on ${name}'s Remnant`;
     }
     if (extra.old && !b.old && id === 'boss3') {
       b.old = 1;
-      line = `The Casebook: a note on the face the Unmade wears`;
+      line = `${BOOK}: a note on the face the Unmade wears`;
     }
-    if (was === 0) line = isBoss(id) ? `${name}: the Casebook's page is complete` : `${name} added to the Casebook`;
-    else if (was + 1 === KEPT && !isBoss(id)) line = `The Casebook: Odile has more to say about the ${name}`;
+    if (was === 0) line = isBoss(id) ? `${BOOK}: ${name}'s page is complete` : `${BOOK}: ${name}`;
+    else if (was + 1 === KEPT && !isBoss(id)) line = `${BOOK}: Odile has more to say about the ${name}`;
     if (line) b.unread++;
     return line;
   }
@@ -472,7 +476,8 @@ export function listHtml(b, sel, visited) {
   let rested = 0;
   const parts = [];
   for (const g of GROUPS) {
-    parts.push(`<h3>${g.title}</h3>`);
+    parts.push(`<h3>${g.title}${g.sub ? `<small>${g.sub}</small>` : ''}</h3>`);
+    if (g.note && g.noteAfter.some((id) => stage(b, id).seen)) parts.push(`<p class="case-group-note">${g.note}</p>`);
     for (const id of g.ids) {
       const s = stage(b, id);
       if (s.rested) rested++;

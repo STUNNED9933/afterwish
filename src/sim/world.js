@@ -2844,7 +2844,7 @@ export class World {
       if (this.mode === 'explore') {
         // Out in the wilds you are only knocked out: you wake up in town (in a party, at the map's entrance).
         this.respawnT = CONFIG.EXPLORE_RESPAWN_DELAY * (this.party ? 2 : 1);
-        this.emit('playerDown', { x: p.x, z: p.z });
+        this.emit('playerDown', { x: p.x, z: p.z, foe: this.fellTo(p, src) });
         if (p.streak > 0) {
           this.emit('streakLost', { n: p.streak });
           p.streak = 0;
@@ -2855,9 +2855,30 @@ export class World {
       this.telegraphs = [];
       this.delayed = [];
       this.falls = []; // the final boss's falling stars (stepFalls)
-      this.emit('playerDeath', { wave: this.wave.n });
+      this.emit('playerDeath', { wave: this.wave.n, foe: this.fellTo(p, src) });
     }
     return 'hit';
+  }
+
+  /**
+   * The Casebook (0.56): which boss a fallen hero was fighting. The one that struck, whoever called up
+   * what struck, or else the nearest boss still standing within reach of the fight. null if none.
+   */
+  fellTo(p, src) {
+    let e = src && src.def ? src : null;
+    if (e && !e.def.boss && e.summoner != null) e = this.enemyById(e.summoner) || e;
+    if (e && e.def.boss) return e.type;
+    let best = null;
+    let bd = 30 * 30;
+    for (const o of this.enemies) {
+      if (o.dead || !o.def.boss) continue;
+      const d = (o.x - p.x) * (o.x - p.x) + (o.z - p.z) * (o.z - p.z);
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    return best ? best.type : null;
   }
 
   // =========================================================================
@@ -5921,7 +5942,7 @@ export class World {
       if (m.killHeal > 0) this.healPlayer(p.stats.maxHp * m.killHeal, true); // Shroud of Last Rites
     }
     if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
-    this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite });
+    this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite, remnant: e.remnant ? 1 : undefined, old: e.oldCls || undefined });
     if (e.def.boss) this.bossLine(e, 'death', true);
     if (e.def.asker) this.clearWishes();
     if (e.def.shatter) {

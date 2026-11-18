@@ -56,6 +56,7 @@
     <div id="purse">Gold <b id="hud-gold">0</b> · Shards <b id="hud-tickets">0</b> · <span id="hud-streak" class="hidden" title="Tier bosses beaten in a row without being knocked out: more loot on tier II and up. Being knocked out ends it.">Streak <b id="hud-streak-n">0</b> · </span><span title="Combat Power: how strong your hero is, from level, gear, talents and subclass. It balances how hard you hit (Might) with how much you can take (Resolve).">Power <b id="hud-cp">0</b></span><span id="cp-pop" class="hidden"></span></div>
     <button type="button" id="btn-talents" class="hud-btn">Talents <kbd>T</kbd><span id="talent-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-journal" class="hud-btn">Journal <kbd>J</kbd></button>
+    <button type="button" id="btn-casebook" class="hud-btn" title="Sister Odile's Casebook: everything the wish made, and how to give it rest">Casebook <kbd>B</kbd><span id="casebook-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-gear" class="hud-btn">Gear <kbd>Tab</kbd><span id="gear-badge" class="badge hidden"></span></button>
     <button type="button" id="btn-menu" class="hud-btn">Menu <kbd>Esc</kbd></button>
   </div>
@@ -399,10 +400,24 @@
 
 <section id="journal" class="screen hidden">
   <div class="menu-card wide-card">
-    <div class="card-head"><h2>Journal</h2><button type="button" id="btn-journal-close" class="ghost">Close <kbd>J</kbd></button></div>
+    <div class="card-head"><h2>Journal</h2><button type="button" id="btn-journal-casebook" class="ghost">Casebook <kbd>B</kbd></button><button type="button" id="btn-journal-close" class="ghost">Close <kbd>J</kbd></button></div>
     <div class="journal-cols">
       <div><h3>Quests</h3><div id="journal-quests"></div></div>
       <div><h3 id="journal-lore-head">What the road remembers</h3><div id="journal-lore"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="casebook" class="screen hidden">
+  <div class="menu-card wide-card">
+    <div class="card-head"><h2>The Casebook</h2><button type="button" id="btn-casebook-close" class="ghost">Close <kbd>B</kbd></button></div>
+    <div class="case-bar">
+      <span class="setting-desc">Sister Odile's notes on everything the wish made. Kept by your account, for every class and every life. <b id="case-count"></b></span>
+      <label class="case-toggle"><input type="checkbox" id="case-detail"> Detailed <span class="setting-desc">(or hold <kbd>Shift</kbd>)</span></label>
+    </div>
+    <div class="case-cols">
+      <nav id="case-list" aria-label="Entries"></nav>
+      <article id="case-page" aria-live="polite"></article>
     </div>
   </div>
 </section>

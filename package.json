@@ -1,11 +1,11 @@
 {
   "name": "afterwish",
-  "version": "0.55.2",
+  "version": "0.56.0",
   "description": "Afterwish: a 3D browser action RPG with parry combat, ten maps to level 100, a tragic story, and co-op by room code.",
   "scripts": {
     "build": "node scripts/sim-version.mjs && node build.mjs",
     "watch": "node build.mjs --watch",
-    "test": "node test/sim.test.mjs && node test/save.test.mjs && node --no-warnings test/server.test.mjs && node test/shards.test.mjs"
+    "test": "node test/sim.test.mjs && node test/save.test.mjs && node --no-warnings test/server.test.mjs && node test/shards.test.mjs && node test/casebook.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

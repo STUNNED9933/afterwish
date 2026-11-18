@@ -614,6 +614,45 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 .lore p { margin: 4px 0 0; font: italic 400 15px/1.5 var(--body); color: #d8dce6; white-space: pre-line; }
 .lore.missing { opacity: 0.5; border-left-style: dashed; }
 @media (max-width: 760px) { .journal-cols { grid-template-columns: 1fr; } }
+/* The Casebook (0.56) */
+#casebook { align-items: flex-start; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.8); }
+#casebook .card-head { gap: 8px; }
+.case-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.case-bar b { color: var(--gold); font-weight: 600; margin-left: 4px; }
+.case-toggle { display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.case-toggle input { accent-color: var(--steel); }
+.case-cols { display: grid; grid-template-columns: 220px 1fr; gap: 22px; min-height: 380px; }
+#case-list { display: flex; flex-direction: column; max-height: 62vh; overflow-y: auto; padding-right: 6px; }
+#case-list h3 { font: 600 12px var(--body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin: 12px 0 4px; }
+#case-list h3:first-child { margin-top: 0; }
+.case-item { display: flex; justify-content: space-between; gap: 8px; text-align: left; background: none; border: 0; border-left: 2px solid transparent; color: var(--bone); font: 400 15px var(--body); padding: 4px 8px; cursor: pointer; }
+.case-item:hover { background: rgba(255, 255, 255, 0.04); }
+.case-item.on { border-left-color: var(--gold); background: rgba(233, 211, 161, 0.08); }
+.case-item.seen { color: var(--muted); }
+.case-item.unknown { color: #5c6378; }
+.case-item small { color: var(--muted); font-size: 12px; }
+.case-item small.falls { color: #c9858c; }
+#case-page { max-height: 62vh; overflow-y: auto; padding-right: 6px; }
+#case-page h3.case-name { font: italic 600 30px/1.1 var(--display); color: var(--bone); margin: 0; }
+#case-page h3.case-name small { display: block; font: 400 14px var(--body); color: var(--gold); margin-top: 4px; font-style: normal; }
+#case-page h4 { font: 600 12px var(--body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin: 16px 0 6px; }
+.case-where { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
+.case-counts { color: var(--muted); font-size: 13px; margin: -4px 0 10px; }
+.case-lore { margin: 0 0 8px; font: italic 400 16px/1.55 var(--body); color: #d8dce6; padding-left: 12px; border-left: 2px solid #6a5a40; }
+.case-lore.more { border-left-style: dashed; }
+.case-rest { margin: 0; font-size: 16px; line-height: 1.5; }
+.case-hint { margin: 0 0 6px; font-size: 15px; line-height: 1.5; color: var(--bone); }
+.case-tips { margin: 8px 0 0; padding-left: 18px; font-size: 15px; line-height: 1.5; color: #d8dce6; }
+.case-moves { width: 100%; border-collapse: collapse; font-size: 14px; }
+.case-moves td { padding: 6px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+.case-moves td span { color: #c4cad8; }
+.case-moves small { color: var(--muted); }
+.case-moves .warn { color: var(--muted); white-space: nowrap; text-align: right; }
+.case-moves .tag { display: inline-block; min-width: 46px; text-align: center; font: 600 11px var(--body); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+.case-moves .tag.parry { color: var(--ink); background: var(--steel); }
+.case-moves .tag.red { color: #fff; background: #b8323d; }
+.case-moves .tag.call { color: var(--ink); background: var(--gold); }
+@media (max-width: 760px) { .case-cols { grid-template-columns: 1fr; } #case-list { max-height: 30vh; } }
 
 /* ---------- Subclasses and talents ---------- */
 .spec-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

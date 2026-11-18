@@ -116,8 +116,9 @@ export class Input {
       this.actions.togglePause();
       return;
     }
-    if (!typing && !e.repeat && (key === 'j' || key === 't' || key === 'g')) {
+    if (!typing && !e.repeat && (key === 'j' || key === 't' || key === 'g' || key === 'b')) {
       if (key === 'j') this.actions.toggleJournal();
+      else if (key === 'b') this.actions.toggleCasebook();
       else if (key === 't') this.actions.toggleTalents();
       else this.actions.interact();
       return;

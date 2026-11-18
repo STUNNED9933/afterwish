@@ -159,6 +159,19 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Casebook (0.56.0)
+
+- **The Casebook** (B, or from the Journal): Sister Odile's notes on all 32 kinds of enemy, kept by the
+  account, so every class and every life fills the same book.
+- Ordinary enemies get a page the first time you lay one to rest: who they were, and how to give them
+  rest. At 25, Odile has one more thing to say.
+- Bosses: seeing one adds it. Each time one beats you (1, 3 and 6 falls) Odile has a hint, gentle first.
+  Beating it completes the page, with the trick of the fight (the Asker's wishes, the Unmade's faces).
+  Remnants, and the Unmade wearing your old face, add a note of their own.
+- **Simple or detailed:** the simple page is a few lines; tick Detailed (or hold Shift) for every move,
+  whether it can be parried, how long it warns you, and the second notes.
+- A kill counts if it happens near your hero, so a party fills its books together.
+
 ### Everything on the server world (0.55.2)
 
 - **Rebirth and the Unwish work on the server world**, as in single player (each hero's own, even with

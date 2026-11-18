@@ -33,6 +33,7 @@ import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { ServerRoom } from './net/server-room.js';
 import { SERVERS, serverHealth } from './net/servers.js';
+import * as Casebook from './ui/casebook.js';
 import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX, compactEvents } from './net/sync.js';
 import { FRIEND_CMDS } from './net/cmds.js';
 
@@ -98,6 +99,11 @@ function start(hot = {}) {
   if (save) askPersistentStorage();
   // Gold and arena tickets belong to the account, so both characters share them.
   const account = hot.account || loadAccount() || { gold: save?.gold || 0, tickets: CONFIG.START_TICKETS };
+  account.casebook = Casebook.freshBook(account.casebook); // The Casebook (0.56): the account's, every class and every life
+  let caseSel = null; // the page open in the Casebook
+  let caseShift = false; // Shift held: the other view, for as long as it is held
+  let caseSaveT = null;
+  let caseScanAt = 0;
   function makeWorld(opts) {
     const w = new World(Object.assign({ parryPreset: settings.parryPreset, cls: settings.cls }, opts));
     renderer.setHeroClass(w.cls);
@@ -262,7 +268,7 @@ function start(hot = {}) {
     document.body.dataset.from = mode === 'gear' ? gearReturn : '';
     // Drop keyboard focus from buttons so Space parries instead of re-clicking one.
     if (mode === 'play' && document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-    for (const id of ['title', 'town', 'pause', 'defeat', 'augment', 'travel', 'talk', 'read', 'journal', 'talents', 'transfer', 'mp', 'trial']) $(id).classList.toggle('hidden', mode !== id);
+    for (const id of ['title', 'town', 'pause', 'defeat', 'augment', 'travel', 'talk', 'read', 'journal', 'casebook', 'talents', 'transfer', 'mp', 'trial']) $(id).classList.toggle('hidden', mode !== id);
     $('watch-badge').classList.toggle('hidden', mode !== 'watch');
     $('inventory').classList.toggle('hidden', mode !== 'gear');
     tooltip.hide();
@@ -277,6 +283,7 @@ function start(hot = {}) {
     if (mode === 'talk') renderTalk();
     if (mode === 'read') renderRead();
     if (mode === 'journal') renderJournal();
+    if (mode === 'casebook') openCasebook();
     if (mode === 'talents') renderTalents();
     talentBadge();
     if (mode === 'title') refreshTitle();
@@ -1129,6 +1136,63 @@ function start(hot = {}) {
         ? `<div class="lore"><b>${esc(sg.title)}</b><small>${MAPS[sg.map].name}</small><p>${esc(sg.text)}</p></div>`
         : `<div class="lore missing"><b>Not found yet</b><small>${p.visited.includes(sg.map) ? MAPS[sg.map].name : 'Somewhere further up the road'}</small></div>`;
     }).join('');
+  }
+
+  // --------------------------------------------------------- the Casebook (0.56)
+  const book = () => account.casebook;
+  function openCasebook() {
+    const b = book();
+    b.unread = 0;
+    caseBadge();
+    saveBook();
+    if (!caseSel) caseSel = Casebook.firstPage(b);
+    renderCasebook();
+  }
+  function renderCasebook() {
+    const b = book();
+    const visited = world.player.visited || [];
+    const detail = !!settings.caseDetail !== caseShift; // Shift flips whichever view is set
+    const list = Casebook.listHtml(b, caseSel, visited);
+    $('case-list').innerHTML = list.html;
+    $('case-count').textContent = `${list.rested} of ${list.total} laid to rest`;
+    $('case-detail').checked = !!settings.caseDetail;
+    $('case-page').innerHTML = Casebook.pageHtml(b, caseSel, detail, visited);
+    $('case-page').classList.toggle('detail', detail);
+  }
+  function caseBadge() {
+    const n = book().unread || 0;
+    const el = $('casebook-badge');
+    el.textContent = n > 9 ? '9+' : n;
+    el.classList.toggle('hidden', !n);
+  }
+  function saveBook() {
+    // Written on its own (a friend in a room or on a server never runs persist), a moment after it changes.
+    if (caseSaveT) return;
+    caseSaveT = setTimeout(() => {
+      caseSaveT = null;
+      if (!stale) storeAccount(account);
+    }, 1500);
+  }
+  /** Something worth a page happened: note it, and say so if it opened something. */
+  function caseNote(kind, type, extra) {
+    if (watching || !type) return; // a replay of someone else's run teaches you nothing
+    const line = Casebook.note(book(), kind, type, extra);
+    saveBook();
+    if (!line) return;
+    hud.feedText(`${line} (B)`);
+    caseBadge();
+    if (mode === 'casebook') renderCasebook();
+  }
+  /** Bosses and enemies close enough to see. A few times a second is plenty. */
+  function caseScan(now) {
+    if (now < caseScanAt || watching || !world.enemies) return;
+    caseScanAt = now + 400;
+    const p = world.player;
+    if (!p || p.dead) return;
+    for (const e of world.enemies) {
+      if (e.dead || !e.type || book().seen[e.type]) continue;
+      if (Casebook.near(p, e.x, e.z, Casebook.RANGES.seen)) caseNote('seen', e.type);
+    }
   }
 
   // --------------------------------------------------------- subclasses and talents
@@ -1992,6 +2056,12 @@ function start(hot = {}) {
       else return;
       sfx.ui();
     },
+    toggleCasebook() {
+      if (mode === 'play' || mode === 'journal') setMode('casebook');
+      else if (mode === 'casebook') setMode('play');
+      else return;
+      sfx.ui();
+    },
     toggleTalents() {
       if (mode === 'play' && world.trial) {
         hud.hint('Your Weekly Echo build is set before the run, on the Weekly Echo screen.', 4);
@@ -2016,7 +2086,7 @@ function start(hot = {}) {
       if (mode === 'watch') return stopWatch();
       if (mode === 'trial') return enterTown();
       if (mode === 'play') setMode('pause');
-      else if (['pause', 'travel', 'talk', 'read', 'journal', 'talents'].includes(mode)) setMode('play');
+      else if (['pause', 'travel', 'talk', 'read', 'journal', 'casebook', 'talents'].includes(mode)) setMode('play');
       else if (mode === 'transfer' || mode === 'mp') setMode('title');
       else if (mode === 'gear') setMode(gearReturn);
     },
@@ -2284,7 +2354,34 @@ function start(hot = {}) {
     $('import-code').value = text;
     tryImport(text); // checks it and asks for one more click on "Import pasted code" to confirm
   });
-  for (const id of ['btn-talk-close', 'btn-read-close', 'btn-journal-close', 'btn-talents-close']) $(id).addEventListener('click', () => setMode('play'));
+  for (const id of ['btn-talk-close', 'btn-read-close', 'btn-journal-close', 'btn-casebook-close', 'btn-talents-close']) $(id).addEventListener('click', () => setMode('play'));
+  $('btn-casebook').addEventListener('click', () => actions.toggleCasebook());
+  caseBadge();
+  $('btn-journal-casebook').addEventListener('click', () => actions.toggleCasebook());
+  $('case-detail').addEventListener('change', (e) => {
+    settings.caseDetail = e.target.checked;
+    storeSettings(settings);
+    renderCasebook();
+  });
+  $('case-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-case]');
+    if (!b) return;
+    caseSel = b.dataset.case;
+    renderCasebook();
+  });
+  // Holding Shift shows the detailed page while it is held (0.56).
+  for (const kind of ['keydown', 'keyup']) {
+    window.addEventListener(kind, (e) => {
+      if (e.key !== 'Shift' || mode !== 'casebook' || e.repeat) return;
+      caseShift = kind === 'keydown';
+      renderCasebook();
+    });
+  }
+  window.addEventListener('blur', () => {
+    if (!caseShift) return;
+    caseShift = false;
+    if (mode === 'casebook') renderCasebook();
+  });
   $('btn-journal').addEventListener('click', () => actions.toggleJournal());
   $('btn-talents').addEventListener('click', () => actions.toggleTalents());
   $('btn-respec').addEventListener('click', (e) => armThenRun(e.currentTarget, 'Click again to reset your talents', () => applyNow({ type: 'respec' })));
@@ -2606,6 +2703,8 @@ function start(hot = {}) {
         break;
       case 'death':
         sfx.death(ev.boss);
+        // The Casebook: a death close to your hero is one you helped with (in the Echo Ring, all of them).
+        if (world.mode === 'arena' || Casebook.near(world.player, ev.x, ev.z, Casebook.RANGES.kill)) caseNote('kill', ev.enemyType, { remnant: ev.remnant, old: ev.old });
         break;
       case 'partyJoin':
         sfx.ui();
@@ -3164,6 +3263,7 @@ function start(hot = {}) {
         persist();
         break;
       case 'playerDown':
+        caseNote('fall', ev.foe);
         sfx.defeat();
         persist();
         hud.banner('Knocked out', world.party || (net && net.role === 'client') ? 'Back on your feet at the entrance soon, unless the whole party falls' : 'You wake up in town');
@@ -3174,6 +3274,7 @@ function start(hot = {}) {
         hud.float(renderer, ev.x, 2.6, ev.z, '+1 shard', 'word stun');
         break;
       case 'playerDeath':
+        caseNote('fall', ev.foe);
         sfx.defeat();
         if (world.trial) {
           // A Weekly Echo run (or a replay being watched) ends here; nothing is saved to the character.
@@ -3337,6 +3438,7 @@ function start(hot = {}) {
       }
     }
 
+    caseScan(now);
     input.update(now);
     if (!net && mode === 'play') alpha = Math.min(1, acc / CONFIG.TICK);
     renderer.render(world, alpha, dt);

@@ -21,7 +21,7 @@ const ACTIVE_CMDS = new Set(['move', 'attackMove', 'attack', 'stop', 'cast', 'pa
 import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
-import { migrateRebirth, rebirthBlock, starmarksFor, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
+import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
 import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
@@ -4616,9 +4616,9 @@ export class World {
     this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, ember: save.rebirth.lastEmber || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
   }
 
-  /** Ember a rebirth now would give (0.54.1): what the gear you wear is worth, the Heirloom too (gifts aside). */
-  rebirthEmber() {
-    return emberForGear(rebirthGear(this.player).value);
+  /** Ember a rebirth now would give (0.54.1; 0.58.2): by everything given up, worn (not the Heirloom) and in the bag. */
+  rebirthEmber(heirloom = null) {
+    return emberForGear(rebirthGear(this.player, heirloom).value);
   }
 
   /** Echo Essence a rebirth would give now (0.53), keeping `heirloom` (a slot): worn gear and, from 0.58, the bag too. */
@@ -4639,7 +4639,7 @@ export class World {
       if (it && !it.gift && (!rb.memories[slot] || it.rarity * 1000 + (it.stars || 0) * 100 + (it.plus || 0) > rb.memories[slot].rarity * 1000 + (rb.memories[slot].stars || 0) * 100 + (rb.memories[slot].plus || 0))) remembered++;
     }
     return {
-      marks: this.rebirthMarks(),
+      marks: this.rebirthMarks(heirloom), marksGear: p.level >= REBIRTH.level ? starmarksForGear(g.value) : 0, marksWish: p.level >= REBIRTH.level ? starmarksFor(p.level, p.wish || 0) - REBIRTH.base : 0,
       essence: g.essence, essenceWorn: g.worn, essenceBag: g.bag, bagPieces: g.bagPieces, gifts: g.gifts,
       ember: emberForGear(g.value), emberNow: this.ember(p),
       glow: REBIRTH_GLOWS[next] || null,
@@ -4841,8 +4841,8 @@ export class World {
   }
 
   /** Starmarks the hero would get for a rebirth now. */
-  rebirthMarks() {
-    return starmarksFor(this.player.level, this.player.wish || 0);
+  rebirthMarks(heirloom = null) {
+    return starmarksFor(this.player.level, this.player.wish || 0, rebirthGear(this.player, heirloom).value);
   }
 
   /** Buy one rank of a Rebirth perk with Starmarks. */

@@ -2867,22 +2867,24 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const young = new World({ seed: 7, cls: 'rogue', save: Object.assign(geared('rogue', 100, 3), { bossKills: {} }) });
     young.command({ type: 'rebirth' }); young.runCommands();
     check('Rebirth: not before The Unmade is beaten', !young.events.some((e) => e.type === 'reborn'));
+    const M = w.rebirthMarks(); // (0.58.2) 30 for level 100 and Wishborne 100, and more for the gear given up
+    check('Rebirth: what you give up adds Starmarks too', M > 30 && M <= 30 + REBIRTH.gearMax, M);
     w.command({ type: 'rebirth' }); w.runCommands();
     const ev = w.events.find((e) => e.type === 'reborn');
-    check('Rebirth: at level 100 with The Unmade beaten, the star begins you again', !!ev && ev.n === 1 && ev.marks === 30);
+    check('Rebirth: at level 100 with The Unmade beaten, the star begins you again', !!ev && ev.n === 1 && ev.marks === M);
     const fresh = ev.save;
     check('Rebirth: a full fresh start (level 1, starter weapon, empty bag, no scrap or Wishdust)', fresh.level === 1 && Object.keys(fresh.equipped).join() === 'weapon' && fresh.equipped.weapon.id === 'starter' && !fresh.bag.length && fresh.scrap === 0 && !fresh.dust);
     const w2 = new World({ seed: 7, cls: 'rogue', save: fresh });
     const q = w2.player;
     check('Rebirth: story, quests, tiers, subclass and Wishborne all start again', !q.spec && q.tierMax === 1 && !Object.keys(q.quests).length && q.wish === 0 && !Object.keys(q.wishStats).length && !q.bossKills.boss3);
-    check('Rebirth: Starmarks, glows (a new one too) and the account\'s gold stay', q.rebirth.marks === 30 && q.rebirth.n === 1 && q.glows.includes('ember') && q.glows.includes('dawn') && fresh.gold === 5000);
+    check('Rebirth: Starmarks, glows (a new one too) and the account\'s gold stay', q.rebirth.marks === M && q.rebirth.n === 1 && q.glows.includes('ember') && q.glows.includes('dawn') && fresh.gold === 5000);
     check('Rebirth: the past life is remembered (for the ending that builds on this)', q.rebirth.past.length === 1 && q.rebirth.past[0].level === 100 && q.rebirth.past[0].spec === 'assassin');
     const ad0 = q.stats.ad, bag0 = w2.bagSize(), sp0 = q.skillPoints;
     for (let i = 0; i < 3; i++) { w2.command({ type: 'rebirthPerk', id: 'starborn' }); w2.runCommands(); }
     w2.command({ type: 'rebirthPerk', id: 'pockets' }); w2.runCommands();
     w2.command({ type: 'rebirthPerk', id: 'head' }); w2.runCommands();
     check('Perks: Starborn adds damage, Deep Pockets bag slots, Head Start a skill point', q.stats.ad > ad0 && w2.bagSize() === bag0 + 4 && q.skillPoints === sp0 + 1, `${ad0}->${q.stats.ad}`);
-    check('Perks: paid in Starmarks', q.rebirth.marks === 30 - 3 * PERKS.starborn.cost - PERKS.pockets.cost - PERKS.head.cost);
+    check('Perks: paid in Starmarks', q.rebirth.marks === M - 3 * PERKS.starborn.cost - PERKS.pockets.cost - PERKS.head.cost);
     q.rebirth.marks = 0;
     w2.command({ type: 'rebirthPerk', id: 'study' }); w2.runCommands();
     check('Perks: none without the Starmarks', !q.rebirth.perks.study);
@@ -3593,10 +3595,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
 }
 // --- Act III: the Deep, Ember and the Primordials (0.54) ---
 {
-  const { DEEP, emberScale, emberOf, emberForGear } = await import('../src/sim/endgame.js');
+  const { DEEP, DEPTH_IDS, emberScale, emberOf, emberForGear } = await import('../src/sim/endgame.js');
   const { geared } = await import('./balance.mjs');
   check('Ember: what rebirths gave, and up to +5 Kindling a Depth', emberOf({ n: 3, ember: 52, kindling: { 6: 5, 7: 9 } }) === 52 + 5 + 5);
-  check('Ember: a rebirth gives more the more built-up your gear is, up to 30', emberForGear(0) === 0 && emberForGear(200) === 10 && emberForGear(DEEP.emberFull) === 30 && emberForGear(1e6) === 30, [200, 700, 1800].map(emberForGear).join(' '));
+  check('Ember (0.58.2): a rebirth gives more the more you give up, up to the cap', emberForGear(0) === 0 && emberForGear(400) === 16 && emberForGear(1e6) === DEEP.emberMax && emberForGear(900) > emberForGear(400), [400, 1300, 2800].map(emberForGear).join(' '));
+  {
+    // The pace (0.58.2): the first rebirth clears Depth VI comfortably; then a new Depth every rebirth or two
+    const first = 8 + emberForGear(380); // The Breath Below's gift, and a first life's gear
+    check('Ember pace: a first life (with The Breath Below) is well past Depth VI', first / DEEP.depths[6].ember >= 1.3, `${first} of ${DEEP.depths[6].ember}`);
+    let ember = first, lives = 1;
+    const opened = { 6: 1 };
+    const given = [700, 1000, 1300, 1600, 1900, 2200, 2500, 2800];
+    for (const g of given) { ember += emberForGear(g) + DEEP.kindlingMax; lives++; for (const d of DEPTH_IDS) if (!opened[d] && ember >= DEEP.depths[d].ember) opened[d] = lives; }
+    const at = DEPTH_IDS.map((d) => opened[d]);
+    const gaps = at.slice(1).map((n, i) => n - at[i]);
+    check('Ember pace: each Depth after VI comes a rebirth or two after the last', at.every(Boolean) && gaps.every((g) => g >= 1 && g <= 2), `opens at rebirths ${at.join(', ')}`);
+  }
   check('Ember: each Depth asks for much more than the last', DEEP.depths[6].ember === 15 && DEEP.depths[10].ember > 5 * DEEP.depths[6].ember);
   const { migrateRebirth } = await import('../src/sim/rebirth.js');
   check('Ember: a hero reborn before 0.54.1 keeps 10 for each rebirth', migrateRebirth({ n: 3 }).ember === 30 && migrateRebirth({ n: 3, ember: 41 }).ember === 41);

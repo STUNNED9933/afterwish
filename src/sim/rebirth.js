@@ -20,6 +20,8 @@ export const REBIRTH = {
   boss: 'boss3', // ...having beaten The Unmade at least once
   base: 10, // Starmarks for reaching level 100
   wishK: 2, // ...plus wishK x sqrt(Wishborne levels)
+  gearDiv: 4, // ...(0.58.2) plus sqrt(what you give up) / gearDiv...
+  gearMax: 15, // ...up to this many
   acctExp: 0.05, // every rebirth on any hero: +5% EXP for every hero on the account
   acctExpMax: 0.5,
   pastMax: 12, // lives remembered
@@ -68,8 +70,8 @@ const memoryRank = (it) => (it ? it.rarity * 1000 + (it.stars || 0) * 100 + (it.
 export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'eternal' };
 
 /**
- * (0.58) What a rebirth turns this hero's gear into: Echo Essence from everything worn (but the
- * Heirloom) and everything in the bag, Ember from what is worn (the Heirloom too). A gift from a
+ * (0.58) What a rebirth turns this hero's gear into: Echo Essence, Ember and Starmarks, all from
+ * what is given up: everything worn (but the Heirloom, which is kept) and everything in the bag. A gift from a
  * friend (`gift`) gives nothing: otherwise friends could hold gear through a rebirth, or pour theirs
  * into one hero's. `save` is a save or a player (equipped, bag).
  */
@@ -83,7 +85,6 @@ export function rebirthGear(save, heirloomSlot = null) {
       out.gifts++;
       continue;
     }
-    out.value += essenceFor(it);
     if (slot !== heirloomSlot) out.worn += essenceFor(it);
   }
   for (const it of save.bag || []) {
@@ -96,6 +97,7 @@ export function rebirthGear(save, heirloomSlot = null) {
     out.bagPieces++;
   }
   out.essence = out.worn + out.bag;
+  out.value = out.essence; // (0.58.2) Ember and Starmarks follow everything given up too
   return out;
 }
 
@@ -129,9 +131,13 @@ export function migrateRebirth(r) {
 }
 
 /** Starmarks a rebirth would give now. */
-export function starmarksFor(level, wish) {
+export function starmarksFor(level, wish, given = 0) {
   if (level < REBIRTH.level) return 0;
-  return REBIRTH.base + Math.floor(REBIRTH.wishK * Math.sqrt(Math.max(0, wish || 0)));
+  return REBIRTH.base + Math.floor(REBIRTH.wishK * Math.sqrt(Math.max(0, wish || 0))) + starmarksForGear(given);
+}
+/** (0.58.2) Starmarks for what you give up (its Echo value). */
+export function starmarksForGear(given) {
+  return Math.min(REBIRTH.gearMax, Math.floor(Math.sqrt(Math.max(0, given || 0)) / REBIRTH.gearDiv));
 }
 
 /** Why this hero cannot be reborn yet, or null if they can. */
@@ -160,7 +166,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
   const heir = heirloomSlot && worn[heirloomSlot] && relevel ? JSON.parse(JSON.stringify(worn[heirloomSlot])) : null;
   const sum = rebirthGear(old, heirloomSlot);
   const essence = sum.essence;
-  const value = sum.value; // what this life's worn gear was worth, the Heirloom too (Ember, 0.54.1)
+  const value = sum.value; // what was given up (Ember, 0.54.1; worn and bag, not the Heirloom, 0.58.2)
   for (const slot in worn) {
     const it = worn[slot];
     if (!it || it.gift) continue; // (0.58) a gift is not the star's to remember
@@ -177,7 +183,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     relevel(heir, 1);
     equipped[heirloomSlot] = heir;
   }
-  const marks = starmarksFor(old.level, old.wish || 0);
+  const marks = starmarksFor(old.level, old.wish || 0, value);
   rb.n += 1;
   rb.marks += marks;
   rb.earned += marks;

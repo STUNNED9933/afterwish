@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A rebirth pays for what you give up (0.58.2)
+
+- **Ember, Starmarks and Echo Essence all follow what you give up**: everything you wear (not the
+  Heirloom, which you keep) and everything in your bag, by its Echo value (rarity, +levels, stars).
+- **Ember** = 0.8 x the square root of that, up to 45 a rebirth. A first life gives up about 400
+  (about 16 Ember), so with The Breath Below's 8 the first rebirth clears Depth VI comfortably;
+  a built set (about 1,300) gives about 28 and a maxed one about 42. With each Depth's Kindling,
+  a new Depth opens every rebirth or two: VII by the third, X by about the sixth.
+- **Starmarks**: 10 for level 100, plus 2 x the root of Wishborne levels, plus the root of what you
+  give up / 4 (up to +15).
+
 ### Everyone's own story in a shared world (0.58.1)
 
 - On the server world, Haven and party maps are shared, but the story's people were placed by

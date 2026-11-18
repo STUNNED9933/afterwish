@@ -105,10 +105,13 @@ export function wishNeed(w) {
  * and take (EMBER_CURVE); below half of it every hit you land is 1.
  */
 export const DEEP = {
-  // Ember from a rebirth (0.54.1) follows what you put into that life: the gear you wear when you go
-  // (its Echo value: rarity, +levels and stars). A full set of +10 five-star Immortals gives the most.
-  emberMax: 30, // Ember from one rebirth, at most
-  emberFull: 1800, // ...for gear worth this much (sqrt: a half-built set still gives a fair share)
+  // Ember from a rebirth (0.54.1; 0.58.2) follows everything you give up: the gear you wear (not the
+  // Heirloom, which you keep) and everything in your bag, by its Echo value (rarity, +levels, stars).
+  // Square root: a first life's gear (~400) gives about 15, so with The Breath Below's 8 the first
+  // rebirth clears Depth VI comfortably; a built set gives 25 to 30, a maxed one up to the cap, so a
+  // new Depth opens every rebirth or two.
+  emberK: 0.8, // Ember = emberK x sqrt(what you give up)...
+  emberMax: 45, // ...up to this from one rebirth
   kindlingMax: 5, // Ember from each Depth's Kindling
   kindling: { normal: 0.004, elite: 0.06, boss: 1 }, // chance a kill there finds one (a Primordial: always)
   level: 100, // the least level to go down
@@ -126,7 +129,7 @@ export const EMBER_CURVE = [[1.3, 1.25, 0.8], [1, 1, 1], [0.9, 0.7, 1.3], [0.75,
 
 /** Ember a rebirth gives for gear worth `value` (Echo Essence, see rebirth.js essenceFor). */
 export function emberForGear(value) {
-  return Math.min(DEEP.emberMax, Math.floor(DEEP.emberMax * Math.sqrt(Math.max(0, value || 0) / DEEP.emberFull)));
+  return Math.min(DEEP.emberMax, Math.floor(DEEP.emberK * Math.sqrt(Math.max(0, value || 0))));
 }
 
 /** A hero's Ember: what each rebirth gave, and Kindling from each Depth (kept in the rebirth record). */

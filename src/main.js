@@ -754,7 +754,7 @@ function start(hot = {}) {
         <div class="deep-ember-n"><b>${ember}</b><span>Ember</span></div>
         <div class="deep-gauge"><div class="deep-fill" style="width:${Math.min(100, (ember / top) * 100)}%"></div>${marks}</div>
       </div>
-      <p class="deep-note">Ember is what you let go of, and it stays with you through every rebirth: up to +${DEEP.emberMax} each time you are reborn, by how built-up your gear was, and +${DEEP.kindlingMax} from each Depth's Kindling.</p>`;
+      <p class="deep-note">Ember is what you let go of, and it stays with you through every rebirth: up to +${DEEP.emberMax} each time you are reborn, by everything you give up (what you wear and what is in your bag), and +${DEEP.kindlingMax} from each Depth's Kindling.</p>`;
     const stair = document.createElement('div');
     stair.className = 'deep-stair';
     const above = document.createElement('button');
@@ -1380,7 +1380,7 @@ function start(hot = {}) {
     panel.classList.toggle('hidden', !show);
     if (!show) return;
     const block = rebirthBlock(p);
-    const marks = world.rebirthMarks();
+    const marks = world.rebirthMarks(rebirthHeir);
     const acct = Math.round(Math.min(REBIRTH.acctExpMax, REBIRTH.acctExp * (p.acctRebirths || 0)) * 100);
     panel.innerHTML = `<h3>Rebirth${rb.n ? ` · reborn ${rb.n} time${rb.n === 1 ? '' : 's'}` : ''}</h3>
       <p class="setting-desc rb-lore">The star grants exactly what is asked. Ask it to begin again and you will wake in Haven as if for the first time. It does not forget you.</p>
@@ -1419,9 +1419,9 @@ function start(hot = {}) {
       panel.appendChild(heir);
       // (0.58) Everything it gives, and what stays behind
       const pv = world.rebirthPreview(rebirthHeir);
-      const gains = [`<li><b class="rb-marks">+${pv.marks} Starmarks</b> for perks that last every life</li>`];
+      const gains = [`<li><b class="rb-marks">+${pv.marks} Starmarks</b> <span>for perks that last every life (${REBIRTH.base} for level ${REBIRTH.level}${pv.marksWish ? `, +${pv.marksWish} for your Wishborne levels` : ''}${pv.marksGear ? `, +${pv.marksGear} for what you give up` : ''})</span></li>`];
       gains.push(`<li><b>+${pv.essence} Echo Essence</b> <span>(${pv.essenceWorn} from what you wear${rebirthHeir ? ', the Heirloom aside' : ''}, ${pv.essenceBag} from ${pv.bagPieces} piece${pv.bagPieces === 1 ? '' : 's'} in your bag)${rb.essence ? `; you have ${rb.essence}` : ''}. Spend it on the gear screen to recall what the star remembers.</span></li>`);
-      gains.push(`<li><b style="color:#ff8a4a">+${pv.ember} Ember</b> <span>(of ${DEEP.emberMax}, from what you wear: rarer pieces, +levels and stars are worth more), kept for good: ${pv.emberNow} now, ${pv.emberNow + pv.ember} after</span></li>`);
+      gains.push(`<li><b style="color:#ff8a4a">+${pv.ember} Ember</b> <span>(up to ${DEEP.emberMax}, by everything you give up: rarer pieces, +levels and stars are worth more), kept for good: ${pv.emberNow} now, ${pv.emberNow + pv.ember} after</span></li>`);
       if (pv.remembered) gains.push(`<li><b>${pv.remembered} piece${pv.remembered === 1 ? '' : 's'} remembered</b> <span>(the best you have worn in ${pv.remembered === 1 ? 'that slot' : 'those slots'}), to recall in later lives</span></li>`);
       if (rebirthHeir && p.equipped[rebirthHeir]) gains.push(`<li><b>${esc(itemName(p.equipped[rebirthHeir]))}</b> <span>comes with you as your Heirloom, back at level 1</span></li>`);
       if (pv.glow && GLOWS[pv.glow]) gains.push(`<li><b>${GLOWS[pv.glow].name}</b> <span>weapon glow</span></li>`);
@@ -1442,8 +1442,8 @@ function start(hot = {}) {
     go.disabled = !!why;
     go.textContent = why ? `Begin again: ${why}` : rebirthSure
       ? `Are you sure? Click again to begin again with ${marks} Starmarks`
-      : `Begin again · +${marks} Starmarks${block ? '' : ` · +${world.rebirthEssence(rebirthHeir)} Essence · +${world.rebirthEmber()} Ember`}`;
-    go.title = 'A full fresh start for this hero: level 1, no gear, scrap or Wishdust, the story, quests, world tiers, talents and Wishborne levels from the beginning. Gold is the account\'s and stays. Kept: Starmarks and perks, weapon glows. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels.';
+      : `Begin again · +${marks} Starmarks${block ? '' : ` · +${world.rebirthEssence(rebirthHeir)} Essence · +${world.rebirthEmber(rebirthHeir)} Ember`}`;
+    go.title = 'A full fresh start for this hero: level 1, no gear, scrap or Wishdust, the story, quests, world tiers, talents and Wishborne levels from the beginning. Gold is the account\'s and stays. Kept: Starmarks and perks, weapon glows. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels, plus more the more you give up.';
     go.addEventListener('click', () => {
       if (!rebirthSure) {
         rebirthSure = true;

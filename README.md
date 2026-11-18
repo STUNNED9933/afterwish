@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Rejoining after an update, in every browser (0.57.8)
+
+- "Reload and rejoin" now carries what to rejoin in the page address instead of the browser's
+  session storage. In Firefox the page could come back to the title without rejoining (Firefox
+  can refuse session storage when the site's saved data is large); the fresh address also makes
+  sure the newest page is loaded. If rejoining fails, the reason is shown.
+
 ### A first look at the Deep (0.57.6, gift raised to 8 Ember in 0.57.7)
 
 - **The Breath Below**, a new main-story quest from Odile between the Starwell and the Unwish: a crack

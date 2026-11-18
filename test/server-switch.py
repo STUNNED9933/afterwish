@@ -50,6 +50,7 @@ with sync_playwright() as pw:
     pg.click('#btn-notice-go')
     pg.wait_for_function("() => game.net && game.net.server && game.mode === 'play'", timeout=20000)
     check('Reload and rejoin: back in the server world, as the mage', pg.evaluate("() => game.world.cls") == 'mage')
+    check('the address is tidied after rejoining (no rejoin marker left to repeat it)', 'rejoin' not in pg.evaluate("() => location.search") and 'server=' in pg.evaluate("() => location.search"), pg.evaluate("() => location.search"))
     check('no page errors', not errs, errs[:3])
     b.close()
 srv.terminate()

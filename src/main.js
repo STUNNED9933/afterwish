@@ -1981,14 +1981,8 @@ function start(hot = {}) {
         : `${why} Your hero is saved up to the last few seconds.`,
       go: update ? 'Reload and rejoin' : 'Rejoin',
       onGo: () => {
-        if (update) {
-          try {
-            sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url, at: Date.now(), alone }));
-          } catch (err) {
-            /* (private mode: just reload) */
-          }
-          location.reload();
-        } else if (url) {
+        if (update) reloadToRejoin(url, alone, Date.now(), 0);
+        else if (url) {
           hideNotice();
           joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), url, null, $('btn-server'), { pass, ...(alone ? { alone: true } : {}) }).then((ok) => {
             if (!ok) {
@@ -2035,28 +2029,51 @@ function start(hot = {}) {
     clearInterval(noticeWatch);
   }
   $('btn-notice-ok').addEventListener('click', hideNotice);
-  // Back from "Reload and rejoin": straight into the server world (the passcode is remembered).
-  try {
-    const rj = JSON.parse(sessionStorage.getItem('afterwish-rejoin') || 'null');
-    sessionStorage.removeItem('afterwish-rejoin');
-    if (rj && rj.url && Date.now() - rj.at < 10 * 60 * 1000 && settings.serverPass) {
-      setTimeout(async () => {
-        openMp();
-        mpMsg('Rejoining the server world...');
-        const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass, ...(rj.alone ? { alone: true } : {}) });
-        const tries = (rj.tries || 0) + 1;
-        if (!ok && tries < 8 && /different versions|did not answer|Could not reach/.test($('mp-msg').textContent)) {
-          // The server came back before the website finished publishing the new version (or is still
-          // starting): wait a little, then reload and try again.
-          sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url: rj.url, at: rj.at, tries, alone: rj.alone }));
-          mpMsg('The new version of the game is still on its way. Trying again in 20 seconds...');
-          setTimeout(() => location.reload(), 20000);
-        }
-      }, 600);
-    }
-  } catch (err) {
-    /* nothing to rejoin */
+  /**
+   * (0.57.8) Reload into the newest page and rejoin by yourself. What to rejoin rides in the address
+   * (not sessionStorage, which Firefox can refuse when the site's storage is full, so the page came
+   * back without rejoining), and the changed address also means the newest page is fetched.
+   */
+  function reloadToRejoin(url, alone, at, tries) {
+    const q = new URLSearchParams(location.search);
+    q.set('rejoin', `${Math.floor(at / 1000).toString(36)}.${tries}`);
+    if (alone) q.set('rjalone', '1');
+    else q.delete('rjalone');
+    if (url && url !== DEFAULT_SERVER) q.set('rjserver', url);
+    else q.delete('rjserver');
+    location.replace(location.pathname + '?' + q.toString() + location.hash);
   }
+  // Back from "Reload and rejoin": straight into the server world (the passcode is remembered).
+  (() => {
+    let rj = null;
+    try {
+      const q = new URLSearchParams(location.search);
+      const tag = q.get('rejoin');
+      if (tag) {
+        const [at, tries] = tag.split('.');
+        rj = { url: q.get('rjserver') || DEFAULT_SERVER, at: parseInt(at, 36) * 1000, tries: Number(tries) || 0, alone: q.get('rjalone') === '1' };
+        for (const k of ['rejoin', 'rjalone', 'rjserver']) q.delete(k);
+        const rest = q.toString();
+        history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+      }
+    } catch (err) {
+      rj = null; // (nothing to rejoin)
+    }
+    if (!rj || !(Date.now() - rj.at < 10 * 60 * 1000)) return;
+    setTimeout(async () => {
+      openMp();
+      if (!settings.serverPass) return mpMsg('Type the server world\'s passcode once, then join again.', false);
+      mpMsg('Rejoining the server world...');
+      const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass, ...(rj.alone ? { alone: true } : {}) });
+      const tries = rj.tries + 1;
+      if (!ok && tries < 8 && /different versions|did not answer|Could not reach|closed the connection/.test($('mp-msg').textContent)) {
+        // The server came back before the website finished publishing the new version (or is still
+        // starting): wait a little, then reload and try again.
+        mpMsg('The new version of the game is still on its way. Trying again in 20 seconds...');
+        setTimeout(() => reloadToRejoin(rj.url, rj.alone, rj.at, tries), 20000);
+      }
+    }, 600);
+  })();
 
   function refreshMenus() {
     if (mode === 'gear') {

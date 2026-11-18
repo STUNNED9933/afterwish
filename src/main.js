@@ -51,6 +51,12 @@ function start(hot = {}) {
     console.error(err);
     return;
   }
+  // (0.56.2) Models load ahead of time, a couple at once, so nothing appears as blocks first: the
+  // heroes and the Echo Ring's roster shortly after the page opens; each map's own when you arrive.
+  setTimeout(() => {
+    renderer.preloadHeroes();
+    renderer.preloadArena();
+  }, 800);
 
   const sfx = new Sfx();
   const tooltip = new Tooltip();

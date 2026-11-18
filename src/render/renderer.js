@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildHero, buildEnemy, buildNpc, buildSign, buildBoard, buildAltar } from './models.js';
-import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE } from './creatures.js';
+import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
+import { MAPS } from '../sim/maps.js';
 import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
@@ -13,7 +14,7 @@ import { NPCS } from '../sim/story.js';
 import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, groundMask, buildRain, pebbleGeometry, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
-import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook } from './rigged.js';
+import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook, hideWhileLoading, preload } from './rigged.js';
 import { propInstances, PROPS } from './props.js';
 import { SlashTrail } from './slash.js';
 
@@ -320,6 +321,7 @@ export class Renderer {
   setMap(map) {
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
+    this.preloadMap(map);
     const g = (this.exploreGroup = new THREE.Group());
     this.scene.add(g);
     this.mapId = map.id;
@@ -434,6 +436,7 @@ export class Renderer {
         if (ps) {
           const person = { x: o.x, z: o.z, rig: null, next: 3 + Math.random() * 6, greeted: 0 };
           (this.people = this.people || []).push(person);
+          hideWhileLoading([...npc.children], loadCreature(ps), () => !!npc.parent && !person.rig);
           loadCreature(ps).then((tpl) => {
             if (!tpl || !npc.parent) return;
             for (const ch of npc.children) ch.visible = false;
@@ -701,6 +704,27 @@ export class Renderer {
       m.gloss.emissiveIntensity = 0.55;
     }
     return m;
+  }
+
+  /**
+   * (0.56.2) Start loading the models this map needs (its enemies, boss and people), then those of
+   * the maps its portals lead to, so they are ready before anything appears.
+   */
+  preloadMap(map) {
+    const types = (m) => (m ? [...Object.keys(m.roster || {}), m.boss, ...(m.obstacles || []).filter((o) => o.kind === 'npc').map((o) => o.id)].filter(Boolean) : []);
+    preload(modelsFor([...types(map), ...types(MAPS[map.id])]));
+    if (map.id === 'town') preload(modelsFor(Object.keys(PEOPLE)));
+    for (const p of (MAPS[map.id] && MAPS[map.id].portals) || []) preload(modelsFor(types(MAPS[p.to])));
+  }
+
+  /** Every class's hero (the title screen's class picker, and friends who join). */
+  preloadHeroes() {
+    preload(Object.keys(RIGGED).filter((id) => id.startsWith('hero_')));
+  }
+
+  /** The Echo Ring's enemies (and its bosses), before a run's first wave. */
+  preloadArena() {
+    preload(modelsFor(['grunt', 'spitter', 'brute', 'stalker', 'imp', 'wolf', 'knight', 'shaman', 'scarab', 'wraith', 'sporecap', 'golem', 'boss', 'boss2', 'boss3']));
   }
 
   /** Switch between the arena ring and the exploration scenery. */
@@ -1564,6 +1588,7 @@ export class Renderer {
       this.merchantView = g;
       if (PEOPLE.merchant) {
         // (0.53) his own model, once it has loaded
+        hideWhileLoading([...g.children], loadCreature(PEOPLE.merchant), () => this.merchantView === g && !this.merchantRig);
         loadCreature(PEOPLE.merchant).then((tpl) => {
           if (!tpl || this.merchantView !== g) return;
           for (const ch of g.children) ch.visible = false;
@@ -1901,6 +1926,8 @@ export class Renderer {
    */
   upgradeCreature(v, spec) {
     if (!spec) return;
+    // (0.56.2) its hand-built body stays hidden while the model loads (the aura and marks stay)
+    hideWhileLoading(v.model.group.children.filter((ch) => ch !== v.aura && ch !== v.markRing), loadCreature(spec), () => !!v.model.group.parent && !v.rig);
     loadCreature(spec).then((tpl) => {
       if (!tpl || v.deathT !== undefined || !v.model.group.parent) return;
       const rig = makeCreature(tpl, spec);

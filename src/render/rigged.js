@@ -1,7 +1,8 @@
 // Rigged, animated character models (0.35), made with the Tripo API (tools/models).
-// Each model is loaded once, when first needed, and copied for every character that uses it.
-// Until it has loaded, or if it cannot load (opening the game from a file, no network), the
-// hand-built model from models.js stays: nothing about the game depends on these.
+// Each model is loaded once, when first needed (or ahead of time: preload), and copied for every
+// character that uses it. (0.56.2) While one is on its way, the hand-built model from models.js is
+// hidden, so the old block shapes never flash up; it is only shown if the model cannot load here
+// (opening the game from a file, no network) or takes longer than SLOW seconds.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -242,6 +243,52 @@ export function loadWeapon(cls, weaponScale = 1, look = null) {
     group.userData.mats = mats;
     return group;
   });
+}
+
+/** Seconds to wait for a model before showing the hand-built one instead (a very slow connection). */
+export const SLOW = 10;
+/** Can rigged models load here at all? (Browsers block loading files from file://.) */
+export const canLoad = () => !(typeof location !== 'undefined' && location.protocol === 'file:');
+
+/**
+ * Hide `parts` (hand-built pieces) while `promise` (a model) loads; show them again only if it comes
+ * back empty, or is still not here after SLOW seconds. `alive()` says the view still exists.
+ */
+export function hideWhileLoading(parts, promise, alive = () => true) {
+  if (!canLoad()) return;
+  let done = false;
+  for (const o of parts) o.visible = false;
+  const reveal = () => {
+    if (!alive()) return;
+    for (const o of parts) o.visible = true;
+  };
+  promise.then((ok) => {
+    done = true;
+    if (!ok) reveal();
+  });
+  setTimeout(() => {
+    if (!done) reveal(); // (the model, if it does turn up later, hides them again as it swaps in)
+  }, SLOW * 1000);
+}
+
+/** Start loading models before they are needed, a few at a time (ids are RIGGED keys). */
+const preloadQueue = [];
+let preloading = 0;
+export function preload(ids) {
+  if (!canLoad()) return;
+  for (const id of ids) if (RIGGED[id] && !cache.has(id) && !preloadQueue.includes(id)) preloadQueue.push(id);
+  pump();
+}
+function pump() {
+  while (preloading < 2 && preloadQueue.length) {
+    const id = preloadQueue.shift();
+    if (cache.has(id)) continue;
+    preloading++;
+    loadRigged(id).finally(() => {
+      preloading--;
+      pump();
+    });
+  }
 }
 
 const loader = new GLTFLoader();
@@ -855,7 +902,9 @@ export function upgradeHero(model, cls, look = cls) {
   const id = `hero_${look}`;
   model.lookId = look;
   if (!RIGGED[id]) return;
-  Promise.all([loadRigged(id), loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1)]).then(([tpl, made]) => {
+  const both = Promise.all([loadRigged(id), loadWeapon(cls, (RIGGED[id] && RIGGED[id].weaponScale) || 1)]);
+  hideWhileLoading([model.parts.body], both.then(([tpl]) => !!tpl), () => !model.disposed && !model.rig); // (0.56.2) no blocky hero first
+  both.then(([tpl, made]) => {
     if (!tpl || model.disposed || model.rig) return;
     const rig = instantiate(tpl);
     const arm = model.parts.arm;

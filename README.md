@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### No more blocks (0.56.2)
+
+- Heroes, enemies, bosses and Haven's people no longer flash up as the old block shapes while their
+  models load: the old shapes stay hidden until the model is in (they only appear if a model cannot
+  load at all, or takes over 10 seconds).
+- Models load ahead of time: every hero and the Echo Ring's roster just after the page opens, and on
+  arriving at a map, its enemies, boss and people, then those of the maps its portals lead to.
+
 ### Ex Voto, the bestiary (0.56.0)
 
 - **Ex Voto** (B, or from the Journal; *ex voto*: what is left behind once a wish is granted): Sister Odile's notes on all 32 kinds of enemy, kept by the

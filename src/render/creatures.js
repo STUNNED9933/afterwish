@@ -140,6 +140,16 @@ export function loadCreature(spec) {
   return loadRigged(spec.model);
 }
 
+/** (0.56.2) The models a map's enemies, boss and people need, to start loading ahead of time. */
+export function modelsFor(types) {
+  const out = new Set();
+  for (const t of types) {
+    const c = CREATURES[t] || PEOPLE[t];
+    if (c) out.add(c.model);
+  }
+  return [...out];
+}
+
 /**
  * A copy of a loaded creature with its own animation player. Call update(dt, state) every frame:
  * { dead, stunned, moving, speed, windup: { kind, k } (k = 0..1 of the wind-up), strike (seconds

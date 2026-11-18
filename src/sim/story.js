@@ -459,7 +459,7 @@ export const QUESTS = {
     giver: 'odile', level: 100, after: 'starwell', name: 'The Breath Below', goal: { reach: 'deep6' },
     offer: "Something changed when the star's light went quiet. There is a crack under the Starwell now, and heat comes up out of it, slow, like breathing. Tobin's notes talk about a breath under the mountain. I always thought he meant the fever.\n\nGo down, just far enough to see. Do not try to win anything. The Waygate will take you to the edge of it.",
     done: "You could not touch them. I know. Your blade went through them like smoke, and they did not even turn around.\n\nTobin wrote one line in the margin that I never understood: down there, only what you have let go of will protect you. He left this with it. A coal that never goes out. I think it was always meant for you.",
-    reward: { exp: 0, gold: 4000, keys: 3, tickets: 3, ember: 5 },
+    reward: { exp: 0, gold: 4000, keys: 3, tickets: 3, ember: 8 },
   },
   unwish: {
     giver: 'wren', level: 100, after: 'breath', name: 'Unwish', goal: { ending: 1 }, give: { glass: 1 },

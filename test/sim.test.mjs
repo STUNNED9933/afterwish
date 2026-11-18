@@ -2763,6 +2763,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     {
       const w0 = new World({ seed: 9, cls: 'mage', mode: 'explore', save: JSON.parse(JSON.stringify(save)) });
       const p0 = w0.player;
+      const E = await import('../src/sim/endgame.js');
       check('The Breath Below: Odile offers it after the Starwell, before the Unwish', w0.questOpen('breath') && !w0.questOpen('unwish'));
       check('The first Depth stays shut until it is taken', !w0.depthOpen(p0, 6));
       w0.command({ type: 'acceptQuest', id: 'breath' }); w0.step(CONFIG.TICK);
@@ -2771,7 +2772,8 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
       check('Going down completes it', w0.questState('breath') === 'ready');
       const before = w0.ember();
       w0.command({ type: 'claimQuest', id: 'breath' }); w0.step(CONFIG.TICK);
-      check('Handing it in gives 5 Ember, for good', w0.ember() === before + 5 && p0.rebirth.gifts.breath);
+      check('Handing it in gives 8 Ember (past half of what Depth VI asks), for good', w0.ember() === before + 8 && p0.rebirth.gifts.breath);
+      check('...and going back down, your blows land (not just for 1)', !E.emberScale(w0.ember(), E.DEEP.depths[6].ember).one);
       check('...and the reward says no more Ember the next time round', w0.questReward('breath').ember === 0);
     }
     save.quests.breath = { s: 'done', n: 1 };

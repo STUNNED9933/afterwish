@@ -32,6 +32,7 @@ import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccoun
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { ServerRoom } from './net/server-room.js';
+import { SERVERS, serverHealth } from './net/servers.js';
 import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX, compactEvents } from './net/sync.js';
 import { FRIEND_CMDS } from './net/cmds.js';
 
@@ -567,7 +568,7 @@ function start(hot = {}) {
   /** The Waygate's endgame part (0.26): the world tier and Echo Rifts. */
   function renderEndgame(root) {
     const p = world.player;
-    const lead = !(net && net.role === 'client');
+    const lead = !(net && net.role === 'client') || !!(net && net.server); // (0.55.2) on the server, everyone leads themselves
     const sub = (text) => {
       const h = document.createElement('p');
       h.className = 'travel-sub';
@@ -910,7 +911,7 @@ function start(hot = {}) {
     $('talk-line').textContent = talkNote || `A stair of starglass goes down under the palace, room after room, to the Throne Room. Every room must be cleared before the next one opens; something waits beside the empty throne. Higher tiers go deeper. The first clear of each tier gives a Remnant Sigil and an Unwishing Glass.${p.delveBest ? ` (Cleared up to tier ${TIERS[p.delveBest].numeral}.)` : ''}`;
     const list = $('talk-quests');
     list.innerHTML = '';
-    const leader = !net || net.role === 'host';
+    const leader = !net || net.role === 'host' || !!net.server;
     for (let t = 1; t <= p.tierMax; t++) {
       const rooms = 3 + (t >= 3 ? 1 : 0) + (t >= 5 ? 1 : 0);
       const el = document.createElement('div');
@@ -938,7 +939,7 @@ function start(hot = {}) {
     const list = $('talk-quests');
     list.innerHTML = '';
     $('talk-line').textContent = talkNote || (glass ? WELL.first : WELL.noGlass);
-    const alone = !net;
+    const alone = !net || !!net.server; // (0.55.2) on the server, the Unwish is yours alone
     const add = (label, text, on, cls) => {
       const el = document.createElement('div');
       el.className = 'quest well-choice';
@@ -1240,7 +1241,7 @@ function start(hot = {}) {
     const go = document.createElement('button');
     go.type = 'button';
     go.className = 'ghost rb-go' + (rebirthSure ? ' sure' : '');
-    const why = block || (net ? 'Leave the party first: a rebirth is made alone.' : null);
+    const why = block || (net && !net.server ? 'Leave the room first: a rebirth is made alone.' : null);
     go.disabled = !!why;
     go.textContent = why ? `Begin again: ${why}` : rebirthSure
       ? `Are you sure? Click again to begin again with ${marks} Starmarks`
@@ -1503,7 +1504,7 @@ function start(hot = {}) {
     button.disabled = true;
     let welcome;
     try {
-      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, ...extra });
+      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, ...extra });
     } catch (err) {
       button.disabled = false;
       mpMsg(err.message, false);
@@ -1775,6 +1776,29 @@ function start(hot = {}) {
   $('btn-join').addEventListener('click', joinGame);
   $('btn-server').addEventListener('click', joinServer);
   $('mp-server').value = settings.serverUrl || DEFAULT_SERVER;
+  // (0.55.2) the list of server worlds, each with who is on right now; "Another address" for testing
+  {
+    const pick = $('mp-server-pick');
+    const list = SERVERS.some((s) => s.url === DEFAULT_SERVER) ? SERVERS : [{ id: 'custom-default', name: 'This address', region: '', url: DEFAULT_SERVER }, ...SERVERS];
+    pick.innerHTML = list.map((s) => `<option value="${esc(s.url)}">${esc(s.name)}${s.region ? ' · ' + esc(s.region) : ''}</option>`).join('') + '<option value="">Another address...</option>';
+    const current = $('mp-server').value;
+    pick.value = list.some((s) => s.url === current) ? current : '';
+    const sync = () => {
+      $('mp-server-row').classList.toggle('hidden', pick.value !== '');
+      if (pick.value) $('mp-server').value = pick.value;
+    };
+    pick.addEventListener('change', sync);
+    sync();
+    let checked = false;
+    $('btn-mp').addEventListener('click', () => {
+      if (checked) return;
+      checked = true;
+      for (const s of list) serverHealth(s.url).then((h) => {
+        const o = [...pick.options].find((x) => x.value === s.url);
+        if (o) o.textContent = `${s.name}${s.region ? ' · ' + s.region : ''} · ${h ? (h.open ? `${h.players} of ${h.max} online` : 'closed') : 'not answering'}`;
+      });
+    });
+  }
   $('mp-pass').value = settings.serverPass || '';
   for (const id of ['mp-server', 'mp-pass']) $(id).addEventListener('keydown', (e) => {
     e.stopPropagation();
@@ -1837,6 +1861,7 @@ function start(hot = {}) {
     }
     const me = net.pid;
     const party = r.party ? new Set(r.party.members) : new Set();
+    const where = (pl) => (pl.map === 'town' && pl.haven ? `Haven ${pl.haven}` : MAP_NAME(pl.map));
     const rows = r.players.map((pl) => {
       const mine = pl.pid === me;
       const inParty = party.has(pl.pid);
@@ -1844,7 +1869,7 @@ function start(hot = {}) {
       if (!mine && r.invites.includes(pl.pid)) btn = `<button type="button" data-act="partyAccept" data-pid="${pl.pid}" class="primary">Accept invite</button><button type="button" data-act="partyDecline" data-pid="${pl.pid}" class="ghost">No</button>`;
       else if (!mine && inParty) btn = `<button type="button" data-act="joinMember" data-pid="${pl.pid}" class="ghost" title="Travel to their map, into their copy of it (a map you have been to)">Go to them</button>`;
       else if (!mine && !(r.party && r.party.members.length >= 4)) btn = `<button type="button" data-act="partyInvite" data-pid="${pl.pid}" class="ghost">Invite</button>`;
-      return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(MAP_NAME(pl.map))}</td><td>${btn}</td></tr>`;
+      return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(where(pl))}</td><td>${btn}</td></tr>`;
     });
     playersPanel.innerHTML = `<h3>${esc(r.world)} · ${r.players.length} online</h3><table>${rows.join('')}</table>` +
       `<p class="setting-desc">Haven is shared by everyone here. Out on the road, your party has its own copy of each map: invite friends to fight together. Enter: chat.</p>` +
@@ -2640,7 +2665,7 @@ function start(hot = {}) {
         storeAccount(account);
         save = Object.assign(ev.save, { acctRebirths: account.rebirths });
         storeSave(save, world.cls);
-        startExplore(true);
+        if (!(net && net.server)) startExplore(true); // (0.55.2) on the server, the server wakes the new life in Haven
         sfx.levelUp();
         if (ev.ng) hud.banner(`You took her place · New Game+ ${ev.ng}`, `The wish begins again, stronger. At the top of the mountain, the Unmade wears your face. +${ev.marks} Starmarks.`);
         else hud.banner(`Reborn · ${ev.n}`, `+${ev.marks} Starmarks${ev.essence ? `, +${ev.essence} Echo Essence` : ''}${ev.ember ? `, +${ev.ember} Ember` : ''}${ev.heirloom ? `. ${ev.heirloom} came with you` : ''}. Spend Starmarks in Talents (T), Essence on the gear screen.`);

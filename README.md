@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Everything on the server world (0.55.2)
+
+- **Rebirth and the Unwish work on the server world**, as in single player (each hero's own, even with
+  others around): the new life wakes in Haven, and the account's rebirth bonus counts there too.
+- **A server list** in Play with friends → Server world, with each server's players online right now.
+- **Capacity:** each server has a player limit (`MAX_PLAYERS`, 24 by default: "This server is full"
+  past it), and Haven splits at 16 (`HAVEN_MAX`) so a crowd never costs anyone frames; party members
+  are put in the same Haven. The players panel says which Haven.
+- Adding servers: **docs/ops/server-runbook.md** (capacity measurements, the exact steps, what must
+  exist before a server can go public). The update workflow now updates every server in `VPS_HOST`.
+
 ### Quicker clicks on the server world (0.55.1)
 
 The server sends updates every step (60 a second) while 8 or fewer are on (30 a second up to 16,

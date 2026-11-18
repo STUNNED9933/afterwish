@@ -122,6 +122,23 @@ const before = inbox.get(c).filter((m) => m.t === 'save').length;
 run(300);
 check('a save that has not changed is not sent again', inbox.get(c).filter((m) => m.t === 'save').length === before);
 
+// Rebirth on the server (0.55.2): this hero's alone, with others around
+const d = conn('d');
+sw.message(d, hello('Dee', 'rogue', { save: geared('rogue', 100, 5), acctRebirths: 2 }));
+run(3);
+const D = last(d, 'welcome').pid;
+hero(D).bossKills.boss3 = 1; // The Unmade beaten
+sw.message(d, { t: 'cmd', cmd: { type: 'rebirth' } });
+run(6);
+const dSnaps = inbox.get(d).filter((m) => m.t === 'snap');
+const rebornEv = dSnaps.flatMap((m) => m.ev || []).find((e) => e.type === 'reborn');
+check('a rebirth works on the server, even with others in Haven', rebornEv && rebornEv.save && hero(D).level === 1 && where(D).key === 'town', `level ${hero(D).level}`);
+check('...the new life knows the account grew by one', hero(D).acctRebirths === 3 && rebornEv.save.rebirth.n >= 1);
+check('...and nobody else is told it was theirs', ![c].some((k) => inbox.get(k).filter((m) => m.t === 'snap').flatMap((m) => m.ev || []).some((e) => e.type === 'reborn')));
+run(300);
+check("...and the new life's save goes to that player", last(d, 'save') && last(d, 'save').save.level === 1);
+sw.leave(d);
+
 // Leaving
 sw.leave(a);
 run(3);
@@ -131,6 +148,31 @@ sw.leave(b);
 sw.leave(c);
 run(3);
 check('when everyone has gone, nothing is left running', sw.size === 0 && sw.copies.size === 0);
+
+// Capacity (0.55.2): a full server turns people away; a full Haven opens another
+{
+  const box = new Map();
+  const small = new ServerWorld({ send: (c, m) => box.get(c).push(m), passcode: 'p', maxPlayers: 3, havenMax: 2, seed: 9 });
+  const mk = (n) => {
+    const k = { n };
+    box.set(k, []);
+    small.message(k, { t: 'hello', v: NET_VERSION, pass: 'p', name: n, cls: 'warrior', save: geared('warrior', 30, 3) });
+    return k;
+  };
+  const [p1, p2, p3, p4] = ['One', 'Two', 'Three', 'Four'].map(mk);
+  const pidOf = (k) => box.get(k).find((m) => m.t === 'welcome').pid;
+  const keyOf = (k) => small.players.get(pidOf(k)).copy.key;
+  check('a full server turns the next one away, kindly', box.get(p4).some((m) => m.t === 'reject' && /full \(3 players\)/.test(m.reason)) && small.size === 3);
+  check('a full Haven opens a second one', keyOf(p1) === 'town' && keyOf(p2) === 'town' && keyOf(p3) === 'town#2', [p1, p2, p3].map(keyOf).join(' '));
+  small.message(p3, { t: 'cmd', cmd: { type: 'partyInvite', pid: pidOf(p1) } });
+  small.message(p1, { t: 'cmd', cmd: { type: 'partyAccept', pid: pidOf(p3) } });
+  small.leave(p2);
+  small.message(p3, { t: 'cmd', cmd: { type: 'travel', to: 'town' } });
+  for (let i = 0; i < 6; i++) small.tick();
+  check('going back to Haven, a party member joins the Haven their party is in', keyOf(p3) === keyOf(p1), `${keyOf(p3)} / ${keyOf(p1)}`);
+  small.tick();
+  check('the roster says which Haven', small.players.size === 2);
+}
 
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

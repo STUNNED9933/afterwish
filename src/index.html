@@ -326,7 +326,8 @@
     <div class="transfer-row"><input id="mp-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" /><button type="button" id="btn-join" class="primary">Join</button></div>
     <h3 class="transfer-h">Server world</h3>
     <p class="setting-desc">Always open, no host needed: everyone meets in Haven, and each party gets its own copy of the maps outside. Ask whoever runs it for the passcode.</p>
-    <div class="transfer-row"><input id="mp-server" placeholder="wss://play.stunnedgames.net" autocomplete="off" spellcheck="false" /></div>
+    <div class="transfer-row"><select id="mp-server-pick"></select></div>
+    <div class="transfer-row hidden" id="mp-server-row"><input id="mp-server" placeholder="wss://play.example.com" autocomplete="off" spellcheck="false" /></div>
     <div class="transfer-row"><input id="mp-pass" type="password" placeholder="Passcode" autocomplete="off" spellcheck="false" /><button type="button" id="btn-server" class="primary">Join the server world</button></div>
     <p id="mp-msg" class="setting-desc"></p>
     <p class="setting-desc">Rooms: friends join through a free matchmaking service and then connect straight to the host. Some school or work networks block this; home internet and phone hotspots usually work.</p>

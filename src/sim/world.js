@@ -4487,7 +4487,7 @@ export class World {
    */
   rebirth(heirloom = null) {
     const p = this.player;
-    if (this.trial || this.heroes.length > 1 || rebirthBlock(p)) return;
+    if (this.trial || (this.heroes.length > 1 && !this.travelHook) || rebirthBlock(p)) return; // (0.55.2) on the server, a rebirth is this hero's alone
     if (heirloom && !(SLOTS.includes(heirloom) && p.equipped[heirloom])) heirloom = null;
     const save = rebirthSave(this.toSave(), starterWeapon, heirloom, relevelItem);
     this.emit('reborn', { save, n: save.rebirth.n, marks: save.rebirth.marks - p.rebirth.marks, glow: save.glow, essence: save.rebirth.lastEssence || 0, ember: save.rebirth.lastEmber || 0, heirloom: heirloom ? save.equipped[heirloom].name : null });
@@ -4655,7 +4655,7 @@ export class World {
    */
   unwish(choice) {
     const p = this.player;
-    if (this.trial || this.heroes.length > 1 || !this.map || this.map.id !== 'starwell') return;
+    if (this.trial || (this.heroes.length > 1 && !this.travelHook) || !this.map || this.map.id !== 'starwell') return;
     if (this.enemies.some((e) => e.def.boss && !e.dead)) return;
     if (choice === 'self') {
       if (!((p.misc.glass || 0) > 0)) return;

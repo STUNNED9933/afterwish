@@ -1,5 +1,6 @@
 # Updates the server world (game-server/) on your VPS whenever the game rules or the server change.
-# One-time setup: README "Server world". Until the VPS_HOST and VPS_SSH_KEY secrets exist, this does nothing.
+# One-time setup: README "Server world" and docs/ops/server-runbook.md. VPS_HOST may list several servers.
+# Until the VPS_HOST and VPS_SSH_KEY secrets exist, this does nothing.
 name: Update server world
 
 on:
@@ -47,4 +48,10 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vps
           chmod 600 ~/.ssh/id_vps
-          ssh -i ~/.ssh/id_vps -o StrictHostKeyChecking=accept-new "${VPS_USER:-root}@$VPS_HOST" 'bash /opt/afterwish/game-server/deploy/update.sh'
+          # VPS_HOST may list several servers (separated by spaces, commas or new lines): each is updated in turn
+          fail=0
+          for host in $(echo "$VPS_HOST" | tr ',' ' '); do
+            echo "== $host"
+            ssh -i ~/.ssh/id_vps -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 "${VPS_USER:-root}@$host" 'bash /opt/afterwish/game-server/deploy/update.sh' || { echo "::error::Updating $host failed"; fail=1; }
+          done
+          exit $fail

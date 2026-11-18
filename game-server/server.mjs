@@ -7,6 +7,8 @@
 //   PORT                where it listens (default 8787). Put HTTPS in front (Caddy, or Cloudflare's proxy).
 //   ALLOWED_ORIGINS     pages allowed to connect (default: the game's site and localhost)
 //   WORLD_NAME          shown to players (default "Haven")
+//   MAX_PLAYERS         players on this server at once (default 24; see docs/ops/server-runbook.md)
+//   HAVEN_MAX           players in one copy of Haven before another opens (default 16)
 import http from 'node:http';
 import { performance } from 'node:perf_hooks';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -24,6 +26,8 @@ const BACKLOG = 256 * 1024; // bytes waiting to go out before a connection count
 const world = new ServerWorld({
   name: process.env.WORLD_NAME || 'Haven',
   passcode: PASSCODE,
+  maxPlayers: Number(process.env.MAX_PLAYERS) || SERVER_LIMITS.players,
+  havenMax: Number(process.env.HAVEN_MAX) || SERVER_LIMITS.haven,
   send(ws, msg) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   },
@@ -42,7 +46,7 @@ const stats = { stepMs: 0, worst: 0, started: Date.now() };
 const httpServer = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ ok: true, open: !!PASSCODE, players: world.size, max: SERVER_LIMITS.players, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
+    res.end(JSON.stringify({ ok: true, name: world.name, open: !!PASSCODE, players: world.size, max: world.maxPlayers, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
     return;
   }
   res.writeHead(404);

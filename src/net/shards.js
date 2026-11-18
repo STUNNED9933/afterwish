@@ -13,8 +13,11 @@ import { MAPS } from '../sim/maps.js';
 import { makeSnapshot, eventFor, compactEvents, NET_VERSION } from './sync.js';
 import { FRIEND_CMDS } from './cmds.js';
 
-const SERVER_CMDS = new Set([...FRIEND_CMDS, 'setDepth']);
-export const SERVER_LIMITS = { players: 24, perCopy: 8, chatLen: 140, chatGap: 0.6, partyMax: CONFIG.PARTY_MAX, msgBytes: 64 * 1024 };
+// (0.55.2) on the server each hero is their own: they may also be reborn and Unwish, as in single player
+const SERVER_CMDS = new Set([...FRIEND_CMDS, 'setDepth', 'rebirth', 'unwish']);
+// players: on the whole server. perCopy: in one copy of a road map. haven: in one copy of Haven (a
+// full Haven opens another, so a crowd never costs anyone frames: each hero in view is ~15 draws).
+export const SERVER_LIMITS = { players: 24, perCopy: 8, haven: 16, chatLen: 140, chatGap: 0.6, partyMax: CONFIG.PARTY_MAX, msgBytes: 64 * 1024 };
 
 const clean = (text, n) => String(text || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, n);
 
@@ -25,8 +28,10 @@ export class ServerWorld {
    * congested(conn): true while that connection's outgoing queue is backed up (it gets no new update
    * until it has caught up, so it never falls further and further behind).
    */
-  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now() }) {
+  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now(), maxPlayers = SERVER_LIMITS.players, havenMax = SERVER_LIMITS.haven }) {
     Object.assign(this, { send, close, congested, passcode: String(passcode || ''), name });
+    this.maxPlayers = Math.max(1, Math.floor(maxPlayers) || SERVER_LIMITS.players);
+    this.havenMax = Math.max(2, Math.floor(havenMax) || SERVER_LIMITS.haven);
     this.seed = seed >>> 0;
     this.players = new Map(); // pid -> player
     this.byConn = new Map(); // conn -> pid
@@ -36,6 +41,7 @@ export class ServerWorld {
     this.nextParty = 1;
     this.ticks = 0;
     this.moves = [];
+    this.reborn = [];
     this.rosterDirty = false;
   }
 
@@ -73,7 +79,7 @@ export class ServerWorld {
     if (hello.v !== NET_VERSION) return say('You and the server are on different versions of the game. Reload the page (Ctrl+F5) and try again.');
     if (!this.passcode) return say('The server world is not open yet (its owner has not set a passcode).');
     if (String(hello.pass || '') !== this.passcode) return say('Wrong passcode.');
-    if (this.players.size >= SERVER_LIMITS.players) return say(`The server world is full (${SERVER_LIMITS.players} players).`);
+    if (this.players.size >= this.maxPlayers) return say(`This server is full (${this.maxPlayers} players). Try again later, or another server.`);
     const pid = this.nextPid++;
     let name = clean(hello.name, 16) || 'Player';
     const taken = new Set([...this.players.values()].map((p) => p.name));
@@ -83,6 +89,7 @@ export class ServerWorld {
     this.byConn.set(conn, pid);
     this.send(conn, { t: 'welcome', pid, code: this.name, server: true });
     const save = hello.save && typeof hello.save === 'object' ? hello.save : null;
+    pl.acctRebirths = Math.max(0, Math.floor(Number(hello.acctRebirths) || 0));
     this.place(pl, 'town', null, null, { save, name, cls: hello.cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold: hello.gold, tickets: hello.tickets });
     this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
@@ -111,8 +118,22 @@ export class ServerWorld {
     return pl.party ? 'party' + pl.party : 'solo' + pl.pid;
   }
 
+  /** Which copy of Haven: one with party members in it, else the first with room, else a new one. */
+  havenKey(pl) {
+    const havens = [...this.copies.values()].filter((c) => c.key === 'town' || c.key.startsWith('town#'));
+    if (pl.party) {
+      const members = this.parties.get(pl.party).members;
+      const withParty = havens.find((c) => c.world.heroes.length < this.havenMax && c.world.heroes.some((h) => h.pid !== pl.pid && members.has(h.pid)));
+      if (withParty) return withParty.key;
+    }
+    const room = havens.find((c) => c.world.heroes.length < this.havenMax);
+    if (room) return room.key;
+    if (!this.copies.has('town')) return 'town';
+    for (let i = 2; ; i++) if (!this.copies.has('town#' + i)) return 'town#' + i;
+  }
+
   keyFor(pl, to, extra) {
-    if (to === 'town') return 'town';
+    if (to === 'town') return this.havenKey(pl);
     if (extra && extra.rift) return `rift:${this.partyKey(pl)}:${extra.rift.seed}`;
     if (extra && extra.delve) return `delve:${this.partyKey(pl)}:${extra.delve.seed}`;
     if (to === 'rift' || to === 'delve') return null; // (only ever entered with a run to start)
@@ -122,7 +143,7 @@ export class ServerWorld {
   /** Put a hero (described by `hello`: save, name, class...) into the copy for `to`. */
   place(pl, to, from, extra, hello) {
     let key = this.keyFor(pl, to, extra);
-    if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve')) key = 'town';
+    if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve')) key = this.havenKey(pl);
     if (extra && extra.joinKey && this.copies.has(extra.joinKey)) key = extra.joinKey; // party members going into a rift or delve
     else if (pl.party && key !== 'town' && !(extra && (extra.rift || extra.delve))) {
       // a party member is already on that map: join their copy
@@ -135,7 +156,7 @@ export class ServerWorld {
       }
     }
     let copy = this.copies.get(key);
-    if (copy && copy.world.heroes.length >= SERVER_LIMITS.perCopy && key !== 'town') {
+    if (copy && copy.world.heroes.length >= SERVER_LIMITS.perCopy && !this.isHaven(key)) {
       key = `${key}:${pl.pid}`; // a full copy (a big party): this hero gets a copy of their own
       copy = this.copies.get(key);
     }
@@ -148,6 +169,7 @@ export class ServerWorld {
       p.autoAttack = hello.autoAttack !== false;
       p.gold = Math.max(0, Number(hello.gold) || 0);
       p.tickets = Math.max(0, Number(hello.tickets) || 0);
+      p.acctRebirths = pl.acctRebirths || 0;
       copy = { key, world: w, map: to };
       w.travelHook = (h, dest, src, ex) => this.moves.push({ pid: h.pid, copy, to: dest, from: src, extra: ex });
       if (extra && extra.rift) w.startRift(extra.rift);
@@ -156,6 +178,7 @@ export class ServerWorld {
       this.copies.set(key, copy);
     } else {
       const h = copy.world.addHero(pl.pid, hello);
+      h.player.acctRebirths = pl.acctRebirths || 0;
       copy.world.arriveHero(h, from);
     }
     pl.copy = copy;
@@ -168,6 +191,10 @@ export class ServerWorld {
       });
     }
     this.rosterDirty = true;
+  }
+
+  isHaven(key) {
+    return key === 'town' || key.startsWith('town#');
   }
 
   removeFrom(copy, pid) {
@@ -295,7 +322,8 @@ export class ServerWorld {
       const w = o.copy && o.copy.world;
       const h = w && w.heroByPid(o.pid);
       const p = h && (h === w.cur ? w.player : h.player);
-      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: w ? w.map.id : '', party: o.party || 0 };
+      const haven = o.copy && o.copy.key.startsWith('town#') ? Number(o.copy.key.slice(5)) : 0;
+      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: w ? w.map.id : '', haven, party: o.party || 0 };
     });
     for (const o of this.players.values()) {
       const party = o.party && this.parties.get(o.party);
@@ -320,10 +348,24 @@ export class ServerWorld {
         for (const ev of events) {
           if (ev.type === 'mapChange' || !eventFor(ev, h.pid)) continue;
           // a hero coming or going in Haven is someone passing through, not a party member
-          if ((ev.type === 'partyJoin' || ev.type === 'partyLeave') && copy.key === 'town') continue;
+          if ((ev.type === 'partyJoin' || ev.type === 'partyLeave') && this.isHaven(copy.key)) continue;
           pl.pending.push(ev);
+          // (0.55.2) reborn (or taken her place): the new life wakes in Haven, in a fresh hero
+          if (ev.type === 'reborn' && ev.save && ev.hero === h.pid) this.reborn.push({ pid: h.pid, copy, save: ev.save });
         }
       }
+    }
+    for (const r of this.reborn.splice(0)) {
+      const pl = this.players.get(r.pid);
+      if (!pl || pl.copy !== r.copy) continue;
+      const w = r.copy.world;
+      const h = w.heroByPid(r.pid);
+      if (!h) continue;
+      const keep = w.as(h, (p) => ({ name: h.name, cls: w.cls, parry: w.parryPreset, autoAttack: p.autoAttack !== false, gold: p.gold, tickets: p.tickets }));
+      pl.acctRebirths = (pl.acctRebirths || 0) + 1; // every hero on that player's account grows from it, as in single player
+      this.removeFrom(r.copy, r.pid);
+      this.place(pl, 'town', null, null, { ...keep, save: Object.assign({}, r.save, { acctRebirths: pl.acctRebirths }) });
+      pl.savedKey = '';
     }
     // Heroes who left a copy this step (a portal, the Waygate, a rift...) arrive in their new one.
     const moves = this.moves;

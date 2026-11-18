@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # One-time setup of the Afterwish server world on a fresh Ubuntu server (22.04 or 24.04).
 # Run as root on the server:
-#   curl -fsSL https://raw.githubusercontent.com/STUNNED9933/afterwish/main/game-server/deploy/setup.sh | bash -s -- play.stunnedgames.net
+#   curl -fsSL https://raw.githubusercontent.com/STUNNED9933/afterwish/main/game-server/deploy/setup.sh | bash -s -- play.stunnedgames.net "Haven"
+# (the second part, the world's name shown to players, is optional). See docs/ops/server-runbook.md.
 # It installs Node 22 and Caddy (HTTPS), puts the game in /opt/afterwish, runs it as a service,
 # and asks for the passcode friends will use. Safe to run again.
 set -euo pipefail
 DOMAIN="${1:-play.stunnedgames.net}"
+WORLD="${2:-Haven}"
 REPO="https://github.com/STUNNED9933/afterwish.git"
 
 echo "== Afterwish server world: setting up for $DOMAIN"
@@ -37,7 +39,7 @@ chown -R afterwish:afterwish /opt/afterwish
 # The passcode (kept in /etc/afterwish.env, readable only by root and the service)
 if [ ! -f /etc/afterwish.env ]; then
   read -r -p "Passcode for friends to join (letters and numbers): " PASS < /dev/tty
-  printf 'AFTERWISH_PASSCODE=%s\nPORT=8787\nWORLD_NAME=Haven\n' "$PASS" > /etc/afterwish.env
+  printf 'AFTERWISH_PASSCODE=%s\nPORT=8787\nWORLD_NAME=%s\nMAX_PLAYERS=24\nHAVEN_MAX=16\n' "$PASS" "$WORLD" > /etc/afterwish.env
 fi
 chmod 640 /etc/afterwish.env
 chgrp afterwish /etc/afterwish.env

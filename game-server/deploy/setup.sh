@@ -29,6 +29,7 @@ fi
 
 # The game, run by its own user (it never needs root)
 id afterwish >/dev/null 2>&1 || useradd --system --home /opt/afterwish --shell /usr/sbin/nologin afterwish
+git config --global --get-all safe.directory | grep -qx /opt/afterwish || git config --global --add safe.directory /opt/afterwish
 if [ -d /opt/afterwish/.git ]; then git -C /opt/afterwish pull --ff-only; else git clone --depth 1 "$REPO" /opt/afterwish; fi
 cd /opt/afterwish/game-server && npm ci --omit=dev
 chown -R afterwish:afterwish /opt/afterwish

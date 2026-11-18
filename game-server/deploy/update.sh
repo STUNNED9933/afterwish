@@ -3,6 +3,8 @@
 # Players get their latest save and a "restarting" message, then can rejoin a few seconds later.
 set -euo pipefail
 cd /opt/afterwish
+# the files belong to the game's own user; git is run here by root, so tell git that is fine
+git config --global --get-all safe.directory | grep -qx /opt/afterwish || git config --global --add safe.directory /opt/afterwish
 git fetch --depth 1 origin main
 git reset --hard origin/main
 cd game-server && npm ci --omit=dev

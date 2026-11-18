@@ -27,6 +27,8 @@ function writeHtml() {
   const html = readFileSync('src/index.html', 'utf8').replace('/*__CSS__*/', () => css).replace('__VERSION__', version).replace('<script src="game.js"></script>', `<script src="game.js?v=${tag}"></script>`);
   mkdirSync('dist', { recursive: true });
   writeFileSync('dist/index.html', html);
+  // (0.57.8) What the newest page is, for a page to check past every cache (main.js checkNewest).
+  writeFileSync('dist/version.json', JSON.stringify({ version, tag }) + '\n');
 }
 
 const options = {

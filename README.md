@@ -159,6 +159,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Always the newest version, in every browser (0.57.9)
+
+- Some browsers (Firefox, Safari) can hand back their cached copy of the page, even on a reload,
+  leaving a player on the old version ("different versions" when joining). Now:
+  - on opening, the page asks the site for `version.json` past every cache, and if it is older it
+    loads the newest at once (once only, so a website still publishing cannot cause a loop);
+  - joining the server world with an outdated page loads the newest and joins by itself;
+  - every reload the game does goes to a changed address, so the browser must fetch it again.
+
 ### Rejoining after an update, in every browser (0.57.8)
 
 - "Reload and rejoin" now carries what to rejoin in the page address instead of the browser's

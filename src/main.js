@@ -41,6 +41,55 @@ import { FRIEND_CMDS } from './net/cmds.js';
 const $ = (id) => document.getElementById(id);
 const SLOT_LABEL = { q: 'Cleave', w: 'Whirlwind', e: 'Breakthrough', r: 'Skyfall', parry: 'Parry', hero: 'Hero' };
 
+// (0.57.8) The address the page opened with, before anything tidies it.
+const BOOT_SEARCH = typeof location !== 'undefined' ? location.search : '';
+const BUILT = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
+/**
+ * (0.57.8) Some browsers (Firefox, Safari) may hand back their cached copy of the page on a reload,
+ * so the game stays on the old version. Going to a changed address always fetches the page again.
+ * `extra` adds to the address; `drop` takes away.
+ */
+function loadFresh(extra = {}, from = location.search) {
+  const q = new URLSearchParams(from);
+  for (const [k, v] of Object.entries(extra)) {
+    if (v === null || v === undefined || v === false) q.delete(k);
+    else q.set(k, String(v));
+  }
+  q.set('r', Date.now().toString(36));
+  location.replace(location.pathname + '?' + q.toString() + location.hash);
+}
+/** (0.57.8) Take our own markers back out of the address once they have done their job. */
+function tidyAddress(keys) {
+  try {
+    const q = new URLSearchParams(location.search);
+    let changed = false;
+    for (const k of keys) if (q.has(k)) (q.delete(k), (changed = true));
+    if (changed) history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+  } catch (err) {
+    /* (no history: leave it) */
+  }
+}
+/**
+ * (0.57.8) On opening, ask the site (past every cache) which version is newest. If this page is
+ * older, load the newest at once, in any browser. `nv` remembers that we already tried for that
+ * version, so a website still publishing it cannot cause a loop.
+ */
+async function checkNewest() {
+  tidyAddress(['r']);
+  if (!/^https?:$/.test(location.protocol) || !BUILT) return;
+  let latest = null;
+  try {
+    const res = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    latest = res.ok ? (await res.json()).version : null;
+  } catch (err) {
+    return; // (offline: play this one)
+  }
+  const tried = new URLSearchParams(BOOT_SEARCH).get('nv');
+  if (latest && latest !== BUILT && tried !== latest) return loadFresh({ nv: latest }, BOOT_SEARCH);
+  tidyAddress(['nv']);
+}
+checkNewest();
+
 function start(hot = {}) {
   const canvas = $('game');
   let renderer;
@@ -99,7 +148,7 @@ function start(hot = {}) {
     if (mode === 'play') setMode('pause');
     $('stale-tab').classList.remove('hidden');
   });
-  $('btn-stale-reload').addEventListener('click', () => location.reload());
+  $('btn-stale-reload').addEventListener('click', () => loadFresh());
   backupNow('when the game started');
   let lastBackup = Date.now();
   let save = hot.save || loadSave(settings.cls);
@@ -1640,6 +1689,11 @@ function start(hot = {}) {
     } catch (err) {
       button.disabled = false;
       mpMsg(err.message, false);
+      // (0.57.8) This page is older than the server: load the newest and join by yourself.
+      if (room.server && !rejoining && /different versions/.test(err.message)) {
+        mpMsg('A new version of the game is out. Loading it, then joining you...', true);
+        setTimeout(() => reloadToRejoin(target, !!extra.alone, Date.now(), 0), 1200);
+      }
       return false;
     }
     button.disabled = false;
@@ -2035,15 +2089,10 @@ function start(hot = {}) {
    * back without rejoining), and the changed address also means the newest page is fetched.
    */
   function reloadToRejoin(url, alone, at, tries) {
-    const q = new URLSearchParams(location.search);
-    q.set('rejoin', `${Math.floor(at / 1000).toString(36)}.${tries}`);
-    if (alone) q.set('rjalone', '1');
-    else q.delete('rjalone');
-    if (url && url !== DEFAULT_SERVER) q.set('rjserver', url);
-    else q.delete('rjserver');
-    location.replace(location.pathname + '?' + q.toString() + location.hash);
+    loadFresh({ rejoin: `${Math.floor(at / 1000).toString(36)}.${tries}`, rjalone: alone ? '1' : null, rjserver: url && url !== DEFAULT_SERVER ? url : null });
   }
   // Back from "Reload and rejoin": straight into the server world (the passcode is remembered).
+  let rejoining = false;
   (() => {
     let rj = null;
     try {
@@ -2052,9 +2101,8 @@ function start(hot = {}) {
       if (tag) {
         const [at, tries] = tag.split('.');
         rj = { url: q.get('rjserver') || DEFAULT_SERVER, at: parseInt(at, 36) * 1000, tries: Number(tries) || 0, alone: q.get('rjalone') === '1' };
-        for (const k of ['rejoin', 'rjalone', 'rjserver']) q.delete(k);
-        const rest = q.toString();
-        history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+        tidyAddress(['rejoin', 'rjalone', 'rjserver']);
+        rejoining = true;
       }
     } catch (err) {
       rj = null; // (nothing to rejoin)
@@ -2065,6 +2113,7 @@ function start(hot = {}) {
       if (!settings.serverPass) return mpMsg('Type the server world\'s passcode once, then join again.', false);
       mpMsg('Rejoining the server world...');
       const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass, ...(rj.alone ? { alone: true } : {}) });
+      rejoining = false;
       const tries = rj.tries + 1;
       if (!ok && tries < 8 && /different versions|did not answer|Could not reach|closed the connection/.test($('mp-msg').textContent)) {
         // The server came back before the website finished publishing the new version (or is still

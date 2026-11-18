@@ -232,16 +232,35 @@
       <div id="class-picker" class="segmented" role="group" aria-label="Class"></div>
       <p id="class-desc" class="setting-desc"></p>
     </div>
-    <div class="title-actions">
-      <button type="button" id="btn-explore" class="primary">Explore</button>
-      <button type="button" id="btn-online" class="primary hidden" title="Your online character, on the server world, with no one else around">Play online</button>
-      <button type="button" id="btn-continue" class="ghost hidden">The Echo Ring</button>
-      <button type="button" id="btn-new" class="ghost">Wake the Echo Ring</button>
+    <!-- (0.57.2) Signed in: online is the way to play; offline is there if you need it -->
+    <div id="title-in" class="title-panel hidden">
+      <p class="title-who"><i class="dot on"></i>Online · signed in as <b id="title-name">you</b></p>
+      <button type="button" id="btn-online" class="primary big">Explore online</button>
+      <p class="title-hint">Haven with everyone on the server world. Your hero is kept on the server: safe, and the same on any computer.</p>
+      <div class="title-alt">
+        <button type="button" id="btn-online-alone" class="ghost">Play alone online</button>
+        <button type="button" id="btn-explore-offline" class="link-btn">Explore offline instead</button>
+      </div>
+    </div>
+    <!-- Signed out: straight in, and clear that it stays in this browser -->
+    <div id="title-out" class="title-panel">
+      <button type="button" id="btn-explore" class="primary big">Explore</button>
+      <p class="title-hint"><span class="tag-offline">Offline</span> Saved in this browser only. Clearing your browsing data deletes it.</p>
+      <div class="title-cta">
+        <div><b>Play online</b><span>Sign in to keep your hero on the server, safe from a cleared browser, and meet other players in Haven.</span></div>
+        <button type="button" id="btn-signin" class="ghost">Sign in</button>
+      </div>
+    </div>
+    <div class="title-more">
+      <button type="button" id="btn-continue" class="ghost">The Echo Ring</button>
+      <button type="button" id="btn-mp" class="ghost">Play with friends</button>
     </div>
     <p id="title-save" class="save-line"></p>
     <p id="title-restore" class="save-line restore-hint hidden"></p>
-    <button type="button" id="btn-mp" class="ghost">Play with friends</button>
-    <button type="button" id="btn-transfer" class="link-btn">Move saves to another browser</button>
+    <div class="title-foot">
+      <button type="button" id="btn-transfer" class="foot-btn">Move offline saves to another browser</button>
+      <button type="button" id="btn-fresh" class="foot-btn danger">Start fresh</button>
+    </div>
     <p id="touch-note" class="save-line hidden">This prototype needs a mouse and keyboard.</p>
   </div>
   <div class="controls-card">
@@ -348,9 +367,10 @@
     <div class="transfer-row"><select id="mp-server-pick"></select></div>
     <div class="transfer-row hidden" id="mp-server-row"><input id="mp-server" placeholder="wss://play.example.com" autocomplete="off" spellcheck="false" /></div>
     <div id="acct" class="acct hidden" aria-live="polite">
+      <div class="acct-head"><span class="setting-label">Your account</span><span class="acct-tag" id="acct-tag">Signed out</span></div>
       <div id="acct-out">
-        <p class="setting-desc">This server world keeps your characters for you: sign in, and they live on the server (safe from a cleared browser, and the same on any computer). Playing alone or in a friend's room never needs an account.</p>
-        <div class="acct-row"><div id="acct-google"></div><button type="button" id="btn-acct-discord" class="ghost acct-discord">Sign in with Discord</button></div>
+        <p class="setting-desc">Sign in and your heroes live on the server: safe from a cleared browser, the same on any computer, and with everyone else in Haven. Offline play never needs an account.</p>
+        <div class="acct-row"><div id="acct-google" class="acct-google"></div><button type="button" id="btn-acct-discord" class="acct-discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.6 19.6 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2a12.8 12.8 0 0 1-2-1l.5-.4a14.1 14.1 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2a19.7 19.7 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7ZM8.3 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm7.4 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg>Sign in with Discord</button></div>
       </div>
       <div id="acct-in" class="hidden">
         <p class="acct-who">Signed in as <b id="acct-name"></b> <span id="acct-ways"></span></p>
@@ -365,7 +385,7 @@
       </div>
       <p id="acct-msg" class="setting-desc"></p>
     </div>
-    <div class="transfer-row"><input id="mp-pass" type="password" placeholder="Passcode" autocomplete="off" spellcheck="false" /><button type="button" id="btn-server" class="primary">Join the server world</button></div>
+    <div class="transfer-row"><div class="pass-wrap"><input id="mp-pass" type="password" placeholder="Passcode" autocomplete="off" spellcheck="false" /><button type="button" id="btn-peek" class="peek" aria-label="Hold to show the passcode" title="Hold to show the passcode"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button></div><button type="button" id="btn-server" class="primary">Join the server world</button></div>
     <p id="mp-msg" class="setting-desc"></p>
     <p class="setting-desc">Rooms: friends join through a free matchmaking service and then connect straight to the host. Some school or work networks block this; home internet and phone hotspots usually work.</p>
     <button type="button" id="btn-mp-close" class="ghost">Back <kbd>Esc</kbd></button>
@@ -476,6 +496,7 @@
     <p class="setting-desc" id="travel-desc">The Waygate reaches any map you have walked into. Maps you have not found yet stay locked: get there on foot through the portals first.</p>
     <div id="travel-here"></div>
     <div id="travel-list"></div>
+    <div id="travel-deep"></div>
     <button type="button" id="btn-travel-close" class="ghost">Stay here <kbd>Esc</kbd></button>
   </div>
 </section>

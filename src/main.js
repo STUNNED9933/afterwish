@@ -28,7 +28,7 @@ import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.
 import { WELL, CREDITS } from './sim/story.js';
 import { GLOWS } from './sim/cosmetics.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
-import { loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
+import { clearAllOffline, loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
 import { HostRoom, JoinRoom, cleanCode } from './net/room.js';
 import { ServerRoom } from './net/server-room.js';
@@ -48,7 +48,7 @@ function start(hot = {}) {
     renderer = new Renderer(canvas);
   } catch (err) {
     $('title-save').textContent = 'This game needs WebGL, which this browser or device has turned off. Try a current version of Chrome, Edge or Firefox.';
-    $('btn-new').disabled = true;
+    $('btn-explore').disabled = true;
     console.error(err);
     return;
   }
@@ -315,24 +315,32 @@ function start(hot = {}) {
     const c = CLASSES[settings.cls];
     for (const b of $('class-picker').children) b.setAttribute('aria-pressed', b.dataset.cls === settings.cls ? 'true' : 'false');
     $('class-desc').textContent = `${c.role}. ${c.blurb}`;
-    $('btn-explore').textContent = has ? `Explore · ${c.name} level ${save.level}` : `Explore as ${c.name}`;
-    $('btn-continue').classList.toggle('hidden', !has);
-    if (has) $('btn-continue').textContent = 'The Echo Ring';
-    // (0.57.1) signed in on the server world: your online character, one click away
-    let online = null;
+    // (0.57.2) Signed in on the server world: online is the main way to play, offline a quiet option.
+    let online = null, who = '';
     try {
       const base = Online.baseOf(DEFAULT_SERVER);
-      if (Online.sessionFor(base)) online = Online.cachedChars(base)[settings.cls] || { level: 0 };
+      if (Online.sessionFor(base)) {
+        online = Online.cachedChars(base)[settings.cls] || { level: 0 };
+        who = Online.cachedName(base);
+      }
     } catch (err) {
       online = null; // (before the server list is set up, at the very start)
     }
-    $('btn-online').classList.toggle('hidden', !online);
-    if (online) $('btn-online').textContent = online.level ? `Play online · ${c.name} level ${online.level}` : `Play online as ${c.name}`;
-    const fresh = $('btn-new');
-    fresh.textContent = has ? `Start a new ${c.name}` : 'Wake the Echo Ring · 1 shard';
-    // A brand-new character starts on the road: the Echo Ring button only shows once there are shards to spend.
-    fresh.classList.toggle('hidden', !has && account.tickets < 1);
-    fresh.dataset.armed = '';
+    $('title-in').classList.toggle('hidden', !online);
+    $('title-out').classList.toggle('hidden', !!online);
+    if (online) {
+      $('title-name').textContent = who || 'you';
+      $('btn-online').textContent = online.level ? `Explore online · ${c.name} level ${online.level}` : `Explore online as ${c.name}`;
+      $('btn-explore-offline').textContent = has ? `Explore offline instead · level ${save.level}` : 'Explore offline instead';
+    }
+    $('btn-explore').textContent = has ? `Explore · ${c.name} level ${save.level}` : `Explore as ${c.name}`;
+    // The Echo Ring runs in this browser: an offline hero's (wake it with a shard if this class has none yet)
+    const ring = $('btn-continue');
+    ring.classList.toggle('hidden', !has && account.tickets < 1);
+    ring.textContent = (has ? 'The Echo Ring' : 'Wake the Echo Ring · 1 shard') + (online ? ' · offline' : '');
+    $('btn-transfer').textContent = online ? 'Move offline saves to another browser' : 'Move saves to another browser';
+    $('btn-fresh').dataset.armed = '';
+    $('btn-fresh').textContent = 'Start fresh';
     const found = missingProgress();
     const lost = found && found.t !== settings.backupSeen ? found : null; // not after a deliberate fresh start
     const hint = $('title-restore');
@@ -356,7 +364,9 @@ function start(hot = {}) {
       });
       hint.append(go, hide);
     }
-    $('title-save').textContent = `${account.gold} gold · ${account.tickets} starglass shard${account.tickets === 1 ? '' : 's'}. Each class is one character, used both on the road and in the Echo Ring. Gold and shards are shared by every class. Progress is saved in this browser.`;
+    $('title-save').textContent = online
+      ? `Offline, in this browser: ${account.gold.toLocaleString()} gold · ${account.tickets} starglass shard${account.tickets === 1 ? '' : 's'}.`
+      : `${account.gold.toLocaleString()} gold · ${account.tickets} starglass shard${account.tickets === 1 ? '' : 's'}, shared by every class. Each class is one hero, on the road and in the Echo Ring.`;
   }
 
   function resetViews() {
@@ -633,44 +643,6 @@ function start(hot = {}) {
       root.appendChild(row);
       note(lead ? 'Every map out in the world uses this tier. Beat The Unmade on your highest tier to open the next.' : 'The party leader picks the world tier.');
     }
-    // The Deep (0.54, Act III): not a world tier. Its own box, its own rule.
-    const rb = p.rebirth || {};
-    if ((rb.deepMax || 0) > 0 || (p.endings && p.endings.self > 0 && rb.n >= 1)) {
-      const box = document.createElement('div');
-      box.className = 'deep-box';
-      const ember = world.ember();
-      box.innerHTML = `<div class="deep-title">The Deep</div><p class="deep-warn">The Deep does not scale to you. Ember decides whether you can touch what lives there: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p><p class="deep-ember">Your Ember: <b>${ember}</b> <span>(up to +${DEEP.emberMax} a rebirth, by how built-up your gear is when you go; +${DEEP.kindlingMax} from each Depth's Kindling)</span></p>`;
-      const row = document.createElement('div');
-      row.className = 'deep-row';
-      const above = document.createElement('button');
-      above.type = 'button';
-      above.className = 'ghost tiny' + (!p.depth ? ' on' : '');
-      above.textContent = 'The world above';
-      above.disabled = !lead;
-      above.addEventListener('click', () => {
-        applyNow({ type: 'setDepth', depth: 0 });
-        renderTravel();
-      });
-      row.appendChild(above);
-      for (const d of DEPTH_IDS) {
-        const D = DEEP.depths[d];
-        const open = world.depthOpen(p, d);
-        const s = emberScale(ember, D.ember);
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'deep-btn' + (p.depth === d ? ' on' : '') + (open && s.dealt < 1 ? ' short' : '');
-        b.innerHTML = `<b>${D.numeral}</b> ${D.name}<span>Ember ${D.ember}${open ? (s.one ? ' · you cannot hurt anything' : s.dealt < 1 ? ` · ${Math.round(s.dealt * 100)}% damage` : '') : ''}</span>`;
-        b.disabled = !open || !lead;
-        b.title = open ? `Every map at Depth ${D.numeral}: enemies ${D.hp}x tier V health and ${D.dmg}x damage, ${D.exp}x EXP, an Ember requirement of ${D.ember}. ${D.name}, the domain of the Primordial of ${D.title}, is by the Waygate.` : p.level < DEEP.level ? 'Level 100 first, in this life' : 'Opened by the story (Elder Wren knows where it begins)';
-        b.addEventListener('click', () => {
-          applyNow({ type: 'setDepth', depth: d });
-          renderTravel();
-        });
-        row.appendChild(b);
-      }
-      box.appendChild(row);
-      root.appendChild(box);
-    }
     sub('Echo Rift');
     if (!(p.bossKills.boss > 0)) {
       note('Rifts open once you have beaten The Warden out in the world.');
@@ -705,7 +677,93 @@ function start(hot = {}) {
     root.appendChild(row);
     note(`${Math.round(RIFT.time / 60)} minutes to clear enough of a random map to call its guardian, then beat it. In time, the next tier opens, you get your shard back and a pile of loot. Highest tier so far: ${p.riftMax - 1 > 0 ? p.riftMax - 1 : 'none yet'}${p.riftBest ? ` (best ${p.riftBest.tier} in ${Math.floor(p.riftBest.secs / 60)}:${String(p.riftBest.secs % 60).padStart(2, '0')})` : ''}.${lead ? '' : ' The party leader opens rifts.'}${p.tickets < 1 ? ' You have no shards.' : ''}`);
   }
+  /**
+   * The Deep (0.54; its own panel, 0.57.2): not a world tier and not part of the world above. Each Depth
+   * asks for Ember, which is what you let go of in your rebirths and stays with you through them.
+   * Drawn as a stair going down: Ember against each Depth's need, which ones you can hurt, and the way
+   * into each Primordial's domain.
+   */
+  function renderDeep() {
+    const root = $('travel-deep');
+    root.innerHTML = '';
+    const p = world.player;
+    const rb = p.rebirth || {};
+    if (travelStone != null || !world.map.safe || !((rb.deepMax || 0) > 0 || (p.endings && p.endings.self > 0 && rb.n >= 1))) return;
+    const lead = !(net && net.role === 'client') || !!(net && net.server);
+    const ember = world.ember();
+    const top = DEEP.depths[DEPTH_IDS[DEPTH_IDS.length - 1]].ember;
+    const box = document.createElement('section');
+    box.className = 'deep';
+    box.setAttribute('aria-label', 'The Deep');
+    const marks = DEPTH_IDS.map((d) => `<i style="left:${(DEEP.depths[d].ember / top) * 100}%" title="Depth ${DEEP.depths[d].numeral}: Ember ${DEEP.depths[d].ember}"></i>`).join('');
+    box.innerHTML = `<p class="deep-eyebrow">Below the Starwell</p>
+      <h3 class="deep-name">The Deep</h3>
+      <p class="deep-lede">It does not scale to you, and it is not a world tier. What lives down here answers only to Ember: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p>
+      <div class="deep-ember">
+        <div class="deep-ember-n"><b>${ember}</b><span>Ember</span></div>
+        <div class="deep-gauge"><div class="deep-fill" style="width:${Math.min(100, (ember / top) * 100)}%"></div>${marks}</div>
+      </div>
+      <p class="deep-note">Ember is what you let go of, and it stays with you through every rebirth: up to +${DEEP.emberMax} each time you are reborn, by how built-up your gear was, and +${DEEP.kindlingMax} from each Depth's Kindling.</p>`;
+    const stair = document.createElement('div');
+    stair.className = 'deep-stair';
+    const above = document.createElement('button');
+    above.type = 'button';
+    above.className = 'deep-above' + (!p.depth ? ' on' : '');
+    above.textContent = p.depth ? 'Climb back to the world above' : 'You are in the world above';
+    above.disabled = !lead || !p.depth;
+    above.addEventListener('click', () => {
+      applyNow({ type: 'setDepth', depth: 0 });
+      renderTravel();
+    });
+    stair.appendChild(above);
+    DEPTH_IDS.forEach((d, i) => {
+      const D = DEEP.depths[d];
+      const open = world.depthOpen(p, d);
+      const seen = (rb.deepMax || 0) >= d;
+      const s = emberScale(ember, D.ember);
+      const row = document.createElement('div');
+      row.className = 'deep-step' + (p.depth === d ? ' on' : '') + (open ? '' : ' sealed') + (open && s.one ? ' futile' : open && s.dealt < 1 ? ' short' : '');
+      row.style.setProperty('--step', i);
+      const state = !open ? (p.level < DEEP.level ? 'Sealed · level 100 first, in this life' : 'Sealed · the story opens it') : s.one ? 'You cannot hurt anything here' : s.dealt < 1 ? `Your blows land at ${Math.round(s.dealt * 100)}%` : 'You are ready';
+      const pick = document.createElement('button');
+      pick.type = 'button';
+      pick.className = 'deep-pick';
+      pick.disabled = !open || !lead || p.depth === d;
+      pick.title = open ? `Every map at Depth ${D.numeral}: enemies ${D.hp}x tier V health and ${D.dmg}x damage, ${D.exp}x EXP.` : '';
+      pick.innerHTML = `<span class="deep-num">${D.numeral}</span><span class="deep-what"><b>${D.name}</b><small>${D.title} · Ember ${D.ember}</small><em>${p.depth === d ? 'You are here · ' : ''}${state}</em></span>`;
+      pick.addEventListener('click', () => {
+        applyNow({ type: 'setDepth', depth: d });
+        renderTravel();
+      });
+      row.appendChild(pick);
+      const dom = DEEP.depths[d].map;
+      if (seen && MAPS[dom]) {
+        const go = document.createElement('button');
+        go.type = 'button';
+        go.className = 'deep-go';
+        go.textContent = 'Descend';
+        go.title = `Travel to ${MAPS[dom].name}, where the Primordial of ${D.title} waits`;
+        go.disabled = !open || world.map.id === dom;
+        go.addEventListener('click', () => {
+          setMode('play');
+          applyNow({ type: 'travel', to: dom });
+        });
+        row.appendChild(go);
+      }
+      stair.appendChild(row);
+    });
+    box.appendChild(stair);
+    if (!lead) {
+      const n = document.createElement('p');
+      n.className = 'deep-note';
+      n.textContent = 'The party leader chooses the Depth.';
+      box.appendChild(n);
+    }
+    root.appendChild(box);
+  }
+
   function renderTravel() {
+    renderDeep();
     const list = $('travel-list');
     list.innerHTML = '';
     const p = world.player;
@@ -773,23 +831,7 @@ function start(hot = {}) {
         list.appendChild(btn);
         continue;
       }
-      if (m.deep) {
-        // The Deep (0.54): each Primordial's domain, once its Depth is open
-        if (!((p.rebirth && p.rebirth.deepMax) >= m.deep)) continue;
-        const open = world.depthOpen(p, m.deep);
-        const D = DEEP.depths[m.deep];
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'travel-row deep-travel' + (open ? ' fit' : '');
-        btn.disabled = !open;
-        btn.innerHTML = `<b>${m.name}</b><span class="lv">Depth ${D.numeral} · Ember ${D.ember}</span><span>${open ? m.blurb : 'Level 100 first, in this life'}</span>`;
-        btn.addEventListener('click', () => {
-          setMode('play');
-          applyNow({ type: 'travel', to: id });
-        });
-        list.appendChild(btn);
-        continue;
-      }
+      if (m.deep) continue; // (0.57.2) the Primordials' domains are in the Deep's own panel (renderDeep)
       const known = p.visited.includes(id);
       const top = m.level + m.levelSpan + (m.boss ? 1 : 0);
       const btn = document.createElement('button');
@@ -2057,6 +2099,28 @@ function start(hot = {}) {
     });
   }
   $('mp-pass').value = settings.serverPass || '';
+  // (0.57.2) Hold the eye to see the passcode; it hides again the moment you let go.
+  {
+    const peek = $('btn-peek');
+    const show = (on) => {
+      $('mp-pass').type = on ? 'text' : 'password';
+      peek.classList.toggle('on', on);
+    };
+    peek.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      peek.setPointerCapture(e.pointerId);
+      show(true);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) peek.addEventListener(ev, () => show(false));
+    peek.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        show(true);
+      }
+    });
+    peek.addEventListener('keyup', () => show(false));
+  }
 
   // ---------------------------------------------------------------------------
   // (0.57) Your account on the server world: Google first, Discord as well, and the one-time import
@@ -2101,6 +2165,10 @@ function start(hot = {}) {
     box.classList.toggle('hidden', !acct.cfg);
     if (!acct.cfg) return;
     const inn = !!acct.info;
+    $('acct-tag').textContent = inn ? 'Signed in' : 'Signed out';
+    $('acct-tag').classList.toggle('in', inn);
+    if (inn) Online.cacheName(acct.base, acct.info.name);
+    if (mode === 'title') refreshTitle();
     $('acct-out').classList.toggle('hidden', inn);
     $('acct-in').classList.toggle('hidden', !inn);
     $('btn-acct-discord').classList.toggle('hidden', !acct.cfg.discord);
@@ -2128,7 +2196,7 @@ function start(hot = {}) {
     if (!a.discord && acct.cfg.discord) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'ghost acct-discord';
+      b.className = 'acct-discord';
       b.textContent = 'Add Discord';
       b.addEventListener('click', () => discordSignIn('link'));
       link.appendChild(b);
@@ -2219,7 +2287,22 @@ function start(hot = {}) {
     if (!ok && mode !== 'mp') openMp();
   }
   $('btn-acct-alone').addEventListener('click', (e) => playAlone($('mp-server').value.trim() || DEFAULT_SERVER, e.currentTarget));
-  $('btn-online').addEventListener('click', (e) => playAlone(DEFAULT_SERVER, e.currentTarget));
+  $('btn-online').addEventListener('click', async (e) => {
+    // (0.57.2) Explore online: the server world with everyone, as your online character
+    const pass = (settings.serverPass || '').trim();
+    if (!pass) {
+      openMp();
+      mpMsg('Type the server world\'s passcode once (ask whoever runs it), then join.', false);
+      return;
+    }
+    mpMsg('Joining the server world...');
+    const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), DEFAULT_SERVER, null, e.currentTarget, { pass });
+    if (!ok) {
+      const why = $('mp-msg').textContent;
+      openMp();
+      mpMsg(why, false);
+    }
+  });
   $('btn-acct-out').addEventListener('click', async () => {
     try {
       await Online.call(acct.base, '/auth/logout', { method: 'POST', body: {} });
@@ -2227,6 +2310,7 @@ function start(hot = {}) {
       /* signed out here either way */
     }
     Online.setSession(acct.base, '');
+    Online.cacheName(acct.base, '');
     acct.info = null;
     acctMsg('Signed out.');
     renderAccount();
@@ -2571,6 +2655,22 @@ function start(hot = {}) {
       }, 4000);
     }
   };
+  function startFresh() {
+    backupNow('before starting fresh');
+    clearAllOffline();
+    for (const k of Object.keys(account)) delete account[k];
+    Object.assign(account, { gold: 0, tickets: CONFIG.START_TICKETS, signs: [] });
+    account.casebook = Casebook.freshBook(null);
+    storeAccount(account);
+    settings.backupSeen = (loadBackups().best || {}).t; // a deliberate fresh start: no "missing progress?" note
+    storeSettings(settings);
+    save = null;
+    world = makeWorld({ save });
+    resetViews();
+    caseBadge();
+    refreshTitle();
+    $('title-save').textContent = 'Everything offline in this browser is gone: a fresh start. (A backup was kept, under Move saves, in case you change your mind.)';
+  }
   // A new character always starts at the beginning of the story, in Haven.
   const wipe = () => {
     clearSave(world.cls); // keeps a backup first
@@ -2599,11 +2699,16 @@ function start(hot = {}) {
   }
 
   $('btn-explore').addEventListener('click', () => startExplore());
-  $('btn-continue').addEventListener('click', () => enterTown());
-  $('btn-new').addEventListener('click', (e) => {
-    if (!save) startRun(null);
-    else armThenRun(e.currentTarget, `Click again to delete your ${CLASSES[settings.cls].name} and start over`, wipe);
+  $('btn-continue').addEventListener('click', () => (save ? enterTown() : startRun(null)));
+  $('btn-explore-offline').addEventListener('click', () => startExplore());
+  $('btn-online-alone').addEventListener('click', (e) => playAlone(DEFAULT_SERVER, e.currentTarget));
+  $('btn-signin').addEventListener('click', () => {
+    openMp();
+    refreshAccount().then(() => $('acct').scrollIntoView({ block: 'center', behavior: 'smooth' }));
   });
+  // (0.57.2) Start fresh: every offline hero, gold, shards, rebirths and Ex Voto in this browser go
+  // (a backup is kept first). Online characters, settings and the sign-in are not touched.
+  $('btn-fresh').addEventListener('click', (e) => armThenRun(e.currentTarget, 'Click again: delete every offline hero, gold and rebirth in this browser', startFresh));
   $('btn-resume').addEventListener('click', () => setMode('play'));
   $('btn-travel-close').addEventListener('click', () => setMode('play'));
 

@@ -40,7 +40,21 @@ export function cacheChar(base, cls, save) {
   writeMap(CACHE, m);
 }
 export function cachedChars(base) {
-  return readMap(CACHE)[base] || {};
+  const all = readMap(CACHE)[base] || {};
+  const out = {};
+  for (const k in all) if (k !== '_name') out[k] = all[k];
+  return out;
+}
+/** The signed-in name, for the title screen (no need to ask the server just to say hello). */
+export function cacheName(base, name) {
+  const m = readMap(CACHE);
+  m[base] = m[base] || {};
+  if (name) m[base]._name = name;
+  else delete m[base]._name;
+  writeMap(CACHE, m);
+}
+export function cachedName(base) {
+  return (readMap(CACHE)[base] || {})._name || '';
 }
 
 /** Call the server's account endpoints. Throws with the server's own words when it says no. */

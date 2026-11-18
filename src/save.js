@@ -61,6 +61,23 @@ function mergeSaves(arena, explore) {
 export function storeSave(save, cls) {
   return write(keyFor(SAVE_KEY, cls), save);
 }
+/**
+ * (0.57.2) Start fresh: every offline hero and the account wallet in this browser (gold, shards,
+ * rebirths, Ex Voto, glimmers read). Settings, backups and online sign-ins stay. Take a backup first.
+ */
+export function clearAllOffline() {
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('stunned-arena-save-') || k === ACCOUNT_KEY)) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch (err) {
+    /* storage blocked: nothing was saved here anyway */
+  }
+}
+
 export function clearSave(cls) {
   backupNow('before a character was deleted');
   try {

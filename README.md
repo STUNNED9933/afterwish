@@ -159,6 +159,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A new title screen, and the Deep on its own (0.57.2)
+
+- **Title screen:** signed out, Explore is marked **Offline** (saved in this browser only), with an
+  invitation to sign in and play online. Signed in, **Explore online** is the main button (the server
+  world, with everyone), with Play alone online and a quiet "Explore offline instead" beside it.
+  Clearer buttons for the Echo Ring, Play with friends and moving saves; **Start fresh** (two clicks)
+  deletes every offline hero, gold and rebirth in this browser, keeping a backup first. "Start a new
+  <class>" is gone (rebirth covers it).
+- **Sign-in box:** fits the game (no white box around Google's button, a proper Discord button), and
+  the passcode has an eye to hold for a look.
+- **The Deep** has its own panel at the bottom of the Waygate, apart from world tiers and rifts: the
+  Depths go down like a stair, with your Ember against what each asks, whether you can hurt anything
+  there, and the way into each Primordial's domain. Ember stays with you through every rebirth.
+
 ### Play alone, online (0.57.1)
 
 - **One character everywhere:** signed-in players can play their online character alone: "Play

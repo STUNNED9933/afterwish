@@ -57,8 +57,10 @@ try:
         # (0.57.1) back to the title: "Play online" takes the online character into a Haven of its own
         pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
         pg.click('#btn-town'); pg.wait_for_function("() => game.mode === 'title'", timeout=8000); pg.wait_for_timeout(500)
-        check('the title offers Play online, with the online level', pg.is_visible('#btn-online') and 'level 45' in pg.inner_text('#btn-online').lower(), pg.inner_text('#btn-online') if pg.is_visible('#btn-online') else 'hidden')
-        pg.click('#btn-online')
+        check('signed in, the title leads with Explore online, with the online level', pg.is_visible('#btn-online') and 'level 45' in pg.inner_text('#btn-online').lower() and not pg.is_visible('#btn-explore'), pg.inner_text('#btn-online') if pg.is_visible('#btn-online') else 'hidden')
+        check('and says who is signed in, with offline as a quiet option', 'Ko' in pg.inner_text('#title-name') and pg.is_visible('#btn-explore-offline'))
+        pg.screenshot(path=str(OUT / 'title-signed-in.png'))
+        pg.click('#btn-online-alone')
         pg.wait_for_function("() => game.net && game.net.server && game.mode === 'play'", timeout=15000)
         pg.wait_for_timeout(1000)
         check('playing alone online: the badge says so, and it is the online character', 'Playing alone' in pg.inner_text('#room-badge') and pg.evaluate("() => game.net.alone && game.net.online && game.world.player.level") == 45, pg.inner_text('#room-badge'))

@@ -118,7 +118,7 @@ function start(hot = {}) {
   sfx.setMuted(settings.muted);
   // Background music: one original theme per map, plus the arena's battle theme.
   const music = new Music();
-  music.setVolume(settings.musicVolume ?? 0.45);
+  music.setVolume(settings.musicVolume ?? 0.25);
   music.setMuted(settings.muted);
   // Browsers only allow sound after a click, so the first click anywhere switches audio on.
   window.addEventListener('pointerdown', () => {
@@ -3228,7 +3228,7 @@ function start(hot = {}) {
     storeSettings(settings);
   });
   $('volume').addEventListener('change', () => sfx.parry(false));
-  $('music-volume').value = Math.round((settings.musicVolume ?? 0.45) * 100);
+  $('music-volume').value = Math.round((settings.musicVolume ?? 0.25) * 100);
   $('music-volume').addEventListener('input', (e) => {
     settings.musicVolume = e.target.value / 100;
     music.setVolume(settings.musicVolume);

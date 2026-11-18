@@ -7,16 +7,18 @@
 //     (Assassin, Bulwark the tank) sit at the low end of that, the boss specialists (Shadowdancer,
 //     Sharpshooter) at the top.
 // Raise or lower a number here to move a class without touching its skills.
+// (0.60.2) Windrunner 1.06 -> 1.09 (mid), 1.1 -> 0.645 (late): Hurricane became a passive (Tailwind always,
+// arrows that curve in and hit a lone boss too); a little above where she was on bosses, below the top.
 // Two tables: up to level 75 (cooldowns still above the 1 s floor), and level 100 (haste past the floor
 // turns into damage, which favours some kits far more than others). Between 75 and 100 the two blend.
 export const POWER = {
   mid: {
     base: { warrior: 1, archer: 1.05, rogue: 1, mage: 0.9 }, // (0.56.3) 1.55 -> 0.9, measured fairly
-    spec: { berserker: 1.52, bulwark: 1.36, sharpshooter: 0.9, windrunner: 1.06, assassin: 0.89, shadowdancer: 1, pyromancer: 0.7, frostbinder: 1.05 },
+    spec: { berserker: 1.52, bulwark: 1.36, sharpshooter: 0.9, windrunner: 1.09, assassin: 0.89, shadowdancer: 1, pyromancer: 0.7, frostbinder: 1.05 },
   },
   late: {
     base: { warrior: 1.6, archer: 1.95, rogue: 1, mage: 1.22 }, // (0.56.3) mage 2.55 -> 1.22: measured fairly (the bench no longer drifts off the map)
-    spec: { berserker: 1.79, bulwark: 1.08, sharpshooter: 0.61, windrunner: 1.1, assassin: 1.8, shadowdancer: 0.98, pyromancer: 1.29, frostbinder: 1.54 }, // (0.56.3) assassin 1.71 -> 1.8: within 70% of a fully burning Pyromancer
+    spec: { berserker: 1.79, bulwark: 1.08, sharpshooter: 0.61, windrunner: 0.645, assassin: 1.8, shadowdancer: 0.98, pyromancer: 1.29, frostbinder: 1.54 }, // (0.56.3) assassin 1.71 -> 1.8: within 70% of a fully burning Pyromancer
   },
 };
 

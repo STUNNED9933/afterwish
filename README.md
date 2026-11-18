@@ -159,6 +159,23 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Berserker and Windrunner, easier to play well (0.60.2)
+
+- **Berserker, Crimson Reach**: while Bloodied, every swing flies on as a red crescent up to 6 m,
+  cutting everything in its path. Up close the swing lands as before and the crescent cuts those
+  behind for 60%; further off, the crescent carries the whole blow. So he can keep hitting while he
+  steps out of a boss's attack. Cleave reaches 35% further and 20% wider, Whirlwind spins 35% wider.
+  Crimson Oath makes it all bigger: crescents fly 9.5 m and cut wider (80% behind), Cleave +75%
+  reach and +40% arc, Whirlwind +75% wide. His single-target damage up close is unchanged.
+- **Windrunner, Hurricane is a passive** (from level 6, nothing to press, no more stopping to cast):
+  Tailwind never leaves her, and every basic attack looses 2 arrows that sweep out wide and curve in,
+  at other enemies nearby or at her target when no one else is near (30% damage each, +3% per rank
+  after the first; Tailwind does not add to them). Eye of the Gale: a third arrow and +25%. Eye of
+  the Storm: +20% arrow damage. Galeborn's four pieces: a perfect roll whips up a 3-second gale
+  (+40% attack speed, Tailwind). Power retuned (mid 1.06 -> 1.09, late 1.1 -> 0.645): on the boss
+  bench she goes from 2.10M to 2.45M at level 100 (below Pyromancer and Shadowdancer) and 19.4k to
+  21.0k at level 75, and clears packs faster (3 packs: 5.0 s -> 3.9 s).
+
 ### The Weekly Echo: a twist each week, and something for taking part (0.60)
 
 - **A twist each week**, the same for everyone (and for the boards' replay check): Glass Cannon

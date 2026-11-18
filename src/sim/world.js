@@ -1528,9 +1528,27 @@ export class World {
     }
   }
 
-  /** How far basic attacks reach (talents and augments can stretch it). */
+  /** How far basic attacks reach (talents and augments can stretch it; a Bloodied Berserker's crescents, 0.60.2). */
   basicRange() {
-    return this.basic.range * (1 + (this.mods.rangePct || 0));
+    const base = this.basic.range * (1 + (this.mods.rangePct || 0));
+    const lv = this.bloodReach();
+    return lv ? Math.max(base, CONFIG.CRESCENT.reach[lv]) : base;
+  }
+
+  /** (0.60.2) Hurricane (Windrunner, passive from level 6): the wind never leaves her back, so Tailwind is always on. */
+  galeAlways() {
+    const r = this.kit && this.kit.r;
+    return !!(r && r.passive && r.tailwind && this.abilityUnlocked('r'));
+  }
+
+  /**
+   * (0.60.2) Crimson Reach (Berserker): 0 normally, 1 while Bloodied, 2 while Crimson Oath burns.
+   * It stretches his swings into red crescents, and Cleave and Whirlwind further and wider.
+   */
+  bloodReach() {
+    const p = this.player;
+    if (!this.mods.bloodRage || !p) return 0;
+    return p.frenzyT > 0 ? 2 : p.bloodied ? 1 : 0;
   }
 
   /**
@@ -1559,6 +1577,21 @@ export class World {
         vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed,
         radius: 0.3, dmg: gale ? dmg * (p.quickMult || 1.25) : dmg, parryable: false, reflected: false, life: 1.2, dead: false,
       });
+    } else if (this.bloodReach()) {
+      // (0.60.2) Crimson Reach: a Bloodied Berserker's swing flies on as a red crescent, cutting all in its
+      // path. Within arm's reach the swing lands as ever and the crescent cuts what is behind (for less);
+      // further off, the crescent carries the whole blow.
+      const lv = this.bloodReach(), C = CONFIG.CRESCENT;
+      const near = dist(p.x, p.z, target.x, target.z) - target.radius <= this.basic.range * (1 + (this.mods.rangePct || 0)) + 0.3;
+      if (near) this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
+      const a = dAtan2(target.z - p.z, target.x - p.x);
+      this.projectiles.push({
+        id: this.nextId++, owner: 'player', kind: 'crescent', basic: true, pierce: near ? [target.id] : [], critBonus: near ? 0 : critBonus,
+        x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z,
+        vx: dCos(a) * C.speed, vz: dSin(a) * C.speed, speed: C.speed,
+        radius: C.width[lv], dmg: near ? dmg * C.behind[lv] : dmg, parryable: false, reflected: false, life: (C.reach[lv] + 1.5) / C.speed, dead: false, lv,
+      });
+      p.facing = a;
     } else {
       this.hitEnemy(target, dmg, { basic: true, source: 'basic', forceCrit, critBonus });
       if (p.veilT > 0 && this.mods.veilCopy > 0) {
@@ -1589,21 +1622,27 @@ export class World {
         });
       }
     }
-    if (b.shot && p.hurricaneT > 0 && dmgOverride === null) {
-      // Hurricane (Windrunner): every real basic attack also looses arrows at other enemies nearby.
-      const def = this.kit.r;
+    const hur = this.kit.r;
+    if (b.shot && hur && hur.passive && hur.extra && dmgOverride === null && this.abilityUnlocked('r')) {
+      // Hurricane (Windrunner, passive since 0.60.2): every real basic attack also looses arrows that sweep
+      // out wide and curve in (like a gust), at other enemies nearby, or at the target if there are none.
+      const n = hur.extra + (this.mods.hurricaneExtra || 0);
       const reach = this.basicRange() + 1.5;
       const others = this.enemies.filter((e) => e !== target && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= reach + e.radius)
-        .sort((a, c) => dist(a.x, a.z, p.x, p.z) - dist(c.x, c.z, p.x, p.z)).slice(0, def.extra || 2);
-      for (const o of others) {
-        const a2 = dAtan2(o.z - p.z, o.x - p.x);
+        .sort((a, c) => dist(a.x, a.z, p.x, p.z) - dist(c.x, c.z, p.x, p.z)).slice(0, n);
+      const aims = others.slice();
+      while (aims.length < n && !target.dead) aims.push(target);
+      const mult = Math.max(hur.extraMult, this.mods.hurricaneMult || 0) * (1 + (hur.rankMult || 0) * Math.max(0, (p.ranks.r || 1) - 1)) * (this.mods.hurricaneDmg || 1);
+      aims.forEach((o, i) => {
+        const side = i % 2 ? 1 : -1;
+        const a2 = dAtan2(o.z - p.z, o.x - p.x) + side * (0.95 + 0.15 * (i >> 1)); // out wide first...
         this.projectiles.push({
-          id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: o.id, critBonus: 0, gust: true,
+          id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: o.id, critBonus: 0, gust: true, arc: 3.2, // ...then curving in (no Tailwind of their own)
           x: p.x + dCos(a2) * 0.7, z: p.z + dSin(a2) * 0.7, px: p.x, pz: p.z,
-          vx: dCos(a2) * b.speed, vz: dSin(a2) * b.speed, speed: b.speed,
-          radius: 0.3, dmg: dmg * Math.max(def.extraMult || 0.45, this.mods.hurricaneMult || 0), parryable: false, reflected: false, life: 1.2, dead: false,
+          vx: dCos(a2) * b.speed * 0.8, vz: dSin(a2) * b.speed * 0.8, speed: b.speed * 0.8,
+          radius: 0.3, dmg: dmg * mult, parryable: false, reflected: false, life: 1.8, dead: false,
         });
-      }
+      });
     }
     if (this.mods.stormcaller && this.cls === 'archer' && p.swingCount % 4 === 0) this.lightning(target); // Stormstring
   }
@@ -1645,14 +1684,15 @@ export class World {
         return;
       }
     }
-    if (!def || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.channel || (p.sealT > 0 && p.sealSlot === slot)) return;
+    if (!def || def.passive || !this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.channel || (p.sealT > 0 && p.sealSlot === slot)) return; // (0.60.2) a passive is never cast
     let a = dAtan2(z - p.z, x - p.x);
     if (!Number.isFinite(a)) a = p.facing;
     const d = dist(x, z, p.x, p.z);
     const cos = dCos(a);
     const sin = dSin(a);
-    const range = (def.range || 0) * (m[slot + 'Range'] || 1);
-    const radius = (def.radius || 0) * (m[slot + 'Radius'] || 1);
+    const reach = slot === 'q' || slot === 'w' ? CONFIG.CRESCENT.grow[this.bloodReach()] : 1; // (0.60.2) Crimson Reach
+    const range = (def.range || 0) * (m[slot + 'Range'] || 1) * reach;
+    const radius = (def.radius || 0) * (m[slot + 'Radius'] || 1) * reach;
 
     // Single-target abilities need someone to hit before they go on cooldown.
     let target = null;
@@ -1695,7 +1735,7 @@ export class World {
 
     switch (def.type) {
       case 'cone': {
-        const angle = Math.min(TAU, def.angle * (m[slot + 'Angle'] || 1));
+        const angle = Math.min(TAU, def.angle * (m[slot + 'Angle'] || 1) * (slot === 'q' ? CONFIG.CRESCENT.wide[this.bloodReach()] : 1)); // (0.60.2) wider when Bloodied
         p.facing = a;
         p.castLock = 0.16;
         this.battleRhythm(slot, this.cleaveHit(a, range, angle, dmg, slot, def));
@@ -1723,7 +1763,7 @@ export class World {
         // Red Tempo (0.43): the spin keeps time with your hands, one beat per basic attack (2 to 10 a second)
         const tick = m.spinTempo ? clamp(1 / Math.max(0.1, p.stats.as), 0.1, def.tick) : def.tick;
         const ticks = Math.max(1, Math.round((def.duration + (m.wSpinTime || 0)) / tick)); // Bloodbound: longer
-        p.spin = { left: ticks, next: 0, tick, dmg: dmg * def.tickMult, radius, slot, first: true };
+        p.spin = { left: ticks, next: 0, tick, dmg: dmg * def.tickMult, radius: radius / reach, slot, first: true }; // (0.60.2) its reach is taken beat by beat
         this.emit('cast', { slot, fx: 'spin', x: p.x, z: p.z, radius, dur: def.duration });
         break;
       }
@@ -2311,9 +2351,10 @@ export class World {
       sp.next -= dt;
       if (sp.next <= 0) {
         const def = this.kit[sp.slot];
-        const hits = this.novaHit(sp.slot, def, sp.dmg, sp.radius, sp.first, sp.first);
+        const spinR = sp.radius * (sp.slot === 'w' ? CONFIG.CRESCENT.grow[this.bloodReach()] : 1); // (0.60.2) Crimson Reach, beat by beat
+        const hits = this.novaHit(sp.slot, def, sp.dmg, spinR, sp.first, sp.first);
         this.battleRhythm(sp.slot, hits * sp.tick); // every beat gives Battle Rhythm for its share of the spin (four beats: half each)
-        this.emit('spinTick', { x: p.x, z: p.z, radius: sp.radius, first: sp.first });
+        this.emit('spinTick', { x: p.x, z: p.z, radius: spinR, first: sp.first });
         sp.first = false;
         sp.left--;
         sp.next += sp.tick;
@@ -2685,7 +2726,7 @@ export class World {
     if (holder) rawDamage *= 1 - Math.min(0.75, (holder.kit.r.dr || 0.35) + (holder.mods.bastionDr || 0)); // (Bastion Plate: 50%)
     // Subclass Immortals that make you harder to hurt in the right moment (0.32).
     if (m.farGuard > 0 && !this.enemies.some((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 6 + o.radius)) rawDamage *= 1 - m.farGuard; // Rangekeeper's Coat
-    if (m.tailGuard > 0 && (p.rushT > 0 || p.hurricaneT > 0)) rawDamage *= 1 - m.tailGuard; // Windwoven Vest
+    if (m.tailGuard > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) rawDamage *= 1 - m.tailGuard; // Windwoven Vest
     if (m.veilGuard > 0 && p.veilT > 0) rawDamage *= 1 - m.veilGuard; // Shadowweave
     if (m.burnGuard > 0) {
       let n = 0;
@@ -5972,7 +6013,7 @@ export class World {
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
     if (p.edricT > 0) dmg *= 1 + 0.12 * (p.edricStacks || 0); // Edric's Sword (0.47)
     if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.8) dmg *= 1.15; // Edric's Colours
-    if (opts.basic && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0)) {
+    if (opts.basic && !opts.noTail && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) {
       // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
       dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
       if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr);
@@ -6651,7 +6692,12 @@ export class World {
         // Basic-attack shots curve toward their target so they do not miss.
         const t = this.enemyById(pr.targetId);
         if (t) {
-          const a = dAtan2(t.z - pr.z, t.x - pr.x);
+          let a = dAtan2(t.z - pr.z, t.x - pr.x);
+          if (pr.arc > 0) {
+            // (0.60.2) Hurricane's arrows swing round to it, turning harder the longer they fly
+            a = turnToward(dAtan2(pr.vz, pr.vx), a, pr.arc * d);
+            pr.arc += 9 * d;
+          }
           pr.vx = dCos(a) * pr.speed;
           pr.vz = dSin(a) * pr.speed;
         }
@@ -6737,7 +6783,7 @@ export class World {
               }
               if (pr.slot === 'q' && this.mods.qBurn > 0 && !e.dead) this.addBurn(e, this.mods.qBurn); // Everything Burns
               if (pr.basic && this.mods.basicBurn > 0 && !e.dead) this.addBurn(e, this.mods.basicBurn);
-              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, gale: !!pr.gale, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
+              this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, noTail: !!pr.noTail, gale: !!pr.gale, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
               const m = this.mods;
               if (m.frostMax > 0 && !e.dead) {
                 // Hoarfrost (Frostbinder)

@@ -2025,11 +2025,17 @@ export class Renderer {
       seen.add(pr.id);
       let m = this.projViews.get(pr.id);
       if (!m) {
-        m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 1), new THREE.MeshBasicMaterial({ color: 0xd78bff }));
+        if (pr.kind === 'crescent') {
+          // (0.60.2) Crimson Reach: a flat red arc, bowed the way it flies
+          const geo = new THREE.TorusGeometry(1, 0.11, 6, 22, Math.PI * 0.85);
+          geo.rotateZ(-Math.PI * 0.425);
+          geo.rotateX(-Math.PI / 2);
+          m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0.9 }));
+        } else m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 1), new THREE.MeshBasicMaterial({ color: 0xd78bff }));
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
-      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0 }[pr.kind]; // the hero's own shots
+      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
@@ -2046,6 +2052,14 @@ export class Renderer {
       if (pr.kind === 'mote') {
         m.scale.setScalar(0.8);
         if (Math.random() < 0.9) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: 0xfff3b0, speed: 0.4, up: 0.3, gravity: 0, life: 0.4, size: 1 });
+      }
+      if (pr.kind === 'crescent') {
+        const a = Math.atan2(pr.z - pr.pz, pr.x - pr.px);
+        const w = Math.max(0.6, (pr.radius || 0.8) * 1.25);
+        m.scale.set(w, 1, w);
+        if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, -a, 0);
+        m.position.set(m.position.x - Math.cos(a) * w * 0.7, 1.0, m.position.z - Math.sin(a) * w * 0.7);
+        if (Math.random() < 0.8) this.burst(m.position.x + Math.cos(a) * w * 0.7, 1.0, m.position.z + Math.sin(a) * w * 0.7, { count: 1, color: 0xff5050, speed: 0.6, up: 0.3, gravity: 0, life: 0.3, size: 1.1 });
       }
       if (pr.kind === 'kunai') {
         // A thin blade pointing where it flies.

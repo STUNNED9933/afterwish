@@ -172,7 +172,7 @@ export const SPEC_IMMORTALS = {
   },
   windrunner: {
     weapon: { name: 'Galestring', desc: "Tailwind's on-hit damage is 50% higher.", apply: (m) => { m.tailwind *= 1.5; } },
-    helm: { name: 'Eye of the Gale', desc: "Hurricane lasts 3 seconds longer, and its extra arrows deal 80% (instead of 45%).", apply: (m) => { m.rDuration += 3; m.hurricaneMult = Math.max(m.hurricaneMult, 0.8); } },
+    helm: { name: 'Eye of the Gale', desc: 'Hurricane looses a third arrow, and its arrows deal 25% more.', apply: (m) => { m.hurricaneExtra += 1; m.hurricaneDmg *= 1.25; } },
     chest: { name: 'Windwoven Vest', desc: 'While you have Tailwind, you take 20% less damage.', apply: (m) => { m.tailGuard += 0.2; } },
     boots: { name: 'Zephyr Treads', desc: 'Every basic attack with Tailwind takes 0.5 seconds off Evasive Roll (instead of 0.3).', apply: (m) => { m.tailwindCdr = Math.max(m.tailwindCdr, 0.5); } },
     ring: { name: 'Storm Sigil', desc: 'Barrage looses 3 more arrows.', apply: (m) => { m.wExtra += 3; } },
@@ -358,7 +358,7 @@ export const SETS = {
     four: { desc: "Steady Aim's guaranteed crits pierce, hitting every enemy in their path.", apply: (m) => { m.steadyPierce = true; } } },
   galeborn: { name: 'Galeborn', cls: 'archer', spec: 'windrunner',
     two: { desc: '+8% attack speed.', apply: (m) => { m.asMult *= 1.08; } },
-    four: { desc: 'Rolling through an attack (a perfect dodge) whips up 3 seconds of Hurricane.', apply: (m) => { m.galeHurricane = Math.max(m.galeHurricane, 3); } } },
+    four: { desc: 'Rolling through an attack (a perfect dodge) whips up a 3-second gale: 40% faster attacks, and Tailwind the whole time.', apply: (m) => { m.galeHurricane = Math.max(m.galeHurricane, 3); } } },
   nightcut: { name: 'Nightcut', cls: 'rogue', spec: 'assassin',
     two: { desc: 'Shadowstrike deals 15% more.', apply: (m) => { m.qDmg *= 1.15; } },
     four: { desc: 'After a Clean Kill, your next Shadowstrike within 3 seconds also cuts every enemy within 3 m of its target.', apply: (m) => { m.nightcutChain = true; } } },

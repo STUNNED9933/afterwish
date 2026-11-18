@@ -19,6 +19,8 @@
 import { CONFIG } from '../config.js';
 
 const pct = (n) => Math.round(n * 100);
+/** (0.60.2) Hurricane (Windrunner, passive): what each extra arrow deals, and how much more per rank after the first. */
+export const HURRICANE = { mult: 0.3, rank: 0.03 };
 
 export const SPECS = {
   // ------------------------------------------------------------------ Warrior
@@ -27,7 +29,7 @@ export const SPECS = {
     blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
     perk: {
       name: 'Blood Rage',
-      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Red Tempo: Whirlwind becomes a spin you can run with that keeps time with your hands, one beat for every basic attack you could make (from 2 to 10 beats a second), so attack speed makes it spin faster. Skyfall becomes Crimson Oath.',
+      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Red Tempo: Whirlwind becomes a spin you can run with that keeps time with your hands, one beat for every basic attack you could make (from 2 to 10 beats a second), so attack speed makes it spin faster. Crimson Reach: while Bloodied, every swing flies on as a red crescent up to 6 m, cutting everything in its path (within reach of your arm the swing lands as ever and the crescent cuts those behind for 60%), Cleave reaches 35% further and 20% wider, and Whirlwind spins 35% wider. Skyfall becomes Crimson Oath.',
       apply: (m) => { m.spinTempo = true; m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
     },
     kit: {
@@ -39,7 +41,7 @@ export const SPECS = {
       r: {
         key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
         dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
-        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds you cannot fall below 1 health and your lifesteal is doubled.',
+        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds you cannot fall below 1 health and your lifesteal is doubled, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
       },
     },
     talents: [
@@ -114,7 +116,7 @@ export const SPECS = {
   },
   windrunner: {
     cls: 'archer', name: 'Windrunner',
-    blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane turns every shot into three.',
+    blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane, always with her, turns every shot into three.',
     perk: {
       name: 'Tailwind',
       desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Crosswind: your basic attacks loose extra arrows at the same target for 65% damage, and more the faster you shoot: half an extra arrow per shot at 4 attacks a second, 2 at 8, 4 and a half at 12 (up to 6). Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
@@ -128,9 +130,9 @@ export const SPECS = {
         desc: 'Hop a few steps toward your cursor without breaking stride. Your next 3 basic attacks within 2.5 seconds leave the string at once, one after the other, for 50% more. They are gusts: they blow through every enemy in their path, Reflective enemies cannot turn them back, and they crack the mirror. Hop, shoot shoot shoot, hop.',
       },
       r: {
-        key: 'R', name: 'Hurricane', type: 'hurricane', icon: 'hurricane', unlock: 6, cd: 55, duration: 6, as: 0.4, extra: 2, extraMult: 0.45,
+        key: 'R', name: 'Hurricane', type: 'passive', passive: true, icon: 'hurricane', unlock: 6, cd: 0, extra: 2, extraMult: HURRICANE.mult, rankMult: HURRICANE.rank, tailwind: true,
         dmg: () => 0,
-        desc: 'Call up a gale for 6 seconds: you attack 40% faster, have Tailwind the whole time, and every basic attack also looses 2 arrows at other enemies nearby for 45% damage. Evasive Roll is ready again at once.',
+        desc: `Passive (0.60.2): the gale is always with you. Tailwind never leaves you (no roll needed), and every basic attack also looses 2 arrows that sweep out wide and curve in, at other enemies nearby, or at your target if there are none, for ${pct(HURRICANE.mult)}% damage (+${pct(HURRICANE.rank)}% for every rank after the first). They count as basic attacks, but Tailwind does not add to them. Nothing to press.`,
       },
     },
     talents: [
@@ -139,7 +141,7 @@ export const SPECS = {
       { id: 'wr_roll', row: 'minor', name: 'Light Step', max: 5, desc: (r) => `Evasive Roll and Skirmish Step come back ${4 * r}% sooner.`, apply: (m, r) => { m.eCd *= 1 - 0.04 * r; m.qCd *= 1 - 0.04 * r; } },
       { id: 'wr_volley', row: 'major', name: 'Rolling Barrage', max: 3, desc: (r) => `Barrage looses ${r} more arrow${r > 1 ? 's' : ''}, and each deals ${5 * r}% more.`, apply: (m, r) => { m.wExtra += r; m.wDmg *= 1 + 0.05 * r; } },
       { id: 'wr_shot', row: 'major', name: 'Flurry', max: 3, desc: (r) => `Evasive Roll's attack speed bonus is ${10 * r}% higher and lasts ${0.5 * r} seconds longer.`, apply: (m, r) => { m.eRush += 0.1 * r; m.eRushTime += 0.5 * r; } },
-      { id: 'wr_cap', row: 'capstone', name: 'Eye of the Storm', max: 1, desc: () => 'Hurricane lasts 2 seconds longer and its cooldown is 20% shorter, and Tailwind adds a further 10% attack damage on hit.', apply: (m) => { m.rDuration += 2; m.rCd *= 0.8; m.tailwind += 0.1; } },
+      { id: 'wr_cap', row: 'capstone', name: 'Eye of the Storm', max: 1, desc: () => "Hurricane's arrows deal 20% more, and Tailwind adds a further 10% attack damage on hit.", apply: (m) => { m.hurricaneDmg *= 1.2; m.tailwind += 0.1; } },
     ],
   },
 

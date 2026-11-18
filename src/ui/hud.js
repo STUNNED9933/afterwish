@@ -363,6 +363,7 @@ export class Hud {
       const def = world.kit[s];
       const locked = !world.abilityUnlocked(s);
       slot.el.classList.toggle('locked', locked);
+      slot.el.classList.toggle('passive', !!def.passive && !locked); // (0.60.2) always on: nothing to press
       if (locked) slot.lock.textContent = 'Lv ' + def.unlock;
       this.setCooldown(slot, locked ? 0 : p.cd[s], world.abilityCooldown(s));
       // Glows while pressing the key again does something (swap with a Shadow, shatter the orb).

@@ -2,6 +2,15 @@
 // Change a value, run `npm run build`, refresh the page.
 
 export const CONFIG = {
+  // (0.60.2) Crimson Reach (Berserker): by level (0 none, 1 Bloodied, 2 Crimson Oath)
+  CRESCENT: {
+    reach: [0, 6, 9.5], // a swing reaches this far as a red crescent
+    width: [0, 0.8, 1.3], // how wide the crescent cuts
+    behind: [0, 0.6, 0.8], // what it deals to those behind a target struck at arm's length
+    speed: 26,
+    grow: [1, 1.35, 1.75], // Cleave's reach and Whirlwind's spin grow this much
+    wide: [1, 1.2, 1.4], // and Cleave's arc this much
+  },
   TICK: 1 / 60, // the simulation always advances in fixed 1/60s steps
   ARENA_RADIUS: 24,
   // Arena enemies are close to the hero's own level, so the arena stays worth

@@ -1723,24 +1723,62 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('Windrunner: has a trait (Tailwind) and R is Hurricane', SPECS.windrunner.perk && SPECS.windrunner.perk.name === 'Tailwind' && w.kit.r.name === 'Hurricane');
     const e = dummy(w, 6);
     const hit = () => { w.events.length = 0; w.hitEnemy(e, 100, { basic: true, canCrit: false }); return w.events.find((ev) => ev.type === 'damage' && ev.id === e.id).amount; };
+    check('Hurricane (passive, 0.60.2): Tailwind never leaves her, roll or no roll', w.galeAlways());
+    const always = w.galeAlways;
+    w.galeAlways = () => false; // as before level 6
     const plain = hit();
     p.rushT = 3; p.cd.e = 5;
     const windy = hit();
+    w.galeAlways = always;
     const extra = p.stats.ad * 0.3 + 2 * p.level;
     check('Tailwind: after a roll, basic attacks deal 30% attack damage + 2 per level more on hit', Math.abs(windy - plain - extra * w.gapScale(e.level).dealt * POWER_OF(w)) <= 2, `${plain} -> ${windy}`);
     check("Tailwind: each hit takes 0.3 s off Evasive Roll's cooldown", Math.abs(p.cd.e - 4.7) < 1e-9, String(p.cd.e));
     p.rushT = 0;
     const others = [dummy(w, 7, 2), dummy(w, 7, -2), dummy(w, 30, 0)];
+    // (0.60.2) Hurricane is a passive: nothing to press, arrows that curve in, at the target if no one else is near
     p.cd.e = 5; p.cd.r = 0;
     cast(w, 'r', 6, 0);
-    check('Hurricane: attack speed up, Tailwind on, Evasive Roll ready', p.hurricaneT > 5 && p.cd.e === 0 && p.stats.as > 0);
+    check('Hurricane (passive): pressing R does nothing, and it never goes on cooldown', w.kit.r.passive && p.cd.r === 0 && !(p.hurricaneT > 0) && p.cd.e === 5);
     w.projectiles = [];
     w.basicAttack(e);
-    const arrows = w.projectiles.filter((pr) => pr.basic);
-    check('Hurricane: every basic attack also looses 2 arrows at other enemies nearby', arrows.length === 3 && arrows.filter((a) => a.gust).every((a) => a.targetId === others[0].id || a.targetId === others[1].id));
-    const as0 = p.stats.as;
-    run(w, 6.2);
-    check('Hurricane: ends after 6 seconds', !(p.hurricaneT > 0) && p.stats.as < as0);
+    let arrows = w.projectiles.filter((pr) => pr.basic);
+    check('Hurricane: every basic attack also looses 2 arrows at other enemies nearby', arrows.length === 3 && arrows.filter((a) => a.arc).every((a) => a.targetId === others[0].id || a.targetId === others[1].id));
+    for (const o of others) o.dead = true;
+    w.enemies = w.enemies.filter((x) => !x.dead);
+    w.projectiles = [];
+    w.basicAttack(e);
+    arrows = w.projectiles.filter((pr) => pr.arc);
+    check('Hurricane: with no one else near, both arrows go for the target', arrows.length === 2 && arrows.every((a) => a.targetId === e.id));
+    const a0 = Math.atan2(arrows[0].vz, arrows[0].vx), toE = Math.atan2(e.z - p.z, e.x - p.x);
+    check('...sweeping out wide first', Math.abs(a0 - toE) > 0.8);
+    e.hp = e.maxHp = 1e9;
+    const hp0 = e.hp;
+    w.projectiles = arrows;
+    for (let i = 0; i < 120 && w.projectiles.some((x) => x.arc); i++) w.stepProjectiles(CONFIG.TICK, CONFIG.TICK);
+    check('...and curving in to hit it', e.hp < hp0 && !w.projectiles.some((x) => x.arc), `${hp0 - e.hp}`);
+  }
+  // (0.60.2) Crimson Reach: a Bloodied Berserker's swings fly on as red crescents
+  {
+    const { w, p } = setup('warrior', 'berserker');
+    const far = dummy(w, 5);
+    check('Crimson Reach: not Bloodied, a swing is a swing (no reach)', w.bloodReach() === 0 && w.basicRange() < 3);
+    p.hp = p.stats.maxHp * 0.3; run(w, 0.05);
+    check('Crimson Reach: Bloodied, swings reach 6 m', w.bloodReach() === 1 && Math.abs(w.basicRange() - 6) < 1e-9);
+    w.projectiles = [];
+    far.hp = far.maxHp = 1e9;
+    w.basicAttack(far);
+    const cr = w.projectiles.find((pr) => pr.kind === 'crescent');
+    check('Crimson Reach: out of arm\'s reach, a red crescent carries the whole blow', cr && cr.pierce.length === 0 && cr.lv === 1);
+    for (let i = 0; i < 40 && !cr.dead; i++) w.stepProjectiles(CONFIG.TICK, CONFIG.TICK);
+    check('...and cuts the target', far.hp < 1e9);
+    const near = dummy(w, 1.5), behind = dummy(w, 4.5, 0.2);
+    near.hp = near.maxHp = behind.hp = behind.maxHp = 1e9;
+    w.projectiles = [];
+    w.basicAttack(near);
+    const cr2 = w.projectiles.find((pr) => pr.kind === 'crescent');
+    check('Crimson Reach: up close, the swing lands and the crescent flies on (not hitting it twice)', near.hp < 1e9 && cr2 && cr2.pierce.includes(near.id) && cr2.dmg < p.stats.ad * 2);
+    p.frenzyT = 5;
+    check('Crimson Oath: the crescents fly further', w.bloodReach() === 2 && w.basicRange() > 9);
   }
   // Sharpshooter (0.42): Ricochet, Steady Breath, the one-shot Deadeye
   {

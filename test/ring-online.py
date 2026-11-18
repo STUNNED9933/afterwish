@@ -17,7 +17,7 @@ try:
         b = pw.chromium.launch(args=['--use-gl=swiftshader', '--enable-unsafe-swiftshader'])
         pg = b.new_page(viewport={'width': 1200, 'height': 800}); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        pg.add_init_script("localStorage.getItem('stunned-arena-settings-v1') || localStorage.setItem('stunned-arena-settings-v1', JSON.stringify({graphics:'lowest', volume:0, muted:true, cls:'warrior', ringFocus:{kind:'dust'}})); localStorage.setItem('stunned-account-v1', JSON.stringify({gold: 100, tickets: 3}))")
+        pg.add_init_script("localStorage.getItem('stunned-arena-settings-v1') || localStorage.setItem('stunned-arena-settings-v1', JSON.stringify({graphics:'lowest', volume:0, muted:true, cls:'warrior', ringFocus:{kind:'dust'}})); localStorage.setItem('stunned-account-v1', JSON.stringify({gold: 100, tickets: 20}))")
         pg.goto(url); pg.wait_for_timeout(2500)
         pg.click('#btn-mp'); pg.fill('#mp-name', 'Ringo'); pg.fill('#mp-pass', 'stun'); pg.click('#btn-server')
         pg.wait_for_function("() => game.net && game.net.server && game.mode === 'play'", timeout=15000)

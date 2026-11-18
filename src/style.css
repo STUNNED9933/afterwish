@@ -963,3 +963,23 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* (0.60.2) A passive ability (Windrunner's Hurricane): always on, nothing to press */
 .slot.passive::after { content: 'PASSIVE'; position: absolute; left: 0; right: 0; top: 2px; text-align: center; font: 700 8px var(--body); letter-spacing: 0.08em; color: #9fe7ff; pointer-events: none; }
 .slot.passive kbd { opacity: 0.35; }
+
+/* (0.61.1) What the Ring pays */
+.ring-info { margin-top: 8px; font-size: 13px; color: var(--bone); }
+.ring-info summary { cursor: pointer; font: 600 12px var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); padding: 4px 0; }
+.ring-info p { margin: 6px 0; line-height: 1.4; }
+.ri-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-variant-numeric: tabular-nums; }
+.ri-table th, .ri-table td { text-align: right; padding: 3px 8px; border-bottom: 1px solid rgba(233, 211, 161, 0.12); }
+.ri-table th:first-child, .ri-table td:first-child { text-align: left; }
+.ri-table th { font-weight: 600; color: #c8c0a8; font-size: 12px; }
+.ri-boss { font-size: 10px; color: #ff9a7a; text-transform: uppercase; letter-spacing: 0.08em; }
+.ri-note { color: #9aa3b5; font-size: 12px; }
+
+/* (0.61.1) Gear changes, above everything (the gear panel too), with the Combat Power they made */
+#gear-toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.gt-line { display: flex; gap: 12px; align-items: baseline; padding: 7px 14px; background: rgba(10, 13, 22, 0.92); border: 1px solid rgba(233, 211, 161, 0.5); border-radius: 6px; font: 500 14px var(--body); color: var(--bone); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); transition: opacity 0.8s, transform 0.8s; animation: gt-in 0.25s ease-out; }
+.gt-line.fade { opacity: 0; transform: translateY(-6px); }
+.gt-line b { font-weight: 700; white-space: nowrap; }
+.gt-line b.up { color: #7fe08a; }
+.gt-line b.down { color: #ff7a7a; }
+@keyframes gt-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }

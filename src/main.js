@@ -24,10 +24,12 @@ import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/st
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES } from './sim/items.js';
+import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
 import { GLOWS } from './sim/cosmetics.js';
-import { RING_FOCUS, ringText } from './sim/ring.js';
+import { RING_FOCUS, ringText, ringCost } from './sim/ring.js';
+import { ringInfoHtml } from './ui/ringinfo.js';
 import { BOUNTY, FRAGMENTS, REMNANT } from './sim/surprises.js';
 import { clearAllOffline, loadSave, storeSave, clearSave, loadSettings, storeSettings, loadAccount, storeAccount , exportSaves, exportCode, parseSaves, importSaves, describeSaves, backupNow, loadBackups, restoreBackup, missingProgress, claimSession, onSessionTaken, askPersistentStorage } from './save.js';
 import { WEAPONS } from './sim/items.js';
@@ -364,7 +366,7 @@ function start(hot = {}) {
     // "ends this run" is only true of an Echo Ring run (exploring just saves; the Weekly Echo says so on its button).
     if (mode === 'pause') $('pause-run-note').classList.toggle('hidden', world.mode !== 'arena' || !!trialRun);
     if (mode === 'pause' && trialRun) $('btn-town').textContent = 'End this Weekly Echo run';
-    else if (mode === 'pause' && net && net.server && world.mode === 'arena') $('btn-town').textContent = 'Leave the Ring (keep what is safe)';
+    else if (mode === 'pause' && net && net.server && world.mode === 'arena') $('btn-town').textContent = 'Leave the Ring (with your spoils)';
     else if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
     if (mode === 'pause') renderSwitch();
@@ -442,11 +444,12 @@ function start(hot = {}) {
 
   /** Start a run in the arena. `startWave` must be a checkpoint the save has reached. */
   function startRun(fromSave, startWave) {
-    if (account.tickets <= 0) {
-      $('title-save').textContent = 'You have no starglass shards. The things on the road above Haven carry them.';
+    const cost = ringCost(startWave || (fromSave && fromSave.maxCheckpoint) || 1); // (0.61.1) more than one shard, more the further in
+    if (account.tickets < cost) {
+      $('title-save').textContent = `Waking the Ring takes ${cost} starglass shards; you have ${account.tickets}. The things on the road above Haven carry them.`;
       return;
     }
-    account.tickets--; // every arena run costs one ticket
+    account.tickets -= cost;
     storeAccount(account);
     world = makeWorld({ save: fromSave, startWave, focus: ringFocus() });
     renderer.setEnvironment('arena');
@@ -1112,12 +1115,12 @@ function start(hot = {}) {
    */
   function renderRingStones() {
     const p = world.player;
-    $('talk-role').textContent = 'On the rise behind the well';
+    $('talk-role').textContent = 'On the west side of Haven';
     $('talk-name').textContent = 'The Echo Ring';
     $('talk-keys').classList.add('hidden');
     const list = $('talk-quests');
     list.innerHTML = '';
-    $('talk-line').textContent = talkNote || 'Seven stones set with star-glass. Press a shard into them and they call up what the mountain remembers, wave after wave. Every wave adds to the spoils of what you came for; after every boss they are safe, to take home or push on.';
+    $('talk-line').textContent = talkNote || 'Seven stones set with star-glass. Press a shard into them and they call up what the mountain remembers, wave after wave. Every wave adds to the spoils of what you came for, more the deeper you go, and they all come home with you however the run ends. After every boss, take them home or push on.';
     if (!net) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -1166,7 +1169,7 @@ function start(hot = {}) {
       storeSettings(settings);
       renderTalk();
     });
-    const max = Math.max(1, (net.lastSave && net.lastSave.maxCheckpoint) || world.maxCheckpoint || 1);
+    const max = Math.max(1, world.maxCheckpoint || 1); // (0.61.1) from the server's snapshots (a save could be another class's, or stale)
     if (!ringStart || ringStart > max) ringStart = max;
     const waves = [];
     for (let wv = 1; wv <= max; wv += CONFIG.BOSS_EVERY) waves.push([wv, `Wave ${wv}`, wv === ringStart]);
@@ -1177,16 +1180,24 @@ function start(hot = {}) {
     const go = document.createElement('button');
     go.type = 'button';
     go.className = 'primary';
-    go.textContent = p.tickets > 0 ? `Wake it at wave ${ringStart} · 1 shard (you have ${p.tickets})` : 'No starglass shards · they are found on the road';
-    go.disabled = p.tickets <= 0;
+    const cost = ringCost(ringStart); // (0.61.1)
+    go.textContent = p.tickets >= cost ? `Wake it at wave ${ringStart} · ${cost} shards (you have ${p.tickets})` : `Not enough starglass shards (${cost} needed, you have ${p.tickets})`;
+    go.disabled = p.tickets < cost;
     go.addEventListener('click', () => {
       setMode('play');
       applyNow({ type: 'enterRing', startWave: ringStart, focus: ringFocus() });
     });
     box.appendChild(go);
+    const info = document.createElement('details'); // (0.61.1) what the Ring pays
+    info.className = 'ring-info';
+    info.open = !!ringInfoOpen;
+    info.addEventListener('toggle', () => (ringInfoOpen = info.open));
+    info.innerHTML = `<summary>What the Ring pays</summary>${ringInfoHtml(p.level, ringStart, f)}`;
+    box.appendChild(info);
     list.appendChild(box);
   }
   let ringStart = 0;
+  let ringInfoOpen = false;
 
   /** The Starwell after the Asker (0.45): the ending's choice. */
   function renderWell() {
@@ -2249,7 +2260,7 @@ function start(hot = {}) {
   let lastRingPaid = null;
   function showRingBank(ev) {
     if (!world.ring || (net && !net.server)) return;
-    $('ring-bank-text').textContent = `Wave ${ev.n} cleared. Safe now: ${ringText(world.ring, ev.safe)}.`;
+    $('ring-bank-text').textContent = `Wave ${ev.n} cleared. Your spoils: ${ringText(world.ring, ev.pot)}.`;
     $('ring-bank').classList.remove('hidden');
   }
   function ringLeave() {
@@ -3159,7 +3170,7 @@ function start(hot = {}) {
     }
     if (net) {
       if (net.server && world.mode === 'arena') {
-        // (0.59) leave an Echo Ring run: home to Haven with what was safe
+        // (0.59) leave an Echo Ring run: home to Haven with the spoils
         applyNow({ type: 'ringLeave' });
         setMode('play');
         return;
@@ -3181,7 +3192,7 @@ function start(hot = {}) {
       persist();
       setMode('title');
     } else {
-      if (world.ring && !world.gameOver) applyNow({ type: 'ringLeave' }); // (0.59) what was safe comes home
+      if (world.ring && !world.gameOver) applyNow({ type: 'ringLeave' }); // (0.59) the spoils come home
       enterTown();
     }
   });
@@ -3257,6 +3268,38 @@ function start(hot = {}) {
   }
 
   // ---------------------------------------------------------------- events
+  /**
+   * (0.61.1) Gear changes where you can see them (above the gear panel), with the Combat Power they
+   * gained or lost. `cpSeen` is the Combat Power last shown or measured.
+   */
+  let cpSeen = null, cpCheckAt = 0;
+  const gearToastLines = [];
+  function measureCp() {
+    try {
+      return steadyRatings(world).cp;
+    } catch (err) {
+      return null;
+    }
+  }
+  function gearToast(html, color = null) {
+    if (!world || world.trial) return;
+    const cp = measureCp();
+    const d = cp != null && cpSeen != null ? cp - cpSeen : 0;
+    if (cp != null) cpSeen = cp;
+    const box = $('gear-toast');
+    const el = document.createElement('div');
+    el.className = 'gt-line';
+    el.innerHTML = `<span${color ? ` style="color:${color}"` : ''}>${html}</span>${d ? `<b class="${d > 0 ? 'up' : 'down'}">Combat Power ${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString()}</b>` : ''}`;
+    box.appendChild(el);
+    gearToastLines.push(el);
+    while (gearToastLines.length > 4) gearToastLines.shift().remove();
+    setTimeout(() => el.classList.add('fade'), 3200);
+    setTimeout(() => {
+      el.remove();
+      const i = gearToastLines.indexOf(el);
+      if (i >= 0) gearToastLines.splice(i, 1);
+    }, 4000);
+  }
   let lastGapNote = 0; // (0.61) when the level-gap reminder last showed
   function hintOnce(key, text, seconds) {
     if (hints[key]) return;
@@ -3531,8 +3574,9 @@ function start(hot = {}) {
         break;
       case 'ringPaid': {
         const r = { kind: ev.kind, slot: ev.slot };
-        const got = ev.n ? ringText(r, ev.n) : 'nothing yet (nothing was safe)';
-        hud.feedText(`The Ring gives you ${got}${ev.lost > 0 ? `; ${ringText(r, ev.lost)} since the last boss stayed behind` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
+        const got = ev.n ? ringText(r, ev.n) : 'nothing yet';
+        hud.feedText(`The Ring gives you ${got}${ev.immortals ? `, ${ev.immortals} of them Immortal` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
+        if (ev.immortals) hud.banner('An Immortal from the Ring', `${ev.immortals} Immortal ${r.slot === 'chest' ? 'armor' : r.slot}${ev.immortals > 1 ? 's' : ''}`);
         lastRingPaid = { got, wave: ev.wave };
         break;
       }
@@ -4017,6 +4061,7 @@ function start(hot = {}) {
         break;
       case 'equip':
         sfx.pickup(ev.item.rarity);
+        gearToast(`Equipped ${itemName(ev.item)}`, RARITIES[ev.item.rarity] && RARITIES[ev.item.rarity].color);
         break;
       case 'discard':
         sfx.ui();
@@ -4025,12 +4070,14 @@ function start(hot = {}) {
       case 'enchanted':
         sfx.upgrade();
         hud.feedText(`Reforged ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}.`);
+        gearToast(`Reforged ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}`);
         refreshMenus();
         break;
       case 'rerolled': {
         sfx.upgrade();
         const tier = RARITIES[ev.tier];
         hud.feedText(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} (${tier.name} roll)`);
+        gearToast(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} <span style="color:${tier.color}">(${tier.name} roll)</span>`);
         refreshMenus();
         break;
       }
@@ -4126,8 +4173,8 @@ function start(hot = {}) {
           break;
         }
         if (net && net.server) {
-          // (0.59) the Ring on the server world: home to Haven in a moment, with what was safe
-          hud.banner(`You fell on wave ${ev.wave}`, 'Back to Haven, with what was safe');
+          // (0.59) the Ring on the server world: home to Haven in a moment, spoils and all
+          hud.banner(`You fell on wave ${ev.wave}`, 'Back to Haven, with everything you gathered');
           break;
         }
         persist();
@@ -4293,6 +4340,11 @@ function start(hot = {}) {
     if (!net && mode === 'play') alpha = Math.min(1, acc / CONFIG.TICK);
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
+    if (now >= cpCheckAt && world && !world.trial && world.player && world.player.stats) {
+      // (0.61.1) keep the Combat Power the next gear change is measured against up to date
+      cpCheckAt = now + 2000;
+      cpSeen = measureCp();
+    }
     perfTick(now, rawDt * 1000, performance.now() - jsStart);
   }
 
@@ -4308,6 +4360,7 @@ function start(hot = {}) {
       return mode;
     },
     renderer,
+    act: (c) => applyNow(c), // (0.61.1) a command as the game's own buttons send it (tests, the console)
     startRun,
     enterTown,
     startExplore,

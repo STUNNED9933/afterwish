@@ -159,6 +159,28 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Ring pays clearly, augments for every subclass (0.61.1)
+
+- **The Echo Ring**: every wave is worth 7% more than the one before (a boss three times a wave), up
+  to wave 40. **Everything you gather comes home, however the run ends** (a fall too).
+  - Gear focus: Epic, Mythic from wave 10, Ancient from 20, and from wave 20 a chance that each piece
+    is an Immortal (1%, rising half a percent every 5 waves to 4% from wave 50). A run to wave 40
+    pays about one Immortal either way: Gear (about 30 pieces at 3%) or Fragments (about 220).
+  - **What the Ring pays**: a table on the camp and at the stones in Haven, wave by wave for the
+    chosen focus, with run totals from your starting wave, gear rarity and the Immortal chance.
+  - **Waking it costs 5 shards** from wave 1, 2 more for each checkpoint further in.
+  - Fixed: at the stones in Haven, the checkpoints could be another class's (after switching class);
+    they now come from the server with every snapshot.
+- **Augments**: the parry ones are gone (few took them); in their place Quickening (+40 ability
+  haste), Fervor (+12% attack speed and damage) and Deadly (+40% crit damage). Giant (+25% health) is
+  for the Bulwark only. Twin Cleave now adds one more strike (on top of any second strike). New for
+  each subclass: Crimson Arc, Blood Embrace, Oathsworn (Berserker); Long Memory, Answer the Call
+  (Bulwark); Dead Centre, Glancing Volley (Sharpshooter); Gale Force, Strong Tailwind (Windrunner);
+  Executioner, Contract Killer (Assassin); Deeper Veil, Lingering Shades (Shadowdancer); Embers
+  (Pyromancer); Glacial Spite (Frostbinder).
+- **Gear changes where you can see them**: rerolls, reforges and equips show at the top of the
+  screen, over the gear panel, with the Combat Power they gained or lost.
+
 ### Sharing a map, reminders, Standard parry, and new gates (0.61)
 
 - **Sharing a map** (the server world, or friends in a room): for each hero beyond the first in the

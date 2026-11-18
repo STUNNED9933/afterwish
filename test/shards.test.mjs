@@ -221,14 +221,14 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const box = new Map();
   const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 13 });
   const k = { name: 'ringer' }; box.set(k, []);
-  sv.message(k, hello('Ringer', 'warrior', { tickets: 2 }));
+  sv.message(k, hello('Ringer', 'warrior', { tickets: 12 }));
   const pid = box.get(k).find((m) => m.t === 'welcome').pid;
   const pl = () => sv.players.get(pid);
   const heroP = () => { const w = pl().copy.world; const h = w.heroByPid(pid); return w.as(h, (p) => p); };
   sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'fragment' } } });
   for (let i = 0; i < 4; i++) sv.tick();
   const w = pl().copy.world;
-  check('Ring online: waking it takes you to an Echo Ring of your own, for a shard', w.mode === 'arena' && pl().copy.key.startsWith('ring:') && w.ring && w.ring.kind === 'fragment' && heroP().tickets === 1);
+  check('Ring online: waking it takes you to an Echo Ring of your own, for 5 shards (0.61.1)', w.mode === 'arena' && pl().copy.key.startsWith('ring:') && w.ring && w.ring.kind === 'fragment' && heroP().tickets === 7);
   const snap = [...box.get(k)].reverse().find((m) => m.t === 'snap');
   check('Ring online: the game is told it is in the Ring, with the wave and the spoils', snap && snap.map === 'ring' && snap.arena && snap.arena.ring && snap.arena.ring.kind === 'fragment');
   for (let i = 0; i < 40000 && w.wave.cleared < 5; i++) {
@@ -239,8 +239,8 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
     sv.tick();
   }
   for (let i = 0; i < 30 && w.offer; i++) { sv.message(k, { t: 'cmd', cmd: { type: 'augment', id: w.offer.choices[0] } }); sv.tick(); }
-  check('Ring online: after the boss the spoils are safe and the Ring waits', w.wave.cleared === 5 && w.ring.hold && w.ring.safe > 0);
-  const want = Math.floor(w.ring.safe), f0 = (heroP().misc.fragment || 0);
+  check('Ring online: after the boss the Ring waits', w.wave.cleared === 5 && w.ring.hold && w.ring.pot > 0);
+  const want = Math.floor(w.ring.pot), f0 = (heroP().misc.fragment || 0);
   sv.message(k, { t: 'cmd', cmd: { type: 'ringLeave' } });
   for (let i = 0; i < 4; i++) sv.tick();
   check('Ring online: take them home, and you are back in Haven with them', pl().copy.world.mode === 'explore' && pl().copy.world.map.id === 'town' && (heroP().misc.fragment || 0) === f0 + want, `${heroP().misc.fragment} (+${want})`);
@@ -253,19 +253,19 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const foe = w2.spawnEnemy ? w2.enemies[0] : null;
   w2.as(w2.heroes[0], () => { w2.player.hp = 0; w2.gameOver = true; w2.ringPay(); });
   for (let i = 0; i < 200; i++) sv.tick();
-  check('Ring online: fall, and you are home in Haven a moment later (nothing was safe yet)', pl().copy.world.map && pl().copy.world.map.id === 'town' && heroP().gold === g0 && heroP().hp > 0);
+  check('Ring online: fall, and you are home in Haven a moment later (nothing gathered yet)', pl().copy.world.map && pl().copy.world.map.id === 'town' && heroP().gold === g0 && heroP().hp > 0);
   {
     // gone mid-run: what was safe still comes home (it is in the save that is kept)
-    heroP().tickets = 3;
+    heroP().tickets = 30;
     sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'dust' } } });
     for (let i = 0; i < 4; i++) sv.tick();
     const w3 = pl().copy.world;
-    w3.ring.safe = 7; w3.ring.pot = 9;
+    w3.ring.pot = 9;
     const d0 = w3.player.dust;
     let saved = null;
     sv.send = ((orig) => (c, m) => { if (m.t === 'save') saved = m.save; orig(c, m); })(sv.send);
     sv.leave(k, true);
-    check('Ring online: disconnect mid-run and what was safe is still yours', saved && saved.dust === d0 + 7, saved && saved.dust);
+    check('Ring online: disconnect mid-run and everything gathered is still yours', saved && saved.dust === d0 + 9, saved && saved.dust);
   }
 }
 

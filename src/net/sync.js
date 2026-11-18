@@ -210,10 +210,10 @@ export function makeSnapshot(world, pid, memo) {
       seq: memo.seq,
       full: full || undefined,
       map: world.mode === 'arena' ? 'ring' : world.map.id, // (0.59) an Echo Ring run has no map
-      arena: world.mode === 'arena' ? { wave: { n: world.wave.n, phase: world.wave.phase, timer: r2(world.wave.timer), cleared: world.wave.cleared, total: world.wave.total || 0, qn: world.wave.queue.length }, ring: world.ring ? { kind: world.ring.kind, slot: world.ring.slot, pot: world.ring.pot, safe: world.ring.safe, safeWave: world.ring.safeWave, hold: !!world.ring.hold } : null, offer: world.offer, augments: world.augments, rerolls: world.rerolls, bestWave: world.bestWave, over: !!world.gameOver } : undefined,
+      arena: world.mode === 'arena' ? { wave: { n: world.wave.n, phase: world.wave.phase, timer: r2(world.wave.timer), cleared: world.wave.cleared, total: world.wave.total || 0, qn: world.wave.queue.length }, ring: world.ring ? { kind: world.ring.kind, slot: world.ring.slot, pot: world.ring.pot, wave: world.ring.wave, hold: !!world.ring.hold } : null, offer: world.offer, augments: world.augments, rerolls: world.rerolls, bestWave: world.bestWave, over: !!world.gameOver } : undefined,
       slowT: r2(world.slowT),
       me: changedOnly(lightPlayer(p), memo),
-      hero: { portalT: r2(world.portalT), portalArmed: world.portalArmed, portalOn: world.portalOn && world.map ? world.map.portals.indexOf(world.portalOn) : -1, wayT: r2(world.wayT), wayArmed: world.wayArmed, respawnT: r2(world.respawnT), stats: world.stats },
+      hero: { portalT: r2(world.portalT), portalArmed: world.portalArmed, portalOn: world.portalOn && world.map ? world.map.portals.indexOf(world.portalOn) : -1, wayT: r2(world.wayT), wayArmed: world.wayArmed, respawnT: r2(world.respawnT), stats: world.stats, ckpt: world.maxCheckpoint || 1 }, // (0.61.1) how far this hero has reached in the Echo Ring
       allies: world.allies().map((a) => ({ ...a, x: r2(a.x), z: r2(a.z), px: r2(a.px), pz: r2(a.pz), facing: r2(a.facing), hp: Math.round(a.hp) })),
       enemies: enemyRows(world, memo),
       fixed: fixedEnemies(world, memo),
@@ -317,6 +317,7 @@ export function applySnapshot(world, snap, alpha = 1) {
     world.questStamp++;
   }
   const hs = snap.hero;
+  if (hs.ckpt) world.maxCheckpoint = hs.ckpt; // (0.61.1) the server's own, not a save from before a class switch
   world.portalT = hs.portalT;
   world.portalArmed = hs.portalArmed;
   world.portalOn = hs.portalOn >= 0 && world.map ? world.map.portals[hs.portalOn] : null;

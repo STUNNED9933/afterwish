@@ -10,7 +10,8 @@ import { ABILITY_SLOTS } from '../sim/defs.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, RARITIES, CACHES, MAX_PLUS, itemName, itemScore, scrapValue, upgradeCost } from '../sim/items.js';
 import { svg, abilityTooltip, gearIcon } from './hud.js';
 import { itemCell } from './inventory.js';
-import { RING_FOCUS, RING_FOCUS_IDS } from '../sim/ring.js';
+import { RING_FOCUS, RING_FOCUS_IDS, ringCost } from '../sim/ring.js';
+import { ringInfoHtml } from './ringinfo.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -101,10 +102,12 @@ export class Town {
           sb.appendChild(b);
         }
       }
-      $('gate-focus-desc').textContent = `${RING_FOCUS[f.kind].desc} Every wave adds some, a boss three times as much. Safe after every boss: take it home, or push on.`;
+      $('gate-focus-desc').textContent = `${RING_FOCUS[f.kind].desc} Every wave adds some, more the deeper you go, a boss three times as much. All of it comes home with you, a fall too.`;
+      $('gate-info-body').innerHTML = ringInfoHtml(p.level, this.startWave, f); // (0.61.1) what the Ring pays
     }
-    $('btn-enter').textContent = p.tickets > 0 ? `Wake it at wave ${this.startWave} · 1 shard (you have ${p.tickets})` : 'No starglass shards · they are found on the road';
-    $('btn-enter').disabled = p.tickets <= 0;
+    const shards = ringCost(this.startWave); // (0.61.1)
+    $('btn-enter').textContent = p.tickets >= shards ? `Wake it at wave ${this.startWave} · ${shards} shards (you have ${p.tickets})` : `Not enough starglass shards (${shards} needed, you have ${p.tickets})`;
+    $('btn-enter').disabled = p.tickets < shards;
 
     // --- Blacksmith ------------------------------------------------------
     const smith = $('smith-list');

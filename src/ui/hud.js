@@ -180,7 +180,7 @@ export function abilityTooltip(world, slot, detail = Tooltip.shift) {
   const b = world.abilityBreakdown(slot);
   const unit = damageUnit(world, a);
   const adName = world.cls === 'mage' ? 'spell power' : 'attack damage';
-  const augs = world.augments.filter((id) => AUGMENTS[id].slot === slot).map((id) => `<div class="plus">${AUGMENTS[id].name}: ${AUGMENTS[id].desc}</div>`);
+  const augs = world.augments.filter((id) => AUGMENTS[id] && AUGMENTS[id].slot === slot).map((id) => `<div class="plus">${AUGMENTS[id].name}: ${AUGMENTS[id].desc}</div>`);
   let html = `<div class="tt-name">${a.name}</div><div class="tt-meta">Rank ${rank} of ${CONFIG.MAX_RANK} &middot; ${b.cd.final.toFixed(1)} s cooldown${a.range ? ` &middot; ${numN(a.range * (world.mods[slot + 'Range'] || 1))} m` : ''}`;
   html += unlocked ? '</div>' : ` &middot; unlocks at level ${a.unlock}</div>`;
   if (b.final > 0) html += `<div class="tt-dmg"><b>${fmtN(b.final)}</b> damage${unit ? ` <span>${unit}</span>` : ''}</div>`;
@@ -252,7 +252,7 @@ export class Hud {
       const w = this.world;
       const pr = CONFIG.PARRY_PRESETS[(w && w.parryPreset) || CONFIG.DEFAULT_PARRY_PRESET];
       const win = Math.round(pr.window * (w ? w.mods.parryWindow : 1) * 1000);
-      const augs = w ? w.augments.filter((id) => AUGMENTS[id].slot === 'parry').map((id) => `<div class="plus">${AUGMENTS[id].name}: ${AUGMENTS[id].desc}</div>`) : [];
+      const augs = w ? w.augments.filter((id) => AUGMENTS[id] && AUGMENTS[id].slot === 'parry').map((id) => `<div class="plus">${AUGMENTS[id].name}: ${AUGMENTS[id].desc}</div>`) : [];
       return `<div class="tt-name">Parry</div><div class="tt-meta">${win} ms window &middot; ${pr.label} timing</div>
         <div>Press when an enemy flashes white. A parried enemy is stunned and takes 50% more damage. Parried bolts fly back at the shooter.</div>
         <div class="tt-desc">A perfect parry also slows every enemy for ${CONFIG.PERFECT_SLOW}s. Red attacks cannot be parried.</div>
@@ -412,6 +412,7 @@ export class Hud {
       list.innerHTML = '';
       for (const id of world.augments) {
         const a = AUGMENTS[id];
+        if (!a) continue; // (0.61.1) one since retired
         const chip = document.createElement('div');
         chip.className = 'aug-chip' + (a.tier === 2 ? ' strong' : '');
         chip.innerHTML = `${svg(world.kit[a.slot]?.icon || a.slot)}<span>${a.name}</span>`;
@@ -433,7 +434,7 @@ export class Hud {
     if (zone) {
       sub = p.dead ? 'knocked out' : zone.sub;
     } else if (w.phase === 'intermission') {
-      sub = world.offer ? 'choose an augment' : world.ring && world.ring.hold ? 'your spoils are safe · H to take them home, Enter to push on' : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press Enter to start now`;
+      sub = world.offer ? 'choose an augment' : world.ring && world.ring.hold ? 'H to take your spoils home, Enter to push on' : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press Enter to start now`;
     } else {
       const left = world.remaining;
       sub = `${left} ${left === 1 ? 'enemy' : 'enemies'} left`;
@@ -441,8 +442,7 @@ export class Hud {
     if (!zone && world.ring && world.mode === 'arena') {
       // (0.59) the run's spoils, and how much of them is safe
       const r = world.ring;
-      const safe = ringWhole(r.safe), pot = ringWhole(r.pot);
-      sub += ` · spoils ${ringText(r, pot)}${pot > safe ? ` (${safe ? ringText(r, safe) : 'none'} safe)` : pot ? ', safe' : ''}`;
+      sub += ` · spoils ${ringText(r, ringWhole(r.pot))}`; // (0.61.1) all of it comes home, however the run ends
     }
     if (sub !== this.lastSub) {
       $('wave-sub').textContent = sub;

@@ -50,6 +50,8 @@ export function defaultMods() {
     spinTempo: false, crosswind: 0, ironWeight: 0, burnCrit: false, burnHaste: 0, frostHaste: false,
     // Immortal item effects (see EFFECTS in items.js)
     stormcaller: false, undying: false, retribution: false, slipstream: false, timekeeper: false,
+    // (0.61.1) the augment overhaul
+    qExtra: 0, crescentFar: 1, crescentWide: 1, closeExtra: 0, reckonPer: 0,
   };
 }
 
@@ -60,7 +62,7 @@ export const AUGMENTS = {
   q_reset: { name: 'Executioner', slot: 'q', tier: 1, desc: 'Cleave kills reset its cooldown.', apply: (m) => { m.qResetOnKill = true; } },
   q_reach: { name: 'Long Reach', slot: 'q', tier: 1, desc: 'Cleave reaches 35% further in a 25% wider cone.', apply: (m) => { m.qRange *= 1.35; m.qAngle *= 1.25; } },
   q_sunder: { name: 'Sunder', slot: 'q', tier: 1, desc: 'Enemies hit by Cleave take 20% more damage for 4 seconds.', apply: (m) => { m.qSunder = 0.2; } },
-  q_twin: { name: 'Twin Cleave', slot: 'q', tier: 2, desc: 'Cleave strikes a second time for 60% damage.', apply: (m) => { m.qEcho = 0.6; } },
+  q_twin: { name: 'Twin Cleave', slot: 'q', tier: 2, desc: 'Cleave strikes one more time, for 60% damage (on top of any second strike it already has).', apply: (m) => { m.qExtra += 1; } }, // (0.61.1) +1 strike
 
   w_vortex: { name: 'Vortex', slot: 'w', tier: 1, desc: 'Whirlwind is 25% wider and pulls enemies in instead of pushing them away.', apply: (m) => { m.wRadius *= 1.25; m.wPull = true; } },
   w_bleed: { name: 'Bleeding Edge', slot: 'w', tier: 1, desc: 'Whirlwind makes enemies bleed for 90% attack damage over 3 seconds.', apply: (m) => { m.wBleed = 0.9; } },
@@ -75,12 +77,11 @@ export const AUGMENTS = {
   r_meteor: { name: 'Meteor', slot: 'r', tier: 1, desc: 'Skyfall is 30% wider and deals 40% more damage.', apply: (m) => { m.rRadius *= 1.3; m.rDmg *= 1.4; } },
   r_aftershock: { name: 'Aftershock', slot: 'r', tier: 2, desc: 'One second after Skyfall lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },
 
-  p_riposte: { name: 'Counterstroke', slot: 'parry', tier: 1, desc: 'Parrying a melee hit strikes the attacker for 150% attack damage.', apply: (m) => { m.riposte = 1.5; } },
-  p_wide: { name: 'Steady Guard', slot: 'parry', tier: 1, desc: 'Your parry window is 25% longer.', apply: (m) => { m.parryWindow *= 1.25; } },
-  p_mirror: { name: 'Mirror Guard', slot: 'parry', tier: 1, desc: 'Projectiles you send back deal double damage.', apply: (m) => { m.reflectDmg *= 2; } },
-  p_time: { name: 'Stopped Clock', slot: 'parry', tier: 2, desc: 'Time stays slowed 75% longer after a perfect parry.', apply: (m) => { m.slowDur *= 1.75; } },
-
-  h_giant: { name: 'Giant', slot: 'hero', tier: 1, desc: '+25% maximum health.', apply: (m) => { m.hpPct += 0.25; } },
+  // (0.61.1) the parry augments are gone (few took them); in their place, strong buffs anyone wants
+  h_quick: { name: 'Quickening', slot: 'hero', tier: 1, desc: '+40 ability haste.', apply: (m) => { m.haste += 40; } },
+  h_fervor: { name: 'Fervor', slot: 'hero', tier: 1, desc: '+12% attack speed and +12% attack damage.', apply: (m) => { m.asPct += 0.12; m.adPct += 0.12; } },
+  h_deadly: { name: 'Deadly', slot: 'hero', tier: 1, desc: 'Crits deal 40% more damage.', apply: (m) => { m.critMult += 0.4; } },
+  h_giant: { name: 'Giant', slot: 'hero', cls: 'warrior', spec: 'bulwark', tier: 1, desc: '+25% maximum health.', apply: (m) => { m.hpPct += 0.25; } }, // (0.61.1) only the tank wants it
   h_berserk: { name: 'Berserker', slot: 'hero', tier: 1, desc: '+25% attack speed.', apply: (m) => { m.asPct += 0.25; } },
   h_might: { name: 'Whetstone', slot: 'hero', tier: 1, desc: '+20% attack damage.', apply: (m) => { m.adPct += 0.2; } },
   h_leech: { name: 'Bloodthirst', slot: 'hero', tier: 1, desc: '+8% lifesteal.', apply: (m) => { m.lifesteal += 8; } },
@@ -121,6 +122,22 @@ const CLASS_AUGMENTS = {
   fb_hard: { name: 'Hard Frost', slot: 'q', cls: 'mage', spec: 'frostbinder', tier: 1, desc: 'Ice Bolt gives 1 more Hoarfrost, and its splinters give 2 instead of 1.', apply: (m) => { m.qFrost += 1; m.qSplashFrost = Math.max(m.qSplashFrost, 2); } },
   fb_avalanche: { name: 'Avalanche', slot: 'hero', cls: 'mage', spec: 'frostbinder', tier: 2, desc: 'Shatter deals 40% more, and its shards reach 1.5 m further.', apply: (m) => { m.frostDmg *= 1.4; m.frostReach += 1.5; } },
   mage_r_twin: { name: 'Second Impact', slot: 'r', cls: 'mage', tier: 2, desc: 'One second after Meteor lands, the ground erupts again for 60% damage.', apply: (m) => { m.rAftershock = 0.6; } },
+  // (0.61.1) More for each subclass, built on what makes it itself
+  py_ember: { name: 'Embers', slot: 'hero', cls: 'mage', spec: 'pyromancer', tier: 2, desc: 'Every burn stack burns 25% more.', apply: (m) => { m.burnMult *= 1.25; } },
+  fb_glacial: { name: 'Glacial Spite', slot: 'hero', cls: 'mage', spec: 'frostbinder', tier: 1, desc: 'Shatter deals 25% more, and Ice Bolt gives 1 more Hoarfrost.', apply: (m) => { m.frostDmg *= 1.25; m.qFrost += 1; } },
+  bz_arc: { name: 'Crimson Arc', slot: 'hero', cls: 'warrior', spec: 'berserker', tier: 1, desc: "Crimson Reach's crescents fly 40% further and cut 40% wider.", apply: (m) => { m.crescentFar *= 1.4; m.crescentWide *= 1.4; } },
+  bz_embrace: { name: 'Blood Embrace', slot: 'hero', cls: 'warrior', spec: 'berserker', tier: 2, desc: 'Red Embrace deals a further 20% up close.', apply: (m) => { m.closeExtra += 0.2; } },
+  bz_oath: { name: 'Oathsworn', slot: 'r', cls: 'warrior', spec: 'berserker', tier: 2, desc: 'Crimson Oath lasts 3 seconds longer and comes back 25% sooner.', apply: (m) => { m.rDuration += 3; m.rCd *= 0.75; } },
+  bw_reckon: { name: 'Long Memory', slot: 'w', cls: 'warrior', spec: 'bulwark', tier: 2, desc: 'Reckoning holds 3 more stacks, and each adds 10% more to Whirlwind.', apply: (m) => { m.reckonMaxAdd += 3; m.reckonPer += 0.1; } },
+  bw_call: { name: 'Answer the Call', slot: 'w', cls: 'warrior', spec: 'bulwark', tier: 1, desc: 'Enemies you have taunted take 15% more damage from everyone.', apply: (m) => { m.tauntVuln += 0.15; } },
+  ss_deadeye: { name: 'Dead Centre', slot: 'r', cls: 'archer', spec: 'sharpshooter', tier: 2, desc: 'Deadeye deals 30% more and comes back 20% sooner.', apply: (m) => { m.rDmg *= 1.3; m.rCd *= 0.8; } },
+  ss_glance: { name: 'Glancing Volley', slot: 'q', cls: 'archer', spec: 'sharpshooter', tier: 1, desc: 'Ricochet glances off 2 more enemies and deals 15% more.', apply: (m) => { m.qBounces += 2; m.qDmg *= 1.15; } },
+  wr_gale: { name: 'Gale Force', slot: 'r', cls: 'archer', spec: 'windrunner', tier: 2, desc: 'Hurricane looses 1 more arrow.', apply: (m) => { m.hurricaneExtra += 1; } },
+  wr_tail: { name: 'Strong Tailwind', slot: 'hero', cls: 'archer', spec: 'windrunner', tier: 1, desc: 'Tailwind adds a further 15% attack damage on hit.', apply: (m) => { m.tailwind += 0.15; } },
+  as_execute: { name: 'Executioner', slot: 'q', cls: 'rogue', spec: 'assassin', tier: 1, desc: "Shadowstrike deals 30% more, and its double damage works on enemies below 40% health (instead of 30%).", apply: (m) => { m.qDmg *= 1.3; m.qExecute += 0.1; } },
+  as_rites: { name: 'Contract Killer', slot: 'r', cls: 'rogue', spec: 'assassin', tier: 2, desc: 'Every kill takes 5 seconds off Last Rites.', apply: (m) => { m.killResetR += 5; } },
+  sd_veil: { name: 'Deeper Veil', slot: 'hero', cls: 'rogue', spec: 'shadowdancer', tier: 1, desc: 'Veil lasts 2 seconds longer, and kunai thrown while Veiled deal 30% more.', apply: (m) => { m.veilTime += 2; m.veilKunai += 0.3; } },
+  sd_shades: { name: 'Lingering Shades', slot: 'hero', cls: 'rogue', spec: 'shadowdancer', tier: 2, desc: 'Afterimages last 3 seconds longer.', apply: (m) => { m.shadowDur += 3; } },
 };
 Object.assign(AUGMENTS, CLASS_AUGMENTS);
 for (const id in AUGMENTS) if (/^[qwer]_/.test(id)) AUGMENTS[id].cls = 'warrior';

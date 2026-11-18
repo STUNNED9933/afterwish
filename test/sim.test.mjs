@@ -3591,6 +3591,26 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const old = new World({ seed: 6, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 60, quests: { edric: { s: 'done', n: 1 } } } });
   check('keepsake: a hero who finished the quest before 0.53 has it too', old.player.keepsake && old.player.keepsake.ilvl === 60);
 }
+// --- The augment overhaul (0.61.1) ---
+{
+  const { AUGMENTS } = await import('../src/sim/augments.js');
+  check('Augments: no parry augments any more', !Object.values(AUGMENTS).some((a) => a.slot === 'parry'));
+  check('Augments: Giant (+25% health) is only for the Bulwark', AUGMENTS.h_giant.spec === 'bulwark');
+  for (const spec of ['berserker', 'bulwark', 'sharpshooter', 'windrunner', 'assassin', 'shadowdancer', 'pyromancer', 'frostbinder'])
+    check(`Augments: ${spec} has at least two of its own`, Object.values(AUGMENTS).filter((a) => a.spec === spec).length >= 2);
+  const { geared } = await import('./balance.mjs');
+  const save = geared('warrior', 60, 5);
+  const w = new World({ seed: 4, mode: 'arena', cls: 'warrior', save });
+  w.augments.push('q_twin'); w.recalcStats();
+  w.delayed = [];
+  w.player.cd.q = 0; w.player.castLock = 0;
+  w.command({ type: 'cast', slot: 'q', x: w.player.x + 3, z: w.player.z }); w.runCommands();
+  check('Twin Cleave: one more strike (60%)', w.delayed.filter((d) => d.kind === 'cleave').length === 1);
+  w.mods.qEcho = 0.4; w.delayed = []; w.player.cd.q = 0; w.player.castLock = 0;
+  w.command({ type: 'cast', slot: 'q', x: w.player.x + 3, z: w.player.z }); w.runCommands();
+  check("...on top of Executioner's Rhythm's second strike: two more", w.delayed.filter((d) => d.kind === 'cleave').length === 2);
+}
+
 // --- The Weekly Echo's twists (0.60) ---
 {
   const T = await import('../src/sim/trial.js');
@@ -3645,24 +3665,35 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const n5 = w.wave.n;
   for (let i = 0; i < 600; i++) w.step(CONFIG.TICK);
   check('Ring: after a boss the next wave waits for you to choose', w.ring.hold && w.wave.n === n5 && w.wave.phase === 'intermission');
-  const want = Math.floor(w.ring.safe);
-  check('Ring: five waves of the Fragment focus add up, a boss three times a wave', w.ring.safe === w.ring.pot && want >= 6 && Math.abs(w.ring.pot - [1, 2, 3, 4].reduce((a, n) => a + ringGain(newRing({ kind: 'fragment' }), n, false, 60), 0) - ringGain(newRing({ kind: 'fragment' }), 5, true, 60)) < 1e-6, w.ring.pot.toFixed(2));
+  const want = Math.floor(w.ring.pot);
+  const expect = [1, 2, 3, 4].reduce((a, n) => a + ringGain(newRing({ kind: 'fragment' }), n, false, 60), 0) + ringGain(newRing({ kind: 'fragment' }), 5, true, 60);
+  check('Ring (0.61.1): five waves of the Fragment focus add up, each 7% more, a boss three times a wave', want >= 6 && Math.abs(w.ring.pot - expect) < 1e-6 && Math.abs(ringGain(newRing({ kind: 'fragment' }), 2, false, 60) / ringGain(newRing({ kind: 'fragment' }), 1, false, 60) - 1.07) < 1e-9, w.ring.pot.toFixed(2));
   const f0 = p.misc.fragment || 0;
   w.command({ type: 'ringLeave' }); w.runCommands();
-  check('Ring: take them home after a boss, and you get all of it', (p.misc.fragment || 0) === f0 + want && w.events.some((e) => e.type === 'ringPaid' && e.lost === 0));
+  check('Ring: take them home after a boss, and you get all of it', (p.misc.fragment || 0) === f0 + want && w.events.some((e) => e.type === 'ringPaid'));
   w.command({ type: 'ringLeave' }); w.runCommands();
   check('Ring: only once a run', (p.misc.fragment || 0) === f0 + want);
   ({ w, p } = play({ kind: 'gold' }, 7));
-  const safe = Math.floor(w.ring.safe), pot = Math.floor(w.ring.pot), g0 = p.gold;
+  const pot = Math.floor(w.ring.pot), g0 = p.gold;
   p.hp = 1; w.damagePlayer ? w.damagePlayer(1e9) : (p.hp = 0);
   if (!w.events.some((e) => e.type === 'ringPaid')) { w.command({ type: 'ringLeave' }); w.runCommands(); }
-  check('Ring: fall (or leave) between bosses and you keep what was safe at the last one', p.gold - g0 === safe && pot > safe, `${p.gold - g0} of ${pot} (safe ${safe})`);
+  check('Ring (0.61.1): fall (or leave) between bosses and everything you gathered still comes home', p.gold - g0 === pot && pot > 0, `${p.gold - g0} of ${pot}`);
+  {
+    const { ringWorth, ringCost, RING: R } = await import('../src/sim/ring.js');
+    check('Ring: the growth stops at wave 40', ringWorth(60, false) === ringWorth(40, false) && ringWorth(40, false) > 10);
+    check('Ring: waking it costs 5 shards from wave 1, 2 more for each checkpoint further in', ringCost(1) === 5 && ringCost(6) === 7 && ringCost(31) === 17);
+    check('Ring: no Immortal chance before wave 20, then 1%, up to 4%', R.immortal(19) === 0 && R.immortal(20) === 0.01 && Math.abs(R.immortal(35) - 0.025) < 1e-9 && R.immortal(80) === 0.04);
+    const { ringTable } = await import('../src/sim/ring.js');
+    const t40 = ringTable(100, 1, [40])[0];
+    const immortals = t40.total.gear * R.immortal(40), fromFragments = t40.total.fragment / 250;
+    check('Ring: to wave 40, Gear pays about one Immortal, like the Fragments do (no flood of them)', immortals > 0.6 && immortals < 1.3 && fromFragments > 0.6 && fromFragments < 1.3, `${immortals.toFixed(2)} vs ${fromFragments.toFixed(2)}`);
+  }
   ({ w, p } = play({ kind: 'gear', slot: 'boots' }, 10));
   const bag0 = p.bag.length;
   w.command({ type: 'ringLeave' }); w.runCommands();
   const ev = w.events.find((e) => e.type === 'ringPaid');
   const boots = p.bag.slice(bag0).filter((it) => it.slot === 'boots');
-  check('Ring: the Gear focus gives pieces for the slot you chose, Mythic from wave 10', ev && ev.n >= 4 && boots.length >= ev.n - (ev.scrapped || 0) && boots.every((it) => it.rarity >= RING.gearRarity(10)), ev && `${ev.n} pieces`);
+  check('Ring: the Gear focus gives pieces for the slot you chose, Mythic from wave 10', ev && ev.n >= 2 && boots.length >= ev.n - (ev.scrapped || 0) && boots.every((it) => it.rarity >= RING.gearRarity(10)), ev && `${ev.n} pieces`);
   check('Ring: and what dropped in the Ring comes home with you', w.loot.length === 0);
 }
 // --- Echoes (0.53): what giving up your gear is worth ---

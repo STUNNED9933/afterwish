@@ -80,7 +80,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
 const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
-import { newRing, ringGain, ringWhole, RING } from './ring.js';
+import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -1531,7 +1531,7 @@ export class World {
   basicRange() {
     const base = this.basic.range * (1 + (this.mods.rangePct || 0));
     const lv = this.bloodReach();
-    return lv ? Math.max(base, CONFIG.CRESCENT.reach[lv]) : base;
+    return lv ? Math.max(base, CONFIG.CRESCENT.reach[lv] * (this.mods.crescentFar || 1)) : base; // (0.61.1) Crimson Arc
   }
 
   /** (0.60.2) Hurricane (Windrunner, passive from level 6): the wind never leaves her back, so Tailwind is always on. */
@@ -1588,7 +1588,7 @@ export class World {
         id: this.nextId++, owner: 'player', kind: 'crescent', basic: true, pierce: near ? [target.id] : [], critBonus: near ? 0 : critBonus,
         x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z,
         vx: dCos(a) * C.speed, vz: dSin(a) * C.speed, speed: C.speed,
-        radius: C.width[lv], dmg: near ? dmg * C.behind[lv] : dmg, parryable: false, reflected: false, life: (C.reach[lv] + 1.5) / C.speed, dead: false, lv,
+        radius: C.width[lv] * (this.mods.crescentWide || 1), dmg: near ? dmg * C.behind[lv] : dmg, parryable: false, reflected: false, life: (C.reach[lv] * (this.mods.crescentFar || 1) + 1.5) / C.speed, dead: false, lv,
       });
       p.facing = a;
     } else {
@@ -1738,7 +1738,12 @@ export class World {
         p.facing = a;
         p.castLock = 0.16;
         this.battleRhythm(slot, this.cleaveHit(a, range, angle, dmg, slot, def));
-        if (slot === 'q' && m.qEcho > 0) this.delayed.push({ t: 0.28, kind: 'cleave', dir: a, range, angle, dmg: dmg * m.qEcho });
+        if (slot === 'q' && (m.qEcho > 0 || m.qExtra > 0)) {
+          // a second strike, and (0.61.1) one more for each Twin Cleave
+          const strikes = (m.qEcho > 0 ? 1 : 0) + (m.qExtra || 0);
+          const mult = m.qExtra > 0 ? Math.max(m.qEcho, 0.6) : m.qEcho;
+          for (let k = 1; k <= strikes; k++) this.delayed.push({ t: 0.28 * k, kind: 'cleave', dir: a, range, angle, dmg: dmg * mult });
+        }
         this.emit('cast', { slot, fx: 'cone', x: p.x, z: p.z, dir: a, range, angle });
         break;
       }
@@ -1746,7 +1751,7 @@ export class World {
         p.castLock = 0.12;
         if (slot === 'w' && m.reckoning && p.reck > 0) {
           // Reckoning (Bulwark): every blow you took or turned aside comes back in this Whirlwind.
-          dmg *= 1 + CONFIG.RECKON_PER * p.reck;
+          dmg *= 1 + (CONFIG.RECKON_PER + (m.reckonPer || 0)) * p.reck; // (0.61.1) Long Memory
           this.breakNext = m.reckonBreak && p.reck >= 5; // Wardstone: a big Reckoning Breaks what it hits
           this.emit('reckoning', { x: p.x, z: p.z, stacks: p.reck });
           p.reck = 0;
@@ -4480,13 +4485,14 @@ export class World {
   enterRing(startWave, focus) {
     const p = this.player;
     if (!this.travelHook || this.mode !== 'explore' || !this.map || !this.map.safe || this.trial) return;
-    if (p.tickets < 1) {
+    const max = Math.max(1, this.maxCheckpoint || 1);
+    const wave = Math.max(1, Math.min(max, Math.floor(Number(startWave) || max)));
+    const cost = ringCost(wave); // (0.61.1) more than one shard, more the further in
+    if (p.tickets < cost) {
       this.emit('riftNoShard');
       return;
     }
-    p.tickets--;
-    const max = Math.max(1, this.maxCheckpoint || 1);
-    const wave = Math.max(1, Math.min(max, Math.floor(Number(startWave) || max)));
+    p.tickets -= cost;
     const f = focus && typeof focus === 'object' ? { kind: String(focus.kind || 'gold'), slot: SLOTS.includes(focus.slot) ? focus.slot : 'weapon' } : { kind: 'gold', slot: 'weapon' };
     this.travelHook(this.cur, 'ring', 'town', { ring: { startWave: wave, focus: f } });
   }
@@ -4496,19 +4502,25 @@ export class World {
    * (all of it, if you leave right after one), and whatever dropped, gathered up. Once a run.
    */
   ringPay() {
+    // (0.61.1) everything gathered comes home, however the run ends (a fall too)
     const r = this.ring;
     const p = this.player;
     if (!r || r.paid[this.cur.pid]) return;
     r.paid[this.cur.pid] = true;
-    const n = ringWhole(r.safe);
-    let scrapped = 0;
+    const n = ringWhole(r.pot);
+    let scrapped = 0, immortals = 0;
     if (r.kind === 'gold') p.gold += n;
     else if (r.kind === 'fragment' && n) this.giveMisc('fragment', n);
     else if (r.kind === 'dust') p.dust += n;
     else if (r.kind === 'gear') {
-      const rar = RING.gearRarity(r.safeWave);
+      const deep = r.wave || 0;
+      const rar = RING.gearRarity(deep);
+      const rng = this.streamRng('ringGear', (this.ticks + this.nextId) | 0);
       for (let i = 0; i < n; i++) {
-        const item = rollItem(this.rng, Math.max(1, p.level), { minRarity: rar, weights: RARITY_ONLY(rar), slot: r.slot, cls: this.cls });
+        const imm = rng() < RING.immortal(deep); // (0.61.1) from wave 20, a chance of an Immortal
+        const r2 = imm ? 6 : rar;
+        if (imm) immortals++;
+        const item = rollItem(this.rng, Math.max(1, p.level), { minRarity: r2, weights: RARITY_ONLY(r2), slot: r.slot, cls: this.cls });
         if (!p.equipped[item.slot]) {
           p.equipped[item.slot] = item;
           this.recalcStats();
@@ -4520,7 +4532,7 @@ export class World {
       }
     }
     this.sweepLoot();
-    this.emit('ringPaid', { kind: r.kind, slot: r.slot, n, wave: r.safeWave, lost: ringWhole(r.pot) - n, scrapped });
+    this.emit('ringPaid', { kind: r.kind, slot: r.slot, n, wave: r.wave || 0, scrapped, immortals });
   }
 
   /**
@@ -6044,7 +6056,7 @@ export class World {
       if (opts.source === 'basic' || opts.source === 'q' || opts.source === 'w') {
         // (0.60.3) Red Embrace: a Bloodied Berserker hits far harder up close (more in Crimson Oath), the risk paid for
         const lv = this.bloodReach();
-        if (lv && dist(p.x, p.z, e.x, e.z) - e.radius <= CONFIG.CRESCENT.closeAt) dmg *= 1 + CONFIG.CRESCENT.close[lv];
+        if (lv && dist(p.x, p.z, e.x, e.z) - e.radius <= CONFIG.CRESCENT.closeAt) dmg *= 1 + CONFIG.CRESCENT.close[lv] + (im.closeExtra || 0); // (0.61.1) Blood Embrace
       }
       if (e.tauntT > 0 && e.tauntVuln > 0) dmg *= 1 + e.tauntVuln; // Wardbreaker (anyone's hits)
       if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
@@ -6893,12 +6905,8 @@ export class World {
         const r = this.ring;
         r.pot += ringGain(r, w.n, boss, this.player.level);
         r.wave = w.n;
-        if (boss) {
-          r.safe = r.pot;
-          r.safeWave = w.n;
-          r.hold = true;
-        }
-        this.emit('ringGain', { n: w.n, boss, kind: r.kind, pot: ringWhole(r.pot), safe: ringWhole(r.safe) });
+        if (boss) r.hold = true; // the next wave waits: take it all home, or push on
+        this.emit('ringGain', { n: w.n, boss, kind: r.kind, pot: ringWhole(r.pot) });
       }
       this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.

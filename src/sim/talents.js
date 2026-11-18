@@ -29,7 +29,7 @@ export const SPECS = {
     blurb: 'Strongest on the edge of falling. Spend your own blood to drop below half health, then stay there: every hit you take could be the last.',
     perk: {
       name: 'Blood Rage',
-      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Red Tempo: Whirlwind becomes a spin you can run with that keeps time with your hands, one beat for every basic attack you could make (from 2 to 10 beats a second), so attack speed makes it spin faster. Crimson Reach: while Bloodied, every swing flies on as a red crescent up to 6 m, cutting everything in its path (within reach of your arm the swing lands as ever and the crescent cuts those behind for 60%), Cleave reaches 35% further and 20% wider, and Whirlwind spins 35% wider. Skyfall becomes Crimson Oath.',
+      desc: 'Below half health you are Bloodied: +15% damage, +20% attack speed and 15% less damage taken. While Bloodied, lifesteal stops just below half health so it keeps you there, and once every 30 seconds a blow that would kill you leaves you at 1 health instead. Cleave and Whirlwind cost 4% of your maximum health (never below 10%). Red Tempo: Whirlwind becomes a spin you can run with that keeps time with your hands, one beat for every basic attack you could make (from 2 to 10 beats a second), so attack speed makes it spin faster. Crimson Reach: while Bloodied, every swing flies on as a red crescent up to 6 m, cutting everything in its path (within reach of your arm the swing lands as ever and the crescent cuts those behind for 60%), Cleave reaches 35% further and 20% wider, and Whirlwind spins 35% wider. Red Embrace: but up close is where it pays. While Bloodied, your basic attacks, Cleave and Whirlwind deal 30% more to enemies within 3 m. Skyfall becomes Crimson Oath.',
       apply: (m) => { m.spinTempo = true; m.bloodRage = true; m.lowHpDmg += 0.15; m.bloodAs += 0.2; m.bloodCost = Math.max(m.bloodCost, 0.04); m.bloodGuard = Math.max(m.bloodGuard, 0.15); m.bloodCap = true; m.bloodSave = Math.max(m.bloodSave, 30); },
     },
     kit: {
@@ -41,7 +41,7 @@ export const SPECS = {
       r: {
         key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
         dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
-        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds you cannot fall below 1 health and your lifesteal is doubled, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
+        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds your lifesteal is doubled, Red Embrace rises to 50% more up close, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
       },
     },
     talents: [

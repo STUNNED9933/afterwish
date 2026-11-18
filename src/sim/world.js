@@ -2911,7 +2911,6 @@ export class World {
     }
     p.hurtT = 0.25;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: dmg, warded, doom });
-    if (p.hp <= 0 && p.frenzyT > 0) p.hp = 1; // Crimson Oath: not yet
     if (p.hp <= 0 && p.spin && m.spinGuard) p.hp = 1; // Bloodbound: not while you spin
     if (p.hp <= 0 && m.bloodSave > 0 && p.hp + dmg < p.stats.maxHp * 0.5 && !(p.bloodSaveT > 0)) {
       // Blood Rage: a Bloodied Berserker shrugs off one killing blow every 30 seconds.
@@ -6043,6 +6042,11 @@ export class World {
       if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.2; // The Unwished Crown, after a Doom avoided
       const im = this.mods;
       if (im.bloodQW > 0 && p.bloodied && (opts.source === 'q' || opts.source === 'w')) dmg *= 1 + im.bloodQW; // Bloodreaver
+      if (opts.source === 'basic' || opts.source === 'q' || opts.source === 'w') {
+        // (0.60.3) Red Embrace: a Bloodied Berserker hits far harder up close (more in Crimson Oath), the risk paid for
+        const lv = this.bloodReach();
+        if (lv && dist(p.x, p.z, e.x, e.z) - e.radius <= CONFIG.CRESCENT.closeAt) dmg *= 1 + CONFIG.CRESCENT.close[lv];
+      }
       if (e.tauntT > 0 && e.tauntVuln > 0) dmg *= 1 + e.tauntVuln; // Wardbreaker (anyone's hits)
       if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
       if (im.pctHp && !opts.dot && (opts.source === 'q' || opts.source === 'w' || opts.source === 'e' || opts.source === 'r')) {

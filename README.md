@@ -159,6 +159,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Berserker: the risk pays (0.60.3)
+
+- **Red Embrace**: while Bloodied, his basic attacks, Cleave and Whirlwind deal 30% more to enemies
+  within 3 m (50% in Crimson Oath). The crescents keep him hitting from range; staying in a boss's
+  face is where he out-damages everyone.
+- **Crimson Oath no longer stops you falling.** It still drops you to 40% with a roar, doubles your
+  lifesteal, and grows Crimson Reach and Red Embrace. Blood Rage's last breath (once every 30 s)
+  is the only thing between him and death.
+- Power: Berserker mid 1.52 -> 1.33, late 1.79 -> 1.58, so up close he is the top on the boss bench
+  (2.60M at level 100, ahead of Pyromancer's 2.51M; 23.5k at level 75); from range a little weaker
+  than before. Bulwark (late) 1.08 -> 1.1 and Assassin (mid) 0.89 -> 0.91 stay within 70% of him.
+
 ### Berserker and Windrunner, easier to play well (0.60.2)
 
 - **Berserker, Crimson Reach**: while Bloodied, every swing flies on as a red crescent up to 6 m,

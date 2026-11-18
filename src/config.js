@@ -10,6 +10,8 @@ export const CONFIG = {
     speed: 26,
     grow: [1, 1.35, 1.75], // Cleave's reach and Whirlwind's spin grow this much
     wide: [1, 1.2, 1.4], // and Cleave's arc this much
+    close: [0, 0.3, 0.5], // (0.60.3) Red Embrace: basic attacks, Cleave and Whirlwind deal this much more...
+    closeAt: 3, // ...to enemies within this far (from their edge)
   },
   TICK: 1 / 60, // the simulation always advances in fixed 1/60s steps
   ARENA_RADIUS: 24,

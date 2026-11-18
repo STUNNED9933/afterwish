@@ -1895,7 +1895,19 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     run(b.w, 0.05);
     b.w.hitPlayer(1e6, { parryable: false, src: e2 });
     b.w.hitPlayer(1e6, { parryable: false, src: e2 });
-    check('Crimson Oath: you cannot fall while it lasts', !b.p.dead && b.p.hp >= 1);
+    check('Crimson Oath (0.60.3): no longer keeps you from falling (only the last breath saves you, once)', b.p.dead || b.p.hp <= 0);
+    {
+      // (0.60.3) Red Embrace: up close, a Bloodied Berserker hits far harder; more in Crimson Oath
+      const r = setup('warrior', 'berserker');
+      const close = dummy(r.w, 1.5), far = dummy(r.w, 5.5);
+      const hitOf = (t) => { r.w.events.length = 0; r.w.hitEnemy(t, 1000, { basic: true, source: 'basic', canCrit: false }); return r.w.events.find((ev) => ev.type === 'damage' && ev.id === t.id).amount; };
+      r.p.hp = r.p.stats.maxHp * 0.3; run(r.w, 0.05);
+      const c1 = hitOf(close), f1 = hitOf(far);
+      check('Red Embrace: Bloodied, a blow up close deals 30% more than one from range', Math.abs(c1 / f1 - 1.3) < 0.02, `${c1} vs ${f1}`);
+      r.p.frenzyT = 5;
+      const c2 = hitOf(close), f2 = hitOf(far);
+      check('Red Embrace: in Crimson Oath, 50% more', Math.abs(c2 / f2 - 1.5) < 0.02, `${c2} vs ${f2}`);
+    }
   }
   // Combat Power
   {

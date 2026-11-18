@@ -173,6 +173,12 @@ body.slowmo #slowtint { opacity: 1; }
 .ebar.sundered .tag { color: #d9a6ff; }
 .ebar.bleeding .tag { color: #ff7a85; }
 .ebar.slowed .tag { color: var(--steel); }
+/* (0.61.2) a held Deadeye's target, off the edge of the screen */
+.aim-edge { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; z-index: 3; }
+.aim-edge .aim-arrow { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(12, 15, 24, 0.75); border: 2px solid rgba(255, 210, 122, 0.6); color: #ffd27a; font-size: 18px; line-height: 1; }
+.aim-edge.target .aim-arrow { border-color: #fff2c8; color: #fff2c8; box-shadow: 0 0 14px rgba(255, 210, 122, 0.7); animation: aim-pulse 0.6s ease-in-out infinite alternate; }
+.aim-edge .aim-dist { font: 600 13px var(--body); color: #ffe2a0; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+@keyframes aim-pulse { to { box-shadow: 0 0 22px rgba(255, 226, 160, 0.95); } }
 .plabel {
   position: absolute; left: 0; top: 0; padding: 2px 10px; background: rgba(10, 13, 22, 0.8); border: 1px solid #6fb4ff; border-radius: 3px;
   font: 600 14px var(--body); color: #cfe6ff; white-space: nowrap; will-change: transform;
@@ -411,6 +417,10 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 #tooltip .tt-hint kbd { font: inherit; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; }
 #tooltip .tt-effect { margin-top: 8px; padding: 6px 8px; border-left: 2px solid var(--rarity, var(--steel)); background: rgba(127, 245, 225, 0.08); font-size: 14px; }
 #tooltip .tt-effect b { display: block; color: var(--rarity, var(--steel)); }
+#tooltip.immortal { width: 300px; } /* room for the story */
+#tooltip .tt-lore { margin-top: 8px; font: italic 15px/1.35 var(--display); color: #c8bfa8; } /* (0.61.2) */
+#tooltip .tt-lore.immortal { color: #ecd9a6; padding-top: 7px; border-top: 1px solid rgba(255, 210, 74, 0.25); }
+#tooltip .tt-lore.set { color: #e6c49a; }
 #tooltip .tt-from { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 #tooltip .tt-from b { display: block; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
 #tooltip .tt-from ul { margin: 0; padding-left: 16px; }
@@ -441,7 +451,7 @@ button.cell:hover { background: var(--slate-2); border-color: var(--rarity, var(
 .acct-discord:hover { background: #4752c4; }
 .pass-wrap { position: relative; flex: 1; display: flex; }
 .pass-wrap input { flex: 1; padding-right: 40px; }
-.peek { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center; background: none; border: 0; border-radius: 4px; color: var(--muted); cursor: pointer; touch-action: none; user-select: none; }
+.peek { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center; background: none; border: 0; border-radius: 4px; color: var(--muted); cursor: pointer; touch-action: none; user-select: none; padding: 0; margin: 0; min-height: 0; line-height: 0; }
 .peek:hover, .peek.on { color: var(--bone); background: rgba(255, 255, 255, 0.06); }
 .acct.hidden { display: none; }
 .acct-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -756,6 +766,7 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 .transfer-h { font: 600 13px var(--body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin: 6px 0 0; }
 .transfer-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .transfer-row button { padding: 8px 16px; font-size: 15px; }
+.transfer-row .pass-wrap button.peek { padding: 0; } /* (0.61.2) the eye sits in the middle of its box */
 #import-code { width: 100%; box-sizing: border-box; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 4px; color: var(--bone); font: 12px monospace; padding: 8px; resize: vertical; }
 #transfer-msg.ok { color: #7fe0a0; } #transfer-msg.bad { color: #ff8a7a; }
 
@@ -964,7 +975,7 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .slot.passive::after { content: 'PASSIVE'; position: absolute; left: 0; right: 0; top: 2px; text-align: center; font: 700 8px var(--body); letter-spacing: 0.08em; color: #9fe7ff; pointer-events: none; }
 .slot.passive kbd { opacity: 0.35; }
 
-/* (0.61.1) What the Ring pays */
+/* (0.61.1) What the Stones Remember */
 .ring-info { margin-top: 8px; font-size: 13px; color: var(--bone); }
 .ring-info summary { cursor: pointer; font: 600 12px var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); padding: 4px 0; }
 .ring-info p { margin: 6px 0; line-height: 1.4; }

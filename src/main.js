@@ -1,5 +1,6 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
+import { aimPreview } from './ui/aim.js';
 import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
@@ -1192,7 +1193,7 @@ function start(hot = {}) {
     info.className = 'ring-info';
     info.open = !!ringInfoOpen;
     info.addEventListener('toggle', () => (ringInfoOpen = info.open));
-    info.innerHTML = `<summary>What the Ring pays</summary>${ringInfoHtml(p.level, ringStart, f)}`;
+    info.innerHTML = `<summary>What the Stones Remember</summary>${ringInfoHtml(p.level, ringStart, f)}`;
     box.appendChild(info);
     list.appendChild(box);
   }
@@ -2843,6 +2844,7 @@ function start(hot = {}) {
       hud.feedText(settings.muted ? 'Sound off' : 'Sound on');
     },
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
+    heldAim: () => settings.heldAim !== false, // (0.61.2) Deadeye aims while R is held
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
       if (key === 'h' && mode === 'play' && world.ring && !$('ring-bank').classList.contains('hidden')) return ringLeave() || true; // (0.59)
@@ -3238,6 +3240,11 @@ function start(hot = {}) {
     });
   }
   refreshAm();
+  $('held-aim').checked = settings.heldAim !== false; // (0.61.2)
+  $('held-aim').addEventListener('change', (e) => {
+    settings.heldAim = e.target.checked;
+    storeSettings(settings);
+  });
   $('auto-attack').checked = settings.autoAttack !== false;
   $('auto-attack').addEventListener('change', (e) => {
     settings.autoAttack = e.target.checked;
@@ -4338,6 +4345,14 @@ function start(hot = {}) {
     caseScan(now);
     input.update(now);
     if (!net && mode === 'play') alpha = Math.min(1, acc / CONFIG.TICK);
+    // (0.61.2) a held skill shot: where it would go, on the ground and on the minimap
+    let aim = null;
+    if (input.held && mode === 'play' && world && world.player) {
+      const g = input.ground();
+      if (g) aim = aimPreview(world, input.held.slot, g.x, g.z);
+    }
+    renderer.aim = aim;
+    hud.aim = aim;
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
     if (now >= cpCheckAt && world && !world.trial && world.player && world.player.stats) {

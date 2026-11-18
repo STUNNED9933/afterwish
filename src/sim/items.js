@@ -253,7 +253,7 @@ export function itemTypeName(item) {
   return SLOT_NAMES[item.slot];
 }
 
-const BASE_NAMES = {
+export const BASE_NAMES = {
   weapon: ['Rusted Blade', 'Iron Sword', 'Steel Saber', 'Runed Longsword', 'Starforged Edge'],
   helm: ['Leather Cap', 'Iron Helm', 'Visored Helm', 'Duelist Mask', 'Rimeguard Helm', 'Dune Veil', 'Gloomcap Hood', 'Stormcrest Helm', 'Obsidian Visage', 'Crown of Dusk'],
   chest: ['Padded Vest', 'Chain Hauberk', 'Plate Cuirass', 'Runed Aegis', 'Rimeguard Plate', 'Dune Wraps', 'Gloomweave Coat', 'Stormplate', 'Obsidian Cuirass', 'Titan Carapace'],

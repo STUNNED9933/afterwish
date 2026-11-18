@@ -1,6 +1,7 @@
 // Mouse and keyboard -> commands. This is the only place that knows about
 // input devices. For multiplayer, the same commands would also be sent to
 // the server instead of only to the local World.
+import { canAim } from './ui/aim.js';
 
 export class Input {
   /**
@@ -19,6 +20,7 @@ export class Input {
     this.actions = actions;
     this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, right: false };
     this.lastMoveSent = 0;
+    this.held = null; // (0.61.2) a skill shot being aimed: { slot } while its key is down
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -40,9 +42,11 @@ export class Input {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => {
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
+      if (this.held && (e.key || '').toLowerCase() === this.held.slot) this.release(true);
     });
     window.addEventListener('blur', () => {
       this.mouse.right = false;
+      this.release(false); // tabbing away puts the bow down
     });
   }
 
@@ -50,11 +54,28 @@ export class Input {
     return this.renderer.screenToGround(this.mouse.x, this.mouse.y);
   }
 
+  /** Let go of a held skill shot: loose it at the cursor (fire), or put it down (not fire). */
+  release(fire) {
+    const h = this.held;
+    if (!h) return;
+    this.held = null;
+    if (!fire || !this.isPlaying()) return;
+    const world = this.getWorld();
+    const g = this.ground() || { x: world.player.x, z: world.player.z };
+    world.command({ type: 'cast', slot: h.slot, x: g.x, z: g.z });
+  }
+
   onMouseDown(e) {
     if (!this.isPlaying()) return;
     const world = this.getWorld();
     this.mouse.x = e.clientX;
     this.mouse.y = e.clientY;
+    if (this.held) {
+      // Aiming: left-click looses the shot at once, right-click puts the bow down.
+      e.preventDefault();
+      this.release(e.button === 0);
+      return;
+    }
     if ((e.button === 2 || e.button === 0) && e.shiftKey) {
       // Shift + right-click (or Shift + left-click): attack-move. Firefox always opens its own menu on
       // Shift + right-click, whatever the page asks, so Shift + left-click and the A key do the same (0.43).
@@ -111,8 +132,14 @@ export class Input {
       this.actions.toggleInventory();
       return;
     }
+    if (key === 'escape' && this.held) {
+      e.preventDefault();
+      this.release(false); // Escape puts an aimed shot down before it opens the menu
+      return;
+    }
     if (key === 'escape' || key === 'p') {
       e.preventDefault();
+      this.release(false);
       this.actions.togglePause();
       return;
     }
@@ -151,6 +178,11 @@ export class Input {
         world.command({ type: 'rankUp', slot: key }); // Shift (or Ctrl, above) + ability key spends a skill point
         return;
       }
+      if (this.held && this.held.slot === key) return; // other abilities still work while aiming (roll, then loose)
+      if (canAim(world, key) && (!this.actions.heldAim || this.actions.heldAim())) {
+        this.held = { slot: key }; // (0.61.2) held: aim now, loose it when the key comes up
+        return;
+      }
       const g = this.ground() || { x: world.player.x, z: world.player.z };
       world.command({ type: 'cast', slot: key, x: g.x, z: g.z });
     } else if (key === '1' || key === 'd') {
@@ -168,6 +200,7 @@ export class Input {
   update(now) {
     const world = this.getWorld();
     if (!this.isPlaying()) {
+      this.held = null; // a menu opened while aiming: the shot is put down
       this.renderer.hoverId = null;
       this.canvas.style.cursor = 'default';
       return;

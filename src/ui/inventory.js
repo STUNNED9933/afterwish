@@ -7,6 +7,7 @@ import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
 import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
+import { itemLore } from './lore.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
@@ -36,6 +37,9 @@ export function itemTooltip(item, compareTo) {
     const as = fx.spec && SPECS[fx.spec] ? `<div class="tt-as">As a ${SPECS[fx.spec].name}. An Immortal's effect follows the subclass you play.</div>` : !EFFECTS[item.effect].unique && !gearSpecNow() ? '<div class="tt-as">From level 15 its effect becomes your subclass\'s own.</div>' : '';
     html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}${as}</div>`;
   }
+  // (0.61.2) what the item is, and for an Immortal, its story
+  const lore = itemLore(item, item.effect && EFFECTS[item.effect] ? effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow()) : null);
+  if (lore.text) html += `<div class="tt-lore ${lore.kind}">${lore.text}</div>`;
   if (compareTo && compareTo !== item) {
     const other = itemStats(compareTo);
     let diff = '';

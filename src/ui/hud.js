@@ -1,6 +1,7 @@
 // The heads-up display: health and EXP bars, ability bar with ranks, wave and
 // boss status, enemy health bars, floating combat text, banners and hints.
 // Plain DOM on top of the 3D canvas.
+import { itemIconInner } from './itemicons.js';
 import { steadyRatings, signed } from '../power.js';
 import { AFFIXES, wishNeed } from '../sim/endgame.js';
 import { remnantName } from '../sim/surprises.js';
@@ -120,6 +121,8 @@ export function setGearClass(cls) {
 export function gearIcon(slotOrItem) {
   const item = typeof slotOrItem === 'object' && slotOrItem ? slotOrItem : null;
   const slot = item ? item.slot : slotOrItem;
+  const own = item && itemIconInner(item); // (0.61.2) every named item has its own picture
+  if (own) return `<svg viewBox="0 0 24 24" aria-hidden="true">${own}</svg>`;
   const set = GEAR_ICONS[(item && item.cls) || gearClass] || GEAR_ICONS.warrior;
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${set[slot] || ICONS[slot] || ICONS.hero}</svg>`;
 }
@@ -305,6 +308,7 @@ export class Hud {
   /** Called every frame. */
   update(world, renderer, dt) {
     this.world = world;
+    this.drawAimMarker(world, renderer);
     const p = world.player;
     gearSpec = world.trial ? null : p.spec || null;
 
@@ -638,7 +642,8 @@ export class Hud {
       this.mapOn = on;
       cv.classList.toggle('hidden', !on);
     }
-    if (!on || (this.mapTick = (this.mapTick || 0) + 1) % 4) return;
+    if (!on || ((this.mapTick = (this.mapTick || 0) + 1) % 4 && !this.aim && !this.aimWas)) return; // every frame while aiming
+    this.aimWas = !!this.aim;
     const g = cv.getContext('2d');
     const S = cv.width;
     const k = (S / 2 - 6) / world.radius;
@@ -676,7 +681,75 @@ export class Hud {
     for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : e.rare || e.def.thief ? 3.5 : 2, e.rare || e.def.thief ? '#ffd27a' : e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
     if (world.allies) for (const a of world.allies()) dot(a.x, a.z, 3, a.dead ? '#8a8f9c' : '#7fd0ff');
+    if (this.aim) {
+      // (0.61.2) a held Deadeye: the whole shot, far past the edge of the screen, and what it would hit
+      const A = this.aim;
+      const ex = A.x + Math.cos(A.dir) * A.range, ez = A.z + Math.sin(A.dir) * A.range;
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = 'rgba(255, 200, 96, 0.35)';
+      g.lineWidth = Math.max(3, A.width * k);
+      g.beginPath(); g.moveTo(X(A.x), Y(A.z)); g.lineTo(X(ex), Y(ez)); g.stroke();
+      g.strokeStyle = '#ffe2a0';
+      g.lineWidth = 1.5;
+      g.stroke();
+      g.beginPath(); g.arc(X(ex), Y(ez), 3, 0, 7); g.stroke();
+      A.hits.forEach((h, i) => {
+        g.strokeStyle = i === 0 ? '#fff2c8' : 'rgba(255, 226, 160, 0.75)';
+        g.lineWidth = i === 0 ? 2 : 1.3;
+        g.beginPath(); g.arc(X(h.e.x), Y(h.e.z), i === 0 ? 5.5 : 4, 0, 7); g.stroke();
+      });
+      g.restore();
+    }
     dot(p.x, p.z, 3.5, '#ffffff');
+  }
+
+  /**
+   * (0.61.2) While Deadeye is held: a marker on the edge of the screen pointing at the nearest enemy on the
+   * line that is past the edge, with how far away it is. If nothing is on the line, it points down it.
+   */
+  drawAimMarker(world, renderer) {
+    let el = this.aimEl;
+    if (!this.aim) {
+      if (el) el.classList.add('hidden');
+      return;
+    }
+    if (!el) {
+      el = this.aimEl = document.createElement('div');
+      el.className = 'aim-edge hidden';
+      el.innerHTML = '<span class="aim-arrow">&#10148;</span><span class="aim-dist"></span>';
+      this.worldUi.appendChild(el);
+    }
+    const A = this.aim;
+    const W = renderer.width, H = renderer.height, M = 46;
+    const off = (x, z) => {
+      const q = renderer.project(x, 1, z);
+      return !(q.visible && q.x > M && q.x < W - M && q.y > M && q.y < H - M);
+    };
+    // the nearest enemy on the line that is past the edge of the screen; with none on the line at all,
+    // the end of the shot; with every one of them on screen, nothing
+    const idx = A.hits.findIndex((h) => off(h.e.x, h.e.z));
+    const first = idx >= 0 ? A.hits[idx] : null;
+    const tx = first ? first.e.x : A.x + Math.cos(A.dir) * A.range;
+    const tz = first ? first.e.z : A.z + Math.sin(A.dir) * A.range;
+    if ((!first && A.hits.length) || !off(tx, tz)) {
+      el.classList.add('hidden');
+      return;
+    }
+    const s = renderer.project(tx, 1, tz);
+    // clamp the point onto a box just inside the screen, along the line from the hero
+    const h = renderer.project(A.x, 1, A.z);
+    let dx = s.x - h.x, dy = s.y - h.y;
+    if (!s.visible) { dx = -dx; dy = -dy; }
+    const kx = dx > 0 ? (W - M - h.x) / dx : dx < 0 ? (M - h.x) / dx : Infinity;
+    const ky = dy > 0 ? (H - M - h.y) / dy : dy < 0 ? (M - h.y) / dy : Infinity;
+    const t = Math.max(0, Math.min(kx, ky));
+    const x = h.x + dx * t, y = h.y + dy * t;
+    el.classList.remove('hidden');
+    el.classList.toggle('target', !!first);
+    el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -50%)`;
+    el.firstChild.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+    el.lastChild.textContent = first ? `${Math.round(first.along)} m${idx > 0 ? ` · hit ${idx + 1} of ${A.hits.length}` : A.hits.length > 1 ? ` · ${A.hits.length} hit` : ''}` : `${Math.round(A.range)} m`;
   }
 
   /** Exploration only: a name floating over each portal. */

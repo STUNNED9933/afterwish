@@ -5651,7 +5651,7 @@ export class World {
       this.emit('windup', { id: e.id, enemyType: e.type, attack: atk.name, parryable: false, call: true });
       return;
     }
-    const tele = { id: this.nextId++, owner: e.id, kind: atk.shape, x: e.x, z: e.z, dir: e.aim, t: 0, dur: e.dur, parryable: atk.parryable, cue: false };
+    const tele = { id: this.nextId++, owner: e.id, foe: true, kind: atk.shape, x: e.x, z: e.z, dir: e.aim, t: 0, dur: e.dur, parryable: atk.parryable, cue: false };
     if (atk.shape === 'arc') {
       tele.range = atk.range;
       tele.angle = atk.angle;
@@ -7342,6 +7342,14 @@ inTown() {
   // =========================================================================
   step(dt) {
     this.runCommands();
+    // (0.61.2) an enemy's wind-up warning goes with it, however it went (killed mid-charge, despawned)
+    if (this.telegraphs.length && this.telegraphs.some((t) => t.foe)) {
+      this.telegraphs = this.telegraphs.filter((t) => {
+        if (!t.foe) return true;
+        const e = this.enemyById(t.owner);
+        return !!(e && !e.dead && (e.tele === t || (e.teles && e.teles.includes(t))));
+      });
+    }
     if (this.gameOver && this.travelHook && this.mode === 'arena') {
       // (0.59) on the server, a fallen hero goes home from the Ring after a moment (spoils already paid)
       this.ringOutT = (this.ringOutT ?? 2.5) - dt;

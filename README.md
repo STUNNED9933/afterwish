@@ -159,6 +159,25 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Every item has a face and a story; Deadeye is aimed (0.61.2)
+
+- **Item pictures**: every one of the ten names per weapon and armour slot has its own icon (40
+  weapons, 40 armour pieces), tinted with what it is made of: rust, iron, steel, runes, frost, the
+  Dunes' sun, gloom, storm, obsidian and starmetal. Immortals have pictures of their own (Stormcaller's
+  lightning, the Timekeeper's hourglass, Edric's blue grip), and set pieces wear their set's colours.
+- **Item descriptions**: a line for every item in its tooltip. Common to Rare stay short; from Epic up
+  a second line says where the piece has been. **Every Immortal has its story**, for every subclass:
+  Hesper Hale, the Queen's smith and Bram and Edric's mother, still at her anvil under the sand;
+  Corran and Bloodreaver, the blade of grudge; Aldric's seal, Tobin's Sporeheart, the Unwished Crown.
+- **Deadeye is aimed while R is held**: the whole line on the ground, with every enemy it would hit
+  marked in order; the same line on the minimap, far past the edge of the screen; and a marker on the
+  screen's edge for a target out of sight, with its distance. Let go to loose it (or left-click);
+  right-click or Esc puts it down. Other abilities still work while aiming. A setting turns it back to
+  fire-on-press.
+- **What the Stones Remember**: the Ring's reward table has a name from the story.
+- Fixed: an enemy that died while winding up left its warning on the ground. The eye on the server
+  password box sits in the middle of it.
+
 ### The Ring pays clearly, augments for every subclass (0.61.1)
 
 - **The Echo Ring**: every wave is worth 7% more than the one before (a boss three times a wave), up
@@ -166,7 +185,7 @@ also keeps its own beat instead of the frame that noticed it.
   - Gear focus: Epic, Mythic from wave 10, Ancient from 20, and from wave 20 a chance that each piece
     is an Immortal (1%, rising half a percent every 5 waves to 4% from wave 50). A run to wave 40
     pays about one Immortal either way: Gear (about 30 pieces at 3%) or Fragments (about 220).
-  - **What the Ring pays**: a table on the camp and at the stones in Haven, wave by wave for the
+  - **What the Ring pays** (since 0.61.2, *What the Stones Remember*): a table on the camp and at the stones in Haven, wave by wave for the
     chosen focus, with run totals from your starting wave, gear rarity and the Immortal chance.
   - **Waking it costs 5 shards** from wave 1, 2 more for each checkpoint further in.
   - Fixed: at the stones in Haven, the checkpoints could be another class's (after switching class);

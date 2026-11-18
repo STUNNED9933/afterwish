@@ -2224,6 +2224,86 @@ export class Renderer {
     }
   }
 
+  /**
+   * (0.61.2) A held skill shot (Deadeye): its whole line on the ground, gold sparks running down it, a
+   * sight at the far end, and a mark on each enemy it would hit, brightest on the first. `this.aim` is set
+   * by main.js every frame from src/ui/aim.js, or null.
+   */
+  syncAim(world, heroPos) {
+    const aim = this.aim;
+    if (!aim) {
+      if (this.aimView) this.aimView.group.visible = false;
+      return;
+    }
+    if (!this.aimView) {
+      const mat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      const group = new THREE.Group();
+      const line = new THREE.Group(); // turns with the aim; +X runs down the shot
+      const band = new THREE.Mesh(this.rectGeo(), mat(0xffc860, 0.14));
+      const edgeL = new THREE.Mesh(this.rectGeo(), mat(0xffc860, 0.55));
+      const edgeR = new THREE.Mesh(this.rectGeo(), mat(0xffc860, 0.55));
+      const core = new THREE.Mesh(this.rectGeo(), mat(0xfff2c8, 0.35));
+      const sparks = [];
+      for (let i = 0; i < 9; i++) {
+        const m = new THREE.Mesh(this.rectGeo(), mat(0xfff6dc, 0.8));
+        line.add(m);
+        sparks.push(m);
+      }
+      const sight = new THREE.Mesh(this.ringGeo(), mat(0xffe2a0, 0.9));
+      const sightDot = new THREE.Mesh(this.discGeo(), mat(0xffd27a, 0.35));
+      line.add(band, edgeL, edgeR, core, sight, sightDot);
+      group.add(line);
+      const marks = [];
+      for (let i = 0; i < 4; i++) {
+        const ring = new THREE.Mesh(this.ringGeo(), mat(i === 0 ? 0xffd27a : 0xffe9b8, i === 0 ? 1 : 0.6));
+        const disc = new THREE.Mesh(this.discGeo(), mat(0xffc860, i === 0 ? 0.3 : 0.14));
+        group.add(ring, disc);
+        marks.push({ ring, disc });
+      }
+      this.scene.add(group);
+      this.aimView = { group, line, band, edgeL, edgeR, core, sparks, sight, sightDot, marks };
+    }
+    const v = this.aimView;
+    v.group.visible = true;
+    const hx = heroPos ? heroPos.x : aim.x, hz = heroPos ? heroPos.z : aim.z;
+    const w = aim.width, R = aim.range;
+    v.line.position.set(hx, 0, hz);
+    v.line.rotation.y = -aim.dir;
+    v.band.position.set(0, 0.09, 0);
+    v.band.scale.set(R, 1, w);
+    v.edgeL.position.set(0, 0.1, -w / 2);
+    v.edgeL.scale.set(R, 1, 0.09);
+    v.edgeR.position.set(0, 0.1, w / 2);
+    v.edgeR.scale.set(R, 1, 0.09);
+    v.core.position.set(0, 0.1, 0);
+    v.core.scale.set(R, 1, 0.12);
+    // sparks run down the line, so it reads as a shot about to be loosed, not a drawing on the floor
+    const n = v.sparks.length;
+    for (let i = 0; i < n; i++) {
+      const f = (i / n + this.time * 0.55) % 1;
+      const m = v.sparks[i];
+      m.position.set(f * R, 0.11, 0);
+      m.scale.set(0.45, 1, w * 0.8);
+      m.material.opacity = 0.7 * Math.sin(f * Math.PI);
+    }
+    const pulse = 1 + Math.sin(this.time * 8) * 0.08;
+    v.sight.position.set(R, 0.12, 0);
+    v.sight.scale.setScalar(1.1 * pulse);
+    v.sightDot.position.set(R, 0.1, 0);
+    v.sightDot.scale.setScalar(0.5);
+    for (let i = 0; i < v.marks.length; i++) {
+      const h = aim.hits[i];
+      const mk = v.marks[i];
+      mk.ring.visible = mk.disc.visible = !!h;
+      if (!h) continue;
+      const r = (h.e.radius || 0.6) + (i === 0 ? 0.7 : 0.45);
+      mk.ring.position.set(h.e.x, 0.14, h.e.z);
+      mk.ring.scale.setScalar(r * (i === 0 ? pulse : 1));
+      mk.disc.position.set(h.e.x, 0.12, h.e.z);
+      mk.disc.scale.setScalar(r);
+    }
+  }
+
   syncMarkers(world) {
     const p = world.player;
     const place = (ring, id, pulse) => {
@@ -2256,6 +2336,7 @@ export class Renderer {
     this.syncChests(world);
     this.syncTelegraphs(world);
     this.syncMarkers(world);
+    this.syncAim(world, heroPos);
     this.updateParticles(dt);
     this.updateFlashes(dt);
     if (this.portalViews && this.exploreGroup && this.exploreGroup.visible) {

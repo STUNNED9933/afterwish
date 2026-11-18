@@ -3591,6 +3591,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const old = new World({ seed: 6, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 60, quests: { edric: { s: 'done', n: 1 } } } });
   check('keepsake: a hero who finished the quest before 0.53 has it too', old.player.keepsake && old.player.keepsake.ilvl === 60);
 }
+// --- (0.61.2) An enemy's wind-up warning goes with it ---
+{
+  const w = new World({ seed: 6, mode: 'explore', cls: 'archer' });
+  w.loadMap('greenwood', 'town');
+  const e = w.enemies.find((x) => !x.def.boss);
+  w.startWindup(e, e.def.attacks[0], false);
+  check('a wind-up shows its warning', w.telegraphs.some((t) => t.owner === e.id));
+  e.dead = true; w.enemies = w.enemies.filter((x) => x !== e); // gone some way that did not tidy up
+  w.step(CONFIG.TICK);
+  check('...and the warning goes when the enemy does, however it went', !w.telegraphs.some((t) => t.owner === e.id));
+}
+
 // --- The augment overhaul (0.61.1) ---
 {
   const { AUGMENTS } = await import('../src/sim/augments.js');

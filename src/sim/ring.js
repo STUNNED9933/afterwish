@@ -73,7 +73,7 @@ export function ringText(ring, amount) {
 }
 
 /**
- * (0.61.1) What the Ring pays, for its info tab: for each of `waves`, what that wave adds in each focus
+ * (0.61.1) What the Stones Remember, for its info tab: for each of `waves`, what that wave adds in each focus
  * (waves that are multiples of 5 are boss waves) and what a run from `from` up to and including it adds
  * up to, with the gear's rarity and Immortal chance there.
  */

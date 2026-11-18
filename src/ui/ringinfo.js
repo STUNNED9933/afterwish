@@ -1,4 +1,4 @@
-// (0.61.1) "What the Ring pays": the Echo Ring's rewards wave by wave for the chosen focus, and what a
+// (0.61.1) "What the Stones Remember": the Echo Ring's rewards wave by wave for the chosen focus, and what a
 // run from the chosen checkpoint adds up to, so a player knows what to expect (gear: rarity and the
 // chance of an Immortal). Used by the camp (town.js) and the Ring's stones in Haven (main.js).
 import { RING, RING_FOCUS, ringTable } from '../sim/ring.js';

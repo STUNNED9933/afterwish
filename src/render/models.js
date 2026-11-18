@@ -270,7 +270,31 @@ export function buildNpc(look) {
   return g;
 }
 
-/** A signpost with a board. `read` signs are drawn duller. */
+/**
+ * A glimmer (0.56.4; the code still calls them signs): a sliver of the fallen star, caught where it fell,
+ * that remembers what it saw. A shard of light turning over a faint ring on the ground; the renderer
+ * bobs it and dims it once the account has read it (see renderer syncGlimmers).
+ */
+export function buildGlimmer() {
+  const g = new THREE.Group();
+  const shardMat = new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffd88a, emissiveIntensity: 1.6, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.95 });
+  const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0).scale(1, 1.9, 1), shardMat);
+  shard.position.y = 1.35;
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0).scale(1, 1.9, 1), coreMat);
+  shard.add(core);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd88a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.9, 28).rotateX(-Math.PI / 2), haloMat);
+  halo.position.y = 0.05;
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false });
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), glowMat);
+  glow.position.y = 1.35;
+  g.add(shard, halo, glow);
+  g.userData.glimmer = { shard, halo, glow, shardMat, coreMat, haloMat, glowMat };
+  return g;
+}
+
+/** A signpost with a board (no longer placed on maps: they are glimmers now, 0.56.4). */
 export function buildSign() {
   const g = new THREE.Group();
   const wood = mat(0x6a4a30);

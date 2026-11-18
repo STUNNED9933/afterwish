@@ -90,7 +90,8 @@ export class ServerWorld {
     this.send(conn, { t: 'welcome', pid, code: this.name, server: true });
     const save = hello.save && typeof hello.save === 'object' ? hello.save : null;
     pl.acctRebirths = Math.max(0, Math.floor(Number(hello.acctRebirths) || 0));
-    this.place(pl, 'town', null, null, { save, name, cls: hello.cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold: hello.gold, tickets: hello.tickets });
+    const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
+    this.place(pl, 'town', null, null, { save, name, cls: hello.cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold: hello.gold, tickets: hello.tickets, signs });
     this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }
@@ -161,7 +162,7 @@ export class ServerWorld {
       copy = this.copies.get(key);
     }
     if (!copy) {
-      const w = new World({ mode: 'explore', save: hello.save, cls: hello.cls, name: hello.name, parryPreset: hello.parry, seed: (this.seed + this.copies.size * 7919 + this.ticks) >>> 0 });
+      const w = new World({ mode: 'explore', save: hello.save, cls: hello.cls, name: hello.name, parryPreset: hello.parry, signs: hello.signs, seed: (this.seed + this.copies.size * 7919 + this.ticks) >>> 0 });
       w.cur.pid = pl.pid;
       w.cur.name = hello.name;
       const p = w.player;

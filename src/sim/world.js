@@ -147,7 +147,9 @@ export class World {
     this.rerolls = CONFIG.AUGMENT_REROLLS;
     this.mods = defaultMods();
     this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1 };
+    this.knownSigns = opts.signs; // (0.56.4) what the account has already read: signs are read once per account
     this.player = this.makePlayer(save);
+    this.knownSigns = null;
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
     this.respawnT = 0;
     this.portalT = this.wayT = this.stoneT = 0;
@@ -276,7 +278,9 @@ export class World {
     this.bestWave = save?.bestWave ?? 0;
     this.maxCheckpoint = save?.maxCheckpoint ?? 1;
     this.parryPreset = CONFIG.PARRY_PRESETS[parryPreset] ? parryPreset : CONFIG.DEFAULT_PARRY_PRESET;
+    this.knownSigns = hello.signs; // (0.56.4) the friend's account's signs
     const p = this.makePlayer(save);
+    this.knownSigns = null;
     p.id = pid;
     p.autoAttack = hello.autoAttack !== false;
     p.gold = Math.max(0, Number(hello.gold) || 0);
@@ -434,7 +438,8 @@ export class World {
       visited: Array.isArray(save?.visited) ? save.visited.slice() : ['town'], // maps the Waygate can reach
       tomes: save?.tomes ?? 0, // skill points bought from the trainer
       quests: save?.quests ? JSON.parse(JSON.stringify(save.quests)) : {}, // id -> { s: 'active' | 'ready' | 'done', n }
-      signs: Array.isArray(save?.signs) ? save.signs.filter((id) => SIGNS[id]) : [], // signs read so far
+      // signs read so far: this hero's, and (0.56.4) every one the account has read in any class or life
+      signs: [...new Set([...(Array.isArray(save?.signs) ? save.signs : []), ...(Array.isArray(this.knownSigns) ? this.knownSigns : [])])].filter((id) => SIGNS[id]),
       bossKills: Object.assign({}, save?.bossKills), // boss type -> times beaten out in the world
       spec: save?.spec && SPECS[save.spec] && SPECS[save.spec].cls === this.cls ? save.spec : null, // subclass
       talents: migrateTalents(save?.talents), // talent id -> rank

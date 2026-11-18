@@ -93,5 +93,17 @@ check('every enemy on the road has a page', ['grunt', 'spitter', 'brute', 'stalk
   }
 }
 
+// (0.56.4) Glimmers (signs) are read once per account: a new world knows them, and a rebirth keeps them.
+{
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const w = new World({ seed: 5, mode: 'explore', signs: ['haven1', 'green2', 'nonsense'] });
+  check('a hero knows every glimmer its account has read', w.player.signs.includes('haven1') && w.player.signs.includes('green2') && !w.player.signs.includes('nonsense'));
+  w.addHero(7, { name: 'Friend', cls: 'mage', signs: ['fen1'] });
+  check('so does a friend joining, with their own account\'s', w.heroByPid(7).player.signs.join() === 'fen1');
+  const old = w.toSave();
+  const next = rebirthSave(Object.assign(old, { level: 100, signs: ['haven1', 'fen2'] }), () => null);
+  check('a rebirth keeps what the road remembers', next.signs.join() === 'haven1,fen2');
+}
+
 console.log(`\n${pass} passed, ${failed} failed`);
 if (failed) process.exit(1);

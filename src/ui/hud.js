@@ -17,9 +17,9 @@ import { MAPS } from '../sim/maps.js';
 export function goalText(q) {
   const g = q.goal;
   if (g.reach) return `Travel to ${MAPS[g.reach].name}`;
-  if (g.read) return `Read ${g.read} signs or notes (on any map)`;
-  if (g.sign) return `Find and read: ${SIGNS[g.sign].title} (${MAPS[SIGNS[g.sign].map].name})`;
-  if (g.signs) return `Read ${g.signs.length} ${g.what || 'signs'} in ${MAPS[SIGNS[g.signs[0]].map].name}`;
+  if (g.read) return `Find ${g.read} glimmers (on any map)`;
+  if (g.sign) return `Find the glimmer: ${SIGNS[g.sign].title} (${MAPS[SIGNS[g.sign].map].name})`;
+  if (g.signs) return `Find the ${g.signs.length} glimmers ${g.what || ''} in ${MAPS[SIGNS[g.signs[0]].map].name}`.replace('  ', ' ');
   if (g.wave) return `Clear wave ${g.wave} in the Echo Ring`;
   if (g.ending) return 'Press the Unwishing Glass into the Starwell, and choose';
   if (g.choose === 'scarf') return 'Find Tomas on the Greenwood road at dusk, and choose';
@@ -648,7 +648,7 @@ export class Hud {
     }
     for (const ob of world.map.obstacles) {
       if (ob.kind === 'npc') dot(ob.x, ob.z, 2.6, '#ffd27a');
-      else if (ob.kind === 'sign' && !world.player.signs.includes(ob.id)) dot(ob.x, ob.z, 2.2, '#e8e4dc');
+      else if (ob.kind === 'sign' && !world.player.signs.includes(ob.id)) dot(ob.x, ob.z, 2.2, '#ffe2a0'); // an unread glimmer (0.56.4)
     }
     for (const gate of world.map.portals) {
       dot(gate.x, gate.z, 5, '#6fb4ff');
@@ -712,7 +712,7 @@ export class Hud {
           l.el.innerHTML = (MARKS[world.npcMarker(l.gate.id)] || '') + l.gate.name;
         } else if (l.story === 'sign') {
           const unread = !world.player.signs.includes(l.gate.id);
-          l.el.textContent = unread ? 'Unread' : '';
+          l.el.textContent = unread ? 'A glimmer' : '';
           l.el.classList.toggle('hidden', !unread);
         }
       }
@@ -734,7 +734,7 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Read: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Touch the glimmer: ' + near.name}`;
   }
 
   /** The list of quests you are on, under the minimap. */

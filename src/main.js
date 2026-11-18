@@ -106,12 +106,18 @@ function start(hot = {}) {
   // Gold and arena tickets belong to the account, so both characters share them.
   const account = hot.account || loadAccount() || { gold: save?.gold || 0, tickets: CONFIG.START_TICKETS };
   account.casebook = Casebook.freshBook(account.casebook); // The Casebook (0.56): the account's, every class and every life
+  // (0.56.4) Signs are read once per account: everything any class has read counts for all of them.
+  if (!Array.isArray(account.signs)) {
+    const seen = new Set();
+    for (const c of Object.keys(CLASSES)) for (const id of (loadSave(c) || {}).signs || []) seen.add(id);
+    account.signs = [...seen];
+  }
   let caseSel = null; // the page open in the Casebook
   let caseShift = false; // Shift held: the other view, for as long as it is held
   let caseSaveT = null;
   let caseScanAt = 0;
   function makeWorld(opts) {
-    const w = new World(Object.assign({ parryPreset: settings.parryPreset, cls: settings.cls }, opts));
+    const w = new World(Object.assign({ parryPreset: settings.parryPreset, cls: settings.cls, signs: account.signs }, opts));
     renderer.setHeroClass(w.cls);
     setGearClass(w.cls);
     w.player.autoAttack = settings.autoAttack !== false;
@@ -299,6 +305,7 @@ function start(hot = {}) {
     if (mode === 'pause' && trialRun) $('btn-town').textContent = 'End this Weekly Echo run';
     else if (mode === 'pause') $('btn-town').textContent = net ? (net.role === 'host' ? 'Close the room and go to the title screen' : 'Leave the room') : world.mode === 'explore' ? 'Save and go to the title screen' : 'Back to camp';
     if (mode === 'pause') $('btn-wipe').classList.toggle('hidden', !!net);
+    if (mode === 'pause') renderSwitch();
     last = performance.now();
   }
 
@@ -1113,10 +1120,10 @@ function start(hot = {}) {
   function renderRead() {
     const sg = SIGNS[reading];
     if (!sg) return;
-    $('read-where').textContent = MAPS[sg.map].name;
+    $('read-where').textContent = `A glimmer · ${MAPS[sg.map].name}`;
     $('read-title').textContent = sg.title;
     $('read-text').textContent = sg.after && world.afterWish() ? sg.after : sg.text;
-    $('read-note').textContent = `Added to your journal (${world.player.signs.length} of ${SIGN_IDS.length} found). Press J to read them again.`;
+    $('read-note').textContent = `A sliver of the fallen star, and it remembers what it saw. Kept in your journal for every class and every life (${world.player.signs.length} of ${SIGN_IDS.length} found). Press J to see them again.`;
   }
 
   function renderJournal() {
@@ -1140,7 +1147,7 @@ function start(hot = {}) {
       const sg = SIGNS[id];
       return p.signs.includes(id)
         ? `<div class="lore"><b>${esc(sg.title)}</b><small>${MAPS[sg.map].name}</small><p>${esc(sg.text)}</p></div>`
-        : `<div class="lore missing"><b>Not found yet</b><small>${p.visited.includes(sg.map) ? MAPS[sg.map].name : 'Somewhere further up the road'}</small></div>`;
+        : `<div class="lore missing"><b>A glimmer not yet found</b><small>${p.visited.includes(sg.map) ? MAPS[sg.map].name : 'Somewhere further up the road'}</small></div>`;
     }).join('');
   }
 
@@ -1566,7 +1573,7 @@ function start(hot = {}) {
     settings.serverPass = pass;
     storeSettings(settings);
     mpMsg('Joining the server world...');
-    return joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why) => leaveRoom(why) }), url, null, $('btn-server'), { pass });
+    return joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why, code) => serverDropped(why, code) }), url, null, $('btn-server'), { pass });
   }
 
   async function joinWith(room, target, code, button, extra = {}) {
@@ -1574,11 +1581,11 @@ function start(hot = {}) {
     button.disabled = true;
     let welcome;
     try {
-      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, ...extra });
+      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, signs: account.signs, ...extra });
     } catch (err) {
       button.disabled = false;
       mpMsg(err.message, false);
-      return;
+      return false;
     }
     button.disabled = false;
     if (welcome.server) code = welcome.code;
@@ -1595,13 +1602,73 @@ function start(hot = {}) {
     world.step = () => {};
     world.cur.name = name;
     world.alliesList = [];
-    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
+    net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
     setMode('play');
     updateRoomBadge();
-    hud.banner(`Room ${code}`, 'Joined the party');
+    hud.banner(welcome.server ? 'The server world' : `Room ${code}`, welcome.server ? `Joined as ${CLASSES[settings.cls].name}` : 'Joined the party');
+    return true;
+  }
+
+  /**
+   * (0.56.4) Leaving the server world politely: ask for this hero's latest save and wait for it (up to
+   * 2 s), so nothing from the last few seconds is lost. The server sends it, then lets the hero go.
+   */
+  function finalSave(was) {
+    return new Promise((resolve) => {
+      if (!was || !was.server) return resolve(false);
+      was.onSave = () => resolve(true);
+      was.room.send({ t: 'bye' });
+      setTimeout(() => resolve(false), 2000);
+    });
+  }
+
+  let switching = false;
+  /** (0.56.4) On the server world: save this hero, then rejoin the same server as another class. */
+  async function switchServerClass(cls) {
+    if (!net || !net.server || switching || cls === settings.cls || !CLASSES[cls]) return;
+    switching = true;
+    const was = net;
+    setMode('play');
+    hud.banner(`Becoming your ${CLASSES[cls].name}`, 'Saving this hero, then rejoining the server world');
+    await finalSave(was);
+    net = null;
+    was.room.close();
+    hud.setRoom(null);
+    closePlayers();
+    closeChat();
+    settings.cls = cls;
+    storeSettings(settings);
+    save = loadSave(cls);
+    world = makeWorld({ save });
+    resetViews();
+    const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (why, code) => serverDropped(why, code) }), was.url, null, $('btn-server'), { pass: was.pass });
+    switching = false;
+    if (!ok) {
+      const why = $('mp-msg').textContent;
+      openMp();
+      mpMsg(`Your ${CLASSES[cls].name} could not rejoin: ${why} Your progress is saved.`, false);
+    }
+  }
+  function renderSwitch() {
+    const box = $('pause-switch');
+    const show = !!(net && net.server);
+    box.classList.toggle('hidden', !show);
+    if (!show) return;
+    const row = $('switch-classes');
+    row.innerHTML = '';
+    for (const c of CLASS_IDS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      const sv = c === settings.cls ? null : loadSave(c);
+      b.textContent = c === settings.cls ? `${CLASSES[c].name} (now)` : sv ? `${CLASSES[c].name} · ${sv.level}` : `${CLASSES[c].name} · new`;
+      b.disabled = c === settings.cls || switching;
+      b.setAttribute('aria-pressed', c === settings.cls ? 'true' : 'false');
+      b.addEventListener('click', () => switchServerClass(c));
+      row.appendChild(b);
+    }
   }
 
   /** Hosting: the world keeps running for everyone, even while this player is in a menu. */
@@ -1657,6 +1724,11 @@ function start(hot = {}) {
       account.gold = msg.gold;
       account.tickets = msg.tickets;
       storeAccount(account);
+      if (net.onSave) {
+        const done = net.onSave;
+        net.onSave = null;
+        done();
+      }
     } else if (msg.t === 'chat') {
       chatLine(msg.from ? `${msg.from}: ${msg.text}` : msg.text, !msg.from);
     } else if (msg.t === 'roster') {
@@ -1826,6 +1898,102 @@ function start(hot = {}) {
     resetViews();
     setMode('title');
     $('title-save').textContent = why;
+  }
+
+  // ------------------------------------------------- (0.56.4) when the server world lets you go
+  /**
+   * The server world closed the connection. Its last save has already arrived (it is sent first), so
+   * say so plainly. On an update (code 1012), watch for it to come back and offer to reload into the
+   * new version and rejoin in one click.
+   */
+  function serverDropped(why, code) {
+    const was = net;
+    const url = was && was.url;
+    const pass = was && was.pass;
+    leaveRoom(why);
+    const update = code === 1012;
+    showNotice({
+      title: update ? 'The server world is updating' : 'Disconnected from the server world',
+      text: update
+        ? 'The server restarts with the new version of the game each time the game is updated. Your hero was saved just before it closed, so nothing is lost. It is usually back within a minute; reloading the page gets you the new version, and you will rejoin by yourself.'
+        : `${why} Your hero is saved up to the last few seconds.`,
+      go: update ? 'Reload and rejoin' : 'Rejoin',
+      onGo: () => {
+        if (update) {
+          try {
+            sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url, at: Date.now() }));
+          } catch (err) {
+            /* (private mode: just reload) */
+          }
+          location.reload();
+        } else if (url) {
+          hideNotice();
+          joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), url, null, $('btn-server'), { pass }).then((ok) => {
+            if (!ok) {
+              const msg = $('mp-msg').textContent;
+              openMp();
+              mpMsg(msg, false);
+            }
+          });
+        }
+      },
+      watch: url,
+    });
+  }
+  let noticeWatch = null;
+  function showNotice({ title, text, go, onGo, watch }) {
+    $('notice-title').textContent = title;
+    $('notice-text').textContent = text;
+    const btn = $('btn-notice-go');
+    btn.textContent = go;
+    btn.onclick = onGo;
+    const st = $('notice-status');
+    st.textContent = '';
+    st.className = 'setting-desc';
+    $('notice').classList.remove('hidden');
+    clearInterval(noticeWatch);
+    if (watch) {
+      // is it back yet?
+      st.textContent = 'Waiting for the server world to come back...';
+      const check = async () => {
+        const h = await serverHealth(watch, 2500);
+        if ($('notice').classList.contains('hidden')) return clearInterval(noticeWatch);
+        if (h && h.open) {
+          st.textContent = 'It is back.';
+          st.className = 'setting-desc ok';
+          clearInterval(noticeWatch);
+        }
+      };
+      noticeWatch = setInterval(check, 4000);
+      setTimeout(check, 1500);
+    }
+  }
+  function hideNotice() {
+    $('notice').classList.add('hidden');
+    clearInterval(noticeWatch);
+  }
+  $('btn-notice-ok').addEventListener('click', hideNotice);
+  // Back from "Reload and rejoin": straight into the server world (the passcode is remembered).
+  try {
+    const rj = JSON.parse(sessionStorage.getItem('afterwish-rejoin') || 'null');
+    sessionStorage.removeItem('afterwish-rejoin');
+    if (rj && rj.url && Date.now() - rj.at < 10 * 60 * 1000 && settings.serverPass) {
+      setTimeout(async () => {
+        openMp();
+        mpMsg('Rejoining the server world...');
+        const ok = await joinWith(new ServerRoom({ onMessage: onNetMessage, onClose: (w, c) => serverDropped(w, c) }), rj.url, null, $('btn-server'), { pass: settings.serverPass });
+        const tries = (rj.tries || 0) + 1;
+        if (!ok && tries < 8 && /different versions|did not answer|Could not reach/.test($('mp-msg').textContent)) {
+          // The server came back before the website finished publishing the new version (or is still
+          // starting): wait a little, then reload and try again.
+          sessionStorage.setItem('afterwish-rejoin', JSON.stringify({ url: rj.url, at: rj.at, tries }));
+          mpMsg('The new version of the game is still on its way. Trying again in 20 seconds...');
+          setTimeout(() => location.reload(), 20000);
+        }
+      }, 600);
+    }
+  } catch (err) {
+    /* nothing to rejoin */
   }
 
   function refreshMenus() {
@@ -2397,6 +2565,16 @@ function start(hot = {}) {
       return;
     }
     if (net) {
+      if (net.server) {
+        // (0.56.4) wait for the server's last save first
+        const was = net;
+        $('btn-town').disabled = true;
+        finalSave(was).then(() => {
+          $('btn-town').disabled = false;
+          if (net === was) leaveRoom('You left the server world. Your progress is saved.');
+        });
+        return;
+      }
       leaveRoom(net.role === 'host' ? 'You closed the room.' : 'You left the room.');
       return;
     }
@@ -2868,7 +3046,11 @@ function start(hot = {}) {
         persist();
         break;
       case 'lore':
-        hud.feedText(`Journal: "${ev.title}" (${ev.found} of ${SIGN_IDS.length})`);
+        hud.feedText(`A glimmer remembers: "${ev.title}" (${ev.found} of ${SIGN_IDS.length})`);
+        if (!account.signs.includes(ev.id)) {
+          account.signs.push(ev.id); // (0.56.4) read once, for every class and every life
+          saveBook();
+        }
         break;
       case 'spec':
         sfx.pickup(5);

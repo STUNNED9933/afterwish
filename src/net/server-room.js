@@ -64,7 +64,7 @@ export class ServerRoom {
       ws.onclose = (e) => {
         clearTimeout(timer);
         if (!done) fail(e.reason || 'The server closed the connection.');
-        else if (!this.closed) this.onClose(e.reason || 'The connection to the server world was lost.');
+        else if (!this.closed) this.onClose(e.reason || 'The connection to the server world was lost.', e.code);
       };
     });
   }

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
-import { buildHero, buildEnemy, buildNpc, buildSign, buildBoard, buildAltar } from './models.js';
+import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, buildAltar } from './models.js';
 import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
 import { ENEMIES } from '../sim/defs.js';
@@ -321,6 +321,7 @@ export class Renderer {
   setMap(map) {
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
+    this.glimmers = []; // (0.56.4) and its glimmers
     this.preloadMap(map);
     const g = (this.exploreGroup = new THREE.Group());
     this.scene.add(g);
@@ -504,10 +505,11 @@ export class Renderer {
         board.rotation.y = Math.atan2(-o.x, -o.z);
         g.add(board);
       } else if (o.kind === 'sign') {
-        const sign = buildSign();
-        sign.position.set(o.x, 0, o.z);
-        sign.rotation.y = Math.atan2(-o.x, -o.z);
-        g.add(sign);
+        // (0.56.4) a glimmer where the sign stood
+        const gl = buildGlimmer();
+        gl.position.set(o.x, 0, o.z);
+        g.add(gl);
+        this.glimmers.push({ id: o.id, x: o.x, z: o.z, group: gl, parts: gl.userData.glimmer, phase: (o.x * 7.3 + o.z * 3.1) % 6.28, lit: 1 });
       } else if (o.kind === 'well') {
         const ring = new THREE.Mesh(new THREE.CylinderGeometry(o.r, o.r, 0.9, 10), flat(0x6a6d78));
         ring.position.set(o.x, 0.45, o.z);
@@ -1933,6 +1935,33 @@ export class Renderer {
   }
 
   /** Haven's people (0.44): idle, a look about now and then, a greeting when you come close. */
+  /** (0.56.4) Glimmers turn and bob; an unread one shines and sparkles, a read one is a faint glow. */
+  syncGlimmers(world, dt) {
+    if (!this.glimmers || !this.glimmers.length) return;
+    const read = world.player.signs || [];
+    const px = world.player.x, pz = world.player.z;
+    for (const gl of this.glimmers) {
+      const want = read.includes(gl.id) ? 0.25 : 1;
+      gl.lit += (want - gl.lit) * Math.min(1, dt * 2);
+      const t = this.time + gl.phase;
+      const P = gl.parts;
+      P.shard.rotation.y += dt * (0.4 + 0.8 * gl.lit);
+      P.shard.position.y = 1.35 + Math.sin(t * 1.6) * 0.12;
+      P.glow.position.y = P.shard.position.y;
+      P.shardMat.emissiveIntensity = 0.35 + 1.4 * gl.lit + 0.25 * gl.lit * Math.sin(t * 3);
+      P.shardMat.opacity = 0.5 + 0.45 * gl.lit;
+      P.coreMat.opacity = 0.2 + 0.7 * gl.lit;
+      P.haloMat.opacity = (0.1 + 0.3 * gl.lit) * (0.8 + 0.2 * Math.sin(t * 2));
+      P.glowMat.opacity = 0.05 + 0.16 * gl.lit;
+      P.halo.scale.setScalar(1 + 0.08 * Math.sin(t * 2));
+      // a few sparks drifting up from an unread one, only when you are near enough to see them
+      if (gl.lit > 0.6 && Math.abs(gl.x - px) + Math.abs(gl.z - pz) < 40 && Math.random() < dt * 6) {
+        const a = Math.random() * 6.283;
+        this.burst(gl.x + Math.cos(a) * 0.5, 0.6 + Math.random() * 1.2, gl.z + Math.sin(a) * 0.5, { count: 1, color: Math.random() < 0.5 ? 0xffe2a0 : 0xfff8e8, speed: 0.3, up: 1.4, gravity: -0.6, life: 1.2, size: 0.9 });
+      }
+    }
+  }
+
   syncPeople(world, dt) {
     if (!this.people || !this.people.length) return;
     const p = world.player;
@@ -2144,6 +2173,7 @@ export class Renderer {
     this.syncWalls(world);
     this.syncEnemies(world, alpha, dt);
     this.syncPeople(world, dt);
+    this.syncGlimmers(world, dt);
     this.syncProjectiles(world, alpha);
     this.syncLoot(world);
     this.syncChests(world);

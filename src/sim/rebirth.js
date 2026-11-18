@@ -170,6 +170,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,
     endings: Object.assign({}, old.endings), // (0.45) the endings you have seen stay seen
+    signs: Array.isArray(old.signs) ? old.signs.slice() : [], // (0.56.4) what the road remembers stays remembered
     keepsake: old.keepsake || null, // (0.53) Edric's Colours stays, made again at your new level
   };
 }

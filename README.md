@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Glimmers, and smoother server worlds (0.56.4)
+
+- **Signs are now glimmers:** slivers of the fallen star that remember what they saw, floating and
+  turning where the signs stood. Unread ones shine and sparkle; once read they dim to a faint glow.
+- **Read once per account:** every class and every life remembers every glimmer the account has seen
+  (and quests that ask for one count it straight away). Glimmers already read by any class count now.
+- **Switch class on the server world:** Menu → Play as another class saves this hero and rejoins the
+  same server as the other one in a few seconds. Leaving the server world now waits for its last save.
+- **When the server updates:** a pop-up says why you were disconnected and that your hero is saved,
+  watches for the server to come back, and "Reload and rejoin" brings you back on the new version.
+
 ### The Mage, reworked (0.56.3)
 
 - **Reach:** basic attacks 8.5 -> 10 m; Fire/Ice Bolt 14 -> 16 m and faster; Frozen Orb 15 m, faster and

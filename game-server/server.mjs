@@ -143,7 +143,8 @@ setInterval(() => {
 // Stopping (an update): everyone gets their latest save first.
 const stop = () => {
   for (const pl of world.players.values()) world.sendSave(pl, true);
-  for (const ws of wss.clients) ws.close(1012, 'The server is restarting. Rejoin in a minute.');
+  // 1012 = "service restart": the game shows a pop-up saying it is an update and the hero is saved (0.56.4)
+  for (const ws of wss.clients) ws.close(1012, 'The server world is restarting for an update. Your progress is saved.');
   setTimeout(() => process.exit(0), 500);
 };
 process.on('SIGTERM', stop);

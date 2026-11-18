@@ -254,7 +254,7 @@
       <dt><kbd>1</kbd></dt><dd>Drink a health potion.</dd>
       <dt><kbd>Tab</kbd></dt><dd>Gear and stats.</dd>
       <dt><kbd>Esc</kbd></dt><dd>Pause, settings, save and quit.</dd>
-      <dt>Right-click</dt><dd>On a person or a sign: walk over and talk or read. <kbd>G</kbd> does the same when you are next to one. Right-click outside a window to close it.</dd>
+      <dt>Right-click</dt><dd>On a person or a glimmer (a floating sliver of starlight): walk over and talk, or see what it remembers. <kbd>G</kbd> does the same when you are next to one. Right-click outside a window to close it.</dd>
     </dl>
     <div class="legend">
       <span><i class="swatch gold"></i>Pale gold attack: parry it</span>
@@ -263,10 +263,27 @@
   </div>
 </section>
 
+<section id="notice" class="hidden" role="alertdialog" aria-modal="true" aria-labelledby="notice-title">
+  <div class="menu-card notice-card">
+    <h2 id="notice-title"></h2>
+    <p id="notice-text" class="story-text"></p>
+    <p id="notice-status" class="setting-desc"></p>
+    <div class="notice-actions">
+      <button type="button" id="btn-notice-go" class="primary"></button>
+      <button type="button" id="btn-notice-ok" class="ghost">Close</button>
+    </div>
+  </div>
+</section>
+
 <section id="pause" class="screen hidden">
   <div class="menu-card">
     <h2>Paused</h2>
     <button type="button" id="btn-resume" class="primary">Resume</button>
+    <div class="setting hidden" id="pause-switch">
+      <div class="setting-label">Play as another class</div>
+      <div id="switch-classes" class="segmented" role="group" aria-label="Class"></div>
+      <p class="setting-desc">Saves this hero, then rejoins the server world as the other one, in a few seconds. Your party may need to invite you again.</p>
+    </div>
     <div class="setting">
       <div class="setting-label">Parry timing</div>
       <div id="parry-presets" class="segmented" role="group" aria-label="Parry timing"></div>
@@ -394,7 +411,7 @@
     <h2 id="read-title"></h2>
     <p id="read-text" class="story-text"></p>
     <p id="read-note" class="setting-desc"></p>
-    <button type="button" id="btn-read-close" class="ghost">Step away <kbd>Esc</kbd></button>
+    <button type="button" id="btn-read-close" class="ghost">Let it go <kbd>Esc</kbd></button>
   </div>
 </section>
 

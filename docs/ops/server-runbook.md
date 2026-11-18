@@ -106,7 +106,12 @@ Not built yet; do these first (each is a code change, ask Claude):
   going public (or make public servers start everyone fresh).
 - **Moderation:** kick, ban (by account), mute, a report button, and a chat filter.
 - **A public mode switch** (`AFTERWISH_PUBLIC=1`) that allows no passcode, only once the above exist.
-- DDoS proxy (step 8) on, and a short privacy note and rules page on the site.
+- **DDoS protection (not done yet, required before going public):** move stunnedgames.net's DNS to
+  Cloudflare (copy the Google Workspace MX and TXT records, and the `afterwish` record, before switching
+  the nameservers in Squarespace), proxy only `play` with SSL/TLS Full (strict), then lock the server's
+  firewall so ports 80 and 443 only accept Cloudflare's addresses (SSH stays open). The firewall step
+  matters: the server's address is already public, so without it attackers can skip Cloudflare.
+- A short privacy note (what sign-in stores: a Google or Discord id and a display name) and rules page.
 
 Until then, keep a passcode on every server.
 

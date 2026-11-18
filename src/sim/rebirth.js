@@ -69,7 +69,7 @@ export const REBIRTH_GLOWS = { 1: 'dawn', 3: 'thrice', 5: 'evermore', 10: 'etern
 
 /** A hero's rebirth record, from a save (or a fresh one). */
 export function migrateRebirth(r) {
-  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {}, kindling: {}, deepMax: 0, act3: {} };
+  const out = { n: 0, marks: 0, earned: 0, perks: {}, past: [], ng: 0, essence: 0, memories: {}, recalled: {}, kindling: {}, deepMax: 0, act3: {}, gifts: {} };
   if (!r || typeof r !== 'object') return out;
   out.n = Math.max(0, Math.floor(Number(r.n) || 0));
   out.marks = Math.max(0, Math.floor(Number(r.marks) || 0));
@@ -90,6 +90,9 @@ export function migrateRebirth(r) {
   out.ember = r.ember != null ? Math.max(0, Math.floor(Number(r.ember) || 0)) : 10 * out.n;
   if (r.lastEmber != null) out.lastEmber = Math.max(0, Math.floor(Number(r.lastEmber) || 0));
   if (r.act3 && typeof r.act3 === 'object') for (const k in r.act3) if (r.act3[k]) out.act3[k] = true;
+  // (0.57.6) story gifts of Ember already given (once per hero, whatever the life)
+  out.gifts = {};
+  if (r.gifts && typeof r.gifts === 'object') for (const k in r.gifts) if (r.gifts[k]) out.gifts[k] = true;
   return out;
 }
 

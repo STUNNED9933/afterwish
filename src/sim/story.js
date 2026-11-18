@@ -454,8 +454,15 @@ export const QUESTS = {
     done: 'You told it you would carry it. Ending. So the Cinder never has to break out of the mountain again.\n\nThe fever is over, then. Truly over.\n\nYour name. I have known it the whole time. I am going to tell you now, and it is going to hold still.',
     reward: { exp: 0, gold: 15000, item: 6, keys: 8, tickets: 8, glow: 'primordial' },
   },
+  // (0.57.6) A first look at the Deep, in the first life: you cannot touch what lives there, and learn why.
+  breath: {
+    giver: 'odile', level: 100, after: 'starwell', name: 'The Breath Below', goal: { reach: 'deep6' },
+    offer: "Something changed when the star's light went quiet. There is a crack under the Starwell now, and heat comes up out of it, slow, like breathing. Tobin's notes talk about a breath under the mountain. I always thought he meant the fever.\n\nGo down, just far enough to see. Do not try to win anything. The Waygate will take you to the edge of it.",
+    done: "You could not touch them. I know. Your blade went through them like smoke, and they did not even turn around.\n\nTobin wrote one line in the margin that I never understood: down there, only what you have let go of will protect you. He left this with it. A coal that never goes out. I think it was always meant for you.",
+    reward: { exp: 0, gold: 4000, keys: 3, tickets: 3, ember: 5 },
+  },
   unwish: {
-    giver: 'wren', level: 100, after: 'starwell', name: 'Unwish', goal: { ending: 1 }, give: { glass: 1 },
+    giver: 'wren', level: 100, after: 'breath', name: 'Unwish', goal: { ending: 1 }, give: { glass: 1 },
     offer: 'I kept one of these for nineteen years. An Unwishing Glass. I never had the courage to use it, and it was never mine to use.\n\nIt is yours. Take it down to the well, where the star fell. Press it in, and want nothing. Or... no. I will not tell you what else you could ask. You will know.',
     done: 'You came back. I did not think you would. I am so glad you did.\n\nSit. The fire is warm, and for the first time in a long time, it is only a fire.',
     reward: { exp: 0, gold: 5000, keys: 5, tickets: 5 },

@@ -9,6 +9,7 @@
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
 import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
+const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI)
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
@@ -3167,6 +3168,7 @@ export class World {
       scrap: r.scrap ? Math.round(r.scrap * scale) : 0,
       keys: r.keys || 0, tickets: r.tickets || 0, skill: r.skill || 0,
       item: r.item ?? null, slot: r.slot || null,
+      ember: r.ember && !(this.player.rebirth && this.player.rebirth.gifts && this.player.rebirth.gifts[id]) ? r.ember : 0, // (0.57.6) once per hero
     };
   }
 
@@ -3184,6 +3186,13 @@ export class World {
         this.emit('depthOpened', { depth: q.deep, numeral: DEEP.depths[q.deep].numeral, name: DEEP.depths[q.deep].name, need: DEEP.depths[q.deep].ember, ember: this.ember(p) });
       }
       if (id === 'deep6q') this.emit('ending', { kind: 'primordial' });
+    }
+    if (r.ember && p.rebirth) {
+      // (0.57.6) Ember from the story: kept through every rebirth, given once per hero
+      p.rebirth.gifts = p.rebirth.gifts || {};
+      p.rebirth.gifts[id] = true;
+      p.rebirth.ember = (p.rebirth.ember || 0) + r.ember;
+      this.emit('emberGift', { amount: r.ember, ember: this.ember(p), x: p.x, z: p.z });
     }
     p.gold += r.gold;
     p.scrap += r.scrap;
@@ -3472,9 +3481,19 @@ export class World {
     return lead && lead.depth && this.depthOpen(lead, lead.depth) ? lead.depth : 0;
   }
 
-  /** May this hero go down to Depth d? Level 100, and its story quest done (kept through rebirth). */
+  /**
+   * May this hero go down to Depth d? Level 100, and its story quest done (kept through rebirth). (0.57.6)
+   * The first Depth also opens in the main story: from taking The Breath Below, in any life.
+   */
   depthOpen(p, d) {
-    return !!DEEP.depths[d] && p.level >= DEEP.level && ((p.rebirth && p.rebirth.deepMax) || 0) >= d;
+    if (!DEEP.depths[d] || p.level < DEEP.level) return false;
+    if (((p.rebirth && p.rebirth.deepMax) || 0) >= d) return true;
+    return d === DEPTH_FIRST && !!((p.quests && p.quests.breath) || (p.rebirth && p.rebirth.gifts && p.rebirth.gifts.breath));
+  }
+
+  /** (0.57.6) Has the Deep opened to this hero at all (in the story, or by Act III)? */
+  deepKnown(p = this.player) {
+    return ((p.rebirth && p.rebirth.deepMax) || 0) > 0 || this.depthOpen(p, DEPTH_FIRST) || !!(p.quests && p.quests.breath);
   }
 
   /** This hero's Ember (0.54). */

@@ -688,7 +688,7 @@ function start(hot = {}) {
     root.innerHTML = '';
     const p = world.player;
     const rb = p.rebirth || {};
-    if (travelStone != null || !world.map.safe || !((rb.deepMax || 0) > 0 || (p.endings && p.endings.self > 0 && rb.n >= 1))) return;
+    if (travelStone != null || !world.map.safe || !(world.deepKnown(p) || (p.endings && p.endings.self > 0 && rb.n >= 1))) return;
     const lead = !(net && net.role === 'client') || !!(net && net.server);
     const ember = world.ember();
     const top = DEEP.depths[DEPTH_IDS[DEPTH_IDS.length - 1]].ember;
@@ -719,7 +719,7 @@ function start(hot = {}) {
     DEPTH_IDS.forEach((d, i) => {
       const D = DEEP.depths[d];
       const open = world.depthOpen(p, d);
-      const seen = (rb.deepMax || 0) >= d;
+      const seen = (rb.deepMax || 0) >= d || open; // (0.57.6) the first Depth's domain opens in the main story
       const s = emberScale(ember, D.ember);
       const row = document.createElement('div');
       row.className = 'deep-step' + (p.depth === d ? ' on' : '') + (open ? '' : ' sealed') + (open && s.one ? ' futile' : open && s.dealt < 1 ? ' short' : '');
@@ -861,6 +861,7 @@ function start(hot = {}) {
     if (r.skill) parts.push(`${r.skill} skill points`);
     const q = QUESTS[id];
     if (q.reward.unique && q.reward.unique[world.cls]) parts.push(`<span style="color:${RARITIES[6].color}">Edric's Sword (unique)</span>`);
+    if (r.ember) parts.push(`<span style="color:#ff8a4a">+${r.ember} Ember, kept through every rebirth</span>`);
     if (q.reward.keepsake) parts.push(`<span style="color:${RARITIES[6].color}">Edric's Colours: a keepsake ring in its own slot, always your level, kept through rebirth</span>`);
     if (q.reward.glow) parts.push(`${GLOWS[q.reward.glow].name} weapon glow`);
     if (id === 'scarf2') parts.push('a keepsake, maybe');
@@ -3497,6 +3498,10 @@ function start(hot = {}) {
         hud.float(renderer, ev.x, 3, ev.z, `Kindling ${ev.n}/${ev.max} · Ember ${ev.ember}`, 'word perfect');
         sfx.pickup(5);
         break;
+      case 'emberGift':
+        sfx.levelUp();
+        hud.banner(`+${ev.amount} Ember`, `What you have let go of protects you in the Deep. Your Ember is ${ev.ember}, and it stays with you through every rebirth.`);
+        break;
       case 'emberShort':
         if (!ev.self || ev.self === world.player) hud.banner('It does not count', `${ev.name} needs you to stand there with Ember ${ev.need} of your own (you have ${ev.have}). Being carried down is not the same.`);
         break;
@@ -3763,6 +3768,15 @@ function start(hot = {}) {
         hud.banner(ev.name, world.zone().sub);
         hud.screenFlash(0.5);
         sfx.cast('e');
+        {
+          // (0.57.6) The first time in the Deep: what Ember does, measured against this Depth
+          const D = DEEP.depths[(world.map && world.map.deep) || world.depthNow()];
+          if (D) {
+            const ember = world.ember();
+            const sc = emberScale(ember, D.ember);
+            hintOnce('deepEmber', `Depth ${D.numeral} asks for ${D.ember} Ember, and you have ${ember}. ${sc.one ? 'Below half of what it asks, every blow you land is 1: nothing here can be hurt by you yet.' : sc.dealt < 1 ? `Short of it, your blows land at ${Math.round(sc.dealt * 100)}% and you take more.` : 'You have enough: you fight here at full strength.'} Ember is what you let go of: every rebirth adds up to ${DEEP.emberMax}, by how built-up your gear was, and it stays with you.`, 16);
+          }
+        }
         if (ev.from === 'town') hintOnce('maps', 'Each map is ten levels tougher than the last, and enemies get stronger the deeper in you go. Stand in a portal to travel on.', 9);
         else if (world.chests && world.chests.length) hintOnce('chests', 'Treasure chests lie around every map (gold dots on the minimap). Walk over one to open it. Gilded chests hold better gear. Radiant ones are rare: Immortal Fragments, Mythic or Ancient gear, and once in a long while an Immortal.', 9);
         persist();

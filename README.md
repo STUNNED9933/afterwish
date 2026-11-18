@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A first look at the Deep (0.57.6)
+
+- **The Breath Below**, a new main-story quest from Odile between the Starwell and the Unwish: a crack
+  has opened under the Starwell. Taking it opens Depth VI in your first life (at level 100), so you
+  go down, find you can barely touch what lives there, and learn why: Ember. Handing it in gives
+  +5 Ember (once per hero, kept through every rebirth). The first time in the Deep, a hint explains
+  your Ember against what the Depth asks.
+
 ### Quests worth handing in (0.57.5)
 
 - Quest EXP is four times what it was, and measured at your own level (up to 10 above the quest), so a

@@ -2759,6 +2759,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   {
     const save = geared('mage', 100, 6);
     Object.assign(save, { bossKills: { boss3: 1, asker: 1 }, quests: { starwell: { s: 'done', n: 1 } }, tierMax: 3, worldTier: 3 });
+    // (0.57.6) The Breath Below comes between the Starwell and the Unwish
+    {
+      const w0 = new World({ seed: 9, cls: 'mage', mode: 'explore', save: JSON.parse(JSON.stringify(save)) });
+      const p0 = w0.player;
+      check('The Breath Below: Odile offers it after the Starwell, before the Unwish', w0.questOpen('breath') && !w0.questOpen('unwish'));
+      check('The first Depth stays shut until it is taken', !w0.depthOpen(p0, 6));
+      w0.command({ type: 'acceptQuest', id: 'breath' }); w0.step(CONFIG.TICK);
+      check('Taking it opens Depth VI (only VI), in the first life', w0.depthOpen(p0, 6) && !w0.depthOpen(p0, 7) && p0.rebirth.n === 0);
+      w0.loadMap('deep6', 'town');
+      check('Going down completes it', w0.questState('breath') === 'ready');
+      const before = w0.ember();
+      w0.command({ type: 'claimQuest', id: 'breath' }); w0.step(CONFIG.TICK);
+      check('Handing it in gives 5 Ember, for good', w0.ember() === before + 5 && p0.rebirth.gifts.breath);
+      check('...and the reward says no more Ember the next time round', w0.questReward('breath').ember === 0);
+    }
+    save.quests.breath = { s: 'done', n: 1 };
     const w = new World({ seed: 9, cls: 'mage', mode: 'explore', save });
     const p = w.player;
     check('Unwish: Wren offers it after the Starwell', w.questOpen('unwish'));

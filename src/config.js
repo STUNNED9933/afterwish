@@ -60,6 +60,10 @@ export const CONFIG = {
   // --- Ability ranks and augments --------------------------------------
   MAX_RANK: 20,
   RANK_DAMAGE: 0.06, // +6% ability damage per rank above 1
+  // Quest EXP (0.57.5): each quest pays its share of a level 4 times over, measured at your own level
+  // (never below the quest's, and no more than QUEST_EXP_LATE above it), so a quest handed in late still moves the bar.
+  QUEST_EXP: 4,
+  QUEST_EXP_LATE: 10,
   // Pyromancer burns (0.56.3): ten times the stacks, each a fifth as hot, and gaining heat as they pile up
   // (roar: at a full burn every stack burns this much more, in a straight line from none). Applications add
   // ADD times the stacks they name; caps and haste stacks are CAP times theirs.

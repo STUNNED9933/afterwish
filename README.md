@@ -159,6 +159,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Quests worth handing in (0.57.5)
+
+- Quest EXP is four times what it was, and measured at your own level (up to 10 above the quest), so a
+  quest handed in late pays as well as one on time: about 2 to 4.5 levels each. Quests now carry about
+  60% of the climb to 100; the rest is still earned in fights.
+
 ### Side-story choices work online (0.57.4)
 
 - Tomas's scarf (Red Scarf, Part Two) and meeting Odile in the garden (An Ending for Tobin) now work on

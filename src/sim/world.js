@@ -3162,7 +3162,7 @@ export class World {
     const r = q.reward || {};
     const scale = 1 + 0.12 * (q.level - 1);
     return {
-      exp: r.exp ? Math.round(expToNext(Math.min(q.level, CONFIG.MAX_LEVEL - 1)) * r.exp) : 0,
+      exp: r.exp ? Math.round(expToNext(Math.min(Math.max(q.level, Math.min(this.player.level, q.level + CONFIG.QUEST_EXP_LATE)), CONFIG.MAX_LEVEL - 1)) * r.exp * CONFIG.QUEST_EXP) : 0,
       gold: r.gold ? Math.round((r.gold * scale) / 5) * 5 : 0,
       scrap: r.scrap ? Math.round(r.scrap * scale) : 0,
       keys: r.keys || 0, tickets: r.tickets || 0, skill: r.skill || 0,

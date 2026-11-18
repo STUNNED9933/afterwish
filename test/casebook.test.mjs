@@ -105,5 +105,21 @@ check('every enemy on the road has a page', ['grunt', 'spitter', 'brute', 'stalk
   check('a rebirth keeps what the road remembers', next.signs.join() === 'haven1,fen2');
 }
 
+// (0.57.5) Quest EXP: four times a quest's share of a level, measured at your level (up to 10 above it)
+{
+  const { QUESTS } = await import('../src/sim/story.js');
+  const { expToNext } = await import('../src/sim/defs.js');
+  const { CONFIG } = await import('../src/config.js');
+  const w = new World({ seed: 9, mode: 'explore' });
+  const id = Object.keys(QUESTS).find((k) => QUESTS[k].reward && QUESTS[k].reward.exp === 1 && QUESTS[k].level >= 20 && QUESTS[k].level <= 80);
+  const q = QUESTS[id];
+  w.player.level = q.level;
+  check('a quest on time pays four of its levels', w.questReward(id).exp === Math.round(expToNext(q.level) * 4), `${id}`);
+  w.player.level = q.level + 6;
+  check('handed in late, it is measured at your level', w.questReward(id).exp === Math.round(expToNext(q.level + 6) * 4));
+  w.player.level = q.level + 30;
+  check('...up to ten levels above the quest', w.questReward(id).exp === Math.round(expToNext(Math.min(q.level + CONFIG.QUEST_EXP_LATE, 99)) * 4));
+}
+
 console.log(`\n${pass} passed, ${failed} failed`);
 if (failed) process.exit(1);

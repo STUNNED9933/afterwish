@@ -18,6 +18,34 @@ export const WEEK_MS = 7 * 24 * 3600 * 1000;
 export const TRIAL_MAX_FLOOR = 50;
 export const TRIAL_MAX_TICKS = Math.round((40 * 60) / CONFIG.TICK);
 const LEVELS = [30, 60, 90];
+/**
+ * (0.60) Each week has a twist on the rules, the same for everyone (and for the server's replay).
+ * They rotate on a different cycle from the levels and featured slots, so weeks rarely repeat.
+ */
+export const TWISTS = {
+  glass: { name: 'Glass Cannon', desc: 'You deal 50% more damage, and take 50% more.' },
+  dry: { name: 'Dry Spell', desc: 'No potions. Clearing a floor heals you fully instead.' },
+  riposte: { name: 'Riposte', desc: 'A perfect parry heals 10% of your health.' },
+  draft: { name: 'Deep Draft', desc: 'An augment after every floor, not every other one.' },
+  swarm: { name: 'Swarm', desc: 'A third more enemies on every floor, each with a quarter less health.' },
+  haste: { name: 'Haste', desc: 'Your cooldowns run 30% faster, and enemies hit 30% harder.' },
+};
+export const TWIST_IDS = Object.keys(TWISTS);
+
+/**
+ * (0.60) Taking part in a week (a run on its board) is worth this, once a week per account; and a
+ * finished week's place earns a title (the board server's awardTitle): first, the top three, the top
+ * tenth of a subclass's board. A Champion also earns the Echo Champion weapon glow.
+ */
+export const WEEKLY_REWARD = { fragments: 25, dust: 10, tickets: 2 };
+export const TITLES = { champion: 'Weekly Echo Champion', top3: 'Weekly Echo Top Three', top10: 'Weekly Echo Top Tenth' };
+const TITLE_RANK = { champion: 3, top3: 2, top10: 1 };
+/** The best title among placings ([{ title }]), as its words, or ''. */
+export function bestTitle(places) {
+  let best = null;
+  for (const pl of places || []) if (pl && TITLE_RANK[pl.title] && (!best || TITLE_RANK[pl.title] > TITLE_RANK[best])) best = pl.title;
+  return best ? TITLES[best] : '';
+}
 const FEATURED = ['weapon', 'boots', 'chest', 'helm', 'ring'];
 /** Commands a recorded run may contain. Anything else is dropped before a replay. */
 export const TRIAL_COMMANDS = new Set(['move', 'attack', 'attackMove', 'stop', 'cast', 'parry', 'potion', 'augment', 'reroll', 'nextWave', 'setAutoAttack']);
@@ -41,6 +69,7 @@ export function trialWeek(index) {
     seed: hash32(`afterwish-weekly-echo-${index}`),
     level: LEVELS[((index % LEVELS.length) + LEVELS.length) % LEVELS.length],
     featured: FEATURED[((index % FEATURED.length) + FEATURED.length) % FEATURED.length],
+    twist: TWIST_IDS[(((index * 5 + 2) % TWIST_IDS.length) + TWIST_IDS.length) % TWIST_IDS.length], // (0.60)
     starts: TRIAL_EPOCH + index * WEEK_MS,
     ends: TRIAL_EPOCH + (index + 1) * WEEK_MS,
   };
@@ -160,7 +189,7 @@ export function buildTrialWorld(week, build) {
     bestWave: 0,
     maxCheckpoint: 1,
   };
-  const w = new World({ seed: week.seed, mode: 'arena', cls: build.cls, save, parryPreset: 'standard', startWave: 1, trial: { week: week.index } });
+  const w = new World({ seed: week.seed, mode: 'arena', cls: build.cls, save, parryPreset: 'standard', startWave: 1, trial: { week: week.index, twist: week.twist } });
   w.player.autoAttack = build.autoAttack !== false;
   return w;
 }

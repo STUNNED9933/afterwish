@@ -3541,6 +3541,36 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const old = new World({ seed: 6, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 60, quests: { edric: { s: 'done', n: 1 } } } });
   check('keepsake: a hero who finished the quest before 0.53 has it too', old.player.keepsake && old.player.keepsake.ilvl === 60);
 }
+// --- The Weekly Echo's twists (0.60) ---
+{
+  const T = await import('../src/sim/trial.js');
+  const weeks = [0, 1, 2, 3, 4, 5].map((i) => T.trialWeek(100 + i).twist);
+  check('Weekly twists: one each week, and every one comes round', T.TWIST_IDS.every((t) => weeks.includes(t)) && weeks.every((t) => T.TWISTS[t]), weeks.join(' '));
+  const weekWith = (tw) => { for (let i = 0; i < 12; i++) { const wk = T.trialWeek(200 + i); if (wk.twist === tw) return wk; } };
+  const run = (tw) => { const wk = weekWith(tw); return T.buildTrialWorld(wk, T.defaultBuild(wk, 'warrior')); };
+  const twin = (tw) => { const w = run(tw); const o = run(tw); o.twist = null; return [w, o]; }; // the same week, with and without its twist
+  const [g, plain] = twin('glass');
+  check('Glass Cannon: the run knows its twist', g.twist === 'glass' && !plain.twist);
+  const e1 = g.spawnEnemy('grunt', { x: 5, z: 0 }), e2 = plain.spawnEnemy('grunt', { x: 5, z: 0 });
+  e1.hp = e1.maxHp = e2.hp = e2.maxHp = 1e6;
+  g.hitEnemy(e1, 100, { canCrit: false }); plain.hitEnemy(e2, 100, { canCrit: false });
+  check('Glass Cannon: you hit 50% harder', Math.abs((1e6 - e1.hp) / (1e6 - e2.hp) - 1.5) < 0.01, `${1e6 - e1.hp} vs ${1e6 - e2.hp}`);
+  const d = run('dry'); d.player.hp = 10; const pots = d.player.potions;
+  d.command({ type: 'potion' }); d.runCommands();
+  check('Dry Spell: no potions', d.player.hp === 10 && d.player.potions === pots);
+  const [h, hn] = twin('haste');
+  check('Haste: cooldowns run 30% faster', Math.abs(h.rawCooldown('q') * 1.3 - hn.rawCooldown('q')) < 1e-6, `${h.rawCooldown('q').toFixed(2)} vs ${hn.rawCooldown('q').toFixed(2)}`);
+  const sw = run('swarm'); sw.startWave(); const sq = sw.wave.queue.length;
+  const ns = run('glass'); ns.startWave();
+  check('Swarm: a third more enemies on a floor', sq > ns.wave.queue.length, `${sq} vs ${ns.wave.queue.length}`);
+  const df = run('draft');
+  for (let i = 0; i < 4000 && df.wave.cleared < 2; i++) {
+    if (df.offer) { df.command({ type: 'augment', id: df.offer.choices[0] }); df.runCommands(); }
+    for (const e of df.enemies.slice()) if (!e.dead) df.hitEnemy(e, 1e12);
+    df.player.hp = df.player.stats.maxHp; df.step(CONFIG.TICK);
+  }
+  check('Deep Draft: an augment after floor 2 too', df.wave.cleared >= 2 && (df.offer || df.augments.length >= 2), df.augments.length);
+}
 // --- The Echo Ring's spoils (0.59) ---
 {
   const { ringGain, newRing, RING } = await import('../src/sim/ring.js');

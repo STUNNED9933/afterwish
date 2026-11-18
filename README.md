@@ -159,6 +159,24 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Weekly Echo: a twist each week, and something for taking part (0.60)
+
+- **A twist each week**, the same for everyone (and for the boards' replay check): Glass Cannon
+  (+50% damage dealt and taken), Dry Spell (no potions; a floor heals you fully), Riposte (a perfect
+  parry heals 10%), Deep Draft (an augment after every floor), Swarm (a third more enemies, a
+  quarter less health each), Haste (cooldowns 30% faster, enemies hit 30% harder). Shown on the
+  Weekly Echo screen and when a run starts. Everyone still meets the same waves and the same offers.
+- **Taking part** (a run on the week's boards) earns +25 Immortal Fragments, +10 Wishdust and +2
+  starglass shards, once a week. In this browser: claim it on the Weekly Echo screen, for the
+  character you choose. Online: your character gets it from the server world when you join (it asks
+  the boards with this browser's board name, which then belongs to that account and no other).
+- **Titles**: when a week ends, first on a subclass's board is its Champion (and earns the Echo
+  Champion weapon glow); the top three and the top tenth earn titles too. Your best title shows
+  by your name in the server world's player list.
+- The Weekly Echo has its own button on the title screen.
+- Boards server: `GET /me` (whose token this is) and `GET /awards?player=` (weeks played, places and
+  titles). The deploy passes the boards' address (`TRIAL_API_URL`) to the server world's env file.
+
 ### The Echo Ring, reworked and online (0.59)
 
 - **Choose what you are here for** before waking the Ring: gold, Immortal Fragments, Wishdust, or
@@ -270,7 +288,7 @@ also keeps its own beat instead of the frame that noticed it.
   online" on the title screen (or "Play alone" under Your account). It runs on the server world, in a
   Haven of their own: off the player list, no chat or invites, saved to the account like any online
   play. Browser characters stay for playing offline.
-- Next: the Weekly Echo for online characters.
+- The Echo Ring and the Weekly Echo's rewards work for online characters (0.59, 0.60).
 
 ### Accounts and online characters (0.57.0)
 

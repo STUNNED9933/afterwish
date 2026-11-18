@@ -116,6 +116,20 @@ let limited = false;
 for (let i = 0; i < 25 && !limited; i++) limited = (await req('/runs', { method: 'POST', body: { week: 0 }, token: a.token })).http === 429;
 ok(limited, 'runs are rate limited per player');
 
+// (0.60) Who am I, and placings: the weeks played, and titles once a week is over
+const meA = await req('/me', { token: a.token });
+ok(meA.http === 200 && meA.id === a.id, 'a token says whose it is');
+ok((await req('/me', { token: 'f'.repeat(64) })).http === 401, '...and an unknown one is refused');
+const aw0 = await req(`/awards?player=${a.id}`);
+ok(aw0.http === 200 && aw0.played.includes(0) && aw0.places.length === 0, 'this week counts as played straight away, with no title until it ends');
+const NEXT = NOW + 7 * 24 * 3600 * 1000;
+const aw1 = await req(`/awards?player=${a.id}`, { now: NEXT });
+const champ = aw1.places.find((x) => x.week === 0 && x.spec === 'berserker');
+ok(champ && champ.rank === 1 && champ.title === 'champion', 'when the week is over, first on a board is its Champion');
+ok((await req('/awards?player=nope')).http === 400, 'awards need a player id');
+const { awardTitle } = await import('../server/src/app.js');
+ok(awardTitle(2, 50) === 'top3' && awardTitle(5, 50) === 'top10' && awardTitle(6, 50) === null && awardTitle(4, 10) === null, 'titles: first, the top three, the top tenth');
+
 ok(weekIndexAt(NOW) === 0, 'test clock sits in week 0');
 console.log(`\n${pass} passed, ${failed} failed`);
 if (failed) process.exit(1);

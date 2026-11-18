@@ -81,6 +81,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
 const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, RING } from './ring.js';
+import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
 export class World {
@@ -150,6 +151,7 @@ export class World {
     this.mods = defaultMods();
     this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1 };
     this.ring = this.mode === 'arena' && opts.focus ? newRing(opts.focus) : null; // (0.59) the run's spoils (ring.js)
+    this.twist = (opts.trial && opts.trial.twist) || null; // (0.60) the Weekly Echo's twist on the rules (trial.js TWISTS)
     this.knownSigns = opts.signs; // (0.56.4) what the account has already read: signs are read once per account
     this.player = this.makePlayer(save);
     this.knownSigns = null;
@@ -944,6 +946,7 @@ export class World {
 
   usePotion() {
     const p = this.player;
+    if (this.twist === 'dry') return; // (0.60) Dry Spell
     if (p.potions <= 0 || p.potionCd > 0 || p.hp >= p.stats.maxHp) return;
     p.potions--;
     p.potionCd = CONFIG.POTION_COOLDOWN;
@@ -967,7 +970,7 @@ export class World {
   /** Cooldown in seconds after ranks, augments and ability haste, before Overflow's floor. */
   rawCooldown(slot) {
     const p = this.player;
-    return this.kit[slot].cd * this.mods[slot + 'Cd'] * (1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1)) * (100 / (100 + p.stats.haste));
+    return this.kit[slot].cd * this.mods[slot + 'Cd'] * (1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1)) * (100 / (100 + p.stats.haste)) * (this.twist === 'haste' ? 1 / 1.3 : 1); // (0.60) Haste
   }
 
   /** Overflow (0.43 for Warrior and Mage; every class since 0.50): the shortest a cooldown can be. */
@@ -2675,6 +2678,8 @@ export class World {
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     const from = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
     if (from && from.ember > 0) rawDamage *= emberScale(this.ember(p), from.ember).taken; // Ember (0.54)
+    if (this.twist === 'glass') rawDamage *= 1.5; // (0.60) Glass Cannon
+    else if (this.twist === 'haste') rawDamage *= 1.3; // (0.60) Haste
     // Hold the Line (Bulwark): you and friends near a Bulwark holding the line take less.
     const holder = this.heroes.find((h) => h.player.bastionT > 0 && !h.player.dead && dist(h.player.x, h.player.z, p.x, p.z) <= 8);
     if (holder) rawDamage *= 1 - Math.min(0.75, (holder.kit.r.dr || 0.35) + (holder.mods.bastionDr || 0)); // (Bastion Plate: 50%)
@@ -2719,6 +2724,7 @@ export class World {
         if (m.bluetrim) this.healPlayer(p.stats.maxHp * 0.04, true); // Edric's Colours (0.47)
         if (perfect) {
           this.stats.perfects++;
+          if (this.twist === 'riposte') this.healPlayer(p.stats.maxHp * 0.1, true); // (0.60) Riposte
           if (m.edric) {
             // Edric's Sword (0.47): blue trim; the parried enemy is struck back, and you hit harder for a while
             p.edricStacks = Math.min(3, (p.edricT > 0 ? p.edricStacks || 0 : 0) + 1);
@@ -4412,6 +4418,23 @@ export class World {
   }
 
   /**
+   * (0.60) The Weekly Echo's rewards: `weeks` weeks taken part in (each worth WEEKLY_REWARD), and the
+   * Echo Champion glow for a Champion. Given by the server world (shards.js) after asking the boards,
+   * or by the game for a character in this browser. Never a command a player can send.
+   */
+  weeklyReward(weeks, champion = false) {
+    const p = this.player;
+    const n = Math.max(0, Math.floor(weeks) || 0);
+    if (n) {
+      this.giveMisc('fragment', WEEKLY_REWARD.fragments * n);
+      p.dust += WEEKLY_REWARD.dust * n;
+      p.tickets += WEEKLY_REWARD.tickets * n;
+    }
+    if (champion) this.unlockGlow('echoed');
+    if (n || champion) this.emit('weeklyReward', { weeks: n, fragments: WEEKLY_REWARD.fragments * n, dust: WEEKLY_REWARD.dust * n, tickets: WEEKLY_REWARD.tickets * n, champion: !!champion });
+  }
+
+  /**
    * (0.59) On the server world: wake the Echo Ring from Haven (a shard), with what you are here for.
    * The run is a copy of its own (shards.js); in the browser the camp starts one instead (main.js).
    */
@@ -5365,6 +5388,7 @@ export class World {
     if (!at) {
       // Arena: later waves hit harder and last longer whatever the level, and pay less EXP.
       scale.hp *= 1 + CONFIG.ARENA_WAVE_HP * (this.wave.n - 1);
+      if (this.twist === 'swarm') scale.hp *= 0.75; // (0.60) Swarm
       scale.dmg *= 1 + CONFIG.ARENA_WAVE_DMG * (this.wave.n - 1);
       scale.exp *= CONFIG.ARENA_EXP;
     }
@@ -5944,6 +5968,7 @@ export class World {
     if (e.offerT > 0) return; // the Asker, waiting for your answer, cannot be hurt
     const p = this.player;
     let dmg = base;
+    if (this.twist === 'glass') dmg *= 1.5; // (0.60) Glass Cannon
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
     if (p.edricT > 0) dmg *= 1 + 0.12 * (p.edricStacks || 0); // Edric's Sword (0.47)
     if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.8) dmg *= 1.15; // Edric's Colours
@@ -6753,6 +6778,11 @@ export class World {
     const w = this.wave;
     w.n++;
     w.queue = buildWave(w.n, this.streamRng('wave', w.n));
+    if (this.twist === 'swarm') {
+      // (0.60) Swarm: a third more of the floor's own kinds (never another boss), each a quarter weaker (enemyScale)
+      const small = w.queue.filter((t) => !(ENEMIES[t] && ENEMIES[t].boss));
+      for (let i = 0; i < Math.ceil(small.length / 3); i++) w.queue.push(small[i % small.length]);
+    }
     w.total = w.queue.length;
     w.phase = 'active';
     w.spawnT = 0;
@@ -6787,7 +6817,7 @@ export class World {
       w.timer = CONFIG.INTERMISSION;
       this.bestWave = Math.max(this.bestWave, w.n);
       this.projectiles = [];
-      this.healPlayer(p.stats.maxHp * CONFIG.WAVE_CLEAR_HEAL, true);
+      this.healPlayer(p.stats.maxHp * (this.twist === 'dry' ? 1 : CONFIG.WAVE_CLEAR_HEAL), true); // (0.60) Dry Spell: a full heal
       p.potions = Math.min(CONFIG.MAX_POTIONS, p.potions + 1);
       for (const l of this.loot) l.magnet = true;
       const boss = w.n % CONFIG.BOSS_EVERY === 0;
@@ -6823,7 +6853,7 @@ export class World {
       }
       this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.
-      if (w.n % 2 === 1 || boss) this.makeOffer(boss);
+      if (w.n % 2 === 1 || boss || this.twist === 'draft') this.makeOffer(boss); // (0.60) Deep Draft: every floor
     }
   }
 

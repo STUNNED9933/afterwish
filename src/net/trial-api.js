@@ -111,6 +111,11 @@ export function fetchReplay(runId) {
   return call(`/runs/${encodeURIComponent(runId)}/replay`);
 }
 
+/** (0.60) A player's placings: weeks played, and finished weeks' places and titles. */
+export function awards(id) {
+  return call(`/awards?player=${encodeURIComponent(id)}`);
+}
+
 export function current() {
   return call('/trial/current');
 }

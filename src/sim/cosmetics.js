@@ -16,6 +16,7 @@ export const GLOWS = {
   hearth: { name: 'Hearthlight', color: 0xffb060, how: 'Haven Grows' },
   primordial: { name: 'Sixfold', color: 0xff9a5a, how: 'Answer the Stillness at the bottom of the Deep' }, // (0.54)
   afterlight: { name: 'Afterlight', color: 0xfff6d6, how: 'Unwish yourself at the Starwell' }, // (0.45)
+  echoed: { name: 'Echo Champion', color: 0x9fe7ff, how: 'Finish first on a Weekly Echo board' }, // (0.60)
 };
 export const GLOW_IDS = Object.keys(GLOWS);
 /** Which glow each Remnant can drop. */

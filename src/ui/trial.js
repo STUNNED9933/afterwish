@@ -3,7 +3,7 @@ import { CLASSES } from '../sim/classes.js';
 import { SPECS, talentPointsAt } from '../sim/talents.js';
 import { CONFIG } from '../config.js';
 import { SLOT_NAMES } from '../sim/items.js';
-import { validateBuild, defaultBuild, TRIAL_MAX_FLOOR } from '../sim/trial.js';
+import { validateBuild, defaultBuild, TRIAL_MAX_FLOOR, TWISTS } from '../sim/trial.js';
 import * as api from '../net/trial-api.js';
 import { loadTrialRuns } from '../hall.js';
 
@@ -91,8 +91,9 @@ export class TrialScreen {
     const c = CLASSES[this.cls];
     const b = this.build();
     $('trial-week').textContent = `The Weekly Echo · week ${wk.index + 1}`;
-    $('trial-title').textContent = `${SLOT_NAMES[wk.featured]} week, level ${wk.level}`;
-    $('trial-rules').textContent = `Everyone who enters this week meets the same echo: level ${wk.level}, standard Epic gear, an Immortal ${SLOT_NAMES[wk.featured].toLowerCase()}, the same waves and the same augment offers, and the Standard parry window. Enter as often as you like; your best run counts. It ends at floor ${TRIAL_MAX_FLOOR} or after 40 minutes. The echo changes in ${until(wk.ends)}.`;
+    const tw = TWISTS[wk.twist];
+    $('trial-title').textContent = `${SLOT_NAMES[wk.featured]} week, level ${wk.level}${tw ? ` · ${tw.name}` : ''}`;
+    $('trial-rules').textContent = `Everyone who enters this week meets the same echo: level ${wk.level}, standard Epic gear, an Immortal ${SLOT_NAMES[wk.featured].toLowerCase()}, the same waves and the same augment offers, and the Standard parry window.${tw ? ` This week's twist, ${tw.name}: ${tw.desc}` : ''} Enter as often as you like; your best run counts. It ends at floor ${TRIAL_MAX_FLOOR} or after 40 minutes. The echo changes in ${until(wk.ends)}.`;
 
     // --- Result of the run that just ended
     const res = $('trial-result');

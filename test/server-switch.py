@@ -5,7 +5,9 @@ import sys, pathlib, subprocess, time, os, signal
 from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/server-switch'); OUT.mkdir(parents=True, exist_ok=True)
-url = 'file://' + str(ROOT / 'dist' / 'index.html') + '?server=ws://127.0.0.1:8787'
+# served over http (0.60): a file:// page's storage can come back empty after the game reloads itself
+url = 'http://localhost:8772/index.html?server=ws://127.0.0.1:8787'
+web = subprocess.Popen(['python3', '-m', 'http.server', '8772', '--directory', str(ROOT / 'dist')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 env = dict(os.environ, AFTERWISH_PASSCODE='stun', PORT='8787')
 def start():
     return subprocess.Popen(['node', 'game-server/server.mjs'], cwd=str(ROOT), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -54,5 +56,6 @@ with sync_playwright() as pw:
     check('no page errors', not errs, errs[:3])
     b.close()
 srv.terminate()
+web.terminate()
 print('FAILED' if fails else 'ALL PASSED')
 sys.exit(1 if fails else 0)

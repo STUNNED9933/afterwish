@@ -40,6 +40,7 @@ const accounts = accountsOn ? new AccountStore(process.env.STATE_DIRECTORY || pr
 const world = new ServerWorld({
   accounts,
   requireAccount: accountsOn && process.env.ACCOUNTS !== 'optional',
+  trialApi: process.env.TRIAL_API_URL || '', // (0.60) the Weekly Echo boards: rewards for taking part, titles
   name: process.env.WORLD_NAME || 'Haven',
   passcode: PASSCODE,
   maxPlayers: Number(process.env.MAX_PLAYERS) || SERVER_LIMITS.players,

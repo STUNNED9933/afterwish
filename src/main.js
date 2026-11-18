@@ -3,7 +3,7 @@
 import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
-import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand } from './sim/trial.js';
+import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand, TWISTS, WEEKLY_REWARD, bestTitle } from './sim/trial.js';
 import { SIM_VERSION } from './sim/version.js';
 import { TrialScreen, clock as trialClock } from './ui/trial.js';
 import { loadHall, recordWave, recordRift, keepTrialRun, markTrialSent, loadTrialRuns } from './hall.js';
@@ -492,6 +492,46 @@ function start(hot = {}) {
     trialScreen.open(currentWeek(), world.cls, result);
     setMode('trial');
     submitPending();
+    refreshAwards();
+  }
+
+  /**
+   * (0.60) What the Weekly Echo has earned: a reward for each week taken part in (once a week, for this
+   * browser's characters; an online character gets its own from the server world), and titles for
+   * placing high. Shown on the Weekly Echo screen.
+   */
+  async function refreshAwards() {
+    const box = $('trial-awards');
+    const how = `Taking part each week earns +${WEEKLY_REWARD.fragments} Immortal Fragments, +${WEEKLY_REWARD.dust} Wishdust and +${WEEKLY_REWARD.tickets} starglass shards. When a week ends, first on a subclass's board is its <b>Champion</b> (and earns the Echo Champion weapon glow), and the top three and the top tenth earn titles too.`;
+    if (!trialApi.online()) return (box.innerHTML = how);
+    const me = trialApi.identity();
+    if (!me) return (box.innerHTML = `${how} Put a run on the boards to take part.`);
+    box.innerHTML = `${how} Checking your placings…`;
+    const aw = await trialApi.awards(me.id);
+    if (mode !== 'trial') return;
+    if (!aw.ok) return (box.innerHTML = how);
+    const places = Array.isArray(aw.places) ? aw.places : [];
+    const title = bestTitle(places);
+    const claimed = Array.isArray(account.weeklyClaimed) ? account.weeklyClaimed : [];
+    const fresh = (aw.played || []).filter((w) => Number.isInteger(w) && !claimed.includes(w));
+    const champion = places.some((x) => x.title === 'champion');
+    const newGlow = champion && !(world.player.glows || []).includes('echoed');
+    box.innerHTML = `${how}${title ? ` Your best title: <b>${esc(title)}</b>.` : ''} Weeks taken part in: ${(aw.played || []).length}.`;
+    if ((fresh.length || newGlow) && !net && world.mode !== 'arena') {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'primary';
+      b.textContent = `Claim for ${CLASSES[world.cls].name}: ${fresh.length ? `+${WEEKLY_REWARD.fragments * fresh.length} Fragments, +${WEEKLY_REWARD.dust * fresh.length} Wishdust, +${WEEKLY_REWARD.tickets * fresh.length} shards` : ''}${newGlow ? `${fresh.length ? ' and ' : ''}the Echo Champion glow` : ''}`;
+      b.addEventListener('click', () => {
+        world.weeklyReward(fresh.length, champion);
+        drainEvents();
+        account.weeklyClaimed = [...claimed, ...fresh].slice(-60);
+        storeAccount(account);
+        persist();
+        refreshAwards();
+      });
+      box.appendChild(b);
+    }
   }
 
   function enterTrial(build) {
@@ -506,7 +546,7 @@ function start(hot = {}) {
     resetViews();
     sfx.unlock();
     setMode('play');
-    hud.banner('The Weekly Echo', `Week ${wk.index + 1} · level ${wk.level}`);
+    hud.banner('The Weekly Echo', `Week ${wk.index + 1} · level ${wk.level}${TWISTS[wk.twist] ? ` · ${TWISTS[wk.twist].name}: ${TWISTS[wk.twist].desc}` : ''}`);
   }
 
   /** The run is over (fell, finished, out of time, or ended from the menu): keep it, send it, show it. */
@@ -1823,6 +1863,11 @@ function start(hot = {}) {
     world.cur.name = name;
     world.alliesList = [];
     net = { role: 'client', room, pid: welcome.pid, code, server: !!welcome.server, online: !!welcome.online, alone: !!welcome.alone, base: Online.baseOf(target), url: target, pass: extra.pass, roster: null, snapAt: performance.now(), snapGap: 50, queue: [], nextAt: 0, lastTick: null, gapTicks: 3, intent: null, lagEst: 0.2, jitter: 0, ping: 0, dry: true };
+    if (welcome.server && welcome.online) {
+      // (0.60) the Weekly Echo: this browser's board name, so the server can reward this online character
+      const me = trialApi.identity();
+      if (me && me.token) room.send({ t: 'weekly', token: me.token });
+    }
     renderer.setMap(world.map);
     resetViews();
     sfx.unlock();
@@ -1917,6 +1962,11 @@ function start(hot = {}) {
   }, 50);
 
   function onNetMessage(msg) {
+    if (msg.t === 'weekly') {
+      if (msg.error) hud.feedText(msg.error);
+      else if (msg.title && !msg.weeks) hud.feedText(`Your Weekly Echo title: ${msg.title}`);
+      return;
+    }
     if (!net || net.role !== 'client') return;
     if (msg.t === 'snap') {
       // Updates can arrive in bunches (the host's frame ran long, or the network hiccuped).
@@ -2598,7 +2648,7 @@ function start(hot = {}) {
   playersPanel.id = 'players-panel';
   playersPanel.className = 'hidden';
   document.body.appendChild(playersPanel);
-  const MAP_NAME = (id) => (MAPS[id] ? MAPS[id].name : id === 'rift' ? 'an Echo Rift' : id === 'delve' ? 'a delve' : id);
+  const MAP_NAME = (id) => (MAPS[id] ? MAPS[id].name : id === 'rift' ? 'an Echo Rift' : id === 'delve' ? 'a delve' : id === 'ring' ? 'the Echo Ring' : id);
   function renderPlayers() {
     const r = net && net.roster;
     if (!r) {
@@ -2615,7 +2665,7 @@ function start(hot = {}) {
       if (!mine && r.invites.includes(pl.pid)) btn = `<button type="button" data-act="partyAccept" data-pid="${pl.pid}" class="primary">Accept invite</button><button type="button" data-act="partyDecline" data-pid="${pl.pid}" class="ghost">No</button>`;
       else if (!mine && inParty) btn = `<button type="button" data-act="joinMember" data-pid="${pl.pid}" class="ghost" title="Travel to their map, into their copy of it (a map you have been to)">Go to them</button>`;
       else if (!mine && !(r.party && r.party.members.length >= 4)) btn = `<button type="button" data-act="partyInvite" data-pid="${pl.pid}" class="ghost">Invite</button>`;
-      return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(where(pl))}</td><td>${btn}</td></tr>`;
+      return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${pl.title ? ` <span class="title-tag">${esc(pl.title)}</span>` : ''}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(where(pl))}</td><td>${btn}</td></tr>`;
     });
     playersPanel.innerHTML = `<h3>${esc(r.world)} · ${r.players.length} online</h3><table>${rows.join('')}</table>` +
       `<p class="setting-desc">Haven is shared by everyone here. Out on the road, your party has its own copy of each map: invite friends to fight together. Enter: chat.</p>` +
@@ -2926,6 +2976,12 @@ function start(hot = {}) {
 
   $('btn-explore').addEventListener('click', () => startExplore());
   $('btn-continue').addEventListener('click', () => (save ? enterTown() : startRun(null)));
+  $('btn-title-weekly').addEventListener('click', () => {
+    // (0.60) straight to the Weekly Echo from the title screen
+    if (!save) save = loadSave(settings.cls);
+    world = makeWorld({ save });
+    openTrial();
+  });
   $('btn-explore-offline').addEventListener('click', () => startExplore());
   $('btn-online-alone').addEventListener('click', (e) => playAlone(DEFAULT_SERVER, e.currentTarget));
   $('btn-signin').addEventListener('click', () => {
@@ -3484,6 +3540,10 @@ function start(hot = {}) {
       case 'giftBound':
         hud.feedText(`${ev.name} was a gift: it stays with you.`);
         sfx.denied();
+        break;
+      case 'weeklyReward':
+        hud.banner('The Weekly Echo', `${ev.weeks ? `For taking part${ev.weeks > 1 ? ` (${ev.weeks} weeks)` : ''}: +${ev.fragments} Immortal Fragments, +${ev.dust} Wishdust, +${ev.tickets} starglass shards` : ''}${ev.champion ? `${ev.weeks ? '. ' : ''}A Champion: the Echo Champion glow is yours` : ''}`);
+        sfx.levelUp();
         break;
       case 'ringGain':
         if (ev.boss) showRingBank(ev);

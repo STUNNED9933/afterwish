@@ -952,3 +952,10 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* (0.59) The Ring: what you are here for */
 .gate-focus-h { margin-top: 10px; font: 600 12px var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
 #gate-focus, #gate-slot { margin-top: 6px; flex-wrap: wrap; }
+
+/* (0.60) The Weekly Echo's rewards and titles */
+.trial-awards { margin: 8px 0 4px; padding: 8px 12px; border: 1px solid rgba(159, 231, 255, 0.35); border-radius: 6px; background: rgba(159, 231, 255, 0.05); font-size: 14px; color: var(--bone); }
+.trial-awards:empty { display: none; }
+.trial-awards b { color: #9fe7ff; }
+.trial-awards button { margin-top: 6px; }
+.title-tag { margin-left: 6px; padding: 1px 6px; border-radius: 3px; font-size: 12px; color: #0d1220; background: #9fe7ff; }

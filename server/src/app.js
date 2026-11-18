@@ -114,6 +114,14 @@ async function placeOf(db, week, spec, floor, clearTick, submitted) {
   return { rank, total, better: total > 1 ? Math.floor((100 * (total - rank)) / total) : 0 };
 }
 
+/** (0.60) The title a finished week's place earns: first, the top three, or the top tenth of the board. */
+export function awardTitle(rank, total) {
+  if (rank === 1) return 'champion';
+  if (rank <= 3) return 'top3';
+  if (rank <= Math.ceil(total * 0.1)) return 'top10';
+  return null;
+}
+
 const ROW = 'SELECT r.id, r.player, p.name, r.floor, r.clear_tick AS clearTick FROM runs r JOIN players p ON p.id = r.player';
 const ORDER = 'ORDER BY r.floor DESC, r.clear_tick ASC, r.submitted ASC';
 
@@ -129,6 +137,30 @@ export async function handle(request, env, now = Date.now()) {
     if (request.method === 'GET' && path === '/trial/current') {
       const wk = trialWeek(week);
       return json({ week: wk.index, level: wk.level, featured: wk.featured, ends: wk.ends, version: SIM_VERSION });
+    }
+
+    // (0.60) Who holds this token (the game's server uses it to link a board name to an account)
+    if (request.method === 'GET' && path === '/me') {
+      const me = await playerFor(db, request);
+      if (!me) return fail(401, 'Unknown player. Join the boards again.');
+      return json({ id: me.id, name: me.name });
+    }
+
+    // (0.60) A player's placings, public: the weeks they played (a verified run) and, for weeks that have
+    // ended, where each subclass's best run finished and the title it earned. Read by the game, for the
+    // rewards for taking part, the titles and the Champion's glow.
+    if (request.method === 'GET' && path === '/awards') {
+      const id = String(url.searchParams.get('player') || '');
+      if (!/^[0-9a-f]{16}$/.test(id)) return fail(400, 'Which player?');
+      const rows = (await db.prepare("SELECT week, cls, spec, floor, clear_tick, submitted FROM runs WHERE player = ? AND status = 'verified' AND week > ? ORDER BY week DESC").bind(id, week - 53).all()).results || [];
+      const played = [...new Set(rows.map((r) => r.week))];
+      const places = [];
+      for (const r of rows) {
+        if (r.week >= week) continue; // still going: no title yet
+        const pl = await placeOf(db, r.week, r.spec, r.floor, r.clear_tick, r.submitted);
+        places.push({ week: r.week, cls: r.cls, spec: r.spec, floor: r.floor, rank: pl.rank, of: pl.total, title: awardTitle(pl.rank, pl.total) });
+      }
+      return json({ player: id, week, played, places });
     }
 
     if (request.method === 'POST' && (path === '/players' || path === '/players/rename')) {

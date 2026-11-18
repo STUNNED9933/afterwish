@@ -11,6 +11,7 @@ import { World } from '../sim/world.js';
 import { CLASSES } from '../sim/classes.js';
 import { CONFIG } from '../config.js';
 import { MAPS } from '../sim/maps.js';
+import { TITLES, bestTitle } from '../sim/trial.js';
 import { makeSnapshot, eventFor, compactEvents, NET_VERSION } from './sync.js';
 import { FRIEND_CMDS } from './cmds.js';
 
@@ -32,7 +33,9 @@ export class ServerWorld {
    * congested(conn): true while that connection's outgoing queue is backed up (it gets no new update
    * until it has caught up, so it never falls further and further behind).
    */
-  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now(), maxPlayers = SERVER_LIMITS.players, havenMax = SERVER_LIMITS.haven, accounts = null, requireAccount = false }) {
+  constructor({ send, close = () => {}, congested = () => false, passcode = '', name = 'Afterwish', seed = Date.now(), maxPlayers = SERVER_LIMITS.players, havenMax = SERVER_LIMITS.haven, accounts = null, requireAccount = false, trialApi = '', fetcher = null }) {
+    this.trialApi = String(trialApi || '').replace(/\/+$/, ''); // (0.60) the Weekly Echo boards, for their rewards and titles
+    this.fetcher = fetcher || (typeof fetch === 'function' ? fetch : null);
     Object.assign(this, { send, close, congested, passcode: String(passcode || ''), name });
     // (0.57) Online characters: with an account store, a signed-in hero's save and wallet come from the
     // store and go back to it; the browser's own copy is never trusted. requireAccount: no other way in.
@@ -77,6 +80,47 @@ export class ServerWorld {
       pl.rtt = Number(msg.rtt) || 0;
       this.send(conn, { t: 'pong', at: msg.at });
     } else if (msg.t === 'bye') this.leave(conn, true);
+    else if (msg.t === 'weekly') this.weekly(pl, msg.token);
+  }
+
+  /**
+   * (0.60) The Weekly Echo's rewards for an online character. The player's game sends its board
+   * token; this server asks the boards whose it is (linking that board name to this account, and
+   * to no other), then which weeks it took part in and where it placed. Each week taken part in is
+   * rewarded once per account; titles (and a Champion's glow) are kept with the account.
+   */
+  async weekly(pl, token) {
+    const tell = (m) => this.send(pl.conn, Object.assign({ t: 'weekly' }, m));
+    if (!this.trialApi || !this.fetcher || !this.accounts || !pl.accountId || pl.weeklyBusy) return;
+    if (!/^[0-9a-f]{64}$/.test(String(token || ''))) return;
+    pl.weeklyBusy = true;
+    try {
+      const ask = async (path, auth) => {
+        const res = await this.fetcher(this.trialApi + path, { headers: auth ? { authorization: `Bearer ${auth}` } : {} });
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json();
+      };
+      const me = await ask('/me', token);
+      if (!me || !/^[0-9a-f]{16}$/.test(String(me.id))) return;
+      if (!this.accounts.linkBoard(pl.accountId, me.id)) return tell({ error: 'That Weekly Echo name belongs to another account.' });
+      const aw = await ask(`/awards?player=${me.id}`);
+      if (!this.players.has(pl.pid)) return;
+      const wk = this.accounts.weeklyOf(pl.accountId);
+      const fresh = (Array.isArray(aw.played) ? aw.played : []).filter((w) => Number.isInteger(w) && !wk.claimed.includes(w));
+      const titles = (Array.isArray(aw.places) ? aw.places : []).filter((x) => x && TITLES[x.title]).map((x) => ({ week: x.week, spec: String(x.spec), title: x.title }));
+      const champion = titles.some((x) => x.title === 'champion');
+      const hadChampion = wk.titles.some((x) => x.title === 'champion');
+      const h = pl.copy && pl.copy.world.heroByPid(pl.pid);
+      if (h && (fresh.length || (champion && !hadChampion))) pl.copy.world.as(h, () => pl.copy.world.weeklyReward(fresh.length, champion));
+      this.accounts.setWeekly(pl.accountId, { claimed: [...wk.claimed, ...(h ? fresh : [])], titles });
+      pl.title = bestTitle(titles);
+      this.rosterDirty = true;
+      tell({ weeks: h ? fresh.length : 0, title: pl.title, titles: titles.length });
+    } catch (err) {
+      tell({ error: 'The Weekly Echo boards could not be reached just now.' });
+    } finally {
+      pl.weeklyBusy = false;
+    }
   }
 
   join(conn, hello) {
@@ -113,6 +157,7 @@ export class ServerWorld {
       gold = acct.wallet.gold;
       tickets = acct.wallet.tickets;
       pl.acctRebirths = acct.wallet.rebirths || 0;
+      pl.title = bestTitle(this.accounts.weeklyOf(acct.id).titles); // (0.60) the Weekly Echo title it holds
     }
     const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
     this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs });
@@ -357,7 +402,7 @@ export class ServerWorld {
       const h = w && w.heroByPid(o.pid);
       const p = h && (h === w.cur ? w.player : h.player);
       const haven = o.copy && o.copy.key.startsWith('town#') ? Number(o.copy.key.slice(5)) : 0;
-      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: mapOf(w), haven, party: o.party || 0 };
+      return { pid: o.pid, name: o.name, cls: h ? (h === w.cur ? w.cls : h.cls) : '', level: p ? p.level : 0, map: mapOf(w), haven, party: o.party || 0, title: o.title || '' };
     });
     for (const o of this.players.values()) {
       const party = o.party && this.parties.get(o.party);

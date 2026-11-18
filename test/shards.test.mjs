@@ -268,6 +268,41 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   }
 }
 
+// (0.60) The Weekly Echo's rewards for an online character: asked of the boards, once a week per account
+{
+  const os = await import('node:os');
+  const { AccountStore } = await import('../game-server/accounts.mjs');
+  const dir = fs.mkdtempSync(os.default.tmpdir() + '/aw-weekly-');
+  const store = new AccountStore(dir);
+  const acct = store.signIn('google', 'g-1', 'Weekly');
+  const other = store.signIn('google', 'g-2', 'Other');
+  const tok = 'a'.repeat(64);
+  const boards = { '/me': { id: '0123456789abcdef', name: 'Weekly' }, '/awards?player=0123456789abcdef': { played: [5, 6], places: [{ week: 5, spec: 'berserker', title: 'champion' }, { week: 6, spec: 'bulwark', title: null }] } };
+  let asked = 0;
+  const fetcher = async (url, opts) => { asked++; const path = url.replace('https://boards.test', ''); const ok = path === '/me' ? opts.headers.authorization === `Bearer ${tok}` : !!boards[path]; return { ok, status: ok ? 200 : 401, json: async () => boards[path] }; };
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 21, accounts: store, trialApi: 'https://boards.test/', fetcher });
+  const k = { name: 'w' }; box.set(k, []);
+  sv.message(k, hello('Weekly', 'warrior', { session: store.newSession(acct.id) }));
+  const pid = box.get(k).find((m) => m.t === 'welcome').pid;
+  const heroP = () => { const pl = sv.players.get(pid); const w = pl.copy.world; return w.as(w.heroByPid(pid), (p) => p); };
+  const f0 = heroP().misc.fragment || 0, t0 = heroP().tickets;
+  await sv.weekly(sv.players.get(pid), tok);
+  const said = box.get(k).find((m) => m.t === 'weekly');
+  check('Weekly Echo online: each week taken part in is rewarded (Fragments, Wishdust, shards)', said && said.weeks === 2 && heroP().misc.fragment === f0 + 50 && heroP().tickets === t0 + 4, JSON.stringify(said));
+  check("...a Champion gets the Echo Champion glow, and the title shows by the name", heroP().glows.includes('echoed') && sv.players.get(pid).title === 'Weekly Echo Champion');
+  await sv.weekly(sv.players.get(pid), tok);
+  check('...and only once a week per account', heroP().misc.fragment === f0 + 50 && [...box.get(k)].reverse().find((m) => m.t === 'weekly').weeks === 0);
+  sv.tick();
+  check('the roster shows the title', [...box.get(k)].reverse().find((m) => m.t === 'roster').players.some((x) => x.title === 'Weekly Echo Champion'));
+  check('a board name stays with the account that linked it first', !store.linkBoard(other.id, '0123456789abcdef') && store.linkBoard(acct.id, '0123456789abcdef'));
+  const n0 = asked;
+  await sv.weekly(sv.players.get(pid), 'not a token');
+  check('a token that is not one is not even sent to the boards', asked === n0);
+  clearTimeout(store.timer);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
 // (0.57.4) Every action the game sends from its menus must be one a server (or a friend's room) accepts,
 // or it silently does nothing there (Tomas's scarf and Odile's garden once did exactly that).
 {

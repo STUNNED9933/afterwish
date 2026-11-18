@@ -141,6 +141,31 @@ export class AccountStore {
     this.touch('accounts');
   }
 
+  // --------------------------------------------------------------- the Weekly Echo (0.60)
+  /** Link a Weekly Echo board name to this account. Refused if another account has it already. */
+  linkBoard(accountId, boardId) {
+    const a = this.accounts[accountId];
+    if (!a || !boardId) return false;
+    if (Object.values(this.accounts).some((o) => o.id !== accountId && o.board === boardId)) return false;
+    if (a.board !== boardId) {
+      a.board = String(boardId);
+      this.touch('accounts');
+    }
+    return true;
+  }
+  /** Which weeks this account has been rewarded for taking part in, and the titles it holds. */
+  weeklyOf(accountId) {
+    const a = this.accounts[accountId];
+    const w = (a && a.weekly) || {};
+    return { claimed: Array.isArray(w.claimed) ? w.claimed.slice() : [], titles: Array.isArray(w.titles) ? w.titles.slice() : [] };
+  }
+  setWeekly(accountId, w) {
+    const a = this.accounts[accountId];
+    if (!a) return;
+    a.weekly = { claimed: (w.claimed || []).slice(-60), titles: (w.titles || []).slice(0, 60) };
+    this.touch('accounts');
+  }
+
   /**
    * The one-time import (0.57 beta): bring the characters from a browser into the account. `clean`
    * turns each save into what the game itself would write (see server.mjs), dropping anything odd.

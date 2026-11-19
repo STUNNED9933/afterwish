@@ -159,6 +159,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Wishborne Might adapts to your class (0.61.8)
+
+- **Might** raises whatever your damage comes from: attack damage, **spell power** for a Mage (the
+  panel now says so; it always did raise it), and for a **Bulwark** armor as well, which Weight of
+  Iron turns into damage, so each point is worth the same 0.6% to every subclass.
+
 ### Link previews (0.61.7)
 
 - Sharing the link on Discord, WhatsApp and the like shows a **1200 x 630 card**: the icon, the name

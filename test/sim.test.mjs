@@ -3949,4 +3949,21 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const before = ap.cd.q; a.command({ type: 'cast', slot: 'q', x: ap.x + 3, z: ap.z }); a.step(CONFIG.TICK);
   check('a seal: the last skill you used cannot be cast until it wears off', ap.lastSlot === 'q' && ap.cd.q === before);
 }
+
+// (0.61.8) Wishborne Might is adaptive: spell power for a Mage, and armor too for a Bulwark
+{
+  const { geared } = await import('./balance.mjs');
+  const { WISH_STATS: WS } = await import('../src/sim/endgame.js');
+  const make = (cls, spec, might) => {
+    const save = Object.assign(geared(cls, 100, 3), { spec, talents: {}, wishStats: might ? { might } : {} });
+    return new World({ seed: 4, cls, save }).player.stats;
+  };
+  const m0 = make('mage', 'pyromancer', 0), m50 = make('mage', 'pyromancer', 50);
+  check('Might raises a Mage\'s spell power (30% for 50 points)', Math.abs(m50.ad / m0.ad - 1.3) < 0.01 && m50.armor === m0.armor, `${m0.ad} -> ${m50.ad}`);
+  const b0 = make('warrior', 'bulwark', 0), b50 = make('warrior', 'bulwark', 50);
+  check('...a Bulwark\'s attack damage and armor alike (Weight of Iron)', Math.abs(b50.ad / b0.ad - 1.3) < 0.01 && Math.abs(b50.armor / b0.armor - 1.3) < 0.01, `${b0.armor} -> ${b50.armor}`);
+  const z0 = make('warrior', 'berserker', 0), z50 = make('warrior', 'berserker', 50);
+  check('...and only attack damage for everyone else', Math.abs(z50.ad / z0.ad - 1.3) < 0.01 && z50.armor === z0.armor);
+  check('the Wishborne panel names it for each', WS.might.unitFor('mage', 'frostbinder') === '% spell power' && WS.might.unitFor('warrior', 'bulwark') === '% attack damage and armor' && WS.might.unitFor('rogue', 'assassin') === '% attack damage');
+}
 process.exit(failed ? 1 : 0);

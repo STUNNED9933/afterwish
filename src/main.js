@@ -1495,16 +1495,17 @@ function start(hot = {}) {
     panel.innerHTML = `<h3>Wishborne ${p.wish}</h3><p class="setting-desc">Past level 100, EXP fills Wishborne levels: each one is a Wish point for a small bonus with no limit. ${p.wishPts ? `<b>${p.wishPts} point${p.wishPts === 1 ? '' : 's'} to spend.</b> Shift-click adds 10.` : 'No points to spend right now.'}</p>`;
     for (const k of WISH_IDS) {
       const st = WISH_STATS[k];
+      const unit = st.unitFor ? st.unitFor(world.cls, p.spec) : st.unit; // (0.61.8) Might names what it raises for you
       const n = (p.wishStats && p.wishStats[k]) || 0;
       const row = document.createElement('div');
       row.className = 'wish-row';
-      row.innerHTML = `<span>${st.name}</span><span class="v">+${+(st.each * n).toFixed(1)}${st.unit}</span><span class="v">${n}</span>`;
+      row.innerHTML = `<span>${st.name}</span><span class="v">+${+(st.each * n).toFixed(1)}${unit}</span><span class="v">${n}</span>`;
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'ghost tiny';
       b.textContent = '+';
       b.disabled = !p.wishPts;
-      b.title = `+${st.each}${st.unit} per point`;
+      b.title = `+${st.each}${unit} per point`;
       b.addEventListener('click', (ev) => {
         applyNow({ type: 'wishSpend', stat: k, n: ev.shiftKey ? 10 : 1 });
         renderTalents();

@@ -545,7 +545,7 @@ export class World {
       else if (it.effect in m) m[it.effect] = true;
     }
     // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
-    if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k]);
+    if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k], this.cls, this.player.spec);
     // Rebirth perks (0.43): Starborn, never in the Weekly Echo either
     const star = this.trial ? 0 : perkRank(this.player.rebirth, 'starborn');
     if (star > 0) { m.adPct += 0.02 * star; m.hpPct += 0.02 * star; }

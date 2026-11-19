@@ -82,7 +82,13 @@ export function riftScale(r) {
  * point to put into a small, uncapped bonus.
  */
 export const WISH_STATS = {
-  might: { name: 'Might', each: 0.6, unit: '% attack damage', apply: (m, n) => { m.adPct += 0.006 * n; } },
+  // (0.61.8) Might is adaptive: it raises whatever your damage comes from. That is attack damage, or spell
+  // power for a Mage (one stat inside the game), and for a Bulwark armor too, which Weight of Iron turns into damage.
+  might: {
+    name: 'Might', each: 0.6, unit: '% attack damage',
+    unitFor: (cls, spec) => (cls === 'mage' ? '% spell power' : spec === 'bulwark' ? '% attack damage and armor' : '% attack damage'),
+    apply: (m, n, cls, spec) => { m.adPct += 0.006 * n; if (spec === 'bulwark') m.armorPct += 0.006 * n; },
+  },
   vigor: { name: 'Vigor', each: 0.8, unit: '% health', apply: (m, n) => { m.hpPct += 0.008 * n; } },
   swift: { name: 'Swiftness', each: 0.4, unit: '% attack speed', apply: (m, n) => { m.asPct += 0.004 * n; } },
   focus: { name: 'Focus', each: 0.4, unit: ' ability haste', apply: (m, n) => { m.haste += 0.4 * n; } },

@@ -1,7 +1,7 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
 import { ECHOES } from '../sim/rebirth.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
@@ -140,6 +140,7 @@ export class Inventory {
     this.send = send;
     this.keep = keep || { get: () => [], set: () => {} };
     $('btn-scrap').addEventListener('click', () => this.send({ type: 'scrap', keep: this.keep.get() }));
+    $('btn-equip-all').addEventListener('click', () => this.send({ type: 'autoEquip' })); // (0.61.9)
     // One toggle per rarity from Rare up: kept items stay in the bag even when they are worse.
     const root = $('keep-rarities');
     RARITIES.forEach((r, i) => {
@@ -373,6 +374,11 @@ export class Inventory {
         craft.appendChild(b);
       }
     }
+    const offeredIds = this.trade.offered ? this.trade.offered() : null;
+    const ups = Object.keys(bestUpgrades(p.equipped, p.bag, world.cls, offeredIds || new Set())).length;
+    const eqAll = $('btn-equip-all');
+    eqAll.textContent = ups ? `Equip every upgrade (${ups})` : 'No upgrades to equip';
+    eqAll.disabled = !ups || !!world.trial;
     const btn = $('btn-scrap');
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
     btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';

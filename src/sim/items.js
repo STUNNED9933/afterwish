@@ -587,3 +587,26 @@ export const CHEST_TIERS = {
   gilded: { name: 'Gilded chest', gold: 3, potions: true, items: [{ min: 3 }, { min: 2 }] },
   radiant: { name: 'Radiant chest', gold: 10, tickets: 2, potions: true, fragments: true, items: [{ weights: [0, 0, 0, 0, 40, 60, 0], immortal: 1.5, immortalFromTier: 4, immortalHigh: 4 }, { min: 4 }, { min: 3 }] },
 };
+
+/**
+ * (0.61.9) What "Equip every upgrade" would put on: for each slot, the bag index of the best item that
+ * outscores what is worn (the green arrow). Never another class's weapon, never something on offer in a
+ * trade, and never an ordinary item over an Immortal or a set piece. Returns { slot: bagIndex }.
+ */
+export function bestUpgrades(equipped, bag, cls, skip = new Set()) {
+  const out = {};
+  for (const slot of SLOTS) {
+    const worn = equipped[slot];
+    let best = -1;
+    let bestScore = itemScore(worn);
+    bag.forEach((it, i) => {
+      if (!it || it.slot !== slot || skip.has(it.id) || (it.cls && it.cls !== cls)) return;
+      if (worn && worn.effect && !it.effect) return; // an Immortal stays on
+      if (worn && worn.set && !it.set && !it.effect) return; // so does a set piece
+      const sc = itemScore(it);
+      if (sc > bestScore) { best = i; bestScore = sc; }
+    });
+    if (best >= 0) out[slot] = best;
+  }
+  return out;
+}

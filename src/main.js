@@ -4109,6 +4109,10 @@ function start(hot = {}) {
         sfx.pickup(ev.item.rarity);
         town.showCacheResult(ev.item);
         break;
+      case 'noUpgrades':
+        sfx.denied();
+        hud.feedText('Nothing in your bag beats what you are wearing');
+        break;
       case 'cantEquip':
         sfx.denied();
         hud.feedText(`Only a ${CLASSES[ev.item.cls].name} can use a ${WEAPONS[ev.item.cls].type.toLowerCase()}`);

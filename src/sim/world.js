@@ -22,7 +22,7 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
-import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -79,7 +79,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -676,6 +676,7 @@ export class World {
       if (this.trial && TRIAL_LOCKED.has(c.type)) continue; // the week fixes gear and build
       // Inventory commands work even while dead or between waves.
       if (c.type === 'equip') this.equip(c.index);
+      else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
@@ -5248,6 +5249,33 @@ export class World {
     else p.bag.splice(index, 1);
     this.recalcStats();
     this.emit('equip', { item });
+  }
+
+  /**
+   * (0.61.9) Put on every upgrade in the bag: for each slot, the best item that outscores what is worn (the
+   * green arrow). It never takes off an Immortal or a set piece for an ordinary item, never equips another
+   * class's weapon, and leaves alone anything on offer in a trade. Returns how many it put on.
+   */
+  equipUpgrades() {
+    const p = this.player;
+    const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
+    const picks = bestUpgrades(p.equipped, p.bag, this.cls, trading);
+    let count = 0;
+    for (const slot of SLOTS) {
+      if (!(slot in picks)) continue;
+      const i = picks[slot];
+      const item = p.bag[i];
+      const worn = p.equipped[slot];
+      p.equipped[slot] = item;
+      p.bag[i] = worn || null; // swapped in place, so the other picks' indices still hold
+      count++;
+      this.emit('equip', { item, auto: true });
+    }
+    if (count) {
+      p.bag = p.bag.filter(Boolean);
+      this.recalcStats();
+    } else this.emit('noUpgrades');
+    return count;
   }
 
   /** Break one bag item down into scrap. */

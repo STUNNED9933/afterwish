@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Equip every upgrade (0.61.9)
+
+- A button beside "Scrap everything that is not an upgrade": it puts on the best green-arrow item for
+  each slot at once, and says how many there are. It never takes off an Immortal or a set piece for an
+  ordinary item, never picks another class's weapon, and leaves anything on offer in a trade alone.
+  Press it, then scrap, to tidy a full bag in two clicks.
+
 ### Wishborne Might adapts to your class (0.61.8)
 
 - **Might** raises whatever your damage comes from: attack damage, **spell power** for a Mage (the

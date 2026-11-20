@@ -3966,4 +3966,30 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...and only attack damage for everyone else', Math.abs(z50.ad / z0.ad - 1.3) < 0.01 && z50.armor === z0.armor);
   check('the Wishborne panel names it for each', WS.might.unitFor('mage', 'frostbinder') === '% spell power' && WS.might.unitFor('warrior', 'bulwark') === '% attack damage and armor' && WS.might.unitFor('rogue', 'assassin') === '% attack damage');
 }
+
+// (0.61.9) Equip every upgrade: the best for each slot, but never over an Immortal or a set piece
+{
+  const { geared } = await import('./balance.mjs');
+  const { rollItem: roll, RARITIES: RR, IMMORTAL: IMM, itemScore: score } = await import('../src/sim/items.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const save = Object.assign(geared('warrior', 60, 1), { talents: {} });
+  const w = new World({ seed: 8, cls: 'warrior', save });
+  const p = w.player;
+  const r = mk(21);
+  const better = (slot, extra = {}) => Object.assign(roll(r, 95, { slot, cls: 'warrior', minRarity: 5 }), extra);
+  p.equipped.ring = Object.assign(roll(r, 60, { slot: 'ring', weights: RR.map((_, i) => (i === IMM ? 1 : 0)) }), {}); // an Immortal ring
+  const helmA = better('helm'), helmB = better('helm');
+  const bow = better('weapon', { cls: 'archer' });
+  const chest = better('chest');
+  const ring = better('ring');
+  p.bag = [helmA, bow, helmB, chest, ring];
+  const bestHelm = score(helmA) >= score(helmB) ? helmA : helmB;
+  const oldHelm = p.equipped.helm, oldChest = p.equipped.chest;
+  w.command({ type: 'autoEquip' }); w.step(CONFIG.TICK);
+  check('Equip every upgrade: the best helm of two, and the chest', p.equipped.helm === bestHelm && p.equipped.chest === chest);
+  check('...not another class\'s weapon, and not an ordinary ring over an Immortal', p.equipped.weapon.cls !== 'archer' && p.equipped.ring.effect);
+  check('...and what it took off goes to the bag', p.bag.includes(oldHelm) && p.bag.includes(oldChest) && p.bag.includes(bow) && p.bag.length === 5);
+  w.events.length = 0; w.command({ type: 'autoEquip' }); w.step(CONFIG.TICK);
+  check('...a second press finds nothing more', w.events.some((e) => e.type === 'noUpgrades'));
+}
 process.exit(failed ? 1 : 0);

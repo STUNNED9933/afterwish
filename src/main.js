@@ -1682,11 +1682,18 @@ function start(hot = {}) {
   }
 
   // --------------------------------------------------------- subclasses and talents
+  /** (0.70.2) Is there something to borrow and a D or F slot still empty? */
+  function borrowWaiting() {
+    const p = world.player;
+    if (world.trial || !world.borrowable || !p.borrowed) return false;
+    return world.borrowable().length > 0 && (!p.borrowed.d || !p.borrowed.f);
+  }
   function talentBadge() {
     const p = world.player;
     // A Weekly Echo build is set on its own screen before the run, so nothing to spend here.
     const perkable = p.rebirth && PERK_IDS.some((id) => perkRank(p.rebirth, id) < PERKS[id].max && p.rebirth.marks >= PERKS[id].cost) ? 1 : 0; // Starmarks to spend (0.43)
-    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : (p.spec ? world.talentPoints() : 0) + (p.wishPts || 0) + perkable;
+    const borrow = borrowWaiting() ? 1 : 0; // (0.70.2) a borrowed skill slot still empty
+    const n = world.trial ? 0 : !p.spec && p.level >= CONFIG.SPEC_LEVEL ? '!' : (p.spec ? world.talentPoints() : 0) + (p.wishPts || 0) + perkable + borrow;
     const b = $('talent-badge');
     b.textContent = n;
     b.classList.toggle('hidden', !n);
@@ -3914,6 +3921,13 @@ function start(hot = {}) {
         hud.feedText(`${ev.name} left the party`);
         updateRoomBadge();
         break;
+      case 'mastered': {
+        // (0.70.2) after the ending's own banner: what it means for the other classes
+        const text = `Your other classes may now borrow a skill from the ${ev.specs.join(' and the ')}, on D and F. Choose them in Talents, under Mastery.`;
+        hud.feedText(`The ${ev.name} is mastered`);
+        setTimeout(() => hud.banner(`The ${ev.name} is mastered`, text), 6000);
+        break;
+      }
       case 'tierUnlocked':
         if (ev.all) hud.banner('Every world tier is open', 'The Cinder has fallen: tiers I to V are yours to choose at the Waygate in Haven, in this life and every one after.');
         else hud.banner(`World tier ${ev.numeral} unlocked`, `${ev.name} · choose it at the Waygate in Haven`);

@@ -4669,4 +4669,14 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...open on every class once any class has (an Archer here, a level 1 Mage warps)', w.map.id === 'sanctum' && ROAD_MAPS.every((id) => w.mapKnown(id)));
   check('...but not the Wilds, Asterfell or the Deep', !w.mapKnown('wilds') && !w.mapKnown('asterfell') && !w.mapKnown('deep6'));
 }
+
+// --- 0.70.2: the Quiet's quest says the class is mastered ---------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 94, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { rebirth: { act3: { lives: true, deep2: true, deep3: true, deep4: true, deep5: true } } }) });
+  w.player.quests.deep6q = { s: 'ready', n: 1 };
+  w.claimQuest('deep6q');
+  const ev = w.events.find((e) => e.type === 'mastered');
+  check('Mastered (0.70.2): claiming Enough says so, naming the two subclasses the others may borrow from', ev && ev.cls === 'archer' && ev.specs.length === 2, JSON.stringify(ev || w.player.quests.deep6q));
+}
 process.exit(failed ? 1 : 0);

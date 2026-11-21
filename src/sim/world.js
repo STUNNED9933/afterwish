@@ -3874,7 +3874,11 @@ export class World {
         p.rebirth.deepMax = Math.max(p.rebirth.deepMax || 0, q.deep);
         this.emit('depthOpened', { depth: q.deep, numeral: DEEP.depths[q.deep].numeral, name: DEEP.depths[q.deep].name, need: DEEP.depths[q.deep].ember, ember: this.ember(p) });
       }
-      if (id === 'deep6q') this.emit('ending', { kind: 'primordial' });
+      if (id === 'deep6q') {
+        this.emit('ending', { kind: 'primordial' });
+        // (0.70.2) the Quiet beaten: this class is mastered, and every other class may borrow from its subclasses
+        this.emit('mastered', { cls: this.cls, name: CLASSES[this.cls].name, specs: Object.keys(SPECS).filter((s) => SPECS[s].cls === this.cls).map((s) => SPECS[s].name) });
+      }
     }
     if (r.ember && p.rebirth) {
       // (0.57.6) Ember from the story: kept through every rebirth, given once per hero

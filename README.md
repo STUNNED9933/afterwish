@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Telling you about it (0.70.2)
+
+- Handing in *Enough* (the Quiet) now says the class is mastered, and which two subclasses your other
+  classes may now borrow from.
+- While there is something to borrow and D or F is still empty, the Talents button counts it and the
+  empty slot on the skill bar glows.
+
 ### The road stays open (0.70.1)
 
 - Once **any class** on the account has beaten the Cinder (in any life), every map from the Greenwood to

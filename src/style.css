@@ -1000,6 +1000,8 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .slot.passive kbd { opacity: 0.35; }
 .slot.borrowed { border-color: #6d5a9e; } /* (0.70) borrowed skills on D and F */
 .slot.borrowed.empty svg { opacity: 0.35; }
+.slot.borrowed.empty { animation: borrowPulse 2.4s ease-in-out infinite; } /* (0.70.2) something to borrow, nothing slotted */
+@keyframes borrowPulse { 50% { box-shadow: 0 0 0 2px rgba(141, 118, 201, 0.55), 0 0 12px rgba(141, 118, 201, 0.5); } }
 .slot.borrowed.hidden { display: none; }
 
 /* (0.61.1) What the Stones Remember */

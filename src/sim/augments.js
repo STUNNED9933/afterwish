@@ -16,7 +16,7 @@ export function defaultMods() {
     qAngle: 1, wAngle: 1, qDmg: 1, qCd: 1,
     dRange: 1, dRadius: 1, dAngle: 1, dDmg: 1, dCd: 1, fRange: 1, fRadius: 1, fAngle: 1, fDmg: 1, fCd: 1, // (0.70) the borrowed slots
     // Switches used by the Archer, Rogue and Mage augments. Named <slot><What>, read in world.js.
-    eEmpower: 0, eRush: 0, eRushTime: 0, wExtra: 0, rangePct: 0, rDuration: 0, critEvery: 3, qBleed: 0, qBehind: 0, rStun: 0, wStun: 0,
+    eEmpower: 0, eRush: 0, eRushTime: 0, wExtra: 0, rangePct: 0, rDuration: 0, oathDmg: 0, oathDr: 0, oathRoar: 0, critEvery: 3, qBleed: 0, qBehind: 0, rStun: 0, wStun: 0,
     wResetOnKill: false, rResetOnKill: false, qSplashFull: false, qBolts: 1, eBlast: 0, rDelay: 1, qResetOnKill: false, qSunder: 0, qEcho: 0,
     // Whirlwind (W)
     wRadius: 1, wDmg: 1, wCd: 1, wPull: false, wBleed: 0, wSlow: 0,
@@ -130,7 +130,7 @@ const CLASS_AUGMENTS = {
   fb_glacial: { name: 'Glacial Spite', slot: 'hero', cls: 'mage', spec: 'frostbinder', tier: 1, desc: 'Shatter deals 25% more, and Ice Bolt gives 1 more Hoarfrost.', apply: (m) => { m.frostDmg *= 1.25; m.qFrost += 1; } },
   bz_arc: { name: 'Crimson Arc', slot: 'hero', cls: 'warrior', spec: 'berserker', tier: 1, desc: "Crimson Reach's crescents fly 40% further and cut 40% wider.", apply: (m) => { m.crescentFar *= 1.4; m.crescentWide *= 1.4; } },
   bz_embrace: { name: 'Blood Embrace', slot: 'hero', cls: 'warrior', spec: 'berserker', tier: 2, desc: 'Red Embrace deals a further 20% up close.', apply: (m) => { m.closeExtra += 0.2; } },
-  bz_oath: { name: 'Oathsworn', slot: 'r', cls: 'warrior', spec: 'berserker', tier: 2, desc: 'Crimson Oath lasts 3 seconds longer and comes back 25% sooner.', apply: (m) => { m.rDuration += 3; m.rCd *= 0.75; } },
+  bz_oath: { name: 'Oathsworn', slot: 'r', cls: 'warrior', spec: 'berserker', tier: 2, desc: 'While Crimson Oath is on, you take 12% less damage and deal 8% more.', apply: (m) => { m.oathDr += 0.12; m.oathDmg += 0.08; } }, // (0.71.2) for the toggle
   bw_reckon: { name: 'Long Memory', slot: 'w', cls: 'warrior', spec: 'bulwark', tier: 2, desc: 'Reckoning holds 3 more stacks, and each adds 10% more to Whirlwind.', apply: (m) => { m.reckonMaxAdd += 3; m.reckonPer += 0.1; } },
   bw_call: { name: 'Answer the Call', slot: 'w', cls: 'warrior', spec: 'bulwark', tier: 1, desc: 'Enemies you have taunted take 15% more damage from everyone.', apply: (m) => { m.tauntVuln += 0.15; } },
   ss_deadeye: { name: 'Dead Centre', slot: 'r', cls: 'archer', spec: 'sharpshooter', tier: 2, desc: 'Deadeye deals 30% more and comes back 20% sooner.', apply: (m) => { m.rDmg *= 1.3; m.rCd *= 0.8; } },

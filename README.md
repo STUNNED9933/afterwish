@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Crimson Oath and Blood Oath are toggles (0.71.2)
+
+- **Crimson Oath** (the Berserker's R) and **Blood Oath** (the Berserker borrowed on D or F) are now
+  toggles: press to turn on (drained to 40% health, with Crimson Oath's roar), press again to turn
+  off, 3 seconds between presses. While on, nothing heals you above 40% (that is the price), and every
+  effect holds for as long as you keep it on. They go off when you fall.
+- What made the old one last longer now works with the toggle: **Oathsworn** (augment): while it is on,
+  12% less damage taken and 8% more dealt. **Oathblood Signet** (Immortal ring): while it is on, 15%
+  more damage, and its roar deals twice as much.
+
 ### Animus, pity and the Granted's pay (0.71.1)
 
 - **Animus** is now 5% for each Primordial point: 25% for a class mastered, 100% with all four.

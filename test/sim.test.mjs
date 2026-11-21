@@ -4617,14 +4617,16 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const at = p.hp / p.stats.maxHp;
     p.hp = p.stats.maxHp;
     w.step(CONFIG.TICK);
-    check('Blood Oath: drains you to 40% health and holds you there while it lasts', Math.abs(at - OATH.hpTo) < 0.02 && p.hp <= p.stats.maxHp * OATH.hpTo * 1.02 && p.oathT > 0, `${at}`);
+    check('Blood Oath: drains you to 40% health and holds you there while it lasts', Math.abs(at - OATH.hpTo) < 0.02 && p.hp <= p.stats.maxHp * OATH.hpTo * 1.02 && p.oathOn, `${at}`);
     for (let i = 0; i < 20; i++) w.step(CONFIG.TICK);
     p.cd.r = 0;
     w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z }); w.runCommands(); w.step(CONFIG.TICK);
     check('...and a Sharpshooter\'s Deadeye fires at once, no draw', !p.channel && p.cd.r > 0);
-    p.oathT = 0.01; w.step(CONFIG.TICK); w.step(CONFIG.TICK);
+    for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+    p.cd.d = 0;
+    w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z }); w.runCommands(); w.step(CONFIG.TICK);
     p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
-    check('...then lets go', p.hp > p.stats.maxHp * 0.9);
+    check('...(0.71.2) a toggle: pressed again, it lets go', !p.oathOn && p.hp > p.stats.maxHp * 0.9);
   }
   // Blood Oath: +20% to everything
   {
@@ -4634,7 +4636,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     e.hp = e.maxHp = 1e7;
     const hit = () => { const b = e.hp; w.hitEnemy(e, 100, { source: 'q', forceCrit: false }); const d = b - e.hp; e.hp = b; return d; };
     const plain = hit();
-    w.player.oathT = 5;
+    w.player.oathOn = true;
     const sworn = hit();
     check('...everything you deal is 20% harder', plain > 0 && Math.abs(sworn / plain - (1 + OATH.dmg)) < 0.02, `${plain} ${sworn}`);
   }
@@ -4877,5 +4879,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const plain = new World({ seed: 104, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, tierMax: 5 }) });
   plain.loadMap('skyroad', 'town');
   check('...the gold is on the boss itself', gb && gb.goldValue > 1000, gb && gb.goldValue);
+}
+
+// --- 0.71.2: Crimson Oath and Blood Oath are toggles ---------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 105, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { spec: 'berserker', talents: {} }) });
+  w.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+  const p = w.player;
+  p.hp = p.stats.maxHp; p.cd.r = 0;
+  w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands();
+  for (let i = 0; i < 600; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+  check('Crimson Oath (0.71.2): a toggle, on until you turn it off (10 s later, still on, still held at 40%)', p.frenzyOn && w.frenzyActive() && p.hp <= p.stats.maxHp * 0.4 + 1 && w.bloodReach() === 2);
+  check('...the wait between presses is short', p.cd.r <= 0);
+  w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands();
+  p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
+  check('...pressed again it goes off, and you heal past 40% again', !p.frenzyOn && p.hp > p.stats.maxHp * 0.9 && p.cd.r > 0);
 }
 process.exit(failed ? 1 : 0);

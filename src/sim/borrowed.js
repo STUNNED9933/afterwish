@@ -17,7 +17,7 @@ export const lendFrost = (m) => { if (!(m.frostMax > 0)) m.frostMax = 6; };
 
 /** What a Blood Oath does for each subclass's signature move, while it holds. */
 export const OATH = {
-  hpTo: 0.4, duration: 8, cd: 45, dmg: 0.2, // health held at 40%; everything you deal +20%
+  hpTo: 0.4, duration: 8, cd: 3, dmg: 0.2, // health held at 40%; everything you deal +20%. (0.71.2) A toggle: cd is the wait between presses
   sharpshooter: { name: 'Deadeye', text: 'Deadeye fires with no draw, 2.2 times as wide, and deals 40% more.', width: 2.2, mult: 1.4, noChannel: true },
   windrunner: { name: 'Hurricane', text: 'Hurricane looses 3 more arrows, each 50% stronger.', extra: 3, mult: 1.5 },
   assassin: { name: 'Shadowstrike', text: 'Shadowstrike reaches 60% further and deals 50% more, and every ability heals you for 15% of what it deals.', range: 1.6, mult: 1.5, leech: 0.15 },
@@ -27,8 +27,8 @@ export const OATH = {
   none: { name: 'your abilities', text: 'Your abilities deal 25% more.', mult: 1.25 },
 };
 const bloodOath = {
-  name: 'Blood Oath', type: 'bloodoath', icon: 'frenzy', unlock: 1, cd: OATH.cd, duration: OATH.duration, hpTo: OATH.hpTo, dmg: () => 0,
-  desc: `Drain yourself to ${OATH.hpTo * 100}% health and stay there for ${OATH.duration} seconds: you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
+  name: 'Blood Oath', type: 'bloodoath', icon: 'frenzy', unlock: 1, cd: OATH.cd, toggleCd: OATH.cd, toggle: true, duration: OATH.duration, hpTo: OATH.hpTo, dmg: () => 0,
+  desc: `A toggle. Turn it on to drain yourself to ${OATH.hpTo * 100}% health and stay there (nothing heals you above it) until you turn it off: you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
 };
 
 /**

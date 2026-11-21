@@ -395,7 +395,7 @@ export class Hud {
       slot.el.classList.toggle('hidden', !may && !def);
       slot.el.classList.toggle('empty', !def);
       slot.el.classList.toggle('passive', !!(def && def.passive));
-      slot.el.classList.toggle('empowered', !!(def && def.type === 'bloodoath' && p.oathT > 0));
+      slot.el.classList.toggle('empowered', !!(def && def.type === 'bloodoath' && (p.oathOn || p.oathT > 0)));
       this.setCooldown(slot, def && !def.passive ? p.cd[s] || 0 : 0, def && !def.passive ? world.abilityCooldown(s) : 0);
     }
     let canRank = false;
@@ -413,7 +413,7 @@ export class Hud {
         || (def.type === 'orb' && world.projectiles.some((pr) => pr.kind === 'orb' && (pr.pid ?? 0) === me));
       slot.el.classList.toggle('recast', !!again);
       slot.el.classList.toggle('sealed', p.sealT > 0 && p.sealSlot === s); // (0.54) a Primordial took it for a while
-      slot.el.classList.toggle('empowered', p.empowerT > 0 && s !== 'e' && !locked); // Nightstep: the next ability hits harder
+      slot.el.classList.toggle('empowered', (p.empowerT > 0 && s !== 'e' && !locked) || (s === 'r' && !!p.frenzyOn)); // Nightstep: the next ability hits harder; (0.71.2) Crimson Oath on
       // Reckoning (Bulwark): stacks for the next Whirlwind, shown on W.
       const stacks = s === 'w' && p.reck > 0 ? String(p.reck) : '';
       if ((slot.el.dataset.stacks || '') !== stacks) {

@@ -157,7 +157,7 @@ export const SPEC_IMMORTALS = {
     helm: { name: 'Crown of the Last Breath', desc: "You deal [3%] more damage for every 10% of health you are missing (up to [3%*9]), and Blood Rage's last breath gives you [s3] seconds of Crimson Oath.", apply: (m) => { m.missingDmg = Math.max(m.missingDmg, 0.03); m.lastBreathOath = 3; } },
     chest: { name: 'Scarred Hauberk', desc: 'While Bloodied, you deal a further [15%] damage.', apply: (m) => { m.lowHpDmg += 0.15; } },
     boots: { name: 'Red Stride', desc: 'While Bloodied, Cleave and Whirlwind deal [15%] more, and Whirlwind spins [s1] second{s} longer.', apply: (m) => { m.bloodQW += 0.15; m.wSpinTime += 1; } },
-    ring: { name: 'Oathblood Signet', desc: "Crimson Oath's cooldown is [-40%] shorter and it lasts [s3] seconds longer.", apply: (m) => { m.rCd *= 0.6; m.rDuration += 3; } },
+    ring: { name: 'Oathblood Signet', desc: 'While Crimson Oath is on, you deal [15%] more damage, and its roar (each time you turn it on) deals [100%] more.', apply: (m) => { m.oathDmg += 0.15; m.oathRoar += 1; } }, // (0.71.2) for the toggle
   },
   bulwark: {
     weapon: { name: 'Wardbreaker', desc: 'Cleave strikes a second time for [60%], and enemies you have taunted take [20%] more damage from everyone.', apply: (m) => { m.qEcho = Math.max(m.qEcho, 0.6); m.tauntVuln += 0.2; } },

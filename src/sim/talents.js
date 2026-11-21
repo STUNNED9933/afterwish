@@ -39,9 +39,9 @@ export const SPECS = {
         desc: 'Spin for 2 seconds while you keep moving, hitting everything around you for 22% on every beat. Red Tempo sets the beat: one for each basic attack you could make in that time (at least 4 beats, at most 20). The first hit interrupts normal enemies. Plough through a pack.',
       },
       r: {
-        key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 50, radius: 4.5, duration: 6, hpTo: 0.4,
+        key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 3, toggleCd: 3, toggle: true, radius: 4.5, duration: 6, hpTo: 0.4,
         dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
-        desc: 'Cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. For 6 seconds your lifesteal is doubled, Red Embrace rises to 50% more up close, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
+        desc: 'A toggle. Turn it on to cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. Until you turn it off, nothing heals you above 40%, your lifesteal is doubled, Red Embrace rises to 50% more up close, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
       },
     },
     talents: [

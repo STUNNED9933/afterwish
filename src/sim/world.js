@@ -1692,7 +1692,7 @@ export class World {
   bloodReach() {
     const p = this.player;
     if (!this.mods.bloodRage || !p) return 0;
-    return p.frenzyT > 0 ? 2 : p.bloodied ? 1 : 0;
+    return this.frenzyActive(p) ? 2 : p.bloodied ? 1 : 0;
   }
 
   /**
@@ -2041,13 +2041,20 @@ export class World {
       // ---------------------------------------------------------------- (0.70) borrowed skills
       case 'bloodoath': {
         // Blood Oath (from the Berserker): drained to 40% and held there; your own subclass's signature goes past its limits
+        // (0.71.2) A toggle: on until you turn it off.
+        p.cd[slot] = def.toggleCd || 3;
+        if (p.oathOn) {
+          p.oathOn = false;
+          this.emit('buffEnd', { name: 'Blood Oath' });
+          break;
+        }
         const floor = p.stats.maxHp * def.hpTo;
         if (p.hp > floor) {
           const cost = p.hp - floor;
           p.hp = floor;
           this.emit('bloodCost', { x: p.x, z: p.z, amount: Math.round(cost) });
         }
-        p.oathT = def.duration;
+        p.oathOn = true;
         p.castLock = 0.15;
         this.emit('cast', { slot, fx: 'frenzy', x: p.x, z: p.z, radius: 3 });
         this.emit('buff', { name: 'Blood Oath', x: p.x, z: p.z });
@@ -2333,6 +2340,15 @@ export class World {
       }
       case 'frenzy': {
         // Crimson Oath (Berserker): pay in blood, then you cannot fall for a while.
+        // (0.71.2) A toggle: on until you turn it off, and while it is on you are held at 40% health.
+        p.cd[slot] = def.toggleCd || 3;
+        if (p.frenzyOn) {
+          p.frenzyOn = false;
+          this.emit('buffEnd', { name: 'Crimson Oath' });
+          break;
+        }
+        p.frenzyOn = true;
+        dmg *= 1 + (m.oathRoar || 0);
         const floor = p.stats.maxHp * def.hpTo;
         if (p.hp > floor) {
           const cost = p.hp - floor;
@@ -2344,7 +2360,6 @@ export class World {
           this.recalcStats();
           this.emit('bloodied', { on: true, x: p.x, z: p.z });
         }
-        p.frenzyT = def.duration + (m.rDuration || 0);
         p.castLock = 0.15;
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
@@ -2662,11 +2677,17 @@ export class World {
     if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
     if (p.lockImmT > 0) p.lockImmT -= dt;
     if (p.merchantCd > 0) p.merchantCd -= dt;
-    if (p.oathT > 0) {
-      // (0.70) Blood Oath: held at 40% health while it lasts
-      p.oathT -= dt;
+    if (p.dead) p.oathOn = p.frenzyOn = false; // (0.71.2) the toggles go off when you fall
+    if (p.oathT > 0) p.oathT -= dt;
+    if (p.oathOn || p.oathT > 0) {
+      // (0.70) Blood Oath: held at 40% health while it is on
       if (p.hp > p.stats.maxHp * OATH.hpTo) p.hp = p.stats.maxHp * OATH.hpTo;
     }
+    if (p.frenzyOn && this.kit.r && this.kit.r.type === 'frenzy') {
+      // (0.71.2) Crimson Oath, on: held at its 40% too
+      const cap = p.stats.maxHp * this.kit.r.hpTo;
+      if (p.hp > cap) p.hp = cap;
+    } else if (p.frenzyOn) p.frenzyOn = false; // no longer a Berserker (a respec)
     if (p.lockT > 0) {
       // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
       const L = CONFIG.MIND_LOCK;
@@ -3133,6 +3154,7 @@ export class World {
     if (holder) rawDamage *= 1 - Math.min(0.75, holder.kit.r.dr || 0.35);
     // Subclass Immortals that make you harder to hurt in the right moment (0.32).
     if (p.bloodied && m.bloodGuard > 0) rawDamage *= 1 - m.bloodGuard; // Blood Rage
+    if (m.oathDr > 0 && this.frenzyActive(p)) rawDamage *= 1 - m.oathDr; // (0.71.2) Oathsworn
     const chiller = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
     if (chiller && chiller.chillWeak > 0 && (chiller.slowT > 0 || chiller.state === 'stunned')) rawDamage *= 1 - chiller.chillWeak; // Deep Winter
     if (p.dash || p.leap) {
@@ -3422,15 +3444,21 @@ export class World {
     const other = slot === 'd' ? 'f' : 'd';
     if (spec && p.borrowed[other] === spec) p.borrowed[other] = p.borrowed[slot]; // swap them over
     p.borrowed[slot] = spec || null;
+    if (p.borrowed.d !== 'berserker' && p.borrowed.f !== 'berserker') p.oathOn = false; // (0.71.2) Blood Oath taken off: it goes off
     p.cd[slot] = Math.max(p.cd[slot] || 0, this.map && this.map.safe ? 0 : 5); // no swapping one in fresh mid-fight
     this.recalcStats();
     this.emit('borrowed', { slot, spec: p.borrowed[slot] });
   }
 
+  /** (0.71.2) Is Crimson Oath on (the toggle, or the Crown of the Last Breath's few seconds)? */
+  frenzyActive(p = this.player) {
+    return !!(p && (p.frenzyOn || p.frenzyT > 0));
+  }
+
   /** (0.70) The Blood Oath your subclass gets, while it holds (null otherwise). */
   oathOf() {
     const p = this.player;
-    return p && p.oathT > 0 ? OATH[p.spec] || OATH.none : null;
+    return p && (p.oathOn || p.oathT > 0) ? OATH[p.spec] || OATH.none : null;
   }
 
   /** (0.70) Anchor Shot, Smoke Snare, Gravity Anchor: drag everything near a point into it, stun it (bosses stagger), and hit it. */
@@ -7053,6 +7081,7 @@ export class World {
         if (oath === OATH.shadowdancer && opts.source === 'w' && this.kit.w && this.kit.w.type === 'kunai') dmg *= oath.kunai;
       }
       if (im.wBurning > 0 && opts.source === 'w' && e.burnT > 0) dmg *= 1 + im.wBurning; // (0.70) Ember Brand
+      if (im.oathDmg > 0 && this.frenzyActive(p)) dmg *= 1 + im.oathDmg; // (0.71.2) Oathsworn, Oathblood Signet
       if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
       if (im.pctHp && !opts.dot && (opts.source === 'q' || opts.source === 'w' || opts.source === 'e' || opts.source === 'r')) {
         // Culling Edge (Assassin, 0.51): a share of its maximum health, most on enemies below your level;
@@ -7174,10 +7203,10 @@ export class World {
       // Lifesteal: full from basic attacks, a third from abilities, capped (see CONFIG).
       let ls = Math.min(p.stats.lifesteal, CONFIG.LIFESTEAL_CAP) + (p.bloodied ? this.mods.bloodLeech : 0);
       if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
-      if (p.frenzyT > 0) ls *= 2; // Crimson Oath
+      if (this.frenzyActive(p)) ls *= 2; // Crimson Oath
       let heal = (dmg * ls) / 100;
       // The budget (0.32): no more than LIFESTEAL_RATE of max health a second (twice that during Crimson Oath).
-      const boost = p.frenzyT > 0 ? 2 : 1;
+      const boost = this.frenzyActive(p) ? 2 : 1;
       heal = Math.min(heal, (p.lsPool || 0) * boost);
       p.lsPool = Math.max(0, (p.lsPool || 0) - heal / boost);
       // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.

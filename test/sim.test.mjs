@@ -4655,4 +4655,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   check('Caelum (0.70): every map half as tough again and 20% harder-hitting', CL.hard.hp === 1.5 && CL.hard.dmg === 1.2);
 }
+
+// --- 0.70.1: the road opens for the whole account once the Cinder has fallen ---------------------
+{
+  const { ROAD_MAPS } = await import('../src/sim/world.js');
+  check('The road: the Greenwood to Starfall Sanctum (the Unmade)', ROAD_MAPS[0] === 'greenwood' && ROAD_MAPS[ROAD_MAPS.length - 1] === 'sanctum' && ROAD_MAPS.length === 10, ROAD_MAPS.join());
+  const fresh = (lives) => new World({ seed: 93, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 1, exp: 0, equipped: {}, bag: [], acctLives: lives } });
+  let w = fresh(null);
+  w.command({ type: 'travel', to: 'sanctum' }); w.runCommands();
+  check('...shut on a new hero while no class has beaten the Cinder', w.map.id === 'town' && !w.mapKnown('fen'));
+  w = fresh({ archer: { prim: [6] } });
+  w.command({ type: 'travel', to: 'sanctum' }); w.runCommands();
+  check('...open on every class once any class has (an Archer here, a level 1 Mage warps)', w.map.id === 'sanctum' && ROAD_MAPS.every((id) => w.mapKnown(id)));
+  check('...but not the Wilds, Asterfell or the Deep', !w.mapKnown('wilds') && !w.mapKnown('asterfell') && !w.mapKnown('deep6'));
+}
 process.exit(failed ? 1 : 0);

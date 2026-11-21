@@ -59,6 +59,9 @@ const dist = (ax, az, bx, bz) => dHypot(ax - bx, az - bz);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Signed smallest difference between two angles. */
+/** (0.70.1) The road the Waygate opens once the Cinder has fallen: the Greenwood to Starfall Sanctum. */
+export const ROAD_MAPS = MAP_IDS.slice(MAP_IDS.indexOf('greenwood'), MAP_IDS.indexOf('sanctum') + 1);
+
 export function angDiff(a, b) {
   let d = (a - b) % TAU;
   if (d > Math.PI) d -= TAU;
@@ -882,7 +885,7 @@ export class World {
             else if (c.to === CAELUM.ids[0] || p.visited.includes(c.to)) this.goMap(c.to, MAPS[c.to].portals[0].to);
           } else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
           else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier, name: MAPS[c.to].name });
-          else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.goMap(c.to, MAPS[c.to].portals[0].to);
+          else if (this.mode === 'explore' && MAPS[c.to] && (this.mapKnown(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.goMap(c.to, MAPS[c.to].portals[0].to);
           break;
         case 'setDepth':
           // The Deep (0.54): choose a Depth (0: back to the world above), in Haven, by the party's leader
@@ -3303,6 +3306,22 @@ export class World {
     if (!(p.bossKills.cinder > 0) && !primordialsOf(p.rebirth).includes(6)) return;
     p.tierMax = MAX_TIER;
     this.emit('tierUnlocked', { tier: MAX_TIER, numeral: TIERS[MAX_TIER].numeral, name: TIERS[MAX_TIER].name, all: true });
+  }
+
+  /**
+   * (0.70.1) Once the Cinder has fallen on ANY class of the account (in any life), the whole road, the
+   * Greenwood to Starfall Sanctum (the Unmade), is open on the Waygate from the start of every life: no
+   * walking it again for each rebirth. Quest gates (Asterfell, the Starwell) and world tiers still apply.
+   */
+  roadOpen(p = this.player) {
+    if (!p) return false;
+    if ((p.bossKills && p.bossKills.cinder > 0) || primordialsOf(p.rebirth).includes(6)) return true;
+    return !!(p.lives && Object.values(p.lives).some((l) => l && Array.isArray(l.prim) && l.prim.includes(6)));
+  }
+
+  /** (0.70.1) Can the Waygate take this hero to this ordinary map (found already, or the road open)? */
+  mapKnown(id, p = this.player) {
+    return p.visited.includes(id) || (ROAD_MAPS.includes(id) && this.roadOpen(p));
   }
 
   /** (0.65) How strong a worn class or unique Immortal's passive is, by its stars: 1 to 2. */

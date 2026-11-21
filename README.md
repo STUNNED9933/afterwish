@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The road stays open (0.70.1)
+
+- Once **any class** on the account has beaten the Cinder (in any life), every map from the Greenwood to
+  Starfall Sanctum (the Unmade) is open on the Waygate for **every** class, from the start of every life.
+  No walking the road again after each rebirth. Asterfell and the Starwell still need their quests, the
+  Wilds their world tier, and the Deep and Caelum their own gates.
+
 ### Borrowed skills (0.70)
 
 - **Beat the Quiet** with a class and every other class on your account may **borrow** a skill from each

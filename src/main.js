@@ -1121,13 +1121,13 @@ function start(hot = {}) {
         continue;
       }
       if (m.deep || CAELUM.maps[id]) continue; // (0.57.2) the Primordials' domains are in the Deep's own panel (renderDeep); (0.64) Caelum in its own
-      const known = p.visited.includes(id);
+      const known = world.mapKnown ? world.mapKnown(id) : p.visited.includes(id); // (0.70.1) the whole road, once the Cinder has fallen on any class
       const top = m.level + m.levelSpan + (m.boss ? 1 : 0);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'travel-row' + (known && p.level >= m.level - 2 && p.level <= top ? ' fit' : '');
       btn.disabled = !known;
-      btn.innerHTML = `<b>${known ? m.name : '???'}</b><span class="lv">Levels ${m.level} to ${top}</span><span>${known ? (p.level > top ? 'You have outgrown this map' : p.level < m.level - 2 ? 'Dangerous at your level' : 'A good match for your level') + (m.boss ? ' · a boss waits in the middle' : '') : 'Not discovered yet'}</span>`;
+      btn.innerHTML = `<b>${known ? m.name : '???'}</b><span class="lv">Levels ${m.level} to ${top}</span><span>${known ? (p.level > top ? 'You have outgrown this map' : p.level < m.level - 2 ? 'Dangerous at your level' : 'A good match for your level') + (m.boss ? ' · a boss waits in the middle' : '') + (p.visited.includes(id) ? '' : ' · open: the Cinder has fallen') : 'Not discovered yet'}</span>`;
       btn.addEventListener('click', () => {
         setMode('play');
         applyNow({ type: 'travel', to: id });

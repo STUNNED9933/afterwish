@@ -8,7 +8,7 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM , masteryFor, MASTERY, CAELUM, animusShort } from './endgame.js';
+import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM , masteryFor, MASTERY, CAELUM, animusShort, hoardTop, primordialsOf } from './endgame.js';
 const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI)
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
@@ -192,7 +192,7 @@ export class World {
     this.picks = []; // (0.65) picks still owed (boss: true/false), from starting the Ring further in
     this.rerolls = CONFIG.AUGMENT_REROLLS;
     this.mods = defaultMods();
-    this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1 };
+    this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1, startN: startWave };
     this.ring = this.mode === 'arena' && opts.focus ? newRing(opts.focus) : null; // (0.59) the run's spoils (ring.js)
     this.twist = (opts.trial && opts.trial.twist) || null; // (0.60) the Weekly Echo's twist on the rules (trial.js TWISTS)
     this.knownSigns = opts.signs; // (0.56.4) what the account has already read: signs are read once per account
@@ -484,6 +484,7 @@ export class World {
       gold: save?.gold ?? 0,
       scrap: save?.scrap ?? 0,
       keys: save?.keys ?? 0, // boss keys, each opens one Warden's Cache
+      merchantCd: Math.max(0, Number(save?.merchantCd) || 0), merchantId: save?.merchantId ?? null, // (0.66) see MERCHANT.buyerCd
       tickets: save?.tickets ?? 0, // arena tickets, earned in exploration
       visited: Array.isArray(save?.visited) ? save.visited.slice() : ['town'], // maps the Waygate can reach
       tomes: save?.tomes ?? 0, // skill points bought from the trainer
@@ -553,6 +554,7 @@ export class World {
     }
     this.player = p;
     restoreRecalled(p); // (0.62) pieces recalled before 0.62 get their prime back
+    if (p.level >= CONFIG.MAX_LEVEL && p.tierMax < MAX_TIER && (p.bossKills.cinder > 0 || primordialsOf(p.rebirth).includes(6))) p.tierMax = MAX_TIER; // (0.66) see cinderTiers
     if (!p.keepsake && p.quests && p.quests.edric && p.quests.edric.s === 'done') {
       // (0.53) Edric's Colours already earned before the keepsake slot existed: it is yours now too
       p.keepsake = rollUnique(this.streamRng('keepsake', 1), p.level, 'bluetrim', this.cls);
@@ -656,6 +658,8 @@ export class World {
       gold: p.gold,
       scrap: p.scrap,
       keys: p.keys,
+      merchantCd: Math.round(p.merchantCd || 0),
+      merchantId: p.merchantId ?? null,
       tickets: p.tickets,
       visited: p.visited,
       quests: p.quests,
@@ -2411,6 +2415,7 @@ export class World {
     if (p.nightcutT > 0) p.nightcutT -= dt;
     if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
     if (p.lockImmT > 0) p.lockImmT -= dt;
+    if (p.merchantCd > 0) p.merchantCd -= dt;
     if (p.lockT > 0) {
       // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
       const L = CONFIG.MIND_LOCK;
@@ -3066,6 +3071,18 @@ export class World {
     }
   }
 
+  /**
+   * (0.66) Once the Cinder has fallen, in this life or one before, a level-100 hero has all five world
+   * tiers open: no climbing back through the Unmade four times after every rebirth.
+   */
+  cinderTiers() {
+    const p = this.player;
+    if (p.tierMax >= MAX_TIER || p.level < CONFIG.MAX_LEVEL) return;
+    if (!(p.bossKills.cinder > 0) && !primordialsOf(p.rebirth).includes(6)) return;
+    p.tierMax = MAX_TIER;
+    this.emit('tierUnlocked', { tier: MAX_TIER, numeral: TIERS[MAX_TIER].numeral, name: TIERS[MAX_TIER].name, all: true });
+  }
+
   /** (0.65) How strong a worn class or unique Immortal's passive is, by its stars: 1 to 2. */
   pot(key) {
     return (this.mods.pot && this.mods.pot[key]) || 1;
@@ -3200,6 +3217,7 @@ export class World {
       this.healPlayer(p.stats.maxHp * 0.15, false);
       const unlocked = Object.keys(this.kit).filter((k) => this.kit[k].unlock === p.level);
       this.emit('levelUp', { level: p.level, unlocked, x: p.x, z: p.z });
+      if (p.level >= CONFIG.MAX_LEVEL) this.cinderTiers();
     }
     if (p.level >= CONFIG.MAX_LEVEL) p.exp = 0;
   }
@@ -3249,7 +3267,7 @@ export class World {
       if (e.elite && !e.rare && !def.boss && i === count - 1 && this.mode === 'explore') opts = { weights: ELITE_SPOILS.weights.map((w, r) => (r < floor ? 0 : w)), cls: this.cls }; // its sure piece leans Mythic (0.49)
       if (hoard) {
         // The first item is the prize: guaranteed top rarity on your first kill, good odds after.
-        if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoard.top, cls: this.cls };
+        if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoardTop(hoard.top, this.depthNow() || T.n), cls: this.cls }; // (0.66) better each world
         else opts = { minRarity: hoard.min + (i <= hoard.better ? 1 : 0), cls: this.cls };
       }
       let item = rollItem(this.rng, ilvl, opts);
@@ -3283,6 +3301,7 @@ export class World {
       }
     }
     p.bossKills[e.type] = (p.bossKills[e.type] || 0) + 1;
+    if (e.type === DEEP.depths[6].primordial) this.cinderTiers();
     // Keys and shards from a boss you have outgrown come only some of the time.
     const keys = fall >= 1 || this.rng() < fall ? loot.keys : 0;
     const tickets = fall >= 1 || this.rng() < fall ? loot.tickets : 0;
@@ -4458,35 +4477,63 @@ export class World {
     if (!c) return null;
     const L = this.worldTier() >= 2 ? CONFIG.MAX_LEVEL : Math.max(1, (this.map.level || 1) + Math.round((this.map.levelSpan || 0) * 0.5));
     const lv = 1 + 0.1 * (L - 1);
-    const stock = MERCHANT.stock.filter((s) => !s.chance || rng() < s.chance).map((s) => Object.assign({}, s, { gold: s.gold ? Math.round(s.gold * lv) : 0, tickets: s.tickets || 0, sold: false }));
-    this.merchant = { x: c.x, z: c.z, left: MERCHANT.stay, level: L, stock };
+    const stock = MERCHANT.stock.filter((s) => !s.chance || rng() < s.chance).map((s) => Object.assign({}, s, { gold: s.gold ? Math.round(s.gold * lv) : 0, tickets: s.tickets || 0, bought: {} }));
+    // (0.66) and five wares, fresh each visit
+    const total = MERCHANT.wares.reduce((a, w) => a + w.weight, 0);
+    for (let i = 0; i < MERCHANT.wareSlots; i++) {
+      let roll = rng() * total, w = MERCHANT.wares[0];
+      for (const o of MERCHANT.wares) if ((roll -= o.weight) <= 0) { w = o; break; }
+      const n = w.n ? w.n[0] + Math.floor(rng() * (w.n[1] - w.n[0] + 1)) : 0;
+      stock.push({ kind: w.kind, n, min: w.min || 0, label: w.label(n), gold: w.goldEach ? Math.round(w.goldEach * n * lv) : 0, tickets: w.tickets || 0, ware: true, bought: {} });
+    }
+    const id = this.nextId++;
+    this.merchant = { id, x: c.x, z: c.z, left: MERCHANT.stay, level: L, stock };
     this.merchantAt = this.ticks;
-    this.emit('merchantArrive', { map: this.map.name, x: c.x, z: c.z });
+    const frag = stock.filter((s) => s.kind === 'fragment').reduce((a, s) => a + s.n, 0);
+    this.emit('merchantArrive', { map: this.map.name, x: c.x, z: c.z, fragments: frag, immortal: stock.some((s) => s.kind === 'immortal') });
     return this.merchant;
   }
 
-  /** Buy from the merchant (stock is shared in a party: first come, first served). */
+  /**
+   * Buy from the merchant. (0.66) In a party everyone may buy each ware once (`bought` by player); your
+   * first buy from a merchant keeps you from buying from another one for MERCHANT.buyerCd seconds.
+   */
   buyMerchant(i) {
     const mc = this.merchant;
     const p = this.player;
     if (!mc || dist(p.x, p.z, mc.x, mc.z) > CONFIG.INTERACT_RANGE + 1.5) return;
     const s = mc.stock[i];
-    if (!s || s.sold) return;
+    const me = this.cur.pid;
+    if (!s) return;
+    s.bought = s.bought || {};
+    if (s.bought[me] || s.sold) return;
+    if (p.merchantCd > 0 && p.merchantId !== mc.id) {
+      this.emit('merchantWait', { left: Math.ceil(p.merchantCd) });
+      return;
+    }
     if (p.gold < s.gold || p.tickets < s.tickets) {
       this.emit('cantAfford');
       return;
     }
-    if (s.kind !== 'dust' && s.kind !== 'glass' && p.bag.length >= this.bagSize(p)) {
+    const goods = s.kind === 'gear' || s.kind === 'set' || s.kind === 'immortal';
+    if (goods && p.bag.length >= this.bagSize(p)) {
       this.emit('bagFull');
       return;
     }
     p.gold -= s.gold;
     p.tickets -= s.tickets;
-    s.sold = true;
+    s.bought[me] = true;
+    if (p.merchantId !== mc.id) {
+      p.merchantId = mc.id;
+      p.merchantCd = MERCHANT.buyerCd;
+    }
     let item = null;
     if (s.kind === 'dust') p.dust += s.n;
     else if (s.kind === 'glass') this.giveMisc('glass', 1);
+    else if (s.kind === 'fragment') this.giveMisc('fragment', s.n);
+    else if (s.kind === 'keys') p.keys = (p.keys || 0) + s.n;
     else if (s.kind === 'set') item = rollSetPiece(this.rng, mc.level, this.cls, p.spec);
+    else if (s.kind === 'immortal') item = rollItem(this.rng, mc.level, { minRarity: 6, weights: [0, 0, 0, 0, 0, 0, 1], cls: this.cls });
     else item = rollItem(this.rng, mc.level, { minRarity: s.min, cls: this.cls });
     if (item) p.bag.push(item);
     this.emit('merchantSold', { label: s.label, item, dust: s.kind === 'dust' ? s.n : 0 });
@@ -5248,6 +5295,8 @@ export class World {
       this.questStamp++;
       this.emit('ending', { choice: 'self', first });
     } else if (choice === 'place') {
+      return; // (0.66) withdrawn for now (see main.js renderWell); what follows is kept for when it returns
+      // eslint-disable-next-line no-unreachable
       if (!(p.endings.self > 0) || rebirthBlock(p)) return;
       const save = rebirthSave(this.toSave(), starterWeapon);
       const rb = save.rebirth;
@@ -5677,9 +5726,9 @@ export class World {
 
   // --- Augments --------------------------------------------------------------
   /** Put three augments on offer. The next wave waits until one is taken. */
-  makeOffer(boss, exclude = []) {
-    const rng = this.streamRng('offer', this.offerCount++); // the same offers for everyone on the same seed
-    const pool = AUGMENT_IDS.filter((id) => {
+  /** Every augment this hero could be offered now (not yet taken, its class and subclass, unlocked). */
+  augmentPool(exclude = []) {
+    return AUGMENT_IDS.filter((id) => {
       const a = AUGMENTS[id];
       if (this.augments.includes(id) || exclude.includes(id)) return false;
       if (a.cls && a.cls !== this.cls) return false; // another class's augment
@@ -5692,6 +5741,11 @@ export class World {
       }
       return a.slot === 'parry' || a.slot === 'hero' || id === 'r_early' || this.abilityUnlocked(a.slot);
     });
+  }
+
+  makeOffer(boss, exclude = []) {
+    const rng = this.streamRng('offer', this.offerCount++); // the same offers for everyone on the same seed
+    const pool = this.augmentPool(exclude);
     const t1 = pool.filter((id) => AUGMENTS[id].tier === 1);
     const t2 = pool.filter((id) => AUGMENTS[id].tier === 2);
     const choices = [];
@@ -5731,6 +5785,14 @@ export class World {
     }
     for (const h of this.heroes) {
       this.as(h, () => {
+        // (0.66) owed at least as many as there are left to take: take them all, no picking
+        const pool = this.augmentPool();
+        if (owed.length >= pool.length) {
+          for (const id of pool) this.augments.push(id);
+          this.recalcStats();
+          this.emit('augmentsAll', { n: pool.length });
+          return;
+        }
         this.picks = owed.slice();
         if (!this.offer && this.picks.length) this.makeOffer(this.picks.shift());
       });
@@ -7192,6 +7254,12 @@ export class World {
     const w = this.wave;
     w.n++;
     w.queue = buildWave(w.n, this.streamRng('wave', w.n));
+    if (this.ring && w.n >= RING.granted.from) {
+      // (0.66) from wave 50 the Granted come to the Ring too (never in place of a boss)
+      const g = this.streamRng('granted', w.n);
+      w.queue = w.queue.map((t) => (!(ENEMIES[t] && ENEMIES[t].boss) && g() < RING.granted.share ? RING.granted.types[Math.floor(g() * RING.granted.types.length)] : t));
+    }
+    if (this.ring && (w.n === 25 || w.n === RING.granted.from || (w.n > 25 && w.n === w.startN))) this.emit('ringDeep', { n: w.n, ember: RING.ember(w.n), animus: RING.animus(w.n) });
     if (this.twist === 'swarm') {
       // (0.60) Swarm: a third more of the floor's own kinds (never another boss), each a quarter weaker (enemyScale)
       const small = w.queue.filter((t) => !(ENEMIES[t] && ENEMIES[t].boss));
@@ -7223,7 +7291,11 @@ export class World {
     w.spawnT -= dt;
     if (w.queue.length && this.enemies.length < w.maxAlive && w.spawnT <= 0) {
       const e = this.spawnEnemy(w.queue.shift());
-      if (this.ring && e) this.setPace(e, RING.pace(w.n), RING.tempo(w.n), RING.move(w.n)); // (0.65) faster from wave 20
+      if (this.ring && e) {
+        this.setPace(e, RING.pace(w.n), RING.tempo(w.n), RING.move(w.n)); // (0.65) faster from wave 20
+        if (RING.ember(w.n)) e.ember = RING.ember(w.n); // (0.66) Ember from wave 25
+        if (RING.animus(w.n)) e.animusNeed = RING.animus(w.n); // and Animus from wave 50
+      }
       w.spawnT = 0.35; // (0.62) a quicker trickle: the floor fills faster (was 0.55 s)
     }
     if (!w.queue.length && this.enemies.length === 0) {

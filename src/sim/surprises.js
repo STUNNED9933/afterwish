@@ -92,6 +92,19 @@ export const MERCHANT = {
     { kind: 'set', label: 'A set piece (usually your own subclass\'s)', tickets: 3 },
     { kind: 'glass', label: 'An Unwishing Glass (resets your Wish points)', tickets: 4, chance: 0.4 }, // only on some visits
   ],
+  // (0.66) Five more slots, drawn fresh each visit from these (by weight). Immortal Fragments come in packs
+  // of 5 to 10, so a visit never offers more than 50 of them. Gold prices scale with level like the rest.
+  wareSlots: 5,
+  wares: [
+    { kind: 'fragment', weight: 4, n: [5, 10], label: (n) => `${n} Immortal Fragments`, goldEach: 180 },
+    { kind: 'keys', weight: 2, n: [2, 3], label: (n) => `${n} Warden keys`, goldEach: 650 },
+    { kind: 'gear', weight: 2, min: 5, label: () => 'Mystery gear (Ancient or better)', tickets: 4 },
+    { kind: 'dust', weight: 2, n: [12, 18], label: (n) => `${n} Wishdust`, goldEach: 70 },
+    { kind: 'immortal', weight: 0.4, label: () => 'An Immortal (a random one, for your class)', tickets: 12 },
+  ],
+  // (0.66) In a party everyone may buy every ware once. Buying from one merchant then keeps you from
+  // buying from another for this long, so hopping between friends' worlds is not a farm.
+  buyerCd: 300,
 };
 
 // Bounties (0.33): three jobs on the board in Haven. A finished one is handed in there for

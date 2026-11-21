@@ -162,6 +162,12 @@ export const CAELUM = {
 /** Is this hero short of what a Caelum map asks (0.64)? A tiny margin so 0.15 from 5 points always counts. */
 export const animusShort = (have, need) => need > 0 && (have || 0) + 1e-6 < need;
 
+// (0.66) Each world (tiers I to V, then Depths VI to X) adds a quarter of a percent to a boss hoard's chance
+// of an Immortal: the Unmade's 5% is 6% on tier V; the Stillness's 12% is 14.25% at Depth X.
+export const IMMORTAL_PER_WORLD = 0.25;
+/** A hoard's best-piece weights (out of 100) on world `n` (1 to 10). */
+export const hoardTop = (top, n) => (n > 1 && top[6] > 0 ? top.map((w, i) => (i === 6 ? w + IMMORTAL_PER_WORLD * (n - 1) : i === 5 ? Math.max(0, w - IMMORTAL_PER_WORLD * (n - 1)) : w)) : top);
+
 export const MASTERY = {
   quests: { deep2: 6, deep3: 7, deep4: 8, deep5: 9, deep6q: 10 }, // the Primordial quests, and their Depths
   classes: ['warrior', 'archer', 'rogue', 'mage'],

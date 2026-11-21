@@ -17,7 +17,7 @@ import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { CONFIG } from '../config.js';
 import { RARITIES, REMNANT_UNIQUE, EFFECTS } from '../sim/items.js';
-import { TIERS, ELITE_FROM_LEVEL, DEEP } from '../sim/endgame.js';
+import { TIERS, ELITE_FROM_LEVEL, DEEP, hoardTop, IMMORTAL_PER_WORLD } from '../sim/endgame.js';
 import { BOSS_LOOT } from '../sim/story.js';
 import { RARE, THIEF, REMNANT, GLASS, FRAGMENTS, SIGIL, ELITE_SPOILS } from '../sim/surprises.js';
 
@@ -589,8 +589,14 @@ export function spoilsHtml(b, id, ctx = {}) {
   // the Deep and the five Primordials below the Starwell are only ever met on world tier V
   const deep = GROUPS.find((g) => g.title === 'The Deep').ids.includes(id) || (def.boss && GROUPS[GROUPS.length - 1].ids.includes(id) && id !== 'asker');
   const sky = GROUPS.find((g) => g.title === 'Caelum').ids.includes(id); // (0.64) built on tier V too
-  const tier = deep || sky ? TIERS.length - 1 : Math.max(1, Math.min(TIERS.length - 1, ctx.tier || 1));
+  // (0.66) worlds I to V are the tiers; VI to X the Depths, built on tier V. The Deep's own are only met
+  // there, Caelum's only above the Starwell (tier V, no Depth).
+  const want = Math.max(1, Math.min(10, ctx.world || ctx.tier || 1));
+  const W = sky ? 5 : deep ? Math.max(6, want) : want;
+  const tier = Math.min(TIERS.length - 1, W);
   const T = TIERS[tier];
+  const Dz = W > 5 ? DEEP.depths[W] : null;
+  const zoneLoot = Dz ? Dz.loot : 1;
   const luck = ctx.luck || 0;
   const floor = T.minRarity;
   const ilvl = dropLevel(id, tier);
@@ -609,7 +615,7 @@ export function spoilsHtml(b, id, ctx = {}) {
     const L = BOSS_LOOT[id];
     if (L) {
       row('First kill', `${L.items} pieces, the first one ${rchip(L.first, rname(L.first))} for certain; and 2 skill points`);
-      row('Its best piece', oddsRow(rarityOdds({ weights: L.top, luck })));
+      row('Its best piece', oddsRow(rarityOdds({ weights: hoardTop(L.top, W), luck })));
       row('The rest', `${L.items - 1} more: ${orBetter(L.min)}${L.better ? `, ${L.better === 1 ? 'one' : L.better} of them ${orBetter(L.min + 1)}` : ''}`);
       row('Also', `${L.keys} Warden key${L.keys > 1 ? 's' : ''} and ${L.tickets} shard${L.tickets > 1 ? 's' : ''}`);
       if (REMNANT_UNIQUE[id]) {
@@ -623,7 +629,7 @@ export function spoilsHtml(b, id, ctx = {}) {
       if (deep) row('Kindling', `always, until its Depth has given you ${DEEP.kindlingMax}`);
     }
   } else {
-    const chance = Math.min(1, (def.drop || 0) * T.loot);
+    const chance = Math.min(1, (def.drop || 0) * T.loot * zoneLoot);
     row('Gear', chance > 0 ? `${pct(chance)} of kills` : 'none');
     if (chance > 0) row('Its rarity', oddsRow(rarityOdds({ minRarity: floor, ilvl, luck })));
     row('Shards', def.heavy ? 'one every kill' : `${pct(CONFIG.TICKET_CHANCE)} of kills`);
@@ -634,7 +640,9 @@ export function spoilsHtml(b, id, ctx = {}) {
     }
     row('If Storied', `a piece ${orBetter(Math.max(floor, 3))} (${pct(RARE.better)} ${orBetter(Math.max(floor, 4))}), ${pct(RARE.set)} a set piece, ${FRAGMENTS.storied} Immortal Fragments, ${RARE.dust[0]} to ${RARE.dust[1]} Wishdust, ${pct(SIGIL.storied)} a Remnant Sigil, ${pct(GLASS.storied)} an Unwishing Glass`);
   }
-  const at = def.summon ? '' : `<p class="setting-desc">${deep ? 'In the Deep, which is always' : sky ? 'In Caelum, which is always' : 'On'} world tier ${T.numeral}${floor ? ` (nothing below ${rname(floor)})` : ''}, for gear of level ${ilvl}${luck ? `, with Lucky Star (${pct(luck)} a step higher)` : ''}.</p>`;
+  const where = Dz ? `At Depth ${Dz.numeral} (built on world tier V, ${zoneLoot}x the loot)` : sky ? 'In Caelum, which is always world tier V' : `On world tier ${T.numeral}`;
+  const moved = ctx.chosen && W !== want ? ` (${sky ? 'it is only met in Caelum' : 'it is only met in the Deep'})` : '';
+  const at = def.summon ? '' : `<p class="setting-desc">${where}${moved}${floor ? `, nothing below ${rname(floor)}` : ''}, for gear of level ${ilvl}${luck ? `, with Lucky Star (${pct(luck)} a step higher)` : ''}. Boss hoards' Immortal chance grows ${IMMORTAL_PER_WORLD}% each world.</p>`;
   return `<h4>What it leaves</h4><table class="case-spoils"><tbody>${rows.join('')}</tbody></table>${at}`;
 }
 

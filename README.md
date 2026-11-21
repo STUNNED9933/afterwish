@@ -159,6 +159,26 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Auto-pick, deep waves, richer merchants (0.66)
+
+- **Auto-pick augments**: rank every augment your class can get (drag, or the arrows; damage starts at
+  the top, defensive ones at the bottom) and turn on auto-pick: each Ring offer takes the highest of its
+  three. From the augment screen or the menu. Starting so far in that you are owed more picks than there
+  are augments left gives you all of them.
+- **The Ring's deep waves**: from wave 25 the echoes carry Ember (15, rising 4 a wave to 155 by wave 60);
+  from wave 50 the Granted join them and every echo asks for Animus (15%, rising to 60% by wave 80).
+- **Ex Voto**: choose which world's drop rates to see, I to V and Depths VI to X. Boss hoards' Immortal
+  chance grows a quarter of a percent each world (the Unmade: 5% on I, 6% on V).
+- **Primordials**: the first kill of each now gives a random Immortal (was an Ancient).
+- **The Cinder opens every world tier**: once it has fallen, in this life or one before, a level-100
+  hero has tiers I to V to choose.
+- **Merchants**: five more wares each visit, fresh every time: Immortal Fragments in packs of 5 to 10
+  (never more than 50 a visit), Warden keys, Ancient-or-better gear, Wishdust, and now and then an
+  Immortal. A banner says when one has Fragments or an Immortal. In a party everyone can buy every ware
+  once; buying from one merchant keeps you from buying from another for 5 minutes.
+- **Take her place** (New Game+) is withdrawn for now; heroes already in New Game+ keep it.
+- Fixed: the rebirth button's "Are you sure?" now goes back when you close the panel, or after 6 seconds.
+
 ### Harder, faster, better paid (0.65)
 
 - **Faster from world tier II up**: enemies wind up quicker (down to 80% on tier V, never under 0.3 s

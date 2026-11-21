@@ -39,6 +39,7 @@ import { ServerRoom } from './net/server-room.js';
 import { SERVERS, serverHealth } from './net/servers.js';
 import * as Online from './net/online.js';
 import * as Casebook from './ui/casebook.js';
+import * as AugPri from './ui/augpriority.js'; // (0.66) auto-pick augments
 import { makeSnapshot, applySnapshot, receiveSnapshot, eventFor, ALLY_FX, compactEvents } from './net/sync.js';
 import { FRIEND_CMDS } from './net/cmds.js';
 
@@ -195,6 +196,8 @@ function start(hot = {}) {
 
   // mode: 'title' | 'town' | 'play' | 'pause' | 'gear' | 'augment' | 'defeat'
   let mode = 'title';
+  let rebirthSure = false; // the rebirth button's "Are you sure?" (0.66: reset by setMode and after 6 s)
+  let rebirthSureT = 0;
   let gearReturn = 'play';
   let talkTo = null; // the person being talked to
   let reading = null; // the sign being read
@@ -351,6 +354,7 @@ function start(hot = {}) {
 
   // ----------------------------------------------------------------- modes
   function setMode(next) {
+    if (next !== mode) rebirthSure = false; // (0.66) closing the panel takes the "Are you sure?" back
     mode = next;
     document.body.dataset.mode = mode;
     document.body.dataset.from = mode === 'gear' ? gearReturn : '';
@@ -701,6 +705,47 @@ function start(hot = {}) {
   }
 
   // --------------------------------------------------------------- augments
+  // (0.66) Auto-pick: take the offered augment that ranks highest in your own priority list (ui/augpriority.js).
+  let autoSent = '';
+  function augOrder() {
+    return AugPri.orderFor(settings.augOrder, world.cls);
+  }
+  function autoAugment() {
+    const offer = world.offer;
+    if (!settings.autoAug || !offer || trialRun) return false;
+    const key = `${world.wave.cleared}:${offer.choices.join()}`;
+    if (autoSent === key) return true; // sent, waiting to hear back (online)
+    autoSent = key;
+    applyNow({ type: 'augment', id: AugPri.pickFrom(offer.choices, augOrder()) });
+    return true;
+  }
+  /** The priority list: drag a row, or nudge it with the arrows. */
+  function renderAugPriority() {
+    const box = $('augpri-list');
+    const order = augOrder();
+    box.innerHTML = '';
+    $('augpri-auto').checked = !!settings.autoAug;
+    order.forEach((id, i) => {
+      const a = AUGMENTS[id];
+      const row = document.createElement('li');
+      row.className = 'augpri-row' + (a.tier === 2 ? ' strong' : '') + (a.spec ? ' spec' : '');
+      row.draggable = true;
+      row.dataset.id = id;
+      row.innerHTML = `<span class="augpri-n">${i + 1}</span><span class="augpri-what"><b>${esc(a.name)}</b>${a.spec ? `<small>${esc(SPECS[a.spec] ? SPECS[a.spec].name : a.spec)}</small>` : ''}<em>${esc(a.desc)}</em></span><span class="augpri-move"><button type="button" data-up="${id}" aria-label="Higher">▲</button><button type="button" data-down="${id}" aria-label="Lower">▼</button></span>`;
+      box.appendChild(row);
+    });
+  }
+  function moveAug(id, to) {
+    const order = augOrder();
+    const from = order.indexOf(id);
+    if (from < 0) return;
+    order.splice(from, 1);
+    order.splice(Math.max(0, Math.min(order.length, to)), 0, id);
+    settings.augOrder = Object.assign({}, settings.augOrder, { [world.cls]: order });
+    storeSettings(settings);
+    renderAugPriority();
+  }
+
   function renderOffer() {
     const offer = world.offer;
     const root = $('augment-cards');
@@ -1127,9 +1172,17 @@ function start(hot = {}) {
       return;
     }
     $('talk-line').textContent = talkNote || `"Wishes, mostly. Other people's. Don't ask what's in the bag; that's what you're paying for." (Leaves in ${Math.ceil(mc.left / 60)} minute${mc.left > 60 ? 's' : ''}. You have ${p.gold} gold and ${p.tickets} shard${p.tickets === 1 ? '' : 's'}.)`;
+    const me = net ? net.pid : world.cur.pid;
+    if (p.merchantCd > 0 && p.merchantId !== mc.id && mc.id != null) {
+      const w = document.createElement('p');
+      w.className = 'setting-desc';
+      w.textContent = `You bought from another merchant not long ago: you can buy here again in ${Math.ceil(p.merchantCd / 60)} minute${p.merchantCd > 60 ? 's' : ''}.`;
+      list.appendChild(w);
+    }
     mc.stock.forEach((s, i) => {
+      s = Object.assign({}, s, { sold: !!(s.sold || (s.bought && s.bought[me])) });
       const el = document.createElement('div');
-      el.className = 'quest';
+      el.className = 'quest' + (s.ware ? ' ware' : '') + (s.kind === 'fragment' || s.kind === 'immortal' ? ' ware-gold' : '');
       const price = s.gold ? `${s.gold.toLocaleString()} gold` : `${s.tickets} shard${s.tickets === 1 ? '' : 's'}`;
       el.innerHTML = `<h4>${esc(s.label)}<small>${price}</small></h4>`;
       const btn = document.createElement('button');
@@ -1364,17 +1417,9 @@ function start(hot = {}) {
     };
     const self = add(alone ? 'Unwish yourself' : 'Unwish yourself (alone only: leave the party first)', WELL.self, glass > 0 && alone, 'primary');
     self.addEventListener('click', () => { setMode('play'); applyNow({ type: 'unwish', choice: 'self' }); });
-    const place = add(seen ? 'Take her place (New Game+)' : 'Take her place', seen ? WELL.place : WELL.placeLocked, seen && alone && world.player.level >= 100, 'ghost');
-    let sure = false;
-    place.addEventListener('click', () => {
-      if (!sure) {
-        sure = true;
-        place.textContent = 'Are you sure? Click again: a full rebirth, into New Game+';
-        return;
-      }
-      setMode('play');
-      applyNow({ type: 'unwish', choice: 'place' });
-    });
+    // (0.66) "Take her place" (New Game+) is withdrawn for now: it pulled the story somewhere it should
+    // not go yet. Heroes who already took it keep their New Game+.
+    void seen;
   }
 
   /** The credits (0.45): after the Unwish, then home. */
@@ -1584,6 +1629,7 @@ function start(hot = {}) {
     if (!caseSel) caseSel = Casebook.firstPage(b);
     renderCasebook();
   }
+  let caseWorld = 0; // (0.66) the world Ex Voto shows drop rates for (0: yours)
   function renderCasebook() {
     const b = book();
     const visited = world.player.visited || [];
@@ -1593,7 +1639,8 @@ function start(hot = {}) {
     $('case-count').textContent = `${list.rested} of ${list.total} laid to rest`;
     $('case-detail').checked = !!settings.caseDetail;
     const p = world.player;
-    const ctx = { tier: world.worldTier ? world.worldTier() : 1, luck: p && p.rebirth ? 0.04 * perkRank(p.rebirth, 'luck') : 0 }; // (0.61.2) for its drop rates
+    const here = world.depthNow && world.depthNow() ? world.depthNow() : world.worldTier ? world.worldTier() : 1;
+    const ctx = { tier: Math.min(5, here), world: caseWorld || here, chosen: !!caseWorld, luck: p && p.rebirth ? 0.04 * perkRank(p.rebirth, 'luck') : 0 }; // (0.61.2) for its drop rates; (0.66) any world I to X
     $('case-page').innerHTML = Casebook.pageHtml(b, caseSel, detail, visited, ctx);
     $('case-page').classList.toggle('detail', detail);
   }
@@ -1689,7 +1736,6 @@ function start(hot = {}) {
   }
 
   /** Rebirth (0.43): Starmarks, perks, and the choice to begin again. */
-  let rebirthSure = false;
   let rebirthHeir = null; // (0.53) the slot kept as an Heirloom
   function renderRebirth() {
     const p = world.player;
@@ -1767,6 +1813,8 @@ function start(hot = {}) {
       if (!rebirthSure) {
         rebirthSure = true;
         renderTalents();
+        clearTimeout(rebirthSureT);
+        rebirthSureT = setTimeout(() => { if (rebirthSure) { rebirthSure = false; if (mode === 'talents') renderTalents(); } }, 6000); // and so do 6 seconds
         return;
       }
       rebirthSure = false;
@@ -3389,6 +3437,10 @@ function start(hot = {}) {
   $('btn-casebook').addEventListener('click', () => actions.toggleCasebook());
   caseBadge();
   $('btn-journal-casebook').addEventListener('click', () => actions.toggleCasebook());
+  $('case-world').addEventListener('change', (e) => {
+    caseWorld = Number(e.target.value) || 0; // (0.66) 0: wherever you are
+    renderCasebook();
+  });
   $('case-detail').addEventListener('change', (e) => {
     settings.caseDetail = e.target.checked;
     storeSettings(settings);
@@ -3500,6 +3552,37 @@ function start(hot = {}) {
     hud.nextWaveLabel = nextWaveLabel();
     hud.nextWaveKeyName = (nextWaveKey() || 'Enter').toUpperCase();
   });
+  // (0.66) augment priority
+  const openAugPri = () => { renderAugPriority(); $('augpri').classList.remove('hidden'); };
+  $('btn-augpri').addEventListener('click', openAugPri);
+  $('btn-augpri-set').addEventListener('click', openAugPri);
+  $('btn-augpri-close').addEventListener('click', () => $('augpri').classList.add('hidden'));
+  $('augpri-auto').addEventListener('change', (e) => {
+    settings.autoAug = e.target.checked;
+    storeSettings(settings);
+    if (settings.autoAug && mode === 'augment') { autoSent = ''; if (autoAugment()) { $('augpri').classList.add('hidden'); } }
+  });
+  $('btn-augpri-reset').addEventListener('click', () => {
+    settings.augOrder = Object.assign({}, settings.augOrder, { [world.cls]: undefined });
+    storeSettings(settings);
+    renderAugPriority();
+  });
+  $('augpri-list').addEventListener('click', (e) => {
+    const up = e.target.closest('[data-up]'), down = e.target.closest('[data-down]');
+    const order = augOrder();
+    if (up) moveAug(up.dataset.up, order.indexOf(up.dataset.up) - 1);
+    if (down) moveAug(down.dataset.down, order.indexOf(down.dataset.down) + 1);
+  });
+  let augDrag = null;
+  $('augpri-list').addEventListener('dragstart', (e) => { const r = e.target.closest('.augpri-row'); augDrag = r && r.dataset.id; if (r) r.classList.add('dragging'); });
+  $('augpri-list').addEventListener('dragover', (e) => e.preventDefault());
+  $('augpri-list').addEventListener('drop', (e) => {
+    e.preventDefault();
+    const r = e.target.closest('.augpri-row');
+    if (augDrag && r && r.dataset.id !== augDrag) moveAug(augDrag, augOrder().indexOf(r.dataset.id));
+    augDrag = null;
+  });
+  $('augpri-list').addEventListener('dragend', () => { augDrag = null; });
   $('auto-wave').checked = !!settings.autoWave;
   $('auto-wave').addEventListener('change', (e) => {
     settings.autoWave = e.target.checked;
@@ -3640,6 +3723,9 @@ function start(hot = {}) {
         break;
       case 'augmentOffer':
         offerAt = performance.now() + 1100; // let the "wave cleared" banner land first
+        break;
+      case 'augmentsAll':
+        hud.banner(`All ${ev.n} augments are yours`, 'You were owed more picks than there are augments left to take, so you have every one.');
         break;
       case 'augmentTaken':
         sfx.augment();
@@ -3802,7 +3888,8 @@ function start(hot = {}) {
         updateRoomBadge();
         break;
       case 'tierUnlocked':
-        hud.banner(`World tier ${ev.numeral} unlocked`, `${ev.name} · choose it at the Waygate in Haven`);
+        if (ev.all) hud.banner('Every world tier is open', 'The Cinder has fallen: tiers I to V are yours to choose at the Waygate in Haven, in this life and every one after.');
+        else hud.banner(`World tier ${ev.numeral} unlocked`, `${ev.name} · choose it at the Waygate in Haven`);
         sfx.levelUp();
         break;
       case 'tierSet':
@@ -3853,6 +3940,14 @@ function start(hot = {}) {
         hud.feedText(`Wave ${ev.wave}: +${ringText(r, ev.n)}${ev.immortals ? `, ${ev.immortals} of them Immortal` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
         if (ev.immortals) hud.banner('An Immortal from the Ring', `${ev.immortals} Immortal ${r.slot === 'chest' ? 'armor' : r.slot}${ev.immortals > 1 ? 's' : ''}`);
         sfx.pickup(ev.immortals ? 6 : 3);
+        break;
+      }
+      case 'ringDeep': {
+        // (0.66) the deep waves ask for Ember, then Animus
+        const p = world.player;
+        const myE = world.ember ? Math.round(world.ember(p)) : 0;
+        if (ev.animus) hud.banner(`Wave ${ev.n}: the Granted come`, `Echoes now carry Ember ${ev.ember} (you have ${myE}) and ask for ${Math.round(ev.animus * 100)}% Animus (you have ${Math.round((p.animus || 0) * 100)}%). Short of either, they hit harder and you hit softer; short of Animus, their Dominions are nearly impossible.`);
+        else hud.banner(`Wave ${ev.n}: Ember ${ev.ember}`, `From here the echoes carry Ember, as in the Deep (you have ${myE}). It rises every wave: give gear up at rebirth for more.`);
         break;
       }
       case 'ringCatchUp':
@@ -4270,6 +4365,7 @@ function start(hot = {}) {
       case 'merchantArrive':
         sfx.pickup(3);
         hud.feedText(`A travelling merchant has set up on ${ev.map}, for 3 minutes.`);
+        if (ev.immortal || ev.fragments) hud.banner('A travelling merchant', ev.immortal ? `He has an Immortal for sale${ev.fragments ? `, and ${ev.fragments} Immortal Fragments` : ''}. Follow the brown dot.` : `He has ${ev.fragments} Immortal Fragments for sale. Follow the brown dot.`);
         hintOnce('merchant', 'A travelling merchant (the brown dot on the minimap): walk up and press G to see his wares. Mystery gear, Wishdust and set pieces, for gold or shards.', 9);
         break;
       case 'merchantLeave':
@@ -4307,6 +4403,10 @@ function start(hot = {}) {
         break;
       case 'mapLocked':
         hud.hint(`${ev.name}: finish ${ev.quest} first.`, 5);
+        break;
+      case 'merchantWait':
+        talkNote = `"You've been shopping with my cousin, I can tell." Come back in ${Math.ceil(ev.left / 60)} minute${ev.left > 60 ? 's' : ''}.`;
+        if (mode === 'talk') renderTalk();
         break;
       case 'merchantSold':
         sfx.pickup(4);
@@ -4641,7 +4741,7 @@ function start(hot = {}) {
       // A joiner never runs the rules: it shows what the host sends, gliding between updates.
       playSnapshots(now);
       drainEvents();
-      if (mode === 'play' && world.mode === 'arena' && world.offer && !world.gameOver && now >= offerAt) setMode('augment'); // (0.59) the Ring online
+      if (mode === 'play' && world.mode === 'arena' && world.offer && !world.gameOver && now >= offerAt && !autoAugment()) setMode('augment'); // (0.59) the Ring online
       alpha = Math.min(1, (now - net.snapAt) / net.snapGap);
       world.player.predicted = smoothPrediction(predictedOffset(alpha), dt);
     } else if (net && mode !== 'title' && mode !== 'mp') {
@@ -4654,7 +4754,7 @@ function start(hot = {}) {
       if (trialRun && !trialRun.done && trialFinished(world) && !world.gameOver) {
         finishTrial(); // last floor, or out of time
       } else if (world.offer && !world.gameOver && now >= offerAt) {
-        setMode('augment');
+        if (!autoAugment()) setMode('augment');
       } else if (freeze > 0) {
         freeze -= dt;
       } else {

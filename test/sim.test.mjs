@@ -2901,9 +2901,14 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     for (const e of w.enemies) { if (e.def.boss) w.killEnemy(e, 'test'); }
     w.events.length = 0;
     w.command({ type: 'unwish', choice: 'place' }); w.runCommands();
-    const ev = w.events.find((x) => x.type === 'reborn');
-    check('Take her place: a rebirth into New Game+', !!ev && ev.ng === 1 && ev.save.level === 1 && ev.save.endings.self === 1 && ev.save.endings.place === 1);
-    const w2 = new World({ seed: 9, cls: 'mage', mode: 'explore', save: ev.save });
+    check('Take her place (0.66): withdrawn for now', !w.events.some((x) => x.type === 'reborn'));
+    // New Game+ itself stays for heroes who already took it
+    const { rebirthSave } = await import('../src/sim/rebirth.js');
+    const { starterWeapon } = await import('../src/sim/items.js');
+    const ngSave = rebirthSave(w.toSave(), starterWeapon);
+    ngSave.rebirth.ng = 1;
+    ngSave.endings = Object.assign({}, p.endings, { place: 1 });
+    const w2 = new World({ seed: 9, cls: 'mage', mode: 'explore', save: ngSave });
     const normal = new World({ seed: 9, cls: 'mage', mode: 'explore' });
     w2.loadMap('greenwood', 'town'); normal.loadMap('greenwood', 'town');
     const a = w2.spawnEnemy('grunt', { x: 5, z: 0, level: 5 }), b = normal.spawnEnemy('grunt', { x: 5, z: 0, level: 5 });
@@ -3164,19 +3169,50 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   // The travelling merchant
   {
-    const w = new World({ seed: 9, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 40, 3), { gold: 1e6, tickets: 10, spec: 'pyromancer' }) });
+    const w = new World({ seed: 9, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 40, 3), { gold: 1e8, tickets: 100, spec: 'pyromancer' }) });
+    const run = (ww, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) ww.step(CONFIG.TICK); };
     w.loadMap('frost', 'town');
     const mc = w.merchant || w.spawnMerchant();
     const p = w.player;
     check('Merchant: sets up near you, with gear, Wishdust and a set piece for sale', mc && mc.stock.length >= MERCHANT.stock.length - 1 && mc.stock.some((x) => x.kind === 'set') && Math.hypot(mc.x - p.x, mc.z - p.z) < 15);
     w.command({ type: 'buyMerchant', i: 0 }); w.runCommands();
-    check('Merchant: you have to walk up to him to buy', !mc.stock[0].sold);
+    check('Merchant: you have to walk up to him to buy', !mc.stock[0].bought[w.cur.pid]);
     p.x = p.px = mc.x + 1; p.z = p.pz = mc.z;
     p.bag = [];
     const gold = p.gold, tk = p.tickets, dust = p.dust;
     for (let i = 0; i < mc.stock.length; i++) { w.command({ type: 'buyMerchant', i }); w.runCommands(); }
     const glassSold = mc.stock.some((x) => x.kind === 'glass');
-    check('Merchant: everything bought, paid for, and in your bag (an Unwishing Glass in the pouch)', mc.stock.every((s) => s.sold) && p.bag.length === 4 && p.bag.some((it) => it.set) && p.bag.filter((it) => !it.set).every((it) => it.rarity >= 3) && p.dust === dust + 5 && p.gold < gold && p.tickets === tk - 5 - (glassSold ? 4 : 0) && (!glassSold || p.misc.glass === 1));
+    const fixed = mc.stock.filter((s) => !s.ware);
+    check('Merchant: everything bought, paid for, and in your bag (an Unwishing Glass in the pouch)', mc.stock.every((s) => s.bought[w.cur.pid] || p.tickets < s.tickets) && p.bag.filter((it) => it.set).length === 1 && p.bag.every((it) => it.set || it.rarity >= 3) && p.dust >= dust + 5 && p.gold < gold && p.tickets <= tk - 5 - (glassSold ? 4 : 0) && (!glassSold || p.misc.glass === 1) && fixed.length >= MERCHANT.stock.length - 1);
+    const wares = mc.stock.filter((s) => s.ware);
+    const frags = wares.filter((s) => s.kind === 'fragment').reduce((a, s) => a + s.n, 0);
+    check('Merchant (0.66): five wares fresh each visit, never more than 50 Immortal Fragments', wares.length === MERCHANT.wareSlots && frags <= 50 && wares.every((s) => s.label && (s.gold > 0 || s.tickets > 0)));
+    {
+      // in a party everyone may buy each ware once; buying from one merchant keeps you from another for a while
+      const wp = new World({ seed: 9, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 40, 3), { gold: 1e7, tickets: 200 }) });
+      wp.addHero(1, { save: Object.assign(geared('warrior', 40, 3), { gold: 1e7, tickets: 200 }), name: 'Pal', gold: 1e7, tickets: 200 }); // (a friend's gold and shards are their account's)
+      const friend = wp.heroes.find((h) => h.pid === 1);
+      wp.loadMap('frost', 'town');
+      const m2 = wp.merchant || wp.spawnMerchant();
+      for (const h of wp.heroes) wp.as(h, (q) => { q.x = q.px = m2.x + 1; q.z = q.pz = m2.z; q.bag = []; });
+      wp.as(wp.heroes[0], () => wp.buyMerchant(0));
+      wp.as(friend, () => wp.buyMerchant(0));
+      const both = wp.heroes.every((h) => m2.stock[0].bought[h.pid]);
+      check('Merchant (0.66): in a party, everyone can buy the same ware', both);
+      wp.as(friend, () => wp.buyMerchant(0));
+      check('...once each', wp.as(friend, (q) => q.bag.length) === 1);
+      wp.merchant = null;
+      const m3 = wp.spawnMerchant();
+      for (const h of wp.heroes) wp.as(h, (q) => { q.x = q.px = m3.x + 1; q.z = q.pz = m3.z; });
+      wp.events.length = 0;
+      wp.as(friend, () => wp.buyMerchant(1));
+      check('...and the next merchant must wait (no hopping between worlds)', !m3.stock[1].bought[friend.pid] && wp.events.some((e) => e.type === 'merchantWait'));
+      wp.as(friend, (q) => { q.merchantCd = 0.5; }); // (as if nearly all of it had passed)
+      m3.left = 1e4;
+      run(wp, 1);
+      wp.as(friend, () => { const q = wp.player; q.x = q.px = m3.x + 1; q.z = q.pz = m3.z; wp.buyMerchant(1); });
+      check('...until it has passed', !!m3.stock[1].bought[friend.pid]);
+    }
     run(w, MERCHANT.stay + 1, () => { p.hp = p.stats.maxHp; w.enemies = []; });
     check('Merchant: and he moves on after 3 minutes', !w.merchant);
   }
@@ -4301,6 +4337,62 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('Caches: Shift+click opens up to 10 at once', p.bag.length === opened && p.keys === 12 - opened * per, `${p.bag.length} opened, ${p.keys} keys left`);
     w.command({ type: 'openCache', tier: 'warden', n: 99 }); w.runCommands();
     check('...never more than 10, and stops when the keys run out', p.bag.length <= opened + 10 && p.keys >= 0 && p.keys < per);
+  }
+}
+
+// --- 0.66 --------------------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { RING: R } = await import('../src/sim/ring.js');
+  const { hoardTop, MAX_TIER: MT } = await import('../src/sim/endgame.js');
+  const { BOSS_LOOT: BL } = await import('../src/sim/story.js');
+  const P = await import('../src/ui/augpriority.js');
+  const { AUGMENTS: AU } = await import('../src/sim/augments.js');
+  // the Cinder opens every tier
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { tierMax: 1, worldTier: 1 });
+    const w = new World({ seed: 70, mode: 'explore', cls: 'warrior', save });
+    w.loadMap('deep6', 'town');
+    const c = w.enemies.find((e) => e.type === 'cinder');
+    w.killEnemy(c, 'test');
+    check('The Cinder (0.66): beating it opens all five world tiers', w.player.tierMax === MT && w.events.some((e) => e.type === 'tierUnlocked' && e.all));
+    const again = new World({ seed: 70, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 4), { tierMax: 1, rebirth: { n: 1, act3: { deep2: true } } }) });
+    check('...and stays open in every life after, once back at level 100', again.player.tierMax === MT);
+    const young = new World({ seed: 70, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 60, 2), { tierMax: 1, rebirth: { n: 1, act3: { deep2: true } } }) });
+    check('...not before', young.player.tierMax === 1);
+  }
+  // drops by world
+  check('Hoards: a quarter of a percent more Immortal each world (the Unmade 5% on I, 6% on V)', hoardTop(BL.boss3.top, 1)[6] === 5 && hoardTop(BL.boss3.top, 5)[6] === 6 && hoardTop(BL.stillness.top, 10)[6] === 14.25 && hoardTop(BL.boss3.top, 5).reduce((a, b) => a + b, 0) === 100);
+  check('Primordials: the first kill of each gives an Immortal', ['cinder', 'undertow', 'rootmother', 'choir', 'stillness'].every((id) => BL[id].first === 6));
+  // the Ring's deep waves
+  check('Ring (0.66): Ember from wave 25 (15, rising to 155), Animus from wave 50 (15% to 60%)', R.ember(24) === 0 && R.ember(25) === 15 && R.ember(60) === 155 && R.ember(90) === 155 && R.animus(49) === 0 && R.animus(50) === 0.15 && R.animus(80) === 0.6);
+  {
+    const save = Object.assign(geared('warrior', 100, 5), { maxCheckpoint: 51 });
+    const w = new World({ seed: 71, mode: 'arena', cls: 'warrior', save, focus: { kind: 'gold' }, startWave: 51 });
+    for (let i = 0; i < 400 && w.offer; i++) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); }
+    w.step(CONFIG.TICK);
+    for (let i = 0; i < 400 && w.offer; i++) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); }
+    w.command({ type: 'nextWave' }); w.runCommands();
+    const seen = [];
+    for (let i = 0; i < 2000 && seen.length < 12; i++) { w.player.hp = w.player.stats.maxHp; w.step(CONFIG.TICK); for (const e of w.enemies) if (!seen.includes(e)) seen.push(e); }
+    check('...a wave-51 echo carries both, and some are the Granted', seen.length > 5 && seen.every((e) => e.ember === R.ember(51) && e.animusNeed === R.animus(51)) && seen.some((e) => R.granted.types.includes(e.type)), seen.map((e) => e.type).join(' '));
+  }
+  {
+    // owed more picks than there are augments left: take them all
+    const save = Object.assign(geared('warrior', 100, 5), { maxCheckpoint: 200 });
+    const w = new World({ seed: 72, mode: 'arena', cls: 'warrior', save, focus: { kind: 'gold' }, startWave: 200 });
+    w.step(CONFIG.TICK);
+    check('Ring (0.66): owed more picks than augments left, you take every one', !w.offer && w.augments.length === w.augments.length && w.augments.length > 20 && w.augmentPool().length === 0 && w.events.some((e) => e.type === 'augmentsAll'), w.augments.length);
+  }
+  // the auto-pick order
+  {
+    const order = P.defaultOrder('warrior');
+    const at = (id) => order.indexOf(id);
+    check('Auto-pick (0.66): damage first, the defensive ones last', at('h_glass') < at('h_giant') && at('q_twin') < at('q_reach') && at('h_leech') > order.length - 4 && at('h_might') < at('w_slow'));
+    const mine = P.orderFor({ warrior: ['h_leech', 'q_twin'] }, 'warrior');
+    check('...your own ranking comes first, and new augments fall in where the default puts them', mine[0] === 'h_leech' && mine.length === order.length && new Set(mine).size === mine.length);
+    check('...and an offer takes the highest of its three', P.pickFrom(['w_slow', 'h_leech', 'q_twin'], mine) === 'h_leech' && P.pickFrom(['w_slow', 'q_twin'], mine) === 'q_twin');
+    check('...every augment the class can get is in the list', P.augmentsFor('warrior').every((id) => !AU[id].cls || AU[id].cls === 'warrior'));
   }
 }
 process.exit(failed ? 1 : 0);

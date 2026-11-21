@@ -26,6 +26,15 @@ export const ALLY_FX = new Set(['swing', 'cast']);
 export function isPublic(ev) {
   return PUBLIC.has(ev.type) || ALLY_FX.has(ev.type) || (ev.type === 'damage' && ev.who === 'enemy');
 }
+/** (0.66) The merchant's stock as this player sees it (what they bought marked sold), only when it changed. */
+function merchantStock(mc, pid, memo) {
+  const stock = mc.stock.map((s) => Object.assign({}, s, { bought: undefined, sold: !!(s.sold || (s.bought && s.bought[pid])) }));
+  const key = `${mc.id}:${stock.map((s) => (s.sold ? 1 : 0)).join('')}`;
+  if (memo && memo.merchant === key) return undefined;
+  if (memo) memo.merchant = key;
+  return stock;
+}
+
 /** Should the hero `pid` see this event? */
 export function eventFor(ev, pid) {
   return ev.hero === pid || ev.hero === undefined || isPublic(ev);
@@ -227,7 +236,7 @@ export function makeSnapshot(world, pid, memo) {
       tier: world.worldTier(),
       depth: world.depthNow() || undefined, // (0.54)
       happening: world.happening ? { kind: world.happening.kind, x: r2(world.happening.x), z: r2(world.happening.z), r: world.happening.r, state: world.happening.state, t: r2(world.happening.t), left: world.happening.left || 0, grace: r2(world.happening.grace || 0) } : null,
-      merchant: world.merchant ? { x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: world.merchant.stock } : null,
+      merchant: world.merchant ? { id: world.merchant.id, x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: merchantStock(world.merchant, pid, memo) } : null, // (0.66) what this player has bought, only when it changes
       delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,
       rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
     };
@@ -359,6 +368,7 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.loot = snap.loot;
   world.chests = snap.chests || [];
   world.happening = snap.happening || null;
+  if (snap.merchant && !snap.merchant.stock && world.merchant && world.merchant.id === snap.merchant.id) snap.merchant.stock = world.merchant.stock; // (0.66) unchanged: keep what we have
   world.merchant = snap.merchant || null;
   return mapChanged;
 }

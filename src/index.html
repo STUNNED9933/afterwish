@@ -155,9 +155,19 @@
     <h2>Choose an augment</h2>
     <p class="setting-desc">It changes how you fight until this run ends. Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click.</p>
     <div id="augment-cards"></div>
-    <div class="augment-foot"><button type="button" id="btn-reroll" class="ghost">Reroll</button></div>
+    <div class="augment-foot"><button type="button" id="btn-reroll" class="ghost">Reroll</button><button type="button" id="btn-augpri" class="ghost">Auto-pick and priority…</button></div>
   </div>
 </section>
+
+<div id="augpri" class="menu-overlay hidden" role="dialog" aria-label="Augment priority">
+  <div class="menu-card">
+    <div class="card-head"><h2>Augment priority</h2><button type="button" id="btn-augpri-close" class="ghost">Close</button></div>
+    <label class="case-toggle"><input type="checkbox" id="augpri-auto"> Pick augments for me in the Echo Ring</label>
+    <p class="setting-desc">With this on, every offer takes whichever of its three ranks highest here. Drag a row, or use the arrows. Damage starts at the top and the defensive ones at the bottom; subclass ones only come up for that subclass.</p>
+    <div class="augpri-foot"><button type="button" id="btn-augpri-reset" class="ghost tiny">Reset to the default order</button></div>
+    <ol id="augpri-list"></ol>
+  </div>
+</div>
 
 <section id="town" class="screen hidden">
   <div class="town-head">
@@ -363,6 +373,11 @@
       <span class="setting-desc">The moment a floor is cleared (and your augment is picked), the next one begins. After a boss it still waits for you to take your spoils home or push on.</span>
     </div>
     <div class="setting row">
+      <label class="setting-label">Echo Ring: pick augments for me</label>
+      <button type="button" id="btn-augpri-set" class="ghost tiny">Auto-pick and priority…</button>
+      <span class="setting-desc">Rank every augment your class can get; with auto-pick on, each offer takes the highest.</span>
+    </div>
+    <div class="setting row">
       <label class="setting-label" for="held-aim">Aim Deadeye while <kbd>R</kbd> is held</label>
       <input type="checkbox" id="held-aim" checked>
       <span class="setting-desc">Hold <kbd>R</kbd> to see the shot on the ground and the minimap, then let go to loose it. Right-click or <kbd>Esc</kbd> puts it down. Off: it fires the moment you press.</span>
@@ -519,6 +534,7 @@
     <div class="card-head"><h2>Ex Voto</h2><button type="button" id="btn-casebook-close" class="ghost">Close <kbd>B</kbd></button></div>
     <div class="case-bar">
       <span class="setting-desc"><i>Ex voto</i>: what is left behind once a wish is granted. Sister Odile's notes on everything the wish made, kept by your account for every class and every life. <b id="case-count"></b></span>
+      <label class="case-toggle">Drops on <select id="case-world" aria-label="Show drop rates on this world"><option value="0">your world</option><option value="1">World I</option><option value="2">World II</option><option value="3">World III</option><option value="4">World IV</option><option value="5">World V</option><option value="6">Depth VI</option><option value="7">Depth VII</option><option value="8">Depth VIII</option><option value="9">Depth IX</option><option value="10">Depth X</option></select></label>
       <label class="case-toggle"><input type="checkbox" id="case-detail"> Detailed <span class="setting-desc">(or hold <kbd>Shift</kbd>)</span></label>
     </div>
     <div class="case-cols">

@@ -39,6 +39,12 @@ export const RING = {
   pace: (wave) => (wave < 20 ? 1 : Math.max(0.8, 1 - 0.005 * (wave - 20))),
   tempo: (wave) => (wave < 20 ? 1 : Math.max(0.65, 1 - 0.00875 * (wave - 20))),
   move: (wave) => (wave < 20 ? 1 : Math.min(1.2, 1 + 0.005 * (wave - 20))),
+  // (0.66) The deep waves are for those who have given things up. From wave 25 the echoes carry Ember
+  // (as the Deep's do: 15, Depth VI's, rising 4 a wave to the Quiet's 155 by wave 60); from wave 50 some
+  // of them are the Granted, and every echo asks for Animus (15%, rising 1.5% a wave to 60% by wave 80).
+  ember: (wave) => (wave < 25 ? 0 : Math.min(155, 15 + 4 * (wave - 25))),
+  animus: (wave) => (wave < 50 ? 0 : Math.min(0.6, Math.round((0.15 + 0.015 * (wave - 50)) * 1000) / 1000)),
+  granted: { from: 50, share: 0.35, types: ['answered', 'cantor', 'veiled', 'colossus', 'thurifer'] },
   shards: { base: 5, per: 2 }, // starting at wave 1 costs 5 shards; each checkpoint further in, 2 more
 };
 

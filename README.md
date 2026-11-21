@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The road's errands, done for you (0.71.3)
+
+- Once the road is open (any class has beaten the Cinder), the story's "go there" steps on it are done
+  for you as soon as you take them: The Road Out, The Locked Gate, Past the Gate (Frostfall Pass) and
+  The Last Stair, and W. (the stone at Frostfall Pass). Hand them in without walking back after a rebirth.
+
 ### Crimson Oath and Blood Oath are toggles (0.71.2)
 
 - **Crimson Oath** (the Berserker's R) and **Blood Oath** (the Berserker borrowed on D or F) are now

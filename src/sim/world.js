@@ -285,6 +285,7 @@ export class World {
       this.emit('mapChange', { id: map.id, name: map.name, from });
       this.caelumWarn(map.id);
       this.questEvent('reach', map.id);
+      this.autoRoadQuests(); // (0.71.3)
     });
   }
 
@@ -3867,6 +3868,7 @@ export class World {
     if (q.goal.reach && p.visited.includes(q.goal.reach)) st.n = 1;
     if (q.goal.read || q.goal.sign || q.goal.signs) st.n = Math.min(this.questNeed(q), this.signsFor(q.goal));
     if (q.goal.wave && this.bestWave >= q.goal.wave) st.n = 1;
+    if (st.n < this.questNeed(q)) this.autoRoadQuests(); // (0.71.3) the road's steps, done for you
     if (q.goal.kill && !q.goal.boss && this.isSideQuest(q) && !(q.goal.enemy && !ENEMIES[q.goal.enemy])) {
       // (0.53) kills you made before taking it count: taken from the bank, enemy by enemy, map by map
       const need = this.questNeed(q);
@@ -3898,6 +3900,29 @@ export class World {
     if (this.ember(p) >= need) return;
     const strong = this.heroes.filter((h) => h !== this.cur && this.ember(h.player) >= need);
     if (strong.length) this.emit('carryWarn', { id: p.id, depth: DEEP.depths[d].numeral, need, have: this.ember(p), by: strong.map((h) => h.name).join(', ') });
+  }
+
+  /**
+   * (0.71.3) Once the road is open (any class has beaten the Cinder), the story's "go there" steps on it
+   * are done for you: reaching a map from the Greenwood to Starfall Sanctum, or reading the one stone
+   * a quest sends you to on it (W.'s, at Frostfall Pass). After a rebirth you need not walk back to them.
+   */
+  autoRoadQuests() {
+    const p = this.player;
+    if (!p || !this.roadOpen(p)) return;
+    for (const id in p.quests) {
+      const st = p.quests[id];
+      const q = QUESTS[id];
+      if (!q || st.s !== 'active') continue;
+      const g = q.goal;
+      const onRoad = (g.reach && ROAD_MAPS.includes(g.reach)) || (g.sign && SIGNS[g.sign] && ROAD_MAPS.includes(SIGNS[g.sign].map));
+      if (!onRoad) continue;
+      st.n = this.questNeed(q);
+      st.s = 'ready';
+      st.road = true;
+      this.questStamp++;
+      this.emit('quest', { id, what: 'ready', name: q.name, n: st.n, need: st.n, giver: NPCS[this.questTaker(q.giver)].name, road: true });
+    }
   }
 
   questEvent(kind, data) {

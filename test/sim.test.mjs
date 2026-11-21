@@ -4897,4 +4897,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
   check('...pressed again it goes off, and you heal past 40% again', !p.frenzyOn && p.hp > p.stats.maxHp * 0.9 && p.cd.r > 0);
 }
+
+// --- 0.71.3: the road's "go there" quests are done for you once it is open ---------------------------
+{
+  const mk = (lives) => new World({ seed: 106, mode: 'explore', cls: 'mage', save: { v: 2, cls: 'mage', level: 100, exp: 0, equipped: {}, bag: [], acctLives: lives, quests: { unmade: { s: 'done', n: 1 } } } });
+  const w = mk({ archer: { prim: [6] } });
+  w.player.quests.pass = { s: 'active', n: 0 };
+  w.loadMap('greenwood', 'town');
+  w.step(CONFIG.TICK);
+  w.acceptQuest('w');
+  check('Road quests (0.71.3): with the road open, Past the Gate (Frostfall Pass) and W. (its stone) are ready without going', w.questState('pass') === 'ready' && w.questState('w') === 'ready', `${w.questState('pass')} ${w.questState('w')}`);
+  const n = mk(null);
+  n.acceptQuest('w');
+  check('...not before the road is open', n.questState('w') === 'active');
+}
 process.exit(failed ? 1 : 0);

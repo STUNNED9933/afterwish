@@ -159,6 +159,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Will, kinder (0.69)
+
+- The Will now strikes **twice**, about 0.8 s apart, and each strike is turned by an ordinary **perfect
+  parry** (not the two-tick window). Fail one and it takes 90% of your health and locks you (the second
+  does not come). While the Will is on you, and half a second after, everything else hits you 99%
+  softer: the test is the parries. It comes every 6 to 8 seconds.
+
 ### The Will (0.68)
 
 - **The Will of the Granted** filters out those short of the Animus. While you are short of it and

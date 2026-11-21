@@ -4492,4 +4492,48 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...and in the Echo Ring from wave 50, short of its Animus', w.events.some((e) => e.type === 'dominion' && e.short));
   }
 }
+
+// --- 0.69: the Will strikes twice ----------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const W = CONFIG.WILL;
+  const setup = () => {
+    const w = new World({ seed: 82, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { talents: {} }) });
+    w.loadMap('skyroad', 'town');
+    const e = w.enemies.find((o) => !o.dead && !o.def.boss);
+    w.player.x = w.player.px = e.x + 6; w.player.z = w.player.pz = e.z;
+    w.events.length = 0;
+    return w;
+  };
+  const calm = (w) => { w.player.animus = 0; for (const o of w.enemies) { o.state = 'stunned'; o.stunT = 999; } };
+  // press parry `early` seconds before each strike lands
+  const play = (w, early, sec = 10) => {
+    for (let i = 0; i < sec * 60; i++) {
+      calm(w);
+      const t = w.telegraphs.find((x) => x.will);
+      if (t && early != null && t.dur - t.t <= early + 1e-9 && t.dur - t.t > early - CONFIG.TICK && !(w.player.parryT > 0)) w.command({ type: 'parry' });
+      w.step(CONFIG.TICK);
+      if (w.events.some((e) => e.type === 'willPassed' || e.type === 'dominion')) break;
+    }
+  };
+  let w = setup();
+  play(w, 0.08); // inside the perfect window (0.11 s), outside the old two-tick one
+  check('The Will (0.69): two strikes, each turned by a perfect parry (the ordinary window, not two ticks)', w.events.some((e) => e.type === 'willAgain') && w.events.some((e) => e.type === 'willPassed') && !w.events.some((e) => e.type === 'dominion'), w.events.filter((e) => /will|dominion/i.test(e.type)).map((e) => e.type).join(' '));
+  w = setup();
+  play(w, 0.25); // a good parry, but not a perfect one
+  check('...a good but not perfect parry does not turn it: 90% and the lock', w.events.some((e) => e.type === 'dominion' && e.short) && w.player.hp / w.player.stats.maxHp < 0.15);
+  check('...and a failed first strike ends it (no second)', !w.events.some((e) => e.type === 'willAgain'));
+  // the guard: while it is on you, other blows hit at 1%
+  w = setup();
+  for (let i = 0; i < 600 && !w.telegraphs.some((x) => x.will); i++) { calm(w); w.step(CONFIG.TICK); }
+  const p = w.player;
+  p.hp = p.stats.maxHp;
+  w.takeDamage(1000, null, false);
+  const guarded = p.stats.maxHp - p.hp;
+  w.endWill(w.cur); w.cur.willGrace = 0;
+  p.hp = p.stats.maxHp;
+  w.takeDamage(1000, null, false);
+  const open = p.stats.maxHp - p.hp;
+  check('...while it is on you, everything else hits you 99% softer', open > 0 && Math.abs(guarded - open * W.guard) <= 1, `${guarded} vs ${open}`);
+}
 process.exit(failed ? 1 : 0);

@@ -61,12 +61,14 @@ export const CONFIG = {
   // after the press (two ticks), and if one lands it takes `short` of your max health, nothing reduces
   // it, rolling through it does not help, and the lock is long.
   DOMINION: { frame: 0.034, short: 0.9, lock: 0.8, lockShort: 4 },
-  // The Will (0.68): what filters out those short of the Animus. While you are short of it and within
-  // `range` of anything that asks for it (Caelum, the Echo Ring from wave 50), an amber ring follows you
-  // and lands every `every` seconds (`first` after it notices you), after `windup`. It is a Dominion:
-  // only a near-frame-perfect parry turns it, rolling does not help, and it takes 90% of your health and
-  // Mind-Locks you. Those with the Animus are never asked.
-  WILL: { range: 24, first: 3, every: [5, 7], windup: 1.3, radius: 2.2, dmg: 10 },
+  // The Will (0.68; 0.69): what filters out those short of the Animus. While you are short of it and
+  // within `range` of anything that asks for it (Caelum, the Echo Ring from wave 50), an amber ring follows
+  // you every `every` seconds (`first` after it notices you) and strikes twice: after `windup`, then `gap`
+  // later. Each strike is a Dominion that only a perfect parry turns (the ordinary perfect window); rolling
+  // does not help. Fail one and it takes 90% of your health and Mind-Locks you (and the second does not
+  // come). While it is on you, until `grace` after it ends, everything else hits you `guard` as hard: the
+  // test is the parries, not surviving the crowd meanwhile. Those with the Animus are never asked.
+  WILL: { range: 24, first: 3, every: [6, 8], windup: 1.3, gap: 0.8, strikes: 2, radius: 2.2, dmg: 10, guard: 0.01, grace: 0.5 },
   PERFECT_HEAL: 0.04, // fraction of max HP restored by a perfect parry
   // 0.28: warrior and mage
   RECKON_PER: 0.25, // Reckoning (Bulwark): Whirlwind deals this much more per stack

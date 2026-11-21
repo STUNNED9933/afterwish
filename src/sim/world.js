@@ -2815,15 +2815,24 @@ export class World {
   }
 
   hitPlayer(rawDamage, opts = {}) {
+    if (opts.willHit && !this.willHit) {
+      // (0.69) a friend's held Will strike, landing now: still not softened by the guard
+      this.willHit = true;
+      try {
+        return this.hitPlayer(rawDamage, { ...opts, willHit: false });
+      } finally {
+        this.willHit = false;
+      }
+    }
     // (0.64) Mind-Lock riders: `lock` seconds of Mind-Lock if the hit lands; `need` is the Animus the
     // map asks (it decides chains, immunity and Dominion); `dominion`: one of the Granted's great attacks.
-    const { dominion = false, lock = 0, need = 0, held = false, noParry = false, src = null, proj = null } = opts;
+    const { dominion = false, lock = 0, need = 0, held = false, noParry = false, src = null, proj = null, parryWin = null } = opts;
     if (dominion && !this.player.dead && (held || !(this.party && this.cur !== this.heroes[0] && this.cur.lag > 0.02 && !(this.player.parryT > 0) && !this.player.dash && !this.player.leap))) {
       const p = this.player;
       const short = animusShort(p.animus, need);
       const D = CONFIG.DOMINION;
       const base = { src, proj, held: true, need };
-      if (p.parryT > 0 && !noParry && p.parryAge <= (short ? D.frame : this.parry.perfect)) {
+      if (p.parryT > 0 && !noParry && p.parryAge <= (parryWin ?? (short ? D.frame : this.parry.perfect))) {
         this.emit('dominionParried', { x: p.x, z: p.z, short });
         return this.hitPlayerCore(rawDamage, { ...base, parryable: true });
       }
@@ -2839,7 +2848,7 @@ export class World {
     return res;
   }
 
-  hitPlayerCore(rawDamage, { parryable = true, src = null, proj = null, doom = 0, held = false, noParry = false, dominion = false, lock = 0, need = 0 } = {}) {
+  hitPlayerCore(rawDamage, { parryable = true, src = null, proj = null, doom = 0, held = false, noParry = false, dominion = false, lock = 0, need = 0, parryWin = null } = {}) {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
@@ -2847,7 +2856,7 @@ export class World {
       // A friend sees this hit late and their parry arrives late (0.41.1): hold it for as long as
       // their lag, so a parry they pressed in time on their own screen still counts.
       const h = this.cur;
-      (h.lateHits = h.lateHits || []).push({ tick: this.ticks, due: this.time + Math.min(LAG_CAP, h.lag), dmg: rawDamage, opts: { parryable, src, proj: proj ? { level: proj.level, srcId: proj.srcId } : null, dominion, lock, need } });
+      (h.lateHits = h.lateHits || []).push({ tick: this.ticks, due: this.time + Math.min(LAG_CAP, h.lag), dmg: rawDamage, opts: { parryable, src, proj: proj ? { level: proj.level, srcId: proj.srcId } : null, dominion, lock, need, parryWin, willHit: !!this.willHit } });
       if (proj) proj.dead = true;
       return 'held';
     }
@@ -3109,6 +3118,7 @@ export class World {
     const h = this.cur; // its state lives on the hero record, not the player (which is sent to friends whole)
     const W = CONFIG.WILL;
     if (!p || !h) return;
+    if (h.willGrace > 0) h.willGrace -= dt;
     if (p.dead) {
       if (h.will) this.endWill(h);
       return;
@@ -3122,11 +3132,22 @@ export class World {
     if (h.will) {
       const wl = h.will;
       wl.t += dt;
-      Object.assign(wl.tele, { x: p.x, z: p.z, t: wl.t, cue: wl.dur - wl.t <= CONFIG.PARRY_CUE_LEAD, dominion: need });
+      Object.assign(wl.tele, { x: p.x, z: p.z, t: wl.t, dur: wl.dur, cue: wl.dur - wl.t <= CONFIG.PARRY_CUE_LEAD, dominion: need });
       if (wl.t >= wl.dur) {
-        this.endWill(h);
-        h.willT = W.every[0] + this.rng() * (W.every[1] - W.every[0]);
-        this.hitPlayer(W.dmg, { parryable: true, dominion: true, need, src: null });
+        wl.n++;
+        this.willHit = true; // its own strike is not softened by the guard
+        const res = p.lockT > 0 && wl.n > 1 ? 'locked' : this.hitPlayer(W.dmg, { parryable: true, dominion: true, need, src: null, parryWin: this.parry.perfect });
+        this.willHit = false;
+        // (a friend's strike held for their lag is judged later: carry on unless it has already locked them)
+        if ((res === 'parried' || (res === 'held' && !(p.lockT > 0))) && wl.n < W.strikes && !p.dead) {
+          wl.t = 0; // the next strike comes quickly
+          wl.dur = W.gap;
+          this.emit('willAgain', { n: wl.n, of: W.strikes, x: p.x, z: p.z });
+        } else {
+          if (res === 'parried') this.emit('willPassed', { x: p.x, z: p.z });
+          this.endWill(h);
+          h.willT = W.every[0] + this.rng() * (W.every[1] - W.every[0]);
+        }
       }
       return;
     }
@@ -3134,16 +3155,25 @@ export class World {
     if (h.willT > 0) return;
     const tele = { id: this.nextId++, will: true, kind: 'circle', x: p.x, z: p.z, dir: 0, radius: W.radius, t: 0, dur: W.windup, parryable: true, cue: false, dominion: need };
     this.telegraphs.push(tele);
-    h.will = { t: 0, dur: W.windup, tele };
+    h.will = { t: 0, dur: W.windup, tele, n: 0 };
     if (!h.willSeen) {
       h.willSeen = true;
-      this.emit('willFirst', { need, have: p.animus || 0 });
+      this.emit('willFirst', { need, have: p.animus || 0, strikes: W.strikes });
     }
   }
 
   endWill(h) {
-    if (h.will) this.telegraphs = this.telegraphs.filter((t) => t !== h.will.tele);
+    if (h.will) {
+      this.telegraphs = this.telegraphs.filter((t) => t !== h.will.tele);
+      h.willGrace = CONFIG.WILL.grace;
+    }
     h.will = null;
+  }
+
+  /** (0.69) While the Will is on this hero (and a moment after), everything else hits them softly. */
+  willGuarded() {
+    const h = this.cur;
+    return !this.willHit && !!h && (!!h.will || h.willGrace > 0);
   }
 
   /** Arriving on a Caelum map short of what it asks: say so (0.64). You may still try. */
@@ -3156,6 +3186,7 @@ export class World {
   /** Damage that got through: the Arcane Ward first, then health (and what follows from that). */
   takeDamage(dmg, src, doom) {
     const p = this.player;
+    if (this.willGuarded()) dmg *= CONFIG.WILL.guard; // (0.69) the Will's test is the parries
     const m = this.mods;
     const cps = CLASSES[this.cls].passive;
     let warded = 0;

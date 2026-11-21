@@ -4277,9 +4277,16 @@ function start(hot = {}) {
         break;
       case 'willFirst': {
         const pc = (v) => `${Math.round(v * 100)}%`;
-        hud.banner('The Will of the Granted', `You have ${pc(ev.have)} Animus; here they ask ${pc(ev.need)}. Every few seconds an amber ring will find you: only a near-perfect parry, the moment it flashes white, turns it. Those with the Animus are never asked.`);
+        hud.banner('The Will of the Granted', `You have ${pc(ev.have)} Animus; here they ask ${pc(ev.need)}. Every few seconds an amber ring finds you and strikes ${ev.strikes} times: perfectly parry each one (the moment it flashes white). While it is on you, nothing else can hurt you much. Those with the Animus are never asked.`);
         break;
       }
+      case 'willAgain':
+        hud.float(renderer, ev.x, 3.2, ev.z, `${ev.n} of ${ev.of}: again!`, 'word perfect');
+        break;
+      case 'willPassed':
+        hud.float(renderer, ev.x, 3.4, ev.z, 'Will defied', 'word perfect');
+        sfx.parry(true);
+        break;
       case 'dominionParried':
         hud.float(renderer, ev.x, 3.4, ev.z, ev.short ? 'Dominion defied!' : 'Dominion turned', 'word perfect');
         if (ev.short) hud.screenFlash(0.35);

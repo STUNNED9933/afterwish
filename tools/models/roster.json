@@ -828,6 +828,174 @@
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures",
       "faceLimit": 4000,
       "prompt": "a smooth perfectly round grey standing stone with a circular hole through its middle that is completely black inside, faint pale motes drifting into the hole, very simple and quiet"
+    },
+    "e_answered": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 10000,
+      "prompt": "an Answered, a tall knight in flawless ivory and gold plate armour, a smooth featureless golden mask for a face, a thin ring of light floating behind its head like a halo, a long slender golden spear, a short white cape, eerily perfect"
+    },
+    "e_cantor": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Cantor, a slender choir singer in long white and pale gold vestments, a smooth porcelain face with its mouth open in an endless song, a small golden bell floating above one raised hand, a faint halo"
+    },
+    "e_thurifer": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Thurifer, a hunched priest in heavy ivory robes and a tall golden mitre, swinging a smoking golden censer on a long chain, pale gold incense smoke, its face hidden in shadow under the mitre"
+    },
+    "e_colossus": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Gilded Colossus, a huge heavy living statue of white marble veined with gold, broad shoulders, a cracked serene face, enormous stone fists, small stiff golden wings on its back"
+    },
+    "e_veiled": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Veiled, a thin graceful figure wrapped head to toe in layers of sheer white veils, two curved golden blades, only a faint golden glow where its eyes should be, agile and quiet"
+    },
+    "p_wishmote": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game prop, one single small floating object, no ground, no base, glowing, hand-painted PBR-style textures",
+      "faceLimit": 3000,
+      "prompt": "a small floating bright golden flame inside a delicate ring of white feathers, a granted wish given a body"
+    },
+    "b_ianitor": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:angry_02"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 12000,
+      "prompt": "Ianitor, the Doorkeeper of the Sky Road, a towering guardian in white and gold robes with two serene faces, one looking forward and one looking back, holding a great golden key like a staff, a ring of small floating golden keys around its waist, huge folded white wings"
+    },
+    "b_arbiter": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:angry_02"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 12000,
+      "prompt": "the Arbiter, judge of the Court of Answers, a tall stern figure in heavy ivory judicial robes and a tall golden crown, eyes covered by a white blindfold, a great golden scale in one hand and a long straight sword in the other"
+    },
+    "b_desiderium": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:angry_02"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 12000,
+      "prompt": "Desiderium, the Want, a beautiful hollow figure of white porcelain and gold, its chest cracked open around an empty glowing hollow, many slender golden arms reaching outward from its back, long flowing white cloth, hungry and graceful"
+    },
+    "b_fiat": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:chop",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:angry_02"
+      ],
+      "style": "celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+      "faceLimit": 12000,
+      "prompt": "Fiat, the Answer, the one who grants every wish, a radiant tall figure of white light and gold, its face a calm golden sun mask, six white wings folded around it, rings of glowing golden script orbiting its body, perfect and overwhelming"
+    },
+    "env_skygate": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+      "faceLimit": 4000,
+      "prompt": "a tall white marble archway with gold trim and a large golden keyhole carved at its top, a gate to nowhere standing alone"
+    },
+    "env_courtpillar": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+      "faceLimit": 4000,
+      "prompt": "a tall fluted white marble pillar topped with a large golden balance scale"
+    },
+    "env_wantaltar": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+      "faceLimit": 4000,
+      "prompt": "an ornate white and gold altar heaped high with golden offerings, coins, rings, small crowns and trinkets spilling over its sides"
+    },
+    "env_zenithspire": {
+      "rig": false,
+      "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+      "faceLimit": 4000,
+      "prompt": "a slender white and gold spire with a ring of glowing golden script floating around it and a bright white star at its tip"
     }
   }
 }

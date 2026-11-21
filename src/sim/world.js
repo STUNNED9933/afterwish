@@ -507,6 +507,7 @@ export class World {
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}, { d: 1, f: 1 }),
       eternals: cleanEternals(save?.eternals), // (0.71) the Eternal pieces not being worn (sim/eternal.js)
       eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
+      eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
@@ -702,6 +703,7 @@ export class World {
       borrowed: p.borrowed,
       eternals: p.eternals,
       eternalEssence: p.eternalEssence,
+      eternalPity: p.eternalPity,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -3284,6 +3286,8 @@ export class World {
     const L = CONFIG.MIND_LOCK;
     if (p.dead || dur <= 0) return;
     const short = animusShort(p.animus, need);
+    // (0.71.1) With the Animus asked here, Mind-Lock cannot touch you; with all of it (100%), nowhere can.
+    if ((need > 0 && !short) || (p.animus || 0) >= MASTERY.animusMax - 1e-6) return;
     if (p.lockImmT > 0 && !short) return;
     const chained = p.lockT > 0 || this.time - (p.lockEnd ?? -99) <= L.chain;
     const n = chained ? Math.min(L.dr.length - 1, (p.lockN || 0) + 1) : 0;
@@ -3689,7 +3693,7 @@ export class World {
     // A streak (tier II and up) means more; a boss you have outgrown, less (bossFalloff).
     const run = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
     const streak = run * (e.lootMult || 1); // (0.65) the Deep and Caelum pay their own share
-    const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * run * Math.min(1.5, e.lootMult || 1))) : 0;
+    const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * run * Math.min(1.5, e.lootMult || 1) * (e.bars ? CAELUM.bossLoot.items : 1))) : 0; // (0.71.1) twice the pile from a Granted
     let count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
     if (!this.trial && this.mode === 'explore') {
       // Exploration surprises (0.29): more and better from Rares, the Wishthief and Remnants, and set pieces.
@@ -3702,6 +3706,7 @@ export class World {
         extra.push(rollItem(this.rng, Math.max(1, Math.round(e.level)), { minRarity: Math.max(floor, this.rng() < RARE.better ? 4 : 3), cls: this.cls }));
         if (this.rng() < RARE.set) extra.push(rollSetPiece(this.rng, Math.max(1, Math.round(e.level)), this.cls, p.spec));
       }
+      if (e.bars && hoard) for (let k = 0; k < CAELUM.bossLoot.immortal; k++) extra.push(rollItem(this.rng, Math.max(1, Math.round(e.level)), { weights: RARITY_ONLY(IMMORTAL), cls: this.cls })); // (0.71.1) a sure Immortal (food for an Eternal)
       if (e.remnant) {
         extra.push(rollSetPiece(this.rng, Math.max(1, Math.round(e.level)), this.cls, p.spec));
         if (hoard) count++;
@@ -3723,7 +3728,7 @@ export class World {
       if (e.elite && !e.rare && !def.boss && i === count - 1 && this.mode === 'explore') opts = { weights: ELITE_SPOILS.weights.map((w, r) => (r < floor ? 0 : w)), cls: this.cls }; // its sure piece leans Mythic (0.49)
       if (hoard) {
         // The first item is the prize: guaranteed top rarity on your first kill, good odds after.
-        if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: hoardTop(hoard.top, this.depthNow() || T.n), cls: this.cls }; // (0.66) better each world
+        if (i === 0) opts = e.firstKill ? { minRarity: hoard.first, weights: RARITY_ONLY(hoard.first), cls: this.cls } : { weights: e.bars ? CAELUM.bossLoot.top : hoardTop(hoard.top, this.depthNow() || T.n), cls: this.cls }; // (0.66) better each world; (0.71.1) a Granted's best
         else opts = { minRarity: hoard.min + (i <= hoard.better ? 1 : 0), cls: this.cls };
       }
       let item = rollItem(this.rng, ilvl, opts);
@@ -3760,8 +3765,9 @@ export class World {
     this.eternalDrop(e); // (0.71) a Granted, in Caelum
     if (e.type === DEEP.depths[6].primordial) this.cinderTiers();
     // Keys and shards from a boss you have outgrown come only some of the time.
-    const keys = fall >= 1 || this.rng() < fall ? loot.keys : 0;
-    const tickets = fall >= 1 || this.rng() < fall ? loot.tickets : 0;
+    const more = e.bars ? CAELUM.bossLoot.keys : 1; // (0.71.1)
+    const keys = (fall >= 1 || this.rng() < fall ? loot.keys : 0) * more;
+    const tickets = (fall >= 1 || this.rng() < fall ? loot.tickets : 0) * more;
     p.keys += keys;
     p.tickets += tickets;
     if (first) p.skillPoints += 2;
@@ -4362,7 +4368,7 @@ export class World {
     e.maxHp = e.hp = Math.round(e.maxHp * hp);
     e.dmgMult *= dmg;
     e.expValue *= exp;
-    e.goldValue = Math.round(e.goldValue * exp);
+    e.goldValue = Math.round(e.goldValue * exp * (e.bars ? CAELUM.bossLoot.gold : 1)); // (0.71.1) a Granted pays for its hundred bars
     if (e.elite && e.elite.includes('shielded')) e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
     else if (e.def.shield) e.shield = e.maxShield = Math.round(e.maxHp * e.def.shield); // Court Guards (0.39)
     return e;
@@ -6116,7 +6122,15 @@ export class World {
     const chance = this.map && ETERNAL.chance[this.map.id];
     if (!chance || !e.def.granted || !e.def.boss || this.trial) return;
     const r = this.streamRng('eternalDrop', (p.bossKills[e.type] || 0) * 13 + this.ticks);
-    if (r() >= chance) return;
+    // (0.71.1) +2% for every kill without one (reset when one falls), and in a party the chance is shared
+    // out among those there: each rolls their own, at a share of it.
+    const party = Math.max(1, this.heroes.filter((h) => h.player && !h.player.dead).length || 1);
+    const odds = (chance + ETERNAL.pity * (p.eternalPity || 0)) / party;
+    if (r() >= odds) {
+      p.eternalPity = (p.eternalPity || 0) + 1;
+      return;
+    }
+    p.eternalPity = 0;
     const missing = SLOTS.filter((s) => !this.eternalAt(s));
     if (!missing.length) {
       p.eternalEssence += ETERNAL.essencePerDrop;

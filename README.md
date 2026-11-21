@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Animus, pity and the Granted's pay (0.71.1)
+
+- **Animus** is now 5% for each Primordial point: 25% for a class mastered, 100% with all four.
+  Caelum asks 25%, 50%, 75% and 100% (the Sky Road to the Zenith); the Echo Ring 25% from wave 50, up to
+  100% at wave 80. **Where you have what is asked, nothing can Mind-Lock you; at 100%, nothing anywhere
+  can.** Short of it, Mind-Lock still lands (shorter by your Animus), and the Will still finds you.
+- **Eternal pity:** +2% for each Granted beaten without an Eternal, reset when one falls. In a party the
+  chance is shared out: each hero rolls their own at a share of it (half each for two).
+- **The Granted's loot:** 20 times the gold, twice the hoard, its best piece Immortal 40% of the time,
+  a sure Immortal every kill (food for an Eternal), and three times the keys and shards.
+
 ### Eternal gear, and the Granted a hundred lives deep (0.71)
 
 - **The Granted** (Caelum's four bosses) have **100 times** the health, shown as a hundred bars counting

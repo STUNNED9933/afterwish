@@ -151,15 +151,17 @@ export function emberForGear(value) {
 // its Dominion attacks are how it asks. Short of it you may still try; see world.js hitPlayer.
 export const CAELUM = {
   maps: {
-    skyroad: { pace: 0.95, n: 1, numeral: 'I', name: 'The Sky Road', animus: 0.15, points: 5, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, boss: 'ianitor', color: 0xf2e6c0 },
-    answers: { pace: 0.93, n: 2, numeral: 'II', name: 'The Court of Answers', animus: 0.3, points: 10, hp: 7.5, dmg: 3.2, exp: 3.3, loot: 2.2, boss: 'arbiter', color: 0xe8d8a8 },
-    wants: { pace: 0.91, n: 3, numeral: 'III', name: 'The Hall of Wants', animus: 0.45, points: 15, hp: 8.5, dmg: 3.4, exp: 3.6, loot: 2.4, boss: 'desiderium', color: 0xf0c890 },
-    zenith: { pace: 0.9, n: 4, numeral: 'IV', name: 'The Zenith', animus: 0.6, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
+    skyroad: { pace: 0.95, n: 1, numeral: 'I', name: 'The Sky Road', animus: 0.25, points: 5, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, boss: 'ianitor', color: 0xf2e6c0 },
+    answers: { pace: 0.93, n: 2, numeral: 'II', name: 'The Court of Answers', animus: 0.5, points: 10, hp: 7.5, dmg: 3.2, exp: 3.3, loot: 2.2, boss: 'arbiter', color: 0xe8d8a8 },
+    wants: { pace: 0.91, n: 3, numeral: 'III', name: 'The Hall of Wants', animus: 0.75, points: 15, hp: 8.5, dmg: 3.4, exp: 3.6, loot: 2.4, boss: 'desiderium', color: 0xf0c890 },
+    zenith: { pace: 0.9, n: 4, numeral: 'IV', name: 'The Zenith', animus: 1, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
   },
   ids: ['skyroad', 'answers', 'wants', 'zenith'],
   hard: { hp: 1.5, dmg: 1.2 }, // (0.70) every map, on top of its own: the borrowed skills (beat the Quiet first) came with a price
   bossHp: 100, // (0.71) the Granted themselves: a hundred times the health, shown as a hundred bars (they let Eternal gear fall)
   bossBars: 100,
+  // (0.71.1) ...and paid for it: 20x the gold, twice the hoard, a better best piece, a sure Immortal, 3x keys and shards
+  bossLoot: { gold: 20, items: 2, top: [0, 0, 0, 0, 10, 50, 40], immortal: 1, keys: 3 },
   quest: 'sky1', // Wren's first Caelum quest opens the Sky Road on the Waygate
 };
 /** Is this hero short of what a Caelum map asks (0.64)? A tiny margin so 0.15 from 5 points always counts. */
@@ -174,8 +176,8 @@ export const hoardTop = (top, n) => (n > 1 && top[6] > 0 ? top.map((w, i) => (i 
 export const MASTERY = {
   quests: { deep2: 6, deep3: 7, deep4: 8, deep5: 9, deep6q: 10 }, // the Primordial quests, and their Depths
   classes: ['warrior', 'archer', 'rogue', 'mage'],
-  animus: 0.03, // Animus: Mind-Locked 3% shorter for each point...
-  animusMax: 0.6, // ...up to 60% (all 20)
+  animus: 0.05, // (0.71.1) Animus: 5% for each point (25% a class mastered)...
+  animusMax: 1, // ...up to 100% (all 20). Where you have what is asked, Mind-Lock cannot touch you; at 100%, nowhere can
   headStart: 0.5, // an alt starts with half the best Ember among the account's other classes
   exp: 0.25, // (0.70.4) +25% EXP for every hero for each class mastered (its Quiet beaten)...
   expMax: 0.75, // ...up to +75%

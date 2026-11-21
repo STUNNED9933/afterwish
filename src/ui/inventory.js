@@ -377,7 +377,7 @@ export class Inventory {
       const head = p.headStart ? ` (${e - p.headStart} + ${p.headStart} from your other lives)` : '';
       rows.splice(1, 0, ['Ember', `${e}${head} · ${bits.join(' · ')}`]);
     }
-    if (p.animus > 0) rows.splice(2, 0, ['Animus', `Mind-Locked ${Math.round(p.animus * 100)}% shorter`]); // (0.63)
+    if (p.animus > 0) rows.splice(2, 0, ['Animus', p.animus >= 1 - 1e-6 ? '100%: never Mind-Locked' : `${Math.round(p.animus * 100)}%: no Mind-Lock where ${Math.round(p.animus * 100)}% or less is asked`]); // (0.63); (0.71.1)
     $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
 
     const bag = $('bag');

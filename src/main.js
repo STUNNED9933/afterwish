@@ -1867,7 +1867,7 @@ function start(hot = {}) {
     panel.innerHTML = `<h3>Mastery · the other lives <small>${M.points} of 20</small></h3>
       <p class="setting-desc">Every Primordial beaten as each of your classes, on this account. Each one is a point of Mastery for every hero you play. It only counts when you meet its Depth's Ember yourself, or nobody beside you does.</p>
       ${rows}
-      <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: Mind-Locked is that much shorter</span>${M.mastered.length ? `<span><b>+${Math.round(world.masteryExp() * 100)}%</b> EXP for every hero (${M.mastered.length} mastered)</span>` : ''}${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
+      <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: ${M.animus >= 1 - 1e-6 ? 'nothing can Mind-Lock you' : `Mind-Lock cannot touch you where ${Math.round(M.animus * 100)}% or less is asked (Caelum I to IV ask 25, 50, 75 and 100%)`}</span>${M.mastered.length ? `<span><b>+${Math.round(world.masteryExp() * 100)}%</b> EXP for every hero (${M.mastered.length} mastered)</span>` : ''}${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
       ${borrowHtml(others)}`;
     // (0.70) borrowed skills: a press puts one on D or F (again takes it off)
     for (const b of panel.querySelectorAll('[data-borrow]')) {

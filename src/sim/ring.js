@@ -43,7 +43,7 @@ export const RING = {
   // (as the Deep's do: 15, Depth VI's, rising 4 a wave to the Quiet's 155 by wave 60); from wave 50 some
   // of them are the Granted, and every echo asks for Animus (15%, rising 1.5% a wave to 60% by wave 80).
   ember: (wave) => (wave < 25 ? 0 : Math.min(155, 15 + 4 * (wave - 25))),
-  animus: (wave) => (wave < 50 ? 0 : Math.min(0.6, Math.round((0.15 + 0.015 * (wave - 50)) * 1000) / 1000)),
+  animus: (wave) => (wave < 50 ? 0 : Math.min(1, Math.round((0.25 + 0.025 * (wave - 50)) * 1000) / 1000)), // (0.71.1) on the new Animus scale (25% a class mastered)
   granted: { from: 50, share: 0.35, types: ['answered', 'cantor', 'veiled', 'colossus', 'thurifer'] },
   shards: { base: 5, per: 2 }, // starting at wave 1 costs 5 shards; each checkpoint further in, 2 more
 };

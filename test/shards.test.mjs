@@ -420,7 +420,7 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const w = sv.players.get(pid).copy.world;
   const out = w.as(w.heroByPid(pid), (p) => ({ lives: p.lives, ember: w.ember(p), animus: p.animus }));
   check('Server: a browser character brings its other lives, cleaned (bad Depths and classes dropped)', out.lives.warrior.prim.join() === '6,7,8' && !out.lives.cheat && out.lives.archer.prim.length === 0 && out.lives.archer.ember === 0, JSON.stringify(out.lives));
-  check('...and gets its head start and Animus from them', out.ember === 40 && Math.abs(out.animus - 0.09) < 1e-9, `${out.ember} ${out.animus}`);
+  check('...and gets its head start and Animus from them', out.ember === 40 && Math.abs(out.animus - 0.15) < 1e-9, `${out.ember} ${out.animus}`);
 }
 
 console.log(`${pass} passed, ${failed} failed`);

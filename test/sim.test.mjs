@@ -4130,7 +4130,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const M = masteryFor(lives, 'warrior', rb);
   check('Mastery: every Primordial on every class counts (warrior 2 + archer 5 + rogue 1 + mage 1)', M.points === 9 && M.by.warrior.join() === '6,7' && M.by.mage.join() === '7', M.points);
   check('...a class with its Quiet beaten is Mastered', M.mastered.join() === 'archer');
-  check('...Animus 3% a point, up to 60%', Math.abs(M.animus - 0.27) < 1e-9 && masteryFor({ a: 0 }, 'warrior', { act3: {} }).animus === 0);
+  check('...Animus 5% a point, up to 100% (0.71.1)', Math.abs(M.animus - 0.45) < 1e-9 && masteryFor({ a: 0 }, 'warrior', { act3: {} }).animus === 0);
   check('...an alt starts with half the best Ember among the other classes', M.headStart === Math.floor(9999 * MS.headStart));
   check('...and it is open once any class has heard The Other Lives', M.open && !masteryFor({ rogue: { prim: [6] } }, 'warrior', rb).open);
   check('primordialsOf reads the rebirth record', primordialsOf({ act3: { deep6q: true, deep2: true, lives: true } }).join() === '6,10');
@@ -4138,7 +4138,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   // on a hero: the head start counts toward the Deep, and Animus is a stat
   const save = Object.assign(geared('mage', 100, 4), { talents: {}, rebirth: { n: 1, ember: 10 }, acctLives: { warrior: { prim: [6, 7], ember: 60 } } });
   const w = new World({ seed: 41, mode: 'explore', cls: 'mage', save });
-  check('A hero gets the head start (10 of its own + 30) and Animus from the others', w.ember() === 40 && Math.abs(w.player.animus - 0.06) < 1e-9, `${w.ember()} ${w.player.animus}`);
+  check('A hero gets the head start (10 of its own + 30) and Animus from the others', w.ember() === 40 && Math.abs(w.player.animus - 0.1) < 1e-9, `${w.ember()} ${w.player.animus}`);
   // warned early: coming down beside someone who has the Ember
   w.addHero(2, { save: Object.assign(geared('warrior', 100, 4), { rebirth: { n: 3, ember: 999 } }), cls: 'warrior', name: 'Strong' });
   w.events.length = 0;
@@ -4164,7 +4164,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...each is laid out to explore: a road, camps with a captain, shrines, outposts with chests, its keeper at the far end',
     built.every((m, i) => m.road.length > 20 && m.spawns.filter((sp) => sp.elite).length >= MP[CL.ids[i]].camps && m.sidePaths.length >= 4 && m.chestSpots.length >= 4 && m.obstacles.filter((o) => o.kind === 'sign').length === 3 && m.spawns[0].type === CL.maps[CL.ids[i]].boss && Math.hypot(m.spawns[0].x, m.spawns[0].z) > m.radius * 0.6),
     built.map((m) => `${m.spawns.length}/${m.chestSpots.length}`).join(' '));
-  check('...asks more Animus each map, up to the most Mastery gives', CL.ids.map((id) => CL.maps[id].animus).join() === '0.15,0.3,0.45,0.6' && short(0.15, 0.15) === false && short(0.12, 0.15) === true);
+  check('...asks more Animus each map, up to the most Mastery gives', CL.ids.map((id) => CL.maps[id].animus).join() === '0.25,0.5,0.75,1' && short(0.25, 0.25) === false && short(0.2, 0.25) === true);
   check('...the quests run from The Other Lives to Let It Be Done, one keeper each', ['sky1', 'sky2', 'sky3', 'sky4'].every((id, i) => Q[id].act3 && Q[id].after === (i ? `sky${i}` : 'lives') && Q[id].goal.boss === CL.maps[CL.ids[i]].boss) && CL.ids.every((id) => BL[CL.maps[id].boss]));
 
   const hero = (animus, seed = 50) => {
@@ -4196,13 +4196,16 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   {
     const w = hero(0.3);
     w.mindLock(1, 0.3);
-    check('...Animus shortens it (30%: 0.7 s of 1)', Math.abs(w.player.lockT - 0.7) < 1e-9);
-    run(w, 1);
-    w.mindLock(1, 0.3);
-    check('...with the Animus asked, a moment of immunity after a lock', !(w.player.lockT > 0));
-    run(w, L.immune + 0.2);
-    w.mindLock(1, 0.3);
-    check('...then locks again, shorter for coming close together', w.player.lockT > 0 && w.player.lockT < 0.7 - 1e-6, w.player.lockT);
+    check('...(0.71.1) with the Animus asked, Mind-Lock cannot touch you', !(w.player.lockT > 0));
+    w.mindLock(1, 0.5);
+    check('...short of it, Animus still shortens it (30%: 0.7 s of 1)', Math.abs(w.player.lockT - 0.7) < 1e-9);
+    run(w, 0.2);
+    w.mindLock(1, 0.5);
+    check('...and one close behind another counts as a chain', w.player.lockN === 1, w.player.lockN);
+    const all = hero(1);
+    all.mindLock(1, 0);
+    all.mindLock(1, 1);
+    check('...at 100% Animus, nothing Mind-Locks you', !(all.player.lockT > 0));
   }
   {
     const w = hero(0.15);
@@ -4232,7 +4235,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   o = dom(0.45, 0.45, 0.1);
   check('Dominion, with the Animus asked: a perfect parry turns it', o.res === 'parried');
   o = dom(0.45, 0.45, 0.2);
-  check('...a late one does not: a small hit and a short lock', o.res === 'hit' && o.lost < 0.2 && o.p.lockT > 0 && o.p.lockT <= D.lock * 0.55 + 1e-9, `${o.lost} ${o.p.lockT}`);
+  check('...a late one does not: a small hit, and (0.71.1) no Mind-Lock', o.res === 'hit' && o.lost < 0.2 && !(o.p.lockT > 0), `${o.lost} ${o.p.lockT}`);
   o = dom(0.45, 0.45, null, true);
   check('...and rolling through it works', o.res === 'dodged');
   // on the map: built on tier V, no Ember, the map's Animus on everything
@@ -4240,7 +4243,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const w = hero(0.6, 51);
     w.loadMap('skyroad', 'town');
     const foes = w.enemies.filter((e) => !e.dead);
-    check('The Sky Road: everything there asks its Animus, on tier V, with no Ember, captains elite', foes.length > 20 && foes.every((e) => e.animusNeed === 0.15 && !(e.ember > 0)) && w.worldTier() === 5 && foes.filter((e) => e.elite).length >= 4, foes.length);
+    check('The Sky Road: everything there asks its Animus, on tier V, with no Ember, captains elite', foes.length > 20 && foes.every((e) => e.animusNeed === 0.25 && !(e.ember > 0)) && w.worldTier() === 5 && foes.filter((e) => e.elite).length >= 4, foes.length);
     check('...and its shrines keep chests', CL.ids && w.map.chestSpots.every((c) => w.chests.some((ch) => Math.hypot(ch.x - c.x, ch.z - c.z) < 0.01)));
   }
   {
@@ -4256,7 +4259,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...then the next maps open only once walked to', w.map.id === 'town');
     w.command({ type: 'travel', to: 'skyroad' });
     w.step(CONFIG.TICK);
-    check('...and short of its Animus you may go, warned on arrival', w.map.id === 'skyroad' && w.events.some((e) => e.type === 'animusShort' && e.need === 0.15));
+    check('...and short of its Animus you may go, warned on arrival', w.map.id === 'skyroad' && w.events.some((e) => e.type === 'animusShort' && e.need === 0.25));
   }
 }
 
@@ -4365,7 +4368,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Hoards: a quarter of a percent more Immortal each world (the Unmade 5% on I, 6% on V)', hoardTop(BL.boss3.top, 1)[6] === 5 && hoardTop(BL.boss3.top, 5)[6] === 6 && hoardTop(BL.stillness.top, 10)[6] === 14.25 && hoardTop(BL.boss3.top, 5).reduce((a, b) => a + b, 0) === 100);
   check('Primordials: the first kill of each gives an Immortal', ['cinder', 'undertow', 'rootmother', 'choir', 'stillness'].every((id) => BL[id].first === 6));
   // the Ring's deep waves
-  check('Ring (0.66): Ember from wave 25 (15, rising to 155), Animus from wave 50 (15% to 60%)', R.ember(24) === 0 && R.ember(25) === 15 && R.ember(60) === 155 && R.ember(90) === 155 && R.animus(49) === 0 && R.animus(50) === 0.15 && R.animus(80) === 0.6);
+  check('Ring (0.66): Ember from wave 25 (15, rising to 155), Animus from wave 50 (25% to 100%, 0.71.1)', R.ember(24) === 0 && R.ember(25) === 15 && R.ember(60) === 155 && R.ember(90) === 155 && R.animus(49) === 0 && R.animus(50) === 0.25 && R.animus(80) === 1);
   {
     const save = Object.assign(geared('warrior', 100, 5), { maxCheckpoint: 51 });
     const w = new World({ seed: 71, mode: 'arena', cls: 'warrior', save, focus: { kind: 'gold' }, startWave: 51 });
@@ -4458,10 +4461,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('The Will (0.68): short of the Animus near the Granted, it finds you every few seconds', lands >= 2 && lands <= 3 && first, `${lands} in 14 s`);
     check('...and each one that lands takes 90% of your health', hpLow <= 1 - D.short + 0.02 && hpLow > 0, hpLow.toFixed(2));
     const t = w.telegraphs.find((x) => x.will) || null;
-    check('...its ring is a Dominion (amber), following you', !t || (t.dominion === 0.15 && t.parryable && Math.abs(t.x - p.x) < 1e-6));
+    check('...its ring is a Dominion (amber), following you', !t || (t.dominion === 0.25 && t.parryable && Math.abs(t.x - p.x) < 1e-6));
   }
   {
-    const { w, hold } = sky(0.15);
+    const { w, hold } = sky(0.25);
     run(w, 14, hold);
     check('...those with the Animus are never asked', !w.events.some((e) => e.type === 'dominion' || e.type === 'willFirst') && !w.telegraphs.some((t) => t.will));
   }
@@ -4833,5 +4836,46 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const fresh = new World({ seed: 102, mode: 'explore', cls: 'rogue', save: rs });
   fresh.recalcStats();
   check('...and it grows with you again', fresh.player.equipped.helm.ilvl === 1 && (fresh.player.level = 50, fresh.recalcStats(), fresh.player.equipped.helm.ilvl === 50));
+}
+
+// --- 0.71.1: Eternal pity, the share in a party, and the Granted's loot ---------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { ETERNAL } = await import('../src/sim/eternal.js');
+  const { CAELUM: CL } = await import('../src/sim/endgame.js');
+  const { ENEMIES: EN } = await import('../src/sim/defs.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [6, 7, 8, 9, 10] }, rogue: { prim: [6, 7, 8, 9, 10] } };
+  const w = new World({ seed: 103, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, tierMax: 5 }) });
+  w.loadMap('skyroad', 'town');
+  const boss = { def: EN.ianitor, type: 'ianitor', x: 0, z: 0 };
+  const keep = ETERNAL.chance.skyroad;
+  ETERNAL.chance.skyroad = 1e-9;
+  for (let i = 0; i < 10; i++) w.eternalDrop(boss);
+  check('Eternal pity (0.71.1): +2% for each Granted beaten without one', w.player.eternalPity === 10 && w.toSave().eternalPity === 10);
+  w.player.eternalPity = 50; // 0% + 50 x 2% = sure
+  w.eternalDrop(boss);
+  check('...and it resets when one falls', w.player.eternalPity === 0 && Object.values(w.player.eternals).some(Boolean));
+  ETERNAL.chance.skyroad = keep;
+  // the party's share: two heroes, each at half the odds
+  let solo = 0, duo = 0;
+  for (let k = 0; k < 400; k++) {
+    const a = new World({ seed: 200 + k, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, tierMax: 5 }) });
+    a.loadMap('skyroad', 'town');
+    ETERNAL.chance.skyroad = 0.5;
+    a.eternalDrop(boss);
+    if (Object.values(a.player.eternals).some(Boolean)) solo++;
+    a.addHero(2, { save: Object.assign(geared('mage', 100, 5), { acctLives: all }), name: 'B' });
+    a.player.eternals = {}; a.player.eternalPity = 0;
+    a.eternalDrop(boss);
+    if (Object.values(a.player.eternals).some(Boolean)) duo++;
+  }
+  ETERNAL.chance.skyroad = keep;
+  check('...in a party the chance is shared out (two heroes: about half each)', solo > 160 && duo < solo * 0.7 && duo > 60, `${solo} solo, ${duo} in two`);
+  check('The Granted\'s loot (0.71.1): 20x gold, twice the hoard, a 40% Immortal best piece and a sure Immortal, 3x keys', CL.bossLoot.gold === 20 && CL.bossLoot.items === 2 && CL.bossLoot.top[6] === 40 && CL.bossLoot.immortal === 1 && CL.bossLoot.keys === 3);
+  for (let i = 0; i < 5; i++) w.step(CONFIG.TICK);
+  const gb = w.enemies.find((e) => e.def.boss && e.def.granted);
+  const plain = new World({ seed: 104, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, tierMax: 5 }) });
+  plain.loadMap('skyroad', 'town');
+  check('...the gold is on the boss itself', gb && gb.goldValue > 1000, gb && gb.goldValue);
 }
 process.exit(failed ? 1 : 0);

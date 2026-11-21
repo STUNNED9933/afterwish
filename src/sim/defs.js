@@ -616,6 +616,12 @@ ENEMIES.ianitor.attacks = [
   DOM({ name: 'shut', shape: 'arc', trigger: 6, range: 7, angle: 3.4, windup: 1.1, recover: 1.2, dmg: 20, cd: 7 }),
   { name: 'doors', shape: 'rain', scatter: 8, trigger: 22, windup: 0.9, recover: 1.1, dmg: 28, parryable: false, lockAt: 0, count: 7, gap: 0.16, fall: 0.9, radius: 2.4, lock: 0.6, cd: 9, fx: 'gold' },
   CALL('keepers', { summon: { type: 'answered', count: 2, max: 3 }, hpBelow: 0.7, cd: 24 }),
+  // (0.71) a hundred lives deep: quick, hard, and harder as they go (GRANTED_FAST)
+  DOM({ name: 'latch', shape: 'arc', trigger: 7, range: 7.5, angle: 2.6, windup: 0.5, recover: 0.2, dmg: 46, chain: 'latch2', cd: 6, weight: 1.6 }),
+  DOM({ name: 'latch2', shape: 'arc', trigger: 99, range: 7.5, angle: 2.6, windup: 0.4, recover: 0.2, dmg: 46, chain: 'latch3' }),
+  { name: 'latch3', shape: 'circle', trigger: 99, radius: 6, offset: 0, windup: 0.5, recover: 0.9, dmg: 70, parryable: false, lockAt: 0, fx: 'gold' },
+  { name: 'threshold', shape: 'beam', cross: true, trigger: 20, length: 22, width: 3, windup: 0.6, recover: 0.8, dmg: 80, parryable: false, lockAt: 0.4, lock: 0.5, cd: 8, hpBelow: 0.75, fx: 'gold' },
+  { name: 'everydoor', shape: 'rain', scatter: 9, trigger: 24, windup: 0.5, recover: 0.8, dmg: 60, parryable: false, lockAt: 0, count: 12, gap: 0.08, fall: 0.5, radius: 2.6, lock: 0.4, cd: 9, hpBelow: 0.5, fx: 'gold' },
   ...CHASE_KIT({ size: 1.25, pace: 0.9, dmg: 36 }),
 ];
 // The Arbiter: every wish is a question, and it gives every question an answer, whether you like it or not.
@@ -625,6 +631,12 @@ ENEMIES.arbiter.attacks = [
   DOM({ name: 'sentence', shape: 'circle', at: 'target', trigger: 18, radius: 3.6, offset: 0, windup: 1.1, recover: 1.1, dmg: 20, cd: 8 }),
   { name: 'scales', shape: 'ring', trigger: 10, radius: 10, inner: 3.5, windup: 1.3, recover: 1.2, dmg: 44, parryable: false, lockAt: 0, lock: 0.8, cd: 9, fx: 'gold' },
   CALL('chorus', { summon: { type: 'cantor', count: 2, max: 4 }, cd: 22 }),
+  // (0.71)
+  DOM({ name: 'gavel', shape: 'circle', at: 'target', trigger: 20, radius: 3.2, offset: 0, windup: 0.5, recover: 0.15, dmg: 50, chain: 'gavel2', cd: 6, weight: 1.6 }),
+  DOM({ name: 'gavel2', shape: 'circle', at: 'target', trigger: 99, radius: 3.2, offset: 0, windup: 0.4, recover: 0.15, dmg: 50, chain: 'gavel3' }),
+  { name: 'gavel3', shape: 'circle', at: 'target', trigger: 99, radius: 4.5, offset: 0, windup: 0.4, recover: 0.9, dmg: 80, parryable: false, lockAt: 0, fx: 'gold' },
+  { name: 'judgement', shape: 'ring', trigger: 12, radius: 13, inner: 4, windup: 0.6, recover: 0.8, dmg: 85, parryable: false, lockAt: 0, lock: 0.5, cd: 8, hpBelow: 0.75, fx: 'gold' },
+  { name: 'objection', shape: 'shot', around: true, trigger: 20, windup: 0.5, recover: 0.8, dmg: 40, parryable: true, lockAt: 0, speed: 16, count: 24, spread: 0, life: 4, cd: 9, hpBelow: 0.5, fx: 'gold' },
   ...CHASE_KIT({ size: 1.25, pace: 0.9, dmg: 38 }),
 ];
 // Desiderium: what was left over when every want was met. It still wants.
@@ -635,6 +647,11 @@ ENEMIES.desiderium.attacks = [
   { name: 'covet', shape: 'rain', trigger: 22, windup: 0.8, recover: 1.0, dmg: 26, parryable: false, lockAt: 0, count: 6, gap: 0.2, fall: 0.8, radius: 2.2, lock: 0.5, cd: 8, fx: 'gold' },
   { name: 'hunger', shape: 'shot', around: true, trigger: 18, windup: 1.0, recover: 1.0, dmg: 20, parryable: true, lockAt: 0, speed: 8, count: 16, spread: 0, seek: 0.4, life: 5, cd: 10, fx: 'gold' },
   CALL('wanting', { summon: { type: 'veiled', count: 2, max: 3 }, hpBelow: 0.75, cd: 22 }),
+  // (0.71)
+  { name: 'take', shape: 'circle', trigger: 16, radius: 9, offset: 0, pull: 6, windup: 0.7, recover: 0.1, dmg: 30, parryable: false, lockAt: 0, chain: 'devour', cd: 8, weight: 1.4, fx: 'gold' },
+  DOM({ name: 'devour', shape: 'circle', trigger: 99, radius: 4.2, offset: 0, windup: 0.45, recover: 1.0, dmg: 90 }),
+  { name: 'craving', shape: 'shot', around: true, trigger: 22, windup: 0.5, recover: 0.8, dmg: 38, parryable: true, lockAt: 0, speed: 14, count: 12, spread: 0, seek: 1.2, life: 5, cd: 9, hpBelow: 0.75, fx: 'gold' },
+  { name: 'more', shape: 'rain', scatter: 10, trigger: 24, windup: 0.45, recover: 0.8, dmg: 58, parryable: false, lockAt: 0, count: 14, gap: 0.07, fall: 0.45, radius: 2.4, lock: 0.4, cd: 9, hpBelow: 0.5, fx: 'gold' },
   ...CHASE_KIT({ size: 1.25, pace: 0.95, dmg: 40 }),
 ];
 // Fiat: let it be done. The answer to every wish ever made on the mountain, and it has never once said no.
@@ -646,6 +663,13 @@ ENEMIES.fiat.attacks = [
   DOM({ name: 'amen2', shape: 'arc', trigger: 99, range: 8, angle: 3.0, windup: 0.7, recover: 1.3, dmg: 22 }),
   { name: 'granted', shape: 'beam', cross: true, trigger: 18, length: 18, width: 2.8, windup: 1.2, recover: 1.2, dmg: 60, parryable: false, lockAt: 0.6, lock: 0.8, cd: 9, fx: 'gold' },
   CALL('answered', { summon: { type: 'colossus', count: 1, max: 2 }, hpBelow: 0.6, cd: 26 }),
+  // (0.71)
+  { name: 'fiatlux', shape: 'beam', cross: true, trigger: 22, length: 24, width: 3.2, windup: 0.55, recover: 0.1, dmg: 95, parryable: false, lockAt: 0.4, lock: 0.4, chain: 'fiatlux2', cd: 8, weight: 1.5, fx: 'gold' },
+  { name: 'fiatlux2', shape: 'beam', trigger: 99, length: 24, width: 4, windup: 0.45, recover: 0.8, dmg: 95, parryable: false, lockAt: 0.3, lock: 0.4, fx: 'gold' },
+  DOM({ name: 'itisdone', shape: 'circle', at: 'target', trigger: 22, radius: 3.6, offset: 0, windup: 0.45, recover: 0.1, dmg: 60, chain: 'itisdone2', cd: 7, hpBelow: 0.75 }),
+  DOM({ name: 'itisdone2', shape: 'circle', at: 'target', trigger: 99, radius: 3.6, offset: 0, windup: 0.35, recover: 0.1, dmg: 60, chain: 'itisdone3' }),
+  { name: 'itisdone3', shape: 'ring', trigger: 99, radius: 14, inner: 4.5, windup: 0.5, recover: 0.9, dmg: 100, parryable: false, lockAt: 0, fx: 'gold' },
+  { name: 'everything', shape: 'shot', around: true, trigger: 22, windup: 0.45, recover: 0.8, dmg: 45, parryable: true, lockAt: 0, speed: 17, count: 28, spread: 0, seek: 0.6, life: 4, cd: 8, hpBelow: 0.5, fx: 'gold' },
   ...CHASE_KIT({ size: 1.3, pace: 0.95, dmg: 44 }),
 ];
 for (const id of ['answered', 'cantor', 'thurifer', 'colossus', 'veiled', 'ianitor', 'arbiter', 'desiderium', 'fiat']) ENEMIES[id].kit = true;

@@ -101,7 +101,7 @@ export function sourcesOf(key) {
 export function usesOf(key) {
   const warden = CACHES.warden;
   const best = warden.odds.map((w, r) => [w, r]).filter(([w]) => w > 0);
-  const lo = best[0][1], imm = warden.odds[RARITIES.length - 1];
+  const lo = best[0][1], imm = warden.odds[6];
   switch (key) {
     case 'gold': return ['Blacksmith upgrades (+levels)', 'Rerolling and reforging lines', `Opening ${list(Object.values(CACHES).filter((c) => c.cost.gold).map((c) => c.name))}`, 'Skill points from the trainer, and respecs', 'The travelling merchant and Bounty Board swaps'];
     case 'tickets': return [`Waking the Echo Ring (${ringCost(1)} a run from wave 1, more further in)`, 'Echo Rifts at the Waygate (1)', 'The travelling merchant'];

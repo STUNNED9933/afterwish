@@ -56,8 +56,11 @@ export const RARITIES = [
   // (The Unmade, Remnants, the Warden's Cache, radiant chests on tier IV and up).
   // (0.43: radiant gold, not the old pale teal, which was too easy to mistake for Common; the gear screen also gives it a moving border)
   { key: 'immortal', prefix: '', name: 'Immortal', color: '#ffd24a', mult: 3.4, affixes: 4, weight: 0, effect: true },
+  // (0.71) Eternal: only from the Granted, in Caelum, and never from a roll (see eternal.js). White and red.
+  { key: 'eternal', prefix: '', name: 'Eternal', color: '#ff3d4f', mult: 4.4, affixes: 4, weight: 0, eternal: true },
 ];
-export const IMMORTAL = RARITIES.length - 1;
+export const IMMORTAL = 6;
+export const ETERNAL_RARITY = 7;
 
 // Special effects. Every Immortal item carries the effect for its slot, and the
 // effect plays to the class wearing it: a bow's storm rides on basic attacks,
@@ -335,7 +338,7 @@ export const BASE_NAMES = {
   boots: ['Worn Boots', 'Traveler Boots', 'Striders', 'Windrunners', 'Frostwalkers', 'Dune Sandals', 'Gloomstep Boots', 'Stormstriders', 'Obsidian Greaves', 'Phase Treads'],
   ring: ['Copper Band', 'Silver Ring', 'Signet', 'Arcane Loop', 'Rime Band', 'Sunscar Seal', 'Gloom Ring', 'Storm Loop', 'Obsidian Band', 'Eternity Band'],
 };
-function statValue(key, ilvl, mult, rng) {
+export function statValue(key, ilvl, mult, rng) {
   const s = STATS[key];
   const v = s.base * (1 + s.growth * (ilvl - 1)) * mult * (1 - ROLL_SPREAD + 2 * ROLL_SPREAD * rng());
   return Math.max(1, Math.round(v));
@@ -388,6 +391,7 @@ export function rollItem(rng, ilvl, { minRarity = 0, weights = null, slot = null
     item.name = (rarity.prefix ? rarity.prefix + ' ' : '') + (weapon ? weapon.names : BASE_NAMES[slot])[tier];
   }
   if (weapon && cls) item.cls = cls;
+  if (rarity.eternal) Object.assign(item, { eternal: true, level: 1, xp: 0, passives: [] }); // (0.71) never rolled in play (see eternal.js)
   return item;
 }
 
@@ -587,7 +591,7 @@ export function rollBonusStat(key, item, rng) {
 }
 /** Wishdust from scrapping an item (Mythic and better only). */
 export function dustValue(item) {
-  return item.rarity >= 6 ? 4 : item.rarity === 5 ? 2 : item.rarity === 4 ? 1 : 0;
+  return item.eternal ? 0 : item.rarity >= 6 ? 4 : item.rarity === 5 ? 2 : item.rarity === 4 ? 1 : 0;
 }
 
 // --- Blacksmith upgrades ---------------------------------------------------
@@ -598,9 +602,10 @@ export const PLUS_BONUS = 0.08; // each +1 adds 8% to every stat on the item
 export function itemStats(item) {
   const plus = item.plus || 0;
   const stars = item.stars || 0;
-  if (!plus && !stars) return item.stats;
+  const grown = item.eternal ? 1 + 0.04 * ((item.level || 1) - 1) : 1; // (0.71) an Eternal grows with its level (ETERNAL.statPerLevel)
+  if (!plus && !stars && grown === 1) return item.stats;
   const out = {};
-  for (const k in item.stats) out[k] = Math.round(item.stats[k] * (1 + PLUS_BONUS * plus) * (1 + STAR_BONUS * stars));
+  for (const k in item.stats) out[k] = Math.round(item.stats[k] * (1 + PLUS_BONUS * plus) * (1 + STAR_BONUS * stars) * grown);
   return out;
 }
 
@@ -621,7 +626,7 @@ export function itemName(item) {
   return (item.plus ? `${name} +${item.plus}` : name) + stars;
 }
 
-const SCRAP_BY_RARITY = [1, 2, 4, 7, 12, 20, 35];
+const SCRAP_BY_RARITY = [1, 2, 4, 7, 12, 20, 35, 0];
 /** (0.62.1) Scrap and Wishdust are kept through a rebirth now, so a little less of each comes in: three quarters. */
 export const KEPT_RATE = 0.75;
 
@@ -643,6 +648,7 @@ export function itemScore(item) {
   let s = 0;
   for (const k in stats) s += stats[k] * STATS[k].weight;
   if (item.effect) s *= 1.15;
+  if (item.eternal) s *= 1.3;
   return s;
 }
 
@@ -697,6 +703,7 @@ export function bestUpgrades(equipped, bag, cls, skip = new Set()) {
     let bestScore = itemScore(worn);
     bag.forEach((it, i) => {
       if (!it || it.slot !== slot || skip.has(it.id) || (it.cls && it.cls !== cls)) return;
+      if (worn && worn.eternal) return; // (0.71) an Eternal never comes off for anything
       if (worn && worn.effect && !it.effect) return; // an Immortal stays on
       if (worn && worn.set && !it.set && !it.effect) return; // so does a set piece
       const sc = itemScore(it);

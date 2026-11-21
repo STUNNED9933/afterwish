@@ -85,6 +85,7 @@ export function rebirthGear(save, heirloomSlot = null) {
       out.gifts++;
       continue;
     }
+    if (it.eternal) continue; // (0.71) an Eternal is kept, never given up
     if (slot !== heirloomSlot) out.worn += essenceFor(it);
   }
   for (const it of save.bag || []) {
@@ -169,7 +170,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
   const value = sum.value; // what was given up (Ember, 0.54.1; worn and bag, not the Heirloom, 0.58.2)
   for (const slot in worn) {
     const it = worn[slot];
-    if (!it || it.gift) continue; // (0.58) a gift is not the star's to remember
+    if (!it || it.gift || it.eternal) continue; // (0.58) a gift is not the star's to remember; (0.71) nor an Eternal (it is kept)
     if (memoryRank(it) > memoryRank(rb.memories[slot])) rb.memories[slot] = JSON.parse(JSON.stringify(it));
   }
   rb.essence += essence;
@@ -178,10 +179,20 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
   rb.ember += rb.lastEmber;
   rb.recalled = {}; // each memory can be recalled once a life
   const equipped = { weapon: starterWeapon(old.cls) };
-  if (heir) {
+  if (heir && !heir.eternal) {
     heir.heirloom = true;
     relevel(heir, 1);
     equipped[heirloomSlot] = heir;
+  }
+  // (0.71) every Eternal comes too, worn where it was worn, back to level 1 like an Heirloom (it grows with you)
+  const eternals = {};
+  for (const slot in old.eternals || {}) {
+    const it = old.eternals[slot];
+    if (it && it.eternal) eternals[slot] = relevel ? relevel(JSON.parse(JSON.stringify(it)), 1) : it;
+  }
+  for (const slot in worn) {
+    const it = worn[slot];
+    if (it && it.eternal) equipped[slot] = relevel ? relevel(JSON.parse(JSON.stringify(it)), 1) : it;
   }
   const marks = starmarksFor(old.level, old.wish || 0, value);
   rb.n += 1;
@@ -211,6 +222,8 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     glows,
     glow: glow || old.glow || null,
     talentBuilds: old.talentBuilds, // a remembered build is a preference, not power
+    eternals, // (0.71)
+    eternalEssence: old.eternalEssence || 0,
     borrowed: old.borrowed ? { d: old.borrowed.d || null, f: old.borrowed.f || null } : undefined, // (0.70) the skills borrowed from old lives stay chosen
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,

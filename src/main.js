@@ -1794,7 +1794,7 @@ function start(hot = {}) {
       const heir = document.createElement('div');
       heir.className = 'perk-row heir-row';
       const sel = document.createElement('select');
-      sel.innerHTML = `<option value="">No Heirloom</option>` + SLOTS.filter((s) => p.equipped[s]).map((s) => `<option value="${s}"${rebirthHeir === s ? ' selected' : ''}>${esc(itemName(p.equipped[s]))}</option>`).join('');
+      sel.innerHTML = `<option value="">No Heirloom</option>` + SLOTS.filter((s) => p.equipped[s] && !p.equipped[s].eternal).map((s) => `<option value="${s}"${rebirthHeir === s ? ' selected' : ''}>${esc(itemName(p.equipped[s]))}</option>`).join('');
       sel.addEventListener('change', () => {
         rebirthHeir = sel.value || null;
         renderTalents();
@@ -1808,6 +1808,7 @@ function start(hot = {}) {
       gains.push(`<li><b>+${pv.essence} Echo Essence</b> <span>(${pv.essenceWorn} from what you wear${rebirthHeir ? ', the Heirloom aside' : ''}, ${pv.essenceBag} from ${pv.bagPieces} piece${pv.bagPieces === 1 ? '' : 's'} in your bag)${rb.essence ? `; you have ${rb.essence}` : ''}. Spend it on the gear screen to recall what the star remembers.</span></li>`);
       gains.push(`<li><b style="color:#ff8a4a">+${pv.ember} Ember</b> <span>(up to ${DEEP.emberMax}, by everything you give up: rarer pieces, +levels and stars are worth more), kept for good: ${pv.emberNow} now, ${pv.emberNow + pv.ember} after</span></li>`);
       if (pv.remembered) gains.push(`<li><b>${pv.remembered} piece${pv.remembered === 1 ? '' : 's'} remembered</b> <span>(the best you have worn in ${pv.remembered === 1 ? 'that slot' : 'those slots'}), to recall in later lives</span></li>`);
+      if (SLOTS.some((s) => world.eternalAt(s))) gains.push(`<li><b>Every Eternal piece</b> <span>comes with you, worn where you wore it, back at level 1 (it grows with you; its own level and passives stay)</span></li>`); // (0.71)
       if (rebirthHeir && p.equipped[rebirthHeir]) gains.push(`<li><b>${esc(itemName(p.equipped[rebirthHeir]))}</b> <span>comes with you as your Heirloom, back at level 1</span></li>`);
       if (pv.glow && GLOWS[pv.glow]) gains.push(`<li><b>${GLOWS[pv.glow].name}</b> <span>weapon glow</span></li>`);
       if (pv.acctExp) gains.push(`<li><b>+${pv.acctExp}% EXP</b> <span>for every hero on this account</span></li>`);
@@ -4547,6 +4548,22 @@ function start(hot = {}) {
         hud.feedItem(ev.item, ev);
         hud.setGearBadge(Inventory.upgradeCount(world));
         if (ev.upgrade && !ev.equipped) hintOnce('gear', 'You picked up an upgrade. Press TAB to open your gear.', 7);
+        break;
+      case 'eternalDrop':
+        // (0.71) the tier above Immortal
+        sfx.pickup(7);
+        sfx.levelUp();
+        if (ev.essence) hud.banner('Eternity Essence', `+${ev.essence} · every Eternal piece is yours: feed it to them (Tab)`);
+        else hud.banner(`An Eternal falls: ${ev.name}`, 'Soulbound, kept through every rebirth · wear and feed it in the Eternal panel (Tab)');
+        refreshMenus();
+        break;
+      case 'eternalFed':
+        sfx.upgrade();
+        if (ev.level > ev.from) hud.banner(`${ev.name} · level ${ev.level}`, `${ev.slots} passive${ev.slots > 1 ? 's' : ''} open${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
+        else hud.feedText(`${ev.name} fed${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
+        break;
+      case 'eternalFull':
+        hud.feedText('That Eternal is at its last level.');
         break;
       case 'bagFull':
         hud.feedText('Bag is full. Press TAB and scrap some items.');

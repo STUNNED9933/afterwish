@@ -3003,7 +3003,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   // 0.30: Ancient moved above Mythic; old saves keep their items' strength, with the right names
   {
     const { migrateItem } = await import('../src/sim/items.js');
-    check('Rarities: Epic, Mythic, Ancient, Immortal, each stronger than the last', RARITIES.slice(3).map((r) => r.name).join() === 'Epic,Mythic,Ancient,Immortal' && RARITIES[4].mult < RARITIES[5].mult && RARITIES[5].mult < RARITIES[6].mult);
+    check('Rarities: Epic, Mythic, Ancient, Immortal, each stronger than the last', RARITIES.slice(3).map((r) => r.name).join() === 'Epic,Mythic,Ancient,Immortal,Eternal' && RARITIES[4].mult < RARITIES[5].mult && RARITIES[5].mult < RARITIES[6].mult && RARITIES[6].mult < RARITIES[7].mult); // (0.71) Eternal above
     const oldLeg = { id: 'a', name: 'Ancient Iron Helm', slot: 'helm', rarity: 4, ilvl: 40, stats: { hp: 500 }, plus: 0 };
     const oldMyth = { id: 'b', name: 'Mythic Iron Helm', slot: 'helm', rarity: 5, ilvl: 40, stats: { hp: 600 }, plus: 0 };
     const oldSet = { id: 'c', name: 'Bloodbound Crown', slot: 'helm', rarity: 4, ilvl: 40, stats: { hp: 230 }, plus: 0, set: 'bloodbound', cls: 'warrior' };
@@ -4742,5 +4742,96 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   // Act III: any class's Unwish and rebirth open it for the account
   const fresh = (lives) => new World({ seed: 98, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 5), { acctLives: lives }) });
   check('Act III (0.70.5): Wren\'s Deep quests open on a class with no Unwish or rebirth, once another class has both', fresh({ archer: { prim: [], act3: true } }).questOpen('deep1') && !fresh({ archer: { prim: [] } }).questOpen('deep1'));
+}
+
+// --- 0.71: the Granted a hundred lives deep, and Eternal gear -----------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { CAELUM: CL } = await import('../src/sim/endgame.js');
+  const { ETERNAL, rollEternal, feed, slotsOpen, eternalMods } = await import('../src/sim/eternal.js');
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const { relevelItem, starterWeapon: sw, rollItem: ri, RARITIES: RR } = await import('../src/sim/items.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [6, 7, 8, 9, 10] }, rogue: { prim: [6, 7, 8, 9, 10] } };
+  // the Granted: a hundred times, a hundred bars
+  const cw = new World({ seed: 99, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 6), { acctLives: all, tierMax: 5 }) });
+  cw.loadMap('skyroad', 'town');
+  for (let i = 0; i < 5; i++) cw.step(CONFIG.TICK);
+  const gb = cw.enemies.find((e) => e.def.boss && e.def.granted);
+  const plain = cw.enemies.find((e) => !e.def.boss);
+  check('The Granted (0.71): a hundred times the health, in a hundred bars', gb && gb.bars === CL.bossBars && CL.bossHp === 100 && !plain.bars, gb && `${gb.maxHp}`);
+  const { ENEMIES: EN } = await import('../src/sim/defs.js');
+  const fast = ['latch', 'threshold', 'everydoor', 'gavel', 'judgement', 'objection', 'take', 'craving', 'more', 'fiatlux', 'itisdone', 'everything'];
+  const names = new Set(['ianitor', 'arbiter', 'desiderium', 'fiat'].flatMap((b) => EN[b].attacks.map((a) => a.name)));
+  check('...each with new quick, hard patterns (windups half a second or so)', fast.every((n) => names.has(n)) && ['ianitor', 'arbiter', 'desiderium', 'fiat'].every((b) => EN[b].attacks.filter((a) => fast.includes(a.name)).every((a) => a.windup <= 0.7)));
+  // drops
+  const mk = (extra = {}) => new World({ seed: 100, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: all, tierMax: 5 }, extra) });
+  const w = mk();
+  w.loadMap('zenith', 'town');
+  const boss = { def: EN.fiat, type: 'fiat', x: 0, z: 0 };
+  const save = ETERNAL.chance.zenith;
+  ETERNAL.chance.zenith = 1;
+  const got = [];
+  for (let i = 0; i < 5; i++) { w.eternalDrop(boss); got.push(Object.keys(w.player.eternals).find((s) => w.player.eternals[s] && !got.includes(s))); }
+  check('Eternal: a Granted lets one fall, never one you have (five drops, five different pieces)', new Set(got).size === 5 && got.every(Boolean), got.join());
+  const before = w.player.eternalEssence;
+  w.eternalDrop(boss);
+  check('...and with all five, Eternity Essence', w.player.eternalEssence === before + ETERNAL.essencePerDrop);
+  ETERNAL.chance.zenith = save;
+  check('...only in Caelum, and only from the Granted', (() => { const t = mk(); t.loadMap('greenwood', 'town'); t.eternalDrop(boss); const t2 = mk(); t2.loadMap('zenith', 'town'); t2.eternalDrop({ def: EN.boss, type: 'boss', x: 0, z: 0 }); return !Object.values(t.player.eternals).some(Boolean) && !Object.values(t2.player.eternals).some(Boolean); })());
+  // wearing: never in the gear box
+  const p = w.player;
+  const bagN = p.bag.length;
+  w.command({ type: 'wearEternal', slot: 'helm' }); w.runCommands();
+  check('...worn in its slot from its own panel; what was there goes to the gear box', p.equipped.helm.eternal && !p.eternals.helm && p.bag.length === bagN + 1);
+  const helmItem = ri(() => 0.5, 100, { weights: RR.map((_, i) => (i === 3 ? 1 : 0)), slot: 'helm' });
+  p.bag.push(helmItem);
+  w.command({ type: 'equip', index: p.bag.length - 1 }); w.runCommands();
+  check('...put something else on and it goes back to its panel, not the gear box', p.eternals.helm && p.eternals.helm.eternal && !p.bag.some((it) => it.eternal));
+  w.command({ type: 'wearEternal', slot: 'helm' }); w.runCommands();
+  p.bag.push(ri(() => 0.99, 100, { weights: RR.map((_, i) => (i === 6 ? 1 : 0)), slot: 'helm' }));
+  w.command({ type: 'autoEquip' }); w.runCommands();
+  w.command({ type: 'scrap', keep: [] }); w.runCommands();
+  check('...Equip every upgrade never takes it off, scrapping never reaches it', p.equipped.helm.eternal && !p.bag.some((it) => it.eternal));
+  w.command({ type: 'upgrade', slot: 'helm' }); w.runCommands();
+  check('...and the blacksmith does not touch it (it grows by Feeding)', !(p.equipped.helm.plus > 0));
+  // feeding
+  const it = p.equipped.helm;
+  const imm = () => ri(() => 0.5, 100, { weights: RR.map((_, i) => (i === 6 ? 1 : 0)), slot: 'ring' });
+  for (let i = 0; i < 6; i++) p.bag.push(imm());
+  const n0 = p.bag.filter((b) => b.rarity === 6).length;
+  for (let i = 0; i < 6; i++) { const at = p.bag.findIndex((b) => b.rarity === 6); w.command({ type: 'feedEternal', slot: 'helm', index: at }); w.runCommands(); }
+  check('Feeding: Immortals from the gear box are used up and give experience (600: level 1 to 4)', it.level === 4 && p.bag.filter((b) => b.rarity === 6).length === n0 - 6, `${it.level} ${it.xp}`);
+  check('...level 4 opens a second passive, each a different one', it.passives.length === 2 && it.passives[0].key !== it.passives[1].key);
+  p.eternalEssence = 100;
+  w.command({ type: 'feedEternal', slot: 'helm' }); w.runCommands();
+  check('...Essence takes it to the last level, using only what it needs', it.level === ETERNAL.maxLevel && slotsOpen(it) === 4 && it.passives.length === 4 && Math.abs(p.eternalEssence - (100 - (4500 - 600) / ETERNAL.essenceXp)) < 1e-6, `${it.level} ${p.eternalEssence}`);
+  const t = rollEternal(() => 0.3, 100, 'boots', 'rogue');
+  const over = feed(t, 5000, () => 0.4);
+  check('...and what goes past the last level comes back (as Essence)', t.level === ETERNAL.maxLevel && Math.abs(over - 500) < 1e-6, `${over}`);
+  // its passives
+  const target = { def: { boss: true }, x: 0, z: 0 };
+  const m0 = eternalMods({ helm: it });
+  check('Eternal passives: about a boss, and they add up across worn pieces', Object.keys(m0).length === 4 && Object.keys(eternalMods({ helm: it, boots: t })).length >= 4);
+  const dw = mk();
+  dw.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) dw.step(CONFIG.TICK);
+  const e = dw.enemies.find((o) => !o.dead && o.state !== 'spawn');
+  e.hp = e.maxHp = 1e9;
+  e.def = Object.assign({}, e.def, { boss: true });
+  const hit = () => { const b = e.hp; dw.hitEnemy(e, 1000, { forceCrit: false, canCrit: false }); const d = b - e.hp; e.hp = b; return d; };
+  const plainHit = hit();
+  dw.player.equipped.chest = Object.assign(rollEternal(() => 0.5, 100, 'chest', 'rogue'), { passives: [{ key: 'colossus', q: 1 }] });
+  dw.recalcStats();
+  const ethit = hit();
+  check('...Colossus Breaker: 25% more to a boss (a top roll at level 1)', Math.abs(ethit / plainHit - 1.25) < 0.02, `${plainHit} ${ethit}`);
+  // save and rebirth
+  const sv = w.toSave();
+  const back = new World({ seed: 101, mode: 'explore', cls: 'rogue', save: Object.assign(sv, { acctLives: all }) });
+  check('Eternal: kept in the save, worn and stowed', back.player.equipped.helm.eternal && back.player.equipped.helm.level === ETERNAL.maxLevel && ['weapon', 'chest', 'boots', 'ring'].every((s) => back.player.eternals[s]));
+  const rs = rebirthSave(sv, sw, null, relevelItem);
+  check('...a rebirth keeps every piece, worn where it was, back at level 1, its own level and passives kept', rs.equipped.helm && rs.equipped.helm.eternal && rs.equipped.helm.ilvl === 1 && rs.equipped.helm.level === ETERNAL.maxLevel && rs.equipped.helm.passives.length === 4 && ['weapon', 'chest', 'boots', 'ring'].every((s) => rs.eternals[s] && rs.eternals[s].ilvl === 1));
+  const fresh = new World({ seed: 102, mode: 'explore', cls: 'rogue', save: rs });
+  fresh.recalcStats();
+  check('...and it grows with you again', fresh.player.equipped.helm.ilvl === 1 && (fresh.player.level = 50, fresh.recalcStats(), fresh.player.equipped.helm.ilvl === 50));
 }
 process.exit(failed ? 1 : 0);

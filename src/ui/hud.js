@@ -15,7 +15,7 @@ import { AUGMENTS } from '../sim/augments.js';
 import { QUESTS, NPCS, SIGNS } from '../sim/story.js';
 import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
-import { TIERS } from '../sim/endgame.js';
+import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
 
 /** A quest's goal in a few words: "Defeat 12 Husks on the Greenwood Trail". */
@@ -536,7 +536,26 @@ export class Hud {
         $('boss-title').textContent = fin ? boss.def.title || '' : '';
         $('boss-phase').textContent = fin ? ['', 'Phase one', 'Phase two · stars fall', 'Phase three · it pulls you in'][phase] : '';
       }
-      $('boss-fill').style.transform = `scaleX(${Math.max(0, boss.hp / boss.maxHp)})`;
+      // (0.71) a Granted in Caelum: a hundred bars, counting down (x100 ... x1)
+      const bars = boss.bars || (boss.def.granted && world.map && CAELUM.maps[world.map.id] ? CAELUM.bossBars : 0);
+      let frac = Math.max(0, boss.hp / boss.maxHp);
+      const box = $('boss-box');
+      if (bars > 1) {
+        const per = boss.maxHp / bars;
+        const n = Math.max(1, Math.ceil(boss.hp / per - 1e-9));
+        frac = Math.max(0, Math.min(1, (boss.hp - (n - 1) * per) / per));
+        if (n !== this.lastBars) {
+          this.lastBars = n;
+          $('boss-bars').textContent = `×${n}`;
+          box.dataset.bar = String(n % 4); // the colour turns each bar
+        }
+      } else if (this.lastBars) {
+        this.lastBars = 0;
+        $('boss-bars').textContent = '';
+        delete box.dataset.bar;
+      }
+      box.classList.toggle('stacked', bars > 1);
+      $('boss-fill').style.transform = `scaleX(${frac})`;
       const pk = boss.posture + ':' + boss.state;
       if (pk !== this.lastPosture) {
         this.lastPosture = pk;
@@ -1050,7 +1069,8 @@ export class Tooltip {
     if (!html) return;
     this.el.innerHTML = html;
     this.el.style.setProperty('--rarity', rarityColor || '');
-    this.el.classList.toggle('immortal', !!immortal);
+    this.el.classList.toggle('immortal', immortal === true);
+    this.el.classList.toggle('eternal', immortal === 'eternal'); // (0.71)
     this.el.classList.remove('hidden');
     const r = anchor.getBoundingClientRect();
     const tw = this.el.offsetWidth;

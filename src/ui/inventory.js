@@ -10,6 +10,7 @@ import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 import { itemLore } from './lore.js';
 import { emberOf, DEEP, DEPTH_IDS } from '../sim/endgame.js';
+import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue } from '../sim/eternal.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
@@ -24,6 +25,7 @@ export function itemTooltip(item, compareTo) {
   const stats = itemStats(item);
   const keys = Object.keys(stats);
   let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; gear score ${Math.round(itemScore(item))}</div>`;
+  if (item.eternal) html += eternalHead(item);
   keys.forEach((k, i) => {
     const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Reforged: only this line can be reforged again">✦</span>' : '';
     html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
@@ -34,6 +36,7 @@ export function itemTooltip(item, compareTo) {
     const n = setsWorn[item.set] || 0;
     html += `<div class="tt-set"><b>${set.name} set</b> &middot; ${SPECS[set.spec] ? SPECS[set.spec].name : ''} &middot; ${n} of 4 worn<div class="${n >= 2 ? 'on' : ''}">(2) ${set.two.desc}</div><div class="${n >= 4 ? 'on' : ''}">(4) ${set.four.desc}</div></div>`;
   }
+  if (item.eternal) html += eternalPassives(item);
   if (item.effect && EFFECTS[item.effect]) {
     const k = starPotency(item); // (0.65) the passive grows with the stars; (0.67) its numbers worked out, the grown ones in gold
     const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow(), k, true);
@@ -59,15 +62,32 @@ export function itemTooltip(item, compareTo) {
   }
   if (item.gift) html += '<div class="tt-gift">A gift from a friend: yours to use. It cannot be passed on, and gives the star nothing at a rebirth.</div>'; // (0.58)
   const dust = dustValue(item);
-  html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ''}</div>`;
+  if (!item.eternal) html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ""}</div>`; // (0.71) an Eternal is never scrapped
   return html;
+}
+
+/** (0.71) An Eternal's level, its experience, and what it is. */
+function eternalHead(item) {
+  const lv = item.level || 1;
+  const max = lv >= ETERNAL.maxLevel;
+  const need = max ? 0 : ETERNAL.xpFor(lv);
+  const pct = max ? 100 : Math.round(((item.xp || 0) / need) * 100);
+  return `<div class="tt-eternal">Level <b>${lv}</b> of ${ETERNAL.maxLevel}${max ? '' : ` &middot; ${Math.round(item.xp || 0)} / ${need} to the next`}<div class="et-xp"><i style="width:${pct}%"></i></div><small>Soulbound: never traded, scrapped or lost. Kept through rebirth. Grows by Feeding.</small></div>`;
+}
+/** (0.71) An Eternal's passives, open and still to open. */
+function eternalPassives(item) {
+  let html = '<div class="tt-effect eternal">';
+  for (const ps of item.passives || []) html += `<div><b>${ETERNAL_PASSIVES[ps.key] ? ETERNAL_PASSIVES[ps.key].name : ps.key}</b> ${passiveText(ps, item, true)}</div>`;
+  const next = ETERNAL.slotsAt.find((l) => l > (item.level || 1));
+  if (next) html += `<div class="et-locked">Another passive at level ${next}.</div>`;
+  return html + '</div>';
 }
 
 /** A small mark in the colour of how well a line rolled (0.43): Common for a low roll, Immortal for the best. */
 export function rollPip(item, key) {
   const q = rollQuality(item, key);
   const t = RARITIES[rollTier(q)];
-  const top = rollTier(q) === RARITIES.length - 1; // an Immortal roll shimmers like Immortal gear (0.43.1)
+  const top = rollTier(q) === 6; // an Immortal roll shimmers like Immortal gear (0.43.1)
   return `<span class="roll-pip${top ? ' imm' : ''}" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
 }
 
@@ -131,12 +151,12 @@ function setGuardImmortal(on) {
 export function itemCell(tooltip, item, { button = false, compareTo = null, upgrade = false } = {}) {
   const el = document.createElement(button ? 'button' : 'div');
   if (button) el.type = 'button';
-  el.className = 'cell' + (item ? ' filled' : '') + (item && RARITIES[item.rarity].effect ? ' immortal' : '');
+  el.className = 'cell' + (item ? ' filled' : '') + (item && RARITIES[item.rarity].effect ? ' immortal' : '') + (item && item.eternal ? ' eternal' : '');
   if (item) {
     const color = RARITIES[item.rarity].color;
     el.style.setProperty('--rarity', color);
-    const imm = !!RARITIES[item.rarity].effect;
-    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}${imm ? '<span class="imm-star" aria-hidden="true">✦</span>' : ''}`;
+    const imm = item.eternal ? 'eternal' : !!RARITIES[item.rarity].effect;
+    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.eternal ? `L${item.level || 1}` : item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}${imm === true ? '<span class="imm-star" aria-hidden="true">✦</span>' : item.eternal ? '<span class="imm-star et" aria-hidden="true">✧</span>' : ''}`;
     el.addEventListener('mouseenter', () => tooltip.show(itemTooltip(item, compareTo), el, color, imm));
     el.addEventListener('mouseleave', () => tooltip.hide());
     if (button) el.setAttribute('aria-label', `${itemName(item)}, ${RARITIES[item.rarity].name} ${itemTypeName(item)}${upgrade ? ', upgrade' : ''}`);
@@ -162,7 +182,7 @@ export class Inventory {
     // One toggle per rarity from Rare up: kept items stay in the bag even when they are worse.
     const root = $('keep-rarities');
     RARITIES.forEach((r, i) => {
-      if (i < 2) return;
+      if (i < 2 || r.eternal) return; // (0.71) an Eternal is never in the gear box
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'keep-chip';
@@ -202,11 +222,11 @@ export class Inventory {
         cell.style.opacity = 0.35;
       }
       const text = document.createElement('div');
-      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name${item && RARITIES[item.rarity].effect ? ' immortal' : ''}" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
+      text.innerHTML = `<div class="eq-slot">${SLOT_NAMES[slot]}${item ? ' · gear score ' + Math.round(itemScore(item)) : ''}${item && item.set ? ` · <span class="set-tag">${SETS[item.set].name} ${setsWorn[item.set] || 0}/4</span>` : ''}</div><div class="eq-name${item && RARITIES[item.rarity].effect ? ' immortal' : ''}${item && item.eternal ? ' eternal' : ''}" style="color:${item ? RARITIES[item.rarity].color : 'var(--muted)'}">${item ? itemName(item) : 'Empty'}</div>`;
       row.append(cell, text);
       const btns = document.createElement('div');
       btns.className = 'eq-btns';
-      if (item && item.rarity === RARITIES.length - 1 && item.effect && !world.trial && (item.stars || 0) < 5) {
+      if (item && item.rarity === 6 && item.effect && !world.trial && (item.stars || 0) < 5) {
         // Ascending (0.31): a duplicate Immortal in the bag can be fed into this one.
         const dupAt = p.bag.findIndex((b) => b.rarity === item.rarity && b.effect === item.effect);
         if (dupAt >= 0) {
@@ -220,7 +240,7 @@ export class Inventory {
         }
       }
       const mem = p.rebirth && p.rebirth.memories && p.rebirth.memories[slot];
-      if (item && mem && !world.trial) {
+      if (item && mem && !world.trial && !item.eternal) {
         // Echoes (0.53): back up to the +level and stars you had in this slot, for Echo Essence
         const plusTo = Math.min(10, mem.plus || 0), starsTo = item.rarity === 6 && item.effect ? mem.stars || 0 : 0;
         const what = (item.plus || 0) < plusTo ? [ECHOES.plusCost, `+${(item.plus || 0) + 1}`] : (item.stars || 0) < starsTo ? [ECHOES.starCost, `★${(item.stars || 0) + 1}`] : null;
@@ -235,7 +255,17 @@ export class Inventory {
           btns.appendChild(a);
         }
       }
-      if (item && !world.trial) {
+      if (item && item.eternal && !world.trial) {
+        // (0.71) an Eternal comes off to its own place
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny ench-btn';
+        b.textContent = 'Take off';
+        b.title = 'Back to the Eternal panel (it is never put in the gear box)';
+        b.addEventListener('click', () => this.send({ type: 'stowEternal', slot }));
+        btns.appendChild(b);
+      }
+      if (item && !world.trial && !item.eternal) {
         // Rerolling and reforging (0.43; enchanting since 0.29)
         const b = document.createElement('button');
         b.type = 'button';
@@ -263,6 +293,7 @@ export class Inventory {
       row.append(cell, text);
       eq.appendChild(row);
     }
+    this.renderEternal(world); // (0.71)
     const rb = p.rebirth;
     if (rb && !world.trial && (rb.essence > 0 || Object.keys(rb.memories || {}).length)) {
       // Echoes (0.53): the pieces the star remembers, to recall at your level
@@ -411,6 +442,91 @@ export class Inventory {
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
     btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';
     btn.disabled = !scrapTotal;
+  }
+
+  /**
+   * (0.71) The Eternal panel: one row a slot, what this class has (worn or not), its level, and Feeding.
+   * Hidden until the first piece or Essence.
+   */
+  renderEternal(world) {
+    const p = world.player;
+    const box = $('eternal-box');
+    const owned = SLOTS.filter((s) => world.eternalAt && world.eternalAt(s));
+    if (world.trial || (!owned.length && !(p.eternalEssence > 0))) {
+      box.classList.add('hidden');
+      return;
+    }
+    box.classList.remove('hidden');
+    $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence`;
+    const root = $('eternal');
+    root.innerHTML = '';
+    const immortals = p.bag.map((it, i) => [it, i]).filter(([it]) => it && it.rarity === 6);
+    for (const slot of SLOTS) {
+      const it = world.eternalAt(slot);
+      const row = document.createElement('div');
+      row.className = 'eq-row et-row';
+      const cell = itemCell(this.tooltip, it);
+      if (!it) {
+        cell.innerHTML = gearIcon(slot);
+        cell.style.opacity = 0.25;
+      }
+      const text = document.createElement('div');
+      const worn = it && p.equipped[slot] === it;
+      const lv = it ? it.level || 1 : 0;
+      const need = it && lv < ETERNAL.maxLevel ? ETERNAL.xpFor(lv) : 0;
+      text.innerHTML = it
+        ? `<div class="eq-slot">${SLOT_NAMES[slot]} &middot; level ${lv}/${ETERNAL.maxLevel} &middot; ${slotsOpen(it)} passive${slotsOpen(it) > 1 ? 's' : ''}${worn ? ' &middot; worn' : ''}</div><div class="eq-name eternal">${itemName(it)}</div><div class="et-xp"><i style="width:${need ? Math.round(((it.xp || 0) / need) * 100) : 100}%"></i></div>`
+        : `<div class="eq-slot">${SLOT_NAMES[slot]}</div><div class="eq-name" style="color:var(--muted)">Not found yet: the Granted, in Caelum</div>`;
+      row.append(cell, text);
+      const btns = document.createElement('div');
+      btns.className = 'eq-btns';
+      const add = (label, title, cmd, off = false) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny ench-btn';
+        b.textContent = label;
+        b.title = title;
+        b.disabled = off;
+        b.addEventListener('click', () => (typeof cmd === 'function' ? cmd() : this.send(cmd)));
+        btns.appendChild(b);
+      };
+      if (it) {
+        if (worn) add('Take off', 'Back here; the slot is left empty', { type: 'stowEternal', slot });
+        else add('Wear', 'Put it on; what you wear there goes to the gear box', { type: 'wearEternal', slot });
+        const full = xpToMax(it) <= 0;
+        add(this.feedSlot === slot ? 'Close' : 'Feed', full ? 'At its last level' : 'Give it an Immortal from your gear box, or Eternity Essence', () => {
+          this.feedSlot = this.feedSlot === slot ? null : slot;
+          this.render(world);
+        }, full);
+      }
+      row.appendChild(btns);
+      root.appendChild(row);
+      if (it && this.feedSlot === slot) {
+        const fp = document.createElement('div');
+        fp.className = 'ench-panel et-feed';
+        const room = xpToMax(it);
+        fp.innerHTML = `<div class="setting-desc">An Immortal gives ${ETERNAL.immortalXp} (+${ETERNAL.starXp} a star); one Essence ${ETERNAL.essenceXp}. ${Math.round(room)} more to its last level; anything past that comes back as Essence.</div>`;
+        const list = document.createElement('div');
+        list.className = 'et-food';
+        for (const [food, i] of immortals) {
+          const c = itemCell(this.tooltip, food, { button: true });
+          c.title = `Feed it (+${feedValue(food)})`;
+          c.addEventListener('click', () => this.send({ type: 'feedEternal', slot, index: i }));
+          list.appendChild(c);
+        }
+        if (!immortals.length) list.innerHTML = '<span class="setting-desc">No Immortals in your gear box.</span>';
+        fp.appendChild(list);
+        const eb = document.createElement('button');
+        eb.type = 'button';
+        eb.className = 'primary tiny';
+        const can = Math.min(p.eternalEssence || 0, room / ETERNAL.essenceXp);
+        eb.textContent = can > 0 ? `Feed ${can.toFixed(1)} Essence` : 'No Essence';
+        eb.disabled = !(can > 0);
+        eb.addEventListener('click', () => this.send({ type: 'feedEternal', slot }));
+        fp.appendChild(eb);
+        root.appendChild(fp);
+      }
+    }
   }
 
   /** (0.62.1) The wallet in the gear window's head: big numbers with icons, and what each is for on hover. */

@@ -1128,3 +1128,34 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* (0.67) an ascended passive's grown numbers */
 #tooltip .tt-effect b.pot, .tt-effect b.pot { display: inline; margin: 0; color: #ffd24a; font-weight: 700; text-shadow: 0 0 6px rgba(255, 200, 60, 0.45); }
 .tt-as.pot-note { color: #e8c86a; }
+/* (0.71) a Granted's hundred bars */
+#boss-bars { margin-left: 8px; font-weight: 700; color: #fff; text-shadow: 0 0 6px #ff3d4f; font-variant-numeric: tabular-nums; }
+#boss-box.stacked .bar.boss { background: #2a0d12; }
+#boss-box.stacked[data-bar="0"] #boss-fill { background: linear-gradient(90deg, #a8102a, #ff3d4f); }
+#boss-box.stacked[data-bar="1"] #boss-fill { background: linear-gradient(90deg, #b8862a, #ffd24a); }
+#boss-box.stacked[data-bar="2"] #boss-fill { background: linear-gradient(90deg, #6a2aa8, #c9a2ff); }
+#boss-box.stacked[data-bar="3"] #boss-fill { background: linear-gradient(90deg, #c8c8d0, #ffffff); }
+/* (0.71) Eternal: white and red, and a border that never stops turning */
+.cell.eternal { border-color: transparent; background: linear-gradient(#1a0a0e, #1a0a0e) padding-box, conic-gradient(from var(--imm-turn), #ffffff, #ff3d4f, #fff0f0, #8a0f20, #ffffff, #ff3d4f, #ffffff) border-box; border: 2px solid transparent; animation: imm-turn 2.6s linear infinite, eternal-glow 1.8s ease-in-out infinite; }
+@keyframes eternal-glow { 50% { box-shadow: 0 0 16px -2px #ff3d4f, inset 0 0 12px -4px #ffffff; } }
+.imm-star.et { color: #fff; text-shadow: 0 0 6px #ff3d4f; }
+.eq-name.eternal { background: linear-gradient(90deg, #ffffff, #ff3d4f 35%, #ffffff 55%, #ff7a88 75%, #ffffff); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: eternal-shine 3s linear infinite; font-weight: 700; }
+@keyframes eternal-shine { to { background-position: -200% 0; } }
+#tooltip.eternal { width: 310px; border: 2px solid transparent; background: linear-gradient(#120609, #120609) padding-box, conic-gradient(from var(--imm-turn), #ffffff, #ff3d4f, #ffffff 30%, #6a0a18, #ff3d4f 60%, #ffffff, #ff3d4f, #ffffff) border-box; animation: imm-turn 2.4s linear infinite; box-shadow: 0 0 26px -4px #ff3d4f, 0 0 40px -12px #ffffff, 0 10px 30px rgba(0, 0, 0, 0.6); }
+#tooltip.eternal .tt-name { color: #fff; text-shadow: 0 0 8px #ff3d4f; }
+#tooltip.eternal .tt-meta::before { content: '✧ '; color: #ff3d4f; }
+.tt-eternal { margin: 6px 0; color: #ffd8dc; font-size: 12px; }
+.tt-eternal small { display: block; color: #c9a0a6; margin-top: 3px; }
+.et-xp { height: 5px; background: rgba(255, 255, 255, 0.08); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.et-xp i { display: block; height: 100%; background: linear-gradient(90deg, #ff3d4f, #ffffff); }
+.tt-effect.eternal { border-top: 1px solid rgba(255, 61, 79, 0.35); padding-top: 6px; }
+.tt-effect.eternal > div { margin-bottom: 4px; }
+.tt-effect.eternal b { color: #fff; }
+.tt-effect.eternal b.pot { color: #ff7a88; display: inline; }
+.et-locked { color: #8f7a7e; font-style: italic; }
+#eternal-box h3 small { font-weight: 400; color: #ffb3bb; margin-left: 6px; }
+.et-row .eq-name.eternal { font-size: 14px; }
+.et-feed .et-food { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+@media (prefers-reduced-motion: reduce) { .cell.eternal, #tooltip.eternal, .eq-name.eternal { animation: none; } }
+#tooltip .tt-effect.eternal b.pot { color: #ff7a88; }
+.et-food .cell { width: 46px; height: 46px; }

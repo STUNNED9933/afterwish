@@ -569,7 +569,7 @@ export function rarityOdds({ minRarity = 0, weights = null, ilvl = 1, luck = 0 }
 function oddsRow(odds) {
   return odds.map((x, i) => (x >= 0.00005 ? rchip(i, `${rname(i)} ${pct(x)}`) : '')).filter(Boolean).join(' ');
 }
-const orBetter = (i) => (i >= RARITIES.length - 1 ? rname(i) : `${rname(i)} or better`);
+const orBetter = (i) => (i >= 6 ? rname(i) : `${rname(i)} or better`);
 
 /** The level its gear drops at: 100 from world tier II, else the middle of the first map it lives on. */
 function dropLevel(id, tier) {

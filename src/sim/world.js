@@ -32,6 +32,7 @@ import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
+import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax } from './eternal.js';
 const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -84,7 +85,8 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
-const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const ETERNAL_LOCKED = new Set(['upgrade', 'enchant', 'recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal
+const TRIAL_LOCKED = new Set(['wearEternal', 'stowEternal', 'feedEternal', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -503,6 +505,8 @@ export class World {
       talentBuilds: migrateBuilds(save?.talentBuilds),
       talentSeq: [], // this subclass's points, in the order spent this time
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}, { d: 1, f: 1 }),
+      eternals: cleanEternals(save?.eternals), // (0.71) the Eternal pieces not being worn (sim/eternal.js)
+      eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
@@ -555,6 +559,9 @@ export class World {
     if (save) {
       for (const slot of SLOTS) p.equipped[slot] = migrateItem(save.equipped?.[slot] || null);
       p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE + 4 * perkRank(p.rebirth, 'pockets')).map(migrateItem); // (0.30: rarity names moved)
+      // (0.71) an Eternal is never in the gear box, and one a slot: a worn one is not also stowed
+      p.bag = p.bag.filter((it) => it && !it.eternal);
+      for (const slot of SLOTS) if (p.equipped[slot] && p.equipped[slot].eternal) { if (p.equipped[slot].slot !== slot) p.equipped[slot] = null; else p.eternals[slot] = null; }
     } else {
       p.equipped.weapon = starterWeapon(this.cls);
     }
@@ -614,6 +621,8 @@ export class World {
         m.pot[it.effect] = Math.max(m.pot[it.effect] || 1, k);
       }
     }
+    m.eternal = this.trial ? null : eternalMods(this.player.equipped); // (0.71) Eternal passives, never in the Weekly Echo
+    if (m.eternal && !Object.keys(m.eternal).length) m.eternal = null;
     // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
     if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k], this.cls, this.player.spec);
     // Rebirth perks (0.43): Starborn, never in the Weekly Echo either
@@ -633,6 +642,11 @@ export class World {
     p.animus = M.animus; // (0.63) Animus: Mind-Locked is shorter by this much
     for (const slot of SLOTS) if (p.equipped[slot] && (p.equipped[slot].heirloom || p.equipped[slot].recalled)) relevelItem(p.equipped[slot], p.level); // ...and an Heirloom, and (0.62) a recalled piece
     for (const it of p.bag) if (it && (it.heirloom || it.recalled)) relevelItem(it, p.level);
+    for (const slot of SLOTS) {
+      // (0.71) every Eternal, worn or stowed, is always your level, like an Heirloom
+      if (p.equipped[slot] && p.equipped[slot].eternal) relevelItem(p.equipped[slot], p.level);
+      if (p.eternals && p.eternals[slot]) relevelItem(p.eternals[slot], p.level);
+    }
     const g = sumGearStats(p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped);
     const L = p.level - 1;
     const prevMax = p.stats.maxHp || 0;
@@ -686,6 +700,8 @@ export class World {
       tomes: p.tomes,
       ranks: p.ranks,
       borrowed: p.borrowed,
+      eternals: p.eternals,
+      eternalEssence: p.eternalEssence,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -752,7 +768,11 @@ export class World {
       }
       if (this.trial && TRIAL_LOCKED.has(c.type)) continue; // the week fixes gear and build
       // Inventory commands work even while dead or between waves.
+      if (ETERNAL_LOCKED.has(c.type) && p.equipped[c.slot] && p.equipped[c.slot].eternal) continue; // (0.71) an Eternal grows only by Feeding
       if (c.type === 'equip') this.equip(c.index);
+      else if (c.type === 'wearEternal') this.wearEternal(c.slot);
+      else if (c.type === 'stowEternal') this.stowEternal(c.slot);
+      else if (c.type === 'feedEternal') this.feedEternal(c.slot, c.index, c.essence);
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
@@ -3737,6 +3757,7 @@ export class World {
       }
     }
     p.bossKills[e.type] = (p.bossKills[e.type] || 0) + 1;
+    this.eternalDrop(e); // (0.71) a Granted, in Caelum
     if (e.type === DEEP.depths[6].primordial) this.cinderTiers();
     // Keys and shards from a boss you have outgrown come only some of the time.
     const keys = fall >= 1 || this.rng() < fall ? loot.keys : 0;
@@ -4310,6 +4331,10 @@ export class World {
     if (C) {
       // Caelum (0.64): tier V times the map's own; no Ember, an Animus instead (see hitPlayer)
       hp *= C.hp * CAELUM.hard.hp; // (0.70) and harder again, now that borrowed skills are earned before it
+      if (e.def.boss && e.def.granted) {
+        hp *= CAELUM.bossHp; // (0.71) a hundred lives deep
+        e.bars = CAELUM.bossBars;
+      }
       dmg *= C.dmg * CAELUM.hard.dmg;
       exp *= C.exp;
       e.animusNeed = C.animus;
@@ -6006,10 +6031,102 @@ export class World {
     this.tradeItemGone(item.id);
     const old = p.equipped[item.slot];
     p.equipped[item.slot] = item;
-    if (old) p.bag[index] = old;
+    if (old && old.eternal) {
+      // (0.71) an Eternal taken off goes back to its own place, never the gear box
+      p.eternals[item.slot] = old;
+      p.bag.splice(index, 1);
+    } else if (old) p.bag[index] = old;
     else p.bag.splice(index, 1);
     this.recalcStats();
     this.emit('equip', { item });
+  }
+
+  /** (0.71) Wear the Eternal piece for this slot; what was worn there goes to the gear box (if there is room). */
+  wearEternal(slot) {
+    const p = this.player;
+    const it = p.eternals && p.eternals[slot];
+    if (!it) return;
+    if (it.cls && it.cls !== this.cls) return;
+    const old = p.equipped[slot];
+    if (old && old.id !== 'starter') {
+      if (p.bag.length >= this.bagSize()) {
+        this.emit('bagFull', {});
+        return;
+      }
+      p.bag.push(old);
+    }
+    p.equipped[slot] = it;
+    p.eternals[slot] = null;
+    this.recalcStats();
+    this.emit('equip', { item: it });
+  }
+
+  /** (0.71) Take an Eternal off: back to its place; the slot stays empty (a weapon slot takes the training weapon). */
+  stowEternal(slot) {
+    const p = this.player;
+    const it = p.equipped[slot];
+    if (!it || !it.eternal) return;
+    p.eternals[slot] = it;
+    p.equipped[slot] = slot === 'weapon' ? starterWeapon(this.cls) : null;
+    this.recalcStats();
+    this.emit('unequip', { item: it });
+  }
+
+  /** The Eternal piece for this slot, worn or stowed. */
+  eternalAt(slot) {
+    const p = this.player;
+    const worn = p.equipped[slot];
+    return worn && worn.eternal ? worn : (p.eternals && p.eternals[slot]) || null;
+  }
+
+  /**
+   * (0.71) Feed an Eternal: an Immortal from the gear box (index), or Eternity Essence (essence: how much,
+   * as much as it can take when not said). What would go past its last level comes back as Essence.
+   */
+  feedEternal(slot, index, essence) {
+    const p = this.player;
+    const it = this.eternalAt(slot);
+    if (!it) return;
+    const room = xpToMax(it);
+    if (room <= 0) return this.emit('eternalFull', { slot });
+    const before = it.level;
+    let xp = 0;
+    if (index != null) {
+      const food = p.bag[index];
+      if (!food || food.rarity !== IMMORTAL || food.eternal) return; // Immortals only
+      this.tradeItemGone(food.id);
+      p.bag.splice(index, 1);
+      xp = feedValue(food);
+    } else {
+      const want = essence == null ? Infinity : Math.max(0, Number(essence) || 0);
+      const units = Math.min(p.eternalEssence, want, room / ETERNAL.essenceXp);
+      if (!(units > 0)) return;
+      p.eternalEssence = Math.max(0, p.eternalEssence - units);
+      xp = units * ETERNAL.essenceXp;
+    }
+    const over = feedEternalXp(it, xp, this.streamRng('eternal', this.ticks + it.level * 7 + xp));
+    if (over > 0) p.eternalEssence += over / ETERNAL.essenceXp; // the rest comes back
+    this.recalcStats();
+    this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length });
+  }
+
+  /** (0.71) A Granted beaten in Caelum: now and then, an Eternal piece the hero lacks (or Essence once they have all five). */
+  eternalDrop(e) {
+    const p = this.player;
+    const chance = this.map && ETERNAL.chance[this.map.id];
+    if (!chance || !e.def.granted || !e.def.boss || this.trial) return;
+    const r = this.streamRng('eternalDrop', (p.bossKills[e.type] || 0) * 13 + this.ticks);
+    if (r() >= chance) return;
+    const missing = SLOTS.filter((s) => !this.eternalAt(s));
+    if (!missing.length) {
+      p.eternalEssence += ETERNAL.essencePerDrop;
+      this.emit('eternalDrop', { essence: ETERNAL.essencePerDrop, x: e.x, z: e.z });
+      return;
+    }
+    const slot = missing[Math.floor(r() * missing.length)];
+    const it = rollEternal(r, Math.max(1, Math.round(p.level)), slot, this.cls);
+    p.eternals[slot] = it;
+    this.emit('eternalDrop', { slot, name: it.name, x: e.x, z: e.z });
   }
 
   /**
@@ -6931,6 +7048,43 @@ export class World {
         let extra = e.maxHp * (H.max + (H.min - H.max) * k);
         if (e.def.boss || e.rare || e.remnant) extra = Math.min(extra, p.stats.ad * H.cap);
         dmg += extra;
+      }
+      const ev = im.eternal; // (0.71) Eternal passives: bringing a boss down
+      if (ev) {
+        const boss = !!e.def.boss;
+        const hit = !opts.dot;
+        const pid = this.cur.pid;
+        if (boss && ev.colossus) dmg *= 1 + ev.colossus;
+        if (boss && ev.sunder) {
+          const st = (e.sund || (e.sund = {}))[pid] || (e.sund[pid] = { n: 0, t: 0 });
+          if (st.t < this.time) st.n = 0; // 8 s since your last hit
+          dmg *= 1 + ev.sunder * st.n;
+          if (hit) {
+            st.n = Math.min(30, st.n + 1);
+            st.t = this.time + 8;
+          }
+        }
+        if (ev.focus && hit) {
+          if (p.focusId !== e.id) { p.focusId = e.id; p.focusN = 0; }
+          dmg *= 1 + ev.focus * (p.focusN || 0);
+          p.focusN = Math.min(20, (p.focusN || 0) + 1);
+        }
+        if (boss && ev.openwound && crit) dmg *= 1 + ev.openwound;
+        if (boss && ev.guardbreak && stunned) dmg *= 1 + ev.guardbreak;
+        if (ev.duelist && !this.enemies.some((o) => o !== e && !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 12)) dmg *= 1 + ev.duelist;
+        if (boss && ev.deathmark && hit && !(p.markAt > this.time)) {
+          dmg *= 1 + ev.deathmark;
+          p.markAt = this.time + 8;
+          this.emit('deathMark', { id: e.id, x: e.x, z: e.z });
+        }
+        if (boss && ev.titanfall && hit && !(p.titanAt > this.time)) {
+          dmg += p.stats.ad * ev.titanfall;
+          p.titanAt = this.time + 0.25;
+        }
+        if (boss && ev.relentless && hit && !(p.relentAt > this.time)) {
+          p.relentAt = this.time + 0.25;
+          for (const k in p.cd) if (k !== opts.source) p.cd[k] = Math.max(0, p.cd[k] - ev.relentless);
+        }
       }
       if (e.ember > 0) {
         // Ember (0.54): short of what it needs, your blows barely land; below half, every one is 1

@@ -160,6 +160,26 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Eternal gear, and the Granted a hundred lives deep (0.71)
+
+- **The Granted** (Caelum's four bosses) have **100 times** the health, shown as a hundred bars counting
+  down (x100 to x1), and new quick, hard-hitting patterns with windups of about half a second, more of
+  them as the bars go: Ianitor's Latch (three blows) and Every Door, the Arbiter's Gavel and Judgement,
+  Desiderium's Take and Devour, Fiat's Let There Be Light (two crossing beams) and It Is Done.
+- **Eternal gear**, the tier above Immortal (white and red, with a turning border), falls only from the
+  Granted: 5% a kill on the Sky Road, up to 8% on the Zenith.
+  - Each class gathers its own five pieces, one a slot. A piece that falls is always one you lack; with
+    all five it falls as **Eternity Essence**.
+  - **Soulbound:** never in the gear box (its own **Eternal** panel on the gear screen), never traded,
+    scrapped, sold or thrown away. Worn in its slot like anything else.
+  - **Kept through every rebirth**, worn where it was, back at level 1 like an Heirloom, and always
+    your level. Its own level and passives stay.
+  - **Feeding:** an Immortal from the gear box (100, +25 a star) or Essence (600 each) gives it
+    experience. Ten levels, each +4% to its stats and +5% to its passives; levels 4, 7 and 10 open
+    another passive. What would go past level 10 comes back as Essence.
+  - **Its passives** are their own pool, all about bosses: Colossus Breaker, Sunder, Fixed Gaze,
+    Titanfall, Open Wound, Relentless, Guardbreaker, Duelist, Death Mark.
+
 ### Borrowed skills, a real second weapon (0.70.5)
 
 - Every borrowed active now hits like a big ability on a short cooldown, over a wide area, and grows with

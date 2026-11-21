@@ -129,3 +129,12 @@ Testing showed Animus was too easy to ignore: a Dominion only came when a Grante
 The Will makes the gate unavoidable without making it impossible. Short of a place's Animus, and near
 anything asking for it, a ring follows you and lands every 5 to 7 s (CONFIG.WILL): a Dominion, so a
 parry within two ticks turns it and nothing else does. Players with the Animus never see it.
+
+## Eternal gear (0.71)
+
+The reward for Caelum's Granted, who have a hundred times the health (a hundred bars) and fast patterns.
+Above Immortal; per class; one piece a slot (a drop is always a missing slot, else Eternity Essence);
+soulbound and kept through rebirth (relevelled like an Heirloom); grown by Feeding Immortals or Essence
+to level 10, which opens passive slots at 4, 7 and 10. Its passives (src/sim/eternal.js) are a pool of
+their own aimed at single-target boss damage, so they add a source of power for bossing without making
+wave clearing faster. Drop odds: 5% to 8% a kill by map.

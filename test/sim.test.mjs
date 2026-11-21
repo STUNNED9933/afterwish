@@ -4536,4 +4536,123 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const open = p.stats.maxHp - p.hp;
   check('...while it is on you, everything else hits you 99% softer', open > 0 && Math.abs(guarded - open * W.guard) <= 1, `${guarded} vs ${open}`);
 }
+
+// --- 0.70: borrowed skills on D and F --------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED, OATH, borrowable } = await import('../src/sim/borrowed.js');
+  const { SPECS } = await import('../src/sim/talents.js');
+  const { CAELUM: CL } = await import('../src/sim/endgame.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  check('Borrowed skills: a class mastered (its Quiet beaten) lends both its subclasses, never your own class', borrowable('archer', ['mage'], SPECS).sort().join() === 'frostbinder,pyromancer' && borrowable('archer', ['archer'], SPECS).length === 0 && borrowable('archer', [], SPECS).length === 0);
+  check('...six for each class, one from each other subclass', ['warrior', 'archer', 'mage', 'rogue'].every((c) => Object.keys(BORROWED[c]).length === 6 && Object.keys(BORROWED[c]).every((sp) => SPECS[sp] && SPECS[sp].cls !== c)));
+  const make = (cls, spec, seed = 90) => {
+    const save = Object.assign(geared(cls, 100, 5), { acctLives: all, spec, talents: {} });
+    const w = new World({ seed, mode: 'explore', cls, save });
+    w.loadMap('greenwood', 'town');
+    for (let i = 0; i < 150; i++) w.step(CONFIG.TICK); // past the enemies' spawning
+    return w;
+  };
+  const near = (w) => {
+    const p = w.player;
+    const e = w.enemies.find((o) => !o.dead && !o.def.boss && o.state !== 'spawn');
+    p.x = p.px = e.x + 4; p.z = p.pz = e.z;
+    p.hp = p.stats.maxHp;
+    return e;
+  };
+  let bad = [];
+  for (const cls of ['warrior', 'archer', 'mage', 'rogue']) {
+    for (const spec of Object.keys(BORROWED[cls])) {
+      const w = make(cls, null);
+      for (const slot of ['d', 'f']) {
+        w.command({ type: 'borrow', slot, spec: slot === 'd' ? spec : null });
+      }
+      w.runCommands();
+      if (!w.kit.d || w.kit.d.borrowed !== spec) { bad.push(`${cls}/${spec}: not slotted`); continue; }
+      try {
+        for (let n = 0; n < 3; n++) {
+          const e = near(w);
+          w.player.cd.d = 0;
+          w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z });
+          w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z });
+          w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z });
+          w.command({ type: 'attack', id: e.id });
+          for (let i = 0; i < 120; i++) { w.player.hp = Math.max(w.player.hp, 1); w.step(CONFIG.TICK); }
+          w.player.cd.q = w.player.cd.r = 0;
+        }
+      } catch (err) { bad.push(`${cls}/${spec}: ${err.message}`); }
+      if (!w.kit.d.passive && !(w.player.cd.d > 0) && !['bloodoath', 'blink'].includes(w.kit.d.type) && w.kit.d.type !== 'trap') bad.push(`${cls}/${spec}: never cast`);
+    }
+  }
+  check('...every borrowed skill, active or passive, slots on D and plays without error', bad.length === 0, bad.join('; '));
+  // a borrowed skill from a class not mastered is refused
+  {
+    const save = Object.assign(geared('archer', 100, 5), { acctLives: { mage: { prim: [6] } } });
+    const w = new World({ seed: 91, mode: 'explore', cls: 'archer', save });
+    w.command({ type: 'borrow', slot: 'd', spec: 'pyromancer' }); w.runCommands();
+    check('...and refused from a class whose Quiet still stands', !w.kit.d && !w.player.borrowed.d);
+  }
+  // swapping: the same skill on the other key moves it
+  {
+    const w = make('archer', null);
+    w.command({ type: 'borrow', slot: 'd', spec: 'pyromancer' }); w.command({ type: 'borrow', slot: 'f', spec: 'bulwark' }); w.runCommands();
+    w.command({ type: 'borrow', slot: 'f', spec: 'pyromancer' }); w.runCommands();
+    check('...putting one on the other key swaps the two over', w.player.borrowed.f === 'pyromancer' && w.player.borrowed.d === 'bulwark', JSON.stringify(w.player.borrowed));
+    const sv = w.toSave();
+    const w2 = new World({ seed: 92, mode: 'explore', cls: 'archer', save: Object.assign(sv, { acctLives: all }) });
+    check('...and both are kept in the save', w2.kit.f && w2.kit.f.name === "Dragon's Breath" && w2.kit.d && w2.kit.d.name === 'Anchor Shot');
+  }
+  // Blood Oath: 40% and held there; a Sharpshooter's Deadeye has no draw
+  {
+    const w = make('archer', 'sharpshooter');
+    w.command({ type: 'borrow', slot: 'd', spec: 'berserker' }); w.runCommands();
+    const e = near(w);
+    w.player.cd.d = 0; // (changed outside town: a 5 s wait)
+    w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z }); w.runCommands(); w.step(CONFIG.TICK);
+    const p = w.player;
+    const at = p.hp / p.stats.maxHp;
+    p.hp = p.stats.maxHp;
+    w.step(CONFIG.TICK);
+    check('Blood Oath: drains you to 40% health and holds you there while it lasts', Math.abs(at - OATH.hpTo) < 0.02 && p.hp <= p.stats.maxHp * OATH.hpTo * 1.02 && p.oathT > 0, `${at}`);
+    for (let i = 0; i < 20; i++) w.step(CONFIG.TICK);
+    p.cd.r = 0;
+    w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z }); w.runCommands(); w.step(CONFIG.TICK);
+    check('...and a Sharpshooter\'s Deadeye fires at once, no draw', !p.channel && p.cd.r > 0);
+    p.oathT = 0.01; w.step(CONFIG.TICK); w.step(CONFIG.TICK);
+    p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
+    check('...then lets go', p.hp > p.stats.maxHp * 0.9);
+  }
+  // Blood Oath: +20% to everything
+  {
+    const w = make('rogue', 'shadowdancer');
+    w.command({ type: 'borrow', slot: 'f', spec: 'berserker' }); w.runCommands();
+    const e = near(w);
+    e.hp = e.maxHp = 1e7;
+    const hit = () => { const b = e.hp; w.hitEnemy(e, 100, { source: 'q', forceCrit: false }); const d = b - e.hp; e.hp = b; return d; };
+    const plain = hit();
+    w.player.oathT = 5;
+    const sworn = hit();
+    check('...everything you deal is 20% harder', plain > 0 && Math.abs(sworn / plain - (1 + OATH.dmg)) < 0.02, `${plain} ${sworn}`);
+  }
+  // Rogue's Fire Bomb and Frost Trap: passives that set the status on every blow
+  {
+    const w = make('rogue', null);
+    w.command({ type: 'borrow', slot: 'd', spec: 'pyromancer' }); w.command({ type: 'borrow', slot: 'f', spec: 'frostbinder' }); w.runCommands();
+    const e = near(w);
+    w.hitEnemy(e, 10, { source: 'basic', basic: true });
+    check('Fire Bomb and Frost Trap: while slotted, a Rogue\'s blows set burns and Hoarfrost', (e.burnStacks || 0) > 0 && (e.frostStacks || 0) > 0, `${e.burnStacks} ${e.frostStacks}`);
+  }
+  // Long Kunai marks
+  {
+    const w = make('rogue', null);
+    w.command({ type: 'borrow', slot: 'd', spec: 'sharpshooter' }); w.runCommands();
+    const e = near(w);
+    e.hp = e.maxHp = 1e7;
+    w.player.cd.d = 0;
+    w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z });
+    for (let i = 0; i < 60 && !(e.vulnT > 0); i++) w.step(CONFIG.TICK);
+    check('Long Kunai: what it hits is Marked (20% more from everyone)', e.vulnT > 0 && e.vuln >= 0.2);
+  }
+  check('Caelum (0.70): every map half as tough again and 20% harder-hitting', CL.hard.hp === 1.5 && CL.hard.dmg === 1.2);
+}
 process.exit(failed ? 1 : 0);

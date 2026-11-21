@@ -17,11 +17,12 @@ Double-click `dist/index.html`. It opens in your browser and works offline.
 | Key | Action |
 | --- | --- |
 | Right-click | Move. Right-click an enemy to attack it (left-click on an enemy works too) |
-| Space (or F) | Parry. Press it when an enemy flashes white |
+| Space | Parry. Press it when an enemy flashes white |
 | Q W E R | Cleave, Whirlwind (level 2), Breakthrough (level 3), Skyfall (level 6) |
 | Ctrl or Shift + Q/W/E/R | Spend a skill point to rank that ability up (or click the + above it) |
 | 1 2 3 | Pick an augment when three are offered |
-| 1 (or D) | Health potion |
+| 1 | Health potion |
+| D F | Borrowed skills, once another class has beaten the Quiet (choose them in Talents, under Mastery) |
 | Tab (or I) | Gear and stats. The fight pauses while it is open |
 | Esc (or P) | Pause, settings (including parry timing), return to town |
 | S / Enter / M | Stop / start the next wave now / mute |
@@ -158,6 +159,26 @@ That lead used to jump: turning, stopping or the host catching up moved the hero
 single frame, a few times a second. It now eases into place. Measured on a test room: the friend's walk
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
+
+### Borrowed skills (0.70)
+
+- **Beat the Quiet** with a class and every other class on your account may **borrow** a skill from each
+  of its two subclasses, on **D** and **F** (two in all, both from one class if you like). Choose them in
+  Talents, under Mastery. Each class has six to choose from, one per subclass of the other three, made
+  to fit the borrower: an Archer's Shade Partner and Dragon's Breath, a Mage's Elemental Lance (a held
+  beam like Deadeye that sets burns or Hoarfrost), a Warrior's Javelin and Glacier Slam, a Rogue's Long
+  Kunai and Smoke Snare, and so on. Some are passives (nothing to press).
+- Borrowing from the **Berserker** is a **Blood Oath**: it drains you to 40% health and holds you there
+  for 8 seconds, you deal 20% more, and your *own* subclass's signature goes past its limits: a
+  Sharpshooter's Deadeye fires with no draw, 2.2 times as wide, through everything; a Windrunner's
+  Hurricane looses 3 more arrows; an Assassin's Shadowstrike reaches 60% further and heals for 15% of
+  what you deal; a Shadowdancer's afterimages hit twice as hard; Cinderfall lands at once; Rimewall is
+  longer and stuns longer.
+- A Rogue's Fire Bomb and Frost Trap also set burns or Hoarfrost on every blow while slotted.
+- Burns and Hoarfrost borrowed by a class without them work as a Pyromancer's or Frostbinder's do.
+- The keys: **D** and **F** are now the borrowed skills. The potion is on **1** only and parry on
+  **Space** only.
+- **Caelum** is 1.5 times as tough and hits 20% harder, on every map.
 
 ### The Will, kinder (0.69)
 

@@ -998,6 +998,9 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* (0.60.2) A passive ability (Windrunner's Hurricane): always on, nothing to press */
 .slot.passive::after { content: 'PASSIVE'; position: absolute; left: 0; right: 0; top: 2px; text-align: center; font: 700 8px var(--body); letter-spacing: 0.08em; color: #9fe7ff; pointer-events: none; }
 .slot.passive kbd { opacity: 0.35; }
+.slot.borrowed { border-color: #6d5a9e; } /* (0.70) borrowed skills on D and F */
+.slot.borrowed.empty svg { opacity: 0.35; }
+.slot.borrowed.hidden { display: none; }
 
 /* (0.61.1) What the Stones Remember */
 .ring-info { margin-top: 8px; font-size: 13px; color: var(--bone); }
@@ -1062,6 +1065,17 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 #mastery-panel { margin: 0 0 14px; padding: 12px 14px; border: 1px solid rgba(255, 210, 74, 0.3); border-radius: 6px; background: rgba(40, 32, 12, 0.35); }
 #mastery-panel.hidden { display: none; }
 #mastery-panel h3 { margin: 0 0 6px; font: italic 600 22px var(--display); color: var(--gold); }
+#mastery-panel h3.b-h { margin-top: 14px; }
+#mastery-panel .b-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-top: 6px; } /* (0.70) borrowed skills */
+#mastery-panel .b-card { padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 5px; background: rgba(0, 0, 0, 0.25); }
+#mastery-panel .b-card.on { border-color: #8d76c9; background: rgba(60, 40, 100, 0.3); }
+#mastery-panel .b-top { display: flex; align-items: baseline; gap: 8px; }
+#mastery-panel .b-top small { color: #aaa; }
+#mastery-panel .b-keys { margin-left: auto; display: flex; gap: 4px; }
+#mastery-panel .b-key { min-width: 28px; padding: 2px 6px; }
+#mastery-panel .b-key.on { background: #8d76c9; color: #fff; border-color: #b9a6ef; }
+#mastery-panel .b-desc { margin-top: 4px; font-size: 13px; color: #cfcfcf; }
+#mastery-panel .b-desc i { display: block; margin-top: 3px; color: var(--gold); font-style: normal; }
 #mastery-panel h3 small { font: 500 13px var(--body); color: var(--muted); margin-left: 8px; }
 .m-row { display: flex; align-items: center; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
 .m-row.me .m-cls { color: #ffe2a0; }

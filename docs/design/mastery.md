@@ -12,8 +12,8 @@ account stronger in two ways:
 - **Animus** (a stat; Latin for mind, will): shortens being **Mind-Locked**, the stun the Granted
   inflict (*animus* is Latin for mind and will: the mind that will not be locked). 3% per Mastery point, up to 60% at all 20.
 - **Borrowed skills**: once a class is *mastered* (its Quiet beaten), every *other* class learns a
-  skill that echoes it (a Rogue's shadow step for an Archer, say), on one extra key. A small Mastery
-  tree per class spends points earned on the other classes to strengthen it.
+  skill from each of its two subclasses, made to fit the borrower, on D and F (two slotted at a time).
+  (0.70; the Mastery tree that was planned was dropped.)
 
 New, harder content, **the Granted**, needs both: crowds whose every attack stuns, and whose attacks
 cannot be dodged, only parried, on a tighter window.
@@ -24,7 +24,9 @@ cannot be dodged, only parried, on a tighter window.
 | --- | --- |
 | What earns Mastery | Each Primordial beaten on a class: 5 per class, 20 in all. The Quiet on a class marks it mastered |
 | How alts reach the Deep | An Ember head start: half of the best Ember among your other classes |
-| Borrowed skills in the kit | One extra key for one borrowed skill you choose; the Mastery tree strengthens it |
+| Borrowed skills in the kit | D and F: any two of six (one per subclass of the other classes), unlocked by the Quiet on that class. No Mastery tree (0.70) |
+| The Berserker's | A Blood Oath: 40% health, held; +20% damage; the borrower's own subclass signature pushed past its limits |
+| Paying for it | Caelum 1.5x health, 1.2x damage on every map (0.70) |
 | Being carried | A Primordial counts only if you meet its Ember yourself, or nobody in the fight does (0.62). Warned early and often |
 | The stun's name | **Mind-Locked** (clear to read; pairs with Animus, Latin for mind) |
 | The stat's name | **Animus** (Latin: will, spirit; "Resolve" is taken by combat power) |
@@ -108,8 +110,8 @@ shows a warning; the Ex Voto pages say what Dominion does to an unready mind.
 2. **The Granted** (0.64): Mind-Locked on the player (with diminishing returns and immunity), Animus
    shortening it, attacks that can only be parried (tighter window, ping-fair), a new region of
    several maps beyond The Quiet with its own enemy models, rewards worth it.
-3. **Borrowed skills** (0.65): one extra key, four borrowed skills (one per source class), a Mastery
-   tree per class spending points from the other classes.
+3. **Borrowed skills** (shipped 0.70): D and F, six per class (src/sim/borrowed.js), the Blood Oath per
+   subclass, the picker in the Mastery panel, Caelum made harder to answer them.
 
 ## Shipped in 0.64 (phase 2)
 

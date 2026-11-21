@@ -157,6 +157,7 @@ export const CAELUM = {
     zenith: { pace: 0.9, n: 4, numeral: 'IV', name: 'The Zenith', animus: 0.6, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
   },
   ids: ['skyroad', 'answers', 'wants', 'zenith'],
+  hard: { hp: 1.5, dmg: 1.2 }, // (0.70) every map, on top of its own: the borrowed skills (beat the Quiet first) came with a price
   quest: 'sky1', // Wren's first Caelum quest opens the Sky Road on the Waygate
 };
 /** Is this hero short of what a Caelum map asks (0.64)? A tiny margin so 0.15 from 5 points always counts. */

@@ -3,6 +3,12 @@
 // the server instead of only to the local World.
 import { canAim } from './ui/aim.js';
 
+/** (0.70) Is there a borrowed skill to cast on D or F? (A passive has nothing to press.) */
+function borrowedActive(world, key) {
+  const def = world && world.kit && world.kit[key];
+  return !!(def && !def.passive);
+}
+
 export class Input {
   /**
    * @param {object} o
@@ -171,10 +177,11 @@ export class Input {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const world = this.getWorld();
 
-    if (key === ' ' || key === 'f') {
+    if (key === ' ') {
       e.preventDefault();
       if (!e.repeat) world.command({ type: 'parry' });
-    } else if (key === 'q' || key === 'w' || key === 'e' || key === 'r') {
+    } else if (key === 'q' || key === 'w' || key === 'e' || key === 'r' || ((key === 'd' || key === 'f') && borrowedActive(world, key))) {
+      // (0.70) D and F are the borrowed skills (passives have nothing to press)
       e.preventDefault();
       if (e.repeat) return;
       if (this.held && this.held.slot === key) return; // other abilities still work while aiming (roll, then loose)
@@ -184,7 +191,7 @@ export class Input {
       }
       const g = this.ground() || { x: world.player.x, z: world.player.z };
       world.command({ type: 'cast', slot: key, x: g.x, z: g.z });
-    } else if (key === '1' || key === 'd') {
+    } else if (key === '1') {
       if (!e.repeat) world.command({ type: 'potion' });
     } else if (key === 'a') {
       if (!e.repeat) this.attackMove(); // as in League: A attack-moves to the cursor

@@ -23,6 +23,7 @@ import { MAPS, MAP_IDS } from './sim/maps.js';
 import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
+import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES } from './sim/items.js';
 import { steadyRatings } from './power.js';
@@ -1847,7 +1848,33 @@ function start(hot = {}) {
       <p class="setting-desc">Every Primordial beaten as each of your classes, on this account. Each one is a point of Mastery for every hero you play. It only counts when you meet its Depth's Ember yourself, or nobody beside you does.</p>
       ${rows}
       <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: Mind-Locked is that much shorter</span>${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
-      <p class="setting-desc">${others.length ? `Mastered: ${others.join(', ')}. ` : ''}A class mastered (its Quiet beaten) will teach every other class a skill of its own, with the Granted.</p>`;
+      ${borrowHtml(others)}`;
+    // (0.70) borrowed skills: a press puts one on D or F (again takes it off)
+    for (const b of panel.querySelectorAll('[data-borrow]')) {
+      b.addEventListener('click', () => {
+        const [slot, spec] = b.dataset.borrow.split(':');
+        applyNow({ type: 'borrow', slot, spec: p.borrowed && p.borrowed[slot] === spec ? null : spec });
+        setTimeout(() => { if (mode === 'talents') renderMastery(); }, 60);
+      });
+    }
+  }
+  /** (0.70) The borrowed-skill picker: every subclass of a mastered class, its skill, and D / F. */
+  function borrowHtml(others) {
+    const p = world.player;
+    const may = world.borrowable ? world.borrowable() : [];
+    if (!may.length) {
+      return `<p class="setting-desc">Beat the Quiet with another class (it is then Mastered) and this ${esc(CLASSES[world.cls].name)} may borrow a skill from each of its two subclasses, on <kbd>D</kbd> and <kbd>F</kbd>.</p>`;
+    }
+    const cards = may.map((spec) => {
+      const k = BORROWED[world.cls][spec];
+      const on = BORROW_SLOTS.filter((s) => p.borrowed && p.borrowed[s] === spec);
+      const btns = BORROW_SLOTS.map((s) => `<button type="button" class="ghost b-key${on.includes(s) ? ' on' : ''}" data-borrow="${s}:${spec}" title="${on.includes(s) ? 'Take it off' : 'Put it on'} ${s.toUpperCase()}">${s.toUpperCase()}</button>`).join('');
+      const oath = k.type === 'bloodoath' ? ` <i>${esc((OATH[p.spec] || OATH.none).text)}</i>` : '';
+      return `<div class="b-card${on.length ? ' on' : ''}"><div class="b-top"><b>${esc(k.name)}</b><small>${esc(SPECS[spec].name)}${k.passive ? ' · passive' : ''}</small><span class="b-keys">${btns}</span></div><div class="b-desc">${esc(k.desc)}${oath}</div></div>`;
+    }).join('');
+    return `<h3 class="b-h">Borrowed skills <small>D and F</small></h3>
+      <p class="setting-desc">Mastered: ${others.map(esc).join(', ')}. Choose any two (both from one class if you like). Changing one outside town puts it on a 5 s cooldown.</p>
+      <div class="b-list">${cards}</div>`;
   }
   function renderTalents() {
     renderWish();

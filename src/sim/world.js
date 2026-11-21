@@ -31,6 +31,7 @@ import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
+import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
 const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -467,7 +468,7 @@ export class World {
       attackMove: null, // { x, z, near } while walking somewhere ready to attack (Shift + right-click)
       atkWind: 0, // > 0 while a basic attack is winding up
       attackCd: 0,
-      cd: { q: 0, w: 0, e: 0, r: 0 },
+      cd: { q: 0, w: 0, e: 0, r: 0, d: 0, f: 0 },
       castLock: 0,
       channel: null, // (0.51) an archer's ultimate being drawn: slowed, no attacks or casts, the shot leaves at the end
       parryT: 0, // > 0 while the parry window is open
@@ -498,7 +499,8 @@ export class World {
       // 0.37.2: the order talents were learned in, per subclass, so a build comes back in one click
       talentBuilds: migrateBuilds(save?.talentBuilds),
       talentSeq: [], // this subclass's points, in the order spent this time
-      ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}),
+      ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}, { d: 1, f: 1 }),
+      borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
       tierMax: Math.max(1, Math.min(MAX_TIER, save?.tierMax ?? 1)),
@@ -575,7 +577,16 @@ export class World {
     if (spec && spec.perk) spec.perk.apply(m); // the subclass trait, from the moment it is chosen
     // A subclass can swap out an ability (the Shadowdancer's Starglass Kunai).
     const base = CLASSES[this.cls].abilities;
-    this.kit = spec && spec.kit && spec.cls === this.cls ? Object.assign({}, base, spec.kit) : base;
+    this.kit = Object.assign({}, base, spec && spec.kit && spec.cls === this.cls ? spec.kit : {});
+    // (0.70) Borrowed skills on D and F, from classes whose Quiet has fallen (sim/borrowed.js)
+    const may = this.borrowable();
+    for (const slot of BORROW_SLOTS) {
+      const want = this.player.borrowed && this.player.borrowed[slot];
+      const def = want && may.includes(want) ? borrowedKit(this.cls, want, slot) : null;
+      if (!def) continue;
+      this.kit[slot] = def;
+      if (def.apply) def.apply(m);
+    }
     if (spec) for (const t of spec.talents) if (this.player.talents[t.id] > 0) t.apply(m, this.player.talents[t.id]);
     // Sets (0.29): two pieces worn give the first bonus, four the second too.
     const sets = setCounts(this.player.equipped);
@@ -671,6 +682,7 @@ export class World {
       talentBuilds: p.talentBuilds,
       tomes: p.tomes,
       ranks: p.ranks,
+      borrowed: p.borrowed,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -758,6 +770,7 @@ export class World {
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
       else if (c.type === 'augment') this.takeAugment(c.id);
+      else if (c.type === 'borrow') this.setBorrowed(c.slot, c.spec ?? null); // (0.70)
       else if (c.type === 'reroll') this.rerollOffer();
       else if (c.type === 'nextWave') {
         if (this.wave.phase === 'intermission' && !this.offer) this.wave.timer = Math.min(this.wave.timer, 0.05);
@@ -1035,13 +1048,14 @@ export class World {
   }
 
   abilityUnlocked(slot) {
+    if (!this.kit[slot]) return false; // (0.70) an empty borrowed slot
     return this.player.level >= this.kit[slot].unlock || (slot === 'r' && this.mods.rUnlock);
   }
 
   /** Cooldown in seconds after ranks, augments and ability haste, before Overflow's floor. */
   rawCooldown(slot) {
     const p = this.player;
-    return this.kit[slot].cd * this.mods[slot + 'Cd'] * (1 - CONFIG.RANK_COOLDOWN * (p.ranks[slot] - 1)) * (100 / (100 + p.stats.haste)) * (this.twist === 'haste' ? 1 / 1.3 : 1); // (0.60) Haste
+    return this.kit[slot].cd * (this.mods[slot + 'Cd'] ?? 1) * (1 - CONFIG.RANK_COOLDOWN * ((p.ranks[slot] || 1) - 1)) * (100 / (100 + p.stats.haste)) * (this.twist === 'haste' ? 1 / 1.3 : 1); // (0.60) Haste
   }
 
   /** Overflow (0.43 for Warrior and Mage; every class since 0.50): the shortest a cooldown can be. */
@@ -1095,7 +1109,7 @@ export class World {
     let s = p.stats;
     // Weight of Iron (Bulwark, 0.43): armor counts toward ability damage
     if (this.mods.ironWeight > 0) s = Object.assign({}, s, { ad: s.ad + s.armor * this.ironWeightNow() });
-    return this.kit[slot].dmg(s, p.level) * this.mods[slot + 'Dmg'] * (1 + CONFIG.RANK_DAMAGE * (p.ranks[slot] - 1)) * this.overflowMult(slot);
+    return (this.recasting || 1) * this.kit[slot].dmg(s, p.level) * (this.mods[slot + 'Dmg'] ?? 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks[slot] || 1) - 1)) * this.overflowMult(slot);
   }
 
   /**
@@ -1217,6 +1231,12 @@ export class World {
         e.tauntVuln = m.tauntVuln || 0; // Wardbreaker
       }
       if (m[slot + 'Stun'] > 0 && !e.dead && !heavy) this.stun(e, m[slot + 'Stun']);
+      if (def.borrowed && def.stun > 0 && !e.dead) {
+        // (0.70) Glacier Slam: frozen solid (a boss staggers instead)
+        if (e.def.boss) this.addPosture(e, 2, false);
+        else this.stun(e, def.stun);
+        if (def.freeze && m.frostMax > 0 && !e.dead) this.addFrost(e, 2);
+      }
       if (e.dead || heavy || !interrupt || !(knock || def.interrupt)) continue;
       if (!knock) {
         // (a Berserker's spin: no push, but its first beat interrupts)
@@ -1329,7 +1349,8 @@ export class World {
     e.frostT = 0;
     // a moment before it can build Hoarfrost again (Deep Winter, 0.43: shorter with ability haste, never under 0.3 s)
     e.frostLock = m.frostHaste ? Math.max(0.3, 1.5 * (100 / (100 + p.stats.haste))) : 1.5;
-    const dmg = (1.7 * p.stats.ad + 40 + 10 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1);
+    const ow = this.oathOf();
+    const dmg = (1.7 * p.stats.ad + 40 + 10 * p.level) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks.q || 1) - 1)) * (m.frostDmg || 1) * (ow && ow.shatter ? ow.shatter : 1); // (0.70) Blood Oath
     // Shards fly further as Ice Bolt grows (0.28): 3 m, plus half a metre a rank.
     const reach = (m.frostReach || 3) + 0.5 * ((p.ranks.q || 1) - 1);
     this.emit('frostShatter', { id: e.id, x: e.x, z: e.z, radius: reach });
@@ -1465,7 +1486,13 @@ export class World {
         e.slowT = 3;
         e.slow = pr.slow;
       }
-      this.hitEnemy(e, pr.dmg * (again ? pr.repeat : 1), { source: 'w' });
+      this.hitEnemy(e, pr.dmg * (again ? pr.repeat : 1), { source: pr.slot || 'w' });
+      if (pr.mark > 0 && !e.dead) {
+        // (0.70) Long Kunai: Marked, it takes more from everyone
+        e.vulnT = Math.max(e.vulnT || 0, 5);
+        e.vuln = Math.max(e.vuln || 0, pr.mark);
+        this.emit('mark', { id: e.id, x: e.x, z: e.z });
+      }
       return;
     }
   }
@@ -1579,7 +1606,7 @@ export class World {
       target.markPct = m.rMark;
       this.emit('mark', { id: target.id, x: target.x, z: target.z });
     }
-    this.hitEnemy(target, dmg * bonus, { source: slot });
+    this.hitEnemy(target, dmg * bonus, { source: slot, forceCrit: !!def.sureCrit });
     if (slot === 'q' && m.nightcutChain && p.nightcutT > 0) {
       // Nightcut: after a Clean Kill, Shadowstrike also cuts everything close to its target.
       p.nightcutT = 0;
@@ -1690,7 +1717,30 @@ export class World {
           s.facing = dAtan2(target.z - s.z, target.x - s.x);
           s.throwT = 0.25;
           this.emit('shadowSlash', { x: s.x, z: s.z, tx: target.x, tz: target.z, veil: true });
-          this.hitEnemy(target, dmg * this.mods.veilCopy, { source: 'veil' });
+          this.hitEnemy(target, dmg * this.mods.veilCopy * (this.oathOf() && this.oathOf().copy ? this.oathOf().copy : 1), { source: 'veil' }); // (0.70) Blood Oath: twice the strength
+        }
+      }
+    }
+    if (dmgOverride === null && !target.dead) {
+      // (0.70) borrowed passives on the basic attack
+      const m2 = this.mods;
+      if (m2.shadeEcho > 0) {
+        // Shade Partner: a shade at your shoulder looses the same attack, weaker
+        const sa = dAtan2(target.z - p.z, target.x - p.x) + Math.PI / 2;
+        const sx = p.x + dCos(sa) * 1.1, sz = p.z + dSin(sa) * 1.1;
+        if (b.shot) {
+          const a3 = dAtan2(target.z - sz, target.x - sx);
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: 0.3, dmg: dmg * m2.shadeEcho, parryable: false, reflected: false, life: 1.2, dead: false });
+        } else this.hitEnemy(target, dmg * m2.shadeEcho, { source: 'shade' });
+        this.emit('shadowSlash', { x: sx, z: sz, tx: target.x, tz: target.z, veil: true });
+      }
+      if (m2.daggerEvery > 0 && p.swingCount % m2.daggerEvery === 0) {
+        // Tailwind Daggers: two homing daggers at enemies near the target
+        const near = this.enemies.filter((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, target.x, target.z) <= 7).sort((u, v) => dist(u.x, u.z, target.x, target.z) - dist(v.x, v.z, target.x, target.z));
+        for (let i = 0; i < 2; i++) {
+          const t2 = near[i % Math.max(1, near.length)] || target;
+          const a4 = dAtan2(t2.z - p.z, t2.x - p.x) + (i ? 0.8 : -0.8);
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'basic', pid: this.cur.pid, targetId: t2.id, x: p.x + dCos(a4) * 0.6, z: p.z + dSin(a4) * 0.6, px: p.x, pz: p.z, vx: dCos(a4) * 24, vz: dSin(a4) * 24, speed: 24, radius: 0.35, dmg: p.stats.ad * 0.4, parryable: false, reflected: false, life: 1.4, dead: false });
         }
       }
     }
@@ -1714,13 +1764,14 @@ export class World {
     if (b.shot && hur && hur.passive && hur.extra && dmgOverride === null && this.abilityUnlocked('r')) {
       // Hurricane (Windrunner, passive since 0.60.2): every real basic attack also looses arrows that sweep
       // out wide and curve in (like a gust), at other enemies nearby, or at the target if there are none.
-      const n = hur.extra + (this.mods.hurricaneExtra || 0);
+      const oh = this.oathOf();
+      const n = hur.extra + (this.mods.hurricaneExtra || 0) + (oh && oh.extra ? oh.extra : 0); // (0.70) Blood Oath: more
       const reach = this.basicRange() + 1.5;
       const others = this.enemies.filter((e) => e !== target && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= reach + e.radius)
         .sort((a, c) => dist(a.x, a.z, p.x, p.z) - dist(c.x, c.z, p.x, p.z)).slice(0, n);
       const aims = others.slice();
       while (aims.length < n && !target.dead) aims.push(target);
-      const mult = Math.max(hur.extraMult, this.mods.hurricaneMult || 0) * (1 + (hur.rankMult || 0) * Math.max(0, (p.ranks.r || 1) - 1)) * (this.mods.hurricaneDmg || 1);
+      const mult = Math.max(hur.extraMult, this.mods.hurricaneMult || 0) * (1 + (hur.rankMult || 0) * Math.max(0, (p.ranks.r || 1) - 1)) * (this.mods.hurricaneDmg || 1) * (oh && oh.extra ? oh.mult : 1);
       aims.forEach((o, i) => {
         const side = i % 2 ? 1 : -1;
         const a2 = dAtan2(o.z - p.z, o.x - p.x) + side * (0.95 + 0.15 * (i >> 1)); // out wide first...
@@ -1779,8 +1830,9 @@ export class World {
     const cos = dCos(a);
     const sin = dSin(a);
     const reach = slot === 'q' || slot === 'w' ? CONFIG.CRESCENT.grow[this.bloodReach()] : 1; // (0.60.2) Crimson Reach
-    const range = (def.range || 0) * (m[slot + 'Range'] || 1) * reach;
-    const radius = (def.radius || 0) * (m[slot + 'Radius'] || 1) * reach;
+    const oath = this.oathOf(); // (0.70) Blood Oath
+    const range = (def.range || 0) * (m[slot + 'Range'] || 1) * reach * (oath && oath.range && slot === 'q' ? oath.range : 1);
+    let radius = (def.radius || 0) * (m[slot + "Radius"] || 1) * reach;
 
     // Single-target abilities need someone to hit before they go on cooldown.
     let target = null;
@@ -1795,7 +1847,7 @@ export class World {
     p.cd[slot] = this.abilityCooldown(slot);
     p.lastSlot = slot; // (0.54) what a seal takes
     if (slot === 'q' && m.bloodQcd && p.bloodied) p.cd.q *= 0.5; // Bloodreaver
-    if (m.bloodCost > 0 && (slot === 'q' || slot === 'w')) {
+    if (m.bloodCost > 0 && !this.recasting && (slot === 'q' || slot === 'w')) {
       // Blood Rage: Cleave and Whirlwind are paid for in health, but never below 10%.
       const cost = Math.min(p.stats.maxHp * m.bloodCost, Math.max(0, p.hp - p.stats.maxHp * 0.1));
       if (cost >= 1) {
@@ -1807,7 +1859,7 @@ export class World {
     p.parryT = 0; // casting drops the parry stance
     let dmg = this.abilityDamage(slot);
     let empCrit = false;
-    if (p.empowerT > 0 && slot !== 'e' && dmg > 0) {
+    if (p.empowerT > 0 && slot !== 'e' && def.type !== 'blink' && dmg > 0) {
       // Nightstep (and Steady Breath): the next ability hits harder.
       dmg *= p.empowerMult;
       empCrit = !!p.empowerCrit;
@@ -1915,7 +1967,7 @@ export class World {
             e.vulnT = 4;
             e.vuln = m.qSunder;
           }
-          this.hitEnemy(e, dmg, { source: slot, forceCrit: slot === 'q' && m.qCrit }); // Bullseye Loop
+          this.hitEnemy(e, dmg * (def.far ? 1 + (def.far * Math.max(0, along)) / range : 1), { source: slot, forceCrit: slot === 'q' && m.qCrit }); // Bullseye Loop; (0.70) Javelin: further, harder
         }
         this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: a, range, width: def.width });
         break;
@@ -1956,17 +2008,104 @@ export class World {
         this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
         break;
       }
+      // ---------------------------------------------------------------- (0.70) borrowed skills
+      case 'bloodoath': {
+        // Blood Oath (from the Berserker): drained to 40% and held there; your own subclass's signature goes past its limits
+        const floor = p.stats.maxHp * def.hpTo;
+        if (p.hp > floor) {
+          const cost = p.hp - floor;
+          p.hp = floor;
+          this.emit('bloodCost', { x: p.x, z: p.z, amount: Math.round(cost) });
+        }
+        p.oathT = def.duration;
+        p.castLock = 0.15;
+        this.emit('cast', { slot, fx: 'frenzy', x: p.x, z: p.z, radius: 3 });
+        this.emit('buff', { name: 'Blood Oath', x: p.x, z: p.z });
+        this.emit('bloodOath', { x: p.x, z: p.z, what: (OATH[p.spec] || OATH.none).name });
+        break;
+      }
+      case 'breath': {
+        // Dragon's Breath (from the Pyromancer): a cone of fire, a stun, burns, and the ground left burning
+        const angle = def.angle * (m[slot + 'Angle'] || 1);
+        p.facing = a;
+        p.castLock = 0.2;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn') continue;
+          const de = dist(e.x, e.z, p.x, p.z);
+          if (de > range + e.radius || Math.abs(angDiff(dAtan2(e.z - p.z, e.x - p.x), a)) > angle / 2 + dAtan2(e.radius, Math.max(0.5, de))) continue;
+          this.hitEnemy(e, dmg, { source: slot });
+          if (e.dead) continue;
+          this.addBurn(e, def.burn);
+          if (!e.dead) { if (e.def.boss) this.addPosture(e, 1, false); else this.stun(e, def.stun); }
+        }
+        const c = this.clampToArena(p.x + cos * range * 0.55, p.z + sin * range * 0.55, p.radius);
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius: def.lingerRadius, t: 0, dur: def.linger, parryable: false };
+        this.telegraphs.push(tele);
+        this.startZone({ x: c.x, z: c.z, radius: def.lingerRadius, lasts: def.linger, tick: 0.5, dmg: (dmg * 0.6) / (def.linger / 0.5), total: dmg * 0.6, slow: 0, slowDur: 1, slot, tele, opening: 0, pin: 0, burn: 1 });
+        this.emit('cast', { slot, fx: 'cone', x: p.x, z: p.z, dir: a, range, angle, fire: true });
+        break;
+      }
+      case 'anchor': {
+        // Anchor Shot (from the Bulwark): everything near where it lands is dragged together and stunned
+        const c = aimPoint();
+        p.facing = a;
+        p.castLock = 0.16;
+        this.pullStun(c.x, c.z, radius, def.stun, dmg, slot);
+        this.emit('cast', { slot, fx: 'bolt', x: p.x, z: p.z, dir: a });
+        break;
+      }
+      case 'snare': {
+        // Smoke Snare (from the Bulwark): everything around you is dragged to you and stunned
+        p.castLock = 0.14;
+        this.pullStun(p.x, p.z, radius, def.stun, dmg, slot);
+        break;
+      }
+      case 'blink': {
+        // Blink Strike (from the Assassin): behind the enemy nearest your cursor; the next spell hits harder and crits
+        const t = this.enemyNear(x, z, 4, range) || this.enemyNear(p.x, p.z, range + 1, range);
+        if (!t) {
+          p.cd[slot] = 0;
+          this.emit('noTarget', { slot, x: p.x, z: p.z });
+          return;
+        }
+        const ta = dAtan2(t.z - p.z, t.x - p.x);
+        const stand = t.radius + p.radius + 0.5;
+        const end = this.clampToArena(t.x + dCos(ta) * stand, t.z + dSin(ta) * stand, p.radius);
+        this.emit('shadowSwap', { x: end.x, z: end.z, fx: p.x, fz: p.z });
+        p.x = p.px = end.x;
+        p.z = p.pz = end.z;
+        p.facing = dAtan2(t.z - p.z, t.x - p.x);
+        p.moveTarget = null;
+        p.empowerT = 6;
+        p.empowerMult = def.empower;
+        p.empowerCrit = true;
+        p.castLock = 0.1;
+        this.emit('buff', { name: 'Blink Strike', x: p.x, z: p.z });
+        break;
+      }
+      case 'trap': {
+        // Frost Trap (from the Frostbinder): waits; the first enemy on it freezes everything near
+        const c = aimPoint();
+        p.facing = a;
+        p.castLock = 0.12;
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius: def.trigger, t: 0, dur: def.life, parryable: false };
+        this.telegraphs.push(tele);
+        this.delayed.push({ t: def.life, kind: 'trap', x: c.x, z: c.z, radius, trigger: def.trigger, freeze: def.freeze, dmg, tele, slot, arm: 0.5 });
+        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius: def.trigger, channel: 0 });
+        break;
+      }
       case 'wall': {
         // Rimewall (Frostbinder): a box of ice across the aim line. See stepWalls.
         const c = aimPoint();
         p.facing = a;
         p.castLock = 0.18;
         const rot = a + Math.PI / 2;
-        const hw = (def.length * (m.wallLen || 1)) / 2;
+        const oathWall = oath && oath.length && slot === 'r'; // (0.70) Blood Oath: a longer Rimewall that stuns longer
+        const hw = (def.length * (m.wallLen || 1) * (oathWall ? oath.length : 1)) / 2;
         const dur = def.duration + (m.wallDur || 0);
         const ob = { shape: 'box', x: c.x, z: c.z, hw, hd: 0.45, rot, kind: 'icewall' };
         this.obstacles = this.obstacles.concat([ob]); // a new array: the map's own list is never changed
-        this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: def.stun || 1, ob });
+        this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: (def.stun || 1) * (oathWall ? oath.stun : 1), ob });
         // (0.56.3) It rises hard: everything it comes up beside is hit, given Hoarfrost and staggered.
         const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && this.wallDist(this.walls[this.walls.length - 1], e.x, e.z) <= 1.4 + e.radius);
         for (const e of near) {
@@ -2013,7 +2152,7 @@ export class World {
           this.projectiles.push({
             id: this.nextId++, owner: 'player', kind: 'kunai', slot, pid: this.cur.pid,
             x: f.x + c * 0.6, z: f.z + sn * 0.6, px: f.x, pz: f.z, vx: c * def.speed, vz: sn * def.speed, speed: def.speed,
-            radius: width / 2, dmg: kdmg, group, repeat: p.veilT > 0 ? 1 : def.repeat || 0.6, slow: m[slot + 'Slow'] || 0,
+            radius: width / 2, dmg: kdmg, group, repeat: p.veilT > 0 ? 1 : def.repeat || 0.6, slow: m[slot + 'Slow'] || 0, mark: def.mark || 0,
             targetId: seek ? seek.id : null, // afterimages may be further off: a homing kunai flies a little longer
             parryable: false, reflected: false, life: (range / def.speed) * (seek ? 1.6 : 1), dead: false,
           });
@@ -2054,7 +2193,7 @@ export class World {
         if (def.gap) {
           if (slot === 'r' && m.rShadow) this.addShadow('r', p.x, p.z, dAtan2(target.z - p.z, target.x - p.x));
           // Jump next to the target, then strike on arrival.
-          const ta = dAtan2(p.z - target.z, p.x - target.x);
+          const ta = def.borrowed ? dAtan2(target.z - p.z, target.x - p.x) : dAtan2(p.z - target.z, p.x - target.x); // (0.70) a borrowed blink lands behind it
           const stand = target.radius + p.radius + 0.4;
           const end = this.clampToArena(target.x + dCos(ta) * stand, target.z + dSin(ta) * stand, p.radius);
           p.dash = { t: 0, dur: 0.14, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg: 0, refunded: true, slot, width: 0, strike: { id: target.id, dmg } };
@@ -2071,7 +2210,7 @@ export class World {
         const lasts = def.duration + (m[slot + 'Duration'] || 0); // Endless Rain adds ticks, each as strong as before
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: lasts + (def.channel || 0), parryable: false };
         this.telegraphs.push(tele);
-        const zone = { x: c.x, z: c.z, radius, lasts, tick: def.tick, dmg: dmg / ticks, total: dmg, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele, opening: def.opening || 0, pin: def.pin || 0 };
+        const zone = { x: c.x, z: c.z, radius, lasts, tick: def.tick, dmg: dmg / ticks, total: dmg, slow: def.slow || 0, slowDur: def.slowDur || 1, slot, tele, opening: def.opening || 0, pin: def.pin || 0, burn: def.burnTick || 0 };
         p.facing = a;
         if (def.channel) {
           // (0.51) Arrow Storm is drawn for a second, slowed, and only then loosed
@@ -2098,7 +2237,12 @@ export class World {
       case 'deadeye': {
         // Deadeye (Sharpshooter, 0.42; 0.51: drawn for a second, slowed, then loosed, and it pierces)
         p.facing = a;
-        if (def.channel) {
+        const oathEye = oath && oath.noChannel && slot === 'r';
+        if (oathEye) {
+          // (0.70) Blood Oath: no draw, far wider, harder, and it goes through everything
+          this.fireDeadeye(a, range, def.width * oath.width, dmg * oath.mult, slot);
+          p.castLock = 0.2;
+        } else if (def.channel) {
           p.channel = { kind: 'deadeye', t: def.channel, dur: def.channel, slow: def.channelSlow || 0.6, slot, a, range, width: def.width, dmg };
           p.castLock = 0.05;
           this.emit('cast', { slot, fx: 'aim', x: p.x, z: p.z, dir: a, range, channel: def.channel });
@@ -2201,7 +2345,12 @@ export class World {
       }
       case 'meteor': {
         const c = aimPoint();
-        const delay = def.delay * (m[slot + 'Delay'] || 1);
+        const instant = oath && oath.instant && slot === 'r'; // (0.70) Blood Oath: Cinderfall lands at once, wider and harder
+        const delay = instant ? 0.05 : def.delay * (m[slot + 'Delay'] || 1);
+        if (instant) {
+          radius *= oath.radius;
+          dmg *= oath.mult;
+        }
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: delay, parryable: false };
         this.telegraphs.push(tele);
         this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null });
@@ -2209,6 +2358,20 @@ export class World {
         p.castLock = 0.2;
         this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius });
         break;
+      }
+    }
+    if (!this.recasting) {
+      // (0.70) borrowed passives that answer a cast
+      if (m.echoQ > 0 && slot === 'q') this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult: m.echoQ }); // a shade casts it again
+      if (m.castMotes > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.castMotes);
+      if (m.rGravity > 0 && slot === 'r') {
+        const c = aimPoint();
+        this.pullStun(c.x, c.z, m.rGravity, 1.2, 0, 'r'); // Gravity Anchor: drawn in first, then the R lands
+      }
+      if (m.wTornado > 0 && slot === 'w') {
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: p.x, z: p.z, dir: 0, radius: 2.4, t: 0, dur: m.wTornado, parryable: false };
+        this.telegraphs.push(tele);
+        this.startZone({ x: p.x, z: p.z, radius: 2.4, lasts: m.wTornado, tick: 0.5, dmg: p.stats.ad * 0.25, total: p.stats.ad * 0.25 * (m.wTornado / 0.5), slow: 0.2, slowDur: 1, slot: 'w', tele, opening: 0, pin: 0 });
       }
     }
     if (m.stormcaller && this.cls === 'mage') {
@@ -2268,11 +2431,21 @@ export class World {
     }
     hits.sort((x, y) => x.along - y.along);
     const P = DEADEYE_PIERCE;
-    const struck = hits.slice(0, P.mult.length);
+    const def = this.kit[slot] || {};
+    const oath = this.oathOf();
+    const all = !!(oath && oath.noChannel && slot === 'r'); // (0.70) a Blood Oath Deadeye goes through everything
+    const struck = all ? hits : hits.slice(0, P.mult.length);
     struck.forEach(({ e }, i) => {
       if (e.dead) return;
-      this.hitEnemy(e, dmg * P.mult[i], { source: slot, forceCrit: true, heavy: true });
+      this.hitEnemy(e, dmg * P.mult[Math.min(i, P.mult.length - 1)], { source: slot, forceCrit: true, heavy: true });
       if (e.dead) return;
+      if (def.lance) {
+        // (0.70) Elemental Lance: burns for a Pyromancer, Hoarfrost for a Frostbinder, both (halved) before either
+        const sp = this.player.spec;
+        if (sp !== 'frostbinder') this.addBurn(e, sp === 'pyromancer' ? def.lance.burn : def.lance.burn / 2);
+        if (sp !== 'pyromancer' && !e.dead) this.addFrost(e, sp === 'frostbinder' ? def.lance.frost : Math.ceil(def.lance.frost / 2));
+        if (e.dead) return;
+      }
       if (i === 1) {
         e.vulnT = Math.max(e.vulnT || 0, P.markTime);
         e.vuln = Math.max(e.vuln || 0, P.mark);
@@ -2321,8 +2494,42 @@ export class World {
     for (const d of this.delayed) {
       d.t -= dt;
       if (d.tele) d.tele.t = d.tele.dur - d.t;
+      if (d.kind === 'trap' && d.t > 0) {
+        // (0.70) Frost Trap: armed after a moment, set off by the first enemy on it
+        d.arm -= dt;
+        if (d.arm > 0 || !this.enemies.some((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, d.x, d.z) <= d.trigger + e.radius)) continue;
+        d.sprung = true;
+        d.t = 0;
+      }
       if (d.t > 0) continue;
       d.done = true;
+      if (d.kind === 'recast') {
+        // (0.70) a shade casts your Q again, weaker (Echo Caster, Mirror Blade, Shade Partner)
+        const keep = { cd: p.cd[d.slot], lock: p.castLock, emp: p.empowerT };
+        p.cd[d.slot] = 0;
+        p.castLock = 0;
+        p.empowerT = 0;
+        this.recasting = d.mult;
+        try { this.castAbility(d.slot, d.x, d.z); } finally { this.recasting = null; }
+        Object.assign(p, { castLock: keep.lock, empowerT: keep.emp });
+        p.cd[d.slot] = keep.cd;
+        this.emit('shadowSlash', { x: p.x, z: p.z, tx: d.x, tz: d.z, veil: false });
+        continue;
+      }
+      if (d.kind === 'trap') {
+        this.telegraphs = this.telegraphs.filter((t) => t !== d.tele);
+        if (!d.sprung) continue;
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn' || dist(e.x, e.z, d.x, d.z) > d.radius + e.radius) continue;
+          this.hitEnemy(e, d.dmg, { source: d.slot });
+          if (e.dead) continue;
+          if (e.def.boss) this.addPosture(e, 2, false);
+          else this.stun(e, d.freeze);
+          if (!e.dead) this.addFrost(e, 3);
+        }
+        this.emit('frostShatter', { x: d.x, z: d.z, radius: d.radius });
+        continue;
+      }
       if (d.kind === 'ricochet') {
         const e = this.enemyById(d.id);
         if (e && !e.dead) {
@@ -2417,6 +2624,11 @@ export class World {
     if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
     if (p.lockImmT > 0) p.lockImmT -= dt;
     if (p.merchantCd > 0) p.merchantCd -= dt;
+    if (p.oathT > 0) {
+      // (0.70) Blood Oath: held at 40% health while it lasts
+      p.oathT -= dt;
+      if (p.hp > p.stats.maxHp * OATH.hpTo) p.hp = p.stats.maxHp * OATH.hpTo;
+    }
     if (p.lockT > 0) {
       // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
       const L = CONFIG.MIND_LOCK;
@@ -3096,6 +3308,61 @@ export class World {
   /** (0.65) How strong a worn class or unique Immortal's passive is, by its stars: 1 to 2. */
   pot(key) {
     return (this.mods.pot && this.mods.pot[key]) || 1;
+  }
+
+  /** (0.70) The subclasses this hero may borrow from: those of every class whose Quiet has fallen, but its own. */
+  borrowable() {
+    return borrowable(this.cls, this.mastery().mastered, SPECS);
+  }
+
+  /** (0.70) Put a borrowed skill in D or F (null empties it). Only between fights: in a safe place or not in combat. */
+  setBorrowed(slot, spec) {
+    const p = this.player;
+    if (!BORROW_SLOTS.includes(slot)) return;
+    if (spec != null && !this.borrowable().includes(spec)) return;
+    const other = slot === 'd' ? 'f' : 'd';
+    if (spec && p.borrowed[other] === spec) p.borrowed[other] = p.borrowed[slot]; // swap them over
+    p.borrowed[slot] = spec || null;
+    p.cd[slot] = Math.max(p.cd[slot] || 0, this.map && this.map.safe ? 0 : 5); // no swapping one in fresh mid-fight
+    this.recalcStats();
+    this.emit('borrowed', { slot, spec: p.borrowed[slot] });
+  }
+
+  /** (0.70) The Blood Oath your subclass gets, while it holds (null otherwise). */
+  oathOf() {
+    const p = this.player;
+    return p && p.oathT > 0 ? OATH[p.spec] || OATH.none : null;
+  }
+
+  /** (0.70) Anchor Shot, Smoke Snare, Gravity Anchor: drag everything near a point into it, stun it (bosses stagger), and hit it. */
+  pullStun(x, z, radius, stun, dmg, slot) {
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn' || dist(e.x, e.z, x, z) > radius + e.radius) continue;
+      if (!e.def.boss && !e.def.heavy) {
+        const a = dAtan2(e.z - z, e.x - x);
+        const to = this.clampToArena(x + dCos(a) * (e.radius + 0.4), z + dSin(a) * (e.radius + 0.4), e.radius);
+        e.x = e.px = to.x;
+        e.z = e.pz = to.z;
+      }
+      if (dmg > 0) this.hitEnemy(e, dmg, { source: slot });
+      if (e.dead) continue;
+      if (e.def.boss) this.addPosture(e, 2, false);
+      else this.stun(e, stun);
+    }
+    this.emit('cast', { slot, fx: 'nova', x, z, radius, pull: true });
+  }
+
+  /** (0.70) Gale Motes: homing motes at enemies near you whenever a spell is cast. */
+  looseCastMotes(count) {
+    const p = this.player;
+    const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 13 + e.radius).sort((a, b) => dist(a.x, a.z, p.x, p.z) - dist(b.x, b.z, p.x, p.z));
+    if (!near.length) return;
+    for (let i = 0; i < count; i++) {
+      const t = near[i % near.length];
+      const a = dAtan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.7;
+      this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'gale', pid: this.cur.pid, targetId: t.id, x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z, vx: dCos(a) * 22, vz: dSin(a) * 22, speed: 22, radius: 0.4, dmg: p.stats.ad * 0.35, parryable: false, reflected: false, life: 1.6, dead: false });
+    }
+    this.emit('motes', { x: p.x, z: p.z, count });
   }
 
   /** (0.68) The Animus asked of this hero here: the most any enemy within reach asks (0 if none). */
@@ -3956,8 +4223,8 @@ export class World {
     const C = !rift && CAELUM.maps[this.map.id];
     if (C) {
       // Caelum (0.64): tier V times the map's own; no Ember, an Animus instead (see hitPlayer)
-      hp *= C.hp;
-      dmg *= C.dmg;
+      hp *= C.hp * CAELUM.hard.hp; // (0.70) and harder again, now that borrowed skills are earned before it
+      dmg *= C.dmg * CAELUM.hard.dmg;
       exp *= C.exp;
       e.animusNeed = C.animus;
     }
@@ -6560,6 +6827,15 @@ export class World {
         if (lv && dist(p.x, p.z, e.x, e.z) - e.radius <= CONFIG.CRESCENT.closeAt) dmg *= 1 + CONFIG.CRESCENT.close[lv] + (im.closeExtra || 0); // (0.61.1) Blood Embrace
       }
       if (e.tauntT > 0 && e.tauntVuln > 0) dmg *= 1 + e.tauntVuln; // Wardbreaker (anyone's hits)
+      const oath = this.oathOf();
+      if (oath) {
+        // (0.70) Blood Oath: everything harder, and the subclass's own push
+        dmg *= 1 + OATH.dmg;
+        if (oath === OATH.none && ['q', 'w', 'e', 'r'].includes(opts.source)) dmg *= oath.mult;
+        if (oath === OATH.assassin && opts.source === 'q') dmg *= oath.mult;
+        if (oath === OATH.shadowdancer && opts.source === 'w' && this.kit.w && this.kit.w.type === 'kunai') dmg *= oath.kunai;
+      }
+      if (im.wBurning > 0 && opts.source === 'w' && e.burnT > 0) dmg *= 1 + im.wBurning; // (0.70) Ember Brand
       if (im.qFar > 0 && opts.source === 'q' && dist(p.x, p.z, e.x, e.z) > 10) dmg *= 1 + im.qFar; // Bullseye Loop
       if (im.pctHp && !opts.dot && (opts.source === 'q' || opts.source === 'w' || opts.source === 'e' || opts.source === 'r')) {
         // Culling Edge (Assassin, 0.51): a share of its maximum health, most on enemies below your level;
@@ -6655,6 +6931,15 @@ export class World {
       if (heal > 0) this.healPlayer(heal, false);
     }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
+    if (!opts.dot && dmg > 0 && e.hp > 0) {
+      // (0.70) borrowed: blows that set burns or Hoarfrost (a moment apart on each enemy), Cleave's burns, a Blood Oath's leech
+      const bm = this.mods;
+      if (bm.hitBurn > 0 && !(e.hitBurnT > this.time)) { e.hitBurnT = this.time + 0.4; this.addBurn(e, bm.hitBurn); }
+      if (bm.hitFrost > 0 && !(e.hitFrostT > this.time) && !e.dead) { e.hitFrostT = this.time + 0.5; this.addFrost(e, bm.hitFrost); }
+      if (bm.qBurn > 0 && opts.source === 'q' && this.kit.q && this.kit.q.type !== 'bolt' && !e.dead) this.addBurn(e, bm.qBurn);
+      const ol = this.oathOf();
+      if (ol && ol.leech && !opts.basic && !p.dead) this.healPlayer(dmg * ol.leech, false);
+    }
     if (e.def.asker && e.hp > 0) this.askerCheck(e);
     if (e.def.final && e.hp > 0) {
       // The final boss fights in three phases: new attacks at two thirds and one third health.

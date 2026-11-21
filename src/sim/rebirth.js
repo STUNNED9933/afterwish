@@ -211,6 +211,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     glows,
     glow: glow || old.glow || null,
     talentBuilds: old.talentBuilds, // a remembered build is a preference, not power
+    borrowed: old.borrowed ? { d: old.borrowed.d || null, f: old.borrowed.f || null } : undefined, // (0.70) the skills borrowed from old lives stay chosen
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,
     endings: Object.assign({}, old.endings), // (0.45) the endings you have seen stay seen

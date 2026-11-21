@@ -17,7 +17,7 @@ import { CONFIG } from '../config.js';
 export const NET_VERSION = `10:${SIM_VERSION}`; // 10 (0.54.8): ping and pong
 
 /** Hero fields that rarely change and are big: sent only when they change. */
-const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks'];
+const HEAVY = ['equipped', 'bag', 'quests', 'signs', 'visited', 'bossKills', 'talents', 'ranks', 'borrowed'];
 
 /** Events everyone in the party should see, whoever caused them. Everything else is personal. */
 const PUBLIC = new Set(['mirrorCrack', 'mirrorBreak', 'askerOffer', 'askerResume', 'askerLast', 'proclaim', 'wished', 'death', 'spawn', 'windup', 'strike', 'impact', 'burst', 'zoneTick', 'zoneLoose', 'orbTick', 'shatter', 'starfall', 'starImpact', 'bossLeap', 'bossPhase', 'itemDropped', 'shieldBreak', 'riftGuardian', 'riftLate', 'riftStart', 'tierSet', 'doomCast', 'doomImpact', 'spinTick', 'reckoning', 'rareSpawn', 'thiefSpawn', 'thiefFlee', 'thiefEscape', 'thiefCoins', 'thiefStumble', 'remnantRise', 'remnantCast', 'starFeeds', 'oathBlade', 'eventStart', 'meteorLands', 'shrineStart', 'eventDone', 'eventFail', 'merchantArrive', 'merchantLeave', 'nightcut', 'galeburst', 'frostShatter', 'chestOpen', 'mark', 'markPop', 'shadowSwap', 'shadowSlash', 'starBolt', 'smoulder', 'emberTick', 'burnSpread', 'wallRise', 'wallShatter', 'motes', 'slowStart', 'slowEnd', 'enrage', 'stagger', 'postureHit', 'lightning', 'partyJoin', 'partyLeave']);

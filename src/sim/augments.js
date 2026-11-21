@@ -14,6 +14,7 @@ export function defaultMods() {
     // Cleave (Q)
     qRange: 1, qRadius: 1, wRange: 1, eRadius: 1, rRange: 1, // every slot has Range / Radius / Dmg / Cd
     qAngle: 1, wAngle: 1, qDmg: 1, qCd: 1,
+    dRange: 1, dRadius: 1, dAngle: 1, dDmg: 1, dCd: 1, fRange: 1, fRadius: 1, fAngle: 1, fDmg: 1, fCd: 1, // (0.70) the borrowed slots
     // Switches used by the Archer, Rogue and Mage augments. Named <slot><What>, read in world.js.
     eEmpower: 0, eRush: 0, eRushTime: 0, wExtra: 0, rangePct: 0, rDuration: 0, critEvery: 3, qBleed: 0, qBehind: 0, rStun: 0, wStun: 0,
     wResetOnKill: false, rResetOnKill: false, qSplashFull: false, qBolts: 1, eBlast: 0, rDelay: 1, qResetOnKill: false, qSunder: 0, qEcho: 0,

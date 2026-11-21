@@ -7,6 +7,8 @@ import { AFFIXES, wishNeed } from '../sim/endgame.js';
 import { remnantName } from '../sim/surprises.js';
 import { CONFIG } from '../config.js';
 import { ABILITIES, ABILITY_SLOTS, expToNext } from '../sim/defs.js';
+import { BORROW_SLOTS, OATH } from '../sim/borrowed.js';
+import { SPECS } from '../sim/talents.js';
 import { RARITIES, itemName } from '../sim/items.js';
 import { AUGMENTS } from '../sim/augments.js';
 
@@ -51,6 +53,7 @@ function whereIs(type, word) {
 const $ = (id) => document.getElementById(id);
 
 export const ICONS = {
+  borrow: '<circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/><path d="M12 8v8M8 12h8"/>', // (0.70) an empty borrowed slot
   parry: '<path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
   q: '<path d="M4 19C5 10 11 5 20 4"/><path d="M8 20c1-6 5-10 11-11"/>',
   w: '<path d="M12 12a1.5 1.5 0 1 0 3 0 4.5 4.5 0 1 0-9 0 7.5 7.5 0 1 0 15 0"/>',
@@ -221,6 +224,27 @@ export function abilityTooltip(world, slot, detail = Tooltip.shift) {
   return html;
 }
 
+/** (0.70) A borrowed skill on D or F: what it is, where it came from, and what it does. */
+export function borrowedTooltip(world, slot) {
+  const a = world.kit[slot];
+  const key = slot.toUpperCase();
+  if (!a) {
+    return `<div class="tt-name">Borrowed skill (${key})</div><div>Beat the Quiet with another class and every class on your account may borrow a skill from each of its subclasses.</div><div class="tt-desc">Choose them in Talents, under Mastery.</div>`;
+  }
+  const from = SPECS[a.borrowed] ? SPECS[a.borrowed].name : a.borrowed;
+  let html = `<div class="tt-name">${a.name}</div><div class="tt-meta">Borrowed from the ${from}${a.passive ? ' &middot; passive' : ` &middot; ${world.abilityCooldown(slot).toFixed(1)} s cooldown`}${a.range ? ` &middot; ${a.range} m` : ''}</div>`;
+  if (!a.passive) {
+    const d = world.abilityDamage(slot);
+    if (d > 0) html += `<div class="tt-dmg"><b>${Math.round(d)}</b> damage</div>`;
+  }
+  html += `<div>${a.desc}</div>`;
+  if (a.type === 'bloodoath') {
+    const o = OATH[world.player.spec] || OATH.none;
+    html += `<div class="tt-desc">${o.text}</div>`;
+  }
+  return html;
+}
+
 export class Hud {
   /**
    * @param {object} tooltip  shared Tooltip
@@ -279,6 +303,7 @@ export class Hud {
       this.slots[s].up = up;
       this.slots[s].rank = -1;
     }
+    for (const s of BORROW_SLOTS) add(s, 'borrowed', s.toUpperCase(), 'borrow', () => (this.world ? borrowedTooltip(this.world, s) : '')); // (0.70)
     const potion = add('potion', 'potion', '1', 'potion', () => `<div class="tt-name">Health potion</div><div class="tt-meta">${CONFIG.POTION_COOLDOWN}s cooldown</div><div>Restores ${Math.round(CONFIG.POTION_HEAL * 100)}% of your health. You get one back for every wave you clear.</div>`);
     const count = document.createElement('span');
     count.className = 'count';
@@ -351,7 +376,7 @@ export class Hud {
     document.body.classList.toggle('slowmo', world.slowT > 0);
 
     // Abilities
-    const kitKey = world.cls + ABILITY_SLOTS.map((s) => world.kit[s].name).join('|');
+    const kitKey = world.cls + ABILITY_SLOTS.concat(BORROW_SLOTS).map((s) => (world.kit[s] ? world.kit[s].name : '-')).join('|');
     if (kitKey !== this.kitKey) {
       // A different class (or a subclass that swaps an ability) is being played: swap the ability icons.
       this.kitKey = kitKey;
@@ -360,6 +385,18 @@ export class Hud {
         this.slots[s].el.querySelector('svg').outerHTML = svg(world.kit[s].icon || s);
         this.slots[s].up.setAttribute('aria-label', `Rank up ${world.kit[s].name}`);
       }
+      for (const s of BORROW_SLOTS) this.slots[s].el.querySelector('svg').outerHTML = svg((world.kit[s] && world.kit[s].icon) || 'borrow');
+    }
+    for (const s of BORROW_SLOTS) {
+      // (0.70) the borrowed skills: hidden until there is something to borrow
+      const slot = this.slots[s];
+      const def = world.kit[s];
+      const may = world.borrowable ? world.borrowable().length > 0 : false;
+      slot.el.classList.toggle('hidden', !may && !def);
+      slot.el.classList.toggle('empty', !def);
+      slot.el.classList.toggle('passive', !!(def && def.passive));
+      slot.el.classList.toggle('empowered', !!(def && def.type === 'bloodoath' && p.oathT > 0));
+      this.setCooldown(slot, def && !def.passive ? p.cd[s] || 0 : 0, def && !def.passive ? world.abilityCooldown(s) : 0);
     }
     let canRank = false;
     for (const s of ABILITY_SLOTS) {

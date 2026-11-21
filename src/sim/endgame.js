@@ -175,6 +175,8 @@ export const MASTERY = {
   animus: 0.03, // Animus: Mind-Locked 3% shorter for each point...
   animusMax: 0.6, // ...up to 60% (all 20)
   headStart: 0.5, // an alt starts with half the best Ember among the account's other classes
+  exp: 0.25, // (0.70.4) +25% EXP for every hero for each class mastered (its Quiet beaten)...
+  expMax: 0.75, // ...up to +75%
   quest: 'lives', // The Other Lives: the quest that opens it
 };
 /** The Depths (6 to 10) whose Primordial this rebirth record has beaten. */

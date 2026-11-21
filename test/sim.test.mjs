@@ -4694,4 +4694,21 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.player.tomasMet = true;
   check('...meeting him does not pull him out from under you mid-talk', w.townKey() === w.townShown);
 }
+
+// --- 0.70.4: the account helps a new class along ---------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { MASTERY: MS } = await import('../src/sim/endgame.js');
+  const mk = (lives, extra = {}) => new World({ seed: 96, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: lives }, extra) });
+  check('Account tiers (0.70.4): a level 100 hero has all five world tiers once ANY class has beaten the Cinder', mk({ archer: { prim: [6] } }).player.tierMax === 5 && mk(null).player.tierMax < 5);
+  const e0 = mk(null), e2 = mk({ archer: { prim: [10] }, mage: { prim: [6, 7, 8, 9, 10] } }), e4 = mk({ archer: { prim: [10] }, mage: { prim: [10] }, warrior: { prim: [10] }, rogue: { prim: [10] } });
+  check('Mastery EXP: +25% for each class mastered, up to +75%', e0.masteryExp() === 0 && Math.abs(e2.masteryExp() - 2 * MS.exp) < 1e-9 && e4.masteryExp() === MS.expMax);
+  const w1 = mk(null, { level: 99 }), w2 = mk({ mage: { prim: [10] } }, { level: 99 });
+  w1.player.exp = w2.player.exp = 0; w1.gainExp(1000); w2.gainExp(1000);
+  check('...and it is in the EXP you get', Math.abs(w2.player.exp / w1.player.exp - 1.25) < 0.01, `${w1.player.exp} ${w2.player.exp}`);
+  const d = mk({ archer: { prim: [6, 7] } });
+  check('Account Deep: open as deep as any class has gone (the Cinder and the Undertow beaten: VI to VIII)', d.depthOpen(d.player, 6) && d.depthOpen(d.player, 8) && !d.depthOpen(d.player, 9) && !mk(null).depthOpen(mk(null).player, 7));
+  const n = mk(null, { quests: { starwell: { s: 'done', n: 1 } } });
+  check('Act III: the journal says why Wren has nothing yet (the Unwish, then a rebirth)', n.actThreeWait() === 'unwish' && (n.player.endings = { self: 1 }) && n.actThreeWait() === 'rebirth');
+}
 process.exit(failed ? 1 : 0);

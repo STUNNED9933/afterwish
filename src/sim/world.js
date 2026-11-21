@@ -560,7 +560,7 @@ export class World {
     }
     this.player = p;
     restoreRecalled(p); // (0.62) pieces recalled before 0.62 get their prime back
-    if (p.level >= CONFIG.MAX_LEVEL && p.tierMax < MAX_TIER && (p.bossKills.cinder > 0 || primordialsOf(p.rebirth).includes(6))) p.tierMax = MAX_TIER; // (0.66) see cinderTiers
+    if (p.level >= CONFIG.MAX_LEVEL && p.tierMax < MAX_TIER && this.roadOpen(p)) p.tierMax = MAX_TIER; // (0.66) see cinderTiers; (0.70.4) any class's Cinder
     if (!p.keepsake && p.quests && p.quests.edric && p.quests.edric.s === 'done') {
       // (0.53) Edric's Colours already earned before the keepsake slot existed: it is yours now too
       p.keepsake = rollUnique(this.streamRng('keepsake', 1), p.level, 'bluetrim', this.cls);
@@ -3298,12 +3298,13 @@ export class World {
 
   /**
    * (0.66) Once the Cinder has fallen, in this life or one before, a level-100 hero has all five world
-   * tiers open: no climbing back through the Unmade four times after every rebirth.
+   * tiers open: no climbing back through the Unmade four times after every rebirth. (0.70.4) On any class
+   * of the account, as the road (roadOpen).
    */
   cinderTiers() {
     const p = this.player;
     if (p.tierMax >= MAX_TIER || p.level < CONFIG.MAX_LEVEL) return;
-    if (!(p.bossKills.cinder > 0) && !primordialsOf(p.rebirth).includes(6)) return;
+    if (!this.roadOpen(p)) return;
     p.tierMax = MAX_TIER;
     this.emit('tierUnlocked', { tier: MAX_TIER, numeral: TIERS[MAX_TIER].numeral, name: TIERS[MAX_TIER].name, all: true });
   }
@@ -3317,6 +3318,41 @@ export class World {
     if (!p) return false;
     if ((p.bossKills && p.bossKills.cinder > 0) || primordialsOf(p.rebirth).includes(6)) return true;
     return !!(p.lives && Object.values(p.lives).some((l) => l && Array.isArray(l.prim) && l.prim.includes(6)));
+  }
+
+  /**
+   * (0.70.4) Why Wren's Act III (the Deep's quests) has not begun for this hero, once the Starwell is
+   * done: 'unwish' (not yet seen), 'rebirth' (no rebirth yet), 'level' (below 100), or null (it has, or
+   * it is not time yet). Shown in the journal, so nobody stands in the Deep wondering where the quest is.
+   */
+  actThreeWait() {
+    const p = this.player;
+    if (this.trial || this.questState('starwell') !== 'done') return null;
+    if (this.questState('deep1') || this.questOpen('deep1')) return null;
+    if (!(p.endings && p.endings.self > 0)) return 'unwish';
+    if (!(p.rebirth && p.rebirth.n >= 1)) return 'rebirth';
+    if (p.level < QUESTS.deep1.level) return 'level';
+    return null;
+  }
+
+  /** (0.70.4) EXP from Mastery: +25% for each class mastered on the account (its Quiet beaten), up to +75%. */
+  masteryExp(p = this.player) {
+    return Math.min(MASTERY.expMax, MASTERY.exp * this.mastery(p).mastered.length);
+  }
+
+  /**
+   * (0.70.4) The deepest Depth any class of the account has opened: the one past the deepest
+   * Primordial it has beaten (VI once any has; the Quiet is the last). The Primordial quests still have to
+   * be done on each class: they are what count for its Mastery.
+   */
+  acctDeep(p = this.player) {
+    let best = 0;
+    for (const c in p.lives || {}) {
+      const l = p.lives[c];
+      if (!l || !Array.isArray(l.prim) || !l.prim.length) continue;
+      best = Math.max(best, Math.min(DEPTH_IDS[DEPTH_IDS.length - 1], Math.max(...l.prim) + 1));
+    }
+    return best;
   }
 
   /** (0.70.1) Can the Waygate take this hero to this ordinary map (found already, or the road open)? */
@@ -3572,6 +3608,7 @@ export class World {
     const p = this.player;
     if (this.trial) return; // the Weekly Echo fixes your level
     amount *= expMult(p.rebirth, p.acctRebirths); // Quick Study, and every rebirth on the account (0.43)
+    amount *= 1 + this.masteryExp(); // (0.70.4) and each class mastered on the account
     if (p.level >= CONFIG.MAX_LEVEL) {
       // Wishborne: endless small levels past 100, each a Wish point.
       p.wishExp += Math.round(amount);
@@ -4195,6 +4232,7 @@ export class World {
   depthOpen(p, d) {
     if (!DEEP.depths[d] || p.level < DEEP.level) return false;
     if (((p.rebirth && p.rebirth.deepMax) || 0) >= d) return true;
+    if (this.acctDeep(p) >= d) return true; // (0.70.4) as deep as any class of the account has gone
     return d === DEPTH_FIRST && !!((p.quests && p.quests.breath) || (p.rebirth && p.rebirth.gifts && p.rebirth.gifts.breath));
   }
 

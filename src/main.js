@@ -1614,7 +1614,13 @@ function start(hot = {}) {
       qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q, st.tier) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
     }
     const waiting = ['wren', 'bram', 'odile', 'lark', 'pip'].filter((n) => world.npcMarker(n) === '!').map((n) => NPCS[n].name);
-    $('journal-quests').innerHTML = (qs.join('') || '<p class="setting-desc">No quests in hand.</p>')
+    const wait = world.actThreeWait ? world.actThreeWait() : null; // (0.70.4) why Wren has nothing yet
+    const waitText = {
+      unwish: "Wren's last story begins after the Unwish: at the Starwell, with the Asker gone, press in an Unwishing Glass and want nothing.",
+      rebirth: 'Wren has more to tell, but only to one who has begun again: rebirth once (Talents, under Rebirth), then come back to her at level 100. The Deep stays open to you.',
+      level: 'Wren has more to tell you at level 100.',
+    }[wait];
+    $('journal-quests').innerHTML = (waitText ? `<div class="quest next"><h4>What comes next<small>Wren</small></h4><div class="goal">${esc(waitText)}</div></div>` : '') + (qs.join('') || '<p class="setting-desc">No quests in hand.</p>')
       + (waiting.length ? `<p class="setting-desc">Work waiting in Haven: ${waiting.join(', ')}.</p>` : '')
       + `<p class="setting-desc">${done} quest${done === 1 ? '' : 's'} completed.</p>`;
     $('journal-lore-head').textContent = `What the road remembers · ${p.signs.length} of ${SIGN_IDS.length}`;
@@ -1860,7 +1866,7 @@ function start(hot = {}) {
     panel.innerHTML = `<h3>Mastery · the other lives <small>${M.points} of 20</small></h3>
       <p class="setting-desc">Every Primordial beaten as each of your classes, on this account. Each one is a point of Mastery for every hero you play. It only counts when you meet its Depth's Ember yourself, or nobody beside you does.</p>
       ${rows}
-      <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: Mind-Locked is that much shorter</span>${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
+      <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: Mind-Locked is that much shorter</span>${M.mastered.length ? `<span><b>+${Math.round(world.masteryExp() * 100)}%</b> EXP for every hero (${M.mastered.length} mastered)</span>` : ''}${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
       ${borrowHtml(others)}`;
     // (0.70) borrowed skills: a press puts one on D or F (again takes it off)
     for (const b of panel.querySelectorAll('[data-borrow]')) {

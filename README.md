@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The account helps a new class along (0.70.4)
+
+- **World tiers:** once any class has beaten the Cinder, every class has tiers I to V at level 100.
+- **Mastery EXP:** +25% EXP for every hero for each class mastered (its Quiet beaten), up to +75%.
+- **The Deep:** open as deep as any class of the account has gone (the Depth past its deepest
+  Primordial). The Primordial quests still have to be done on each class: they are its Mastery.
+- **The journal** says why Wren's Deep quests have not begun yet: the Unwish first, then one rebirth,
+  at level 100.
+
 ### Tomas in Haven, online (0.70.3)
 
 - Online, talking to Tomas in Haven sent the server the same message thousands of times in a moment,

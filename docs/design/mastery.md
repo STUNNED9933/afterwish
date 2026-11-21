@@ -58,6 +58,39 @@ The **Granted** are what the star made of the people whose wishes it answered co
 husks, but something more than people. They do not hit you so much as seize your mind (Mind-Locked).
 Animus is the will to stand in front of a god.
 
+## Gating by Animus (the Granted's answer to Ember)
+
+The Granted must be impossible without Mastery, and not through numbers (no "your blows barely
+land"): through what they *do* to a mind that is not ready. Each map of Caelum asks for an Animus,
+the way each Depth asks for Ember, and each hero is judged on their own Animus, so being carried
+fails by itself.
+
+| Map | Asks for | Mastery points |
+| --- | --- | --- |
+| The Sky Road | Animus 15% | 5 |
+| The Court of Answers | Animus 30% | 10 |
+| The Hall of Wants | Animus 45% | 15 |
+| The Zenith | Animus 60% | 20: every class Mastered |
+
+**Dominion**: every Granted's signature attack, too large to step out of. Withstood or not is
+decided by your Animus against the map's need:
+
+| Your Animus | A Dominion does |
+| --- | --- |
+| At or above the need | Parryable on a tight window; small damage and a brief Mind-Lock if it lands |
+| Short of it | Cannot be parried; 90% of your max health and a long Mind-Lock (about 3 seconds) |
+
+Two more mechanics, so it is the *mind* that is gated, not the health bar:
+
+- **Clouded sight**: short of the need, the Granted's attack warnings flicker and fade before the
+  hit; at it, they are clear and full length.
+- **Mind-Lock chains**: each lock in a row is shorter, with a moment of immunity after; Animus
+  shortens every one. Short of the need, the immunity is gone, so a crowd locks you down until
+  you fall.
+
+Told early and plainly: the Waygate shows each map's need beside your Animus; entering short of it
+shows a warning; the Ex Voto pages say what Dominion does to an unready mind.
+
 ## Phases
 
 1. **Mastery, read from the account** (0.63): the quest *The Other Lives*; Mastery and Animus

@@ -1551,7 +1551,13 @@ function start(hot = {}) {
     if (talkTo === 'pip' && ch && !shown && !after) { $('talk-line').textContent = npc[ch]; return; }
     if (talkTo === 'bram' && world.mode === 'explore') renderVault(list); // (0.62) the Warden's caches, opened at the forge
     $('talk-line').textContent = talkTo === 'tomas' ? (world.player.tomasMet ? npc.idle : npc.greet) : talkNote || (after && !shown ? npc.after : shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
-    if (talkTo === 'tomas' && !world.player.tomasMet) applyNow({ type: 'metTomas' });
+    if (talkTo === 'tomas' && !world.player.tomasMet) {
+      // (0.70.3) once, and marked here at once: online the command goes to the server, and the flag only
+      // came back with its next update, so applyNow -> renderTalk -> applyNow sent it again and again
+      // (thousands in a moment) until the server closed the connection for flooding.
+      world.player.tomasMet = true;
+      applyNow({ type: 'metTomas' });
+    }
   }
 
   /**

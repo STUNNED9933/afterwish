@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Tomas in Haven, online (0.70.3)
+
+- Online, talking to Tomas in Haven sent the server the same message thousands of times in a moment,
+  and the server closed the connection as a flood. It is sent once now.
+- Online, who stands in Haven followed this browser's own offline save, not your online character, so
+  Tomas could be there for a hero who had not seen the Unwish. Haven is now set by your online hero.
+
 ### Telling you about it (0.70.2)
 
 - Handing in *Enough* (the Quiet) now says the class is mastered, and which two subclasses your other

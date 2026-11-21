@@ -325,6 +325,13 @@ export function applySnapshot(world, snap, alpha = 1) {
     world.recalcMods();
     world.questStamp++;
   }
+  if (world.map && world.map.id === 'town' && world.mode !== 'arena' && world.townKey() !== world.townShown) {
+    // (0.70.3) Haven's people as THIS hero's story has them. The picture of the world starts from this
+    // browser's own save, not the online character, so Tomas could stand in Haven for a hero who had
+    // not seen the Unwish (or be missing for one who had). Rebuilt once the server's word arrives.
+    world.loadMapMirror('town');
+    mapChanged = true;
+  }
   const hs = snap.hero;
   if (hs.ckpt) world.maxCheckpoint = hs.ckpt; // (0.61.1) the server's own, not a save from before a class switch
   world.portalT = hs.portalT;

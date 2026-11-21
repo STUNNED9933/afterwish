@@ -4679,4 +4679,19 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const ev = w.events.find((e) => e.type === 'mastered');
   check('Mastered (0.70.2): claiming Enough says so, naming the two subclasses the others may borrow from', ev && ev.cls === 'archer' && ev.specs.length === 2, JSON.stringify(ev || w.player.quests.deep6q));
 }
+
+// --- 0.70.3: Haven's people follow the online hero's own story ----------------------------------
+{
+  const w = new World({ seed: 95, mode: 'explore', cls: 'warrior', save: { v: 2, cls: 'warrior', level: 50, exp: 0, equipped: {}, bag: [] } });
+  w.loadMapMirror('town');
+  const tomas = () => w.obstacles.some((o) => o.id === 'tomas');
+  const before = tomas();
+  const key = w.townShown;
+  w.player.endings = { self: 1 }; // the server says this hero has seen the Unwish
+  const stale = w.townKey() !== w.townShown;
+  w.loadMapMirror('town');
+  check('Haven online (0.70.3): Tomas follows this hero\'s own Unwish, and a change is noticed', !before && stale && tomas() && w.townShown !== key);
+  w.player.tomasMet = true;
+  check('...meeting him does not pull him out from under you mid-talk', w.townKey() === w.townShown);
+}
 process.exit(failed ? 1 : 0);

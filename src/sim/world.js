@@ -7869,10 +7869,21 @@ inTown() {
     this.use(actor);
   }
 
+  /**
+   * (0.70.3) What decides who stands in Haven for this hero: past the Unwish, Tomas laid to rest, Odile
+   * gone to the garden. (Not having met Tomas: he stays until you leave, as offline.)
+   */
+  townKey() {
+    const p = this.heroes[0] && this.heroes[0].player;
+    if (!p) return '';
+    return [this.afterWish(p) ? 1 : 0, p.choices && p.choices.scarf === 'rest' ? 1 : 0, this.as(this.heroes[0], () => this.questState('tobin') === 'done') ? 1 : 0].join('');
+  }
+
   /** A joiner's copy of the world: show a map without spawning anything (the host sends what is on it). */
   loadMapMirror(id) {
     const map = (this.map = buildMap(id));
     this.radius = map.radius;
+    if (id === 'town') this.townShown = this.townKey();
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
     this.sideStoryProps(map);
     this.obstacles = map.obstacles;

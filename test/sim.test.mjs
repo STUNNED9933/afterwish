@@ -2630,7 +2630,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const p = w.player;
     const dust = p.dust, loot = w.loot.length;
     w.killEnemy(e, 'basic');
-    check('Rares: a kill gives Wishdust and an Epic or better', p.dust - dust >= RARE.dust[0] && w.loot.slice(loot).some((l) => l.item.rarity >= 3));
+    check('Rares: a kill gives Wishdust (three quarters, 0.62.1) and an Epic or better', p.dust - dust >= Math.floor(RARE.dust[0] * 0.75) && w.loot.slice(loot).some((l) => l.item.rarity >= 3));
   }
   // The Wishthief
   {
@@ -2653,7 +2653,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const t2 = w2.spawnThief();
     const tk = w2.player.tickets, dust2 = w2.player.dust, l2 = w2.loot.length;
     w2.killEnemy(t2, 'basic');
-    check('Wishthief: caught, it gives a shard, Wishdust and three pieces of gear (one Mythic or better)', w2.player.tickets >= tk + 1 && w2.player.dust === dust2 + THIEF.dust && w2.loot.length - l2 === 3 && w2.loot.slice(l2).some((l) => l.item.rarity >= 4));
+    check('Wishthief: caught, it gives a shard, Wishdust and three pieces of gear (one Mythic or better)', w2.player.tickets >= tk + 1 && Math.abs(w2.player.dust - dust2 - THIEF.dust * 0.75) < 1 && w2.loot.length - l2 === 3 && w2.loot.slice(l2).some((l) => l.item.rarity >= 4));
   }
   // Remnants
   {
@@ -2683,7 +2683,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('Remnants: the Warden\'s Remnant calls two shades of itself (Mirrored Oath)', cast && cast.name === 'Mirrored Oath' && w.enemies.filter((e) => e.type === 'oathshade' && e.summoner === b.id).length === 2);
     const l0 = w.loot.length, d0 = p.dust;
     w.killEnemy(b, 'basic');
-    check('Remnants: always drop a set piece, and Wishdust', w.loot.slice(l0).some((l) => l.item.set) && p.dust === d0 + REMNANT.dust);
+    check('Remnants: always drop a set piece, and Wishdust', w.loot.slice(l0).some((l) => l.item.set) && Math.abs(p.dust - d0 - REMNANT.dust * 0.75) < 1);
   }
   // Sets
   {
@@ -2929,7 +2929,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const ev = w.events.find((e) => e.type === 'reborn');
     check('Rebirth: at level 100 with The Unmade beaten, the star begins you again', !!ev && ev.n === 1 && ev.marks === M);
     const fresh = ev.save;
-    check('Rebirth: a full fresh start (level 1, starter weapon, empty bag, no scrap or Wishdust)', fresh.level === 1 && Object.keys(fresh.equipped).join() === 'weapon' && fresh.equipped.weapon.id === 'starter' && !fresh.bag.length && fresh.scrap === 0 && !fresh.dust);
+    check('Rebirth: a full fresh start (level 1, starter weapon, empty bag; scrap and Wishdust kept since 0.62.1)', fresh.level === 1 && Object.keys(fresh.equipped).join() === 'weapon' && fresh.equipped.weapon.id === 'starter' && !fresh.bag.length);
     const w2 = new World({ seed: 7, cls: 'rogue', save: fresh });
     const q = w2.player;
     check('Rebirth: story, quests, tiers, subclass and Wishborne all start again', !q.spec && q.tierMax === 1 && !Object.keys(q.quests).length && q.wish === 0 && !Object.keys(q.wishStats).length && !q.bossKills.boss3);
@@ -4072,6 +4072,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const save = Object.assign(geared('warrior', 100, 4), { talents: {}, keys: 6, cls: 'warrior' });
     const out = rebirthSave(save, I.starterWeapon, null, I.relevelItem);
     check('Rebirth keeps your Warden keys', out.keys === 6);
+    const out2 = rebirthSave(Object.assign(geared('warrior', 100, 4), { talents: {}, scrap: 5000, dust: 77, cls: 'warrior' }), I.starterWeapon, null, I.relevelItem);
+    check('...and your scrap and Wishdust (0.62.1)', out2.scrap === 5000 && out2.dust === 77);
+    const it = I.rollItem(mk(9), 80, { slot: 'helm', minRarity: 5 });
+    check('...which come in a quarter slower: scrapping gives three quarters', I.scrapValue(it) === Math.round((3 + it.ilvl) * 20 * (1 + 0.25 * (it.plus || 0)) * 0.75));
     const w = new World({ seed: 35, cls: 'warrior', save: Object.assign(geared('warrior', 50, 2), { keys: 2 }) });
     w.player.bag = [];
     w.command({ type: 'openCache', tier: 'warden' }); w.step(CONFIG.TICK);

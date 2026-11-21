@@ -1660,7 +1660,7 @@ function start(hot = {}) {
     if (!block) {
       const note = document.createElement('p');
       note.className = 'setting-desc';
-      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear, worn and in the bag, turns into Echo Essence; scrap, Wishdust, story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Edric's Colours, and your weapon glows (gold belongs to the account).`;
+      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear, worn and in the bag, turns into Echo Essence; story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, scrap, Wishdust and Warden keys, Edric's Colours, and your weapon glows (gold and shards belong to the account).`;
       panel.appendChild(note);
     }
   }

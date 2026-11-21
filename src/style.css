@@ -118,13 +118,15 @@ body.slowmo #slowtint { opacity: 1; }
 .ench-btn { margin-left: auto; align-self: center; }
 .ench-panel { margin: 2px 0 10px 0; padding: 8px 10px; border: 1px solid rgba(201, 166, 255, 0.35); border-radius: 6px; background: rgba(40, 28, 64, 0.35); }
 .ench-panel .setting-desc { margin: 0 0 6px; font-size: 12px; }
-.ench-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
-.ench-row .ench-stat { grid-column: 1; grid-row: 1; }
+.ench-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 4px 0; font-size: 13px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.ench-row .ench-stat { grid-column: 1; grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ench-row .ench-q { grid-column: 1; grid-row: 2; }
-.ench-row .ench-btns { grid-column: 2; grid-row: 1 / span 2; }
+.ench-row .ench-btns { grid-column: 1; grid-row: 3; margin-top: 4px; } /* (0.62.1) own row: Reroll never moves */
 .ench-row small { color: var(--muted); }
 .ench-q { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ench-btns { display: flex; gap: 4px; }
+.ench-btns { display: flex; gap: 4px; justify-content: flex-start; white-space: nowrap; }
+.ench-btns button { white-space: nowrap; }
+.ench-btns > button:first-child { width: 58px; } /* (0.62.1) Reroll keeps its size and place, whatever it says */
 .ench-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0 6px 18px; font-size: 12px; color: var(--muted); }
 .ench-btn.ascend { border-color: #ffd24a; color: #ffd24a; }
 /* Roll quality (0.43): a diamond in the colour of how well the line rolled */
@@ -1002,7 +1004,7 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 @keyframes gt-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }
 
 /* (0.62) reroll pity and the Immortal-tier guard */
-.ench-pity { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
+.ench-pity { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
 .ench-pity b { color: #ffd24a; }
 .ench-pity label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .ench-btns button.danger { border-color: #ff6a5a; color: #ffb0a6; background: rgba(255, 70, 60, 0.12); }
@@ -1029,3 +1031,11 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 /* (0.62) Bram's vault */
 .quest.vault .vault-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .quest.vault .odds { font-size: 12px; margin-top: 3px; }
+
+/* (0.62.1) the wallet in the gear window's head */
+.drawer-note.wallet { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.wallet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 7px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px; background: rgba(255, 255, 255, 0.04); cursor: default; }
+.wallet-chip:hover { border-color: var(--c); }
+.wallet-chip svg { width: 20px; height: 20px; fill: none; stroke: var(--c); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.wallet-chip b { font-size: 17px; color: #f3efe4; font-variant-numeric: tabular-nums; }
+.wallet-chip .wallet-name { display: none; } /* named in its tooltip: two rows at most */

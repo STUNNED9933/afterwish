@@ -547,10 +547,12 @@ export function itemName(item) {
 }
 
 const SCRAP_BY_RARITY = [1, 2, 4, 7, 12, 20, 35];
+/** (0.62.1) Scrap and Wishdust are kept through a rebirth now, so a little less of each comes in: three quarters. */
+export const KEPT_RATE = 0.75;
 
 /** Scrap you get for breaking an item down. */
 export function scrapValue(item) {
-  return Math.round((3 + item.ilvl) * SCRAP_BY_RARITY[item.rarity] * (1 + 0.25 * (item.plus || 0)));
+  return Math.round((3 + item.ilvl) * SCRAP_BY_RARITY[item.rarity] * (1 + 0.25 * (item.plus || 0)) * KEPT_RATE);
 }
 
 /** Cost of taking an item from +n to +n+1. */

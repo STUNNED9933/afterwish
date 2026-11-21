@@ -22,7 +22,7 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
-import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, KEPT_RATE, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -1045,6 +1045,13 @@ export class World {
   ironWeightNow() {
     const m = this.mods;
     return m.ironWeight * (1 + (this.player.bastionT > 0 ? m.bastionIron || 0 : 0));
+  }
+
+  /** (0.62.1) Three quarters of `n` Wishdust, rounded by chance so small amounts still come in on average. */
+  keptRate(n) {
+    const x = n * KEPT_RATE;
+    const whole = Math.floor(x);
+    return whole + (this.rng() < x - whole ? 1 : 0);
   }
 
   /** A damage streak (0.61.5): `per` more damage for each stack, up to `max` stacks, for `dur` seconds from the last. */
@@ -4854,7 +4861,7 @@ export class World {
       glow: REBIRTH_GLOWS[next] || null,
       acctExp: acctNext > acctNow ? Math.round((acctNext - acctNow) * 100) : 0,
       remembered,
-      left: { fragments: (p.misc && p.misc.fragment) || 0, dust: p.dust || 0, scrap: p.scrap || 0, sigils: (p.misc && p.misc.sigil) || 0 },
+      left: { fragments: (p.misc && p.misc.fragment) || 0, sigils: (p.misc && p.misc.sigil) || 0 },
     };
   }
 
@@ -5344,7 +5351,7 @@ export class World {
     p.bag.splice(index, 1);
     const scrap = scrapValue(item);
     p.scrap += scrap;
-    const dust = dustValue(item);
+    const dust = this.keptRate(dustValue(item));
     p.dust += dust;
     this.emit('discard', { count: 1, scrap, dust });
   }
@@ -5367,6 +5374,7 @@ export class World {
       return false;
     });
     if (count) {
+      dust = this.keptRate(dust);
       p.scrap += scrap;
       p.dust += dust;
       this.emit('discard', { count, scrap, dust });
@@ -6426,7 +6434,7 @@ export class World {
       if (e.elite && !e.rare && !e.def.boss) {
         // Elite spoils (0.49): Wishdust, maybe a fragment, and once in a while the radiant chest it was guarding.
         const S = ELITE_SPOILS;
-        const dust = S.dust[0] + Math.floor(this.rng() * (S.dust[1] - S.dust[0] + 1));
+        const dust = this.keptRate(S.dust[0] + Math.floor(this.rng() * (S.dust[1] - S.dust[0] + 1)));
         p.dust += dust;
         const frag = this.rng() < S.fragment;
         if (frag) this.giveMisc('fragment', 1);
@@ -6439,19 +6447,21 @@ export class World {
       // Exploration surprises (0.29): Wishdust, and a shard from the Wishthief.
       if (e.def.thief) {
         p.tickets++;
-        p.dust += THIEF.dust;
+        const td = this.keptRate(THIEF.dust);
+        p.dust += td;
         p.thieves = (p.thieves || 0) + 1;
         if (this.rng() < GLASS.thief) this.giveMisc('glass', 1);
-        this.emit('thiefCaught', { x: e.x, z: e.z, dust: THIEF.dust });
+        this.emit('thiefCaught', { x: e.x, z: e.z, dust: td });
         if (p.thieves >= 10) this.unlockGlow('gold');
       } else if (e.rare) {
-        const n = RARE.dust[0] + Math.floor(this.rng() * (RARE.dust[1] - RARE.dust[0] + 1));
+        const n = this.keptRate(RARE.dust[0] + Math.floor(this.rng() * (RARE.dust[1] - RARE.dust[0] + 1)));
         p.dust += n;
         this.emit('rareSlain', { name: e.rare, x: e.x, z: e.z, dust: n });
         if (this.rng() < GLASS.storied) this.giveMisc('glass', 1);
       } else if (e.remnant) {
-        p.dust += REMNANT.dust;
-        this.emit('remnantSlain', { name: remnantName(e.def), x: e.x, z: e.z, dust: REMNANT.dust });
+        const rd = this.keptRate(REMNANT.dust);
+        p.dust += rd;
+        this.emit('remnantSlain', { name: remnantName(e.def), x: e.x, z: e.z, dust: rd });
         if (REMNANT_GLOW[e.type] && this.rng() < REMNANT.glow) this.unlockGlow(REMNANT_GLOW[e.type]);
         if (this.rng() < GLASS.remnant) this.giveMisc('glass', 1);
       }

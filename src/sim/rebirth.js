@@ -201,7 +201,8 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     bag: [],
     gold: old.gold, // (the account's: shared by every hero)
     tickets: old.tickets,
-    scrap: 0,
+    scrap: old.scrap || 0, // (0.62.1) kept through a rebirth (and a quarter rarer to come by)
+    dust: old.dust || 0, // (0.62.1) Wishdust too
     keys: old.keys || 0, // (0.62) Warden keys are kept through a rebirth
     skillPoints: perkRank(rb, 'head'),
     glows,

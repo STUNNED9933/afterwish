@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A wallet, steadier rerolls, and what rebirth keeps (0.62.1)
+
+- **The gear window's wallet**: gold, shards, scrap, Wishdust, Warden keys and Echo Essence, each a large
+  number with an icon; hover one for what it is for, where to find more, and whether it is kept.
+- **Rerolling** no longer moves under the mouse: each line's buttons sit on their own row, the Reroll
+  button keeps one size, the Essence button is always there once reborn (greyed when short), and the
+  panel no longer repeats how much you have (the wallet does).
+- **Ember** is in the gear window's stats, with the Depth it reaches and the next one's need.
+- **Rebirth keeps scrap and Wishdust** (with Warden keys), and both come in a quarter slower: scrapping
+  gives three quarters of the scrap and Wishdust, and so do Wishdust drops from enemies.
+
 ### Testers' quality of life (0.62)
 
 - **Deadeye** turns red the moment an enemy is on its line (ground, minimap and edge marker).

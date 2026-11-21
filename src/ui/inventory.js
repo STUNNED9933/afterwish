@@ -8,6 +8,7 @@ import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
 import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 import { itemLore } from './lore.js';
+import { emberOf, DEEP, DEPTH_IDS } from '../sim/endgame.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
@@ -110,6 +111,40 @@ function miscTooltip(id, n) {
     `<div class="tt-from"><b>Where to find more</b><ul>${miscSources(id).map((s) => `<li>${s}</li>`).join('')}</ul></div>`;
 }
 
+// (0.62.1) What the gear window's wallet shows: each resource, its icon, what it is for, and where it comes from.
+const WALLET = [
+  { key: 'gold', name: 'Gold', color: '#ffd24a', shared: true,
+    icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.5 9.5c.6-1 1.6-1.4 2.6-1.4 1.5 0 2.4.8 2.4 1.8 0 2.4-5 1.4-5 4 0 1 1 1.8 2.6 1.8 1 0 2-.5 2.6-1.4"/>',
+    uses: ['Blacksmith upgrades (+levels)', 'Rerolling and reforging lines', 'Opening Iron and Gilded caches', 'Skill points from the trainer, and respecs', 'The travelling merchant and Bounty Board swaps'],
+    from: ['Every enemy, chest and boss', 'Quests and bounties', 'An Echo Ring run for gold'] },
+  { key: 'tickets', name: 'Shards', color: '#9fe8ff', shared: true,
+    icon: '<path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10M12 3v18"/>',
+    uses: ['Waking the Echo Ring (5 a run)', 'Echo Rifts at the Waygate (1)', 'The travelling merchant'],
+    from: ['A sliver in many enemies (6%), every big one', 'Bosses', 'Waves and bosses in the Echo Ring'] },
+  { key: 'scrap', name: 'Scrap', color: '#c9c4b0', kept: true,
+    icon: '<path d="M12 4l1.6 2.8 3.2-.6.4 3.2 2.8 1.6-1.6 2.8 1.6 2.8-2.8 1.6-.4 3.2-3.2-.6L12 20l-1.6-2.8-3.2.6-.4-3.2-2.8-1.6L5.6 12 4 9.2l2.8-1.6.4-3.2 3.2.6z"/><circle cx="12" cy="12" r="3"/>',
+    uses: ['Blacksmith upgrades (+levels)', 'Rerolling lines'],
+    from: ['Scrapping gear (shift-click, or the scrap button)', 'Quests'] },
+  { key: 'dust', name: 'Wishdust', color: '#e7c6ff', kept: true,
+    icon: '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="M12 9.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/><circle cx="18.5" cy="5.5" r="1"/><circle cx="5.5" cy="18.5" r="1"/>',
+    uses: ['Reforging a line into a stat you choose'],
+    from: ['Scrapping Mythic and better gear', 'Elites, Storied enemies, Remnants and the Wishthief', 'World events, bounties, an Echo Ring run for Wishdust'] },
+  { key: 'keys', name: 'Warden keys', color: '#ffb070', kept: true,
+    icon: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>',
+    uses: ["Opening Warden's Caches at Bram's forge in Haven (Epic or better, 1% Immortal)"],
+    from: ['Bosses out in the world', 'Some quests'] },
+  { key: 'essence', name: 'Echo Essence', color: '#b8a8ff', kept: true, rebirth: true,
+    icon: '<path d="M12 4c4.4 0 8 3.6 8 8s-3.6 8-8 8"/><path d="M12 8c2.2 0 4 1.8 4 4s-1.8 4-4 4"/><circle cx="12" cy="12" r="1.2"/><path d="M12 4C7.6 4 4 7.6 4 12"/>',
+    uses: ['Recalling the best piece of a past life, in its prime', 'Rerolling lines instead of gold and scrap'],
+    from: ['Rebirth: worn and bag gear given up'] },
+];
+function walletTooltip(w, n) {
+  const kept = w.shared ? 'Shared by every hero on the account' : w.kept ? 'Kept through a rebirth' : '';
+  return `<div class="tt-name" style="color:${w.color}">${w.name}</div><div class="tt-meta">${n.toLocaleString()}${kept ? ` · ${kept}` : ''}</div>` +
+    `<div class="tt-from"><b>What it is for</b><ul>${w.uses.map((u) => `<li>${u}</li>`).join('')}</ul></div>` +
+    `<div class="tt-from"><b>Where to find more</b><ul>${w.from.map((u) => `<li>${u}</li>`).join('')}</ul></div>`;
+}
+
 /** (0.62) Ask before rerolling an Immortal-tier line (on unless turned off; kept in this browser). */
 function guardImmortal() {
   try {
@@ -183,7 +218,7 @@ export class Inventory {
     const keep = new Set(this.keep.get());
     for (const b of $('keep-rarities').children) b.setAttribute('aria-pressed', keep.has(Number(b.dataset.rarity)) ? 'true' : 'false');
     this.tooltip.hide();
-    $('inv-res').textContent = `Gold ${p.gold} · Scrap ${p.scrap} · Wishdust ${p.dust || 0} · Warden keys ${p.keys}`;
+    this.wallet(world); // (0.62.1) gold, shards, scrap, Wishdust, keys and Echo Essence, each with an icon and its uses
     setsWorn = setCounts(p.equipped);
 
     const eq = $('equipped');
@@ -264,7 +299,7 @@ export class Inventory {
       // Echoes (0.53): the pieces the star remembers, to recall at your level
       const box = document.createElement('div');
       box.className = 'echoes';
-      box.innerHTML = `<div class="eq-slot">Echoes · <b>${rb.essence}</b> Echo Essence</div><p class="setting-desc">The best piece you wore in each slot, in past lives. Recall one (once a life) and it is made again at your level: its rarity, effect, how good its rolls were and its enchant. +levels and stars start again, but Essence brings them back to what you had.</p>`;
+      box.innerHTML = `<div class="eq-slot">Echoes · <b>${rb.essence}</b> Echo Essence</div><p class="setting-desc">The best piece you wore in each slot, in past lives. Recall one (once a life) and it is made again at your level: its rarity, effect, how good its rolls were and its enchant. It comes back in its prime: its +levels and stars too, and it follows your level from then on.</p>`;
       for (const slot of SLOTS) {
         const mem = rb.memories && rb.memories[slot];
         if (!mem) continue;
@@ -333,6 +368,14 @@ export class Inventory {
       ['Lifesteal', s.lifesteal > CONFIG.LIFESTEAL_CAP ? `${CONFIG.LIFESTEAL_CAP}% (${s.lifesteal}%, capped)` : s.lifesteal + '%'],
       ['Best wave', world.bestWave],
     ];
+    if (p.rebirth && p.rebirth.n) {
+      // (0.62.1) Ember, for the Deep: the Depth it is enough for
+      const e = emberOf(p.rebirth);
+      const ok = DEPTH_IDS.filter((d) => e >= DEEP.depths[d].ember).pop();
+      const next = DEPTH_IDS.find((d) => e < DEEP.depths[d].ember);
+      const bits = [ok ? `up to Depth ${DEEP.depths[ok].numeral}` : '', next ? `Depth ${DEEP.depths[next].numeral} at ${DEEP.depths[next].ember}` : 'every Depth'].filter(Boolean);
+      rows.splice(1, 0, ['Ember', `${e} (${bits.join(' · ')})`]);
+    }
     $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
 
     const bag = $('bag');
@@ -399,6 +442,26 @@ export class Inventory {
     btn.disabled = !scrapTotal;
   }
 
+  /** (0.62.1) The wallet in the gear window's head: big numbers with icons, and what each is for on hover. */
+  wallet(world) {
+    const p = world.player;
+    const box = $('inv-res');
+    const have = { gold: p.gold || 0, tickets: p.tickets || 0, scrap: p.scrap || 0, dust: p.dust || 0, keys: p.keys || 0, essence: (p.rebirth && p.rebirth.essence) || 0 };
+    box.innerHTML = '';
+    box.className = 'drawer-note wallet';
+    for (const w of WALLET) {
+      if (w.rebirth && !(p.rebirth && p.rebirth.n)) continue;
+      const el = document.createElement('span');
+      el.className = 'wallet-chip';
+      el.style.setProperty('--c', w.color);
+      el.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${w.icon}</svg><b>${have[w.key].toLocaleString()}</b><span class="wallet-name">${w.name}</span>`;
+      el.setAttribute('aria-label', `${w.name}: ${have[w.key]}`);
+      el.addEventListener('mouseenter', () => this.tooltip.show(walletTooltip(w, have[w.key]), el, w.color));
+      el.addEventListener('mouseleave', () => this.tooltip.hide());
+      box.appendChild(el);
+    }
+  }
+
   /**
    * Rerolling (0.43): every line of one equipped item, with how good its roll is and a Reroll button
    * (gold and scrap, the same price every time). Reforging: turn one bonus line into a stat you choose.
@@ -413,13 +476,13 @@ export class Inventory {
     const canForge = p.gold >= fc.gold && (p.dust || 0) >= fc.dust;
     const open = enchantable(item);
     const choices = reforgeChoices(item);
-    box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time (you have ${p.gold.toLocaleString()} and ${p.scrap.toLocaleString()}). The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust (you have ${p.dust || 0}); once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
+    box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time. The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust; once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
     // (0.62) the pity count, and a guard against rerolling an Immortal-tier line by accident
     const guard = guardImmortal();
     const left = REROLL_PITY - (item.pity || 0);
     const pity = document.createElement('div');
     pity.className = 'ench-pity';
-    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${left}</b> reroll${left === 1 ? '' : 's'} on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Ask before rerolling an Immortal-tier line</label>`;
+    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${String(left).padStart(2, '\u2007')}</b> rerolls on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Ask before rerolling an Immortal-tier line</label>`;
     pity.querySelector('input').addEventListener('change', (e) => {
       setGuardImmortal(e.target.checked);
       this.armed = null;
@@ -454,19 +517,22 @@ export class Inventory {
       b.type = 'button';
       b.className = 'ghost tiny';
       const armed = this.armed === armKey;
-      b.textContent = armed ? 'Immortal roll: reroll anyway?' : 'Reroll';
+      b.textContent = armed ? 'Sure?' : 'Reroll';
+      if (armed) b.title = 'This line is Immortal tier: click again to reroll it anyway';
       if (armed) b.classList.add('danger');
       b.disabled = !canRoll || q >= 1;
       b.title = q >= 1 ? 'Already the best roll this line can have' : `A fresh roll between ${lo} and ${hi}`;
       b.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k }));
       btns.appendChild(b);
-      if (p.rebirth && p.rebirth.essence >= ECHOES.reroll && q < 1) {
+      if (p.rebirth && p.rebirth.n) {
+        // (0.62.1) always there once reborn (greyed out when short), so the buttons never shift
         // Echoes (0.53): the same reroll for Echo Essence
         const eb = document.createElement('button');
         eb.type = 'button';
         eb.className = 'ghost tiny echo-btn';
-        eb.textContent = `${ECHOES.reroll} Essence`;
-        eb.title = `Reroll for ${ECHOES.reroll} Echo Essence instead of gold and scrap (you have ${p.rebirth.essence})`;
+        eb.textContent = `${ECHOES.reroll} Ess.`;
+        eb.title = `Reroll for ${ECHOES.reroll} Echo Essence instead of gold and scrap`;
+        eb.disabled = p.rebirth.essence < ECHOES.reroll || q >= 1;
         if (armed) eb.classList.add('danger');
         eb.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k, essence: true }));
         btns.appendChild(eb);

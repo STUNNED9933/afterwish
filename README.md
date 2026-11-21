@@ -159,6 +159,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Mastery, phase 1: the other lives (0.63)
+
+The first part of the Mastery system (design: `docs/design/mastery.md`).
+- **The Other Lives**: after *Enough*, Wren sends you back to the Glass Choir to listen. It opens
+  **Mastery** for the whole account.
+- **Mastery**: every Primordial beaten on each class is a point for every hero on the account (5 a
+  class, 20 in all), read from each class's save, so kills from before count at once. Shown in the
+  Talents window; a class whose Quiet is beaten is *Mastered*.
+- **Animus**: 3% shorter **Mind-Locked** a point (up to 60%), ready for the Granted.
+- **Ember head start**: an alt gets half the best Ember among your other classes.
+- **Being carried does not count**, and the game now says so early: on the Deep's panel at the
+  Waygate, in The Other Lives, and with a banner the moment you come down into a Depth beside someone
+  who has its Ember when you do not.
+
 ### A wallet, steadier rerolls, and what rebirth keeps (0.62.1)
 
 - **The gear window's wallet**: gold, shards, scrap, Wishdust, Warden keys and Echo Essence, each a large

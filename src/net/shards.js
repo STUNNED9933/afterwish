@@ -7,6 +7,7 @@
 // server/src/world-do.js feeds it connections and messages, and test/shards.test.mjs drives it in Node.
 // Each copy is an ordinary World (the same rules as single player); a hero who leaves one is moved
 // to another by goMap's travelHook, carried across in their save.
+import { primordialsOf, emberOf } from '../sim/endgame.js';
 import { steadyRatings } from '../power.js';
 import { World } from '../sim/world.js';
 import { CLASSES } from '../sim/classes.js';
@@ -183,6 +184,28 @@ export class ServerWorld {
   }
 
   /**
+   * (0.63) Mastery: what the account's other classes have done in the Deep, and their Ember. A signed-in
+   * account's characters are on this server, so they are read here; a browser character brings its own
+   * (its browser's other saves, as it does offline).
+   */
+  livesOf(pl, hello) {
+    if (pl.accountId && this.accounts) {
+      const chars = this.accounts.charsOf(pl.accountId) || {};
+      const out = {};
+      for (const c in chars) if (chars[c] && chars[c].rebirth) out[c] = { prim: primordialsOf(chars[c].rebirth), ember: emberOf(chars[c].rebirth), open: !!(chars[c].rebirth.act3 && chars[c].rebirth.act3.lives) };
+      return out;
+    }
+    const given = hello && hello.save && hello.save.acctLives;
+    if (!given || typeof given !== 'object') return null;
+    const out = {};
+    for (const c of ['warrior', 'archer', 'rogue', 'mage']) {
+      const v = given[c];
+      if (v && typeof v === 'object') out[c] = { prim: (Array.isArray(v.prim) ? v.prim : []).map(Number).filter((d) => d >= 6 && d <= 10).slice(0, 5), ember: Math.max(0, Math.min(1000, Number(v.ember) || 0)), open: !!v.open };
+    }
+    return out;
+  }
+
+  /**
    * (0.62) Inspect: another player's gear, combat power, subclass and talents, as they are right now.
    * Only what anyone could see by looking at them: no bag, gold or quests.
    */
@@ -289,6 +312,8 @@ export class ServerWorld {
       p.gold = Math.max(0, Number(hello.gold) || 0);
       p.tickets = Math.max(0, Number(hello.tickets) || 0);
       p.acctRebirths = pl.acctRebirths || 0;
+      p.lives = this.livesOf(pl, hello); // (0.63) Mastery: the account's other classes
+      w.recalcStats();
       copy = { key, world: w, map: to };
       w.travelHook = (h, dest, src, ex) => this.moves.push({ pid: h.pid, copy, to: dest, from: src, extra: ex });
       if (extra && extra.rift) w.startRift(extra.rift);
@@ -298,6 +323,8 @@ export class ServerWorld {
     } else {
       const h = copy.world.addHero(pl.pid, hello);
       h.player.acctRebirths = pl.acctRebirths || 0;
+      h.player.lives = this.livesOf(pl, hello); // (0.63)
+      copy.world.as(h, () => copy.world.recalcStats());
       copy.world.arriveHero(h, from);
     }
     pl.copy = copy;

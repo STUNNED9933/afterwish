@@ -8,7 +8,7 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM } from './endgame.js';
+import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM , masteryFor, MASTERY } from './endgame.js';
 const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI)
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
@@ -508,6 +508,7 @@ export class World {
       delveBest: save?.delveBest ?? 0, // the highest tier of delve cleared (0.46)
       choices: Object.assign({}, save?.choices), // side stories (0.47): { scarf: 'rest' | 'walk' }, never undone
       acctRebirths: save?.acctRebirths ?? 0, // rebirths on every hero of the account (main.js keeps it current)
+      lives: save?.acctLives || null, // (0.63) the account's other classes: { cls: { prim, ember } } (main.js / the server keep it current)
       streak: save?.streak ?? 0, // tier bosses beaten in a row without being knocked out (0.28)
       dust: save?.dust ?? 0, // Wishdust: enchanting (0.29)
       glows: Array.isArray(save?.glows) ? save.glows.slice() : [], // weapon glows earned (0.31)
@@ -600,6 +601,9 @@ export class World {
     this.recalcMods();
     const m = this.mods;
     if (p.keepsake) relevelItem(p.keepsake, p.level); // (0.53) the keepsake is always your level
+    const M = this.mastery(); // (0.63) Mastery from every life on the account
+    p.headStart = M.headStart;
+    p.animus = M.animus; // (0.63) Animus: Mind-Locked is shorter by this much
     for (const slot of SLOTS) if (p.equipped[slot] && (p.equipped[slot].heirloom || p.equipped[slot].recalled)) relevelItem(p.equipped[slot], p.level); // ...and an Heirloom, and (0.62) a recalled piece
     for (const it of p.bag) if (it && (it.heirloom || it.recalled)) relevelItem(it, p.level);
     const g = sumGearStats(p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped);
@@ -3246,7 +3250,21 @@ export class World {
   }
 
   /** Something happened that quests might care about: 'kill' (an enemy), 'reach' (a map id), 'read'. */
+  /**
+   * (0.63) Coming down into a Depth short of its Ember, beside someone who has it: say so now, before the
+   * fight, that its Primordial will not count for you (nor give you Mastery). Once a Depth a visit.
+   */
+  carryCheck(mapId) {
+    const d = DEPTH_IDS.find((n) => DEEP.depths[n].map === mapId);
+    if (!d) return;
+    const p = this.player, need = DEEP.depths[d].ember;
+    if (this.ember(p) >= need) return;
+    const strong = this.heroes.filter((h) => h !== this.cur && this.ember(h.player) >= need);
+    if (strong.length) this.emit('carryWarn', { id: p.id, depth: DEEP.depths[d].numeral, need, have: this.ember(p), by: strong.map((h) => h.name).join(', ') });
+  }
+
   questEvent(kind, data) {
+    if (kind === 'reach') this.carryCheck(data); // (0.63) warn early: being carried through the Deep does not count
     const p = this.player;
     let used = false;
     for (const id in p.quests) {
@@ -3654,7 +3672,12 @@ export class World {
 
   /** This hero's Ember (0.54). */
   ember(p = this.player) {
-    return emberOf(p.rebirth);
+    return emberOf(p.rebirth) + (p.headStart || 0); // (0.63) plus the head start from the account's other classes
+  }
+
+  /** (0.63) Mastery: the account's Primordials beaten class by class, Animus, the Ember head start. */
+  mastery(p = this.player) {
+    return masteryFor(p.lives, this.cls, p.rebirth);
   }
 
   /** Spawn a camp's enemy, at the world tier's level and strength (or the rift's), maybe as an elite. */

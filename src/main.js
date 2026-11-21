@@ -1,7 +1,7 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
 import { aimPreview } from './ui/aim.js';
-import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale } from './sim/endgame.js';
+import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale, primordialsOf, emberOf, MASTERY } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
 import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand, TWISTS, WEEKLY_REWARD, bestTitle } from './sim/trial.js';
@@ -178,7 +178,18 @@ function start(hot = {}) {
     w.player.gold = account.gold;
     w.player.tickets = account.tickets;
     w.player.acctRebirths = account.rebirths || 0; // Rebirth (0.43): every hero's EXP grows with the account's rebirths
+    w.player.lives = browserLives(); // (0.63) Mastery: this browser's other classes
+    w.recalcStats();
     return w;
+  }
+  /** (0.63) What this browser's characters have done in the Deep, class by class, and their Ember. */
+  function browserLives() {
+    const out = {};
+    for (const c of Object.keys(CLASSES)) {
+      const s = loadSave(c);
+      if (s && s.rebirth) out[c] = { prim: primordialsOf(s.rebirth), ember: emberOf(s.rebirth), open: !!(s.rebirth.act3 && s.rebirth.act3[MASTERY.quest]) };
+    }
+    return out;
   }
   let world = makeWorld({ save });
 
@@ -826,6 +837,7 @@ function start(hot = {}) {
     box.innerHTML = `<p class="deep-eyebrow">Below the Starwell</p>
       <h3 class="deep-name">The Deep</h3>
       <p class="deep-lede">It does not scale to you, and it is not a world tier. What lives down here answers only to Ember: short of what a Depth asks, your blows barely land; below half of it, every one is 1.</p>
+      <p class="deep-note">A Primordial counts for you (its quest, and Mastery) only if you have its Depth's Ember yourself, or nobody beside you does. Being carried down does not count.</p>
       <div class="deep-ember">
         <div class="deep-ember-n"><b>${ember}</b><span>Ember</span></div>
         <div class="deep-gauge"><div class="deep-fill" style="width:${Math.min(100, (ember / top) * 100)}%"></div>${marks}</div>
@@ -1665,9 +1677,30 @@ function start(hot = {}) {
     }
   }
 
+  /** (0.63) Mastery: every Primordial beaten on every class of the account, Animus, and the head start. */
+  function renderMastery() {
+    const panel = $('mastery-panel');
+    const p = world.player;
+    const M = world.mastery ? world.mastery() : null;
+    if (!M || !M.open || world.trial) return panel.classList.add('hidden');
+    panel.classList.remove('hidden');
+    const rows = MASTERY.classes.map((c) => {
+      const got = new Set(M.by[c]);
+      const pips = DEPTH_IDS.map((d) => `<span class="m-pip${got.has(d) ? ' on' : ''}" title="${esc(DEEP.depths[d].name)}: ${got.has(d) ? 'beaten' : 'not yet'} as a ${esc(CLASSES[c].name)}">${DEEP.depths[d].numeral}</span>`).join('');
+      const tag = got.has(10) ? '<span class="m-tag">Mastered</span>' : '';
+      return `<div class="m-row${c === world.cls ? ' me' : ''}"><span class="m-cls">${esc(CLASSES[c].name)}${c === world.cls ? ' (you)' : ''}</span><span class="m-pips">${pips}</span>${tag}</div>`;
+    }).join('');
+    const others = M.mastered.filter((c) => c !== world.cls).map((c) => CLASSES[c].name);
+    panel.innerHTML = `<h3>Mastery · the other lives <small>${M.points} of 20</small></h3>
+      <p class="setting-desc">Every Primordial beaten as each of your classes, on this account. Each one is a point of Mastery for every hero you play. It only counts when you meet its Depth's Ember yourself, or nobody beside you does.</p>
+      ${rows}
+      <div class="m-sum"><span><b>${Math.round(M.animus * 100)}%</b> Animus: Mind-Locked is that much shorter</span>${M.headStart ? `<span><b>+${M.headStart}</b> Ember from your other lives</span>` : ''}</div>
+      <p class="setting-desc">${others.length ? `Mastered: ${others.join(', ')}. ` : ''}A class mastered (its Quiet beaten) will teach every other class a skill of its own, with the Granted.</p>`;
+  }
   function renderTalents() {
     renderWish();
     renderRebirth();
+    renderMastery();
     const p = world.player;
     const body = $('talents-body');
     const respec = $('btn-respec');
@@ -1905,7 +1938,7 @@ function start(hot = {}) {
     let welcome;
     try {
       const session = room.server ? Online.sessionFor(Online.baseOf(target)) : ''; // (0.57) an online character, if signed in
-      welcome = await room.join(target, { name, save, cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, signs: account.signs, ...(session ? { session } : {}), ...extra });
+      welcome = await room.join(target, { name, save: save && Object.assign({}, save, { acctLives: browserLives() }), cls: settings.cls, parry: settings.parryPreset, autoAttack: settings.autoAttack !== false, gold: account.gold, tickets: account.tickets, acctRebirths: account.rebirths || 0, signs: account.signs, ...(session ? { session } : {}), ...extra });
     } catch (err) {
       button.disabled = false;
       mpMsg(err.message, false);
@@ -3999,6 +4032,9 @@ function start(hot = {}) {
         break;
       case 'emberShort':
         if (!ev.self || ev.self === world.player) hud.banner('It does not count', `Someone here met the Ember ${ev.need} that ${ev.name} asks (you have ${ev.have}). Being carried down is not the same: beat it on your own terms to count it.`);
+        break;
+      case 'carryWarn': // (0.63) told early, before the fight, so nobody wastes a night on it
+        if (ev.id == null || ev.id === world.player.id) hud.banner(`Depth ${ev.depth} will not count for you`, `You have Ember ${ev.have} of the ${ev.need} it asks, and ${ev.by} has it. Beaten beside them, its Primordial gives you no quest and no Mastery. Come down on your own, or with others short of it too.`);
         break;
       case 'emberDefied': // (0.62) under-Embered, and it still counts
         if (!ev.self || ev.self === world.player) hud.banner('Beaten under-Embered', `${ev.name} counts: Ember ${ev.have} of the ${ev.need} it asks. The Deep will remember that.`);

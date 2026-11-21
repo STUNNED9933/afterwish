@@ -1039,3 +1039,20 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .wallet-chip svg { width: 20px; height: 20px; fill: none; stroke: var(--c); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .wallet-chip b { font-size: 17px; color: #f3efe4; font-variant-numeric: tabular-nums; }
 .wallet-chip .wallet-name { display: none; } /* named in its tooltip: two rows at most */
+
+.deep-note { margin: 6px 0 0; font-size: 13px; color: #ffb08a; } /* (0.63) the carry rule, said early */
+
+/* (0.63) Mastery */
+#mastery-panel { margin: 0 0 14px; padding: 12px 14px; border: 1px solid rgba(255, 210, 74, 0.3); border-radius: 6px; background: rgba(40, 32, 12, 0.35); }
+#mastery-panel.hidden { display: none; }
+#mastery-panel h3 { margin: 0 0 6px; font: italic 600 22px var(--display); color: var(--gold); }
+#mastery-panel h3 small { font: 500 13px var(--body); color: var(--muted); margin-left: 8px; }
+.m-row { display: flex; align-items: center; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.m-row.me .m-cls { color: #ffe2a0; }
+.m-cls { width: 110px; font-weight: 600; }
+.m-pips { display: flex; gap: 5px; }
+.m-pip { width: 34px; text-align: center; font-size: 12px; padding: 2px 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; color: var(--muted); }
+.m-pip.on { border-color: #ff8a4a; color: #ffd2b0; background: rgba(255, 106, 42, 0.18); }
+.m-tag { font-size: 12px; color: #ffd24a; border: 1px solid #ffd24a; border-radius: 999px; padding: 1px 8px; }
+.m-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 2px; font-size: 14px; }
+.m-sum b { color: #ffd24a; }

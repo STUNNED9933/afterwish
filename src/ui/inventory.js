@@ -370,12 +370,14 @@ export class Inventory {
     ];
     if (p.rebirth && p.rebirth.n) {
       // (0.62.1) Ember, for the Deep: the Depth it is enough for
-      const e = emberOf(p.rebirth);
+      const e = world.ember(p);
       const ok = DEPTH_IDS.filter((d) => e >= DEEP.depths[d].ember).pop();
       const next = DEPTH_IDS.find((d) => e < DEEP.depths[d].ember);
       const bits = [ok ? `up to Depth ${DEEP.depths[ok].numeral}` : '', next ? `Depth ${DEEP.depths[next].numeral} at ${DEEP.depths[next].ember}` : 'every Depth'].filter(Boolean);
-      rows.splice(1, 0, ['Ember', `${e} (${bits.join(' · ')})`]);
+      const head = p.headStart ? ` (${e - p.headStart} + ${p.headStart} from your other lives)` : '';
+      rows.splice(1, 0, ['Ember', `${e}${head} · ${bits.join(' · ')}`]);
     }
+    if (p.animus > 0) rows.splice(2, 0, ['Animus', `Mind-Locked ${Math.round(p.animus * 100)}% shorter`]); // (0.63)
     $('stats').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
 
     const bag = $('bag');

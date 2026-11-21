@@ -407,5 +407,20 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('...and someone who has gone says so', box.get(a).some((m) => m.t === 'inspect' && m.gone));
 }
 
+
+// (0.63) Mastery on the server: a browser character brings its other classes, cleaned up
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 29 });
+  const k = { name: 'alt' }; box.set(k, []);
+  const save = Object.assign(geared('mage', 100, 4), { rebirth: { n: 1, ember: 10 }, acctLives: { warrior: { prim: [6, 7, 99, '8'], ember: 60, open: true }, archer: { prim: 'no', ember: -5 }, cheat: { prim: [6] } } });
+  sv.message(k, hello('Alt', 'mage', { save }));
+  const pid = box.get(k).find((m) => m.t === 'welcome').pid;
+  const w = sv.players.get(pid).copy.world;
+  const out = w.as(w.heroByPid(pid), (p) => ({ lives: p.lives, ember: w.ember(p), animus: p.animus }));
+  check('Server: a browser character brings its other lives, cleaned (bad Depths and classes dropped)', out.lives.warrior.prim.join() === '6,7,8' && !out.lives.cheat && out.lives.archer.prim.length === 0 && out.lives.archer.ember === 0, JSON.stringify(out.lives));
+  check('...and gets its head start and Animus from them', out.ember === 40 && Math.abs(out.animus - 0.09) < 1e-9, `${out.ember} ${out.animus}`);
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

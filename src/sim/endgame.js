@@ -138,6 +138,39 @@ export function emberForGear(value) {
   return Math.min(DEEP.emberMax, Math.floor(DEEP.emberK * Math.sqrt(Math.max(0, value || 0))));
 }
 
+/**
+ * Mastery (0.63, docs/design/mastery.md): every Primordial beaten on a class is a point of Mastery for the whole
+ * account (5 a class, 20 in all), read from what each class's save keeps through rebirth (rebirth.act3).
+ */
+export const MASTERY = {
+  quests: { deep2: 6, deep3: 7, deep4: 8, deep5: 9, deep6q: 10 }, // the Primordial quests, and their Depths
+  classes: ['warrior', 'archer', 'rogue', 'mage'],
+  animus: 0.03, // Animus: Mind-Locked 3% shorter for each point...
+  animusMax: 0.6, // ...up to 60% (all 20)
+  headStart: 0.5, // an alt starts with half the best Ember among the account's other classes
+  quest: 'lives', // The Other Lives: the quest that opens it
+};
+/** The Depths (6 to 10) whose Primordial this rebirth record has beaten. */
+export function primordialsOf(rb) {
+  const out = [];
+  if (rb && rb.act3) for (const id in MASTERY.quests) if (rb.act3[id]) out.push(MASTERY.quests[id]);
+  return out.sort((a, b) => a - b);
+}
+/**
+ * What the account's other lives give one hero. `lives` is { cls: { prim: [depths], ember } } for the
+ * account's classes (main.js offline, the server online); the hero's own class is read live from `cls`/`rb`.
+ */
+export function masteryFor(lives, cls, rb) {
+  const by = {};
+  for (const c of MASTERY.classes) by[c] = c === cls ? primordialsOf(rb) : (lives && lives[c] && Array.isArray(lives[c].prim) ? lives[c].prim.filter((d) => d >= 6 && d <= 10) : []);
+  const points = MASTERY.classes.reduce((n, c) => n + new Set(by[c]).size, 0);
+  const mastered = MASTERY.classes.filter((c) => by[c].includes(10));
+  let best = 0;
+  for (const c of MASTERY.classes) if (c !== cls && lives && lives[c]) best = Math.max(best, Math.floor(lives[c].ember || 0));
+  const open = !!(rb && rb.act3 && rb.act3[MASTERY.quest]) || MASTERY.classes.some((c) => c !== cls && lives && lives[c] && lives[c].open);
+  return { by, points, mastered, open, animus: Math.min(MASTERY.animusMax, MASTERY.animus * points), headStart: Math.floor(best * MASTERY.headStart) };
+}
+
 /** A hero's Ember: what each rebirth gave, and Kindling from each Depth (kept in the rebirth record). */
 export function emberOf(rb) {
   if (!rb) return 0;

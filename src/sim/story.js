@@ -462,6 +462,13 @@ export const QUESTS = {
     done: 'You told it you would carry it. Ending. So the Cinder never has to break out of the mountain again.\n\nThe fever is over, then. Truly over.\n\nYour name. I have known it the whole time. I am going to tell you now, and it is going to hold still.',
     reward: { exp: 0, gold: 15000, item: 6, keys: 8, tickets: 8, glow: 'primordial' },
   },
+  // (0.63) After Enough: Mastery. The Choir sings every life the wish kept of you; learn from the others.
+  lives: {
+    giver: 'wren', level: 100, act3: true, after: 'deep6q', name: 'The Other Lives', goal: { reach: 'deep9' },
+    offer: "There is something I have not told you, because I did not understand it until you came back from the bottom.\n\nThe Choir sings every voice the star took. Every one. Yours too: all your yous, it said to you. I thought it meant the lives before this one. It does not. It means every shape the wish kept of you. The one who held a sword. The one who held a bow. The one in the shadows, and the one who called the fire down.\n\nGo back to the Glass Choir. Do not fight. Listen.",
+    done: "So you heard them. Four of you, and each one learned something the others never had to.\n\nThis is what it means, as far as I can follow it: every one of the old powers you face as one of yourselves, all of you remember. Face the Cinder with a bow and the swordsman in you knows it too.\n\nOne thing, and listen, because it matters. It only counts if you stand there with the Ember yourself, or if nobody beside you has it either. Being carried down by someone stronger teaches you nothing, and the Choir will not sing it. Do not waste your nights on that.\n\nThere are others on the mountain now. The ones whose wishes the star granted completely. They are not husks. They are something more. To stand in front of them you will need every one of you.",
+    reward: { exp: 0, gold: 20000, keys: 4, tickets: 6 },
+  },
   // (0.57.6) A first look at the Deep, in the first life: you cannot touch what lives there, and learn why.
   breath: {
     giver: 'odile', level: 100, after: 'starwell', name: 'The Breath Below', goal: { reach: 'deep6' },

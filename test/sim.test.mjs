@@ -4082,4 +4082,31 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check("A Warden key opens a Warden's Cache out in the world (Bram's forge)", w.player.keys === 1 && w.player.bag.length === 1 && w.player.bag[0].rarity >= 3);
   }
 }
+
+// --- 0.63: Mastery, read from every class on the account ---------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { masteryFor, primordialsOf, MASTERY: MS, DEEP: DP } = await import('../src/sim/endgame.js');
+  const { QUESTS: Q } = await import('../src/sim/story.js');
+  const lives = { archer: { prim: [6, 7, 8, 9, 10], ember: 120, open: true }, rogue: { prim: [6], ember: 40 }, mage: { prim: [99, 7], ember: 9999 } };
+  const rb = { act3: { deep2: true, deep3: true } };
+  const M = masteryFor(lives, 'warrior', rb);
+  check('Mastery: every Primordial on every class counts (warrior 2 + archer 5 + rogue 1 + mage 1)', M.points === 9 && M.by.warrior.join() === '6,7' && M.by.mage.join() === '7', M.points);
+  check('...a class with its Quiet beaten is Mastered', M.mastered.join() === 'archer');
+  check('...Animus 3% a point, up to 60%', Math.abs(M.animus - 0.27) < 1e-9 && masteryFor({ a: 0 }, 'warrior', { act3: {} }).animus === 0);
+  check('...an alt starts with half the best Ember among the other classes', M.headStart === Math.floor(9999 * MS.headStart));
+  check('...and it is open once any class has heard The Other Lives', M.open && !masteryFor({ rogue: { prim: [6] } }, 'warrior', rb).open);
+  check('primordialsOf reads the rebirth record', primordialsOf({ act3: { deep6q: true, deep2: true, lives: true } }).join() === '6,10');
+  check('The Other Lives follows Enough, from Wren', Q.lives && Q.lives.after === 'deep6q' && Q.lives.giver === 'wren' && Q.lives.act3);
+  // on a hero: the head start counts toward the Deep, and Animus is a stat
+  const save = Object.assign(geared('mage', 100, 4), { talents: {}, rebirth: { n: 1, ember: 10 }, acctLives: { warrior: { prim: [6, 7], ember: 60 } } });
+  const w = new World({ seed: 41, mode: 'explore', cls: 'mage', save });
+  check('A hero gets the head start (10 of its own + 30) and Animus from the others', w.ember() === 40 && Math.abs(w.player.animus - 0.06) < 1e-9, `${w.ember()} ${w.player.animus}`);
+  // warned early: coming down beside someone who has the Ember
+  w.addHero(2, { save: Object.assign(geared('warrior', 100, 4), { rebirth: { n: 3, ember: 999 } }), cls: 'warrior', name: 'Strong' });
+  w.events.length = 0;
+  w.loadMap('deep7', 'town');
+  const warn = w.events.find((e) => e.type === 'carryWarn');
+  check('Carried down into a Depth: warned on arrival, before any fight', warn && warn.need === DP.depths[7].ember && warn.by === 'Strong', warn && JSON.stringify(warn));
+}
 process.exit(failed ? 1 : 0);

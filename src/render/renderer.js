@@ -2267,6 +2267,24 @@ export class Renderer {
     }
     const v = this.aimView;
     v.group.visible = true;
+    // (0.62) the whole line turns red the moment an enemy is on it: locked on, no need to check the minimap
+    const locked = aim.hits.length > 0;
+    if (v.locked !== locked) {
+      v.locked = locked;
+      const set = (m, gold, red) => m.material.color.setHex(locked ? red : gold);
+      set(v.band, 0xffc860, 0xff3a3a);
+      set(v.edgeL, 0xffc860, 0xff5050);
+      set(v.edgeR, 0xffc860, 0xff5050);
+      set(v.core, 0xfff2c8, 0xffb0a0);
+      set(v.sight, 0xffe2a0, 0xff7060);
+      set(v.sightDot, 0xffd27a, 0xff4a3a);
+      for (const sp of v.sparks) set(sp, 0xfff6dc, 0xffd0c0);
+      v.band.material.opacity = locked ? 0.22 : 0.14;
+      v.marks.forEach((mk, i) => {
+        mk.ring.material.color.setHex(i === 0 ? 0xff3a3a : 0xff8070);
+        mk.disc.material.color.setHex(0xff3a3a);
+      });
+    }
     const hx = heroPos ? heroPos.x : aim.x, hz = heroPos ? heroPos.z : aim.z;
     const w = aim.width, R = aim.range;
     v.line.position.set(hx, 0, hz);

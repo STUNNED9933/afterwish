@@ -163,6 +163,7 @@ setInterval(() => {
 
 // Stopping (an update): everyone gets their latest save first.
 const stop = () => {
+  world.payRings(); // (0.62) a Ring run in progress comes home before the saves are written
   for (const pl of world.players.values()) world.sendSave(pl, true);
   if (accounts) accounts.flush(); // (0.57) every online character written before stopping
   // 1012 = "service restart": the game shows a pop-up saying it is an update and the hero is saved (0.56.4)

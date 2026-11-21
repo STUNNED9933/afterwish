@@ -24,7 +24,7 @@ import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES } from './sim/items.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -197,6 +197,7 @@ function start(hot = {}) {
   let last = performance.now();
   let defeatTimer = null;
   let offerAt = 0; // when to show a waiting augment offer
+  let autoWaveAt = 0; // (0.62) when to start the next Ring wave by itself (0: not due)
   const hints = {};
 
   // ---------------------------------------------------------------- saving
@@ -721,6 +722,15 @@ function start(hot = {}) {
     const lead = !(net && net.role === 'client') || !!(net && net.server);
     if (lead && world.map && world.map.safe && p && p.worldTier) return Math.max(1, Math.min(MAX_TIER, p.worldTier));
     return world.worldTier();
+  }
+  /** (0.62) The Ring's next-wave key: X unless chosen otherwise ('enter' means Enter only). */
+  function nextWaveKey() {
+    const k = settings.nextWaveKey === undefined ? 'x' : settings.nextWaveKey;
+    return k === 'enter' ? null : k;
+  }
+  function nextWaveLabel() {
+    const k = nextWaveKey();
+    return k ? `${k.toUpperCase()} or Enter` : 'Enter';
   }
   /** The Waygate's endgame part (0.26): the world tier and Echo Rifts. */
   function renderEndgame(root) {
@@ -1377,8 +1387,41 @@ function start(hot = {}) {
     }
     const ch = world.player.choices && world.player.choices.scarf;
     if (talkTo === 'pip' && ch && !shown && !after) { $('talk-line').textContent = npc[ch]; return; }
+    if (talkTo === 'bram' && world.mode === 'explore') renderVault(list); // (0.62) the Warden's caches, opened at the forge
     $('talk-line').textContent = talkTo === 'tomas' ? (world.player.tomasMet ? npc.idle : npc.greet) : talkNote || (after && !shown ? npc.after : shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
     if (talkTo === 'tomas' && !world.player.tomasMet) applyNow({ type: 'metTomas' });
+  }
+
+  /**
+   * (0.62) Bram's vault: Warden keys (and gold) open caches right here in Haven, so they are worth having
+   * on the server world too. The same caches, odds and prices as the cache vault on the Ring's hub.
+   */
+  function renderVault(list) {
+    const p = world.player;
+    const box = document.createElement('div');
+    box.className = 'quest vault';
+    const bagFull = p.bag.length >= world.bagSize();
+    box.innerHTML = `<h4>The Warden's caches<small>${p.keys || 0} Warden key${p.keys === 1 ? '' : 's'}</small></h4><p>"Bring me what you take off the wardens up there and I'll crack it open. Gold works on the plainer ones."</p>`;
+    for (const tier in CACHES) {
+      const def = CACHES[tier];
+      const cost = world.cacheCost(tier);
+      const total = def.odds.reduce((a, b) => a + b, 0);
+      const odds = def.odds.map((o, i) => (o > 0 ? `<span style="color:${RARITIES[i].color}">${RARITIES[i].name} ${+((o / total) * 100).toFixed(1)}%</span>` : '')).filter(Boolean).join(' · ');
+      const row = document.createElement('div');
+      row.className = 'vault-row';
+      const price = [cost.keys ? `${cost.keys} Warden key${cost.keys > 1 ? 's' : ''}` : '', cost.gold ? `${cost.gold.toLocaleString()} gold` : ''].filter(Boolean).join(' + ');
+      row.innerHTML = `<div><b>${esc(def.name)}</b><div class="odds">${odds}</div></div>`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = tier === 'warden' ? 'primary' : 'ghost';
+      b.textContent = `Open · ${price}`;
+      b.disabled = bagFull || p.gold < cost.gold || (p.keys || 0) < cost.keys;
+      if (bagFull) b.title = 'Your bag is full';
+      b.addEventListener('click', () => applyNow({ type: 'openCache', tier }));
+      row.appendChild(b);
+      box.appendChild(row);
+    }
+    list.appendChild(box);
   }
 
   function renderRead() {
@@ -2034,6 +2077,8 @@ function start(hot = {}) {
       }
     } else if (msg.t === 'chat') {
       chatLine(msg.from ? `${msg.from}: ${msg.text}` : msg.text, !msg.from);
+    } else if (msg.t === 'inspect') {
+      showInspect(msg); // (0.62)
     } else if (msg.t === 'roster') {
       net.roster = msg;
       updateRoomBadge();
@@ -2689,8 +2734,10 @@ function start(hot = {}) {
       const inParty = party.has(pl.pid);
       let btn = '';
       if (!mine && r.invites.includes(pl.pid)) btn = `<button type="button" data-act="partyAccept" data-pid="${pl.pid}" class="primary">Accept invite</button><button type="button" data-act="partyDecline" data-pid="${pl.pid}" class="ghost">No</button>`;
-      else if (!mine && inParty) btn = `<button type="button" data-act="joinMember" data-pid="${pl.pid}" class="ghost" title="Travel to their map, into their copy of it (a map you have been to)">Go to them</button>`;
-      else if (!mine && !(r.party && r.party.members.length >= 4)) btn = `<button type="button" data-act="partyInvite" data-pid="${pl.pid}" class="ghost">Invite</button>`;
+      if (!mine) btn = `<button type="button" data-act="inspect" data-pid="${pl.pid}" class="ghost" title="Their gear, combat power and talents">Inspect</button>`; // (0.62)
+      if (!mine && r.invites.includes(pl.pid)) btn += `<button type="button" data-act="partyAccept" data-pid="${pl.pid}" class="primary">Accept invite</button><button type="button" data-act="partyDecline" data-pid="${pl.pid}" class="ghost">No</button>`;
+      else if (!mine && inParty) btn += `<button type="button" data-act="joinMember" data-pid="${pl.pid}" class="ghost" title="Travel to their map, into their copy of it (a map you have been to)">Go to them</button>`;
+      else if (!mine && !(r.party && r.party.members.length >= 4)) btn += `<button type="button" data-act="partyInvite" data-pid="${pl.pid}" class="ghost">Invite</button>`;
       return `<tr class="${mine ? 'me' : ''}${inParty ? ' party' : ''}"><td>${esc(pl.name)}${pl.title ? ` <span class="title-tag">${esc(pl.title)}</span>` : ''}${mine ? ' (you)' : ''}${inParty ? ' <span class="tag">party</span>' : ''}</td><td>${pl.cls ? esc(CLASSES[pl.cls] ? CLASSES[pl.cls].name : pl.cls) : ''} ${pl.level || ''}</td><td>${esc(where(pl))}</td><td>${btn}</td></tr>`;
     });
     playersPanel.innerHTML = `<h3>${esc(r.world)} · ${r.players.length} online</h3><table>${rows.join('')}</table>` +
@@ -2703,6 +2750,57 @@ function start(hot = {}) {
     if (b.dataset.act === 'close') return closePlayers();
     net.room.send({ t: 'cmd', cmd: { type: b.dataset.act, pid: Number(b.dataset.pid) || 0 } });
   });
+  /** (0.62) Another player's gear, combat power and talents, from the server. */
+  function showInspect(msg) {
+    let box = $('inspect-panel');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'inspect-panel';
+      box.className = 'hidden';
+      document.body.appendChild(box);
+      box.addEventListener('click', (e) => {
+        if (e.target.closest('[data-act="close"]')) {
+          box.classList.add('hidden');
+          tooltip.hide();
+        }
+      });
+    }
+    if (msg.gone || !msg.who) {
+      box.innerHTML = '<p>They are not here any more.</p><button type="button" data-act="close" class="ghost">Close</button>';
+      box.classList.remove('hidden');
+      return;
+    }
+    const w = msg.who;
+    const spec = w.spec && SPECS[w.spec];
+    const tree = spec ? spec.talents : [];
+    const picked = tree.filter((t) => w.talents && w.talents[t.id] > 0);
+    const rows = { minor: 'Minor', major: 'Major', capstone: 'Capstone' };
+    const talents = picked.length
+      ? Object.keys(rows).map((row) => {
+          const ts = picked.filter((t) => t.row === row);
+          return ts.length ? `<div class="insp-row"><span class="insp-rowname">${rows[row]}</span>${ts.map((t) => `<span class="insp-tal" title="${esc(typeof t.desc === 'function' ? t.desc(w.talents[t.id]) : t.desc)}">${esc(t.name)} <b>${w.talents[t.id]}/${t.max}</b></span>`).join('')}</div>` : '';
+        }).join('')
+      : '<p class="setting-desc">No talents taken yet.</p>';
+    box.innerHTML = `<div class="insp-head"><div><h3>${esc(w.name)}${w.title ? ` <span class="title-tag">${esc(w.title)}</span>` : ''}</h3>
+      <div class="setting-desc">${esc(CLASSES[w.cls] ? CLASSES[w.cls].name : w.cls)}${spec ? ` · ${esc(spec.name)}` : ''} · level ${w.level}${w.wish ? ` · Wishborne ${w.wish}` : ''}${w.rebirths ? ` · reborn ${w.rebirths}×` : ''}</div></div>
+      <div class="insp-cp"><b>${Math.round(w.cp).toLocaleString()}</b><span>Combat power</span><small>Might ${Math.round(w.might).toLocaleString()} · Resolve ${Math.round(w.resolve).toLocaleString()}</small></div></div>
+      <h4>Gear</h4><div class="insp-gear"></div><h4>Talents</h4>${talents}
+      <button type="button" data-act="close" class="ghost">Close</button>`;
+    const gear = box.querySelector('.insp-gear');
+    for (const slot of [...SLOTS, 'keepsake']) {
+      const it = slot === 'keepsake' ? w.keepsake : w.equipped[slot];
+      if (slot === 'keepsake' && !it) continue;
+      const cell = itemCell(tooltip, it || null, {});
+      const wrap = document.createElement('div');
+      wrap.className = 'insp-slot';
+      wrap.appendChild(cell);
+      const lab = document.createElement('span');
+      lab.textContent = slot === 'keepsake' ? 'Keepsake' : SLOT_NAMES[slot];
+      wrap.appendChild(lab);
+      gear.appendChild(wrap);
+    }
+    box.classList.remove('hidden');
+  }
   function closePlayers() {
     playersOpen = false;
     playersPanel.classList.add('hidden');
@@ -2859,6 +2957,7 @@ function start(hot = {}) {
     },
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     heldAim: () => settings.heldAim !== false, // (0.61.2) Deadeye aims while R is held
+    nextWaveKey: () => nextWaveKey(), // (0.62) the Ring's next-wave key, chosen in the menu
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
       if (key === 'h' && mode === 'play' && world.ring && !$('ring-bank').classList.contains('hidden')) return ringLeave() || true; // (0.59)
@@ -3254,6 +3353,20 @@ function start(hot = {}) {
     });
   }
   refreshAm();
+  // (0.62) the Ring's next-wave key, and starting the next wave by itself
+  const nwk = $('next-wave-key');
+  nwk.value = nextWaveKey() || 'enter';
+  nwk.addEventListener('change', (e) => {
+    settings.nextWaveKey = e.target.value;
+    storeSettings(settings);
+    hud.nextWaveLabel = nextWaveLabel();
+  });
+  $('auto-wave').checked = !!settings.autoWave;
+  $('auto-wave').addEventListener('change', (e) => {
+    settings.autoWave = e.target.checked;
+    storeSettings(settings);
+  });
+  hud.nextWaveLabel = nextWaveLabel();
   $('held-aim').checked = settings.heldAim !== false; // (0.61.2)
   $('held-aim').addEventListener('change', (e) => {
     settings.heldAim = e.target.checked;
@@ -3367,6 +3480,7 @@ function start(hot = {}) {
         break;
       case 'waveClear': {
         tune();
+        if (settings.autoWave && world.mode === 'arena') autoWaveAt = performance.now() + 900; // (0.62) push on by itself
         if (world.trial) {
           hud.banner(`Floor ${ev.n} cleared`, watching ? `${watching.name}'s run` : `The Weekly Echo · ${trialClock(world.ticks)}`);
           sfx.clear();
@@ -3881,7 +3995,10 @@ function start(hot = {}) {
         hud.banner(`+${ev.amount} Ember`, `What you have let go of protects you in the Deep. Your Ember is ${ev.ember}, and it stays with you through every rebirth.`);
         break;
       case 'emberShort':
-        if (!ev.self || ev.self === world.player) hud.banner('It does not count', `${ev.name} needs you to stand there with Ember ${ev.need} of your own (you have ${ev.have}). Being carried down is not the same.`);
+        if (!ev.self || ev.self === world.player) hud.banner('It does not count', `Someone here met the Ember ${ev.need} that ${ev.name} asks (you have ${ev.have}). Being carried down is not the same: beat it on your own terms to count it.`);
+        break;
+      case 'emberDefied': // (0.62) under-Embered, and it still counts
+        if (!ev.self || ev.self === world.player) hud.banner('Beaten under-Embered', `${ev.name} counts: Ember ${ev.have} of the ${ev.need} it asks. The Deep will remember that.`);
         break;
       case 'sealed':
         hud.banner(`${ev.name} is sealed`, `${ev.by} took it for ${ev.time} seconds. Use something else.`);
@@ -4098,7 +4215,7 @@ function start(hot = {}) {
         sfx.upgrade();
         const tier = RARITIES[ev.tier];
         hud.feedText(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} (${tier.name} roll)`);
-        gearToast(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} <span style="color:${tier.color}">(${tier.name} roll)</span>`);
+        gearToast(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} <span style="color:${tier.color}">(${tier.name} roll${ev.pity ? ', guaranteed' : ''})</span>`);
         refreshMenus();
         break;
       }
@@ -4107,7 +4224,12 @@ function start(hot = {}) {
         break;
       case 'cacheOpened':
         sfx.pickup(ev.item.rarity);
-        town.showCacheResult(ev.item);
+        if (mode === 'town') town.showCacheResult(ev.item);
+        else {
+          // (0.62) opened at Bram's forge: say what came out, and keep the vault open
+          gearToast(`${CACHES[ev.tier].name}: <span style="color:${RARITIES[ev.item.rarity].color}">${itemName(ev.item)}</span>`, RARITIES[ev.item.rarity].color);
+          if (mode === 'talk') renderTalk();
+        }
         break;
       case 'noUpgrades':
         sfx.denied();
@@ -4371,6 +4493,15 @@ function start(hot = {}) {
     }
     renderer.aim = aim;
     hud.aim = aim;
+    // (0.62) Auto-start: once the floor is cleared (and any augment picked), start the next wave. Never past a
+    // boss's spoils: taking them home or pushing on stays your call.
+    if (autoWaveAt && now >= autoWaveAt && mode === 'play' && world.mode === 'arena' && world.wave) {
+      if (world.wave.phase !== 'intermission') autoWaveAt = 0;
+      else if (!world.offer && !(world.ring && world.ring.hold)) {
+        autoWaveAt = 0;
+        applyNow({ type: 'nextWave' });
+      }
+    }
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
     if (now >= cpCheckAt && world && !world.trial && world.player && world.player.stats) {
@@ -4394,6 +4525,7 @@ function start(hot = {}) {
     },
     renderer,
     act: (c) => applyNow(c), // (0.61.1) a command as the game's own buttons send it (tests, the console)
+    talk: (id) => { talkTo = id; talkNote = ''; setMode('talk'); }, // (0.62) open someone's panel (tests)
     startRun,
     enterTown,
     startExplore,

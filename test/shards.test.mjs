@@ -288,6 +288,26 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
     check('Ring online: disconnect mid-run and everything gathered is still yours', saved && saved.dust === d0 + 9, saved && saved.dust);
   }
 }
+// (0.62) A server update in the middle of a Ring run: the spoils are paid before the saves go out
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 19 });
+  const k = { name: 'stopper' }; box.set(k, []);
+  sv.message(k, hello('Stopper', 'warrior', { tickets: 12 }));
+  const pid = box.get(k).find((m) => m.t === 'welcome').pid;
+  sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'gold' } } });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const w = sv.players.get(pid).copy.world;
+  w.ring.pot = 777;
+  const g0 = w.as(w.heroByPid(pid), (p) => p.gold);
+  // what server.mjs's stop() does: pay the Rings, then send every save
+  const paid = sv.payRings();
+  box.get(k).length = 0;
+  for (const pl of sv.players.values()) sv.sendSave(pl, true);
+  const save = box.get(k).find((m) => m.t === 'save');
+  check('Server update mid-run: the Ring run is paid before the save goes out', paid === 1 && save && save.save.gold === g0 + 777, save && save.save.gold);
+  check('...and only once, when the connection then closes', (sv.leave(k, true), w.as(w.heroByPid(pid) || w.heroes[0] || { player: {} }, () => true)) && sv.payRings() === 0);
+}
 
 // (0.60) The Weekly Echo's rewards for an online character: asked of the boards, once a week per account
 {
@@ -366,6 +386,25 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const serverOnly = new Set(['setDepth', 'rebirth', 'unwish']); // a hero's own, on the server world (SERVER_CMDS)
   const missing = [...sent].filter((t) => !FRIEND_CMDS.has(t) && !offlineOnly.has(t) && !serverOnly.has(t));
   check('every action the game sends is accepted online', missing.length === 0, missing.join(', '));
+}
+
+
+// (0.62) Inspect another player: gear, combat power, subclass and talents (and nothing private)
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 23 });
+  const mk = (name, save) => { const k = { name }; box.set(k, []); sv.message(k, hello(name, 'warrior', { save })); return k; };
+  const pidOf = (k) => box.get(k).find((m) => m.t === 'welcome').pid;
+  const strong = Object.assign(geared('warrior', 100, 5), { spec: 'berserker', talents: { bz_might: 3 } });
+  const a = mk('Looker', geared('warrior', 30, 1)), b = mk('Shown', strong);
+  sv.message(a, { t: 'cmd', cmd: { type: 'inspect', pid: pidOf(b) } });
+  const got = box.get(a).find((m) => m.t === 'inspect');
+  const who = got && got.who;
+  check('Inspect: their class, subclass, level, combat power and talents', who && who.name === 'Shown' && who.spec === 'berserker' && who.level === 100 && who.cp > 0 && who.talents.bz_might === 3, who && JSON.stringify({ spec: who.spec, cp: who.cp }));
+  check('...every piece they wear', who && who.equipped.weapon && who.equipped.chest && who.equipped.weapon.name);
+  check('...and nothing private (bag, gold, quests)', who && !('bag' in who) && !('gold' in who) && !('quests' in who));
+  sv.message(a, { t: 'cmd', cmd: { type: 'inspect', pid: 9999 } });
+  check('...and someone who has gone says so', box.get(a).some((m) => m.t === 'inspect' && m.gone));
 }
 
 console.log(`${pass} passed, ${failed} failed`);

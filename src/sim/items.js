@@ -456,6 +456,9 @@ export function statRange(item, key) {
 }
 /** How good a line's roll is, 0 (the lowest it can be) to 1 (the highest). */
 export function rollQuality(item, key) {
+  // (0.62) a piece made again for another level keeps the quality it was rolled with (item.q), as long as the
+  // line still holds the number that quality was made into (item.qv): a reroll since then counts as it is
+  if (item.q && item.qv && item.q[key] != null && item.qv[key] === item.stats[key]) return item.q[key];
   const { lo, hi } = statRange(item, key);
   if (hi <= lo) return 1;
   return Math.max(0, Math.min(1, (item.stats[key] - lo) / (hi - lo)));
@@ -467,12 +470,17 @@ export function rollQuality(item, key) {
  */
 export function relevelItem(item, ilvl) {
   if (!item || item.ilvl === ilvl) return item;
+  // (0.62) The quality is worked out once and kept (item.q), not read back from the rounded numbers each
+  // time: at low levels the ranges are a few points wide, and rounding used to wear Immortal-tier rolls down.
   const q = {};
   for (const k in item.stats) q[k] = rollQuality(item, k);
   item.ilvl = ilvl;
+  item.q = q;
+  item.qv = {};
   for (const k in item.stats) {
     const { lo, hi } = statRange(item, k);
     item.stats[k] = Math.max(1, Math.round(lo + q[k] * (hi - lo)));
+    item.qv[k] = item.stats[k];
   }
   return item;
 }
@@ -486,6 +494,17 @@ export function rollTier(q) {
 /** A fresh roll for one line of an item (main or bonus), as rerolling and reforging give. */
 export function rollLine(key, item, rng, main = isMainStat(item, key)) {
   return statValue(key, item.ilvl, RARITIES[item.rarity].mult * (main ? 1 : 0.5), rng);
+}
+/**
+ * (0.62) Reroll pity: an item rerolled this many times without landing an Immortal-tier line (the best 2% of
+ * its range) gets one on the next reroll. The count is the item's own and starts over whenever one lands.
+ */
+export const REROLL_PITY = 30;
+/** A roll for one line in its Immortal tier (the top of ROLL_TIER_AT), for the pity. */
+export function immortalLine(key, item, rng) {
+  const { lo, hi } = statRange(item, key);
+  const min = Math.min(hi, Math.ceil(lo + ROLL_TIER_AT[ROLL_TIER_AT.length - 1] * (hi - lo)));
+  return min + Math.floor(rng() * (hi - min + 1));
 }
 /** (0.29 name) A fresh bonus-stat roll. */
 export function rollBonusStat(key, item, rng) {

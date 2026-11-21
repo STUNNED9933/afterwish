@@ -3860,13 +3860,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   rp.level = 40; r.recalcStats();
   r.command({ type: 'recall', slot: 'weapon' }); r.step(CONFIG.TICK);
   const got = rp.bag.find((it) => it.rarity === 6 && it.slot === 'weapon');
-  check('echoes: from 40 it can: made again at your level, +levels and stars to earn back, for Essence', got && got.ilvl === 40 && got.plus === 0 && !got.stars && got.effect === save.equipped.weapon.effect && rp.rebirth.essence === ess0 - ECHOES.recall[6]);
+  check('echoes: from 40 it can: made again at your level, in its prime (+levels and stars kept, 0.62), for Essence', got && got.ilvl === 40 && got.plus === 10 && got.stars === 5 && got.recalled && got.effect === save.equipped.weapon.effect && rp.rebirth.essence === ess0 - ECHOES.recall[6]);
   r.command({ type: 'recall', slot: 'weapon' }); r.step(CONFIG.TICK);
   check('echoes: once a life', rp.bag.filter((it) => it.rarity === 6 && it.slot === 'weapon').length === 1);
   r.command({ type: 'equip', index: rp.bag.indexOf(got) }); r.step(CONFIG.TICK);
   const e1 = rp.rebirth.essence;
   for (let i = 0; i < 20; i++) { r.command({ type: 'echoUp', slot: 'weapon' }); r.step(CONFIG.TICK); }
-  check('echoes: Essence brings it back up to the +level and stars you had, and no further', rp.equipped.weapon.plus === 10 && rp.equipped.weapon.stars === 5 && e1 - rp.rebirth.essence === 10 * ECHOES.plusCost + 5 * ECHOES.starCost);
+  check('echoes: already in its prime, so Essence has nothing more to buy back (0.62)', rp.equipped.weapon.plus === 10 && rp.equipped.weapon.stars === 5 && e1 === rp.rebirth.essence);
   const e2 = rp.rebirth.essence, g2 = rp.gold, key = Object.keys(rp.equipped.weapon.stats)[0];
   r.command({ type: 'enchant', slot: 'weapon', key, essence: true }); r.step(CONFIG.TICK);
   check('echoes: a reroll for 1 Essence instead of gold', rp.rebirth.essence === e2 - 1 && rp.gold === g2);
@@ -3932,7 +3932,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   p.rebirth.ember = 20;
   c2 = w.spawnEnemy('cinder', { x: p.x + 3, z: p.z, level: 100 });
   w.hitEnemy(c2, 1e15); w.step(CONFIG.TICK);
-  check("Act III: the Cinder counts for 'What Ends' only with Depth VI's Ember of your own", p.quests.deep2 && shortN === 0 && w.questState('deep2') === 'ready', `${shortN} then ${w.questState('deep2')}`);
+  check("Act III (0.62): the Cinder counts for 'What Ends' even under-Embered, when you face it yourself", p.quests.deep2 && shortN === 1 && w.questState('deep2') === 'ready', `${shortN} then ${w.questState('deep2')}`);
   // through rebirth
   const { rebirthSave } = await import('../src/sim/rebirth.js');
   const { starterWeapon } = await import('../src/sim/items.js');
@@ -3991,5 +3991,91 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...and what it took off goes to the bag', p.bag.includes(oldHelm) && p.bag.includes(oldChest) && p.bag.includes(bow) && p.bag.length === 5);
   w.events.length = 0; w.command({ type: 'autoEquip' }); w.step(CONFIG.TICK);
   check('...a second press finds nothing more', w.events.some((e) => e.type === 'noUpgrades'));
+}
+
+// --- 0.62: QoL from testers ------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const I = await import('../src/sim/items.js');
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const { DEEP: DP } = await import('../src/sim/endgame.js');
+  const { makeRng: mk } = await import('../src/sim/rng.js');
+  const top = I.ROLL_TIER_AT.length;
+  // reroll pity: at most 30 rerolls on one item without an Immortal-tier line
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { talents: {} });
+    const w = new World({ seed: 31, cls: 'warrior', save });
+    const p = w.player; p.gold = 1e12; p.scrap = 1e12;
+    const item = p.equipped.helm;
+    const key = Object.keys(item.stats)[0];
+    let longest = 0, run = 0, pityHits = 0;
+    for (let i = 0; i < 400; i++) {
+      w.events.length = 0;
+      w.rerollLine('helm', key);
+      const ev = w.events.find((e) => e.type === 'rerolled');
+      if (ev.pity) pityHits++;
+      if (I.rollTier(I.rollQuality(item, key)) >= top) { longest = Math.max(longest, run + 1); run = 0; } else run++;
+    }
+    check('Reroll pity: never more than 30 rerolls without an Immortal-tier line', longest <= I.REROLL_PITY && run < I.REROLL_PITY, `longest ${longest}`);
+    check('...and the guaranteed one is marked, and really Immortal tier', pityHits > 0 && I.immortalLine(key, item, mk(2)) >= I.statRange(item, key).lo);
+  }
+  // under-Embered Primordial kills count, unless someone in the fight meets the Ember
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { talents: {}, rebirth: { n: 1, ember: 0 } });
+    const w = new World({ seed: 32, mode: 'explore', cls: 'warrior', save });
+    const p = w.player;
+    w.loadMap('deep6', 'town');
+    p.quests.deep2 = { s: 'active', n: 0 };
+    w.events.length = 0;
+    w.questEvent('kill', { type: 'cinder', def: { boss: true } });
+    check('Under-Embered: beating a Primordial still counts', p.quests.deep2.n === 1 && w.events.some((e) => e.type === 'emberDefied'));
+    p.quests.deep2 = { s: 'active', n: 0 };
+    w.addHero(2, { save: Object.assign(geared('warrior', 100, 4), { rebirth: { n: 3, ember: 999 } }), cls: 'warrior', name: 'Carrier' });
+    w.events.length = 0;
+    w.questEvent('kill', { type: 'cinder', def: { boss: true } });
+    check('...but not when carried by someone who meets the Ember', p.quests.deep2.n === 0 && w.events.some((e) => e.type === 'emberShort'));
+  }
+  // a piece made again for another level keeps its rolls, however low it goes
+  {
+    const item = I.rollItem(mk(5), 100, { slot: 'chest', minRarity: 5 });
+    for (const k in item.stats) item.stats[k] = I.statRange(item, k).hi; // every line at its best
+    const tiers0 = Object.keys(item.stats).map((k) => I.rollTier(I.rollQuality(item, k)));
+    I.relevelItem(item, 1); I.relevelItem(item, 7); I.relevelItem(item, 100);
+    const tiers1 = Object.keys(item.stats).map((k) => I.rollTier(I.rollQuality(item, k)));
+    check('Relevel: down to level 1 and back up, every Immortal-tier line stays Immortal', tiers1.every((t, i) => t === tiers0[i] && t >= top), tiers1.join(','));
+  }
+  // recalled gear: in its prime, following your level
+  {
+    const mem = I.rollItem(mk(6), 100, { slot: 'weapon', cls: 'warrior', minRarity: 5 });
+    for (const k in mem.stats) mem.stats[k] = I.statRange(mem, k).hi;
+    mem.plus = 8; mem.stars = 0;
+    const save = Object.assign(geared('warrior', 40, 2), { talents: {}, rebirth: { n: 2, essence: 1e6, memories: { weapon: mem } } });
+    const w = new World({ seed: 33, cls: 'warrior', save });
+    const p = w.player;
+    w.recallMemory('weapon');
+    const got = p.bag[p.bag.length - 1];
+    check('Recall: it comes back with its +levels and its Immortal-tier rolls', got && got.recalled && got.plus === 8 && got.ilvl === 40 && Object.keys(got.stats).every((k) => I.rollTier(I.rollQuality(got, k)) >= top), got && JSON.stringify({ plus: got.plus, ilvl: got.ilvl }));
+    p.level = 85; w.recalcStats();
+    check('...and follows your level from then on', got.ilvl === 85 && Object.keys(got.stats).every((k) => I.rollTier(I.rollQuality(got, k)) >= top));
+    // a piece recalled before 0.62: stuck at its level, worn rolls, +levels lost
+    const old = JSON.parse(JSON.stringify(mem)); delete old.recalled;
+    old.id = 'r2-weapon-40'; old.plus = 0; I.relevelItem(old, 1); I.relevelItem(old, 40); delete old.q; delete old.qv;
+    for (const k in old.stats) old.stats[k] = I.statRange(old, k).lo; // worn right down
+    const save2 = Object.assign(geared('warrior', 70, 2), { talents: {}, bag: [old], rebirth: { n: 2, essence: 0, memories: { weapon: mem } } });
+    const w2 = new World({ seed: 34, cls: 'warrior', save: save2 });
+    const fixed = w2.player.bag.find((it) => it.id === 'r2-weapon-40');
+    w2.recalcStats();
+    check('Recalled before 0.62: its prime back on load (rolls, +levels), and it follows your level', fixed && fixed.recalled && fixed.plus === 8 && fixed.ilvl === 70 && Object.keys(fixed.stats).every((k) => I.rollTier(I.rollQuality(fixed, k)) >= top), fixed && JSON.stringify({ plus: fixed.plus, ilvl: fixed.ilvl }));
+  }
+  // Warden keys: kept through rebirth, and opened in Haven
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { talents: {}, keys: 6, cls: 'warrior' });
+    const out = rebirthSave(save, I.starterWeapon, null, I.relevelItem);
+    check('Rebirth keeps your Warden keys', out.keys === 6);
+    const w = new World({ seed: 35, cls: 'warrior', save: Object.assign(geared('warrior', 50, 2), { keys: 2 }) });
+    w.player.bag = [];
+    w.command({ type: 'openCache', tier: 'warden' }); w.step(CONFIG.TICK);
+    check("A Warden key opens a Warden's Cache out in the world (Bram's forge)", w.player.keys === 1 && w.player.bag.length === 1 && w.player.bag[0].rarity >= 3);
+  }
 }
 process.exit(failed ? 1 : 0);

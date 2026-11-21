@@ -1,7 +1,7 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
 import { ECHOES } from '../sim/rebirth.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
@@ -108,6 +108,20 @@ function miscTooltip(id, n) {
   const use = id === 'fragment' ? `${m.desc} ${FRAGMENTS.craft} make one.` : m.desc;
   return `<div class="tt-name">${m.name}</div><div class="tt-meta">Keepsake · ${n} in the pouch</div><div class="tt-desc">${use}</div>` +
     `<div class="tt-from"><b>Where to find more</b><ul>${miscSources(id).map((s) => `<li>${s}</li>`).join('')}</ul></div>`;
+}
+
+/** (0.62) Ask before rerolling an Immortal-tier line (on unless turned off; kept in this browser). */
+function guardImmortal() {
+  try {
+    return localStorage.getItem('afterwish-guard-immortal') !== '0';
+  } catch {
+    return true;
+  }
+}
+function setGuardImmortal(on) {
+  try {
+    localStorage.setItem('afterwish-guard-immortal', on ? '1' : '0');
+  } catch {}
 }
 
 export function itemCell(tooltip, item, { button = false, compareTo = null, upgrade = false } = {}) {
@@ -400,10 +414,36 @@ export class Inventory {
     const open = enchantable(item);
     const choices = reforgeChoices(item);
     box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time (you have ${p.gold.toLocaleString()} and ${p.scrap.toLocaleString()}). The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust (you have ${p.dust || 0}); once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
+    // (0.62) the pity count, and a guard against rerolling an Immortal-tier line by accident
+    const guard = guardImmortal();
+    const left = REROLL_PITY - (item.pity || 0);
+    const pity = document.createElement('div');
+    pity.className = 'ench-pity';
+    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${left}</b> reroll${left === 1 ? '' : 's'} on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Ask before rerolling an Immortal-tier line</label>`;
+    pity.querySelector('input').addEventListener('change', (e) => {
+      setGuardImmortal(e.target.checked);
+      this.armed = null;
+      this.render(world);
+    });
+    box.appendChild(pity);
     const stats = itemStats(item);
     Object.keys(item.stats).forEach((k) => {
       const row = document.createElement('div');
       row.className = 'ench-row';
+      const isImm = rollTier(rollQuality(item, k)) >= ROLL_TIER_AT.length;
+      const armKey = `${slot}:${k}`;
+      // A guarded Immortal-tier line takes two clicks: the first only asks
+      const reroll = (msg) => {
+        if (guard && isImm && this.armed !== armKey) {
+          this.armed = armKey;
+          clearTimeout(this.armTimer);
+          this.armTimer = setTimeout(() => { this.armed = null; this.render(world); }, 4000);
+          this.render(world);
+          return;
+        }
+        this.armed = null;
+        this.send(msg);
+      };
       const q = rollQuality(item, k);
       const t = RARITIES[rollTier(q)];
       const { lo, hi } = statRange(item, k);
@@ -413,10 +453,12 @@ export class Inventory {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'ghost tiny';
-      b.textContent = 'Reroll';
+      const armed = this.armed === armKey;
+      b.textContent = armed ? 'Immortal roll: reroll anyway?' : 'Reroll';
+      if (armed) b.classList.add('danger');
       b.disabled = !canRoll || q >= 1;
       b.title = q >= 1 ? 'Already the best roll this line can have' : `A fresh roll between ${lo} and ${hi}`;
-      b.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k }));
+      b.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k }));
       btns.appendChild(b);
       if (p.rebirth && p.rebirth.essence >= ECHOES.reroll && q < 1) {
         // Echoes (0.53): the same reroll for Echo Essence
@@ -425,7 +467,8 @@ export class Inventory {
         eb.className = 'ghost tiny echo-btn';
         eb.textContent = `${ECHOES.reroll} Essence`;
         eb.title = `Reroll for ${ECHOES.reroll} Echo Essence instead of gold and scrap (you have ${p.rebirth.essence})`;
-        eb.addEventListener('click', () => this.send({ type: 'enchant', slot, key: k, essence: true }));
+        if (armed) eb.classList.add('danger');
+        eb.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k, essence: true }));
         btns.appendChild(eb);
       }
       if (!isMainStat(item, k) && open.includes(k) && choices.length) {

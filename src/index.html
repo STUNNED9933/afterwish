@@ -310,7 +310,7 @@
       <dt><kbd>A</kbd> or <kbd>Shift</kbd> + <kbd>Click</kbd></dt><dd>Attack-move: attack the nearest enemy (to you or your cursor: set it in the pause menu), or walk there and attack the first one you meet.</dd>
       <dt><kbd>Space</kbd></dt><dd>Parry. Press it when an enemy flashes white.</dd>
       <dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd></dt><dd>Abilities, aimed at your cursor.</dd>
-      <dt><kbd>Ctrl</kbd> or <kbd>Shift</kbd> + <kbd>Q</kbd></dt><dd>Spend a skill point to rank that ability up.</dd>
+      <dt><kbd>Alt</kbd>, <kbd>Ctrl</kbd> or <kbd>Shift</kbd> + <kbd>Q</kbd></dt><dd>Spend a skill point to rank that ability up.</dd>
       <dt><kbd>1</kbd></dt><dd>Drink a health potion.</dd>
       <dt><kbd>Tab</kbd></dt><dd>Gear and stats.</dd>
       <dt><kbd>Esc</kbd></dt><dd>Pause, settings, save and quit.</dd>
@@ -353,6 +353,16 @@
       <p class="setting-desc">If none is in reach, you walk to the spot and attack the first enemy you meet on the way.</p>
     </div>
     <div class="setting row">
+      <label class="setting-label" for="next-wave-key">Echo Ring: next wave key</label>
+      <select id="next-wave-key"><option value="x">X</option><option value="z">Z</option><option value="v">V</option><option value="n">N</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="enter">Enter only</option></select>
+      <span class="setting-desc">Starts the next wave at once (or pushes on after a boss). <kbd>Enter</kbd> always works too.</span>
+    </div>
+    <div class="setting row">
+      <label class="setting-label" for="auto-wave">Echo Ring: start the next wave by itself</label>
+      <input type="checkbox" id="auto-wave">
+      <span class="setting-desc">The moment a floor is cleared (and your augment is picked), the next one begins. After a boss it still waits for you to take your spoils home or push on.</span>
+    </div>
+    <div class="setting row">
       <label class="setting-label" for="held-aim">Aim Deadeye while <kbd>R</kbd> is held</label>
       <input type="checkbox" id="held-aim" checked>
       <span class="setting-desc">Hold <kbd>R</kbd> to see the shot on the ground and the minimap, then let go to loose it. Right-click or <kbd>Esc</kbd> puts it down. Off: it fires the moment you press.</span>
@@ -386,7 +396,7 @@
       <button type="button" id="btn-wipe" class="ghost danger">Delete character</button>
     </div>
     <p class="setting-desc" id="pause-run-note">Returning to town ends this run. You keep your level, gear, gold and scrap; augments are lost.</p>
-    <p class="setting-desc keys">Also: <kbd>G</kbd> talk or read &middot; <kbd>J</kbd> journal &middot; <kbd>T</kbd> talents &middot; <kbd>S</kbd> stop &middot; <kbd>Enter</kbd> start next wave now &middot; <kbd>M</kbd> mute &middot; mouse wheel to zoom &middot; <kbd>I</kbd> gear &middot; <kbd>P</kbd> pause</p>
+    <p class="setting-desc keys">Also: <kbd>G</kbd> talk or read &middot; <kbd>J</kbd> journal &middot; <kbd>T</kbd> talents &middot; <kbd>S</kbd> stop &middot; <kbd>X</kbd> or <kbd>Enter</kbd> start next wave now &middot; <kbd>M</kbd> mute &middot; mouse wheel to zoom &middot; <kbd>I</kbd> gear &middot; <kbd>P</kbd> pause</p>
   </div>
 </section>
 

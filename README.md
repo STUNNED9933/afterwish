@@ -159,6 +159,26 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Testers' quality of life (0.62)
+
+- **Deadeye** turns red the moment an enemy is on its line (ground, minimap and edge marker).
+- **Echo Ring**: a closer next-wave key (**X** by default; Z, V, N, 2 to 5 or Enter only in the menu;
+  Enter always works), an option to start the next wave by itself once a floor is cleared (never past a
+  boss's spoils), and enemies stream in faster (one every 0.35 s instead of 0.55 s).
+- **Alt + Q/W/E/R** ranks abilities up (Ctrl and Shift too), read by key position so it works in
+  Firefox and on a Mac.
+- **Rerolling**: the 30th reroll on an item without an Immortal-tier line lands one (the count is shown),
+  and a guard (on by default) asks for a second click before rerolling a line that is already Immortal.
+- **Server updates** no longer lose an Echo Ring run: it is paid out before the saves are written.
+- **Inspect** anyone on the server world from the players list: gear (with tooltips), combat power,
+  subclass and talents.
+- **The Deep**: beating a Primordial under-Embered now counts for its quest (unless someone in the fight
+  meets the Ember, so being carried still does not).
+- **Recalled gear** comes back in its prime: its rolls, +levels and stars as they were, and it follows
+  your level like an Heirloom. Pieces recalled before 0.62 are restored on load. Releveled items (Heirlooms
+  too) now keep their roll quality exactly, instead of losing it to rounding at low levels.
+- **Warden keys** open caches at **Bram's forge** in Haven (on the server world too), and a rebirth keeps them.
+
 ### Equip every upgrade (0.61.9)
 
 - A button beside "Scrap everything that is not an upgrade": it puts on the best green-arrow item for

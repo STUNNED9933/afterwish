@@ -22,7 +22,7 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
-import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -83,6 +83,47 @@ const TRIAL_LOCKED = new Set(['recall', 'echoUp', 'scarfChoice', 'meetOdile', 'e
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
+
+/**
+ * (0.62) Pieces recalled with Echo Essence before 0.62 came back at the level you were then, with their
+ * +levels and stars reset and their rolls worn down by rounding. Give them their prime back: each line at the
+ * best of its quality now and its quality in the memory it came from, the memory's +levels and stars if
+ * higher, and from now on following your level. An Heirloom remembered from a past life is mended the same
+ * way. Safe to run on every load: it only ever raises things.
+ */
+function restoreRecalled(p) {
+  const mems = p.rebirth && p.rebirth.memories;
+  if (!mems) return;
+  const pieces = [...SLOTS.map((s) => p.equipped[s]), ...(p.bag || [])];
+  for (const it of pieces) {
+    if (!it || !it.slot) continue;
+    const mem = mems[it.slot];
+    if (!mem) continue;
+    const wasRecalled = it.recalled || /^r\d+-[a-z]+-\d+$/.test(String(it.id));
+    const sameOne = mem.id === it.id || (wasRecalled && mem.name === it.name && mem.rarity === it.rarity);
+    if (!sameOne || !(wasRecalled || it.heirloom)) continue;
+    const q = {}, qv = {};
+    let raised = false;
+    for (const k in it.stats) {
+      const now = rollQuality(it, k);
+      const then = k in mem.stats ? rollQuality(mem, k) : 0;
+      q[k] = Math.max(now, then);
+      if (q[k] > now + 1e-9) raised = true;
+    }
+    if (wasRecalled) it.recalled = true;
+    if ((mem.plus || 0) > (it.plus || 0)) { it.plus = mem.plus; raised = true; }
+    if ((mem.stars || 0) > (it.stars || 0)) { it.stars = mem.stars; raised = true; }
+    if (!raised && it.q) continue;
+    // re-make each line from its quality, at the level it is now
+    for (const k in it.stats) {
+      const { lo, hi } = statRange(it, k);
+      it.stats[k] = Math.max(1, Math.round(lo + q[k] * (hi - lo)));
+      qv[k] = it.stats[k];
+    }
+    it.q = q;
+    it.qv = qv;
+  }
+}
 
 export class World {
   /**
@@ -505,6 +546,7 @@ export class World {
       p.equipped.weapon = starterWeapon(this.cls);
     }
     this.player = p;
+    restoreRecalled(p); // (0.62) pieces recalled before 0.62 get their prime back
     if (!p.keepsake && p.quests && p.quests.edric && p.quests.edric.s === 'done') {
       // (0.53) Edric's Colours already earned before the keepsake slot existed: it is yours now too
       p.keepsake = rollUnique(this.streamRng('keepsake', 1), p.level, 'bluetrim', this.cls);
@@ -558,7 +600,8 @@ export class World {
     this.recalcMods();
     const m = this.mods;
     if (p.keepsake) relevelItem(p.keepsake, p.level); // (0.53) the keepsake is always your level
-    for (const slot of SLOTS) if (p.equipped[slot] && p.equipped[slot].heirloom) relevelItem(p.equipped[slot], p.level); // ...and an Heirloom
+    for (const slot of SLOTS) if (p.equipped[slot] && (p.equipped[slot].heirloom || p.equipped[slot].recalled)) relevelItem(p.equipped[slot], p.level); // ...and an Heirloom, and (0.62) a recalled piece
+    for (const it of p.bag) if (it && (it.heirloom || it.recalled)) relevelItem(it, p.level);
     const g = sumGearStats(p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped);
     const L = p.level - 1;
     const prevMax = p.stats.maxHp || 0;
@@ -3210,11 +3253,15 @@ export class World {
         if (g.boss && this.mode !== 'explore') hit = false; // the story's bosses are the ones out in the world
         if (hit && q.perTier && st.tier && this.worldTier() !== st.tier) hit = false; // (0.58) on the tier it was taken on
         if (hit && q.act3 && g.boss) {
-          // (0.54.1) a Primordial counts only when you meet its Depth's Ember yourself: no being carried down
+          // (0.62) Short of a Depth's Ember, beating its Primordial still counts: fighting under-Embered is
+          // a challenge, and it pays. The one exception is being carried, when someone in the fight meets it.
           const D = Object.values(DEEP.depths).find((d) => d.primordial === g.boss);
           if (D && this.ember(p) < D.ember) {
-            hit = false;
-            this.emit('emberShort', { name: q.name, need: D.ember, have: this.ember(p) });
+            const carried = this.heroes.some((h) => h !== this.cur && this.ember(h.player) >= D.ember);
+            if (carried) {
+              hit = false;
+              this.emit('emberShort', { name: q.name, need: D.ember, have: this.ember(p) });
+            } else this.emit('emberDefied', { name: q.name, need: D.ember, have: this.ember(p) });
           }
         }
         if (hit) {
@@ -3802,8 +3849,17 @@ export class World {
     const from = item.stats[key];
     item.stats[key] = rollLine(key, item, this.rng);
     item.rerolls = (item.rerolls || 0) + 1;
+    // (0.62) pity: the 30th reroll without an Immortal-tier line lands one
+    const top = ROLL_TIER_AT.length;
+    let pity = false;
+    if (rollTier(rollQuality(item, key)) >= top) item.pity = 0;
+    else if ((item.pity = (item.pity || 0) + 1) >= REROLL_PITY) {
+      item.stats[key] = immortalLine(key, item, this.rng);
+      item.pity = 0;
+      pity = true;
+    }
     this.recalcStats();
-    this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: rollTier(rollQuality(item, key)), name: item.name });
+    this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: rollTier(rollQuality(item, key)), name: item.name, pity });
   }
 
   /** Reforging (0.29 enchanting; 0.43: you choose the stat): turn one bonus stat into another, for gold and Wishdust. */
@@ -4798,7 +4854,7 @@ export class World {
       glow: REBIRTH_GLOWS[next] || null,
       acctExp: acctNext > acctNow ? Math.round((acctNext - acctNow) * 100) : 0,
       remembered,
-      left: { fragments: (p.misc && p.misc.fragment) || 0, dust: p.dust || 0, scrap: p.scrap || 0, keys: p.keys || 0, sigils: (p.misc && p.misc.sigil) || 0 },
+      left: { fragments: (p.misc && p.misc.fragment) || 0, dust: p.dust || 0, scrap: p.scrap || 0, sigils: (p.misc && p.misc.sigil) || 0 },
     };
   }
 
@@ -4818,9 +4874,10 @@ export class World {
     }
     const item = JSON.parse(JSON.stringify(mem));
     item.id = `r${rb.n}-${slot}-${p.level}`;
-    item.plus = 0;
-    item.stars = 0;
+    // (0.62) it comes back in its prime: its rolls, its +levels and its stars as they were, and from now on
+    // it follows your level like an Heirloom
     delete item.heirloom;
+    item.recalled = true;
     relevelItem(item, p.level);
     rb.essence -= cost;
     rb.recalled[slot] = true;
@@ -6915,7 +6972,7 @@ export class World {
     w.spawnT -= dt;
     if (w.queue.length && this.enemies.length < w.maxAlive && w.spawnT <= 0) {
       this.spawnEnemy(w.queue.shift());
-      w.spawnT = 0.55;
+      w.spawnT = 0.35; // (0.62) a quicker trickle: the floor fills faster (was 0.55 s)
     }
     if (!w.queue.length && this.enemies.length === 0) {
       w.cleared = w.n;

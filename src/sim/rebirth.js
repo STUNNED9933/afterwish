@@ -202,7 +202,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     gold: old.gold, // (the account's: shared by every hero)
     tickets: old.tickets,
     scrap: 0,
-    keys: 0,
+    keys: old.keys || 0, // (0.62) Warden keys are kept through a rebirth
     skillPoints: perkRank(rb, 'head'),
     glows,
     glow: glow || old.glow || null,

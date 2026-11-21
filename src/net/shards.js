@@ -7,6 +7,7 @@
 // server/src/world-do.js feeds it connections and messages, and test/shards.test.mjs drives it in Node.
 // Each copy is an ordinary World (the same rules as single player); a hero who leaves one is moved
 // to another by goMap's travelHook, carried across in their save.
+import { steadyRatings } from '../power.js';
 import { World } from '../sim/world.js';
 import { CLASSES } from '../sim/classes.js';
 import { CONFIG } from '../config.js';
@@ -165,6 +166,46 @@ export class ServerWorld {
     this.rosterDirty = true;
   }
 
+  /**
+   * (0.62) The server is stopping (an update): every Echo Ring run in progress is paid out first, as if
+   * its hero had left, so the saves written next carry the spoils. Returns how many runs were paid.
+   */
+  payRings() {
+    let n = 0;
+    for (const [pid, pl] of this.players) {
+      if (!(pl.copy && pl.copy.world.mode === 'arena' && pl.copy.world.ring)) continue;
+      const w = pl.copy.world, h = w.heroByPid(pid);
+      if (!h || w.ring.paid[pid]) continue;
+      w.as(h, () => w.ringPay());
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * (0.62) Inspect: another player's gear, combat power, subclass and talents, as they are right now.
+   * Only what anyone could see by looking at them: no bag, gold or quests.
+   */
+  inspect(pl, pid) {
+    const t = this.players.get(pid);
+    if (!t || !t.copy) return this.send(pl.conn, { t: 'inspect', gone: true, pid });
+    const w = t.copy.world, h = w.heroByPid(pid);
+    if (!h) return this.send(pl.conn, { t: 'inspect', gone: true, pid });
+    const who = w.as(h, (p) => {
+      let r = { cp: 0, might: 0, resolve: 0 };
+      try {
+        r = steadyRatings(w);
+      } catch {}
+      return {
+        pid, name: t.name, title: t.title || '', cls: w.cls, spec: p.spec || null, level: p.level, wish: p.wish || 0,
+        rebirths: (p.rebirth && p.rebirth.n) || 0, cp: r.cp, might: r.might, resolve: r.resolve,
+        equipped: JSON.parse(JSON.stringify(p.equipped)), keepsake: p.keepsake ? JSON.parse(JSON.stringify(p.keepsake)) : null,
+        talents: Object.assign({}, p.talents || {}),
+      };
+    });
+    this.send(pl.conn, { t: 'inspect', who });
+  }
+
   /** A connection closed (or said bye). Their latest save went to them a moment ago. */
   leave(conn, polite = false) {
     const pid = this.byConn.get(conn);
@@ -317,6 +358,8 @@ export class ServerWorld {
         return this.chat(pl, cmd.text);
       case 'partyInvite':
         return this.partyInvite(pl, Number(cmd.pid));
+      case 'inspect':
+        return this.inspect(pl, Number(cmd.pid));
       case 'partyAccept':
         return this.partyAccept(pl, Number(cmd.pid));
       case 'partyDecline':

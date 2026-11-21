@@ -176,9 +176,9 @@ body.slowmo #slowtint { opacity: 1; }
 /* (0.61.2) a held Deadeye's target, off the edge of the screen */
 .aim-edge { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; z-index: 3; }
 .aim-edge .aim-arrow { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(12, 15, 24, 0.75); border: 2px solid rgba(255, 210, 122, 0.6); color: #ffd27a; font-size: 18px; line-height: 1; }
-.aim-edge.target .aim-arrow { border-color: #fff2c8; color: #fff2c8; box-shadow: 0 0 14px rgba(255, 210, 122, 0.7); animation: aim-pulse 0.6s ease-in-out infinite alternate; }
+.aim-edge.target .aim-arrow { border-color: #ff6a5a; color: #ff8a7a; box-shadow: 0 0 14px rgba(255, 80, 60, 0.7); animation: aim-pulse 0.6s ease-in-out infinite alternate; }
 .aim-edge .aim-dist { font: 600 13px var(--body); color: #ffe2a0; text-shadow: 0 1px 3px #000; white-space: nowrap; }
-@keyframes aim-pulse { to { box-shadow: 0 0 22px rgba(255, 226, 160, 0.95); } }
+@keyframes aim-pulse { to { box-shadow: 0 0 22px rgba(255, 90, 70, 0.95); } }
 .plabel {
   position: absolute; left: 0; top: 0; padding: 2px 10px; background: rgba(10, 13, 22, 0.8); border: 1px solid #6fb4ff; border-radius: 3px;
   font: 600 14px var(--body); color: #cfe6ff; white-space: nowrap; will-change: transform;
@@ -1000,3 +1000,32 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .gt-line b.up { color: #7fe08a; }
 .gt-line b.down { color: #ff7a7a; }
 @keyframes gt-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+/* (0.62) reroll pity and the Immortal-tier guard */
+.ench-pity { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
+.ench-pity b { color: #ffd24a; }
+.ench-pity label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.ench-btns button.danger { border-color: #ff6a5a; color: #ffb0a6; background: rgba(255, 70, 60, 0.12); }
+
+/* (0.62) inspecting another player */
+#inspect-panel { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 46; width: 520px; max-width: 94vw; max-height: 78vh; overflow: auto; padding: 16px 18px; background: rgba(10, 14, 24, 0.97); border: 1px solid #3a4a66; border-radius: 8px; color: #e8eef8; }
+#inspect-panel.hidden { display: none; }
+#inspect-panel h3 { margin: 0; font-size: 20px; }
+#inspect-panel h4 { margin: 14px 0 8px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.insp-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.insp-cp { display: flex; flex-direction: column; align-items: flex-end; }
+.insp-cp b { font-size: 26px; color: #ffd24a; line-height: 1; }
+.insp-cp span { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.insp-cp small { color: var(--muted); }
+.insp-gear { display: flex; gap: 10px; flex-wrap: wrap; }
+.insp-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.insp-slot .cell { width: 54px; height: 54px; }
+.insp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+.insp-rowname { width: 70px; font-size: 12px; color: var(--muted); }
+.insp-tal { padding: 3px 8px; border: 1px solid #3a4a66; border-radius: 999px; font-size: 13px; }
+.insp-tal b { color: #ffd24a; font-weight: 600; }
+#inspect-panel > button { margin-top: 12px; }
+
+/* (0.62) Bram's vault */
+.quest.vault .vault-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.quest.vault .odds { font-size: 12px; margin-top: 3px; }

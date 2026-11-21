@@ -159,10 +159,13 @@ export class Input {
       return;
     }
     if (!this.isPlaying() || typing) return;
-    if (e.ctrlKey && !e.metaKey && !e.altKey && (key === 'q' || key === 'w' || key === 'e' || key === 'r')) {
-      // Ctrl + ability key spends a skill point, as in League (Shift works too).
+    // Ctrl, Shift or Alt + ability key spends a skill point, as in League. (0.62) Alt for Firefox, where
+    // Ctrl+Q and the like are the browser's own; read by the key's place (e.code), so Alt on a Mac, which
+    // types a symbol instead of a letter, works as well.
+    const rankSlot = { KeyQ: 'q', KeyW: 'w', KeyE: 'e', KeyR: 'r' }[e.code] || (['q', 'w', 'e', 'r'].includes(key) ? key : null);
+    if (rankSlot && !e.metaKey && (e.ctrlKey || e.altKey || e.shiftKey)) {
       e.preventDefault();
-      if (!e.repeat) this.getWorld().command({ type: 'rankUp', slot: key });
+      if (!e.repeat) this.getWorld().command({ type: 'rankUp', slot: rankSlot });
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -174,10 +177,6 @@ export class Input {
     } else if (key === 'q' || key === 'w' || key === 'e' || key === 'r') {
       e.preventDefault();
       if (e.repeat) return;
-      if (e.shiftKey) {
-        world.command({ type: 'rankUp', slot: key }); // Shift (or Ctrl, above) + ability key spends a skill point
-        return;
-      }
       if (this.held && this.held.slot === key) return; // other abilities still work while aiming (roll, then loose)
       if (canAim(world, key) && (!this.actions.heldAim || this.actions.heldAim())) {
         this.held = { slot: key }; // (0.61.2) held: aim now, loose it when the key comes up
@@ -191,8 +190,8 @@ export class Input {
       if (!e.repeat) this.attackMove(); // as in League: A attack-moves to the cursor
     } else if (key === 's') {
       world.command({ type: 'stop' });
-    } else if (key === 'enter') {
-      world.command({ type: 'nextWave' });
+    } else if (key === 'enter' || (this.actions.nextWaveKey && key === this.actions.nextWaveKey())) {
+      world.command({ type: 'nextWave' }); // (0.62) Enter, or the key chosen in the menu (X by default)
     }
   }
 

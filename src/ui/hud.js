@@ -394,7 +394,7 @@ export class Hud {
       slot.up.classList.toggle('hidden', !show);
       canRank = canRank || show;
     }
-    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Ctrl + Q W E R` : '';
+    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Alt or Ctrl + Q W E R` : '';
     if (note !== this.lastNote) {
       this.lastNote = note;
       $('sp-note').textContent = note;
@@ -687,15 +687,16 @@ export class Hud {
       const ex = A.x + Math.cos(A.dir) * A.range, ez = A.z + Math.sin(A.dir) * A.range;
       g.save();
       g.lineCap = 'round';
-      g.strokeStyle = 'rgba(255, 200, 96, 0.35)';
+      const on = A.hits.length > 0; // (0.62) red when an enemy is on the line, as on the ground
+      g.strokeStyle = on ? 'rgba(255, 70, 60, 0.4)' : 'rgba(255, 200, 96, 0.35)';
       g.lineWidth = Math.max(3, A.width * k);
       g.beginPath(); g.moveTo(X(A.x), Y(A.z)); g.lineTo(X(ex), Y(ez)); g.stroke();
-      g.strokeStyle = '#ffe2a0';
+      g.strokeStyle = on ? '#ff8070' : '#ffe2a0';
       g.lineWidth = 1.5;
       g.stroke();
       g.beginPath(); g.arc(X(ex), Y(ez), 3, 0, 7); g.stroke();
       A.hits.forEach((h, i) => {
-        g.strokeStyle = i === 0 ? '#fff2c8' : 'rgba(255, 226, 160, 0.75)';
+        g.strokeStyle = i === 0 ? '#ff5a4a' : 'rgba(255, 130, 110, 0.85)';
         g.lineWidth = i === 0 ? 2 : 1.3;
         g.beginPath(); g.arc(X(h.e.x), Y(h.e.z), i === 0 ? 5.5 : 4, 0, 7); g.stroke();
       });

@@ -1,0 +1,96 @@
+{
+  "id": "e_cantor",
+  "prompt": "a Cantor, a slender choir singer in long white and pale gold vestments, a smooth porcelain face with its mouth open in an endless song, a small golden bell floating above one raised hand, a faint halo. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:23:55.870Z",
+  "creditsBefore": 2955,
+  "steps": {
+    "model": {
+      "task": "f3fc1a93-c866-48e4-b1fa-7dafc09a2b31",
+      "result": {
+        "task_id": "f3fc1a93-c866-48e4-b1fa-7dafc09a2b31",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_cantor/1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_cantor/1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/model.glb",
+        "preview": "out/models/e_cantor/1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/preview.png"
+      }
+    },
+    "check": {
+      "task": "d3fa9175-2df2-4442-aa89-39ea9ee8bc34",
+      "result": {
+        "task_id": "d3fa9175-2df2-4442-aa89-39ea9ee8bc34",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_cantor/2-check/tripo-out/rig-check-2-d3fa9175",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "b8b00bfe-09b2-48b7-80d8-ad57dcd83446",
+      "rigType": "biped",
+      "result": {
+        "task_id": "b8b00bfe-09b2-48b7-80d8-ad57dcd83446",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_cantor/3-rig/tripo-out/rig-2-b8b00bfe",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_cantor/3-rig/tripo-out/rig-2-b8b00bfe/model.glb",
+        "preview": "out/models/e_cantor/3-rig/tripo-out/rig-2-b8b00bfe/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "0cf85a0a-8702-4416-a459-4f563584692c",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "0cf85a0a-8702-4416-a459-4f563584692c",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_cantor/4-anim-1/tripo-out/retarget-2-0cf85a0a",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_cantor/4-anim-1/tripo-out/retarget-2-0cf85a0a/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2715,
+  "creditsUsed": 240,
+  "finished": "2026-11-21T02:28:58.724Z",
+  "files": [
+    "1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/generated_image.jpeg",
+    "1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/model.glb",
+    "1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/preview.png",
+    "1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/rendered_image.webp",
+    "1-model/tripo-out/a-cantor-a-slender-choir-singer-f3fc1a93/task.json",
+    "2-check/tripo-out/rig-check-2-d3fa9175/task.json",
+    "3-rig/tripo-out/rig-2-b8b00bfe/model.glb",
+    "3-rig/tripo-out/rig-2-b8b00bfe/preview.png",
+    "3-rig/tripo-out/rig-2-b8b00bfe/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-b8b00bfe/task.json",
+    "4-anim-1/tripo-out/retarget-2-0cf85a0a/model.glb",
+    "4-anim-1/tripo-out/retarget-2-0cf85a0a/task.json",
+    "manifest.json"
+  ]
+}

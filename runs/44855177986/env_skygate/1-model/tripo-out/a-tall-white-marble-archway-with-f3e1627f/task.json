@@ -1,0 +1,32 @@
+{
+  "task_id": "f3e1627f-82a9-4b54-b118-a7597943884d",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a tall white marble archway with gold trim and a large golden keyhole carved at its top, a gate to nowhere standing alone. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 4000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-21T02:50:26.233968Z",
+  "completed_at": "2026-11-21T02:52:32.958977Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

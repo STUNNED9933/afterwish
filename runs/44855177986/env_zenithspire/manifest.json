@@ -1,0 +1,37 @@
+{
+  "id": "env_zenithspire",
+  "prompt": "a slender white and gold spire with a ring of glowing golden script floating around it and a bright white star at its tip. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+  "started": "2026-11-21T02:58:56.763Z",
+  "creditsBefore": 1905,
+  "steps": {
+    "model": {
+      "task": "f7843f19-22c4-48a4-a3f5-95b153833a73",
+      "result": {
+        "task_id": "f7843f19-22c4-48a4-a3f5-95b153833a73",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_zenithspire/1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_zenithspire/1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/model.glb",
+        "preview": "out/models/env_zenithspire/1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1875,
+  "creditsUsed": 30,
+  "finished": "2026-11-21T03:01:36.487Z",
+  "files": [
+    "1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/generated_image.jpeg",
+    "1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/model.glb",
+    "1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/preview.png",
+    "1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/rendered_image.webp",
+    "1-model/tripo-out/a-slender-white-and-gold-spire-w-f7843f19/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "e_veiled",
+  "prompt": "a Veiled, a thin graceful figure wrapped head to toe in layers of sheer white veils, two curved golden blades, only a faint golden glow where its eyes should be, agile and quiet. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:41:36.641Z",
+  "creditsBefore": 2235,
+  "steps": {
+    "model": {
+      "task": "9f6bf140-b252-4346-a032-98b5501f3faa",
+      "result": {
+        "task_id": "9f6bf140-b252-4346-a032-98b5501f3faa",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_veiled/1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_veiled/1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/model.glb",
+        "preview": "out/models/e_veiled/1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/preview.png"
+      }
+    },
+    "check": {
+      "task": "4d2770f0-e7c6-41e1-8476-a203f3aaf6d8",
+      "result": {
+        "task_id": "4d2770f0-e7c6-41e1-8476-a203f3aaf6d8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_veiled/2-check/tripo-out/rig-check-5-4d2770f0",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d267e4b2-5673-45bc-9137-3c926efec838",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d267e4b2-5673-45bc-9137-3c926efec838",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_veiled/3-rig/tripo-out/rig-5-d267e4b2",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_veiled/3-rig/tripo-out/rig-5-d267e4b2/model.glb",
+        "preview": "out/models/e_veiled/3-rig/tripo-out/rig-5-d267e4b2/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "2aecf8d9-19a8-4272-8cbc-de5af9eebae9",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "2aecf8d9-19a8-4272-8cbc-de5af9eebae9",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_veiled/4-anim-1/tripo-out/retarget-5-2aecf8d9",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_veiled/4-anim-1/tripo-out/retarget-5-2aecf8d9/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2130,
+  "creditsUsed": 105,
+  "finished": "2026-11-21T02:46:43.867Z",
+  "files": [
+    "1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/generated_image.jpeg",
+    "1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/model.glb",
+    "1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/preview.png",
+    "1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/rendered_image.webp",
+    "1-model/tripo-out/a-veiled-a-thin-graceful-figure-9f6bf140/task.json",
+    "2-check/tripo-out/rig-check-5-4d2770f0/task.json",
+    "3-rig/tripo-out/rig-5-d267e4b2/model.glb",
+    "3-rig/tripo-out/rig-5-d267e4b2/preview.png",
+    "3-rig/tripo-out/rig-5-d267e4b2/rendered_image.webp",
+    "3-rig/tripo-out/rig-5-d267e4b2/task.json",
+    "4-anim-1/tripo-out/retarget-5-2aecf8d9/model.glb",
+    "4-anim-1/tripo-out/retarget-5-2aecf8d9/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "e_answered",
+  "prompt": "an Answered, a tall knight in flawless ivory and gold plate armour, a smooth featureless golden mask for a face, a thin ring of light floating behind its head like a halo, a long slender golden spear, a short white cape, eerily perfect. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:18:52.828Z",
+  "creditsBefore": 3090,
+  "steps": {
+    "model": {
+      "task": "a1288070-529f-4696-9c8f-cb77d294436a",
+      "result": {
+        "task_id": "a1288070-529f-4696-9c8f-cb77d294436a",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_answered/1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_answered/1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/model.glb",
+        "preview": "out/models/e_answered/1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/preview.png"
+      }
+    },
+    "check": {
+      "task": "cbeeb83c-3859-474d-b7bb-dcbb4dd82272",
+      "result": {
+        "task_id": "cbeeb83c-3859-474d-b7bb-dcbb4dd82272",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_answered/2-check/tripo-out/rig-check-cbeeb83c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "cfaee9b2-53f3-4429-8e55-dd7194489aee",
+      "rigType": "biped",
+      "result": {
+        "task_id": "cfaee9b2-53f3-4429-8e55-dd7194489aee",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_answered/3-rig/tripo-out/rig-cfaee9b2",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_answered/3-rig/tripo-out/rig-cfaee9b2/model.glb",
+        "preview": "out/models/e_answered/3-rig/tripo-out/rig-cfaee9b2/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "a525ac10-ee9f-49ce-ae4b-6f5d9119b909",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "a525ac10-ee9f-49ce-ae4b-6f5d9119b909",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_answered/4-anim-1/tripo-out/retarget-a525ac10",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_answered/4-anim-1/tripo-out/retarget-a525ac10/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2955,
+  "creditsUsed": 135,
+  "finished": "2026-11-21T02:23:55.868Z",
+  "files": [
+    "1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/generated_image.jpeg",
+    "1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/model.glb",
+    "1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/preview.png",
+    "1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/rendered_image.webp",
+    "1-model/tripo-out/an-answered-a-tall-knight-in-fla-a1288070/task.json",
+    "2-check/tripo-out/rig-check-cbeeb83c/task.json",
+    "3-rig/tripo-out/rig-cfaee9b2/model.glb",
+    "3-rig/tripo-out/rig-cfaee9b2/preview.png",
+    "3-rig/tripo-out/rig-cfaee9b2/rendered_image.webp",
+    "3-rig/tripo-out/rig-cfaee9b2/task.json",
+    "4-anim-1/tripo-out/retarget-a525ac10/model.glb",
+    "4-anim-1/tripo-out/retarget-a525ac10/task.json",
+    "manifest.json"
+  ]
+}

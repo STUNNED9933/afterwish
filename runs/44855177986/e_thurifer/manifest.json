@@ -1,0 +1,96 @@
+{
+  "id": "e_thurifer",
+  "prompt": "a Thurifer, a hunched priest in heavy ivory robes and a tall golden mitre, swinging a smoking golden censer on a long chain, pale gold incense smoke, its face hidden in shadow under the mitre. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:28:58.725Z",
+  "creditsBefore": 2715,
+  "steps": {
+    "model": {
+      "task": "b4c28132-b984-4b66-918a-0ba80efc4162",
+      "result": {
+        "task_id": "b4c28132-b984-4b66-918a-0ba80efc4162",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_thurifer/1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_thurifer/1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/model.glb",
+        "preview": "out/models/e_thurifer/1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/preview.png"
+      }
+    },
+    "check": {
+      "task": "ff4e862e-b120-4b82-940f-a245c513a501",
+      "result": {
+        "task_id": "ff4e862e-b120-4b82-940f-a245c513a501",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_thurifer/2-check/tripo-out/rig-check-3-ff4e862e",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "ac661955-bf24-44bf-8786-6899323c4abe",
+      "rigType": "biped",
+      "result": {
+        "task_id": "ac661955-bf24-44bf-8786-6899323c4abe",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_thurifer/3-rig/tripo-out/rig-3-ac661955",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_thurifer/3-rig/tripo-out/rig-3-ac661955/model.glb",
+        "preview": "out/models/e_thurifer/3-rig/tripo-out/rig-3-ac661955/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "26fc175a-798c-4013-b6e8-268ce3c8710d",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "26fc175a-798c-4013-b6e8-268ce3c8710d",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/e_thurifer/4-anim-1/tripo-out/retarget-3-26fc175a",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_thurifer/4-anim-1/tripo-out/retarget-3-26fc175a/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2475,
+  "creditsUsed": 240,
+  "finished": "2026-11-21T02:34:31.828Z",
+  "files": [
+    "1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/generated_image.jpeg",
+    "1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/model.glb",
+    "1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/preview.png",
+    "1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/rendered_image.webp",
+    "1-model/tripo-out/a-thurifer-a-hunched-priest-in-h-b4c28132/task.json",
+    "2-check/tripo-out/rig-check-3-ff4e862e/task.json",
+    "3-rig/tripo-out/rig-3-ac661955/model.glb",
+    "3-rig/tripo-out/rig-3-ac661955/preview.png",
+    "3-rig/tripo-out/rig-3-ac661955/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-ac661955/task.json",
+    "4-anim-1/tripo-out/retarget-3-26fc175a/model.glb",
+    "4-anim-1/tripo-out/retarget-3-26fc175a/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "a1288070-529f-4696-9c8f-cb77d294436a",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "an Answered, a tall knight in flawless ivory and gold plate armour, a smooth featureless golden mask for a face, a thin ring of light floating behind its head like a halo, a long slender golden spear, a short white cape, eerily perfect. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-21T02:18:54.276676Z",
+  "completed_at": "2026-11-21T02:23:19.304132Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "env_skygate",
+  "prompt": "a tall white marble archway with gold trim and a large golden keyhole carved at its top, a gate to nowhere standing alone. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+  "started": "2026-11-21T02:50:24.641Z",
+  "creditsBefore": 1995,
+  "steps": {
+    "model": {
+      "task": "f3e1627f-82a9-4b54-b118-a7597943884d",
+      "result": {
+        "task_id": "f3e1627f-82a9-4b54-b118-a7597943884d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_skygate/1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_skygate/1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/model.glb",
+        "preview": "out/models/env_skygate/1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1965,
+  "creditsUsed": 30,
+  "finished": "2026-11-21T02:53:05.067Z",
+  "files": [
+    "1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/generated_image.jpeg",
+    "1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/model.glb",
+    "1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/preview.png",
+    "1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/rendered_image.webp",
+    "1-model/tripo-out/a-tall-white-marble-archway-with-f3e1627f/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "env_courtpillar",
+  "prompt": "a tall fluted white marble pillar topped with a large golden balance scale. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+  "started": "2026-11-21T02:53:05.067Z",
+  "creditsBefore": 1965,
+  "steps": {
+    "model": {
+      "task": "19524d42-f240-4146-ab43-713182cb8ad6",
+      "result": {
+        "task_id": "19524d42-f240-4146-ab43-713182cb8ad6",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_courtpillar/1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_courtpillar/1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/model.glb",
+        "preview": "out/models/env_courtpillar/1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1935,
+  "creditsUsed": 30,
+  "finished": "2026-11-21T02:55:45.502Z",
+  "files": [
+    "1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/generated_image.jpeg",
+    "1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/model.glb",
+    "1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/preview.png",
+    "1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/rendered_image.webp",
+    "1-model/tripo-out/a-tall-fluted-white-marble-pilla-19524d42/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "env_wantaltar",
+  "prompt": "an ornate white and gold altar heaped high with golden offerings, coins, rings, small crowns and trinkets spilling over its sides. stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
+  "started": "2026-11-21T02:55:45.502Z",
+  "creditsBefore": 1935,
+  "steps": {
+    "model": {
+      "task": "a202caf4-be6c-4ffe-90a5-6cfbebf0f3f8",
+      "result": {
+        "task_id": "a202caf4-be6c-4ffe-90a5-6cfbebf0f3f8",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/env_wantaltar/1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/env_wantaltar/1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/model.glb",
+        "preview": "out/models/env_wantaltar/1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1905,
+  "creditsUsed": 30,
+  "finished": "2026-11-21T02:58:56.763Z",
+  "files": [
+    "1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/generated_image.jpeg",
+    "1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/model.glb",
+    "1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/preview.png",
+    "1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/rendered_image.webp",
+    "1-model/tripo-out/an-ornate-white-and-gold-altar-h-a202caf4/task.json",
+    "manifest.json"
+  ]
+}

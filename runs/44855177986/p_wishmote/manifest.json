@@ -1,0 +1,37 @@
+{
+  "id": "p_wishmote",
+  "prompt": "a small floating bright golden flame inside a delicate ring of white feathers, a granted wish given a body. stylised-realistic fantasy game prop, one single small floating object, no ground, no base, glowing, hand-painted PBR-style textures",
+  "started": "2026-11-21T02:46:43.869Z",
+  "creditsBefore": 2130,
+  "steps": {
+    "model": {
+      "task": "685d3b91-0cd2-4829-8f41-76215862209b",
+      "result": {
+        "task_id": "685d3b91-0cd2-4829-8f41-76215862209b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/p_wishmote/1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/p_wishmote/1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/model.glb",
+        "preview": "out/models/p_wishmote/1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/preview.png"
+      }
+    }
+  },
+  "creditsAfter": 1995,
+  "creditsUsed": 135,
+  "finished": "2026-11-21T02:50:24.640Z",
+  "files": [
+    "1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/generated_image.jpeg",
+    "1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/model.glb",
+    "1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/preview.png",
+    "1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/rendered_image.webp",
+    "1-model/tripo-out/a-small-floating-bright-golden-f-685d3b91/task.json",
+    "manifest.json"
+  ]
+}

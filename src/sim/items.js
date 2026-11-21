@@ -70,12 +70,12 @@ export const EFFECTS = {
     slot: 'weapon',
     name: 'Stormcaller',
     itemName: 'Stormcaller',
-    desc: 'Every 4th basic attack calls lightning for 150% attack damage on your target and enemies near it.',
+    desc: 'Every 4th basic attack calls lightning for [150%] attack damage on your target and enemies near it.',
     byClass: {
-      warrior: { name: 'Stormcaller', itemName: 'Stormcaller', desc: 'Cleave and Whirlwind call lightning down on every enemy they hit (up to 6), for 60% attack damage each. The bigger the crowd, the bigger the storm.' },
-      archer: { name: 'Stormstring', itemName: 'Stormstring', desc: 'Every 4th basic attack calls lightning for 150% attack damage on your target and enemies near it. Barrage arrows count.' },
-      rogue: { name: 'Nightfang', itemName: 'Nightfang', desc: 'Your abilities deal 40% more when they crit, and every ability crit takes 1 second off Nightstep.' },
-      mage: { name: 'Wishfall', itemName: 'Wishfall', desc: 'Every third ability you cast calls a shard of the fallen star down on your cursor a moment later, for 160% spell power around it.' },
+      warrior: { name: 'Stormcaller', itemName: 'Stormcaller', desc: 'Cleave and Whirlwind call lightning down on every enemy they hit (up to 6), for [60%] attack damage each. The bigger the crowd, the bigger the storm.' },
+      archer: { name: 'Stormstring', itemName: 'Stormstring', desc: 'Every 4th basic attack calls lightning for [150%] attack damage on your target and enemies near it. Barrage arrows count.' },
+      rogue: { name: 'Nightfang', itemName: 'Nightfang', desc: 'Your abilities deal [40%] more when they crit, and every ability crit takes 1 second off Nightstep.' },
+      mage: { name: 'Wishfall', itemName: 'Wishfall', desc: 'Every third ability you cast calls a shard of the fallen star down on your cursor a moment later, for [160%] spell power around it.' },
     },
   },
   undying: {
@@ -83,26 +83,26 @@ export const EFFECTS = {
     name: 'Undying',
     itemName: 'Crown of the Undying',
     // (0.61.5) was a cheat-death; every Immortal is about damage now (defence only where it turns into damage)
-    desc: 'Every enemy that falls within 8 m of you makes you deal 4% more damage for 6 seconds, up to 10 times (40%).',
+    desc: 'Every enemy that falls within 8 m of you makes you deal [4%] more damage for 6 seconds, up to 10 times ([4%*10]).',
   },
   retribution: {
     slot: 'chest',
     name: 'Retribution',
     itemName: 'Aegis of Retribution',
-    desc: 'Every parry releases a shockwave for 120% attack damage around you. Perfect parries deal 200%.',
+    desc: 'Every parry releases a shockwave for [120%] attack damage around you. Perfect parries deal [200%].',
     byClass: {
-      archer: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for 150% attack damage (250% on a perfect parry).' },
-      mage: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for 150% spell power (250% on a perfect parry).' },
+      archer: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for [150%] attack damage ([250%] on a perfect parry).' },
+      mage: { desc: 'Every parry looses a bolt of starlight at the nearest enemy within 12 m, for [150%] spell power ([250%] on a perfect parry).' },
     },
   },
   slipstream: {
     slot: 'boots',
     name: 'Slipstream',
     itemName: 'Slipstream Treads',
-    desc: 'A perfect parry or perfect dodge gives +40% move speed and +30% attack speed for 4 seconds.',
+    desc: 'A perfect parry or perfect dodge gives +[40%] move speed and +[30%] attack speed for 4 seconds.',
     byClass: {
-      rogue: { desc: 'A perfect parry or perfect dodge gives +40% move speed for 4 seconds, and your ability cooldowns run 60% faster meanwhile.' },
-      mage: { desc: 'A perfect parry or perfect dodge gives +40% move speed for 4 seconds, and your ability cooldowns run 60% faster meanwhile.' },
+      rogue: { desc: 'A perfect parry or perfect dodge gives +[40%] move speed for 4 seconds, and your ability cooldowns run [60%] faster meanwhile.' },
+      mage: { desc: 'A perfect parry or perfect dodge gives +[40%] move speed for 4 seconds, and your ability cooldowns run [60%] faster meanwhile.' },
     },
   },
   // Unique Immortals (0.31): one from each Remnant, never from anywhere else. Any class can wear them.
@@ -110,38 +110,38 @@ export const EFFECTS = {
     slot: 'ring', unique: 'boss',
     name: "Oathbreaker's Signet",
     itemName: "Oathbreaker's Signet",
-    desc: 'A perfect parry calls the broken oath down: a spectral blade strikes every enemy within 6 m for 250% attack damage.',
+    desc: 'A perfect parry calls the broken oath down: a spectral blade strikes every enemy within 6 m for [250%] attack damage.',
   },
   sporeheart: {
     slot: 'chest', unique: 'boss2',
     name: 'Sporeheart',
     itemName: 'Sporeheart',
-    desc: 'Every 4 seconds, spores burst from you: every enemy within 6 m takes 120% of your attack damage or spell power (whichever is higher) and takes 10% more damage for 4 seconds.',
+    desc: 'Every 4 seconds, spores burst from you: every enemy within 6 m takes [120%] of your attack damage or spell power (whichever is higher) and takes [10%] more damage for 4 seconds.',
   },
   unwished: {
     slot: 'helm', unique: 'boss3',
     name: 'The Unwished Crown',
     itemName: 'The Unwished Crown',
-    desc: 'You deal 12% more damage to bosses. Each Doom aimed at you that you avoid makes you deal a further 25% for 6 seconds.',
+    desc: 'You deal [12%] more damage to bosses. Each Doom aimed at you that you avoid makes you deal a further [25%] for 6 seconds.',
   },
   // Edric's Colours (0.47): the reward from Bram, never a drop. The blade for a warrior, the ring for anyone else.
   edric: {
     slot: 'weapon', unique: 'quest',
     name: 'Blue Trim',
     itemName: "Edric's Sword",
-    desc: 'Bram made it; Edric kept it. Every perfect parry adds 12% damage for 8 seconds (up to 3 times), and strikes the enemy you parried for 150% attack damage.',
+    desc: 'Bram made it; Edric kept it. Every perfect parry adds [12%] damage for 8 seconds (up to 3 times), and strikes the enemy you parried for [150%] attack damage.',
   },
   bluetrim: {
     slot: 'ring', unique: 'quest',
     name: 'Keep the Gate',
     itemName: "Edric's Colours",
-    desc: 'A ring of blue cloth and steel. While above 70% health you deal 18% more damage.',
+    desc: 'A ring of blue cloth and steel. While above 70% health you deal [18%] more damage.',
   },
   timekeeper: {
     slot: 'ring',
     name: 'Timekeeper',
     itemName: 'The Timekeeper',
-    desc: 'Slowed time lasts 60% longer. Every kill takes 0.5 seconds off your ability cooldowns, and so does every 4% of a boss\'s health you take away.',
+    desc: 'Slowed time lasts [60%] longer. Every kill takes [s0.5] second{s} off your ability cooldowns, and so does every 4% of a boss\'s health you take away.',
   },
 };
 
@@ -150,60 +150,60 @@ export const EFFECTS = {
 // (before that, the class effect above). The item keeps its slot and name; only the effect follows you.
 export const SPEC_IMMORTALS = {
   berserker: {
-    weapon: { name: 'Bloodreaver', desc: 'While Bloodied, Cleave and Whirlwind deal 25% more, and Cleave comes back twice as fast.', apply: (m) => { m.bloodQW += 0.25; m.bloodQcd = true; } },
-    helm: { name: 'Crown of the Last Breath', desc: "You deal 3% more damage for every 10% of health you are missing (up to 27%), and Blood Rage's last breath gives you 3 seconds of Crimson Oath.", apply: (m) => { m.missingDmg = Math.max(m.missingDmg, 0.03); m.lastBreathOath = 3; } },
-    chest: { name: 'Scarred Hauberk', desc: 'While Bloodied, you deal a further 15% damage.', apply: (m) => { m.lowHpDmg += 0.15; } },
-    boots: { name: 'Red Stride', desc: 'While Bloodied, Cleave and Whirlwind deal 15% more, and Whirlwind spins 1 second longer.', apply: (m) => { m.bloodQW += 0.15; m.wSpinTime += 1; } },
-    ring: { name: 'Oathblood Signet', desc: "Crimson Oath's cooldown is 40% shorter and it lasts 3 seconds longer.", apply: (m) => { m.rCd *= 0.6; m.rDuration += 3; } },
+    weapon: { name: 'Bloodreaver', desc: 'While Bloodied, Cleave and Whirlwind deal [25%] more, and Cleave comes back twice as fast.', apply: (m) => { m.bloodQW += 0.25; m.bloodQcd = true; } },
+    helm: { name: 'Crown of the Last Breath', desc: "You deal [3%] more damage for every 10% of health you are missing (up to [3%*9]), and Blood Rage's last breath gives you [s3] seconds of Crimson Oath.", apply: (m) => { m.missingDmg = Math.max(m.missingDmg, 0.03); m.lastBreathOath = 3; } },
+    chest: { name: 'Scarred Hauberk', desc: 'While Bloodied, you deal a further [15%] damage.', apply: (m) => { m.lowHpDmg += 0.15; } },
+    boots: { name: 'Red Stride', desc: 'While Bloodied, Cleave and Whirlwind deal [15%] more, and Whirlwind spins [s1] second{s} longer.', apply: (m) => { m.bloodQW += 0.15; m.wSpinTime += 1; } },
+    ring: { name: 'Oathblood Signet', desc: "Crimson Oath's cooldown is [-40%] shorter and it lasts [s3] seconds longer.", apply: (m) => { m.rCd *= 0.6; m.rDuration += 3; } },
   },
   bulwark: {
-    weapon: { name: 'Wardbreaker', desc: 'Cleave strikes a second time for 60%, and enemies you have taunted take 20% more damage from everyone.', apply: (m) => { m.qEcho = Math.max(m.qEcho, 0.6); m.tauntVuln += 0.2; } },
-    helm: { name: 'Crown of the Iron Answer', desc: 'Blocking a red attack with Iron Answer gives 3 Reckoning stacks, and the enemy you Broke takes 35% more damage instead of 20%.', apply: (m) => { m.blockReckon += 2; m.brokenVuln = Math.max(m.brokenVuln, 0.15); } },
-    chest: { name: 'Bastion Plate', desc: 'Hold the Line lasts 3 seconds longer, and while it holds, Weight of Iron counts your armor 60% more toward your damage.', apply: (m) => { m.bastionIron = Math.max(m.bastionIron, 0.6); m.rDuration += 3; } },
-    boots: { name: 'Unyielding Greaves', desc: 'Parrying no longer slows you, and every parry or block takes 1 second off Whirlwind.', apply: (m) => { m.parryFree = true; m.parryCdrW += 1; } },
-    ring: { name: "Warden's Seal", desc: 'Reckoning gains a stack for every 5% of your health lost (instead of 10%) and holds 2 more.', apply: (m) => { m.reckonHp = 0.05; m.reckonMaxAdd += 2; } },
+    weapon: { name: 'Wardbreaker', desc: 'Cleave strikes a second time for [60%], and enemies you have taunted take [20%] more damage from everyone.', apply: (m) => { m.qEcho = Math.max(m.qEcho, 0.6); m.tauntVuln += 0.2; } },
+    helm: { name: 'Crown of the Iron Answer', desc: 'Blocking a red attack with Iron Answer gives [1+n2] Reckoning stacks, and the enemy you Broke takes [20+15%] more damage instead of 20%.', apply: (m) => { m.blockReckon += 2; m.brokenVuln = Math.max(m.brokenVuln, 0.15); } },
+    chest: { name: 'Bastion Plate', desc: 'Hold the Line lasts [s3] seconds longer, and while it holds, Weight of Iron counts your armor [60%] more toward your damage.', apply: (m) => { m.bastionIron = Math.max(m.bastionIron, 0.6); m.rDuration += 3; } },
+    boots: { name: 'Unyielding Greaves', desc: 'Parrying no longer slows you, and every parry or block takes [s1] second{s} off Whirlwind.', apply: (m) => { m.parryFree = true; m.parryCdrW += 1; } },
+    ring: { name: "Warden's Seal", desc: 'Reckoning gains a stack for every [/10:5%] of your health lost (instead of 10%) and holds [n2] more.', apply: (m) => { m.reckonHp = 0.05; m.reckonMaxAdd += 2; } },
   },
   sharpshooter: {
-    weapon: { name: 'Farstring', desc: 'Long Watch goes up to 70% more damage (instead of 40%).', apply: (m) => { m.farShotMax += 0.3; } },
-    helm: { name: "Hawk's Hood", desc: 'Deadeye comes back 35% sooner and deals 15% more.', apply: (m) => { m.rCd *= 0.65; m.rDmg *= 1.15; } },
-    chest: { name: "Rangekeeper's Coat", desc: 'While no enemy is within 6 m of you, you deal 15% more damage.', apply: (m) => { m.farDmg += 0.15; } },
-    boots: { name: 'Quickstep Boots', desc: "Evasive Roll comes back 30% sooner, and for as long as its attack speed lasts you deal 20% more damage.", apply: (m) => { m.eCd *= 0.7; m.rushDmg += 0.2; } },
-    ring: { name: 'Bullseye Loop', desc: 'Ricochet always crits and deals 30% more to enemies more than 10 m from you.', apply: (m) => { m.qCrit = true; m.qFar += 0.3; } },
+    weapon: { name: 'Farstring', desc: 'Long Watch goes up to [40+30%] more damage (instead of 40%).', apply: (m) => { m.farShotMax += 0.3; } },
+    helm: { name: "Hawk's Hood", desc: 'Deadeye comes back [-35%] sooner and deals [15%] more.', apply: (m) => { m.rCd *= 0.65; m.rDmg *= 1.15; } },
+    chest: { name: "Rangekeeper's Coat", desc: 'While no enemy is within 6 m of you, you deal [15%] more damage.', apply: (m) => { m.farDmg += 0.15; } },
+    boots: { name: 'Quickstep Boots', desc: "Evasive Roll comes back [-30%] sooner, and for as long as its attack speed lasts you deal [20%] more damage.", apply: (m) => { m.eCd *= 0.7; m.rushDmg += 0.2; } },
+    ring: { name: 'Bullseye Loop', desc: 'Ricochet always crits and deals [30%] more to enemies more than 10 m from you.', apply: (m) => { m.qCrit = true; m.qFar += 0.3; } },
   },
   windrunner: {
-    weapon: { name: 'Galestring', desc: "Tailwind's on-hit damage is 50% higher.", apply: (m) => { m.tailwind *= 1.5; } },
-    helm: { name: 'Eye of the Gale', desc: 'Hurricane looses a third arrow, and its arrows deal 25% more.', apply: (m) => { m.hurricaneExtra += 1; m.hurricaneDmg *= 1.25; } },
-    chest: { name: 'Windwoven Vest', desc: "+12% attack speed, and Hurricane's arrows deal 15% more.", apply: (m) => { m.asMult *= 1.12; m.hurricaneDmg *= 1.15; } },
-    boots: { name: 'Zephyr Treads', desc: "Tailwind's on-hit damage is 25% higher, and every basic attack with Tailwind takes 0.5 seconds off Evasive Roll (instead of 0.3).", apply: (m) => { m.tailwind *= 1.25; m.tailwindCdr = Math.max(m.tailwindCdr, 0.5); } },
-    ring: { name: 'Storm Sigil', desc: 'Barrage looses 3 more arrows.', apply: (m) => { m.wExtra += 3; } },
+    weapon: { name: 'Galestring', desc: "Tailwind's on-hit damage is [50%] higher.", apply: (m) => { m.tailwind *= 1.5; } },
+    helm: { name: 'Eye of the Gale', desc: 'Hurricane looses [n1] more arrow{s}, and its arrows deal [25%] more.', apply: (m) => { m.hurricaneExtra += 1; m.hurricaneDmg *= 1.25; } },
+    chest: { name: 'Windwoven Vest', desc: "+[12%] attack speed, and Hurricane's arrows deal [15%] more.", apply: (m) => { m.asMult *= 1.12; m.hurricaneDmg *= 1.15; } },
+    boots: { name: 'Zephyr Treads', desc: "Tailwind's on-hit damage is [25%] higher, and every basic attack with Tailwind takes [0.3+s0.2] seconds off Evasive Roll (instead of 0.3).", apply: (m) => { m.tailwind *= 1.25; m.tailwindCdr = Math.max(m.tailwindCdr, 0.5); } },
+    ring: { name: 'Storm Sigil', desc: 'Barrage looses [n3] more arrows.', apply: (m) => { m.wExtra += 3; } },
   },
   assassin: {
-    weapon: { name: 'Nightfang', desc: "Shadowstrike's double damage works below 40% health (instead of 30%), and your crits deal a further 25%.", apply: (m) => { m.qExecute += 0.1; m.critMult += 0.25; } },
-    helm: { name: 'Mask of the Unseen', desc: "Ambush's empowered ability deals 125% more (instead of 75%).", apply: (m) => { m.eEmpower += 0.5; } },
-    chest: { name: 'Shroud of Last Rites', desc: 'Every Clean Kill makes you deal 8% more damage for 6 seconds, up to 5 times (40%).', apply: (m) => { m.killSurge = Math.max(m.killSurge, 0.08); } },
-    boots: { name: 'Silent Step', desc: 'Shadowstrike leaps 50% further and deals 20% more, and Ambush comes back 30% sooner.', apply: (m) => { m.qRange *= 1.5; m.qDmg *= 1.2; m.eCd *= 0.7; } },
-    ring: { name: 'Contract Seal', desc: 'Every Clean Kill also takes 8 seconds off Last Rites.', apply: (m) => { m.killResetR += 8; } },
+    weapon: { name: 'Nightfang', desc: "Shadowstrike's double damage works below [30+10%] health (instead of 30%), and your crits deal a further [25%].", apply: (m) => { m.qExecute += 0.1; m.critMult += 0.25; } },
+    helm: { name: 'Mask of the Unseen', desc: "Ambush's empowered ability deals [75+50%] more (instead of 75%).", apply: (m) => { m.eEmpower += 0.5; } },
+    chest: { name: 'Shroud of Last Rites', desc: 'Every Clean Kill makes you deal [8%] more damage for 6 seconds, up to 5 times ([8%*5]).', apply: (m) => { m.killSurge = Math.max(m.killSurge, 0.08); } },
+    boots: { name: 'Silent Step', desc: 'Shadowstrike leaps [50%] further and deals [20%] more, and Ambush comes back [-30%] sooner.', apply: (m) => { m.qRange *= 1.5; m.qDmg *= 1.2; m.eCd *= 0.7; } },
+    ring: { name: 'Contract Seal', desc: 'Every Clean Kill also takes [s8] seconds off Last Rites.', apply: (m) => { m.killResetR += 8; } },
   },
   shadowdancer: {
-    weapon: { name: 'Starglass Edge', desc: 'Starglass Kunai thrown while Veiled deal 40% more, and each afterimage throws two.', apply: (m) => { m.veilKunai += 0.4; m.kunaiTwice = true; } },
-    helm: { name: 'Mirror Veil', desc: 'Afterimages last 3 seconds longer, and Veil lasts 2 seconds longer.', apply: (m) => { m.shadowDur += 3; m.veilTime += 2; } },
-    chest: { name: 'Shadowweave', desc: 'While Veiled, you deal 20% more damage.', apply: (m) => { m.veilDmg += 0.2; } },
-    boots: { name: 'Twinstep', desc: 'Veilstep comes back 40% sooner.', apply: (m) => { m.qCd *= 0.6; } },
-    ring: { name: 'Loop of the Second Death', desc: 'Second Death repeats a further 25%, and Last Rites comes back 25% sooner.', apply: (m) => { m.rMark += 0.25; m.rCd *= 0.75; } },
+    weapon: { name: 'Starglass Edge', desc: 'Starglass Kunai thrown while Veiled deal [40%] more, and each afterimage throws two.', apply: (m) => { m.veilKunai += 0.4; m.kunaiTwice = true; } },
+    helm: { name: 'Mirror Veil', desc: 'Afterimages last [s3] seconds longer, and Veil lasts [s2] seconds longer.', apply: (m) => { m.shadowDur += 3; m.veilTime += 2; } },
+    chest: { name: 'Shadowweave', desc: 'While Veiled, you deal [20%] more damage.', apply: (m) => { m.veilDmg += 0.2; } },
+    boots: { name: 'Twinstep', desc: 'Veilstep comes back [-40%] sooner.', apply: (m) => { m.qCd *= 0.6; } },
+    ring: { name: 'Loop of the Second Death', desc: 'Second Death repeats a further [25%], and Last Rites comes back [-25%] sooner.', apply: (m) => { m.rMark += 0.25; m.rCd *= 0.75; } },
   },
   pyromancer: {
-    weapon: { name: 'Emberheart', desc: 'Burns stack 30 higher, and every stack burns 20% more.', apply: (m) => { m.burnMax += 3; m.burnMult *= 1.2; } },
-    helm: { name: 'Crown of Cinders', desc: 'Smoulder bursts 50% wider and gives 6 burn stacks instead of 4.', apply: (m) => { m.wRadius *= 1.5; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
-    chest: { name: 'Ashen Robe', desc: 'For each burning enemy within 8 m, you deal 4% more damage (up to 24%).', apply: (m) => { m.burnRage += 0.04; } },
-    boots: { name: 'Cinderwalk', desc: 'Fire Bolt comes back 30% sooner and deals 25% more.', apply: (m) => { m.qCd *= 0.7; m.qDmg *= 1.25; } },
-    ring: { name: 'Seal of the Second Sun', desc: 'Cinderfall comes back 40% sooner and erupts again for 70%.', apply: (m) => { m.rCd *= 0.6; m.rAftershock = Math.max(m.rAftershock, 0.7); } },
+    weapon: { name: 'Emberheart', desc: 'Burns stack [n30] higher, and every stack burns [20%] more.', apply: (m) => { m.burnMax += 3; m.burnMult *= 1.2; } },
+    helm: { name: 'Crown of Cinders', desc: 'Smoulder bursts [50%] wider and gives [4+n2] burn stacks instead of 4.', apply: (m) => { m.wRadius *= 1.5; m.smoulderStacks = Math.max(m.smoulderStacks, 3); } },
+    chest: { name: 'Ashen Robe', desc: 'For each burning enemy within 8 m, you deal [4%] more damage (up to [4%*6]).', apply: (m) => { m.burnRage += 0.04; } },
+    boots: { name: 'Cinderwalk', desc: 'Fire Bolt comes back [-30%] sooner and deals [25%] more.', apply: (m) => { m.qCd *= 0.7; m.qDmg *= 1.25; } },
+    ring: { name: 'Seal of the Second Sun', desc: 'Cinderfall comes back [-40%] sooner and erupts again for [70%].', apply: (m) => { m.rCd *= 0.6; m.rAftershock = Math.max(m.rAftershock, 0.7); } },
   },
   frostbinder: {
-    weapon: { name: 'Rimecaller', desc: 'Ice Bolt gives 3 Hoarfrost instead of 2, and Shatter deals 30% more.', apply: (m) => { m.qFrost = Math.max(m.qFrost, 3); m.frostDmg *= 1.3; } },
-    helm: { name: 'Glacial Crown', desc: 'Frozen enemies stay frozen 50% longer, and Brittle bosses take 25% more (instead of 15%).', apply: (m) => { m.frostFreeze *= 1.5; m.brittle = Math.max(m.brittle, 0.25); } },
-    chest: { name: 'Rimeguard Mantle', desc: 'Every Shatter makes you deal 4% more damage for 6 seconds, up to 5 times (20%).', apply: (m) => { m.shatterSurge = Math.max(m.shatterSurge, 0.04); } },
-    boots: { name: 'Frostwalkers', desc: "Starwake's motes give 2 Hoarfrost each, and Starwake comes back 30% sooner.", apply: (m) => { m.moteFrost = Math.max(m.moteFrost, 2); m.eCd *= 0.7; } },
-    ring: { name: "Winter's Loop", desc: "Frozen Orb comes back 30% sooner, and its shattering burst gives 3 Hoarfrost.", apply: (m) => { m.wCd *= 0.7; m.orbBurstFrost = Math.max(m.orbBurstFrost, 3); } },
+    weapon: { name: 'Rimecaller', desc: 'Ice Bolt gives [n3] Hoarfrost instead of 2, and Shatter deals [30%] more.', apply: (m) => { m.qFrost = Math.max(m.qFrost, 3); m.frostDmg *= 1.3; } },
+    helm: { name: 'Glacial Crown', desc: 'Frozen enemies stay frozen [50%] longer, and Brittle bosses take [15+10%] more (instead of 15%).', apply: (m) => { m.frostFreeze *= 1.5; m.brittle = Math.max(m.brittle, 0.25); } },
+    chest: { name: 'Rimeguard Mantle', desc: 'Every Shatter makes you deal [4%] more damage for 6 seconds, up to 5 times ([4%*5]).', apply: (m) => { m.shatterSurge = Math.max(m.shatterSurge, 0.04); } },
+    boots: { name: 'Frostwalkers', desc: "Starwake's motes give [n2] Hoarfrost each, and Starwake comes back [-30%] sooner.", apply: (m) => { m.moteFrost = Math.max(m.moteFrost, 2); m.eCd *= 0.7; } },
+    ring: { name: "Winter's Loop", desc: "Frozen Orb comes back [-30%] sooner, and its shattering burst gives [n3] Hoarfrost.", apply: (m) => { m.wCd *= 0.7; m.orbBurstFrost = Math.max(m.orbBurstFrost, 3); } },
   },
 };
 
@@ -211,12 +211,56 @@ export const SPEC_IMMORTALS = {
  * The effect as the given class (and subclass, from level 15) gets it: { key, slot, name, itemName, desc }.
  * Unique Immortals (a Remnant's own) are the same for everyone.
  */
-export function effectFor(key, cls, spec = null) {
+export function effectFor(key, cls, spec = null, k = 1, html = false) {
   const e = EFFECTS[key];
   if (!e) return null;
   const base = Object.assign({ key, slot: e.slot, name: e.name, itemName: e.itemName, desc: e.desc }, (e.byClass && e.byClass[cls]) || {});
   const s = !e.unique && spec && SPEC_IMMORTALS[spec] && SPEC_IMMORTALS[spec][e.slot];
-  return s ? Object.assign(base, { name: s.name, desc: s.desc, spec }) : base;
+  const out = s ? Object.assign(base, { name: s.name, desc: s.desc, spec }) : base;
+  out.desc = passiveText(out.desc, k, html); // (0.67) its numbers worked out for the item's stars
+  return out;
+}
+
+/**
+ * (0.67) A passive's text with its numbers worked out for potency `k` (1 to 2: see starPotency). The
+ * written text marks each number the stars grow, in brackets, by how it grows, the same way applyPotent
+ * and world.js pot() grow the real values:
+ *   [25%]     a share: 25% at 1x, 50% at 2x            [20+15%]  20% plus a share that grows: 35%, then 50%
+ *   [-40%]    a cut (a cooldown 40% shorter), grown as speed so it never reaches 100%: 57% at 2x
+ *   [n3]      a count, kept whole: 3, then 6           [4+n2]    4 plus a count that grows: 6, then 8
+ *   [s3]      seconds: 3, then 6                       [0.3+s0.2] 0.3 s plus seconds that grow: 0.5, then 0.7
+ *   [/10:5%]  "every 5% (instead of 10%)", grown as how often: 3.3% at 2x
+ *   [3%*9]    a share times a fixed count (3% a step, up to 9 steps: 27%, then 54%)
+ * `{s}` after a number makes the next word plural unless that number is 1. With `html`, a number the stars
+ * have grown is wrapped in <b class="pot"> (gold in the tooltip).
+ */
+export function passiveText(desc, k = 1, html = false) {
+  if (!desc) return desc;
+  const fmt = (v) => `${+v.toFixed(v % 1 ? 1 : 0)}`;
+  let last = 2;
+  const out = desc.replace(/\[([^\]]+)\]|\{s\}/g, (all, t) => {
+    if (!t) return last === 1 ? '' : 's';
+    let m, v, v1, unit = '%';
+    const calc = (kk) => {
+      if ((m = t.match(/^(-?)(\d+(?:\.\d+)?)%$/))) {
+        const x = Number(m[2]) / 100;
+        return m[1] ? (1 - 1 / (1 + (1 / (1 - x) - 1) * kk)) * 100 : x * kk * 100;
+      }
+      if ((m = t.match(/^(\d+(?:\.\d+)?)\+(\d+(?:\.\d+)?)%$/))) return Number(m[1]) + Number(m[2]) * kk;
+      if ((m = t.match(/^(\d+(?:\.\d+)?)%\*(\d+)$/))) return Number(m[1]) * kk * Number(m[2]);
+      if ((m = t.match(/^\/(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)%$/))) { const d = Number(m[1]), a = Number(m[2]); return d / (1 + (d / a - 1) * kk); }
+      if ((m = t.match(/^(?:(\d+(?:\.\d+)?)\+)?n(\d+)$/))) { unit = ''; return Number(m[1] || 0) + Math.round(Number(m[2]) * kk); }
+      if ((m = t.match(/^(?:(\d+(?:\.\d+)?)\+)?s(\d+(?:\.\d+)?)$/))) { unit = ''; return Number(m[1] || 0) + Number(m[2]) * kk; }
+      return null;
+    };
+    v1 = calc(1);
+    v = calc(k);
+    if (v == null) return all;
+    last = v;
+    const text = `${fmt(v)}${unit}`;
+    return html && k > 1 && Math.abs(v - v1) > 1e-9 ? `<b class="pot">${text}</b>` : text;
+  });
+  return out;
 }
 /** Classes whose Slipstream speeds up cooldowns instead of attacks. */
 export const CASTER_CLASSES = new Set(['rogue', 'mage']);

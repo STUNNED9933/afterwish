@@ -1,4 +1,5 @@
 // The gear drawer: equipped items, stats, and the bag.
+import { sourcesOf, usesOf } from '../sim/sources.js';
 import { CONFIG } from '../config.js';
 import { ECHOES } from '../sim/rebirth.js';
 import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT, starPotency } from '../sim/items.js';
@@ -34,10 +35,10 @@ export function itemTooltip(item, compareTo) {
     html += `<div class="tt-set"><b>${set.name} set</b> &middot; ${SPECS[set.spec] ? SPECS[set.spec].name : ''} &middot; ${n} of 4 worn<div class="${n >= 2 ? 'on' : ''}">(2) ${set.two.desc}</div><div class="${n >= 4 ? 'on' : ''}">(4) ${set.four.desc}</div></div>`;
   }
   if (item.effect && EFFECTS[item.effect]) {
-    const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow());
+    const k = starPotency(item); // (0.65) the passive grows with the stars; (0.67) its numbers worked out, the grown ones in gold
+    const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow(), k, true);
     const as = fx.spec && SPECS[fx.spec] ? `<div class="tt-as">As a ${SPECS[fx.spec].name}. An Immortal's effect follows the subclass you play.</div>` : !EFFECTS[item.effect].unique && !gearSpecNow() ? '<div class="tt-as">From level 15 its effect becomes your subclass\'s own.</div>' : '';
-    const k = starPotency(item); // (0.65) the passive grows with the stars
-    const pot = k > 1 ? `<div class="tt-as" style="color:#ffd24a">${'★'.repeat(item.stars)} Passive at ${Math.round(k * 100)}% potency: every number above counts ${+k.toFixed(1)}x (cooldown cuts as speed).</div>` : '';
+    const pot = k > 1 ? `<div class="tt-as pot-note">${'★'.repeat(item.stars)} The numbers in gold have grown with its stars (${Math.round(k * 100)}% of the passive at one).</div>` : '';
     html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}${pot}${as}</div>`;
   }
   // (0.61.2) what the item is, and for an Immortal, its story
@@ -82,30 +83,8 @@ function cpLine(item) {
 
 /** A square item tile. */
 const pct = (x) => `${Math.round(x * 100)}%`;
-/** Where each pouch keepsake comes from (worked out from the game's own numbers). */
-function miscSources(id) {
-  const glassAtMerchant = (MERCHANT && MERCHANT.stock || []).find((s) => s.kind === 'glass');
-  if (id === 'glass')
-    return [
-      glassAtMerchant ? `The travelling merchant, for ${glassAtMerchant.tickets} shards (on ${pct(glassAtMerchant.chance)} of his visits)` : 'The travelling merchant, sometimes',
-      `Remnants (${pct(GLASS.remnant)})`,
-      `Wishthieves (${pct(GLASS.thief)})`,
-      `Storied enemies (${pct(GLASS.storied)})`,
-      `Bounties in Haven (${pct(BOUNTY.glass)} with the reward)`,
-    ];
-  if (id === 'fragment')
-    return [
-      `Bounties in Haven (${BOUNTY.fragments[0]} to ${BOUNTY.fragments[1]})`,
-      `Remnants (${FRAGMENTS.remnant})`,
-      `World events (${FRAGMENTS.event})`,
-      `Storied enemies (${FRAGMENTS.storied})`,
-      `Wishthieves (${FRAGMENTS.thief})`,
-      `Elites on world tier IV and up (${pct(FRAGMENTS.elite)} chance of 1)`,
-      'Come Home, once on each world tier every life (20 to 80)',
-    ];
-  if (id === 'sigil') return [`World events (${pct(SIGIL.event)})`, `Storied enemies (${pct(SIGIL.storied)})`, 'Some bounties in Haven'];
-  return [];
-}
+/** Where each pouch keepsake comes from: worked out from the game's own tables (sim/sources.js). */
+const miscSources = (id) => sourcesOf(id);
 function miscTooltip(id, n) {
   const m = MISC[id];
   const use = id === 'fragment' ? `${m.desc} ${FRAGMENTS.craft} make one.` : m.desc;
@@ -116,35 +95,23 @@ function miscTooltip(id, n) {
 // (0.62.1) What the gear window's wallet shows: each resource, its icon, what it is for, and where it comes from.
 const WALLET = [
   { key: 'gold', name: 'Gold', color: '#ffd24a', shared: true,
-    icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.5 9.5c.6-1 1.6-1.4 2.6-1.4 1.5 0 2.4.8 2.4 1.8 0 2.4-5 1.4-5 4 0 1 1 1.8 2.6 1.8 1 0 2-.5 2.6-1.4"/>',
-    uses: ['Blacksmith upgrades (+levels)', 'Rerolling and reforging lines', 'Opening Iron and Gilded caches', 'Skill points from the trainer, and respecs', 'The travelling merchant and Bounty Board swaps'],
-    from: ['Every enemy, chest and boss', 'Quests and bounties', 'An Echo Ring run for gold'] },
+    icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.5 9.5c.6-1 1.6-1.4 2.6-1.4 1.5 0 2.4.8 2.4 1.8 0 2.4-5 1.4-5 4 0 1 1 1.8 2.6 1.8 1 0 2-.5 2.6-1.4"/>', },
   { key: 'tickets', name: 'Shards', color: '#9fe8ff', shared: true,
-    icon: '<path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10M12 3v18"/>',
-    uses: ['Waking the Echo Ring (5 a run)', 'Echo Rifts at the Waygate (1)', 'The travelling merchant'],
-    from: ['A sliver in many enemies (6%), every big one', 'Bosses', 'Waves and bosses in the Echo Ring'] },
+    icon: '<path d="M12 3l5 6-5 12-5-12z"/><path d="M7 9h10M12 3v18"/>', },
   { key: 'scrap', name: 'Scrap', color: '#c9c4b0', kept: true,
-    icon: '<path d="M12 4l1.6 2.8 3.2-.6.4 3.2 2.8 1.6-1.6 2.8 1.6 2.8-2.8 1.6-.4 3.2-3.2-.6L12 20l-1.6-2.8-3.2.6-.4-3.2-2.8-1.6L5.6 12 4 9.2l2.8-1.6.4-3.2 3.2.6z"/><circle cx="12" cy="12" r="3"/>',
-    uses: ['Blacksmith upgrades (+levels)', 'Rerolling lines'],
-    from: ['Scrapping gear (shift-click, or the scrap button)', 'Quests'] },
+    icon: '<path d="M12 4l1.6 2.8 3.2-.6.4 3.2 2.8 1.6-1.6 2.8 1.6 2.8-2.8 1.6-.4 3.2-3.2-.6L12 20l-1.6-2.8-3.2.6-.4-3.2-2.8-1.6L5.6 12 4 9.2l2.8-1.6.4-3.2 3.2.6z"/><circle cx="12" cy="12" r="3"/>', },
   { key: 'dust', name: 'Wishdust', color: '#e7c6ff', kept: true,
-    icon: '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="M12 9.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/><circle cx="18.5" cy="5.5" r="1"/><circle cx="5.5" cy="18.5" r="1"/>',
-    uses: ['Reforging a line into a stat you choose'],
-    from: ['Scrapping Mythic and better gear', 'Elites, Storied enemies, Remnants and the Wishthief', 'World events, bounties, an Echo Ring run for Wishdust'] },
+    icon: '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="M12 9.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/><circle cx="18.5" cy="5.5" r="1"/><circle cx="5.5" cy="18.5" r="1"/>', },
   { key: 'keys', name: 'Warden keys', color: '#ffb070', kept: true,
-    icon: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>',
-    uses: ["Opening Warden's Caches at Bram's forge in Haven (Epic or better, 1% Immortal)"],
-    from: ['Bosses out in the world', 'Some quests'] },
+    icon: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>', },
   { key: 'essence', name: 'Echo Essence', color: '#b8a8ff', kept: true, rebirth: true,
-    icon: '<path d="M12 4c4.4 0 8 3.6 8 8s-3.6 8-8 8"/><path d="M12 8c2.2 0 4 1.8 4 4s-1.8 4-4 4"/><circle cx="12" cy="12" r="1.2"/><path d="M12 4C7.6 4 4 7.6 4 12"/>',
-    uses: ['Recalling the best piece of a past life, in its prime', 'Rerolling lines instead of gold and scrap'],
-    from: ['Rebirth: worn and bag gear given up'] },
+    icon: '<path d="M12 4c4.4 0 8 3.6 8 8s-3.6 8-8 8"/><path d="M12 8c2.2 0 4 1.8 4 4s-1.8 4-4 4"/><circle cx="12" cy="12" r="1.2"/><path d="M12 4C7.6 4 4 7.6 4 12"/>', },
 ];
 function walletTooltip(w, n) {
   const kept = w.shared ? 'Shared by every hero on the account' : w.kept ? 'Kept through a rebirth' : '';
   return `<div class="tt-name" style="color:${w.color}">${w.name}</div><div class="tt-meta">${n.toLocaleString()}${kept ? ` · ${kept}` : ''}</div>` +
-    `<div class="tt-from"><b>What it is for</b><ul>${w.uses.map((u) => `<li>${u}</li>`).join('')}</ul></div>` +
-    `<div class="tt-from"><b>Where to find more</b><ul>${w.from.map((u) => `<li>${u}</li>`).join('')}</ul></div>`;
+    `<div class="tt-from"><b>What it is for</b><ul>${usesOf(w.key).map((u) => `<li>${u}</li>`).join('')}</ul></div>` +
+    `<div class="tt-from"><b>Where to find more</b><ul>${sourcesOf(w.key).map((u) => `<li>${u}</li>`).join('')}</ul></div>`;
 }
 
 /** (0.62) Ask before rerolling an Immortal-tier line (on unless turned off; kept in this browser). */

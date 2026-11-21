@@ -4604,7 +4604,7 @@ export class World {
     const ex = extra[Math.floor(rng() * extra.length)];
     b.reward = {
       fragments: BOUNTY.fragments[0] + Math.floor(rng() * (BOUNTY.fragments[1] - BOUNTY.fragments[0] + 1)),
-      [ex]: ex === 'tickets' ? 1 + Math.floor(rng() * 2) : ex === 'dust' ? 4 + Math.floor(rng() * 3) : ex === 'sigil' ? 1 : Math.round(60 * (1 + 0.15 * p.level) * (tier >= 2 ? TIERS[tier].loot : 1)),
+      [ex]: ex === 'tickets' || ex === 'dust' ? BOUNTY.extra[ex][0] + Math.floor(rng() * (BOUNTY.extra[ex][1] - BOUNTY.extra[ex][0] + 1)) : ex === 'sigil' ? 1 : Math.round(60 * (1 + 0.15 * p.level) * (tier >= 2 ? TIERS[tier].loot : 1)),
       glass: rng() < BOUNTY.glass ? 1 : 0,
     };
     b.text = BOUNTY.kinds[b.kind].text(b);

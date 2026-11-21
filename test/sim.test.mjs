@@ -4395,4 +4395,35 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...every augment the class can get is in the list', P.augmentsFor('warrior').every((id) => !AU[id].cls || AU[id].cls === 'warrior'));
   }
 }
+
+// --- 0.67: worked-out texts --------------------------------------------------------------------
+{
+  const I = await import('../src/sim/items.js');
+  const A = await import('../src/sim/augments.js');
+  const { sourcesOf, usesOf } = await import('../src/sim/sources.js');
+  const B = A.defaultMods();
+  // every passive renders without a bracket left, for every class and subclass, at every potency
+  let leftover = [];
+  for (const key in I.EFFECTS) for (const cls of ['warrior', 'archer', 'rogue', 'mage']) for (const spec of [null, ...Object.keys(I.SPEC_IMMORTALS)]) for (const k of [1, 1.4, 2]) {
+    const fx = I.effectFor(key, cls, spec, k, true);
+    if (/[[\]{}]/.test(fx.desc.replace(/<b class="pot">|<\/b>/g, ''))) leftover.push(`${key}/${cls}/${spec}`);
+  }
+  check('Passives (0.67): every one is worked out, nothing left in brackets', leftover.length === 0, leftover.slice(0, 3).join(' '));
+  check('...at one star nothing is gold, at five the grown numbers are', !/class="pot"/.test(I.effectFor('stormcaller', 'mage', 'pyromancer', 1, true).desc) && I.effectFor('stormcaller', 'mage', 'pyromancer', 2, true).desc.includes('<b class="pot">60</b>'));
+  // the text says what the code does: each percentage in a spec passive's text at 2x is what applyPotent gives
+  const hood = I.passiveText(I.SPEC_IMMORTALS.sharpshooter.helm.desc, 2);
+  const m = A.defaultMods(); I.applyPotent(m, I.SPEC_IMMORTALS.sharpshooter.helm.apply, 2, B);
+  check("...and says what the code does (Hawk's Hood at 5 stars)", hood.includes(`${Math.round((1 - m.rCd) * 1000) / 10}%`) && hood.includes(`${Math.round((m.rDmg - 1) * 100)}%`), hood);
+  const seal = I.passiveText(I.SPEC_IMMORTALS.bulwark.ring.desc, 2);
+  const m2 = A.defaultMods(); I.applyPotent(m2, I.SPEC_IMMORTALS.bulwark.ring.apply, 2, B);
+  check("...(Warden's Seal)", seal.includes(`${Math.round(m2.reckonHp * 1000) / 10}%`) && seal.includes(`holds ${m2.reckonMaxAdd} more`), seal);
+  // where things come from
+  for (const k of ['fragment', 'glass', 'sigil', 'keys', 'tickets', 'dust', 'gold', 'scrap', 'essence']) {
+    const L = sourcesOf(k);
+    if (!L.length || L.some((l) => /NaN|undefined|\[object/.test(l))) check(`Sources: ${k}`, false, L.join(' | '));
+  }
+  check('Sources (0.67): every resource lists where it comes from, from the tables (no NaN)', true);
+  check('...Fragments name the merchant, Come Home and the elites', sourcesOf('fragment').some((l) => l.includes('merchant')) && sourcesOf('fragment').some((l) => l.includes('Come Home')) && sourcesOf('fragment').some((l) => /Elites \(25% chance of 1\)/.test(l)));
+  check('...and uses for the wallet', ['gold', 'tickets', 'scrap', 'dust', 'keys', 'essence'].every((k) => usesOf(k).length > 0));
+}
 process.exit(failed ? 1 : 0);

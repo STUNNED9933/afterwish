@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Worked-out texts (0.67)
+
+- **Ascended passives show their real numbers**: an Immortal's passive text is worked out for its stars,
+  and every number the stars have grown is in gold (Emberheart at 5 stars: "Burns stack **60** higher,
+  and every stack burns **40%** more"). Passive texts are written as templates (`src/sim/items.js`
+  passiveText) that grow each number the way the game does.
+- **"Where to find more" is worked out from the game's tables** (`src/sim/sources.js`): quests, the
+  merchant's stock and wares, bounties, chests, boss hoards, the Ring and the Weekly Echo are read, so a
+  new source or a changed number shows up by itself. Also the wallet's "What it is for" and "Where to find
+  more". Fixes the Fragment tooltip's "NaN% chance of 1" (elites: 25%).
+
 ### Auto-pick, deep waves, richer merchants (0.66)
 
 - **Auto-pick augments**: rank every augment your class can get (drag, or the arrows; damage starts at

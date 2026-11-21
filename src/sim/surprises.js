@@ -113,6 +113,7 @@ export const BOUNTY = {
   slots: 3,
   swapGold: 120, // times (1 + level/10): swap one job for another
   fragments: [6, 10],
+  extra: { tickets: [1, 2], dust: [4, 6] }, // (0.67) the second reward, when it is shards or Wishdust
   glass: 0.1, // chance of an Unwishing Glass as well
   kinds: {
     kill: { need: 40, text: (b) => `Clear ${b.need} enemies in ${b.mapName}` },

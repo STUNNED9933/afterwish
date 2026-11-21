@@ -159,6 +159,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Will (0.68)
+
+- **The Will of the Granted** filters out those short of the Animus. While you are short of it and
+  within 24 m of anything that asks for it (Caelum, and the Echo Ring from wave 50), an amber ring
+  follows you and lands every 5 to 7 seconds. It is a Dominion: only a parry in its last two ticks (the
+  moment it flashes white) turns it, rolling does not help, and one that lands takes 90% of your health
+  and Mind-Locks you (break it at a crack as before). Those with the Animus are never asked, so in a
+  party only the one short of it is tested.
+- Fixed: Dominion warnings now show amber for friends on the server world too (the telegraph's
+  Dominion mark was not being sent).
+
 ### Worked-out texts (0.67)
 
 - **Ascended passives show their real numbers**: an Immortal's passive text is worked out for its stars,

@@ -61,6 +61,12 @@ export const CONFIG = {
   // after the press (two ticks), and if one lands it takes `short` of your max health, nothing reduces
   // it, rolling through it does not help, and the lock is long.
   DOMINION: { frame: 0.034, short: 0.9, lock: 0.8, lockShort: 4 },
+  // The Will (0.68): what filters out those short of the Animus. While you are short of it and within
+  // `range` of anything that asks for it (Caelum, the Echo Ring from wave 50), an amber ring follows you
+  // and lands every `every` seconds (`first` after it notices you), after `windup`. It is a Dominion:
+  // only a near-frame-perfect parry turns it, rolling does not help, and it takes 90% of your health and
+  // Mind-Locks you. Those with the Animus are never asked.
+  WILL: { range: 24, first: 3, every: [5, 7], windup: 1.3, radius: 2.2, dmg: 10 },
   PERFECT_HEAL: 0.04, // fraction of max HP restored by a perfect parry
   // 0.28: warrior and mage
   RECKON_PER: 0.25, // Reckoning (Bulwark): Whirlwind deals this much more per stack

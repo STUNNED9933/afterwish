@@ -4426,4 +4426,70 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...Fragments name the merchant, Come Home and the elites', sourcesOf('fragment').some((l) => l.includes('merchant')) && sourcesOf('fragment').some((l) => l.includes('Come Home')) && sourcesOf('fragment').some((l) => /Elites \(25% chance of 1\)/.test(l)));
   check('...and uses for the wallet', ['gold', 'tickets', 'scrap', 'dust', 'keys', 'essence'].every((k) => usesOf(k).length > 0));
 }
+
+// --- 0.68: the Will ----------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const W = CONFIG.WILL, D = CONFIG.DOMINION;
+  const run = (w, sec, each) => { for (let i = 0; i < Math.round(sec * 60); i++) { if (each) each(w); w.step(CONFIG.TICK); } };
+  const sky = (animus) => {
+    const w = new World({ seed: 80, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { talents: {} }) });
+    w.loadMap('skyroad', 'town');
+    // stand by a camp, everything calmed so only the Will can touch you
+    const e = w.enemies.find((o) => !o.dead && !o.def.boss);
+    const p = w.player;
+    p.x = p.px = e.x + 6; p.z = p.pz = e.z;
+    w.events.length = 0;
+    const hold = (ww) => { ww.player.animus = animus; ww.player.hp = Math.max(ww.player.hp, 1); for (const o of ww.enemies) { o.aggro = false; o.atkCd = 99; o.frozenT = 99; o.state = 'idle'; o.x = o.px = o.x; } };
+    return { w, p, hold };
+  };
+  {
+    const { w, p, hold } = sky(0);
+    let hpLow = 1, lands = 0, first = false;
+    for (let i = 0; i < 14 * 60; i++) {
+      hold(w);
+      w.player.lockT = 0;
+      w.player.hp = w.player.stats.maxHp;
+      w.events.length = 0;
+      w.step(CONFIG.TICK);
+      if (w.events.some((e) => e.type === 'willFirst')) first = true;
+      if (w.events.some((e) => e.type === 'dominion' && e.short)) { lands++; hpLow = Math.min(hpLow, w.player.hp / w.player.stats.maxHp); }
+    }
+    check('The Will (0.68): short of the Animus near the Granted, it finds you every few seconds', lands >= 2 && lands <= 3 && first, `${lands} in 14 s`);
+    check('...and each one that lands takes 90% of your health', hpLow <= 1 - D.short + 0.02 && hpLow > 0, hpLow.toFixed(2));
+    const t = w.telegraphs.find((x) => x.will) || null;
+    check('...its ring is a Dominion (amber), following you', !t || (t.dominion === 0.15 && t.parryable && Math.abs(t.x - p.x) < 1e-6));
+  }
+  {
+    const { w, hold } = sky(0.15);
+    run(w, 14, hold);
+    check('...those with the Animus are never asked', !w.events.some((e) => e.type === 'dominion' || e.type === 'willFirst') && !w.telegraphs.some((t) => t.will));
+  }
+  {
+    // a near-frame-perfect parry turns it
+    const { w, p, hold } = sky(0);
+    let turned = false;
+    run(w, 12, (ww) => {
+      hold(ww);
+      ww.player.lockT = 0;
+      const t = ww.telegraphs.find((x) => x.will);
+      if (t && t.dur - t.t <= CONFIG.TICK * 1.5 && !(ww.player.parryT > 0) && !(ww.player.parryCd > 0)) { ww.command({ type: 'parry' }); }
+      if (ww.events.some((e) => e.type === 'dominionParried' && e.short)) turned = true;
+    });
+    check('...and a parry pressed in its last ticks turns it', turned);
+    const lands = w.events.filter((e) => e.type === 'dominion').length;
+    check('...every time', lands === 0, `${lands} landed`);
+    void p;
+  }
+  {
+    // the Ring from wave 50
+    const save = Object.assign(geared('warrior', 100, 5), { maxCheckpoint: 51 });
+    const w = new World({ seed: 81, mode: 'arena', cls: 'warrior', save, focus: { kind: 'gold' }, startWave: 51 });
+    w.step(CONFIG.TICK);
+    for (let i = 0; i < 400 && w.offer; i++) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); }
+    w.command({ type: 'nextWave' }); w.runCommands();
+    run(w, 12, (ww) => { ww.player.animus = 0; ww.player.lockT = 0; ww.player.hp = ww.player.stats.maxHp; for (const o of ww.enemies) { o.atkCd = 99; o.frozenT = 99; } });
+    check('...and in the Echo Ring from wave 50, short of its Animus', w.events.some((e) => e.type === 'dominion' && e.short));
+  }
+}
 process.exit(failed ? 1 : 0);

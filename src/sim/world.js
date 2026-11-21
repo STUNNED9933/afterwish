@@ -267,6 +267,7 @@ export class World {
       p.leap = null;
       p.atkWind = 0;
       p.lockT = 0;
+      h.will = null; // (0.68) a new map asks afresh
       this.portalT = this.wayT = 0;
       this.portalOn = null;
       this.portalArmed = this.wayArmed = false;
@@ -3086,6 +3087,63 @@ export class World {
   /** (0.65) How strong a worn class or unique Immortal's passive is, by its stars: 1 to 2. */
   pot(key) {
     return (this.mods.pot && this.mods.pot[key]) || 1;
+  }
+
+  /** (0.68) The Animus asked of this hero here: the most any enemy within reach asks (0 if none). */
+  willNeed(p) {
+    const W = CONFIG.WILL;
+    if (this.trial) return 0;
+    if (this.mode === 'arena') return this.ring && this.wave && this.wave.phase === 'active' && this.enemies.some((e) => !e.dead) ? RING.animus(this.wave.n) : 0;
+    if (this.mode !== 'explore' || !this.map || !CAELUM.maps[this.map.id]) return 0;
+    let need = 0;
+    for (const e of this.enemies) if (!e.dead && e.animusNeed > need && dist(e.x, e.z, p.x, p.z) <= W.range) need = e.animusNeed;
+    return need;
+  }
+
+  /**
+   * The Will (0.68, CONFIG.WILL): every few seconds, while this hero is short of the Animus asked here,
+   * an amber ring follows them and lands as a Dominion. Those with the Animus are never asked.
+   */
+  stepWill(dt) {
+    const p = this.player;
+    const h = this.cur; // its state lives on the hero record, not the player (which is sent to friends whole)
+    const W = CONFIG.WILL;
+    if (!p || !h) return;
+    if (p.dead) {
+      if (h.will) this.endWill(h);
+      return;
+    }
+    const need = this.willNeed(p);
+    if (!need || !animusShort(p.animus, need)) {
+      if (h.will) this.endWill(h);
+      h.willT = Math.max(h.willT ?? 0, W.first);
+      return;
+    }
+    if (h.will) {
+      const wl = h.will;
+      wl.t += dt;
+      Object.assign(wl.tele, { x: p.x, z: p.z, t: wl.t, cue: wl.dur - wl.t <= CONFIG.PARRY_CUE_LEAD, dominion: need });
+      if (wl.t >= wl.dur) {
+        this.endWill(h);
+        h.willT = W.every[0] + this.rng() * (W.every[1] - W.every[0]);
+        this.hitPlayer(W.dmg, { parryable: true, dominion: true, need, src: null });
+      }
+      return;
+    }
+    h.willT = (h.willT ?? W.first) - dt;
+    if (h.willT > 0) return;
+    const tele = { id: this.nextId++, will: true, kind: 'circle', x: p.x, z: p.z, dir: 0, radius: W.radius, t: 0, dur: W.windup, parryable: true, cue: false, dominion: need };
+    this.telegraphs.push(tele);
+    h.will = { t: 0, dur: W.windup, tele };
+    if (!h.willSeen) {
+      h.willSeen = true;
+      this.emit('willFirst', { need, have: p.animus || 0 });
+    }
+  }
+
+  endWill(h) {
+    if (h.will) this.telegraphs = this.telegraphs.filter((t) => t !== h.will.tele);
+    h.will = null;
   }
 
   /** Arriving on a Caelum map short of what it asks: say so (0.64). You may still try. */
@@ -7465,6 +7523,7 @@ inTown() {
     for (const h of this.heroes) {
       this.use(h);
       this.player.lockT = 0;
+      h.will = null;
       this.caelumWarn(map.id);
       this.questEvent('reach', map.id);
     }
@@ -7807,6 +7866,7 @@ inTown() {
       this.stepShadows(dt);
       this.stepWalls(dt);
       this.stepEnemies(edt);
+      this.stepWill(edt);
       this.stepDoom(edt);
       this.stepFalls(edt);
       this.stepHazards(edt);
@@ -7835,6 +7895,7 @@ inTown() {
     each(() => {
       this.stepPlayer(dt);
       this.landLateHits(); // a friend's held hits that no parry caught (0.41.1)
+      this.stepWill(edt); // (0.68) each hero short of the Animus is asked on their own
     });
     this.byOwner(this.delayed, (list) => { this.delayed = list; this.stepDelayed(dt); return this.delayed; }, (all) => (this.delayed = all));
     this.byOwner(this.zones, (list) => { this.zones = list; this.stepZones(dt); return this.zones; }, (all) => (this.zones = all));

@@ -120,3 +120,10 @@ Numbers as built (src/config.js MIND_LOCK and DOMINION, src/sim/endgame.js CAELU
 - Dominion: with the Animus asked, the perfect window (0.11 s); short of it, 0.034 s (two ticks). A short
   Dominion that lands: 90% of max health, unreduced, rolling does not avoid it, and a 4 s lock before Animus.
 - Caelum maps are tier V times their own (health 6.5x to 10x, damage 3x to 3.6x) with no Ember.
+
+## The Will (0.68)
+
+Testing showed Animus was too easy to ignore: a Dominion only came when a Granted happened to use one.
+The Will makes the gate unavoidable without making it impossible. Short of a place's Animus, and near
+anything asking for it, a ring follows you and lands every 5 to 7 s (CONFIG.WILL): a Dominion, so a
+parry within two ticks turns it and nothing else does. Players with the Animus never see it.

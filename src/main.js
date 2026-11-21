@@ -4275,6 +4275,11 @@ function start(hot = {}) {
         if (ev.short) hud.screenFlash(0.6);
         hintOnce('dominion', 'Amber warnings are Dominions. With the Animus a map asks, a perfect parry turns them. Short of it, only a near-frame-perfect one does, and a Dominion that lands takes nearly all your health.', 9);
         break;
+      case 'willFirst': {
+        const pc = (v) => `${Math.round(v * 100)}%`;
+        hud.banner('The Will of the Granted', `You have ${pc(ev.have)} Animus; here they ask ${pc(ev.need)}. Every few seconds an amber ring will find you: only a near-perfect parry, the moment it flashes white, turns it. Those with the Animus are never asked.`);
+        break;
+      }
       case 'dominionParried':
         hud.float(renderer, ev.x, 3.4, ev.z, ev.short ? 'Dominion defied!' : 'Dominion turned', 'word perfect');
         if (ev.short) hud.screenFlash(0.35);

@@ -320,9 +320,9 @@ export function buildBoard() {
 }
 
 /** A boss's altar (0.33): a low ring of standing stones round a rune, where a Remnant Sigil calls the Remnant. */
-export function buildAltar() {
+export function buildAltar(color = 0x4b4655) {
   const g = new THREE.Group();
-  const stone = mat(0x4b4655);
+  const stone = mat(color);
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
     g.add(box(0.32, 0.7 + (i % 2) * 0.25, 0.32, stone, Math.cos(a) * 2.4, 0.4, Math.sin(a) * 2.4));

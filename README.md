@@ -159,6 +159,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Models for Caelum (0.64.1)
+
+The Granted, their four keepers and a landmark for each Caelum map, made with Tripo: the Answered, Cantors,
+Thurifers, Gilded Colossi, the Veiled and wish-motes; Ianitor (two faces and a great key), the Arbiter
+(blindfold, scale and sword), Desiderium (many arms, hollow and glowing) and Fiat (a sun mask, six wings
+and rings of script); the Sky Road's gate, the Court's scale, the Hall's altar of offerings and the
+Zenith's spire. The keepers' altars are gold-white stone in Caelum.
+
 ### Mastery, phase 2: Caelum and the Granted (0.64)
 
 Above the Starwell, where the Granted live (design: `docs/design/mastery.md`). Wren's **The Sky Road**

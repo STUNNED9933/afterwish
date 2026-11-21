@@ -19,6 +19,11 @@ export const PROPS = {
   rootheart: { url: 'models/env_rootheart.glb', turn: 0 },
   glasspillar: { url: 'models/env_glasspillar.glb', turn: 0 },
   stillstone: { url: 'models/env_stillstone.glb', turn: 0 },
+  // Caelum's (0.64), one for each map
+  skygate: { url: 'models/env_skygate.glb', turn: 0 },
+  courtpillar: { url: 'models/env_courtpillar.glb', turn: 0 },
+  wantaltar: { url: 'models/env_wantaltar.glb', turn: 0 },
+  zenithspire: { url: 'models/env_zenithspire.glb', turn: 0 },
 };
 
 const loader = new GLTFLoader();

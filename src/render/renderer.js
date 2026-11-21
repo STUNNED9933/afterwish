@@ -604,7 +604,7 @@ export class Renderer {
     this.altarRunes = [];
     for (const sp of map.spawns || []) {
       if (!ENEMIES[sp.type] || !ENEMIES[sp.type].boss || map.id === 'rift') continue;
-      const altar = buildAltar();
+      const altar = buildAltar(look === 'caelum' ? 0xd8c494 : undefined); // (0.64) gold-white stone in Caelum
       altar.position.set(sp.x, 0, sp.z);
       g.add(altar);
       this.altarRunes.push(altar.userData.rune);

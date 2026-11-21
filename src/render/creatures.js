@@ -60,7 +60,7 @@ export const CREATURES = {
   // the Granted (0.64)
   answered: { model: 'e_answered', height: 2.4 },
   cantor: { model: 'e_cantor', height: 2.2 },
-  thurifer: { model: 'e_thurifer', height: 2.3 },
+  thurifer: { model: 'e_thurifer', height: 2.3, kinds: { censer: 'cast' } }, // no slash of its own: the censer swings in its cast
   colossus: { model: 'e_colossus', height: 3.4 },
   veiled: { model: 'e_veiled', height: 2.0 },
   wishmote: { model: 'p_wishmote', height: 1.0, float: 0.9 },
@@ -83,7 +83,7 @@ export const PEOPLE = {
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush', 'e_answered', 'e_cantor', 'e_thurifer', 'e_colossus', 'e_veiled', 'p_wishmote', 'b_ianitor', 'b_arbiter', 'b_desiderium', 'b_fiat']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));

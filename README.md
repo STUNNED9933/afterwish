@@ -160,6 +160,21 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Borrowed skills, a real second weapon (0.70.5)
+
+- Every borrowed active now hits like a big ability on a short cooldown, over a wide area, and grows with
+  your **main skill** (Q's rank, and what talents and augments give Q). Ranges and areas are much
+  larger. Passives are about half as strong again or more.
+- Every **Frostbinder** borrowing is its **reflecting wall** (Mirror Ice, Glacier Wall, Glass Ward):
+  enemy shots fly back as yours, it rises hard, and it shatters at the end, freezing what is beside it.
+  Casting it again shatters the last one.
+- The Rogue's **Fire Bomb** is lobbed up to 15 m and bursts over 7 m (wider than Cinderfall) with
+  Cinderfall's blast, a stun, and burning ground for 5 seconds.
+- Ember Brand now burns with Whirlwind too; Gravity Anchor pulls on W as well as R, and what it drags
+  takes 25% more; Blink Strike bursts where you land.
+- **Act III for the account:** once any class has seen the Unwish and been reborn, Wren's Deep quests
+  open for every class at level 100.
+
 ### The account helps a new class along (0.70.4)
 
 - **World tiers:** once any class has beaten the Cinder, every class has tiers I to V at level 100.

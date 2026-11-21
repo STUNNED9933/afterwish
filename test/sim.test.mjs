@@ -4569,6 +4569,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
       }
       w.runCommands();
       if (!w.kit.d || w.kit.d.borrowed !== spec) { bad.push(`${cls}/${spec}: not slotted`); continue; }
+      let cast = false;
       try {
         for (let n = 0; n < 3; n++) {
           const e = near(w);
@@ -4577,11 +4578,11 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
           w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z });
           w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z });
           w.command({ type: 'attack', id: e.id });
-          for (let i = 0; i < 120; i++) { w.player.hp = Math.max(w.player.hp, 1); w.step(CONFIG.TICK); }
+          for (let i = 0; i < 120; i++) { w.player.hp = Math.max(w.player.hp, 1); w.step(CONFIG.TICK); if (i === 0 && w.player.cd.d > 0) cast = true; }
           w.player.cd.q = w.player.cd.r = 0;
         }
       } catch (err) { bad.push(`${cls}/${spec}: ${err.message}`); }
-      if (!w.kit.d.passive && !(w.player.cd.d > 0) && !['bloodoath', 'blink'].includes(w.kit.d.type) && w.kit.d.type !== 'trap') bad.push(`${cls}/${spec}: never cast`);
+      if (!w.kit.d.passive && !cast && !['blink'].includes(w.kit.d.type)) bad.push(`${cls}/${spec}: never cast`);
     }
   }
   check('...every borrowed skill, active or passive, slots on D and plays without error', bad.length === 0, bad.join('; '));
@@ -4710,5 +4711,36 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Account Deep: open as deep as any class has gone (the Cinder and the Undertow beaten: VI to VIII)', d.depthOpen(d.player, 6) && d.depthOpen(d.player, 8) && !d.depthOpen(d.player, 9) && !mk(null).depthOpen(mk(null).player, 7));
   const n = mk(null, { quests: { starwell: { s: 'done', n: 1 } } });
   check('Act III: the journal says why Wren has nothing yet (the Unwish, then a rebirth)', n.actThreeWait() === 'unwish' && (n.player.endings = { self: 1 }) && n.actThreeWait() === 'rebirth');
+}
+
+// --- 0.70.5: borrowed skills as a real source of damage; Act III for the account -------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED } = await import('../src/sim/borrowed.js');
+  const { SPECS } = await import('../src/sim/talents.js');
+  const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  check('Borrowed (0.70.5): every Frostbinder borrowing is its reflecting wall', ['archer', 'warrior', 'rogue'].every((c) => BORROWED[c].frostbinder.type === 'wall'));
+  check('...the Fire Bomb bursts wider than Cinderfall and leaves the ground burning', BORROWED.rogue.pyromancer.radius > SPECS.pyromancer.kit.r.radius && BORROWED.rogue.pyromancer.burnZone);
+  const w = new World({ seed: 97, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: all, borrowed: { d: 'pyromancer' } }) });
+  const d1 = w.abilityDamage('d');
+  w.player.ranks.q = 5;
+  check('...and grows with your main skill (Q\'s rank)', w.abilityDamage('d') > d1 * 1.2, `${d1} ${w.abilityDamage('d')}`);
+  w.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+  const e = w.enemies.find((o) => !o.dead && o.state !== 'spawn');
+  e.hp = e.maxHp = 1e8;
+  w.player.x = w.player.px = e.x + 6; w.player.z = w.player.pz = e.z;
+  w.player.cd.d = 0;
+  w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z });
+  for (let i = 0; i < 60; i++) { w.player.hp = w.player.stats.maxHp; w.step(CONFIG.TICK); }
+  check('...it lands (with Cinderfall\'s blast) and burns', w.events.some((v) => v.type === 'impact' && v.kind === 'cinderfall') && w.zones.some((z) => z.fire) && e.burnStacks > 0);
+  // a wall from Glass Ward sends a shot back
+  w.player.borrowed = { d: 'frostbinder' }; w.recalcStats(); w.player.cd.d = 0;
+  w.command({ type: 'cast', slot: 'd', x: w.player.x - 6, z: w.player.z }); w.step(CONFIG.TICK);
+  const wl = w.walls[w.walls.length - 1];
+  check('...Glass Ward stands as a wall of ice', wl && wl.slot === 'd' && w.obstacles.includes(wl.ob));
+  // Act III: any class's Unwish and rebirth open it for the account
+  const fresh = (lives) => new World({ seed: 98, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 5), { acctLives: lives }) });
+  check('Act III (0.70.5): Wren\'s Deep quests open on a class with no Unwish or rebirth, once another class has both', fresh({ archer: { prim: [], act3: true } }).questOpen('deep1') && !fresh({ archer: { prim: [] } }).questOpen('deep1'));
 }
 process.exit(failed ? 1 : 0);

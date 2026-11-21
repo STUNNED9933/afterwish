@@ -189,7 +189,7 @@ function start(hot = {}) {
     const out = {};
     for (const c of Object.keys(CLASSES)) {
       const s = loadSave(c);
-      if (s && s.rebirth) out[c] = { prim: primordialsOf(s.rebirth), ember: emberOf(s.rebirth), open: !!(s.rebirth.act3 && s.rebirth.act3[MASTERY.quest]) };
+      if (s && s.rebirth) out[c] = { prim: primordialsOf(s.rebirth), ember: emberOf(s.rebirth), open: !!(s.rebirth.act3 && s.rebirth.act3[MASTERY.quest]), act3: !!(s.endings && s.endings.self > 0 && s.rebirth.n >= 1) }; // (0.70.5)
     }
     return out;
   }

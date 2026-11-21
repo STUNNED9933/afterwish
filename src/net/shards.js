@@ -192,7 +192,7 @@ export class ServerWorld {
     if (pl.accountId && this.accounts) {
       const chars = this.accounts.charsOf(pl.accountId) || {};
       const out = {};
-      for (const c in chars) if (chars[c] && chars[c].rebirth) out[c] = { prim: primordialsOf(chars[c].rebirth), ember: emberOf(chars[c].rebirth), open: !!(chars[c].rebirth.act3 && chars[c].rebirth.act3.lives) };
+      for (const c in chars) if (chars[c] && chars[c].rebirth) out[c] = { prim: primordialsOf(chars[c].rebirth), ember: emberOf(chars[c].rebirth), open: !!(chars[c].rebirth.act3 && chars[c].rebirth.act3.lives), act3: !!(chars[c].endings && chars[c].endings.self > 0 && chars[c].rebirth.n >= 1) }; // (0.70.5) act3: Wren's Deep quests opened on this class
       return out;
     }
     const given = hello && hello.save && hello.save.acctLives;
@@ -200,7 +200,7 @@ export class ServerWorld {
     const out = {};
     for (const c of ['warrior', 'archer', 'rogue', 'mage']) {
       const v = given[c];
-      if (v && typeof v === 'object') out[c] = { prim: (Array.isArray(v.prim) ? v.prim : []).map(Number).filter((d) => d >= 6 && d <= 10).slice(0, 5), ember: Math.max(0, Math.min(1000, Number(v.ember) || 0)), open: !!v.open };
+      if (v && typeof v === 'object') out[c] = { prim: (Array.isArray(v.prim) ? v.prim : []).map(Number).filter((d) => d >= 6 && d <= 10).slice(0, 5), ember: Math.max(0, Math.min(1000, Number(v.ember) || 0)), open: !!v.open, act3: !!v.act3 };
     }
     return out;
   }

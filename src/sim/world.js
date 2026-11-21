@@ -1112,7 +1112,11 @@ export class World {
     let s = p.stats;
     // Weight of Iron (Bulwark, 0.43): armor counts toward ability damage
     if (this.mods.ironWeight > 0) s = Object.assign({}, s, { ad: s.ad + s.armor * this.ironWeightNow() });
-    return (this.recasting || 1) * this.kit[slot].dmg(s, p.level) * (this.mods[slot + 'Dmg'] ?? 1) * (1 + CONFIG.RANK_DAMAGE * ((p.ranks[slot] || 1) - 1)) * this.overflowMult(slot);
+    const def = this.kit[slot];
+    // (0.70.5) a borrowed skill grows with your main skill: Q's rank, and what talents and augments give Q
+    const rank = def.borrowed ? p.ranks.q || 1 : p.ranks[slot] || 1;
+    const main = def.borrowed ? this.mods.qDmg ?? 1 : 1;
+    return (this.recasting || 1) * def.dmg(s, p.level) * (this.mods[slot + 'Dmg'] ?? 1) * main * (1 + CONFIG.RANK_DAMAGE * (rank - 1)) * this.overflowMult(slot);
   }
 
   /**
@@ -1427,7 +1431,7 @@ export class World {
           e.slowT = 2;
           e.slow = 0.5;
           if (m.chillWeak > 0) e.chillWeak = Math.max(e.chillWeak || 0, m.chillWeak);
-          this.hitEnemy(e, wl.dmg, { source: 'r' });
+          this.hitEnemy(e, wl.dmg, { source: wl.slot || 'r' });
           if (e.dead) continue;
           if (m.frostMax > 0) this.addFrost(e, 3);
           if (e.dead) continue;
@@ -1740,10 +1744,11 @@ export class World {
       if (m2.daggerEvery > 0 && p.swingCount % m2.daggerEvery === 0) {
         // Tailwind Daggers: two homing daggers at enemies near the target
         const near = this.enemies.filter((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, target.x, target.z) <= 7).sort((u, v) => dist(u.x, u.z, target.x, target.z) - dist(v.x, v.z, target.x, target.z));
-        for (let i = 0; i < 2; i++) {
+        const nd = m2.daggerCount || 2;
+        for (let i = 0; i < nd; i++) {
           const t2 = near[i % Math.max(1, near.length)] || target;
-          const a4 = dAtan2(t2.z - p.z, t2.x - p.x) + (i ? 0.8 : -0.8);
-          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'basic', pid: this.cur.pid, targetId: t2.id, x: p.x + dCos(a4) * 0.6, z: p.z + dSin(a4) * 0.6, px: p.x, pz: p.z, vx: dCos(a4) * 24, vz: dSin(a4) * 24, speed: 24, radius: 0.35, dmg: p.stats.ad * 0.4, parryable: false, reflected: false, life: 1.4, dead: false });
+          const a4 = dAtan2(t2.z - p.z, t2.x - p.x) + (i - (nd - 1) / 2) * 0.8;
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'basic', pid: this.cur.pid, targetId: t2.id, x: p.x + dCos(a4) * 0.6, z: p.z + dSin(a4) * 0.6, px: p.x, pz: p.z, vx: dCos(a4) * 24, vz: dSin(a4) * 24, speed: 24, radius: 0.35, dmg: p.stats.ad * (m2.daggerDmg || 0.4), parryable: false, reflected: false, life: 1.4, dead: false });
         }
       }
     }
@@ -2083,6 +2088,11 @@ export class World {
         p.empowerMult = def.empower;
         p.empowerCrit = true;
         p.castLock = 0.1;
+        if (def.burst > 0 && dmg > 0) {
+          // (0.70.5) and a burst where you land
+          for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= def.burst + e.radius) this.hitEnemy(e, dmg, { source: slot });
+          this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius: def.burst });
+        }
         this.emit('buff', { name: 'Blink Strike', x: p.x, z: p.z });
         break;
       }
@@ -2106,13 +2116,14 @@ export class World {
         const oathWall = oath && oath.length && slot === 'r'; // (0.70) Blood Oath: a longer Rimewall that stuns longer
         const hw = (def.length * (m.wallLen || 1) * (oathWall ? oath.length : 1)) / 2;
         const dur = def.duration + (m.wallDur || 0);
+        if (def.borrowed) for (const old of this.walls) if (old.pid === this.cur.pid && old.slot === slot && old.t > 0.05) old.t = 0.01; // (0.70.5) one borrowed wall at a time: the old one shatters
         const ob = { shape: 'box', x: c.x, z: c.z, hw, hd: 0.45, rot, kind: 'icewall' };
         this.obstacles = this.obstacles.concat([ob]); // a new array: the map's own list is never changed
-        this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: (def.stun || 1) * (oathWall ? oath.stun : 1), ob });
+        this.walls.push({ id: this.nextId++, pid: this.cur.pid, x: c.x, z: c.z, rot, hw, hd: 0.45, t: dur, dur, dmg, stun: (def.stun || 1) * (oathWall ? oath.stun : 1), ob, slot });
         // (0.56.3) It rises hard: everything it comes up beside is hit, given Hoarfrost and staggered.
         const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && this.wallDist(this.walls[this.walls.length - 1], e.x, e.z) <= 1.4 + e.radius);
         for (const e of near) {
-          this.hitEnemy(e, dmg * (def.rise || 0.6), { source: 'r' });
+          this.hitEnemy(e, dmg * (def.rise || 0.6), { source: slot });
           if (e.dead) continue;
           if (m.frostMax > 0) this.addFrost(e, 2);
           if (e.dead) continue;
@@ -2367,14 +2378,16 @@ export class World {
       // (0.70) borrowed passives that answer a cast
       if (m.echoQ > 0 && slot === 'q') this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult: m.echoQ }); // a shade casts it again
       if (m.castMotes > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.castMotes);
-      if (m.rGravity > 0 && slot === 'r') {
+      const grav = slot === 'r' ? m.rGravity : slot === 'w' ? m.wGravity : 0;
+      if (grav > 0) {
         const c = aimPoint();
-        this.pullStun(c.x, c.z, m.rGravity, 1.2, 0, 'r'); // Gravity Anchor: drawn in first, then the R lands
+        this.pullStun(c.x, c.z, grav, 1.5, 0, slot, m.gravityVuln || 0); // Gravity Anchor: drawn in first, then the spell lands
       }
       if (m.wTornado > 0 && slot === 'w') {
-        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: p.x, z: p.z, dir: 0, radius: 2.4, t: 0, dur: m.wTornado, parryable: false };
+        const tr = 3.2, td = p.stats.ad * (m.wTornadoDmg || 0.25);
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: p.x, z: p.z, dir: 0, radius: tr, t: 0, dur: m.wTornado, parryable: false };
         this.telegraphs.push(tele);
-        this.startZone({ x: p.x, z: p.z, radius: 2.4, lasts: m.wTornado, tick: 0.5, dmg: p.stats.ad * 0.25, total: p.stats.ad * 0.25 * (m.wTornado / 0.5), slow: 0.2, slowDur: 1, slot: 'w', tele, opening: 0, pin: 0 });
+        this.startZone({ x: p.x, z: p.z, radius: tr, lasts: m.wTornado, tick: 0.5, dmg: td, total: td * (m.wTornado / 0.5), slow: 0.2, slowDur: 1, slot: 'w', tele, opening: 0, pin: 0 });
       }
     }
     if (m.stormcaller && this.cls === 'mage') {
@@ -2560,7 +2573,7 @@ export class World {
           const bz = d.burnZone;
           const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: d.x, z: d.z, dir: 0, radius: d.radius, t: 0, dur: bz.time, parryable: false };
           this.telegraphs.push(tele);
-          this.zones.push({ x: d.x, z: d.z, radius: d.radius, left: bz.time, dur: bz.time, next: 0, tick: bz.tick, dmg: 0, burn: bz.stacks, slow: 0, slowDur: 0, slot: 'r', tele, fire: true });
+          this.zones.push({ x: d.x, z: d.z, radius: d.radius, left: bz.time, dur: bz.time, next: 0, tick: bz.tick, dmg: 0, burn: bz.stacks, slow: 0, slowDur: 0, slot: d.slot || 'r', tele, fire: true });
         }
         if ((d.fx === 'skyfall' || d.fx === 'cinderfall') && !d.echo && this.mods.rAftershock > 0) {
           // Second Impact: the Mage's Meteor erupts again a second later.
@@ -3329,10 +3342,17 @@ export class World {
     const p = this.player;
     if (this.trial || this.questState('starwell') !== 'done') return null;
     if (this.questState('deep1') || this.questOpen('deep1')) return null;
+    if (this.actThreeReady(p)) return p.level < QUESTS.deep1.level ? 'level' : null;
     if (!(p.endings && p.endings.self > 0)) return 'unwish';
     if (!(p.rebirth && p.rebirth.n >= 1)) return 'rebirth';
     if (p.level < QUESTS.deep1.level) return 'level';
     return null;
+  }
+
+  /** (0.70.5) Has this hero (or any class of the account) seen the Unwish and begun again once? */
+  actThreeReady(p = this.player) {
+    if (p.endings && p.endings.self > 0 && p.rebirth && p.rebirth.n >= 1) return true;
+    return !!(p.lives && Object.values(p.lives).some((l) => l && l.act3));
   }
 
   /** (0.70.4) EXP from Mastery: +25% for each class mastered on the account (its Quiet beaten), up to +75%. */
@@ -3390,7 +3410,7 @@ export class World {
   }
 
   /** (0.70) Anchor Shot, Smoke Snare, Gravity Anchor: drag everything near a point into it, stun it (bosses stagger), and hit it. */
-  pullStun(x, z, radius, stun, dmg, slot) {
+  pullStun(x, z, radius, stun, dmg, slot, vuln = 0) {
     for (const e of this.enemies) {
       if (e.dead || e.state === 'spawn' || dist(e.x, e.z, x, z) > radius + e.radius) continue;
       if (!e.def.boss && !e.def.heavy) {
@@ -3398,6 +3418,10 @@ export class World {
         const to = this.clampToArena(x + dCos(a) * (e.radius + 0.4), z + dSin(a) * (e.radius + 0.4), e.radius);
         e.x = e.px = to.x;
         e.z = e.pz = to.z;
+      }
+      if (vuln > 0) {
+        e.vulnT = Math.max(e.vulnT || 0, 5);
+        e.vuln = Math.max(e.vuln || 0, vuln);
       }
       if (dmg > 0) this.hitEnemy(e, dmg, { source: slot });
       if (e.dead) continue;
@@ -3415,7 +3439,7 @@ export class World {
     for (let i = 0; i < count; i++) {
       const t = near[i % near.length];
       const a = dAtan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.7;
-      this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'gale', pid: this.cur.pid, targetId: t.id, x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z, vx: dCos(a) * 22, vz: dSin(a) * 22, speed: 22, radius: 0.4, dmg: p.stats.ad * 0.35, parryable: false, reflected: false, life: 1.6, dead: false });
+      this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'gale', pid: this.cur.pid, targetId: t.id, x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z, vx: dCos(a) * 22, vz: dSin(a) * 22, speed: 22, radius: 0.4, dmg: p.stats.ad * (this.mods.castMotesDmg || 0.35), parryable: false, reflected: false, life: 1.6, dead: false });
     }
     this.emit('motes', { x: p.x, z: p.z, count });
   }
@@ -3753,9 +3777,10 @@ export class World {
     if (q.after && this.questState(q.after) !== 'done') return false;
     if (q.perTier && this.questTiersDone(id).includes(this.worldTier())) return false; // (0.58) once on each world tier, each life
     if (q.act3) {
-      // Act III (0.54): after the Unwish ending, and at least one rebirth; level 100 every life
+      // Act III (0.54): after the Unwish ending, and at least one rebirth; level 100 every life.
+      // (0.70.5) Or once any class of the account has done both: the next class goes straight on.
       const p = this.player;
-      if (!(p.endings && p.endings.self > 0) || !(p.rebirth && p.rebirth.n >= 1) || p.level < q.level) return false;
+      if (!this.actThreeReady(p) || p.level < q.level) return false;
     }
     return this.player.level >= q.level - 4;
   }
@@ -6998,6 +7023,7 @@ export class World {
       if (bm.hitBurn > 0 && !(e.hitBurnT > this.time)) { e.hitBurnT = this.time + 0.4; this.addBurn(e, bm.hitBurn); }
       if (bm.hitFrost > 0 && !(e.hitFrostT > this.time) && !e.dead) { e.hitFrostT = this.time + 0.5; this.addFrost(e, bm.hitFrost); }
       if (bm.qBurn > 0 && opts.source === 'q' && this.kit.q && this.kit.q.type !== 'bolt' && !e.dead) this.addBurn(e, bm.qBurn);
+      if (bm.wBurn > 0 && opts.source === 'w' && !e.dead && !(e.wBurnT > this.time)) { e.wBurnT = this.time + 0.25; this.addBurn(e, bm.wBurn); } // Ember Brand on Whirlwind
       const ol = this.oathOf();
       if (ol && ol.leech && !opts.basic && !p.dead) this.healPlayer(dmg * ol.leech, false);
     }

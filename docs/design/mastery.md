@@ -78,15 +78,24 @@ decided by your Animus against the map's need:
 | Your Animus | A Dominion does |
 | --- | --- |
 | At or above the need | Parryable on a tight window; small damage and a brief Mind-Lock if it lands |
-| Short of it | Cannot be parried; 90% of your max health and a long Mind-Lock (about 3 seconds) |
+| Short of it | Parryable only on a near-frame-perfect window; if it lands, 90% of your max health and a long Mind-Lock (about 3 seconds) |
+
+**Never a hard lock with no counterplay** (Ko Ko, 2026-11-21): short of the need it is nearly impossible,
+never impossible. A skilled player can parry a Dominion on the tightest window, and a Mind-Lock can be
+broken early by a perfectly timed parry press. Some fights are not meant to be won under-prepared, and
+winning them anyway is something for others to watch and be inspired by.
 
 Two more mechanics, so it is the *mind* that is gated, not the health bar:
 
 - **Clouded sight**: short of the need, the Granted's attack warnings flicker and fade before the
   hit; at it, they are clear and full length.
 - **Mind-Lock chains**: each lock in a row is shorter, with a moment of immunity after; Animus
-  shortens every one. Short of the need, the immunity is gone, so a crowd locks you down until
-  you fall.
+  shortens every one. Short of the need, the immunity is gone, so a crowd keeps you down, unless
+  you break each lock with a perfect parry.
+
+**Exploration first** (Ko Ko, 2026-11-21): unlike the Deep's single boss rooms, every Caelum map is a
+full map to explore, like the base story's: roads, camps, side paths, signs and glimmers, an elite or
+two, and its boss at the far end. (A later pass may give the Deep the same.)
 
 Told early and plainly: the Waygate shows each map's need beside your Animus; entering short of it
 shows a warning; the Ex Voto pages say what Dominion does to an unready mind.

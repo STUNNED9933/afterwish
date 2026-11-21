@@ -260,10 +260,11 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   }
   for (let i = 0; i < 30 && w.offer; i++) { sv.message(k, { t: 'cmd', cmd: { type: 'augment', id: w.offer.choices[0] } }); sv.tick(); }
   check('Ring online: after the boss the Ring waits', w.wave.cleared === 5 && w.ring.hold && w.ring.pot > 0);
-  const want = Math.floor(w.ring.pot), f0 = (heroP().misc.fragment || 0);
+  const want = Math.floor(w.ring.pot);
+  check('Ring online (0.65): each wave paid out as it fell', (heroP().misc.fragment || 0) === want, `${heroP().misc.fragment} of ${want}`);
   sv.message(k, { t: 'cmd', cmd: { type: 'ringLeave' } });
   for (let i = 0; i < 4; i++) sv.tick();
-  check('Ring online: take them home, and you are back in Haven with them', pl().copy.world.mode === 'explore' && pl().copy.world.map.id === 'town' && (heroP().misc.fragment || 0) === f0 + want, `${heroP().misc.fragment} (+${want})`);
+  check('Ring online: take them home, and you are back in Haven with them', pl().copy.world.mode === 'explore' && pl().copy.world.map.id === 'town' && (heroP().misc.fragment || 0) === want, `${heroP().misc.fragment} (${want})`);
   // and falling: home after a moment, with what was safe
   sv.message(k, { t: 'cmd', cmd: { type: 'enterRing', startWave: 1, focus: { kind: 'gold' } } });
   for (let i = 0; i < 4; i++) sv.tick();

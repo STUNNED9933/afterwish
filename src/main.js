@@ -1258,7 +1258,7 @@ function start(hot = {}) {
     $('talk-keys').classList.add('hidden');
     const list = $('talk-quests');
     list.innerHTML = '';
-    $('talk-line').textContent = talkNote || 'Seven stones set with star-glass. Press a shard into them and they call up what the mountain remembers, wave after wave. Every wave adds to the spoils of what you came for, more the deeper you go, and they all come home with you however the run ends. After every boss, take them home or push on.';
+    $('talk-line').textContent = talkNote || 'Seven stones set with star-glass. Press a shard into them and they call up what the mountain remembers, wave after wave. Every wave pays out in what you came for the moment it falls, more the deeper you go, and from wave 20 the echoes come faster. Start further in and you are offered the augments the waves before would have given. After every boss, go home or push on.';
     if (!net) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -1517,7 +1517,7 @@ function start(hot = {}) {
     const box = document.createElement('div');
     box.className = 'quest vault';
     const bagFull = p.bag.length >= world.bagSize();
-    box.innerHTML = `<h4>The Warden's caches<small>${p.keys || 0} Warden key${p.keys === 1 ? '' : 's'}</small></h4><p>"Bring me what you take off the wardens up there and I'll crack it open. Gold works on the plainer ones."</p>`;
+    box.innerHTML = `<h4>The Warden's caches<small>${p.keys || 0} Warden key${p.keys === 1 ? '' : 's'}</small></h4><p>"Bring me what you take off the wardens up there and I'll crack it open. Gold works on the plainer ones."</p><p class="setting-desc">Hold Shift and click to open 10 at once.</p>`;
     for (const tier in CACHES) {
       const def = CACHES[tier];
       const cost = world.cacheCost(tier);
@@ -1532,8 +1532,8 @@ function start(hot = {}) {
       b.className = tier === 'warden' ? 'primary' : 'ghost';
       b.textContent = `Open · ${price}`;
       b.disabled = bagFull || p.gold < cost.gold || (p.keys || 0) < cost.keys;
-      if (bagFull) b.title = 'Your bag is full';
-      b.addEventListener('click', () => applyNow({ type: 'openCache', tier }));
+      b.title = bagFull ? 'Your bag is full' : 'Shift+click opens 10 at once (as many as your keys, gold and bag room allow)';
+      b.addEventListener('click', (ev) => applyNow({ type: 'openCache', tier, n: ev.shiftKey ? 10 : 1 }));
       row.appendChild(b);
       box.appendChild(row);
     }
@@ -1651,7 +1651,7 @@ function start(hot = {}) {
     const show = p.level >= CONFIG.MAX_LEVEL && !world.trial;
     panel.classList.toggle('hidden', !show);
     if (!show) return;
-    panel.innerHTML = `<h3>Wishborne ${p.wish}</h3><p class="setting-desc">Past level 100, EXP fills Wishborne levels: each one is a Wish point for a small bonus with no limit. ${p.wishPts ? `<b>${p.wishPts} point${p.wishPts === 1 ? '' : 's'} to spend.</b> Shift-click adds 10.` : 'No points to spend right now.'}</p>`;
+    panel.innerHTML = `<h3>Wishborne ${p.wish}</h3><p class="setting-desc">Past level 100, EXP fills Wishborne levels: each one is a Wish point for a small bonus with no limit. ${p.wishPts ? `<b>${p.wishPts} point${p.wishPts === 1 ? '' : 's'} to spend.</b>` : 'No points to spend right now.'} <b>Hold Shift and click</b> to place 10 at a time.</p>`;
     for (const k of WISH_IDS) {
       const st = WISH_STATS[k];
       const unit = st.unitFor ? st.unitFor(world.cls, p.spec) : st.unit; // (0.61.8) Might names what it raises for you
@@ -1664,7 +1664,7 @@ function start(hot = {}) {
       b.className = 'ghost tiny';
       b.textContent = '+';
       b.disabled = !p.wishPts;
-      b.title = `+${st.each}${unit} per point`;
+      b.title = `+${st.each}${unit} per point · Shift+click: 10 points`;
       b.addEventListener('click', (ev) => {
         applyNow({ type: 'wishSpend', stat: k, n: ev.shiftKey ? 10 : 1 });
         renderTalents();
@@ -1762,7 +1762,7 @@ function start(hot = {}) {
     go.textContent = why ? `Begin again: ${why}` : rebirthSure
       ? `Are you sure? Click again to begin again with ${marks} Starmarks`
       : `Begin again · +${marks} Starmarks${block ? '' : ` · +${world.rebirthEssence(rebirthHeir)} Essence · +${world.rebirthEmber(rebirthHeir)} Ember`}`;
-    go.title = 'A full fresh start for this hero: level 1, no gear, scrap or Wishdust, the story, quests, world tiers, talents and Wishborne levels from the beginning. Gold is the account\'s and stays. Kept: Starmarks and perks, weapon glows. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels, plus more the more you give up.';
+    go.title = 'A fresh start for this hero: level 1 and a starter weapon (plus your Heirloom, if you keep one); your gear becomes Echo Essence, and the story, quests, world tiers, talents and Wishborne levels begin again. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Ember, scrap, Wishdust and Warden keys, your Echo Ring start, Edric\'s Colours and weapon glows. Gold and shards are the account\'s and stay. Starmarks: 10 for level 100, plus 2 x the square root of your Wishborne levels, plus more the more you give up.';
     go.addEventListener('click', () => {
       if (!rebirthSure) {
         rebirthSure = true;
@@ -1776,7 +1776,7 @@ function start(hot = {}) {
     if (!block) {
       const note = document.createElement('p');
       note.className = 'setting-desc';
-      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear, worn and in the bag, turns into Echo Essence; story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, scrap, Wishdust and Warden keys, Edric's Colours, and your weapon glows (gold and shards belong to the account).`;
+      note.textContent = `Begin again: level 1, a starter weapon (and your Heirloom, if you keep one). Your gear, worn and in the bag, turns into Echo Essence; story, quests, world tiers, talents and ${p.wish || 0} Wishborne levels all go. Kept: Starmarks and perks, Echo Essence and the gear the star remembers, Ember, scrap, Wishdust and Warden keys, your Echo Ring start, Edric's Colours, and your weapon glows (gold and shards belong to the account).`;
       panel.appendChild(note);
     }
   }
@@ -2457,7 +2457,7 @@ function start(hot = {}) {
   let lastRingPaid = null;
   function showRingBank(ev) {
     if (!world.ring || (net && !net.server)) return;
-    $('ring-bank-text').textContent = `Wave ${ev.n} cleared. Your spoils: ${ringText(world.ring, ev.pot)}.`;
+    $('ring-bank-text').textContent = `Wave ${ev.n} cleared. This run has given you ${ringText(world.ring, ev.pot)} so far.`;
     $('btn-ring-on').innerHTML = `Push on <kbd>${esc((nextWaveKey() || 'Enter').toUpperCase())}</kbd>`; // (0.62.2) the key that pushes on
     $('ring-bank').classList.remove('hidden');
   }
@@ -3847,10 +3847,21 @@ function start(hot = {}) {
       case 'ringGain':
         if (ev.boss) showRingBank(ev);
         break;
+      case 'ringDrop': {
+        // (0.65) every wave pays as it falls
+        const r = { kind: ev.kind, slot: ev.slot };
+        hud.feedText(`Wave ${ev.wave}: +${ringText(r, ev.n)}${ev.immortals ? `, ${ev.immortals} of them Immortal` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
+        if (ev.immortals) hud.banner('An Immortal from the Ring', `${ev.immortals} Immortal ${r.slot === 'chest' ? 'armor' : r.slot}${ev.immortals > 1 ? 's' : ''}`);
+        sfx.pickup(ev.immortals ? 6 : 3);
+        break;
+      }
+      case 'ringCatchUp':
+        hud.banner(`${ev.picks} augment${ev.picks === 1 ? '' : 's'} to choose`, `Starting at wave ${ev.from} costs you nothing: pick what waves 1 to ${ev.from - 1} would have offered.`);
+        break;
       case 'ringPaid': {
         const r = { kind: ev.kind, slot: ev.slot };
         const got = ev.n ? ringText(r, ev.n) : 'nothing yet';
-        hud.feedText(`The Ring gives you ${got}${ev.immortals ? `, ${ev.immortals} of them Immortal` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
+        hud.feedText(`In all, the Ring gave you ${got}${ev.immortals ? ` (the last ${ev.immortals} Immortal)` : ''}${ev.scrapped ? ` (${ev.scrapped} scrapped for want of room)` : ''}.`);
         if (ev.immortals) hud.banner('An Immortal from the Ring', `${ev.immortals} Immortal ${r.slot === 'chest' ? 'armor' : r.slot}${ev.immortals > 1 ? 's' : ''}`);
         lastRingPaid = { got, wave: ev.wave };
         break;
@@ -4405,7 +4416,8 @@ function start(hot = {}) {
         if (mode === 'town') town.showCacheResult(ev.item);
         else {
           // (0.62) opened at Bram's forge: say what came out, and keep the vault open
-          gearToast(`${CACHES[ev.tier].name}: <span style="color:${RARITIES[ev.item.rarity].color}">${itemName(ev.item)}</span>`, RARITIES[ev.item.rarity].color);
+          if (ev.items) gearToast(`${ev.items.length} × ${CACHES[ev.tier].name}: ${ev.items.map((it) => `<span style="color:${RARITIES[it.rarity].color}">${itemName(it)}</span>`).join(', ')}`, RARITIES[ev.item.rarity].color);
+          else gearToast(`${CACHES[ev.tier].name}: <span style="color:${RARITIES[ev.item.rarity].color}">${itemName(ev.item)}</span>`, RARITIES[ev.item.rarity].color);
           if (mode === 'talk') renderTalk();
         }
         break;

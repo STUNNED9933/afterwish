@@ -21,9 +21,9 @@ export function ringInfoHtml(level, from, focus) {
     return `<tr>${cells}<td style="color:${rar.color}">${rar.name}</td><td>${r.immortal ? `${Math.round(r.immortal * 100)}% a piece` : '·'}</td></tr>`;
   }).join('');
   const gear = kind === 'gear'
-    ? ` Pieces are for your ${SLOT_NAMES[focus.slot || 'weapon'].toLowerCase()} slot, at your level; their rarity and the chance that each is an Immortal follow the deepest wave you clear (none before wave 20, then ${Math.round(RING.immortal(20) * 100)}%, rising to ${Math.round(RING.immortal(60) * 100)}% from wave 50).`
+    ? ` Pieces are for your ${SLOT_NAMES[focus.slot || 'weapon'].toLowerCase()} slot, at your level; their rarity and the chance that each is an Immortal follow the deepest wave you clear (none before wave 15, then ${+(RING.immortal(15) * 100).toFixed(1)}%, rising to ${Math.round(RING.immortal(60) * 100)}% from wave 45).`
     : kind === 'fragment' ? ' 250 Fragments craft an Immortal of your choice.' : '';
-  return `<p>Every wave is worth ${Math.round((RING.growth - 1) * 100)}% more than the one before, up to wave ${RING.cap}; a boss (every 5th wave) three times a wave. Everything you gather comes home with you, however the run ends.${gear}</p>`
+  return `<p>Every wave is worth ${Math.round((RING.growth - 1) * 100)}% more than the one before, up to wave ${RING.cap}; a boss (every 5th wave) three times a wave. Every wave pays out as it falls. From wave 20 the echoes attack faster (wind-ups down to ${Math.round(RING.pace(60) * 100)}% and rests to ${Math.round(RING.tempo(60) * 100)}% by wave 60). Start further in and you are offered the augments you would have had.${gear}</p>`
     + `<table class="ri-table">${head}${body}</table>`
     + `<p class="ri-note">Run totals are from wave ${from}. Shards to wake it: ${RING.shards.base} from wave 1, ${RING.shards.per} more for each checkpoint further in.</p>`;
 }

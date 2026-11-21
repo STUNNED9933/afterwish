@@ -3,7 +3,7 @@ import { emberForGear } from './endgame.js';
 //
 // Once a hero is level 100 and has beaten The Unmade, they can ask the fallen star to begin again.
 // Everything about that life goes: level, gear, gold in the bag aside (gold belongs to the account),
-// scrap, Wishdust, story, quests, world tiers, talents and Wishborne levels. What stays is what the
+// story, quests, world tiers, talents and Wishborne levels (0.62.1: scrap, Wishdust and keys stay). What stays is what the
 // star remembers: Starmarks, spent on Rebirth perks that last for every life after, the weapon glows
 // that hero has earned (one more for some rebirths), and a little EXP for every hero on the account.
 //
@@ -204,6 +204,9 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     scrap: old.scrap || 0, // (0.62.1) kept through a rebirth (and a quarter rarer to come by)
     dust: old.dust || 0, // (0.62.1) Wishdust too
     keys: old.keys || 0, // (0.62) Warden keys are kept through a rebirth
+    maxCheckpoint: old.maxCheckpoint || old.checkpoint || 1, // (0.65) and where the Echo Ring can start, and its best wave
+    checkpoint: old.maxCheckpoint || old.checkpoint || 1,
+    bestWave: old.bestWave || 0,
     skillPoints: perkRank(rb, 'head'),
     glows,
     glow: glow || old.glow || null,

@@ -659,6 +659,12 @@ export const BOSS_LOOT = {
   // Act II (0.40): the Herald and the Asker pay like the Unmade, the Asker a little more
   herald: { items: 5, min: 4, better: 2, top: [0, 0, 0, 0, 45, 50, 5], keys: 3, tickets: 2, first: 5 },
   asker: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 35, 55, 10], keys: 4, tickets: 3, first: 6 },
+  // The Primordials (0.65): a hoard of their own, with a chance at an Immortal (5% at the Cinder, up to 12%)
+  cinder: { items: 5, min: 4, better: 2, top: [0, 0, 0, 0, 45, 50, 5], keys: 3, tickets: 2, first: 5 },
+  undertow: { items: 5, min: 4, better: 2, top: [0, 0, 0, 0, 42, 51, 7], keys: 3, tickets: 2, first: 5 },
+  rootmother: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 38, 53, 9], keys: 4, tickets: 3, first: 5 },
+  choir: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 35, 55, 10], keys: 4, tickets: 3, first: 5 },
+  stillness: { items: 6, min: 4, better: 3, top: [0, 0, 0, 0, 30, 58, 12], keys: 5, tickets: 3, first: 6 },
   // Caelum (0.64): each keeper pays more than the last
   ianitor: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 30, 58, 12], keys: 4, tickets: 3, first: 6 },
   arbiter: { items: 6, min: 4, better: 3, top: [0, 0, 0, 0, 25, 60, 15], keys: 4, tickets: 4, first: 6 },

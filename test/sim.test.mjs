@@ -3790,33 +3790,34 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Ring: after a boss the next wave waits for you to choose', w.ring.hold && w.wave.n === n5 && w.wave.phase === 'intermission');
   const want = Math.floor(w.ring.pot);
   const expect = [1, 2, 3, 4].reduce((a, n) => a + ringGain(newRing({ kind: 'fragment' }), n, false, 60), 0) + ringGain(newRing({ kind: 'fragment' }), 5, true, 60);
-  check('Ring (0.61.1): five waves of the Fragment focus add up, each 7% more, a boss three times a wave', want >= 6 && Math.abs(w.ring.pot - expect) < 1e-6 && Math.abs(ringGain(newRing({ kind: 'fragment' }), 2, false, 60) / ringGain(newRing({ kind: 'fragment' }), 1, false, 60) - 1.07) < 1e-9, w.ring.pot.toFixed(2));
+  check('Ring (0.65): five waves of the Fragment focus add up, each 8% more, a boss three times a wave', want >= 6 && Math.abs(w.ring.pot - expect) < 1e-6 && Math.abs(ringGain(newRing({ kind: 'fragment' }), 2, false, 60) / ringGain(newRing({ kind: 'fragment' }), 1, false, 60) - 1.08) < 1e-9, w.ring.pot.toFixed(2));
+  check('Ring (0.65): every wave pays out as it falls, no waiting for a boss', (p.misc.fragment || 0) === want && w.ring.given[w.cur.pid] === want, `${p.misc.fragment} of ${want}`);
   const f0 = p.misc.fragment || 0;
   w.command({ type: 'ringLeave' }); w.runCommands();
-  check('Ring: take them home after a boss, and you get all of it', (p.misc.fragment || 0) === f0 + want && w.events.some((e) => e.type === 'ringPaid'));
+  check('Ring: going home after a boss settles it, with nothing paid twice', (p.misc.fragment || 0) === f0 && w.events.some((e) => e.type === 'ringPaid' && e.n === want));
   w.command({ type: 'ringLeave' }); w.runCommands();
-  check('Ring: only once a run', (p.misc.fragment || 0) === f0 + want);
+  check('Ring: only once a run', (p.misc.fragment || 0) === f0);
   ({ w, p } = play({ kind: 'gold' }, 7));
-  const pot = Math.floor(w.ring.pot), g0 = p.gold;
+  const pot = Math.floor(w.ring.pot);
   p.hp = 1; w.damagePlayer ? w.damagePlayer(1e9) : (p.hp = 0);
   if (!w.events.some((e) => e.type === 'ringPaid')) { w.command({ type: 'ringLeave' }); w.runCommands(); }
-  check('Ring (0.61.1): fall (or leave) between bosses and everything you gathered still comes home', p.gold - g0 === pot && pot > 0, `${p.gold - g0} of ${pot}`);
+  check('Ring (0.61.1): fall (or leave) between bosses and everything you gathered is yours', w.ring.given[w.cur.pid] === pot && pot > 0, `${w.ring.given[w.cur.pid]} of ${pot}`);
   {
     const { ringWorth, ringCost, RING: R } = await import('../src/sim/ring.js');
-    check('Ring: the growth stops at wave 40', ringWorth(60, false) === ringWorth(40, false) && ringWorth(40, false) > 10);
+    check('Ring: the growth stops at wave 50', ringWorth(60, false) === ringWorth(50, false) && ringWorth(50, false) > 30);
     check('Ring: waking it costs 5 shards from wave 1, 2 more for each checkpoint further in', ringCost(1) === 5 && ringCost(6) === 7 && ringCost(31) === 17);
-    check('Ring: no Immortal chance before wave 20, then 1%, up to 4%', R.immortal(19) === 0 && R.immortal(20) === 0.01 && Math.abs(R.immortal(35) - 0.025) < 1e-9 && R.immortal(80) === 0.04);
+    check('Ring (0.65): no Immortal chance before wave 15, then 1.5%, up to 5%', R.immortal(14) === 0 && R.immortal(15) === 0.015 && Math.abs(R.immortal(30) - 0.03) < 1e-9 && R.immortal(80) === 0.05);
     const { ringTable } = await import('../src/sim/ring.js');
     const t40 = ringTable(100, 1, [40])[0];
     const immortals = t40.total.gear * R.immortal(40), fromFragments = t40.total.fragment / 250;
-    check('Ring: to wave 40, Gear pays about one Immortal, like the Fragments do (no flood of them)', immortals > 0.6 && immortals < 1.3 && fromFragments > 0.6 && fromFragments < 1.3, `${immortals.toFixed(2)} vs ${fromFragments.toFixed(2)}`);
+    check('Ring: to wave 40, Gear pays one or two Immortals, about what the Fragments do', immortals > 1 && immortals < 2.2 && fromFragments > 1 && fromFragments < 2.2 && Math.abs(immortals - fromFragments) < 0.5, `${immortals.toFixed(2)} vs ${fromFragments.toFixed(2)}`);
+    check('Ring (0.65): from wave 20 the echoes come faster, never past 80% wind-ups and 65% rests', R.pace(19) === 1 && R.pace(40) < 1 && R.pace(200) === 0.8 && R.tempo(200) === 0.65 && R.move(200) === 1.2);
   }
   ({ w, p } = play({ kind: 'gear', slot: 'boots' }, 10));
-  const bag0 = p.bag.length;
+  const got = w.ring.given[w.cur.pid];
+  const boots = p.bag.filter((it) => it.slot === 'boots');
+  check('Ring: the Gear focus gives pieces for the slot you chose, every other wave and more at bosses', got >= 6 && boots.filter((it) => it.rarity >= 3).length >= got - 1, `${got} pieces`); // (other boots in the bag are ordinary drops)
   w.command({ type: 'ringLeave' }); w.runCommands();
-  const ev = w.events.find((e) => e.type === 'ringPaid');
-  const boots = p.bag.slice(bag0).filter((it) => it.slot === 'boots');
-  check('Ring: the Gear focus gives pieces for the slot you chose, Mythic from wave 10', ev && ev.n >= 2 && boots.length >= ev.n - (ev.scrapped || 0) && boots.every((it) => it.rarity >= RING.gearRarity(10)), ev && `${ev.n} pieces`);
   check('Ring: and what dropped in the Ring comes home with you', w.loot.length === 0);
 }
 // --- Echoes (0.53): what giving up your gear is worth ---
@@ -4220,6 +4221,86 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     w.command({ type: 'travel', to: 'skyroad' });
     w.step(CONFIG.TICK);
     check('...and short of its Animus you may go, warned on arrival', w.map.id === 'skyroad' && w.events.some((e) => e.type === 'animusShort' && e.need === 0.15));
+  }
+}
+
+// --- 0.65: ascension, faster tiers, the Ring, Shift+click caches --------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const I = await import('../src/sim/items.js');
+  const A = await import('../src/sim/augments.js');
+  const { TIERS: TT, DEEP: DP } = await import('../src/sim/endgame.js');
+  const { BOSS_LOOT: BL } = await import('../src/sim/story.js');
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const run = (w, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) w.step(CONFIG.TICK); };
+  // ascension
+  check('Stars: a passive is 1x with none, 2x at 5 stars', I.starPotency({}) === 1 && I.starPotency({ stars: 5 }) === 2 && Math.abs(I.starPotency({ stars: 2 }) - 1.4) < 1e-9);
+  const B = A.defaultMods();
+  const hood = A.defaultMods(); I.applyPotent(hood, I.SPEC_IMMORTALS.sharpshooter.helm.apply, 2, B);
+  check("...Hawk's Hood at 5 stars: +30% Deadeye damage, and its cooldown cut read as speed (never zero)", Math.abs(hood.rDmg - 1.3) < 1e-9 && hood.rCd > 0.45 && hood.rCd < 0.5, `${hood.rDmg} ${hood.rCd}`);
+  const sig = A.defaultMods(); I.applyPotent(sig, I.SPEC_IMMORTALS.windrunner.ring.apply, 2, B);
+  check('...counts stay whole: Storm Sigil looses 6 more arrows', sig.wExtra === 6);
+  const seal = A.defaultMods(); I.applyPotent(seal, I.SPEC_IMMORTALS.bulwark.ring.apply, 2, B);
+  check("...Warden's Seal: a stack more often, never every 0%", seal.reckonHp > 0.02 && seal.reckonHp < 0.05);
+  {
+    const save = Object.assign(geared('archer', 100, 4), { talents: {} });
+    const w = new World({ seed: 60, mode: 'explore', cls: 'archer', save });
+    w.player.spec = 'sharpshooter';
+    const imm = I.rollItem(w.rng, 100, { minRarity: 6, weights: [0, 0, 0, 0, 0, 0, 1], slot: 'helm', cls: 'archer' });
+    w.player.equipped.helm = imm;
+    imm.stars = 0; w.recalcStats(); const r0 = w.mods.rDmg;
+    imm.stars = 5; w.recalcStats(); const r5 = w.mods.rDmg;
+    check('...and worn, the hero gets it', imm.effect && r5 > r0, `${imm.effect} ${r0} -> ${r5}`);
+  }
+  // faster tiers
+  check('Tiers: from II up, enemies wind up quicker, rest less, move faster, and drop more', TT.slice(2).every((t, i) => t.pace < TT[i + 1].pace && t.tempo < TT[i + 1].tempo && t.move > TT[i + 1].move && t.loot > TT[i + 1].loot) && TT[1].pace === 1);
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { talents: {}, worldTier: 5, tierMax: 5 });
+    const w = new World({ seed: 61, mode: 'explore', cls: 'warrior', save });
+    w.player.worldTier = 5;
+    w.loadMap('maw', 'town');
+    const e = w.enemies.find((o) => !o.dead && !o.def.boss);
+    check('...a tier V enemy carries its pace', e && Math.abs(e.pace - TT[5].pace) < 1e-9 && Math.abs(e.tempo - TT[5].tempo) < 1e-9 && e.move === TT[5].move, e && `${e.pace} ${e.tempo}`);
+    const atk = e.def.attacks.find((a) => a.trigger < 90) || e.def.attacks[0];
+    w.startWindup(e, atk);
+    check('...its wind-ups are quicker, never under 0.3 s', e.dur < atk.windup && e.dur >= Math.min(0.3, atk.windup) - 1e-9, `${atk.windup} -> ${e.dur}`);
+    w.loadMap('deep10', 'town');
+    const d = w.enemies.find((o) => !o.dead && !o.def.boss);
+    check('...faster again in the Deep, and paid for it', d && Math.abs(d.pace - TT[5].pace * DP.depths[10].pace) < 1e-9 && d.lootMult === DP.depths[10].loot);
+  }
+  check('Primordials: a hoard each, with a chance at an Immortal', ['cinder', 'undertow', 'rootmother', 'choir', 'stillness'].every((id, i, a) => BL[id] && BL[id].top[6] > 0 && (i === 0 || BL[id].top[6] > BL[a[i - 1]].top[6])));
+  // the Ring
+  {
+    const save = Object.assign(geared('warrior', 100, 4), { maxCheckpoint: 21 });
+    const w = new World({ seed: 62, mode: 'arena', cls: 'warrior', save, focus: { kind: 'gold' }, startWave: 21 });
+    w.events.length = 0;
+    w.step(CONFIG.TICK);
+    const owed = w.events.find((e) => e.type === 'ringCatchUp');
+    let picks = 0;
+    for (let i = 0; i < 200 && w.offer; i++) { w.command({ type: 'augment', id: w.offer.choices[0] }); w.runCommands(); picks++; }
+    check('Ring (0.65): starting at wave 21, the picks of waves 1 to 20 come first (10 odd waves, 2 even bosses)', owed && owed.picks === 12 && picks === 12 && w.augments.length === 12, `${owed && owed.picks} owed, ${picks} taken`);
+    w.command({ type: 'nextWave' }); w.runCommands();
+    for (let i = 0; i < 400 && !w.enemies.length; i++) w.step(CONFIG.TICK);
+    const e = w.enemies[0];
+    check('...and wave 21 is a touch faster', e && e.pace < 1 && e.tempo < 1, e && `${e.pace}`);
+  }
+  {
+    const old = Object.assign(geared('warrior', 100, 4), { maxCheckpoint: 41, bestWave: 44, rebirth: { n: 0 } });
+    const next = rebirthSave(old, I.starterWeapon);
+    check('Rebirth keeps where the Echo Ring can start, and its best wave', next.maxCheckpoint === 41 && next.bestWave === 44);
+  }
+  // Shift+click caches
+  {
+    const save = Object.assign(geared('warrior', 60, 2), { keys: 12, gold: 1e7 });
+    const w = new World({ seed: 63, mode: 'explore', cls: 'warrior', save });
+    const p = w.player;
+    p.bag.length = 0;
+    w.command({ type: 'openCache', tier: 'warden', n: 10 }); w.runCommands();
+    const per = w.cacheCost('warden').keys;
+    const opened = Math.min(10, Math.floor(12 / per));
+    check('Caches: Shift+click opens up to 10 at once', p.bag.length === opened && p.keys === 12 - opened * per, `${p.bag.length} opened, ${p.keys} keys left`);
+    w.command({ type: 'openCache', tier: 'warden', n: 99 }); w.runCommands();
+    check('...never more than 10, and stops when the keys run out', p.bag.length <= opened + 10 && p.keys >= 0 && p.keys < per);
   }
 }
 process.exit(failed ? 1 : 0);

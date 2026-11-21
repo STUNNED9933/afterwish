@@ -227,9 +227,40 @@ export const REMNANT_UNIQUE = Object.fromEntries(Object.entries(EFFECTS).filter(
 
 // --- Ascending Immortals (0.31) ---------------------------------------------
 // Feed a duplicate Immortal (same effect) into one you wear: it gains a star, up to 5, and
-// every star adds 10% to all its stats (on top of blacksmith upgrades).
+// every star adds 10% to all its stats (on top of blacksmith upgrades), and (0.65) 20% to the potency of
+// its passive: twice as strong at 5 stars. See starPotency and applyPotent.
 export const MAX_STARS = 5;
 export const STAR_BONUS = 0.1;
+export const STAR_POTENCY = 0.2;
+/** How strong an Immortal's passive is for its stars: 1 with none, 2 at 5 stars (0.65). */
+export const starPotency = (item) => 1 + STAR_POTENCY * Math.min(MAX_STARS, (item && item.stars) || 0);
+/**
+ * Apply a passive (a mods function) at `k` times its potency (0.65). Every number it changes moves k times
+ * as far: a share added (+15% damage) becomes +30%; a multiplier above 1 (25% more) adds k times its
+ * share; a multiplier below 1 (40% shorter cooldown) is read as speed, so twice the potency is a cooldown
+ * running 2 x 0.67 = 1.33 faster, never zero. Counts stay whole numbers. Yes/no effects are what they are.
+ * `base` holds each modifier's starting value (augments.js defaultMods): 1 marks a multiplier.
+ */
+export function applyPotent(m, fn, k, base) {
+  if (!(k > 1)) return fn(m);
+  const before = Object.assign({}, m);
+  fn(m);
+  for (const key in m) {
+    const b = before[key], a = m[key];
+    if (typeof a !== 'number' || typeof b !== 'number' || a === b) continue;
+    if (key === 'reckonHp') {
+      // a threshold: a stack for every 10% lost by default, lower is better. Read as how often.
+      const was = b || 0.1;
+      m[key] = was / (1 + (was / a - 1) * k);
+    } else if (base[key] === 1 && b > 0) {
+      const r = a / b;
+      m[key] = b * (r < 1 ? 1 / (1 + (1 / r - 1) * k) : 1 + (r - 1) * k);
+    } else {
+      const v = b + (a - b) * k;
+      m[key] = Number.isInteger(a) && Number.isInteger(b) ? Math.round(v) : v;
+    }
+  }
+}
 
 // Each class has its own weapon type. Only that class can equip it, and weapon
 // drops are always for the class you are playing, so nothing you find is useless.

@@ -1,7 +1,7 @@
 // The gear drawer: equipped items, stats, and the bag.
 import { CONFIG } from '../config.js';
 import { ECHOES } from '../sim/rebirth.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT, starPotency } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
@@ -36,7 +36,9 @@ export function itemTooltip(item, compareTo) {
   if (item.effect && EFFECTS[item.effect]) {
     const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow());
     const as = fx.spec && SPECS[fx.spec] ? `<div class="tt-as">As a ${SPECS[fx.spec].name}. An Immortal's effect follows the subclass you play.</div>` : !EFFECTS[item.effect].unique && !gearSpecNow() ? '<div class="tt-as">From level 15 its effect becomes your subclass\'s own.</div>' : '';
-    html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}${as}</div>`;
+    const k = starPotency(item); // (0.65) the passive grows with the stars
+    const pot = k > 1 ? `<div class="tt-as" style="color:#ffd24a">${'★'.repeat(item.stars)} Passive at ${Math.round(k * 100)}% potency: every number above counts ${+k.toFixed(1)}x (cooldown cuts as speed).</div>` : '';
+    html += `<div class="tt-effect"><b>${fx.name}</b> ${fx.desc}${pot}${as}</div>`;
   }
   // (0.61.2) what the item is, and for an Immortal, its story
   const lore = itemLore(item, item.effect && EFFECTS[item.effect] ? effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow()) : null);
@@ -245,7 +247,7 @@ export class Inventory {
           a.type = 'button';
           a.className = 'ghost tiny ench-btn ascend';
           a.textContent = `Ascend ★${(item.stars || 0) + 1}`;
-          a.title = `Feed the duplicate ${itemName(p.bag[dupAt])} in your bag into this one: +10% to every stat per star, up to 5 stars. The duplicate is used up.`;
+          a.title = `Feed the duplicate ${itemName(p.bag[dupAt])} in your bag into this one: +10% to every stat and +20% to its passive per star, up to 5 stars (the passive twice as strong at 5). The duplicate is used up.`;
           a.addEventListener('click', () => this.send({ type: 'ascend', slot, index: dupAt }));
           btns.appendChild(a);
         }
@@ -484,7 +486,7 @@ export class Inventory {
     const left = REROLL_PITY - (item.pity || 0);
     const pity = document.createElement('div');
     pity.className = 'ench-pity';
-    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${String(left).padStart(2, '\u2007')}</b> rerolls on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Ask before rerolling an Immortal-tier line</label>`;
+    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${String(left).padStart(2, '\u2007')}</b> rerolls on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Lock Immortal-tier lines (no rerolling them)</label>`;
     pity.querySelector('input').addEventListener('change', (e) => {
       setGuardImmortal(e.target.checked);
       this.armed = null;
@@ -496,18 +498,11 @@ export class Inventory {
       const row = document.createElement('div');
       row.className = 'ench-row';
       const isImm = rollTier(rollQuality(item, k)) >= ROLL_TIER_AT.length;
-      const armKey = `${slot}:${k}`;
-      // A guarded Immortal-tier line takes two clicks: the first only asks
+      // (0.65) A guarded Immortal-tier line is locked outright: its buttons go grey the moment it lands,
+      // so spam-clicking Reroll can never take it away (the old 'Sure?' could be clicked through).
+      const locked = guard && isImm;
       const reroll = (msg) => {
-        if (guard && isImm && this.armed !== armKey) {
-          this.armed = armKey;
-          clearTimeout(this.armTimer);
-          this.armTimer = setTimeout(() => { this.armed = null; this.render(world); }, 4000);
-          this.render(world);
-          return;
-        }
-        this.armed = null;
-        this.send(msg);
+        if (!locked) this.send(msg);
       };
       const q = rollQuality(item, k);
       const t = RARITIES[rollTier(q)];
@@ -518,12 +513,9 @@ export class Inventory {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'ghost tiny';
-      const armed = this.armed === armKey;
-      b.textContent = armed ? 'Sure?' : 'Reroll';
-      if (armed) b.title = 'This line is Immortal tier: click again to reroll it anyway';
-      if (armed) b.classList.add('danger');
-      b.disabled = !canRoll || q >= 1;
-      b.title = q >= 1 ? 'Already the best roll this line can have' : `A fresh roll between ${lo} and ${hi}`;
+      b.textContent = locked ? 'Locked' : 'Reroll';
+      b.disabled = locked || !canRoll || q >= 1;
+      b.title = q >= 1 ? 'Already the best roll this line can have' : locked ? 'An Immortal-tier line: untick the lock above to reroll it' : `A fresh roll between ${lo} and ${hi}`;
       b.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k }));
       btns.appendChild(b);
       if (p.rebirth && p.rebirth.n) {
@@ -534,8 +526,7 @@ export class Inventory {
         eb.className = 'ghost tiny echo-btn';
         eb.textContent = `${ECHOES.reroll} Ess.`;
         eb.title = `Reroll for ${ECHOES.reroll} Echo Essence instead of gold and scrap`;
-        eb.disabled = p.rebirth.essence < ECHOES.reroll || q >= 1;
-        if (armed) eb.classList.add('danger');
+        eb.disabled = locked || p.rebirth.essence < ECHOES.reroll || q >= 1;
         eb.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k, essence: true }));
         btns.appendChild(eb);
       }

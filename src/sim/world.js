@@ -22,7 +22,7 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
-import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, KEPT_RATE, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, KEPT_RATE, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, starPotency, applyPotent, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -31,6 +31,7 @@ import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
+const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
 /** Talents renamed in 0.17 (Bulwark rework) keep the points put into them. */
@@ -75,7 +76,7 @@ function turnToward(current, target, maxStep) {
  * so all the single-hero code below works unchanged for whichever hero is
  * acting (casting, being attacked, picking up loot ...).
  */
-const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'stoneT', 'stoneArmed', 'stoneOn', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
+const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'picks', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'stoneT', 'stoneArmed', 'stoneOn', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
@@ -188,6 +189,7 @@ export class World {
     this.falls = []; // the final boss's falling stars (stepFalls)
     this.augments = []; // ids of augments taken this run
     this.offer = null; // { choices: [augment ids], boss } while a pick is waiting
+    this.picks = []; // (0.65) picks still owed (boss: true/false), from starting the Ring further in
     this.rerolls = CONFIG.AUGMENT_REROLLS;
     this.mods = defaultMods();
     this.wave = { n: startWave - 1, phase: 'intermission', timer: CONFIG.FIRST_WAVE_DELAY, queue: [], spawnT: 0, maxAlive: 4, cleared: startWave - 1 };
@@ -581,14 +583,19 @@ export class World {
       if (sets[id] >= 4) set.four.apply(m);
     }
     for (const id of this.augments) if (AUGMENTS[id]) AUGMENTS[id].apply(m);
+    m.pot = {}; // (0.65) how strong each worn Immortal's passive is, by its stars (items.js starPotency)
     for (const slot of [...SLOTS, 'keepsake']) {
       const it = slot === 'keepsake' ? this.player.keepsake : this.player.equipped[slot];
       if (!it || !it.effect) continue;
       // From level 15 an Immortal's effect is its subclass version (0.32); a Remnant's own is the same for all.
       const spc = this.player.spec && SPEC_IMMORTALS[this.player.spec];
       const own = EFFECTS[it.effect] && !EFFECTS[it.effect].unique && spc ? spc[EFFECTS[it.effect].slot] : null;
-      if (own) own.apply(m);
-      else if (it.effect in m) m[it.effect] = true;
+      const k = starPotency(it);
+      if (own) applyPotent(m, own.apply, k, MOD_BASE);
+      else if (it.effect in m) {
+        m[it.effect] = true;
+        m.pot[it.effect] = Math.max(m.pot[it.effect] || 1, k);
+      }
     }
     // Wishborne points (past level 100), never in the Weekly Echo (its build is fixed).
     if (!this.trial) for (const k of WISH_IDS) if (this.player.wishStats && this.player.wishStats[k] > 0) WISH_STATS[k].apply(m, this.player.wishStats[k], this.cls, this.player.spec);
@@ -619,8 +626,8 @@ export class World {
       // `ad` is the hero's power for every damage formula. Spell Power (staves) feeds it for the Mage.
       ad: Math.round(((18 + 3.2 * L) * c.ad + g.ad + (this.cls === 'mage' ? g.sp : 0)) * (1 + m.adPct)),
       armor: Math.round(((8 + 2 * L) * c.armor + g.armor) * (1 + m.armorPct)),
-      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.hurricaneT > 0 ? p.hurricaneAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
-      ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 : 0) + (p.bloodied ? m.bloodMs : 0)),
+      as: 1.05 * c.as * (1 + 0.015 * L + g.as / 100 + m.asPct + (slip && !CASTER_CLASSES.has(this.cls) ? 0.3 * this.pot('slipstream') : 0) + (p.rushT > 0 ? p.rushAs : 0) + (p.hurricaneT > 0 ? p.hurricaneAs : 0) + (p.bloodied ? m.bloodAs : 0)) * m.asMult, // attacks per second
+      ms: 6.4 * c.ms * (1 + g.ms / 100 + m.msPct + (slip ? 0.4 * this.pot('slipstream') : 0) + (p.bloodied ? m.bloodMs : 0)),
       haste: g.haste + m.haste + c.haste,
       crit: g.crit + m.crit + c.crit,
       lifesteal: g.lifesteal + m.lifesteal,
@@ -742,7 +749,7 @@ export class World {
       else if (c.type === 'swapBounty') this.swapBounty(c.i);
       else if (c.type === 'craftImmortal') this.craftImmortal(c.slot);
       else if (c.type === 'summonRemnant') this.summonRemnant();
-      else if (c.type === 'openCache') this.openCache(c.tier);
+      else if (c.type === 'openCache') this.openCache(c.tier, c.n);
       else if (c.type === 'buyTome') this.buyTome();
       else if (c.type === 'rankUp') this.rankUp(c.slot);
       else if (c.type === 'augment') this.takeAugment(c.id);
@@ -1247,7 +1254,7 @@ export class World {
       if (e.dead || n >= 6) continue;
       n++;
       this.emit('lightning', { x: e.x, z: e.z, small: true });
-      this.hitEnemy(e, p.stats.ad * 0.6, { source: 'storm', canCrit: false });
+      this.hitEnemy(e, p.stats.ad * 0.6 * this.pot('stormcaller'), { source: 'storm', canCrit: false });
     }
   }
 
@@ -2207,7 +2214,7 @@ export class World {
         const c = this.clampToArena(p.x + cos * len, p.z + sin * len, 0.5);
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius: 3, t: 0, dur: 0.45, parryable: false };
         this.telegraphs.push(tele);
-        this.delayed.push({ t: 0.45, kind: 'quake', x: c.x, z: c.z, radius: 3, dmg: p.stats.ad * 1.6, tele, slot: 'wish', fx: 'starfall' });
+        this.delayed.push({ t: 0.45, kind: 'quake', x: c.x, z: c.z, radius: 3, dmg: p.stats.ad * 1.6 * this.pot('stormcaller'), tele, slot: 'wish', fx: 'starfall' });
       }
     }
   }
@@ -2354,7 +2361,7 @@ export class World {
   /** Perfect parry: enemies and their projectiles slow down for a moment. */
   startSlow() {
     const m = this.mods;
-    this.slowT = CONFIG.PERFECT_SLOW * m.slowDur * (m.timekeeper ? 1.6 : 1);
+    this.slowT = CONFIG.PERFECT_SLOW * m.slowDur * (m.timekeeper ? 1 + 0.6 * this.pot('timekeeper') : 1);
     this.emit('slowStart', { duration: this.slowT });
   }
 
@@ -2371,7 +2378,7 @@ export class World {
     const z = target.z;
     for (const e of this.enemies) {
       if (e.dead || e.state === 'spawn') continue;
-      if (dist(e.x, e.z, x, z) <= 3 + e.radius) this.hitEnemy(e, p.stats.ad * 1.5, { source: 'storm', canCrit: false });
+      if (dist(e.x, e.z, x, z) <= 3 + e.radius) this.hitEnemy(e, p.stats.ad * 1.5 * this.pot('stormcaller'), { source: 'storm', canCrit: false });
     }
     this.emit('lightning', { x, z });
   }
@@ -2394,7 +2401,7 @@ export class World {
     p.moving = false;
 
     // Slipstream on a Rogue or Mage: cooldowns run 60% faster while it lasts.
-    const cdRate = p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1.6 : 1;
+    const cdRate = p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1 + 0.6 * this.pot('slipstream') : 1;
     for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
     if (p.fangT > 0) p.fangT -= dt;
     p.idleT = (p.idleT || 0) + dt; // reset by any input (applyCommands)
@@ -2432,12 +2439,12 @@ export class World {
         p.sporeT = 4;
         const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 6 + e.radius);
         if (near.length) {
-          const dmg = 1.2 * Math.max(p.stats.ad || 0, p.stats.sp || 0);
+          const dmg = 1.2 * this.pot('sporeheart') * Math.max(p.stats.ad || 0, p.stats.sp || 0);
           for (const e of near) {
             this.hitEnemy(e, dmg, { source: 'spore' });
             if (!e.dead) {
               e.vulnT = Math.max(e.vulnT || 0, 4);
-              e.vuln = Math.max(e.vuln || 0, 0.1);
+              e.vuln = Math.max(e.vuln || 0, 0.1 * this.pot('sporeheart'));
             }
           }
           this.emit('sporeHeal', { x: p.x, z: p.z, n: near.length, burst: true });
@@ -2897,7 +2904,7 @@ export class World {
             p.edricStacks = Math.min(3, (p.edricT > 0 ? p.edricStacks || 0 : 0) + 1);
             p.edricT = 8;
             const who = src && !src.dead ? src : proj && proj.srcId != null ? this.enemyById(proj.srcId) : null;
-            if (who && !who.dead) this.hitEnemy(who, p.stats.ad * 1.5, { source: 'oath', canCrit: true });
+            if (who && !who.dead) this.hitEnemy(who, p.stats.ad * 1.5 * this.pot('edric'), { source: 'oath', canCrit: true });
           }
           this.healPlayer(p.stats.maxHp * (CONFIG.PERFECT_HEAL + m.parryHeal), true);
           if (m.allyParryHeal > 0 && this.party) {
@@ -2912,7 +2919,7 @@ export class World {
             // Oathbreaker's Signet: a spectral blade on everything close.
             for (const o of this.enemies) {
               if (o.dead || o.state === 'spawn' || dist(o.x, o.z, p.x, p.z) > 6 + o.radius) continue;
-              this.hitEnemy(o, p.stats.ad * 2.5, { source: 'oath', canCrit: false });
+              this.hitEnemy(o, p.stats.ad * 2.5 * this.pot('oathsignet'), { source: 'oath', canCrit: false });
             }
             this.emit('oathBlade', { x: p.x, z: p.z, radius: 6 });
           }
@@ -2954,13 +2961,13 @@ export class World {
           }
           if (best) {
             this.emit('starBolt', { x: p.x, z: p.z, tx: best.x, tz: best.z });
-            this.hitEnemy(best, p.stats.ad * (perfect ? 2.5 : 1.5), { source: 'retribution', canCrit: false });
+            this.hitEnemy(best, p.stats.ad * (perfect ? 2.5 : 1.5) * this.pot('retribution'), { source: 'retribution', canCrit: false });
           }
         } else if (m.retribution) {
           const radius = 4.5;
           for (const e of this.enemies) {
             if (e.dead || e.state === 'spawn') continue;
-            if (dist(e.x, e.z, p.x, p.z) <= radius + e.radius) this.hitEnemy(e, p.stats.ad * (perfect ? 2 : 1.2), { source: 'retribution', canCrit: false });
+            if (dist(e.x, e.z, p.x, p.z) <= radius + e.radius) this.hitEnemy(e, p.stats.ad * (perfect ? 2 : 1.2) * this.pot('retribution'), { source: 'retribution', canCrit: false });
           }
           this.emit('impact', { x: p.x, z: p.z, radius, kind: 'retribution' });
         }
@@ -3057,6 +3064,11 @@ export class World {
       p.lockT += L.miss;
       this.emit('lockSlip', { x: p.x, z: p.z });
     }
+  }
+
+  /** (0.65) How strong a worn class or unique Immortal's passive is, by its stars: 1 to 2. */
+  pot(key) {
+    return (this.mods.pot && this.mods.pot[key]) || 1;
   }
 
   /** Arriving on a Caelum map short of what it asks: say so (0.64). You may still try. */
@@ -3201,8 +3213,9 @@ export class World {
     const riftFloor = this.mode === 'explore' && this.map.id === 'rift' && this.rift ? Math.min(3, Math.floor(this.rift.tier / 5)) : 0;
     const floor = Math.max(T.minRarity, riftFloor);
     // A streak (tier II and up) means more; a boss you have outgrown, less (bossFalloff).
-    const streak = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
-    const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * streak)) : 0;
+    const run = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
+    const streak = run * (e.lootMult || 1); // (0.65) the Deep and Caelum pay their own share
+    const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * run * Math.min(1.5, e.lootMult || 1))) : 0;
     let count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
     if (!this.trial && this.mode === 'explore') {
       // Exploration surprises (0.29): more and better from Rares, the Wishthief and Remnants, and set pieces.
@@ -3840,6 +3853,13 @@ export class World {
       exp *= C.exp;
       e.animusNeed = C.animus;
     }
+    // (0.65) Faster from world tier II up, and faster again in the Deep and Caelum (endgame.js TIERS pace)
+    if (!rift) {
+      const Tp = TIERS[tier];
+      const zone = depth ? DEEP.depths[depth] : C || null;
+      this.setPace(e, Tp.pace * ((zone && zone.pace) || 1), Tp.tempo * ((zone && zone.pace) || 1), Tp.move);
+      if (zone && zone.loot) e.lootMult = zone.loot; // ...and paid for it
+    }
     const T = TIERS[tier];
     const chance = (rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0) + (this.map.wilds ? WILDS.elite : 0);
     if (!e.def.boss && (camp.def.elite || this.rng() < chance)) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes); // (0.64) a camp's captain is always one
@@ -3860,6 +3880,13 @@ export class World {
     if (e.elite && e.elite.includes('shielded')) e.shield = e.maxShield = Math.round(e.maxHp * 0.4);
     else if (e.def.shield) e.shield = e.maxShield = Math.round(e.maxHp * e.def.shield); // Court Guards (0.39)
     return e;
+  }
+
+  /** (0.65) How quickly an enemy attacks: `pace` scales wind-ups (never under 0.3 s), `tempo` the rest between attacks, `move` its speed. */
+  setPace(e, pace = 1, tempo = 1, move = 1) {
+    e.pace = (e.pace || 1) * pace;
+    e.tempo = (e.tempo || 1) * tempo;
+    e.move = (e.move || 1) * move;
   }
 
   /** A named Rare: an elite with two modifiers, far tougher, far better paid. */
@@ -4728,12 +4755,39 @@ export class World {
    * (all of it, if you leave right after one), and whatever dropped, gathered up. Once a run.
    */
   ringPay() {
-    // (0.61.1) everything gathered comes home, however the run ends (a fall too)
+    // (0.61.1) everything gathered comes home, however the run ends (a fall too). (0.65) It is handed over
+    // wave by wave (ringGive), so this only settles what is left and says what the run gave in all.
     const r = this.ring;
-    const p = this.player;
     if (!r || r.paid[this.cur.pid]) return;
+    r.given = r.given || {};
+    const due = ringWhole(r.pot) - (r.given[this.cur.pid] || 0);
+    const got = due > 0 ? this.ringHand(r, due) : { scrapped: 0, immortals: 0 };
+    r.given[this.cur.pid] = ringWhole(r.pot);
     r.paid[this.cur.pid] = true;
-    const n = ringWhole(r.pot);
+    this.sweepLoot();
+    this.emit('ringPaid', { kind: r.kind, slot: r.slot, n: ringWhole(r.pot), wave: r.wave || 0, scrapped: got.scrapped, immortals: got.immortals, total: true });
+  }
+
+  /** (0.65) After every wave: each hero gets what the spoils have grown by since they were last paid. */
+  ringGive() {
+    const r = this.ring;
+    if (!r) return;
+    r.given = r.given || {};
+    for (const h of this.heroes) {
+      if (r.paid[h.pid]) continue;
+      const due = ringWhole(r.pot) - (r.given[h.pid] || 0);
+      if (due <= 0) continue;
+      r.given[h.pid] = (r.given[h.pid] || 0) + due;
+      this.as(h, () => {
+        const got = this.ringHand(r, due);
+        this.emit('ringDrop', { kind: r.kind, slot: r.slot, n: due, wave: r.wave || 0, scrapped: got.scrapped, immortals: got.immortals });
+      });
+    }
+  }
+
+  /** Hand `n` of the run's focus to the acting hero (gold, Fragments, Wishdust or gear for its slot). */
+  ringHand(r, n) {
+    const p = this.player;
     let scrapped = 0, immortals = 0;
     if (r.kind === 'gold') p.gold += n;
     else if (r.kind === 'fragment' && n) this.giveMisc('fragment', n);
@@ -4757,8 +4811,7 @@ export class World {
         }
       }
     }
-    this.sweepLoot();
-    this.emit('ringPaid', { kind: r.kind, slot: r.slot, n, wave: r.wave || 0, scrapped, immortals });
+    return { scrapped, immortals };
   }
 
   /**
@@ -5553,24 +5606,31 @@ export class World {
   }
 
   /** Open a loot cache. The item goes to the bag. */
-  openCache(tier) {
+  /** Open a cache; `n` (0.65, Shift+click: 10) opens that many, stopping when the bag is full or the keys run out. */
+  openCache(tier, n = 1) {
     const p = this.player;
     const def = CACHES[tier];
     if (!def) return;
-    if (p.bag.length >= this.bagSize(p)) {
-      this.emit('bagFull');
-      return;
+    n = Math.max(1, Math.min(10, Math.floor(Number(n) || 1)));
+    const items = [];
+    for (let i = 0; i < n; i++) {
+      if (p.bag.length >= this.bagSize(p)) {
+        if (!items.length) this.emit('bagFull');
+        break;
+      }
+      const { gold, keys } = this.cacheCost(tier);
+      if (p.gold < gold || p.keys < keys) {
+        if (!items.length) this.emit('cantAfford');
+        break;
+      }
+      p.gold -= gold;
+      p.keys -= keys;
+      const item = rollItem(this.rng, Math.max(1, this.player.level), { weights: def.odds, cls: this.cls });
+      p.bag.push(item);
+      items.push(item);
     }
-    const { gold, keys } = this.cacheCost(tier);
-    if (p.gold < gold || p.keys < keys) {
-      this.emit('cantAfford');
-      return;
-    }
-    p.gold -= gold;
-    p.keys -= keys;
-    const item = rollItem(this.rng, Math.max(1, this.player.level), { weights: def.odds, cls: this.cls });
-    p.bag.push(item);
-    this.emit('cacheOpened', { item, tier });
+    if (items.length === 1) this.emit('cacheOpened', { item: items[0], tier });
+    else if (items.length) this.emit('cacheOpened', { item: items.reduce((b, it) => (it.rarity > b.rarity ? it : b)), items, tier });
   }
 
   /** Skill points still worth having: ranks left to buy minus points already held. */
@@ -5652,6 +5712,30 @@ export class World {
     this.augments.push(id);
     this.recalcStats();
     this.emit('augmentTaken', { id });
+    if (this.picks && this.picks.length) this.makeOffer(this.picks.shift()); // (0.65) the next one owed
+  }
+
+  /**
+   * (0.65) Starting the Ring further in costs nothing: before the first wave, every hero is offered the
+   * picks waves 1 to the one before would have given (one after every odd wave, a stronger one after
+   * every boss), one after another.
+   */
+  ringCatchUp() {
+    this.ring.caught = true;
+    const before = this.wave.cleared || 0;
+    if (before < 1 || this.twist) return;
+    const owed = [];
+    for (let n = 1; n <= before; n++) {
+      const boss = n % CONFIG.BOSS_EVERY === 0;
+      if (n % 2 === 1 || boss) owed.push(boss);
+    }
+    for (const h of this.heroes) {
+      this.as(h, () => {
+        this.picks = owed.slice();
+        if (!this.offer && this.picks.length) this.makeOffer(this.picks.shift());
+      });
+    }
+    this.emit('ringCatchUp', { picks: owed.length, from: before + 1 });
   }
 
   rerollOffer() {
@@ -5894,7 +5978,8 @@ export class World {
     e.state = 'windup';
     e.atk = atk;
     e.t = 0;
-    e.dur = atk.windup * (e.enraged ? 0.82 : 1) * (e.swift ? 0.75 : 1);
+    const wind = atk.windup * (e.enraged ? 0.82 : 1) * (e.swift ? 0.75 : 1);
+    e.dur = e.pace < 1 ? Math.max(Math.min(wind, 0.3), wind * e.pace) : wind; // (0.65) faster on later tiers, never under 0.3 s
     e.chaseT = 0;
     e.aim = dAtan2(p.z - e.z, p.x - e.x);
     e.facing = e.aim;
@@ -6199,6 +6284,7 @@ export class World {
         o.z = o.pz = c.z;
         o.summoner = e.id;
         if (e.animusNeed) o.animusNeed = e.animusNeed; // (0.64) the Granted's own ask the same
+        if (e.pace) this.setPace(o, e.pace, e.tempo, e.move); // (0.65) and keep their pace
         o.exp = 0;
         o.expValue = 0;
         o.goldValue = 0;
@@ -6246,8 +6332,8 @@ export class World {
       this.startWindup(e, (e.kitDef || e.def).attackByName[atk.chain], true);
     } else {
       e.state = 'recover';
-      e.t = atk.recover;
-      e.atkCd = e.def.atkCd[0] + this.rng() * (e.def.atkCd[1] - e.def.atkCd[0]);
+      e.t = atk.recover * (e.tempo || 1);
+      e.atkCd = (e.def.atkCd[0] + this.rng() * (e.def.atkCd[1] - e.def.atkCd[0])) * (e.tempo || 1);
     }
   }
 
@@ -6277,8 +6363,8 @@ export class World {
     let dmg = base;
     if (this.twist === 'glass') dmg *= 1.5; // (0.60) Glass Cannon
     if (p.wished && p.wished.power) dmg *= 1 + 0.4 * p.wished.power; // the Asker's power (0.40)
-    if (p.edricT > 0) dmg *= 1 + 0.12 * (p.edricStacks || 0); // Edric's Sword (0.47)
-    if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.7) dmg *= 1.18; // Edric's Colours (0.61.5: 18% above 70%)
+    if (p.edricT > 0) dmg *= 1 + 0.12 * this.pot('edric') * (p.edricStacks || 0); // Edric's Sword (0.47); (0.65) stars
+    if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.7) dmg *= 1 + 0.18 * this.pot('bluetrim'); // Edric's Colours (0.61.5: 18% above 70%)
     if (opts.basic && !opts.noTail && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) {
       // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
       dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
@@ -6306,10 +6392,10 @@ export class World {
       if (stunned) dmg *= CONFIG.STUN_DAMAGE_BONUS;
       if (e.vulnT > 0) dmg *= 1 + e.vuln;
       if (e.exposedT > 0 && e.exposedPid === this.cur.pid) dmg *= 1.15;
-      if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1.25; // The Unwished Crown, after a Doom avoided
+      if (p.unwishedT > 0 && this.mods.unwished) dmg *= 1 + 0.25 * this.pot('unwished'); // The Unwished Crown, after a Doom avoided
       const im = this.mods;
       // (0.61.5) Immortals that turn a situation into damage
-      if (im.unwished && e.def.boss) dmg *= 1.12; // The Unwished Crown: against bosses
+      if (im.unwished && e.def.boss) dmg *= 1 + 0.12 * ((im.pot && im.pot.unwished) || 1); // The Unwished Crown: against bosses
       if (im.missingDmg > 0) dmg *= 1 + Math.min(9 * im.missingDmg, im.missingDmg * Math.floor(Math.max(0, 1 - p.hp / p.stats.maxHp) * 10 + 1e-9)); // Crown of the Last Breath
       if (im.farDmg > 0 && p.farClear) dmg *= 1 + im.farDmg; // Rangekeeper's Coat
       if (im.rushDmg > 0 && p.rushT > 0) dmg *= 1 + im.rushDmg; // Quickstep Boots
@@ -6342,7 +6428,7 @@ export class World {
     }
     if (crit && this.mods.stormcaller && this.cls === 'rogue' && (opts.source === 'q' || opts.source === 'w' || opts.source === 'r')) {
       // Nightfang: ability crits cut deeper and bring Nightstep back sooner.
-      dmg *= 1.4;
+      dmg *= 1 + 0.4 * this.pot('stormcaller');
       if (!(p.fangT > 0)) {
         p.cd.e = Math.max(0, p.cd.e - 1);
         p.fangT = 0.3;
@@ -6494,8 +6580,8 @@ export class World {
       if (m.nightcutChain) p.nightcutT = 3; // Nightcut: the next Shadowstrike cuts a crowd
       if (m.killSurge > 0) this.addSurge(m.killSurge, 5, 6); // Shroud of Last Rites (0.61.5)
     }
-    if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5);
-    if (m.undying && dist(e.x, e.z, p.x, p.z) <= 8 + e.radius) this.addSurge(0.04, 10, 6); // Crown of the Undying (0.61.5)
+    if (m.timekeeper) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - 0.5 * this.pot('timekeeper'));
+    if (m.undying && dist(e.x, e.z, p.x, p.z) <= 8 + e.radius) this.addSurge(0.04 * this.pot('undying'), 10, 6); // Crown of the Undying (0.61.5)
     this.emit('death', { id: e.id, enemyType: e.type, x: e.x, z: e.z, boss: !!e.def.boss, elite: !!e.elite, remnant: e.remnant ? 1 : undefined, old: e.oldCls || undefined });
     if (e.def.boss) this.bossLine(e, 'death', true);
     if (e.def.asker) this.clearWishes();
@@ -6811,7 +6897,7 @@ export class World {
           }
           let mx = 0;
           let mz = 0;
-          let sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1) * (e.swift ? 1.4 : 1);
+          let sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1) * (e.swift ? 1.4 : 1) * (e.move || 1);
           if (e.def.ai === 'ranged') {
             const [min, max] = e.def.band;
             if (d > max) {
@@ -6896,8 +6982,8 @@ export class World {
           const edge = dHypot(e.x, e.z) > this.radius - e.radius;
           if (e.t >= e.dur || edge) {
             e.state = 'recover';
-            e.t = atk.recover;
-            e.atkCd = e.def.atkCd[0] + this.rng() * (e.def.atkCd[1] - e.def.atkCd[0]);
+            e.t = atk.recover * (e.tempo || 1);
+            e.atkCd = (e.def.atkCd[0] + this.rng() * (e.def.atkCd[1] - e.def.atkCd[0])) * (e.tempo || 1);
           }
           break;
         }
@@ -7127,6 +7213,7 @@ export class World {
     const p = this.player;
     if (p.dead) return;
     if (w.phase === 'intermission') {
+      if (this.ring && !this.ring.caught) this.ringCatchUp();
       if (this.offer) return; // the next wave waits for the augment pick
       if (this.ring && this.ring.hold) return; // (0.59) ...and, after a boss, for you to take the spoils home or push on
       w.timer -= dt;
@@ -7135,7 +7222,8 @@ export class World {
     }
     w.spawnT -= dt;
     if (w.queue.length && this.enemies.length < w.maxAlive && w.spawnT <= 0) {
-      this.spawnEnemy(w.queue.shift());
+      const e = this.spawnEnemy(w.queue.shift());
+      if (this.ring && e) this.setPace(e, RING.pace(w.n), RING.tempo(w.n), RING.move(w.n)); // (0.65) faster from wave 20
       w.spawnT = 0.35; // (0.62) a quicker trickle: the floor fills faster (was 0.55 s)
     }
     if (!w.queue.length && this.enemies.length === 0) {
@@ -7174,6 +7262,7 @@ export class World {
         r.wave = w.n;
         if (boss) r.hold = true; // the next wave waits: take it all home, or push on
         this.emit('ringGain', { n: w.n, boss, kind: r.kind, pot: ringWhole(r.pot) });
+        this.ringGive(); // (0.65) paid out as each wave falls
       }
       this.questEvent('wave', w.n);
       // Augments: a pick after every odd wave, and a stronger one after every boss.

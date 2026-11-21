@@ -13,11 +13,14 @@ import { expToNext } from './defs.js';
 export const TIERS = [
   null,
   // doom: how much of your max health a boss's Doom takes (0.28); none on tier I, except on someone idle
-  { n: 1, numeral: 'I', name: 'The Road', hp: 1, dmg: 1, exp: 1, loot: 1, elite: 0.03, affixes: 1, minRarity: 0, doom: 0 },
-  { n: 2, numeral: 'II', name: 'The Unwished', hp: 2.2, dmg: 1.5, exp: 1.6, loot: 1.5, elite: 0.1, affixes: 1, minRarity: 1, doom: 0.25 },
-  { n: 3, numeral: 'III', name: 'Hollow Stars', hp: 3.6, dmg: 1.9, exp: 2.4, loot: 2, elite: 0.14, affixes: 2, minRarity: 2, doom: 0.35 },
-  { n: 4, numeral: 'IV', name: 'The Unmaking', hp: 6, dmg: 2.5, exp: 3.4, loot: 2.6, elite: 0.18, affixes: 2, minRarity: 3, doom: 0.45 },
-  { n: 5, numeral: 'V', name: 'Afterwish', hp: 9.5, dmg: 3.2, exp: 4.6, loot: 3.2, elite: 0.22, affixes: 3, minRarity: 3, doom: 0.6 },
+  // (0.65) pace: wind-ups take this long (never under 0.3 s, so the parry flash still comes in time);
+  // tempo: the rest between attacks; move: how fast they close in. Loot rose with them (II 1.5 to 1.75,
+  // III 2 to 2.45, IV 2.6 to 3.2, V 3.2 to 4).
+  { n: 1, numeral: 'I', name: 'The Road', hp: 1, dmg: 1, exp: 1, loot: 1, elite: 0.03, affixes: 1, minRarity: 0, doom: 0, pace: 1, tempo: 1, move: 1 },
+  { n: 2, numeral: 'II', name: 'The Unwished', hp: 2.2, dmg: 1.5, exp: 1.6, loot: 1.75, elite: 0.1, affixes: 1, minRarity: 1, doom: 0.25, pace: 0.92, tempo: 0.85, move: 1.08 },
+  { n: 3, numeral: 'III', name: 'Hollow Stars', hp: 3.6, dmg: 1.9, exp: 2.4, loot: 2.45, elite: 0.14, affixes: 2, minRarity: 2, doom: 0.35, pace: 0.88, tempo: 0.78, move: 1.12 },
+  { n: 4, numeral: 'IV', name: 'The Unmaking', hp: 6, dmg: 2.5, exp: 3.4, loot: 3.2, elite: 0.18, affixes: 2, minRarity: 3, doom: 0.45, pace: 0.84, tempo: 0.72, move: 1.16 },
+  { n: 5, numeral: 'V', name: 'Afterwish', hp: 9.5, dmg: 3.2, exp: 4.6, loot: 4, elite: 0.22, affixes: 3, minRarity: 3, doom: 0.6, pace: 0.8, tempo: 0.66, move: 1.2 },
 ];
 export const MAX_TIER = TIERS.length - 1;
 
@@ -122,11 +125,11 @@ export const DEEP = {
   kindling: { normal: 0.004, elite: 0.06, boss: 1 }, // chance a kill there finds one (a Primordial: always)
   level: 100, // the least level to go down
   depths: {
-    6: { n: 6, numeral: 'VI', name: 'The Ashen Deep', map: 'deep6', ember: 15, hp: 1.5, dmg: 1.3, exp: 1.3, loot: 1.2, color: 0xff6a2a, primordial: 'cinder', title: 'Ending' },
-    7: { n: 7, numeral: 'VII', name: 'The Drowned Court', map: 'deep7', ember: 50, hp: 2.2, dmg: 1.6, exp: 1.6, loot: 1.4, color: 0x3ac0c0, primordial: 'undertow', title: 'Forgetting' },
-    8: { n: 8, numeral: 'VIII', name: 'The Undergrowth', map: 'deep8', ember: 85, hp: 3.2, dmg: 2.0, exp: 2.0, loot: 1.6, color: 0x9ad06a, primordial: 'rootmother', title: 'Growing' },
-    9: { n: 9, numeral: 'IX', name: 'The Glass Choir', map: 'deep9', ember: 120, hp: 4.5, dmg: 2.5, exp: 2.4, loot: 1.8, color: 0xc8e8ff, primordial: 'choir', title: 'Remembering' },
-    10: { n: 10, numeral: 'X', name: 'The Quiet', map: 'deep10', ember: 155, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, color: 0xb8b0d8, primordial: 'stillness', title: 'Enough' },
+    6: { n: 6, numeral: 'VI', name: 'The Ashen Deep', map: 'deep6', ember: 15, hp: 1.5, dmg: 1.3, exp: 1.3, loot: 1.2, pace: 0.97, color: 0xff6a2a, primordial: 'cinder', title: 'Ending' },
+    7: { n: 7, numeral: 'VII', name: 'The Drowned Court', map: 'deep7', ember: 50, hp: 2.2, dmg: 1.6, exp: 1.6, loot: 1.4, pace: 0.95, color: 0x3ac0c0, primordial: 'undertow', title: 'Forgetting' },
+    8: { n: 8, numeral: 'VIII', name: 'The Undergrowth', map: 'deep8', ember: 85, hp: 3.2, dmg: 2.0, exp: 2.0, loot: 1.6, pace: 0.93, color: 0x9ad06a, primordial: 'rootmother', title: 'Growing' },
+    9: { n: 9, numeral: 'IX', name: 'The Glass Choir', map: 'deep9', ember: 120, hp: 4.5, dmg: 2.5, exp: 2.4, loot: 1.8, pace: 0.91, color: 0xc8e8ff, primordial: 'choir', title: 'Remembering' },
+    10: { n: 10, numeral: 'X', name: 'The Quiet', map: 'deep10', ember: 155, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, pace: 0.9, color: 0xb8b0d8, primordial: 'stillness', title: 'Enough' },
   },
 };
 export const DEPTH_IDS = [6, 7, 8, 9, 10];
@@ -148,10 +151,10 @@ export function emberForGear(value) {
 // its Dominion attacks are how it asks. Short of it you may still try; see world.js hitPlayer.
 export const CAELUM = {
   maps: {
-    skyroad: { n: 1, numeral: 'I', name: 'The Sky Road', animus: 0.15, points: 5, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, boss: 'ianitor', color: 0xf2e6c0 },
-    answers: { n: 2, numeral: 'II', name: 'The Court of Answers', animus: 0.3, points: 10, hp: 7.5, dmg: 3.2, exp: 3.3, loot: 2.2, boss: 'arbiter', color: 0xe8d8a8 },
-    wants: { n: 3, numeral: 'III', name: 'The Hall of Wants', animus: 0.45, points: 15, hp: 8.5, dmg: 3.4, exp: 3.6, loot: 2.4, boss: 'desiderium', color: 0xf0c890 },
-    zenith: { n: 4, numeral: 'IV', name: 'The Zenith', animus: 0.6, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
+    skyroad: { pace: 0.95, n: 1, numeral: 'I', name: 'The Sky Road', animus: 0.15, points: 5, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, boss: 'ianitor', color: 0xf2e6c0 },
+    answers: { pace: 0.93, n: 2, numeral: 'II', name: 'The Court of Answers', animus: 0.3, points: 10, hp: 7.5, dmg: 3.2, exp: 3.3, loot: 2.2, boss: 'arbiter', color: 0xe8d8a8 },
+    wants: { pace: 0.91, n: 3, numeral: 'III', name: 'The Hall of Wants', animus: 0.45, points: 15, hp: 8.5, dmg: 3.4, exp: 3.6, loot: 2.4, boss: 'desiderium', color: 0xf0c890 },
+    zenith: { pace: 0.9, n: 4, numeral: 'IV', name: 'The Zenith', animus: 0.6, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
   },
   ids: ['skyroad', 'answers', 'wants', 'zenith'],
   quest: 'sky1', // Wren's first Caelum quest opens the Sky Road on the Waygate

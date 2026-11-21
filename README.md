@@ -159,6 +159,27 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Harder, faster, better paid (0.65)
+
+- **Faster from world tier II up**: enemies wind up quicker (down to 80% on tier V, never under 0.3 s
+  so the parry flash still comes in time), rest less between attacks (66% on V) and move faster (+20%
+  on V). Faster again in the Deep (Depth VI to X) and in Caelum. **Drops rose with it**: tier loot
+  II 1.75 (was 1.5), III 2.45 (2), IV 3.2 (2.6), V 4 (3.2), and the Deep's and Caelum's own loot share
+  now counts.
+- **The Primordials drop a hoard**: 5 or 6 pieces, Mythic or better, with a 5% (the Cinder) to 12% (the
+  Stillness) chance of an Immortal; an Ancient piece for certain the first time.
+- **Ascension hits harder**: every star also adds 20% to an Immortal's passive, twice as strong at 5
+  stars (cooldown cuts grow as speed, so never to zero). The tooltip shows the potency.
+- **The Echo Ring**: every wave pays out as it falls (no waiting for the boss); waves grow 8% each up
+  to wave 50 (was 7% to 40); gear about every other wave and Immortals from wave 15 (1.5% rising to 5%);
+  from wave 20 the echoes attack faster. **Starting further in costs no augments**: the picks waves 1
+  onward would have given are offered before the first wave. **Rebirth keeps** your Ring start and best wave.
+- **Reroll lock**: the guard now locks Immortal-tier lines (the button greys out), so spam-clicking can
+  never reroll one by accident. Untick it to reroll them.
+- **Shift+click** opens 10 Warden's caches at Bram's at once (as many as keys, gold and bag room allow);
+  the Wishborne panel says Shift+click places 10 points again.
+- The rebirth button's description says what is kept now (scrap, Wishdust, keys, Ember, the Ring start).
+
 ### Models for Caelum (0.64.1)
 
 The Granted, their four keepers and a landmark for each Caelum map, made with Tripo: the Answered, Cantors,

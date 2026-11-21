@@ -1,0 +1,32 @@
+{
+  "task_id": "49343542-0e54-4394-b63f-ca166b0e019d",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Desiderium, the Want, a beautiful hollow figure of white porcelain and gold, its chest cracked open around an empty glowing hollow, many slender golden arms reaching outward from its back, long flowing white cloth, hungry and graceful. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 12000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-21T02:33:06.968200Z",
+  "completed_at": "2026-11-21T02:39:31.586293Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

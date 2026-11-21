@@ -1,0 +1,117 @@
+{
+  "id": "b_arbiter",
+  "prompt": "the Arbiter, judge of the Court of Answers, a tall stern figure in heavy ivory judicial robes and a tall golden crown, eyes covered by a white blindfold, a great golden scale in one hand and a long straight sword in the other. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:27:06.353Z",
+  "creditsBefore": 2820,
+  "steps": {
+    "model": {
+      "task": "fdc6ff9d-dd4b-411c-81a1-326810851e33",
+      "result": {
+        "task_id": "fdc6ff9d-dd4b-411c-81a1-326810851e33",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_arbiter/1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_arbiter/1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/model.glb",
+        "preview": "out/models/b_arbiter/1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/preview.png"
+      }
+    },
+    "check": {
+      "task": "2a0be948-6d54-4516-bb28-ca1cabdefe3c",
+      "result": {
+        "task_id": "2a0be948-6d54-4516-bb28-ca1cabdefe3c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_arbiter/2-check/tripo-out/rig-check-2-2a0be948",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "c95c68fb-849d-42c1-bc31-c35ca94f2b32",
+      "rigType": "biped",
+      "result": {
+        "task_id": "c95c68fb-849d-42c1-bc31-c35ca94f2b32",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_arbiter/3-rig/tripo-out/rig-2-c95c68fb",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_arbiter/3-rig/tripo-out/rig-2-c95c68fb/model.glb",
+        "preview": "out/models/b_arbiter/3-rig/tripo-out/rig-2-c95c68fb/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "805ff419-2b15-472e-bca6-948ecffd6283",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "805ff419-2b15-472e-bca6-948ecffd6283",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_arbiter/4-anim-1/tripo-out/retarget-3-805ff419",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_arbiter/4-anim-1/tripo-out/retarget-3-805ff419/model.glb"
+        }
+      },
+      {
+        "task": "3e202d60-28b5-4a5f-ba69-5407041add4e",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "3e202d60-28b5-4a5f-ba69-5407041add4e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_arbiter/4-anim-2/tripo-out/retarget-4-3e202d60",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_arbiter/4-anim-2/tripo-out/retarget-4-3e202d60/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2580,
+  "creditsUsed": 240,
+  "finished": "2026-11-21T02:33:06.271Z",
+  "files": [
+    "1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/generated_image.jpeg",
+    "1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/model.glb",
+    "1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/preview.png",
+    "1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/rendered_image.webp",
+    "1-model/tripo-out/the-arbiter-judge-of-the-court-o-fdc6ff9d/task.json",
+    "2-check/tripo-out/rig-check-2-2a0be948/task.json",
+    "3-rig/tripo-out/rig-2-c95c68fb/model.glb",
+    "3-rig/tripo-out/rig-2-c95c68fb/preview.png",
+    "3-rig/tripo-out/rig-2-c95c68fb/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-c95c68fb/task.json",
+    "4-anim-1/tripo-out/retarget-3-805ff419/model.glb",
+    "4-anim-1/tripo-out/retarget-3-805ff419/task.json",
+    "4-anim-2/tripo-out/retarget-4-3e202d60/model.glb",
+    "4-anim-2/tripo-out/retarget-4-3e202d60/task.json",
+    "manifest.json"
+  ]
+}

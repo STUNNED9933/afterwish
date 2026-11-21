@@ -1,0 +1,117 @@
+{
+  "id": "b_ianitor",
+  "prompt": "Ianitor, the Doorkeeper of the Sky Road, a towering guardian in white and gold robes with two serene faces, one looking forward and one looking back, holding a great golden key like a staff, a ring of small floating golden keys around its waist, huge folded white wings. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:19:05.870Z",
+  "creditsBefore": 3060,
+  "steps": {
+    "model": {
+      "task": "948b7927-126a-4a1a-a13b-e717e313ae04",
+      "result": {
+        "task_id": "948b7927-126a-4a1a-a13b-e717e313ae04",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_ianitor/1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_ianitor/1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/model.glb",
+        "preview": "out/models/b_ianitor/1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/preview.png"
+      }
+    },
+    "check": {
+      "task": "9c3ac37c-5d06-4d43-b6de-79aa95aea1c7",
+      "result": {
+        "task_id": "9c3ac37c-5d06-4d43-b6de-79aa95aea1c7",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_ianitor/2-check/tripo-out/rig-check-9c3ac37c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "d027b10b-cb43-471c-a0f5-8582a9c68eef",
+      "rigType": "biped",
+      "result": {
+        "task_id": "d027b10b-cb43-471c-a0f5-8582a9c68eef",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_ianitor/3-rig/tripo-out/rig-d027b10b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_ianitor/3-rig/tripo-out/rig-d027b10b/model.glb",
+        "preview": "out/models/b_ianitor/3-rig/tripo-out/rig-d027b10b/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "4cc9559c-442a-48cd-9325-c1dc42ac2102",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "4cc9559c-442a-48cd-9325-c1dc42ac2102",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_ianitor/4-anim-1/tripo-out/retarget-4cc9559c",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_ianitor/4-anim-1/tripo-out/retarget-4cc9559c/model.glb"
+        }
+      },
+      {
+        "task": "1331d14d-c045-42fe-af33-0cd5cbd21410",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "1331d14d-c045-42fe-af33-0cd5cbd21410",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_ianitor/4-anim-2/tripo-out/retarget-2-1331d14d",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_ianitor/4-anim-2/tripo-out/retarget-2-1331d14d/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2820,
+  "creditsUsed": 240,
+  "finished": "2026-11-21T02:27:06.352Z",
+  "files": [
+    "1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/generated_image.jpeg",
+    "1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/model.glb",
+    "1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/preview.png",
+    "1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/rendered_image.webp",
+    "1-model/tripo-out/ianitor-the-doorkeeper-of-the-sk-948b7927/task.json",
+    "2-check/tripo-out/rig-check-9c3ac37c/task.json",
+    "3-rig/tripo-out/rig-d027b10b/model.glb",
+    "3-rig/tripo-out/rig-d027b10b/preview.png",
+    "3-rig/tripo-out/rig-d027b10b/rendered_image.webp",
+    "3-rig/tripo-out/rig-d027b10b/task.json",
+    "4-anim-1/tripo-out/retarget-4cc9559c/model.glb",
+    "4-anim-1/tripo-out/retarget-4cc9559c/task.json",
+    "4-anim-2/tripo-out/retarget-2-1331d14d/model.glb",
+    "4-anim-2/tripo-out/retarget-2-1331d14d/task.json",
+    "manifest.json"
+  ]
+}

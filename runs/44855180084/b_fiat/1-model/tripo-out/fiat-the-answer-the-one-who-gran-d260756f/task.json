@@ -1,0 +1,32 @@
+{
+  "task_id": "d260756f-9d94-43f0-b44c-7fbf3682feb3",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Fiat, the Answer, the one who grants every wish, a radiant tall figure of white light and gold, its face a calm golden sun mask, six white wings folded around it, rings of glowing golden script orbiting its body, perfect and overwhelming. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 12000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-21T02:40:06.937922Z",
+  "completed_at": "2026-11-21T02:46:18.729952Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

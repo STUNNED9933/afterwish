@@ -1,0 +1,117 @@
+{
+  "id": "b_desiderium",
+  "prompt": "Desiderium, the Want, a beautiful hollow figure of white porcelain and gold, its chest cracked open around an empty glowing hollow, many slender golden arms reaching outward from its back, long flowing white cloth, hungry and graceful. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:33:06.272Z",
+  "creditsBefore": 2580,
+  "steps": {
+    "model": {
+      "task": "49343542-0e54-4394-b63f-ca166b0e019d",
+      "result": {
+        "task_id": "49343542-0e54-4394-b63f-ca166b0e019d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_desiderium/1-model/tripo-out/desiderium-the-want-a-beautiful-49343542",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_desiderium/1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/model.glb",
+        "preview": "out/models/b_desiderium/1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/preview.png"
+      }
+    },
+    "check": {
+      "task": "3d2dc12b-16c7-44f5-86dc-db59e1070284",
+      "result": {
+        "task_id": "3d2dc12b-16c7-44f5-86dc-db59e1070284",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_desiderium/2-check/tripo-out/rig-check-3-3d2dc12b",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "f56bb0a9-c506-45b9-b4ee-1718dbf163e2",
+      "rigType": "biped",
+      "result": {
+        "task_id": "f56bb0a9-c506-45b9-b4ee-1718dbf163e2",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_desiderium/3-rig/tripo-out/rig-3-f56bb0a9",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_desiderium/3-rig/tripo-out/rig-3-f56bb0a9/model.glb",
+        "preview": "out/models/b_desiderium/3-rig/tripo-out/rig-3-f56bb0a9/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "60e5a54d-d1d2-4b2e-a7a3-7af98fad6a1b",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "60e5a54d-d1d2-4b2e-a7a3-7af98fad6a1b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_desiderium/4-anim-1/tripo-out/retarget-5-60e5a54d",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_desiderium/4-anim-1/tripo-out/retarget-5-60e5a54d/model.glb"
+        }
+      },
+      {
+        "task": "b89096a2-5f0f-42a2-a681-4ede0da3a7a5",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "b89096a2-5f0f-42a2-a681-4ede0da3a7a5",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_desiderium/4-anim-2/tripo-out/retarget-6-b89096a2",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_desiderium/4-anim-2/tripo-out/retarget-6-b89096a2/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2340,
+  "creditsUsed": 240,
+  "finished": "2026-11-21T02:40:06.142Z",
+  "files": [
+    "1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/generated_image.jpeg",
+    "1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/model.glb",
+    "1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/preview.png",
+    "1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/rendered_image.webp",
+    "1-model/tripo-out/desiderium-the-want-a-beautiful-49343542/task.json",
+    "2-check/tripo-out/rig-check-3-3d2dc12b/task.json",
+    "3-rig/tripo-out/rig-3-f56bb0a9/model.glb",
+    "3-rig/tripo-out/rig-3-f56bb0a9/preview.png",
+    "3-rig/tripo-out/rig-3-f56bb0a9/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-f56bb0a9/task.json",
+    "4-anim-1/tripo-out/retarget-5-60e5a54d/model.glb",
+    "4-anim-1/tripo-out/retarget-5-60e5a54d/task.json",
+    "4-anim-2/tripo-out/retarget-6-b89096a2/model.glb",
+    "4-anim-2/tripo-out/retarget-6-b89096a2/task.json",
+    "manifest.json"
+  ]
+}

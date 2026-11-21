@@ -1,0 +1,117 @@
+{
+  "id": "b_fiat",
+  "prompt": "Fiat, the Answer, the one who grants every wish, a radiant tall figure of white light and gold, its face a calm golden sun mask, six white wings folded around it, rings of glowing golden script orbiting its body, perfect and overwhelming. celestial fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, ivory white and pale gold, serene and uncanny rather than gory",
+  "started": "2026-11-21T02:40:06.143Z",
+  "creditsBefore": 2340,
+  "steps": {
+    "model": {
+      "task": "d260756f-9d94-43f0-b44c-7fbf3682feb3",
+      "result": {
+        "task_id": "d260756f-9d94-43f0-b44c-7fbf3682feb3",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/b_fiat/1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_fiat/1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/model.glb",
+        "preview": "out/models/b_fiat/1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/preview.png"
+      }
+    },
+    "check": {
+      "task": "8d4fed8c-aa46-49d3-80ca-36de60681e17",
+      "result": {
+        "task_id": "8d4fed8c-aa46-49d3-80ca-36de60681e17",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/b_fiat/2-check/tripo-out/rig-check-4-8d4fed8c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "4e8ae1db-1a3f-40a9-b1c7-6abb46ea3660",
+      "rigType": "biped",
+      "result": {
+        "task_id": "4e8ae1db-1a3f-40a9-b1c7-6abb46ea3660",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/b_fiat/3-rig/tripo-out/rig-4-4e8ae1db",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/b_fiat/3-rig/tripo-out/rig-4-4e8ae1db/model.glb",
+        "preview": "out/models/b_fiat/3-rig/tripo-out/rig-4-4e8ae1db/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "12649e11-8b8c-442d-a48c-012104bd0e6e",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:chop",
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "12649e11-8b8c-442d-a48c-012104bd0e6e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/b_fiat/4-anim-1/tripo-out/retarget-7-12649e11",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_fiat/4-anim-1/tripo-out/retarget-7-12649e11/model.glb"
+        }
+      },
+      {
+        "task": "19cc7995-d5fe-4a5f-90fe-161f373f9302",
+        "presets": [
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall",
+          "preset:biped:angry_02"
+        ],
+        "result": {
+          "task_id": "19cc7995-d5fe-4a5f-90fe-161f373f9302",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/b_fiat/4-anim-2/tripo-out/retarget-8-19cc7995",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/b_fiat/4-anim-2/tripo-out/retarget-8-19cc7995/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1995,
+  "creditsUsed": 345,
+  "finished": "2026-11-21T02:47:27.631Z",
+  "files": [
+    "1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/generated_image.jpeg",
+    "1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/model.glb",
+    "1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/preview.png",
+    "1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/rendered_image.webp",
+    "1-model/tripo-out/fiat-the-answer-the-one-who-gran-d260756f/task.json",
+    "2-check/tripo-out/rig-check-4-8d4fed8c/task.json",
+    "3-rig/tripo-out/rig-4-4e8ae1db/model.glb",
+    "3-rig/tripo-out/rig-4-4e8ae1db/preview.png",
+    "3-rig/tripo-out/rig-4-4e8ae1db/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-4e8ae1db/task.json",
+    "4-anim-1/tripo-out/retarget-7-12649e11/model.glb",
+    "4-anim-1/tripo-out/retarget-7-12649e11/task.json",
+    "4-anim-2/tripo-out/retarget-8-19cc7995/model.glb",
+    "4-anim-2/tripo-out/retarget-8-19cc7995/task.json",
+    "manifest.json"
+  ]
+}

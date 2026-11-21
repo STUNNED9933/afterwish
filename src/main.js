@@ -2321,6 +2321,7 @@ function start(hot = {}) {
   function showRingBank(ev) {
     if (!world.ring || (net && !net.server)) return;
     $('ring-bank-text').textContent = `Wave ${ev.n} cleared. Your spoils: ${ringText(world.ring, ev.pot)}.`;
+    $('btn-ring-on').innerHTML = `Push on <kbd>${esc((nextWaveKey() || 'Enter').toUpperCase())}</kbd>`; // (0.62.2) the key that pushes on
     $('ring-bank').classList.remove('hidden');
   }
   function ringLeave() {
@@ -3360,6 +3361,7 @@ function start(hot = {}) {
     settings.nextWaveKey = e.target.value;
     storeSettings(settings);
     hud.nextWaveLabel = nextWaveLabel();
+    hud.nextWaveKeyName = (nextWaveKey() || 'Enter').toUpperCase();
   });
   $('auto-wave').checked = !!settings.autoWave;
   $('auto-wave').addEventListener('change', (e) => {
@@ -3367,6 +3369,7 @@ function start(hot = {}) {
     storeSettings(settings);
   });
   hud.nextWaveLabel = nextWaveLabel();
+  hud.nextWaveKeyName = (nextWaveKey() || 'Enter').toUpperCase();
   $('held-aim').checked = settings.heldAim !== false; // (0.61.2)
   $('held-aim').addEventListener('change', (e) => {
     settings.heldAim = e.target.checked;

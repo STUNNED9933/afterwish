@@ -438,7 +438,8 @@ export class Hud {
     if (zone) {
       sub = p.dead ? 'knocked out' : zone.sub;
     } else if (w.phase === 'intermission') {
-      sub = world.offer ? 'choose an augment' : world.ring && world.ring.hold ? 'H to take your spoils home, Enter to push on' : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press Enter to start now`;
+      const nk = this.nextWaveKeyName || 'Enter'; // (0.62.2) the key chosen in the menu
+      sub = world.offer ? 'choose an augment' : world.ring && world.ring.hold ? `H to take your spoils home, ${nk} to push on` : `starts in ${Math.max(0, Math.ceil(w.timer))}s · press ${nk} to skip the wait`;
     } else {
       const left = world.remaining;
       sub = `${left} ${left === 1 ? 'enemy' : 'enemies'} left`;

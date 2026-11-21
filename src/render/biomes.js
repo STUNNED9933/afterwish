@@ -119,6 +119,12 @@ export const BIOMES = {
     decor: [S('smallCrystals', { color: '#cfe4ff' }, 3)], decorDensity: 0.03,
     edge: { kind: 'cliff', species: [S('crystal', { color: '#a8c8f0', seed: 105 }), S('iceRock', { seed: 106 })] },
   },
+  caelum: {
+    trees: [S('glassSpire', { glass: '#ffe8b0', stone: '#e8dcc0', seed: 21 }, 3), S('pillar', { stone: '#e8e2d4', moss: '#d8b25a', seed: 22 }, 2)],
+    rocks: [S('boulder', { stone: '#f0ece2', top: '#ffffff', topAmt: 0.8, flat: 0.62, seed: 23 }, 3), S('ruinWall', { stone: '#e8e0cc', mortar: '#c8a050', moss: '#f4efe4', seed: 24 }, 1)],
+    decor: [S('smallCrystals', { color: '#ffe2a0' }, 2)], decorDensity: 0.02,
+    edge: { kind: 'void', species: [S('floating', { stone: '#e8e2d4', crystal: '#ffd870', seed: 108 })] },
+  },
   quiet: {
     trees: [S('dead', { bark: '#1a181e', seed: 14, tall: 1.1 }, 1)],
     rocks: [S('boulder', { stone: '#2a2830', top: '#3a3842', topAmt: 0.4 }, 2), S('tombstone', {}, 1)],

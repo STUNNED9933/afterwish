@@ -142,6 +142,23 @@ export function emberForGear(value) {
  * Mastery (0.63, docs/design/mastery.md): every Primordial beaten on a class is a point of Mastery for the whole
  * account (5 a class, 20 in all), read from what each class's save keeps through rebirth (rebirth.act3).
  */
+// Caelum (0.64, docs/design/mastery.md): where the Granted live, above the Starwell. Four maps, walked in
+// order by their portals (the first by the Waygate, once Wren's The Sky Road is taken). Built on tier V
+// like the Deep, but there is no Ember: each map asks for an Animus instead (what Mastery gives), and
+// its Dominion attacks are how it asks. Short of it you may still try; see world.js hitPlayer.
+export const CAELUM = {
+  maps: {
+    skyroad: { n: 1, numeral: 'I', name: 'The Sky Road', animus: 0.15, points: 5, hp: 6.5, dmg: 3.0, exp: 3.0, loot: 2.0, boss: 'ianitor', color: 0xf2e6c0 },
+    answers: { n: 2, numeral: 'II', name: 'The Court of Answers', animus: 0.3, points: 10, hp: 7.5, dmg: 3.2, exp: 3.3, loot: 2.2, boss: 'arbiter', color: 0xe8d8a8 },
+    wants: { n: 3, numeral: 'III', name: 'The Hall of Wants', animus: 0.45, points: 15, hp: 8.5, dmg: 3.4, exp: 3.6, loot: 2.4, boss: 'desiderium', color: 0xf0c890 },
+    zenith: { n: 4, numeral: 'IV', name: 'The Zenith', animus: 0.6, points: 20, hp: 10, dmg: 3.6, exp: 4.0, loot: 2.6, boss: 'fiat', color: 0xffffff },
+  },
+  ids: ['skyroad', 'answers', 'wants', 'zenith'],
+  quest: 'sky1', // Wren's first Caelum quest opens the Sky Road on the Waygate
+};
+/** Is this hero short of what a Caelum map asks (0.64)? A tiny margin so 0.15 from 5 points always counts. */
+export const animusShort = (have, need) => need > 0 && (have || 0) + 1e-6 < need;
+
 export const MASTERY = {
   quests: { deep2: 6, deep3: 7, deep4: 8, deep5: 9, deep6q: 10 }, // the Primordial quests, and their Depths
   classes: ['warrior', 'archer', 'rogue', 'mage'],

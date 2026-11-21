@@ -159,6 +159,29 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Mastery, phase 2: Caelum and the Granted (0.64)
+
+Above the Starwell, where the Granted live (design: `docs/design/mastery.md`). Wren's **The Sky Road**
+follows The Other Lives and opens it on the Waygate; four quests take you to the top.
+- **Four maps to explore**, walked in order: The Sky Road, The Court of Answers, The Hall of Wants and
+  The Zenith. Each has a winding road to its keeper at the far end, camps off to either side (each with
+  an elite captain), side paths to shrines (a stone to read and a chest), and outposts in the far
+  corners (a harder camp and a chest).
+- **The Granted**: the Answered, Cantors, Thurifers, Gilded Colossi, the Veiled and wish-motes, and four
+  keepers: Ianitor, the Arbiter, Desiderium and Fiat. All in Ex Voto.
+- **Animus gates it, not stats**: each map asks for 15%, 30%, 45% or 60% (5, 10, 15 or 20 Mastery). The
+  Waygate's Caelum panel shows what each asks and what you have; arriving short of it, you are warned.
+- **Dominions** (amber warnings): with the Animus asked, a perfect parry turns one, a roll avoids it,
+  and one that lands is a small hit and a short lock. Short of it, only a near-frame-perfect parry (two
+  ticks) turns it, rolling does not help, and it takes 90% of your health and locks you for about 4 s.
+- **Mind-Locked**: no moving or acting. Every lock cracks now and then (a white flash on the ring in
+  the middle of the screen): press parry in a crack to break free, too soon and it holds longer.
+  Animus shortens every lock; locks close together are shorter, and with the Animus asked you are
+  immune for a moment after one. Short of it, nothing protects you but your timing.
+- **Clouded sight**: short of a map's Animus, its ground warnings flicker.
+- Nearly impossible under-prepared, never impossible: there is no lock you cannot break and no blow
+  you cannot parry.
+
 ### Mastery, phase 1: the other lives (0.63)
 
 The first part of the Mastery system (design: `docs/design/mastery.md`).

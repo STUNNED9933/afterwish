@@ -205,6 +205,7 @@ export const MAP_SONG = {
   frost: 'frost', desert: 'dunes', fungal: 'hollow', storm: 'spire', volcano: 'maw', astral: 'sanctum', glass: 'asterfell',
   // the Deep (0.54): the mountain's own songs, from far below
   deepash: 'maw', drowned: 'fen', rootdeep: 'hollow', choir: 'sanctum', quiet: 'starwell',
+  caelum: 'asterfell', // (0.64) the Granted: the Queen's city's gold, played high
 };
 /** Each arena boss brings a theme of its own. */
 export const BOSS_SONG = { boss: 'keep', boss2: 'maw', boss3: 'spire' };

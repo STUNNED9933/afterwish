@@ -923,6 +923,22 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .deep-go { padding: 0 14px; border: 1px solid rgba(255, 106, 42, 0.45); border-radius: 4px; background: rgba(60, 14, 8, 0.7); color: #ffb08a; font: 600 12px var(--body); letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
 .deep-go:hover:not(:disabled) { background: rgba(110, 24, 10, 0.85); color: #fff0e6; }
 .deep-go:disabled { opacity: 0.35; cursor: not-allowed; }
+/* Caelum (0.64): the same stair, in white stone and gold */
+.deep.caelum { border-color: rgba(255, 214, 140, 0.32); background: linear-gradient(180deg, #1c1e26 0%, #22232a 55%, #2a2620 100%); }
+.deep.caelum::before { background: radial-gradient(ellipse at 50% 0%, rgba(255, 226, 160, 0.22), rgba(200, 170, 100, 0.08) 45%, transparent 70%); inset: -40% -20% auto -20%; }
+.deep.caelum::after { background: linear-gradient(90deg, transparent, rgba(255, 226, 160, 0.75), transparent); }
+.caelum .deep-eyebrow { color: #d8b25a; }
+.caelum .deep-name { color: #fff8ea; text-shadow: 0 0 18px rgba(255, 220, 140, 0.4), 0 2px 0 #000; }
+.caelum .deep-lede { color: #cfc6b4; }
+.caelum .deep-ember-n b { color: #ffe08a; text-shadow: 0 0 14px rgba(255, 210, 120, 0.55); }
+.caelum .deep-ember-n span, .caelum .deep-note { color: #a89c84; }
+.caelum .deep-fill { background: linear-gradient(90deg, #6a5420, #ffe08a); box-shadow: 0 0 10px rgba(255, 210, 120, 0.45); }
+.caelum .deep-pick { cursor: default; color: #f2ead8; border-color: rgba(255, 214, 140, 0.22); border-left-color: rgba(255, 214, 140, 0.6); background: linear-gradient(90deg, rgba(48, 42, 30, calc(0.5 + var(--step) * 0.08)), rgba(20, 20, 26, 0.6)); }
+.caelum .deep-num { color: #ffd870; }
+.caelum .deep-what b { color: #fff8ea; }
+.caelum .deep-what small { color: #b8a478; }
+.caelum .deep-go { border-color: rgba(255, 214, 140, 0.5); background: rgba(60, 50, 24, 0.7); color: #ffe6a8; }
+.caelum .deep-go:hover:not(:disabled) { background: rgba(110, 90, 30, 0.85); color: #fffaf0; }
 @media (max-width: 560px) { .deep-step { margin-left: 0; } .deep-name { font-size: 36px; } }
 /* a sealed skill (0.54): Unasked, Forget, Enough */
 .slot.sealed { filter: grayscale(1) brightness(0.55); box-shadow: 0 0 0 2px #ff5a2a inset; }
@@ -1056,3 +1072,19 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .m-tag { font-size: 12px; color: #ffd24a; border: 1px solid #ffd24a; border-radius: 999px; padding: 1px 8px; }
 .m-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 2px; font-size: 14px; }
 .m-sum b { color: #ffd24a; }
+
+/* Mind-Locked (0.64) */
+#mindlock { position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 40; pointer-events: none; display: none; }
+#mindlock.on { display: block; }
+#mindlock .ml-ring { position: relative; width: 150px; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#mindlock svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+#mindlock circle { fill: none; stroke-width: 6; }
+#mindlock .ml-track { stroke: rgba(255, 214, 140, 0.18); }
+#mindlock .ml-left { stroke: #ffc860; stroke-dasharray: 100; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.7)); }
+#mindlock.short .ml-left { stroke: #ff7a3a; }
+#mindlock b { font: italic 600 22px var(--display); color: #fff2d0; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 200, 100, 0.6); }
+#mindlock span { font: 600 11px var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: #e0cfa8; text-shadow: 0 1px 0 #000; }
+#mindlock.crack .ml-left { stroke: #ffffff; stroke-width: 10; filter: drop-shadow(0 0 14px #fff); }
+#mindlock.crack b { color: #fff; }
+#mindlock.slip .ml-ring { animation: ml-slip 0.25s; }
+@keyframes ml-slip { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }

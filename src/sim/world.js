@@ -8,7 +8,7 @@
 // that boundary is what makes multiplayer possible later: commands can come
 // from a network connection instead of the local mouse and keyboard, and the
 // same World can run on a server.
-import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM , masteryFor, MASTERY } from './endgame.js';
+import { DEEP, DEPTH_IDS, emberOf, emberForGear, emberScale, TIERS, MAX_TIER, ELITE_FROM_LEVEL, AFFIXES, AFFIX_IDS, ELITE, RIFT, riftScale, WISH_STATS, WISH_IDS, wishNeed, DOOM , masteryFor, MASTERY, CAELUM, animusShort } from './endgame.js';
 const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI)
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
@@ -264,6 +264,7 @@ export class World {
       p.dash = null;
       p.leap = null;
       p.atkWind = 0;
+      p.lockT = 0;
       this.portalT = this.wayT = 0;
       this.portalOn = null;
       this.portalArmed = this.wayArmed = false;
@@ -273,6 +274,7 @@ export class World {
       }
       if (map.safe) this.fillBounties();
       this.emit('mapChange', { id: map.id, name: map.name, from });
+      this.caelumWarn(map.id);
       this.questEvent('reach', map.id);
     });
   }
@@ -369,7 +371,7 @@ export class World {
       const p = h.player;
       out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null,
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
-        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null });
+        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0 });
     }
     return out;
   }
@@ -466,6 +468,7 @@ export class World {
       castLock: 0,
       channel: null, // (0.51) an archer's ultimate being drawn: slowed, no attacks or casts, the shot leaves at the end
       parryT: 0, // > 0 while the parry window is open
+      lockT: 0, lockAge: 0, lockN: 0, lockEnd: -99, lockImmT: 0, lockShort: false, lockNeed: 0, // Mind-Locked (0.64)
       parryAge: 0,
       parryCd: 0,
       parryHit: false,
@@ -749,6 +752,10 @@ export class World {
         if (this.ring) this.ring.hold = false; // (0.59) pushing on
       }
       if (p.dead) continue;
+      if (p.lockT > 0) {
+        if (c.type === 'parry') this.breakLock(c.seen); // (0.64) the only way out of a Mind-Lock
+        continue;
+      }
       switch (c.type) {
         case 'move': {
           const r = dHypot(c.x, c.z);
@@ -843,6 +850,11 @@ export class World {
             const lead = this.travelHook ? p : this.heroes[0].player; // (0.55) on the server, each hero for themselves
             if (this.depthOpen(lead, MAPS[c.to].deep)) this.goMap(c.to, MAPS[c.to].portals[0].to);
             else this.emit('depthLocked', { depth: MAPS[c.to].deep, name: MAPS[c.to].name });
+          } else if (this.mode === 'explore' && CAELUM.maps[c.to]) {
+            // Caelum (0.64): open from taking The Sky Road; past the first map, once you have walked there.
+            // Short of a map's Animus you may still go (with a warning on arrival, see caelumWarn).
+            if (!this.questState(CAELUM.quest)) this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[CAELUM.quest].name });
+            else if (c.to === CAELUM.ids[0] || p.visited.includes(c.to)) this.goMap(c.to, MAPS[c.to].portals[0].to);
           } else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].unlock && this.questState(MAPS[c.to].unlock) !== 'done') this.emit('mapLocked', { name: MAPS[c.to].name, quest: QUESTS[MAPS[c.to].unlock].name });
           else if (this.mode === 'explore' && MAPS[c.to] && MAPS[c.to].fromTier && this.worldTier() < MAPS[c.to].fromTier) this.emit('wildsLocked', { tier: MAPS[c.to].fromTier, name: MAPS[c.to].name });
           else if (this.mode === 'explore' && MAPS[c.to] && (p.visited.includes(c.to) || c.to === 'town' || (MAPS[c.to].fromTier && this.worldTier() >= MAPS[c.to].fromTier))) this.goMap(c.to, MAPS[c.to].portals[0].to);
@@ -2391,6 +2403,21 @@ export class World {
     if (p.unwishedT > 0) p.unwishedT -= dt;
     if (p.nightcutT > 0) p.nightcutT -= dt;
     if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
+    if (p.lockImmT > 0) p.lockImmT -= dt;
+    if (p.lockT > 0) {
+      // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
+      const L = CONFIG.MIND_LOCK;
+      const was = p.lockAge;
+      p.lockAge += dt;
+      p.lockT -= dt;
+      p.moveTarget = null;
+      p.atkWind = 0;
+      p.barrage = null;
+      if (p.lockT <= 0) this.endLock(false);
+      else if (p.lockAge >= L.first && Math.floor((p.lockAge - L.first) / L.every) !== Math.floor((was - L.first) / L.every)) this.emit('lockCrack', { x: p.x, z: p.z });
+      else if (was < L.first && p.lockAge >= L.first) this.emit('lockCrack', { x: p.x, z: p.z });
+      if (p.lockT > 0) return;
+    }
     if (this.mods.farDmg > 0) p.farClear = !this.enemies.some((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 6 + o.radius); // Rangekeeper's Coat
     if (this.mods.burnRage > 0) {
       // Ashen Robe: burning enemies close by (counted once a tick, not once a hit)
@@ -2774,7 +2801,32 @@ export class World {
     return CONFIG.CRIT_MULT + this.mods.critMult + Math.max(0, this.player.stats.crit + bonus - 100) * CONFIG.CRIT_OVERFLOW;
   }
 
-  hitPlayer(rawDamage, { parryable = true, src = null, proj = null, doom = 0, held = false, noParry = false } = {}) {
+  hitPlayer(rawDamage, opts = {}) {
+    // (0.64) Mind-Lock riders: `lock` seconds of Mind-Lock if the hit lands; `need` is the Animus the
+    // map asks (it decides chains, immunity and Dominion); `dominion`: one of the Granted's great attacks.
+    const { dominion = false, lock = 0, need = 0, held = false, noParry = false, src = null, proj = null } = opts;
+    if (dominion && !this.player.dead && (held || !(this.party && this.cur !== this.heroes[0] && this.cur.lag > 0.02 && !(this.player.parryT > 0) && !this.player.dash && !this.player.leap))) {
+      const p = this.player;
+      const short = animusShort(p.animus, need);
+      const D = CONFIG.DOMINION;
+      const base = { src, proj, held: true, need };
+      if (p.parryT > 0 && !noParry && p.parryAge <= (short ? D.frame : this.parry.perfect)) {
+        this.emit('dominionParried', { x: p.x, z: p.z, short });
+        return this.hitPlayerCore(rawDamage, { ...base, parryable: true });
+      }
+      if ((p.dash || p.leap) && !short) return this.hitPlayerCore(rawDamage, { ...base, parryable: false });
+      if (p.parryT > 0) p.parryT = 0; // too early or too late: it goes straight through the guard
+      this.emit('dominion', { x: p.x, z: p.z, short, by: src && src.def ? src.def.name : '' });
+      const res = short ? this.takeDamage(Math.round(p.stats.maxHp * D.short), src, true) : this.hitPlayerCore(rawDamage, { ...base, parryable: false, noParry: true });
+      if (res === 'hit' && !p.dead) this.mindLock(short ? D.lockShort : D.lock, need, src);
+      return res;
+    }
+    const res = this.hitPlayerCore(rawDamage, opts);
+    if (lock > 0 && res === 'hit' && !this.player.dead) this.mindLock(lock, need, src);
+    return res;
+  }
+
+  hitPlayerCore(rawDamage, { parryable = true, src = null, proj = null, doom = 0, held = false, noParry = false, dominion = false, lock = 0, need = 0 } = {}) {
     const p = this.player;
     const m = this.mods;
     if (p.dead) return 'none';
@@ -2782,7 +2834,7 @@ export class World {
       // A friend sees this hit late and their parry arrives late (0.41.1): hold it for as long as
       // their lag, so a parry they pressed in time on their own screen still counts.
       const h = this.cur;
-      (h.lateHits = h.lateHits || []).push({ tick: this.ticks, due: this.time + Math.min(LAG_CAP, h.lag), dmg: rawDamage, opts: { parryable, src, proj: proj ? { level: proj.level, srcId: proj.srcId } : null } });
+      (h.lateHits = h.lateHits || []).push({ tick: this.ticks, due: this.time + Math.min(LAG_CAP, h.lag), dmg: rawDamage, opts: { parryable, src, proj: proj ? { level: proj.level, srcId: proj.srcId } : null, dominion, lock, need } });
       if (proj) proj.dead = true;
       return 'held';
     }
@@ -2797,7 +2849,7 @@ export class World {
     if (this.party && !(p.parryT > 0) && !p.dash && !p.leap) {
       // Shield Wall: a parrying Bulwark standing close catches the hit instead (red ones too, with Iron Answer).
       const g = this.heroes.find((h) => h !== this.cur && h.mods.guardRange > 0 && (parryable || h.mods.blockRed) && !h.player.dead && h.player.parryT > 0 && dist(h.player.x, h.player.z, p.x, p.z) <= h.mods.guardRange);
-      if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj, held: true }));
+      if (g) return this.as(g, () => this.hitPlayer(rawDamage, { parryable, src, proj, held: true, lock, need }));
     }
     rawDamage *= CONFIG.ENEMY_DMG * this.gapScale(src ? src.level : proj ? proj.level : 0).taken;
     const from = src || (proj && proj.srcId != null ? this.enemyById(proj.srcId) : null);
@@ -2951,6 +3003,67 @@ export class World {
     const was = p.reck;
     p.reck = Math.min((this.mods.reckonMax || CONFIG.RECKON_MAX) + (this.mods.reckonMaxAdd || 0), p.reck + n);
     if (p.reck > was) this.emit('reckonStack', { stacks: p.reck });
+  }
+
+  /**
+   * Mind-Locked (0.64): `dur` seconds before Animus and chains. `need`: the Animus this map asks. Short
+   * of it there is no immunity afterwards; at or above it, a moment of immunity after every lock.
+   */
+  mindLock(dur, need = 0, src = null) {
+    const p = this.player;
+    const L = CONFIG.MIND_LOCK;
+    if (p.dead || dur <= 0) return;
+    const short = animusShort(p.animus, need);
+    if (p.lockImmT > 0 && !short) return;
+    const chained = p.lockT > 0 || this.time - (p.lockEnd ?? -99) <= L.chain;
+    const n = chained ? Math.min(L.dr.length - 1, (p.lockN || 0) + 1) : 0;
+    const t = dur * (1 - Math.min(MASTERY.animusMax, p.animus || 0)) * L.dr[n];
+    if (t < 0.1) return;
+    if (!(p.lockT > 0)) p.lockAge = 0;
+    p.lockN = n;
+    p.lockT = Math.max(p.lockT || 0, t);
+    p.lockShort = short;
+    p.lockNeed = need;
+    p.moveTarget = null;
+    p.targetId = null;
+    p.parryT = 0;
+    p.parryBuffer = 0;
+    p.barrage = null;
+    p.atkWind = 0;
+    this.emit('mindLock', { time: t, short, x: p.x, z: p.z, by: src && src.def ? src.def.name : '' });
+  }
+
+  endLock(broken) {
+    const p = this.player;
+    p.lockT = 0;
+    p.lockEnd = this.time;
+    if (!p.lockShort) p.lockImmT = CONFIG.MIND_LOCK.immune;
+    this.emit('lockEnd', { broken, x: p.x, z: p.z });
+  }
+
+  /** A parry press while Mind-Locked: inside a crack it breaks the lock; outside one the lock holds longer. */
+  breakLock(seen = null) {
+    const p = this.player;
+    const L = CONFIG.MIND_LOCK;
+    let age = p.lockAge;
+    // A friend pressed this on their screen a little while ago (as tryParry): judge it then.
+    if (typeof seen === 'number' && this.party && this.cur !== this.heroes[0]) age -= Math.max(0, Math.min(LAG_CAP, (this.ticks - seen) * CONFIG.TICK));
+    const into = age - L.first - Math.floor((age - L.first) / L.every) * L.every;
+    if (age >= L.first - 1e-9 && into <= L.crack + 1e-9) {
+      this.stats.lockBreaks = (this.stats.lockBreaks || 0) + 1;
+      this.endLock(true);
+      this.healPlayer(p.stats.maxHp * CONFIG.PERFECT_HEAL, true);
+    } else {
+      p.lockT += L.miss;
+      this.emit('lockSlip', { x: p.x, z: p.z });
+    }
+  }
+
+  /** Arriving on a Caelum map short of what it asks: say so (0.64). You may still try. */
+  caelumWarn(id) {
+    const C = CAELUM.maps[id];
+    const p = this.player;
+    if (C && animusShort(p.animus, C.animus)) this.emit('animusShort', { id, name: C.name, need: C.animus, have: p.animus || 0 });
   }
 
   /** Damage that got through: the Arcane Ward first, then health (and what follows from that). */
@@ -3601,13 +3714,20 @@ export class World {
     this.chestRefill = [];
     if (this.mode !== 'explore' || this.map.safe || this.trial || !this.map.portals || !this.map.portals.length) return;
     const rng = this.streamRng('chest', this.chestCount);
-    const n = CONFIG.CHESTS_PER_MAP + (rng() < 0.5 ? 1 : 0);
+    const n = CONFIG.CHESTS_PER_MAP + (rng() < 0.5 ? 1 : 0) + (this.map.chestSpots ? this.map.chestSpots.length : 0);
     for (let i = 0; i < n; i++) this.addChest();
   }
 
   addChest() {
     const rng = this.streamRng('chest', ++this.chestCount); // its own dice: chests never change any other roll
     const map = this.map;
+    // (0.64) a road map's shrines each keep a chest at the end of their side path, and fill it first
+    const spot = (map.chestSpots || []).find((c) => !this.chests.some((o) => dist(o.x, o.z, c.x, c.z) < 3));
+    if (spot) {
+      const chest = { id: this.nextId++, x: spot.x, z: spot.z, tier: rng() < 0.4 ? 'radiant' : 'gilded', level: Math.max(1, (map.level || 1) + (map.levelSpan || 0)), seed: Math.floor(rng() * 1e9) };
+      this.chests.push(chest);
+      return chest;
+    }
     for (let tries = 0; tries < 80; tries++) {
       const a = rng() * TAU;
       const r = 6 + Math.sqrt(rng()) * (this.radius - 10);
@@ -3636,6 +3756,7 @@ export class World {
   worldTier() {
     if (this.syncTier) return this.syncTier; // a joiner's copy: the host says
     if (this.depthNow()) return MAX_TIER; // the Deep is built on tier V (0.54)
+    if (this.mode === 'explore' && this.map && CAELUM.maps[this.map.id]) return MAX_TIER; // and Caelum (0.64)
     // (0.61.3) On the server, Haven is shared with strangers on every tier: there each hero's tier is their
     // own (out on a map, a copy is one party's, and its first hero's tier holds for everyone in it).
     const own = this.travelHook && this.map && this.map.safe;
@@ -3650,6 +3771,7 @@ export class World {
   depthNow() {
     if (this.mode !== 'explore' || this.trial || !this.map || this.map.safe || this.map.id === 'rift') return 0;
     if (this.map.deep) return this.map.deep;
+    if (CAELUM.maps[this.map.id]) return 0; // Caelum (0.64) is its own place, whatever Depth is chosen in Haven
     if (this.syncDepth != null) return this.syncDepth;
     const lead = this.heroes && this.heroes[0] ? this.heroes[0].player : this.player;
     return lead && lead.depth && this.depthOpen(lead, lead.depth) ? lead.depth : 0;
@@ -3710,9 +3832,17 @@ export class World {
       e.ember = D.ember;
       e.depth = depth;
     }
+    const C = !rift && CAELUM.maps[this.map.id];
+    if (C) {
+      // Caelum (0.64): tier V times the map's own; no Ember, an Animus instead (see hitPlayer)
+      hp *= C.hp;
+      dmg *= C.dmg;
+      exp *= C.exp;
+      e.animusNeed = C.animus;
+    }
     const T = TIERS[tier];
     const chance = (rift ? 0.1 : tier >= 2 || (this.map.level || 0) >= ELITE_FROM_LEVEL ? T.elite : 0) + (this.map.wilds ? WILDS.elite : 0);
-    if (!e.def.boss && this.rng() < chance) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes);
+    if (!e.def.boss && (camp.def.elite || this.rng() < chance)) this.makeElite(e, rift ? Math.min(3, 1 + Math.floor(rift.tier / 8)) : T.affixes); // (0.64) a camp's captain is always one
     if (!rift && !this.trial) {
       // Exploration surprises (0.29): now and then a named Rare; a boss you know well may come back as its Remnant.
       if (!e.def.boss && !this.enemies.some((o) => o.rare && !o.dead)) {
@@ -5776,7 +5906,7 @@ export class World {
       this.emit('windup', { id: e.id, enemyType: e.type, attack: atk.name, parryable: false, call: true });
       return;
     }
-    const tele = { id: this.nextId++, owner: e.id, foe: true, kind: atk.shape, x: e.x, z: e.z, dir: e.aim, t: 0, dur: e.dur, parryable: atk.parryable, cue: false };
+    const tele = { id: this.nextId++, owner: e.id, foe: true, kind: atk.shape, x: e.x, z: e.z, dir: e.aim, t: 0, dur: e.dur, parryable: atk.parryable, cue: false, ...(atk.dominion ? { dominion: e.animusNeed || 0 } : {}) };
     if (atk.shape === 'arc') {
       tele.range = atk.range;
       tele.angle = atk.angle;
@@ -5921,7 +6051,7 @@ export class World {
         }
         this.use(h);
         if (f.doom) this.hitPlayer(0, { doom: f.doom, src });
-        else this.hitPlayer(f.dmg, src ? { parryable: false, src } : { parryable: false, proj: { level: f.level, srcId: f.srcId } });
+        else this.hitPlayer(f.dmg, src ? { parryable: false, src, lock: f.lock || 0, need: f.need || 0 } : { parryable: false, proj: { level: f.level, srcId: f.srcId }, lock: f.lock || 0, need: f.need || 0 });
       }
       this.use(was);
       if (f.doom) {
@@ -5993,7 +6123,7 @@ export class World {
           const ang = this.rng() * TAU;
           c = this.clampToArena(p.x + vx * lead + dCos(ang) * s, p.z + vz * lead + dSin(ang) * s, 1);
         }
-        this.falls.push({ x: c.x, z: c.z, r: atk.radius, t: -i * atk.gap, dur: atk.fall, dmg: atk.dmg * e.dmgMult, level: e.level, srcId: e.id, tele: null, pool: atk.pool || null, fx: atk.fx || null });
+        this.falls.push({ x: c.x, z: c.z, r: atk.radius, t: -i * atk.gap, dur: atk.fall, dmg: atk.dmg * e.dmgMult, level: e.level, srcId: e.id, tele: null, pool: atk.pool || null, fx: atk.fx || null, lock: atk.lock || 0, need: e.animusNeed || 0 });
       }
       this.emit('starfall', { id: e.id, x: e.x, z: e.z, fx: atk.fx || null });
     } else if (atk.shape === 'ring') {
@@ -6068,6 +6198,7 @@ export class World {
         o.x = o.px = c.x;
         o.z = o.pz = c.z;
         o.summoner = e.id;
+        if (e.animusNeed) o.animusNeed = e.animusNeed; // (0.64) the Granted's own ask the same
         o.exp = 0;
         o.expValue = 0;
         o.goldValue = 0;
@@ -6085,7 +6216,7 @@ export class World {
     }
 
     if (hit) {
-      const res = this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e });
+      const res = this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e, dominion: !!atk.dominion, lock: atk.lock || 0, need: e.animusNeed || 0 });
       if (atk.chill && res === 'hit') p.chillT = Math.max(p.chillT || 0, atk.chill);
       if (atk.seal && res === 'hit' && p.lastSlot) {
         // (0.54) Unasked, Forget, Enough: the last skill you used is sealed for a while
@@ -6105,7 +6236,7 @@ export class World {
           const d = dist(q.x, q.z, e.x, e.z);
           also = d <= atk.range + q.radius * 0.5 && (d < e.radius + q.radius || Math.abs(angDiff(dAtan2(q.z - e.z, q.x - e.x), a)) <= atk.angle / 2 + 0.15);
         } else also = dist(q.x, q.z, e.x + dCos(a) * atk.offset, e.z + dSin(a) * atk.offset) <= atk.radius + q.radius * 0.4;
-        if (also) this.as(h, () => this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e }));
+        if (also) this.as(h, () => this.hitPlayer(atk.dmg * e.dmgMult, { parryable: atk.parryable, src: e, dominion: !!atk.dominion, lock: atk.lock || 0, need: e.animusNeed || 0 }));
       }
     }
     if (e.dead || e.state === 'stunned') return; // its guard was broken by the parry
@@ -7172,6 +7303,8 @@ inTown() {
     this.emit('mapChange', { id: map.id, name: map.name, from });
     for (const h of this.heroes) {
       this.use(h);
+      this.player.lockT = 0;
+      this.caelumWarn(map.id);
       this.questEvent('reach', map.id);
     }
     this.use(actor);

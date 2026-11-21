@@ -57,6 +57,17 @@ export const CREATURES = {
   rootbound: { model: 'e_rootbound', height: 2.3 },
   echo: { model: 'e_echo', height: 1.9 },
   hush: { model: 'e_hush', height: 2.2 },
+  // the Granted (0.64)
+  answered: { model: 'e_answered', height: 2.4 },
+  cantor: { model: 'e_cantor', height: 2.2 },
+  thurifer: { model: 'e_thurifer', height: 2.3 },
+  colossus: { model: 'e_colossus', height: 3.4 },
+  veiled: { model: 'e_veiled', height: 2.0 },
+  wishmote: { model: 'p_wishmote', height: 1.0, float: 0.9 },
+  ianitor: { model: 'b_ianitor', height: 4.6 },
+  arbiter: { model: 'b_arbiter', height: 4.4 },
+  desiderium: { model: 'b_desiderium', height: 4.5, glow: [0.3, 0.24, 0.12] },
+  fiat: { model: 'b_fiat', height: 4.9, glow: [0.4, 0.36, 0.24] },
 };
 /** Haven's people. */
 export const PEOPLE = {

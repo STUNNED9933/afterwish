@@ -131,6 +131,33 @@ export const MAPS = {
     roster: { echo: 4, wishling: 3, stalker: 2, spitter: 2 }, spawns: 22, trees: 24, rocks: 24, boss: 'choir',
     portals: [{ to: 'town', angle: 0 }],
   },
+  // Caelum (0.64, sim/endgame.js CAELUM): where the Granted live, above the Starwell. Laid out as roads
+  // (layout 'road'): a way from the entrance to the keeper at the far end, camps with a captain off to
+  // either side, side paths to shrines (a stone to read and a chest), rough ground everywhere else.
+  skyroad: {
+    name: 'The Sky Road', theme: 'caelum', radius: 62, level: 100, levelSpan: 0, layout: 'road', caelum: true, camps: 4, patrols: 6,
+    blurb: 'White stone over nothing, and a door at the end of it',
+    roster: { answered: 3, cantor: 2, wishmote: 2, veiled: 1 }, spawns: 0, trees: 50, rocks: 120, boss: 'ianitor',
+    portals: [{ to: 'town', angle: Math.PI }, { to: 'answers', angle: 0 }],
+  },
+  answers: {
+    name: 'The Court of Answers', theme: 'caelum', radius: 64, level: 100, levelSpan: 0, layout: 'road', caelum: true, camps: 4, patrols: 7,
+    blurb: 'Every question asked on the mountain, answered, and filed',
+    roster: { answered: 3, cantor: 3, thurifer: 2, colossus: 1 }, spawns: 0, trees: 60, rocks: 110, boss: 'arbiter',
+    portals: [{ to: 'skyroad', angle: Math.PI }, { to: 'wants', angle: 0 }],
+  },
+  wants: {
+    name: 'The Hall of Wants', theme: 'caelum', radius: 66, level: 100, levelSpan: 0, layout: 'road', caelum: true, camps: 5, patrols: 7,
+    blurb: 'Everything anyone ever wished for, heaped up and still wanted',
+    roster: { veiled: 3, thurifer: 2, wishmote: 3, colossus: 1, answered: 1 }, spawns: 0, trees: 50, rocks: 130, boss: 'desiderium',
+    portals: [{ to: 'answers', angle: Math.PI }, { to: 'zenith', angle: 0 }],
+  },
+  zenith: {
+    name: 'The Zenith', theme: 'caelum', radius: 68, level: 100, levelSpan: 0, layout: 'road', caelum: true, camps: 5, patrols: 8,
+    blurb: 'The top of the sky. Something there has never once said no',
+    roster: { answered: 2, cantor: 2, thurifer: 1, colossus: 2, veiled: 2 }, spawns: 0, trees: 40, rocks: 140, boss: 'fiat',
+    portals: [{ to: 'wants', angle: Math.PI }],
+  },
   deep10: {
     name: 'The Quiet', theme: 'quiet', radius: 42, level: 100, levelSpan: 0, deep: 10, song: 'starwell',
     blurb: 'Nothing, and room for it',
@@ -163,6 +190,7 @@ export function buildMap(id, custom = null) {
   // Areas that must stay open: around portals, the town plaza, enemy spawn points.
   const keepClear = portals.map((g) => ({ x: g.x, z: g.z, r: 6 }));
   const obstacles = [];
+  const road = def.layout === 'road' && !custom ? layRoad(def, R, portals, rng, keepClear, obstacles) : null;
 
   if (def.houses && def.theme !== 'town') {
     // A buried city (Asterfell): houses along two rings of streets, gaps left for the roads.
@@ -220,7 +248,12 @@ export function buildMap(id, custom = null) {
     if (sg.map !== id) continue;
     let x, z;
     if (Array.isArray(sg.spot)) [x, z] = sg.spot;
-    else {
+    else if (road && /^shrine\d$/.test(sg.spot)) {
+      const sh = road.shrines[Number(sg.spot.slice(6)) - 1];
+      if (!sh) continue;
+      x = sh.x + sh.nx * 2.4;
+      z = sh.z + sh.nz * 2.4;
+    } else {
       // 'in': a few steps inside the entrance, off to one side. 'out': the same by the far
       // portal, or on the far side of the middle when the road ends here.
       const gate = sg.spot === 'in' ? portals[0] : portals[1];
@@ -248,7 +281,8 @@ export function buildMap(id, custom = null) {
     const g = portals[0];
     const d = dHypot(g.x, g.z);
     waystones.push({ x: g.x * (1 - 10 / d) + (g.z / d) * 4, z: g.z * (1 - 10 / d) - (g.x / d) * 4, r: 1.5, name: 'Entrance waystone' });
-    waystones.push({ x: (-g.x / d) * R * 0.62, z: (-g.z / d) * R * 0.62, r: 1.5, name: 'Far waystone' });
+    if (road) waystones.push({ x: road.far.x, z: road.far.z, r: 1.5, name: 'Far waystone' }); // (0.64) on the road, before the keeper
+    else waystones.push({ x: (-g.x / d) * R * 0.62, z: (-g.z / d) * R * 0.62, r: 1.5, name: 'Far waystone' });
     for (const w of waystones) keepClear.push({ x: w.x, z: w.z, r: 3.5 });
   }
 
@@ -256,11 +290,13 @@ export function buildMap(id, custom = null) {
   const spawns = [];
   const types = Object.keys(def.roster);
   const total = types.reduce((n, t) => n + def.roster[t], 0);
-  if (def.boss) {
+  if (road) {
+    for (const sp of road.spawns) spawns.push(sp);
+  } else if (def.boss) {
     spawns.push({ x: 0, z: 0, type: def.boss, level: def.level + def.levelSpan + 1, respawn: def.boss === 'boss3' ? 120 : 60, r: 12 }); // the final boss takes longer
     keepClear.push({ x: 0, z: 0, r: 9 });
   }
-  for (let tries = 0; spawns.length < def.spawns + (def.boss ? 1 : 0) && tries < 4000; tries++) {
+  for (let tries = 0; !road && spawns.length < def.spawns + (def.boss ? 1 : 0) && tries < 4000; tries++) {
     const a = rng() * Math.PI * 2;
     const r = 7 + Math.sqrt(rng()) * (R - 13);
     const x = dCos(a) * r;
@@ -315,7 +351,139 @@ export function buildMap(id, custom = null) {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan, deep: def.deep || 0,
     portals, obstacles, spawns, waygate, waystones,
+    ...(road ? { road: road.line, sidePaths: road.sidePaths, chestSpots: road.shrines.map((sh) => ({ x: sh.x - sh.nx * 1.5, z: sh.z - sh.nz * 1.5 })), arena: road.arena } : {}),
   };
+}
+
+/**
+ * A road map (0.64): from the entrance across to the far side, winding, the keeper at its end and the
+ * way on (the second portal) past it. Fills `keepClear` along everything that must stay walkable, puts
+ * pillars round the keeper's arena into `obstacles`, and returns the spawn points it chose: camps of
+ * four off to either side (the one in the middle always an elite, `elite: true`), a few on the road.
+ */
+function layRoad(def, R, portals, rng, keepClear, obstacles) {
+  const g = portals[0];
+  const gd = dHypot(g.x, g.z);
+  const ux = -g.x / gd, uz = -g.z / gd; // across the map, away from the way in
+  const nx = -uz, nz = ux; // and to one side of that
+  const sx = g.x + ux * 9, sz = g.z + uz * 9;
+  const bx = ux * (R - 18), bz = uz * (R - 18); // the keeper's ground
+  const amp = R * (0.36 + rng() * 0.1), ph = rng() * Math.PI * 2, turns = 1.5 + rng() * 0.6;
+  const at = (t) => {
+    const side = dSin(t * Math.PI * turns + ph) * amp * dSin(t * Math.PI);
+    let x = sx + (bx - sx) * t + nx * side, z = sz + (bz - sz) * t + nz * side;
+    const d = dHypot(x, z);
+    if (d > R - 10) { x *= (R - 10) / d; z *= (R - 10) / d; }
+    return { x, z };
+  };
+  const line = [];
+  for (let i = 0; i <= 28; i++) {
+    const q = at(i / 28);
+    line.push([q.x, q.z]);
+  }
+  line.unshift([g.x, g.z]);
+  const out = portals[1];
+  if (out) line.push([out.x, out.z]);
+  const clearLine = (pts, r) => {
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, z0] = pts[i - 1], [x1, z1] = pts[i];
+      const n = Math.max(1, Math.ceil(dHypot(x1 - x0, z1 - z0) / 2.2));
+      for (let k = 0; k <= n; k++) keepClear.push({ x: x0 + ((x1 - x0) * k) / n, z: z0 + ((z1 - z0) * k) / n, r });
+    }
+  };
+  clearLine(line, 3.6);
+  // the arena: open ground, pillars round it with gaps for the road in and out
+  keepClear.push({ x: bx, z: bz, r: 12 });
+  const inA = dAtan2(line[line.length - (out ? 4 : 3)][1] - bz, line[line.length - (out ? 4 : 3)][0] - bx);
+  const outA = out ? dAtan2(out.z - bz, out.x - bx) : null;
+  const types = Object.keys(def.roster);
+  const total = types.reduce((n, t) => n + def.roster[t], 0);
+  const pick = () => {
+    let roll = rng() * total;
+    for (const t of types) if ((roll -= def.roster[t]) <= 0) return t;
+    return types[0];
+  };
+  const inside = (x, z, m) => {
+    const d = dHypot(x, z);
+    return d > R - m ? { x: (x * (R - m)) / d, z: (z * (R - m)) / d } : { x, z };
+  };
+  const spawns = [{ x: bx, z: bz, type: def.boss, level: def.level + def.levelSpan + 1, respawn: 120, r: 12 }];
+  // camps, alternating sides of the road, with a short spur out to each
+  const camps = [];
+  for (let i = 0; i < def.camps; i++) {
+    const t = 0.16 + (0.66 * i) / Math.max(1, def.camps - 1);
+    const q = at(t);
+    const side = i % 2 ? 1 : -1;
+    const c = inside(q.x + nx * side * (10 + rng() * 3), q.z + nz * side * (10 + rng() * 3), 9);
+    camps.push(c);
+    clearLine([[q.x, q.z], [c.x, c.z]], 2.8);
+    keepClear.push({ x: c.x, z: c.z, r: 6.5 });
+    spawns.push({ x: c.x, z: c.z, type: pick(), level: def.level, r: 6.5, elite: true });
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + rng();
+      spawns.push({ x: c.x + dCos(a) * 3.4, z: c.z + dSin(a) * 3.4, type: pick(), level: def.level, r: 6.5 });
+    }
+  }
+  // on the road itself, between the camps
+  for (let i = 0; i < def.patrols; i++) {
+    const q = at(0.1 + (0.78 * (i + 0.5)) / def.patrols);
+    spawns.push({ x: q.x + nx * (rng() - 0.5) * 3, z: q.z + nz * (rng() - 0.5) * 3, type: pick(), level: def.level, r: 6.5 });
+  }
+  // two side paths, each to a shrine: out on the side away from the nearest camp
+  const shrines = [], sidePaths = [];
+  for (const t of [0.34, 0.7]) {
+    const q = at(t);
+    const near = camps.reduce((b, c) => (dHypot(c.x - q.x, c.z - q.z) < dHypot(b.x - q.x, b.z - q.z) ? c : b), camps[0] || q);
+    const side = (near.x - q.x) * nx + (near.z - q.z) * nz > 0 ? -1 : 1;
+    const mid = inside(q.x + nx * side * 10 + ux * 4, q.z + nz * side * 10 + uz * 4, 9);
+    const end = inside(q.x + nx * side * 20 + ux * 2, q.z + nz * side * 20 + uz * 2, 8);
+    const path = [[q.x, q.z], [mid.x, mid.z], [end.x, end.z]];
+    sidePaths.push(path);
+    clearLine(path, 2.6);
+    keepClear.push({ x: end.x, z: end.z, r: 5 });
+    const d = dHypot(end.x - mid.x, end.z - mid.z) || 1;
+    shrines.push({ x: end.x, z: end.z, nx: (end.x - mid.x) / d, nz: (end.z - mid.z) / d });
+  }
+  // outposts: the ground furthest from everything above, reached by a path of their own, a harder camp
+  // (a captain and four) and a chest at the end. Exploring is paid for.
+  const outposts = [];
+  const taken = () => [...line.map(([x, z]) => ({ x, z })), ...camps, ...shrines, ...outposts, { x: bx, z: bz }];
+  for (let o = 0; o < (def.outposts ?? 2); o++) {
+    let best = null, bd = 22;
+    for (let gx = -R; gx <= R; gx += 4) {
+      for (let gz = -R; gz <= R; gz += 4) {
+        if (dHypot(gx, gz) > R - 11) continue;
+        const d = taken().reduce((m, q) => Math.min(m, dHypot(q.x - gx, q.z - gz)), 1e9);
+        if (d > bd) { bd = d; best = { x: gx, z: gz }; }
+      }
+    }
+    if (!best) break;
+    const from = line.slice(1, -1).reduce((b, q) => (dHypot(q[0] - best.x, q[1] - best.z) < dHypot(b[0] - best.x, b[1] - best.z) ? q : b), line[1]);
+    const mx = (from[0] + best.x) / 2 + (rng() - 0.5) * 8, mz = (from[1] + best.z) / 2 + (rng() - 0.5) * 8;
+    const path = [[from[0], from[1]], [mx, mz], [best.x, best.z]];
+    sidePaths.push(path);
+    clearLine(path, 2.6);
+    keepClear.push({ x: best.x, z: best.z, r: 7 });
+    outposts.push(best);
+    spawns.push({ x: best.x, z: best.z, type: pick(), level: def.level, r: 7, elite: true });
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + rng();
+      spawns.push({ x: best.x + dCos(a) * 3.8, z: best.z + dSin(a) * 3.8, type: pick(), level: def.level, r: 7 });
+    }
+    const d = dHypot(best.x - mx, best.z - mz) || 1;
+    shrines.push({ x: best.x + ((best.x - mx) / d) * 4.5, z: best.z + ((best.z - mz) / d) * 4.5, nx: (best.x - mx) / d, nz: (best.z - mz) / d, outpost: true });
+  }
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const off = (b) => Math.abs(dAtan2(dSin(a - b), dCos(a - b)));
+    if (off(inA) < 0.5 || (outA != null && off(outA) < 0.5)) continue;
+    const px = bx + dCos(a) * 13.5, pz = bz + dSin(a) * 13.5;
+    if (spawns.some((sp) => dHypot(sp.x - px, sp.z - pz) < 3)) continue;
+    obstacles.push({ kind: 'tree', shape: 'circle', x: px, z: pz, r: 0.7, scale: 1.3, turn: a });
+  }
+  for (const sp of spawns) keepClear.push({ x: sp.x, z: sp.z, r: 2.5 });
+  const far = at(0.8);
+  return { line, sidePaths, shrines, spawns, far: { x: far.x + nx * 4, z: far.z + nz * 4 }, arena: { x: bx, z: bz, r: 12 } };
 }
 
 /**

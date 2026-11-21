@@ -143,6 +143,19 @@ export const SIGNS = {
   deep7b: { map: 'deep7', spot: [-18, 14], title: 'A drowned plaque', text: '"HERE STOOD", and nothing else. The rest is water.' },
   deep8b: { map: 'deep8', spot: [18, 16], title: 'A root, carved', text: 'A heart, and two letters inside it, grown over. The tree kept them. It keeps everything that grows into it.' },
   deep9b: { map: 'deep9', spot: [-16, -18], title: 'Your own handwriting', text: 'It is your hand, from a life you let go of: "If you read this, I made it this far. Keep going. You will be someone else by the time you get to the bottom, and that is all right."' },
+  // Caelum (0.64): a stone by each way in, and one at each shrine at the end of a side path
+  skyroad: { map: 'skyroad', spot: 'in', title: 'Above the Starwell', text: 'Every wish ever made on the mountain went up. Some of them were caught.\n\nThe road is white because nothing here has ever been walked on by anyone who wanted to leave.' },
+  skyroad1: { map: 'skyroad', spot: 'shrine1', title: 'A door', text: 'A door with no wall around it. On the step, someone has scratched: I wished to be let in. I was.' },
+  skyroad2: { map: 'skyroad', spot: 'shrine2', title: 'Two faces', text: 'The Doorkeeper looks both ways at once. Coming and going are the same to it. You should not be.' },
+  answers: { map: 'answers', spot: 'in', title: 'The Court of Answers', text: 'Every question asked on the mountain is filed here, with its answer. None of the answers are kind. All of them are true.' },
+  answers1: { map: 'answers', spot: 'shrine1', title: 'Case closed', text: 'A scale, perfectly level, with nothing in either pan. A plaque: It was asked to be fair.' },
+  answers2: { map: 'answers', spot: 'shrine2', title: 'The blindfold', text: 'It wears the blindfold so it cannot see who is asking. It was a mercy, once.' },
+  wants: { map: 'wants', spot: 'in', title: 'The Hall of Wants', text: 'Gold, crowns, rings, small wooden horses. Everything anyone ever wanted, given, and kept here, because having it was not the same.' },
+  wants1: { map: 'wants', spot: 'shrine1', title: 'An offering', text: 'A child\'s shoe on top of a pile of crowns. Someone wanted to go home. They were given a house.' },
+  wants2: { map: 'wants', spot: 'shrine2', title: 'Still hungry', text: 'The want at the end of this hall was never answered, because it was the asking itself. It will not stop. Do not try to fill it.' },
+  zenith: { map: 'zenith', spot: 'in', title: 'The Zenith', text: 'The top of the sky. The air is very still and very bright, and the light does not come from anywhere.' },
+  zenith1: { map: 'zenith', spot: 'shrine1', title: 'Let it be done', text: 'Carved small, near the ground, in a hand you almost know: Every wish is a little bit of no. It has never learned that.' },
+  zenith2: { map: 'zenith', spot: 'shrine2', title: 'The last answer', text: 'It answered the Queen. It answered the star. It will answer you, if you ask. Think about what you want first.' },
   deep10b: { map: 'deep10', spot: [14, 14], title: 'The last stone', text: 'Six of them. Wanting asked what you wanted. Enough will ask what you can do without.\n\nIt will wait as long as you need.' },
   aster5: { map: 'asterfell', spot: [8, -34], title: "Tobin's survey stone, IV", text: 'Letting go means wanting nothing. Not to live, not to be saved, not even for the rest of them to be freed. I do not know that anyone could do it.\n\nI hope I am wrong about what it costs.\n\n— T.' },
   aster6: { map: 'asterfell', spot: 'out', title: 'A banner over the court doors', text: "BLESSED BE THE QUEEN'S CHILD ON THE DAY OF THEIR NAMING.\n\nThe name stitched below it is yours. The thread is still bright." },
@@ -245,6 +258,11 @@ export const BOSS_LINES = {
     low: 'Sing with us. You know the words.',
     death: 'We will keep singing. Listen for us.',
   },
+  // Caelum (0.64)
+  ianitor: { turnkey: 'In, or out?', shut: 'Closed.', doors: 'Every door is open. Choose.', keepers: 'Let them in.', low: 'You came the wrong way. Everyone does.', death: 'Go on, then. Through.' },
+  arbiter: { verdict: 'Answered.', sentence: 'So be it.', scales: 'Weighed.', chorus: 'Witness.', low: 'You are asking a question. I will answer it.', death: 'No further questions.' },
+  desiderium: { grasp: 'Mine.', reach: 'More.', covet: 'All of it.', hunger: 'Give.', wanting: 'Want with me.', low: 'You want too. I can feel it.', death: 'Still... wanting...' },
+  fiat: { letitbe: 'Let it be done.', decree: 'Granted.', amen: 'So be it.', granted: 'Everything you asked for.', answered: 'Rise.', low: 'I have never said no. Do not make me learn.', death: 'No. ...No. So that is what it is.' },
   stillness: {
     hush: 'Hush.',
     quiet: 'You do not have to want anything here.',
@@ -469,6 +487,32 @@ export const QUESTS = {
     done: "So you heard them. Four of you, and each one learned something the others never had to.\n\nThis is what it means, as far as I can follow it: every one of the old powers you face as one of yourselves, all of you remember. Face the Cinder with a bow and the swordsman in you knows it too.\n\nOne thing, and listen, because it matters. It only counts if you stand there with the Ember yourself, or if nobody beside you has it either. Being carried down by someone stronger teaches you nothing, and the Choir will not sing it. Do not waste your nights on that.\n\nThere are others on the mountain now. The ones whose wishes the star granted completely. They are not husks. They are something more. To stand in front of them you will need every one of you.",
     reward: { exp: 0, gold: 20000, keys: 4, tickets: 6 },
   },
+  // Caelum (0.64, docs/design/mastery.md): the Granted, above the Starwell. The Sky Road opens on the
+  // Waygate when sky1 is taken; the rest are walked to, map by map. Each map asks for an Animus.
+  sky1: {
+    giver: 'wren', level: 100, act3: true, after: 'lives', name: 'The Sky Road', goal: { kill: 1, boss: 'ianitor' },
+    offer: "Look up. No, past the clouds.\n\nEvery wish made on this mountain went somewhere. Most of them came down as the fever. Some of them went up, and were answered, completely, and the ones who made them went up after them. The Granted. They are not husks. They do not hunger. They have everything they ever asked for, and it made them into something that cannot be told no.\n\nThe Waygate will take you to the road. Something keeps the door at the end of it. A warning: up there, what you have learned from your other lives is all that stands between you and their will. They call it Animus. If you do not have enough of it, they will simply decide that you stop.",
+    done: "You came back down. Good. That is not something the Granted do.\n\nThe road goes on past the door. There is a court up there, the old stories say, where every question is answered.",
+    reward: { exp: 0, gold: 25000, keys: 4, tickets: 6, dust: 20 },
+  },
+  sky2: {
+    giver: 'wren', level: 100, act3: true, after: 'sky1', name: 'The Court of Answers', goal: { kill: 1, boss: 'arbiter' },
+    offer: 'Past the Doorkeeper there is a court. Everything anyone ever asked on this mountain was answered there, and the answers were kept.\n\nIt will try to answer you too. Do not let it.',
+    done: 'No further questions. I have not heard anyone say that and mean it in a long time.',
+    reward: { exp: 0, gold: 30000, keys: 5, tickets: 7, dust: 25 },
+  },
+  sky3: {
+    giver: 'wren', level: 100, act3: true, after: 'sky2', name: 'The Hall of Wants', goal: { kill: 1, boss: 'desiderium' },
+    offer: 'Beyond the court, a hall full of everything anyone ever wanted. And at the end of it, the want itself. It was never answered, because it was the asking.\n\nYou cannot fill it. Nobody can. Only end it.',
+    done: 'You look tired. Not in the arms. Somewhere else.\n\nThere is one more. At the top of the sky. The one that answered all of them.',
+    reward: { exp: 0, gold: 35000, keys: 6, tickets: 8, dust: 30 },
+  },
+  sky4: {
+    giver: 'wren', level: 100, act3: true, after: 'sky3', name: 'Let It Be Done', goal: { kill: 1, boss: 'fiat' },
+    offer: 'Fiat. Let it be done. It answered the Queen. It answered the star. It has answered every wish that ever reached it, and it has never once said no.\n\nYou are going to have to say it for it.',
+    done: 'You told it no.\n\nI do not know what happens to a wish nobody grants. Maybe it just stays a wish. Maybe that is all it was ever supposed to be.',
+    reward: { exp: 0, gold: 50000, item: 6, keys: 8, tickets: 10, dust: 40 },
+  },
   // (0.57.6) A first look at the Deep, in the first life: you cannot touch what lives there, and learn why.
   breath: {
     giver: 'odile', level: 100, after: 'starwell', name: 'The Breath Below', goal: { reach: 'deep6' },
@@ -615,4 +659,9 @@ export const BOSS_LOOT = {
   // Act II (0.40): the Herald and the Asker pay like the Unmade, the Asker a little more
   herald: { items: 5, min: 4, better: 2, top: [0, 0, 0, 0, 45, 50, 5], keys: 3, tickets: 2, first: 5 },
   asker: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 35, 55, 10], keys: 4, tickets: 3, first: 6 },
+  // Caelum (0.64): each keeper pays more than the last
+  ianitor: { items: 6, min: 4, better: 2, top: [0, 0, 0, 0, 30, 58, 12], keys: 4, tickets: 3, first: 6 },
+  arbiter: { items: 6, min: 4, better: 3, top: [0, 0, 0, 0, 25, 60, 15], keys: 4, tickets: 4, first: 6 },
+  desiderium: { items: 7, min: 4, better: 3, top: [0, 0, 0, 0, 20, 62, 18], keys: 5, tickets: 4, first: 6 },
+  fiat: { items: 8, min: 5, better: 3, top: [0, 0, 0, 0, 0, 75, 25], keys: 6, tickets: 5, first: 6 },
 };

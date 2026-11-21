@@ -36,6 +36,8 @@ export const GROUND = {
   drowned: { path: '#1a2a2a', poolColor: '#0a2a2e', poolGlow: '#0a4a4a', a: '#16282a', b: '#0a1416', c: '#2a3a36', top: '#3a5a52', wet: 0.95, stones: true, grass: ['#1a3430', '#3a5a4a'], tall: 1.6, sparse: 0.4, debris: 'rubble', light: 0x9ae8e0 },
   rootdeep: { path: '#24180e', poolColor: '#141a08', poolGlow: '#2a4a10', crackKind: 2, a: '#241c12', b: '#120c06', c: '#3a2a18', top: '#4a5a2a', crack: ['#8ad04a', 0.9], grass: ['#2a3418', '#5a7a2a'], tall: 2, debris: 'pebble', light: 0xd8ffa0 },
   choir: { path: '#5a6878', a: '#3a4452', b: '#202832', c: '#6a7a8c', top: '#c8dcf0', crack: ['#9ad0ff', 1.2], grass: ['#5a6a7a', '#c8e0f8'], shards: true, sparse: 0.3, debris: 'rubble', light: 0xd8ecff },
+  // Caelum (0.64): pale stone paving above the clouds, gold in the joints
+  caelum: { voidEdge: true, path: '#e8e0cc', a: '#b8b0a0', b: '#8a8478', c: '#d0c8b8', top: '#f4efe4', crack: ['#e8b850', 0.8], grass: ['#c8c0a8', '#f0e8d0'], stones: true, sparse: 0.25, debris: 'rubble', light: 0xfff2d8 },
   quiet: { voidEdge: true, a: '#16141a', b: '#08070a', c: '#222028', top: '#3a3842', grass: ['#18161c', '#2a2830'], dry: true, sparse: 0.1, debris: 'pebble', light: 0x8a84a0 },
   // Asterfell (0.39): paved streets of the Queen's city, star-glass glowing gold in the cracks.
   // The Shattered Wilds (0.41): drawn per region (see biomes.js shardField); these are the verdant pieces.
@@ -57,7 +59,7 @@ export const MOODS = {
   moon: { sky: 1.35, skyTint: 0xa8bcff, bounce: 0x22222c, sun: 2.4, sunColor: 0xc8d8ff, hero: 30, haze: 0x3a4258, hazeMix: 0.5, near: 40, far: 112, vignette: 0.26, bloom: 0.4 },
   night: { sky: 0.75, skyTint: 0x9db4ff, bounce: 0x1a1414, sun: 2.1, sunColor: 0xffe0c0, hero: 70, haze: 0x000000, hazeMix: 0, near: 34, far: 92, vignette: 0.32, bloom: 0.55 },
 };
-export const THEME_MOOD = { shattered: 'rift', town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'moon', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night', glass: 'amber', deepash: 'night', drowned: 'night', rootdeep: 'night', choir: 'moon', quiet: 'night' };
+export const THEME_MOOD = { shattered: 'rift', town: 'day', forest: 'day', swamp: 'dusk', ash: 'dusk', keep: 'moon', frost: 'day', desert: 'day', fungal: 'night', storm: 'dusk', volcano: 'night', astral: 'night', glass: 'amber', deepash: 'night', drowned: 'night', rootdeep: 'night', choir: 'moon', quiet: 'night', caelum: 'amber' };
 
 // --- Shared GLSL ----------------------------------------------------------------------
 const NOISE_GLSL = /* glsl */ `
@@ -349,7 +351,12 @@ export function groundMask(map, { pools = [], field = null, poolRadius = null, p
       stroke(pts, w);
     };
     const hub = map.safe ? 9 : 0;
-    for (const p of map.portals) {
+    if (map.road) {
+      // (0.64) a laid road from the way in to the far end, and narrower side paths off it
+      stroke(map.road, 4.4);
+      for (const sp of map.sidePaths || []) stroke(sp, 2.6);
+    }
+    for (const p of map.road ? [] : map.portals) {
       const d = Math.hypot(p.x, p.z) || 1;
       const endD = map.safe ? hub : 4;
       wander(p.x, p.z, (p.x / d) * endD, (p.z / d) * endD, map.safe ? 2.6 : 3.2);

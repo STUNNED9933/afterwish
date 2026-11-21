@@ -161,6 +161,71 @@ const CASES = {
     tips: [`Same moves as a Storm Wraith.`, `The Stillness calls them three at a time.`],
     deep: true,
   },
+  // ------------------------------------------------------------- Caelum (0.64)
+  answered: {
+    lore: `A knight who wished to never lose. It was granted: it cannot lose, so it cannot stop. The mask is gold because the face under it stopped mattering.`,
+    more: `When two of them meet on the road they bow to each other, perfectly, at exactly the same moment, and walk on.`,
+    rest: `Parry the thrust and the sweep. When the ground goes amber around it, that is Kneel: a Dominion. Parry it perfectly, or be outside it.`,
+    tips: [`Thrust, then a wide sweep that Mind-Locks you briefly if it lands.`, `Kneel (amber, all around it) is a Dominion: a perfect parry turns it.`, `Short of the map's Animus, only a near-frame-perfect parry turns a Dominion.`],
+  },
+  cantor: {
+    lore: `Someone who wished their song would never end. It has not. It has been the same note for a very long time.`,
+    more: `If you stand close enough between its notes you can hear the words. They are a lullaby, and very old.`,
+    rest: `Parry its three notes. When amber opens under your feet, Hymn: parry perfectly or step out.`,
+    tips: [`Three notes in a fan, all parryable.`, `Hymn opens where you stand: a Dominion.`],
+  },
+  thurifer: {
+    lore: `A priest who wished for every prayer to be answered. Its incense is what the answers smell like: sweet, and too much.`,
+    more: `It never swings the censer at the Granted. Only near them. They lean into the smoke like cats to a hand.`,
+    rest: `Kill it first. Its incense makes the Granted near it hit 30% harder, and the smoke Mind-Locks you if you stand in it.`,
+    tips: [`Gives a nearby Granted 30% more damage every few seconds.`, `The incense falls in a scatter: each one Mind-Locks briefly.`, `Its censer swing up close is parryable.`],
+  },
+  colossus: {
+    lore: `A statue someone wished would come to life. It did, slowly, from the outside in. It is still hollow in the middle.`,
+    more: `Under the gold there is a name chiselled into its heel, and under that, a smaller one. The sculptor's, perhaps.`,
+    rest: `Parry the fist: it Mind-Locks you if it lands. Weight of Heaven is a huge amber circle: parry it perfectly, or leave.`,
+    tips: [`Heavy: slow to turn, hard to stagger.`, `Its fist Mind-Locks you briefly.`, `Weight (amber, six metres) is a Dominion.`],
+  },
+  veiled: {
+    lore: `Someone who wished nobody would ever see them cry. Nobody can see them at all now.`,
+    more: `It always stops just outside arm's reach, as if waiting to be asked to come closer.`,
+    rest: `Parry the two quick cuts. When it vanishes, it opens amber under you: Unseen, a Dominion.`,
+    tips: [`Two fast cuts in a row.`, `Unseen: it steps beside you and strikes where you stand.`],
+  },
+  wishmote: {
+    lore: `A wish small enough to be granted in an instant, given a body to carry it. It does not know what it was for.`,
+    more: `They drift towards anyone who looks tired.`,
+    rest: `Like a Wishling: parry its mote, and kill it before it gives the others what they want.`,
+    tips: [`Gives a nearby enemy 30% more damage now and then.`],
+  },
+  ianitor: {
+    seen: `A door at the end of the road, and something standing in it with two faces, one looking at you, one looking past you.`,
+    hints: [`Turnkey and Shut are amber: Dominions. Watch for the gold ground, not the swing.`, `Doors fall all around you: each one locks your mind. Keep moving between them.`, `Below seven tenths it lets its keepers in. Parry them, then go back to it.`],
+    lore: `Ianitor kept the door between the Starwell and the sky. It was asked once to let someone in, and has been letting everyone in ever since, and nobody out.`,
+    rest: `Parry the amber perfectly. Never stand where the doors fall.`,
+    tips: [`Turnkey: a Dominion all around it.`, `Shut: a wide amber swing in front.`, `Doors: falling gold that Mind-Locks.`, `Keepers: two of the Answered, below 70%.`],
+  },
+  arbiter: {
+    seen: `A judge in white with a scale and a sword, and a blindfold so it cannot see who is asking.`,
+    hints: [`Verdict is a long amber cut in front. Sentence opens under you.`, `Weighed: a ring. Stand close or far, never in it.`, `Its Cantors sing while it judges. Silence them.`],
+    lore: `It was wished to be fair. It is. It answers every question with the truth, all of it, at once, and nothing has ever survived hearing it.`,
+    rest: `Two Dominions, Verdict and Sentence. Read the amber early.`,
+    tips: [`Verdict: a narrow amber arc, far reaching.`, `Sentence: amber under you.`, `Scales: a ring that Mind-Locks.`, `Calls Cantors, up to four.`],
+  },
+  desiderium: {
+    seen: `Porcelain and gold, hollow in the chest, and every one of its arms reaching for you.`,
+    hints: [`Grasp pulls you in before it lands. Be leaving before it begins.`, `Hunger throws gold in every direction. Parry what comes at you.`, `Below three quarters, the Veiled come.`],
+    lore: `What was left when every want in the hall was met: the wanting itself. It was never answered, because it was the asking. It does not want anything in particular. It wants.`,
+    rest: `Grasp is a Dominion that drags you in. Parry it perfectly, or never be near it.`,
+    tips: [`Grasp: pulls, then an amber circle.`, `Reach: a wide amber swing.`, `Covet: falling gold that follows you and Mind-Locks.`, `Hunger: sixteen motes, all parryable.`],
+  },
+  fiat: {
+    seen: `The top of the sky. Something made of light and gold, very calm, waiting to give you what you want.`,
+    hints: [`Amen comes twice. Parry both.`, `Granted is a cross of four long lines, and it Mind-Locks.`, `Let It Be is the largest amber you will ever see. Below its Animus, that is the fight.`],
+    lore: `Fiat. Let it be done. It answered the Queen, and the star, and every wish that ever reached the sky. It has never once said no, and it does not know how.`,
+    rest: `Every amber is a Dominion: Let It Be, Decree, and Amen twice.`,
+    tips: [`Let It Be: amber, eight metres around it.`, `Decree: amber under you.`, `Amen: two wide amber swings in a row.`, `Granted: a cross of four lines; Mind-Locks.`, `Below 60% it raises a Gilded Colossus.`],
+  },
   // ------------------------------------------------------------- strays
   wishthief: {
     where: `Anywhere on the road, now and then`,
@@ -329,6 +394,7 @@ export const GROUPS = [
   { title: 'Asterfell', ids: ['glassbound', 'courtguard', 'wishling'] },
   { title: 'The Deep', ids: ['ashwalker', 'unnamed', 'rootbound', 'echo', 'hush'] },
   { title: 'Strays', ids: ['wishthief', 'oathshade'] },
+  { title: 'Caelum', sub: 'the Granted', ids: ['answered', 'cantor', 'thurifer', 'colossus', 'veiled', 'wishmote', 'ianitor', 'arbiter', 'desiderium', 'fiat'] },
   { title: 'Those who wait', ids: ['boss', 'boss2', 'boss3', 'herald'] },
   // The six Primordials. The note under the name shows once one of the five below the Starwell is met.
   { title: 'Arcana Mundi', sub: 'the secrets of the world', ids: ['asker', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness'],
@@ -522,7 +588,8 @@ export function spoilsHtml(b, id, ctx = {}) {
   const def = ENEMIES[id];
   // the Deep and the five Primordials below the Starwell are only ever met on world tier V
   const deep = GROUPS.find((g) => g.title === 'The Deep').ids.includes(id) || (def.boss && GROUPS[GROUPS.length - 1].ids.includes(id) && id !== 'asker');
-  const tier = deep ? TIERS.length - 1 : Math.max(1, Math.min(TIERS.length - 1, ctx.tier || 1));
+  const sky = GROUPS.find((g) => g.title === 'Caelum').ids.includes(id); // (0.64) built on tier V too
+  const tier = deep || sky ? TIERS.length - 1 : Math.max(1, Math.min(TIERS.length - 1, ctx.tier || 1));
   const T = TIERS[tier];
   const luck = ctx.luck || 0;
   const floor = T.minRarity;
@@ -567,7 +634,7 @@ export function spoilsHtml(b, id, ctx = {}) {
     }
     row('If Storied', `a piece ${orBetter(Math.max(floor, 3))} (${pct(RARE.better)} ${orBetter(Math.max(floor, 4))}), ${pct(RARE.set)} a set piece, ${FRAGMENTS.storied} Immortal Fragments, ${RARE.dust[0]} to ${RARE.dust[1]} Wishdust, ${pct(SIGIL.storied)} a Remnant Sigil, ${pct(GLASS.storied)} an Unwishing Glass`);
   }
-  const at = def.summon ? '' : `<p class="setting-desc">${deep ? 'In the Deep, which is always' : 'On'} world tier ${T.numeral}${floor ? ` (nothing below ${rname(floor)})` : ''}, for gear of level ${ilvl}${luck ? `, with Lucky Star (${pct(luck)} a step higher)` : ''}.</p>`;
+  const at = def.summon ? '' : `<p class="setting-desc">${deep ? 'In the Deep, which is always' : sky ? 'In Caelum, which is always' : 'On'} world tier ${T.numeral}${floor ? ` (nothing below ${rname(floor)})` : ''}, for gear of level ${ilvl}${luck ? `, with Lucky Star (${pct(luck)} a step higher)` : ''}.</p>`;
   return `<h4>What it leaves</h4><table class="case-spoils"><tbody>${rows.join('')}</tbody></table>${at}`;
 }
 

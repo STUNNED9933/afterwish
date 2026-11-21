@@ -547,6 +547,109 @@ ENEMIES.stillness.attacks = [
   ...CHASE_KIT({ size: 1.3, pace: 0.8, dmg: 36 }),
 ];
 for (const id of ['boss', 'boss2', 'boss3', 'herald', 'asker', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness']) ENEMIES[id].kit = true;
+// The Granted (0.64, docs/design/mastery.md): the ones whose wishes the star answered completely, and who
+// became the answer. They live in Caelum, above the Starwell. Their great attacks are Dominions (gold
+// telegraphs, `dominion: true`): with the Animus their map asks, a perfect parry turns one; short of it,
+// only a near-frame-perfect one does, and one that lands takes most of your health and Mind-Locks you
+// (world.js hitPlayer). `lock`: a smaller Mind-Lock riding on an ordinary blow.
+const DOM = (more) => ({ parryable: true, dominion: true, lockAt: 0, fx: 'gold', ...more });
+const GRANTED_BOSS = (name, title, colors, hp, more) => ({
+  name, model: 'boss', look: { scale: 1.25, colors }, title,
+  hp, speed: 3.2, radius: 1.6, height: 4.2, heavy: true, boss: true, granted: true, exp: 700, poise: 5, parryStun: 3.2, drop: 1, cost: 0, ai: 'boss', atkCd: [0.5, 0.9],
+  attacks: [], ...more,
+});
+Object.assign(ENEMIES, {
+  answered: {
+    name: 'The Answered', model: 'boss', look: { scale: 0.64, colors: [0xf2ead8, 0xd8b25a, 0x3a2a14] }, granted: true,
+    hp: 180, speed: 3.5, radius: 0.85, height: 2.3, exp: 70, poise: 2, parryStun: 2.4, drop: 0.45, cost: 2.5, ai: 'melee', atkCd: [0.6, 1.0],
+    attacks: [
+      { name: 'thrust', shape: 'arc', trigger: 3.2, range: 3.8, angle: 1.2, windup: 0.6, recover: 0, dmg: 18, parryable: true, lockAt: 0.2, chain: 'sweep', weight: 2 },
+      { name: 'sweep', shape: 'arc', trigger: 99, range: 3.4, angle: 2.6, windup: 0.45, recover: 1.0, dmg: 18, parryable: true, lockAt: 0.2, lock: 0.5 },
+      DOM({ name: 'kneel', shape: 'circle', trigger: 4, radius: 4.4, offset: 0, windup: 1.2, recover: 1.3, dmg: 16, cd: 8 }),
+    ],
+  },
+  cantor: {
+    name: 'Cantor', model: 'spitter', look: { scale: 1.1, colors: [0xf2ead8, 0xe8c27a] }, granted: true,
+    hp: 85, speed: 3.4, radius: 0.55, height: 2.1, exp: 60, poise: 1, parryStun: 1.6, drop: 0.35, cost: 2, ai: 'ranged', band: [9, 13], atkCd: [0.9, 1.5],
+    attacks: [
+      { name: 'note', shape: 'shot', trigger: 14, windup: 0.7, recover: 1.0, dmg: 14, parryable: true, lockAt: 0.1, speed: 13, count: 3, spread: 0.35, weight: 2, fx: 'gold' },
+      DOM({ name: 'hymn', shape: 'circle', at: 'target', trigger: 15, radius: 3.2, offset: 0, windup: 1.3, recover: 1.2, dmg: 14, cd: 9 }),
+    ],
+  },
+  thurifer: {
+    name: 'Thurifer', model: 'spitter', look: { scale: 1.2, colors: [0xe8dcc0, 0xc89a4a] }, granted: true,
+    hp: 110, speed: 2.8, radius: 0.6, height: 2.2, exp: 60, poise: 1, parryStun: 1.8, drop: 0.35, cost: 2, ai: 'ranged', band: [6, 10], atkCd: [1.1, 1.8],
+    grants: { every: 5, range: 9, time: 5, dmg: 1.3 }, // its incense gives the Granted near it what they want: 30% more damage
+    attacks: [
+      { name: 'censer', shape: 'arc', trigger: 3, range: 3.2, angle: 2.2, windup: 0.7, recover: 1.0, dmg: 16, parryable: true, lockAt: 0.2, weight: 1 },
+      { name: 'incense', shape: 'rain', scatter: 6, trigger: 12, windup: 0.9, recover: 1.2, dmg: 18, parryable: false, lockAt: 0, count: 4, gap: 0.2, fall: 1.0, radius: 2.2, lock: 0.6, cd: 7, weight: 2, fx: 'gold' },
+    ],
+  },
+  colossus: {
+    name: 'Gilded Colossus', model: 'brute', look: { scale: 1.3, colors: [0xf2ead8, 0xd8b25a] }, granted: true,
+    hp: 420, speed: 2.3, radius: 1.35, height: 3.3, heavy: true, exp: 110, poise: 3, parryStun: 3, drop: 0.6, cost: 3.5, ai: 'melee', atkCd: [0.8, 1.3],
+    attacks: [
+      { name: 'fist', shape: 'arc', trigger: 3.4, range: 3.8, angle: 1.8, windup: 0.8, recover: 1.1, dmg: 26, parryable: true, lockAt: 0.25, lock: 0.7, weight: 2 },
+      DOM({ name: 'weight', shape: 'circle', trigger: 5, radius: 6, offset: 0, windup: 1.5, recover: 1.6, dmg: 22, cd: 9 }),
+    ],
+  },
+  veiled: {
+    name: 'The Veiled', model: 'stalker', look: { scale: 1.1, colors: [0xf8f4ea, 0xd8b25a] }, granted: true,
+    hp: 110, speed: 5.0, radius: 0.6, height: 1.6, exp: 65, poise: 1, parryStun: 1.8, drop: 0.4, cost: 2, ai: 'melee', atkCd: [0.5, 0.9],
+    attacks: [
+      { name: 'cut', shape: 'arc', trigger: 2.6, range: 2.9, angle: 1.6, windup: 0.42, recover: 0, dmg: 15, parryable: true, lockAt: 0.15, chain: 'cut2', weight: 2 },
+      { name: 'cut2', shape: 'arc', trigger: 99, range: 2.9, angle: 1.6, windup: 0.32, recover: 0.8, dmg: 15, parryable: true, lockAt: 0.12 },
+      DOM({ name: 'unseen', shape: 'circle', at: 'target', blink: 2.2, trigger: 10, radius: 2.6, offset: 0, windup: 0.9, recover: 1.1, dmg: 14, cd: 8 }),
+    ],
+  },
+  wishmote: { ...ENEMIES.wishling, name: 'Wish-mote', look: { scale: 0.6, colors: [0xfff8e0, 0xffd870] }, granted: true, hp: 60, exp: 30, drop: 0.2 },
+  // The four who keep Caelum, one at the end of each map
+  ianitor: GRANTED_BOSS('Ianitor', 'the Doorkeeper', [0xf2ead8, 0xd8b25a, 0x2a2014], 9000),
+  arbiter: GRANTED_BOSS('The Arbiter', 'of Answers', [0xe8e0cc, 0xc8a050, 0x1c1810], 10000),
+  desiderium: GRANTED_BOSS('Desiderium', 'the Want', [0xf8f0e0, 0xf0b860, 0x2a1810], 11000),
+  fiat: GRANTED_BOSS('Fiat', 'the Answer', [0xffffff, 0xffe8a0, 0x302810], 13000, { radius: 1.8, height: 4.6 }),
+});
+// Ianitor: the door between the Starwell and the sky. One face sees you come, the other sees you leave.
+ENEMIES.ianitor.attacks = [
+  ...BOSS_BASE({ size: 1.25, pace: 0.9, dmg: 36, slam: 8, shots: 10, spread: 1.8, shotSpeed: 13 }),
+  DOM({ name: 'turnkey', shape: 'circle', trigger: 14, radius: 7, offset: 0, windup: 1.4, recover: 1.4, dmg: 22, cd: 10 }),
+  DOM({ name: 'shut', shape: 'arc', trigger: 6, range: 7, angle: 3.4, windup: 1.1, recover: 1.2, dmg: 20, cd: 7 }),
+  { name: 'doors', shape: 'rain', scatter: 8, trigger: 22, windup: 0.9, recover: 1.1, dmg: 28, parryable: false, lockAt: 0, count: 7, gap: 0.16, fall: 0.9, radius: 2.4, lock: 0.6, cd: 9, fx: 'gold' },
+  CALL('keepers', { summon: { type: 'answered', count: 2, max: 3 }, hpBelow: 0.7, cd: 24 }),
+  ...CHASE_KIT({ size: 1.25, pace: 0.9, dmg: 36 }),
+];
+// The Arbiter: every wish is a question, and it gives every question an answer, whether you like it or not.
+ENEMIES.arbiter.attacks = [
+  ...BOSS_BASE({ size: 1.25, pace: 0.9, dmg: 38, slam: 8.5, shots: 11, spread: 2, shotSpeed: 14 }),
+  DOM({ name: 'verdict', shape: 'arc', trigger: 7, range: 8, angle: 1.4, windup: 1.0, recover: 1.2, dmg: 22, cd: 6 }),
+  DOM({ name: 'sentence', shape: 'circle', at: 'target', trigger: 18, radius: 3.6, offset: 0, windup: 1.1, recover: 1.1, dmg: 20, cd: 8 }),
+  { name: 'scales', shape: 'ring', trigger: 10, radius: 10, inner: 3.5, windup: 1.3, recover: 1.2, dmg: 44, parryable: false, lockAt: 0, lock: 0.8, cd: 9, fx: 'gold' },
+  CALL('chorus', { summon: { type: 'cantor', count: 2, max: 4 }, cd: 22 }),
+  ...CHASE_KIT({ size: 1.25, pace: 0.9, dmg: 38 }),
+];
+// Desiderium: what was left over when every want was met. It still wants.
+ENEMIES.desiderium.attacks = [
+  ...BOSS_BASE({ size: 1.25, pace: 0.95, dmg: 40, slam: 9, shots: 14, spread: 2.4, shotSpeed: 13 }),
+  DOM({ name: 'grasp', shape: 'circle', trigger: 14, radius: 6.5, offset: 0, pull: 4.5, windup: 1.6, recover: 1.5, dmg: 24, cd: 11 }),
+  DOM({ name: 'reach', shape: 'arc', trigger: 6, range: 7.5, angle: 2.4, windup: 0.9, recover: 1.1, dmg: 20, cd: 6 }),
+  { name: 'covet', shape: 'rain', trigger: 22, windup: 0.8, recover: 1.0, dmg: 26, parryable: false, lockAt: 0, count: 6, gap: 0.2, fall: 0.8, radius: 2.2, lock: 0.5, cd: 8, fx: 'gold' },
+  { name: 'hunger', shape: 'shot', around: true, trigger: 18, windup: 1.0, recover: 1.0, dmg: 20, parryable: true, lockAt: 0, speed: 8, count: 16, spread: 0, seek: 0.4, life: 5, cd: 10, fx: 'gold' },
+  CALL('wanting', { summon: { type: 'veiled', count: 2, max: 3 }, hpBelow: 0.75, cd: 22 }),
+  ...CHASE_KIT({ size: 1.25, pace: 0.95, dmg: 40 }),
+];
+// Fiat: let it be done. The answer to every wish ever made on the mountain, and it has never once said no.
+ENEMIES.fiat.attacks = [
+  ...BOSS_BASE({ size: 1.3, pace: 0.95, dmg: 44, slam: 9.5, shots: 14, spread: 2.4, shotSpeed: 15 }),
+  DOM({ name: 'letitbe', shape: 'circle', trigger: 16, radius: 8.5, offset: 0, windup: 1.6, recover: 1.6, dmg: 26, cd: 11 }),
+  DOM({ name: 'decree', shape: 'circle', at: 'target', trigger: 20, radius: 3.8, offset: 0, windup: 1.0, recover: 1.0, dmg: 22, cd: 7 }),
+  DOM({ name: 'amen', shape: 'arc', trigger: 7, range: 8, angle: 3.0, windup: 1.0, recover: 1.1, dmg: 22, chain: 'amen2', cd: 9 }),
+  DOM({ name: 'amen2', shape: 'arc', trigger: 99, range: 8, angle: 3.0, windup: 0.7, recover: 1.3, dmg: 22 }),
+  { name: 'granted', shape: 'beam', cross: true, trigger: 18, length: 18, width: 2.8, windup: 1.2, recover: 1.2, dmg: 60, parryable: false, lockAt: 0.6, lock: 0.8, cd: 9, fx: 'gold' },
+  CALL('answered', { summon: { type: 'colossus', count: 1, max: 2 }, hpBelow: 0.6, cd: 26 }),
+  ...CHASE_KIT({ size: 1.3, pace: 0.95, dmg: 44 }),
+];
+for (const id of ['answered', 'cantor', 'thurifer', 'colossus', 'veiled', 'ianitor', 'arbiter', 'desiderium', 'fiat']) ENEMIES[id].kit = true;
+
 
 // New Game+ (0.45): the Unmade wears your old face. It fights with your old class's moves, and in its
 // later phases with the wish's own (the same as Maren's). These are kits only: the boss is still boss3.

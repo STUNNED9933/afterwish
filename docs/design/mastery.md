@@ -110,3 +110,13 @@ shows a warning; the Ex Voto pages say what Dominion does to an unready mind.
    several maps beyond The Quiet with its own enemy models, rewards worth it.
 3. **Borrowed skills** (0.65): one extra key, four borrowed skills (one per source class), a Mastery
    tree per class spending points from the other classes.
+
+## Shipped in 0.64 (phase 2)
+
+Numbers as built (src/config.js MIND_LOCK and DOMINION, src/sim/endgame.js CAELUM):
+- Mind-Lock cracks first at 0.45 s, then every 0.75 s, each open for 0.1 s; a press outside a crack adds
+  0.3 s. Chains within 3 s of the last lock: 100%, 60%, 35%, 20%. Immunity after a lock: 2.5 s (only with
+  the Animus asked).
+- Dominion: with the Animus asked, the perfect window (0.11 s); short of it, 0.034 s (two ticks). A short
+  Dominion that lands: 90% of max health, unreduced, rolling does not avoid it, and a 4 s lock before Animus.
+- Caelum maps are tier V times their own (health 6.5x to 10x, damage 3x to 3.6x) with no Ember.

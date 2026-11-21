@@ -1,7 +1,7 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
 import { aimPreview } from './ui/aim.js';
-import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale, primordialsOf, emberOf, MASTERY } from './sim/endgame.js';
+import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale, primordialsOf, emberOf, MASTERY, CAELUM, animusShort } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
 import { trialWeek, weekIndexAt, buildTrialWorld, defaultBuild, validateBuild, trialScore, trialFinished, cleanCommand, TWISTS, WEEKLY_REWARD, bestTitle } from './sim/trial.js';
@@ -901,8 +901,112 @@ function start(hot = {}) {
     root.appendChild(box);
   }
 
+  // (0.64) Mind-Locked: a ring in the middle of the screen that empties as the lock runs out and flashes
+  // white for each crack (the moment a parry press breaks it). Driven by events, so it works online too.
+  const lockUi = { el: null, end: 0, total: 1, raf: 0 };
+  function mindLockEl() {
+    if (lockUi.el) return lockUi.el;
+    const el = document.createElement('div');
+    el.id = 'mindlock';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<div class="ml-ring"><svg viewBox="0 0 100 100"><circle class="ml-track" cx="50" cy="50" r="44"/><circle class="ml-left" cx="50" cy="50" r="44" pathLength="100"/></svg><b>Mind-Locked</b><span>Parry when it cracks</span></div>';
+    document.body.appendChild(el);
+    return (lockUi.el = el);
+  }
+  function mindLockTick() {
+    const el = lockUi.el;
+    if (!el || !el.classList.contains('on')) return;
+    const left = Math.max(0, lockUi.end - performance.now() / 1000);
+    el.querySelector('.ml-left').style.strokeDashoffset = String(100 - (left / lockUi.total) * 100);
+    if (left <= 0) return mindLockHide();
+    lockUi.raf = requestAnimationFrame(mindLockTick);
+  }
+  function mindLockShow(time, short) {
+    const el = mindLockEl();
+    const now = performance.now() / 1000;
+    lockUi.end = Math.max(lockUi.end, now + time);
+    lockUi.total = Math.max(0.1, lockUi.end - now);
+    el.classList.toggle('short', !!short);
+    el.classList.add('on');
+    cancelAnimationFrame(lockUi.raf);
+    mindLockTick();
+  }
+  function mindLockHide() {
+    if (!lockUi.el) return;
+    lockUi.el.classList.remove('on', 'crack', 'slip');
+    lockUi.end = 0;
+    cancelAnimationFrame(lockUi.raf);
+  }
+  function mindLockCrack() {
+    const el = lockUi.el;
+    if (!el || !el.classList.contains('on')) return;
+    el.classList.add('crack');
+    setTimeout(() => el.classList.remove('crack'), CONFIG.MIND_LOCK.crack * 1000);
+    sfx.ui();
+  }
+  function mindLockSlip() {
+    const el = lockUi.el;
+    if (!el) return;
+    lockUi.end += CONFIG.MIND_LOCK.miss;
+    el.classList.remove('slip');
+    void el.offsetWidth;
+    el.classList.add('slip');
+  }
+
+  /** Caelum (0.64): the Granted's four maps, above the Starwell, each asking for an Animus. */
+  function renderCaelum() {
+    const root = $('travel-deep');
+    const p = world.player;
+    if (travelStone != null || !world.map.safe || !world.questState('lives')) return;
+    const taken = !!world.questState(CAELUM.quest);
+    const animus = p.animus || 0;
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    const box = document.createElement('section');
+    box.className = 'deep caelum';
+    box.setAttribute('aria-label', 'Caelum');
+    const marks = CAELUM.ids.map((id) => `<i style="left:${(CAELUM.maps[id].animus / MASTERY.animusMax) * 100}%" title="${CAELUM.maps[id].name}: Animus ${pct(CAELUM.maps[id].animus)}"></i>`).join('');
+    box.innerHTML = `<p class="deep-eyebrow">Above the Starwell</p>
+      <h3 class="deep-name">Caelum</h3>
+      <p class="deep-lede">Where the Granted live. They do not care how strong you are; they ask for Animus, which only Mastery gives. Short of what a map asks, their Dominions (the amber warnings) take most of your health and lock your mind, the ground flickers, and only a near-perfect parry turns them. Nearly impossible. Never quite.</p>
+      <div class="deep-ember">
+        <div class="deep-ember-n"><b>${pct(animus)}</b><span>Animus</span></div>
+        <div class="deep-gauge"><div class="deep-fill" style="width:${Math.min(100, (animus / MASTERY.animusMax) * 100)}%"></div>${marks}</div>
+      </div>
+      <p class="deep-note">${taken ? 'Walk the maps in order: each one\'s far portal leads to the next, and the Waygate remembers every one you reach.' : `Wren's quest ${QUESTS[CAELUM.quest].name} opens the way.`}</p>`;
+    const stair = document.createElement('div');
+    stair.className = 'deep-stair';
+    CAELUM.ids.forEach((id, i) => {
+      const C = CAELUM.maps[id];
+      const open = taken && (i === 0 || p.visited.includes(id));
+      const short = animusShort(animus, C.animus);
+      const row = document.createElement('div');
+      row.className = 'deep-step' + (world.map.id === id ? ' on' : '') + (open ? '' : ' sealed') + (open && short ? ' futile' : '');
+      row.style.setProperty('--step', i);
+      const state = !taken ? 'Sealed · the story opens it' : !open ? 'Not reached yet · walk on from the last map' : short ? `Short of its Animus: nearly impossible` : 'You are ready';
+      const info = document.createElement('div');
+      info.className = 'deep-pick';
+      info.innerHTML = `<span class="deep-num">${C.numeral}</span><span class="deep-what"><b>${C.name}</b><small>Animus ${pct(C.animus)} · ${C.points} Mastery</small><em>${state}</em></span>`;
+      row.appendChild(info);
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'deep-go';
+      go.textContent = 'Ascend';
+      go.title = open ? `Travel to ${C.name}${short ? `. You have ${pct(animus)} of the ${pct(C.animus)} Animus it asks: you may go, but it will not be fair.` : ''}` : '';
+      go.disabled = !open || world.map.id === id;
+      go.addEventListener('click', () => {
+        setMode('play');
+        applyNow({ type: 'travel', to: id });
+      });
+      row.appendChild(go);
+      stair.appendChild(row);
+    });
+    box.appendChild(stair);
+    root.appendChild(box);
+  }
+
   function renderTravel() {
     renderDeep();
+    renderCaelum();
     const list = $('travel-list');
     list.innerHTML = '';
     const p = world.player;
@@ -970,7 +1074,7 @@ function start(hot = {}) {
         list.appendChild(btn);
         continue;
       }
-      if (m.deep) continue; // (0.57.2) the Primordials' domains are in the Deep's own panel (renderDeep)
+      if (m.deep || CAELUM.maps[id]) continue; // (0.57.2) the Primordials' domains are in the Deep's own panel (renderDeep); (0.64) Caelum in its own
       const known = p.visited.includes(id);
       const top = m.level + m.levelSpan + (m.boss ? 1 : 0);
       const btn = document.createElement('button');
@@ -4039,6 +4143,41 @@ function start(hot = {}) {
       case 'emberDefied': // (0.62) under-Embered, and it still counts
         if (!ev.self || ev.self === world.player) hud.banner('Beaten under-Embered', `${ev.name} counts: Ember ${ev.have} of the ${ev.need} it asks. The Deep will remember that.`);
         break;
+      // Mind-Locked and Dominion (0.64, the Granted)
+      case 'mindLock':
+        mindLockShow(ev.time, ev.short);
+        sfx.slam();
+        hud.screenFlash(ev.short ? 0.45 : 0.18);
+        hintOnce('mindlock', 'Mind-Locked: you cannot move or act. Watch the ring: when it cracks, press parry to break free. Press too soon and it holds longer. Animus (from Mastery) shortens every lock.', 9);
+        break;
+      case 'lockCrack':
+        mindLockCrack();
+        break;
+      case 'lockSlip':
+        mindLockSlip();
+        sfx.denied();
+        break;
+      case 'lockEnd':
+        mindLockHide();
+        if (ev.broken) {
+          sfx.parry(true);
+          hud.float(renderer, ev.x, 3.1, ev.z, 'Broke free', 'word perfect');
+        }
+        break;
+      case 'dominion':
+        hud.float(renderer, ev.x, 3.4, ev.z, ev.short ? 'Dominion' : 'Dominion', ev.short ? 'word crit' : 'word');
+        if (ev.short) hud.screenFlash(0.6);
+        hintOnce('dominion', 'Amber warnings are Dominions. With the Animus a map asks, a perfect parry turns them. Short of it, only a near-frame-perfect one does, and a Dominion that lands takes nearly all your health.', 9);
+        break;
+      case 'dominionParried':
+        hud.float(renderer, ev.x, 3.4, ev.z, ev.short ? 'Dominion defied!' : 'Dominion turned', 'word perfect');
+        if (ev.short) hud.screenFlash(0.35);
+        break;
+      case 'animusShort': {
+        const pc = (v) => `${Math.round(v * 100)}%`;
+        hud.banner(`${ev.name} asks for ${pc(ev.need)} Animus`, `You have ${pc(ev.have)}. You may stay, but it will not be fair: its warnings flicker, its Dominions take nearly all your health and lock your mind, and only a near-frame-perfect parry turns them. Mastery raises Animus.`);
+        break;
+      }
       case 'sealed':
         hud.banner(`${ev.name} is sealed`, `${ev.by} took it for ${ev.time} seconds. Use something else.`);
         break;
@@ -4565,6 +4704,7 @@ function start(hot = {}) {
     renderer,
     act: (c) => applyNow(c), // (0.61.1) a command as the game's own buttons send it (tests, the console)
     talk: (id) => { talkTo = id; talkNote = ''; setMode('talk'); }, // (0.62) open someone's panel (tests)
+    panel: (m) => setMode(m), // (0.64) open a window by its mode (tests): 'travel', 'play', ...
     startRun,
     enterTown,
     startExplore,

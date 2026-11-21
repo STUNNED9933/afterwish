@@ -226,7 +226,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const seen = new Set(['town']); const queue = ['town'];
   while (queue.length) for (const g of buildMap(queue.shift()).portals) if (!seen.has(g.to)) { seen.add(g.to); queue.push(g.to); }
   // (The Wilds is reached by the Waygate only, from world tier II: its one portal leads home.)
-  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep);
+  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum);
   check('maps: every map on the road can be reached from town', road.every((id) => seen.has(id)), [...seen].join(' > '));
   check('maps: every portal on the road has a way back', road.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
   check('maps: the Waygate-only maps lead home', MAP_IDS.filter((id) => MAPS[id].fromTier).every((id) => buildMap(id).portals.every((g) => g.to === 'town')));
@@ -243,7 +243,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const chain = ['town'];
     for (;;) { const next = MAPS[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => !chain.includes(to)); if (!next) break; chain.push(next); }
     const fields = chain.slice(1).map((id) => MAPS[id]);
-    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep).length, chain.join(' > '));
+    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum).length, chain.join(' > '));
     check('maps: each map picks up where the last one ended, up to level 100', fields.every((m, i) => m.level === (i === 0 ? 1 : fields[i - 1].level + fields[i - 1].levelSpan + 1)) && buildMap(chain[chain.length - 1]).spawns.some((sp) => sp.level === 100));
     check('maps: three bosses, each in its own map', ['keep', 'hollow', 'sanctum'].map((id) => buildMap(id).spawns.find((sp) => DEFS.ENEMIES[sp.type].boss).type).join() === 'boss,boss2,boss3');
     check('maps: enemies get tougher the deeper in you go', (() => { const m = buildMap('frost'); const near = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) < 30); const far = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) > 60); const av = (l) => l.reduce((a, sp) => a + sp.level, 0) / l.length; return near.length && far.length && av(far) > av(near) + 2; })());
@@ -654,7 +654,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const { farm } = await import('./balance.mjs');
   for (const id of Object.keys(MAPS)) {
     const m = MAPS[id];
-    if (m.safe || m.bossOnly || m.deep) continue; // (a boss's chamber is not for farming)
+    if (m.safe || m.bossOnly || m.deep || m.caelum) continue; // (a boss's chamber is not for farming; Caelum asks for Animus, tested on its own)
     const level = Math.min(99, m.level + Math.round(m.levelSpan / 2));
     const o = farm({ cls: 'warrior', map: id, level, minutes: 1.5, rarity: 2, parrySkill: 0.6 });
     check(`balance: a level ${level} warrior can farm ${m.name}`, o.kills >= 8 && o.downs <= 1, `${o.kills} kills, knocked out ${o.downs}x, lowest health ${Math.round(o.minHp * 100)}%`);
@@ -4108,5 +4108,118 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.loadMap('deep7', 'town');
   const warn = w.events.find((e) => e.type === 'carryWarn');
   check('Carried down into a Depth: warned on arrival, before any fight', warn && warn.need === DP.depths[7].ember && warn.by === 'Strong', warn && JSON.stringify(warn));
+}
+
+// --- 0.64: Caelum, the Granted, Mind-Locked and Dominion ----------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { CAELUM: CL, animusShort: short } = await import('../src/sim/endgame.js');
+  const { MAPS: MP, buildMap: bm } = await import('../src/sim/maps.js');
+  const { QUESTS: Q, BOSS_LOOT: BL } = await import('../src/sim/story.js');
+  const L = CONFIG.MIND_LOCK, D = CONFIG.DOMINION;
+  const run = (w, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) w.step(CONFIG.TICK); };
+  // the maps
+  const chain = ['skyroad'];
+  for (;;) { const nx = MP[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => to !== 'town' && !chain.includes(to)); if (!nx) break; chain.push(nx); }
+  check('Caelum: one road of four maps, Sky Road to Zenith', chain.join() === CL.ids.join(), chain.join(' > '));
+  check('...every Caelum portal has a way back', CL.ids.every((id) => bm(id).portals.every((g) => g.to === 'town' || bm(g.to).portals.some((b) => b.to === id))));
+  const built = CL.ids.map((id) => bm(id));
+  check('...each is laid out to explore: a road, camps with a captain, shrines, outposts with chests, its keeper at the far end',
+    built.every((m, i) => m.road.length > 20 && m.spawns.filter((sp) => sp.elite).length >= MP[CL.ids[i]].camps && m.sidePaths.length >= 4 && m.chestSpots.length >= 4 && m.obstacles.filter((o) => o.kind === 'sign').length === 3 && m.spawns[0].type === CL.maps[CL.ids[i]].boss && Math.hypot(m.spawns[0].x, m.spawns[0].z) > m.radius * 0.6),
+    built.map((m) => `${m.spawns.length}/${m.chestSpots.length}`).join(' '));
+  check('...asks more Animus each map, up to the most Mastery gives', CL.ids.map((id) => CL.maps[id].animus).join() === '0.15,0.3,0.45,0.6' && short(0.15, 0.15) === false && short(0.12, 0.15) === true);
+  check('...the quests run from The Other Lives to Let It Be Done, one keeper each', ['sky1', 'sky2', 'sky3', 'sky4'].every((id, i) => Q[id].act3 && Q[id].after === (i ? `sky${i}` : 'lives') && Q[id].goal.boss === CL.maps[CL.ids[i]].boss) && CL.ids.every((id) => BL[CL.maps[id].boss]));
+
+  const hero = (animus, seed = 50) => {
+    const w = new World({ seed, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 4), { talents: {} }) });
+    w.player.animus = animus;
+    w.events.length = 0;
+    return w;
+  };
+  // Mind-Locked
+  {
+    const w = hero(0);
+    w.mindLock(2, 0.3);
+    check('Mind-Locked: the full time with no Animus', Math.abs(w.player.lockT - 2) < 1e-9);
+    const x0 = w.player.x;
+    w.command({ type: 'move', x: x0 + 8, z: w.player.z });
+    run(w, 0.3);
+    check('...and you cannot move', Math.abs(w.player.x - x0) < 1e-6 && w.player.lockT > 0);
+    // pressed between cracks: it holds longer
+    const before = w.player.lockT;
+    w.command({ type: 'parry' });
+    w.step(CONFIG.TICK);
+    check('...a parry press between cracks holds it longer', w.player.lockT > before - 0.05 && w.player.lockT > before - CONFIG.TICK * 2 + L.miss - 0.05);
+    // wait for the next crack, then press inside it
+    while (!w.events.some((e) => e.type === 'lockCrack') && w.player.lockT > 0) w.step(CONFIG.TICK);
+    w.command({ type: 'parry' });
+    w.step(CONFIG.TICK);
+    check('...a parry press in a crack breaks it', w.player.lockT === 0 && w.events.some((e) => e.type === 'lockEnd' && e.broken));
+  }
+  {
+    const w = hero(0.3);
+    w.mindLock(1, 0.3);
+    check('...Animus shortens it (30%: 0.7 s of 1)', Math.abs(w.player.lockT - 0.7) < 1e-9);
+    run(w, 1);
+    w.mindLock(1, 0.3);
+    check('...with the Animus asked, a moment of immunity after a lock', !(w.player.lockT > 0));
+    run(w, L.immune + 0.2);
+    w.mindLock(1, 0.3);
+    check('...then locks again, shorter for coming close together', w.player.lockT > 0 && w.player.lockT < 0.7 - 1e-6, w.player.lockT);
+  }
+  {
+    const w = hero(0.15);
+    w.mindLock(1, 0.45);
+    run(w, 1.2);
+    w.mindLock(1, 0.45);
+    check('...short of it, no immunity: the next one lands at once', w.player.lockT > 0);
+  }
+  // Dominion
+  const dom = (animus, need, age, dash = false) => {
+    const w = hero(animus);
+    const p = w.player;
+    p.hp = p.stats.maxHp;
+    if (age != null) { p.parryT = 0.3; p.parryAge = age; p.parryCd = 1; p.parryHit = false; }
+    if (dash) p.dash = { dur: 0.3, t: 0, slot: 'e', refunded: false };
+    const res = w.hitPlayer(10, { parryable: true, dominion: true, need, src: null });
+    return { res, w, p, lost: 1 - p.hp / p.stats.maxHp };
+  };
+  let o = dom(0, 0.45, null);
+  check('Dominion, short of the Animus: 90% of your health, nothing reduces it, and a long lock', o.res === 'hit' && Math.abs(o.lost - D.short) < 0.01 && o.p.lockT > 3, `${o.lost} ${o.p.lockT}`);
+  o = dom(0, 0.45, 0.05);
+  check('...a parry three ticks early does not turn it', o.res === 'hit' && o.lost > 0.85);
+  o = dom(0, 0.45, 0.016);
+  check('...a near-frame-perfect one does: nearly impossible, never impossible', o.res === 'parried' && o.lost === 0);
+  o = dom(0, 0.45, null, true);
+  check('...and rolling through it does not help', o.res === 'hit' && o.lost > 0.85);
+  o = dom(0.45, 0.45, 0.1);
+  check('Dominion, with the Animus asked: a perfect parry turns it', o.res === 'parried');
+  o = dom(0.45, 0.45, 0.2);
+  check('...a late one does not: a small hit and a short lock', o.res === 'hit' && o.lost < 0.2 && o.p.lockT > 0 && o.p.lockT <= D.lock * 0.55 + 1e-9, `${o.lost} ${o.p.lockT}`);
+  o = dom(0.45, 0.45, null, true);
+  check('...and rolling through it works', o.res === 'dodged');
+  // on the map: built on tier V, no Ember, the map's Animus on everything
+  {
+    const w = hero(0.6, 51);
+    w.loadMap('skyroad', 'town');
+    const foes = w.enemies.filter((e) => !e.dead);
+    check('The Sky Road: everything there asks its Animus, on tier V, with no Ember, captains elite', foes.length > 20 && foes.every((e) => e.animusNeed === 0.15 && !(e.ember > 0)) && w.worldTier() === 5 && foes.filter((e) => e.elite).length >= 4, foes.length);
+    check('...and its shrines keep chests', CL.ids && w.map.chestSpots.every((c) => w.chests.some((ch) => Math.hypot(ch.x - c.x, ch.z - c.z) < 0.01)));
+  }
+  {
+    const w = hero(0.1, 52);
+    w.loadMap('town', null);
+    w.events.length = 0;
+    w.command({ type: 'travel', to: 'skyroad' });
+    w.step(CONFIG.TICK);
+    check('Travel: the Sky Road stays shut until The Sky Road is taken', w.map.id === 'town' && w.events.some((e) => e.type === 'mapLocked'));
+    w.player.quests.sky1 = { s: 'active' };
+    w.command({ type: 'travel', to: 'answers' });
+    w.step(CONFIG.TICK);
+    check('...then the next maps open only once walked to', w.map.id === 'town');
+    w.command({ type: 'travel', to: 'skyroad' });
+    w.step(CONFIG.TICK);
+    check('...and short of its Animus you may go, warned on arrival', w.map.id === 'skyroad' && w.events.some((e) => e.type === 'animusShort' && e.need === 0.15));
+  }
 }
 process.exit(failed ? 1 : 0);

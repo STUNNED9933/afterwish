@@ -49,6 +49,18 @@ export const CONFIG = {
   PARRY_CUE_LEAD: 0.33, // enemies flash this long before their hit lands
   PARRY_BUFFER: 0.2, // pressing parry slightly early (during cooldown) still counts
   PARRY_MOVE_MULT: 0.45, // movement speed while the parry stance is up
+  // Mind-Locked (0.64): the Granted's stun. You cannot move, attack or cast; Animus shortens it. A lock
+  // "cracks" now and then (first after `first` seconds, then every `every`), for `crack` seconds: press
+  // parry inside a crack and you break free. Outside one, it holds `miss` seconds longer. Locks that come
+  // close together (within `chain` seconds of the last one ending) are shorter (`dr`), and after one ends
+  // you cannot be locked for `immune` seconds, unless you are short of the map's Animus: then nothing
+  // stops the next one but your own timing.
+  MIND_LOCK: { first: 0.45, every: 0.75, crack: 0.1, miss: 0.3, chain: 3, dr: [1, 0.6, 0.35, 0.2], immune: 2.5 },
+  // Dominion (0.64): the Granted's great attacks. With the Animus a map asks, they are parried on the
+  // perfect window only, and land for little (plus a short lock). Short of it, only on `frame` seconds
+  // after the press (two ticks), and if one lands it takes `short` of your max health, nothing reduces
+  // it, rolling through it does not help, and the lock is long.
+  DOMINION: { frame: 0.034, short: 0.9, lock: 0.8, lockShort: 4 },
   PERFECT_HEAL: 0.04, // fraction of max HP restored by a perfect parry
   // 0.28: warrior and mage
   RECKON_PER: 0.25, // Reckoning (Bulwark): Whirlwind deals this much more per stack

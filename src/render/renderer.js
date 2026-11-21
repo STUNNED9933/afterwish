@@ -8,7 +8,7 @@ import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, b
 import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
 import { ENEMIES } from '../sim/defs.js';
-import { AFFIXES } from '../sim/endgame.js';
+import { AFFIXES, CAELUM, animusShort } from '../sim/endgame.js';
 import { GLOWS } from '../sim/cosmetics.js';
 import { NPCS } from '../sim/story.js';
 import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes.js';
@@ -31,6 +31,7 @@ const COLORS = {
   cue: 0xffffff, // ... and turn white at the moment to press parry
   danger: 0xff3b4a, // attacks you must avoid are red
   doom: 0xa64bff, // Doom: a share of your health that nothing reduces (0.28)
+  dominion: 0xff6a00, // (0.64) the Granted's Dominions: deep amber, drawn heavier, white at the moment to press
   friendly: 0x7fd8ff,
   ember: 0xff8a3a,
   immortal: 0xffd24a, // matches the Immortal rarity colour (radiant gold since 0.43)
@@ -58,6 +59,8 @@ const MAP_THEMES = {
   rootdeep: { ground: '#1e1a10', hue: 70, sky: 0x080804, tree: 0x3a4a1a, trunk: 0x2a1e12, rock: 0x3a3420, edge: 0x0a0806, crown: 'cap', crownGlow: 0x6aa04a },
   choir: { ground: '#2a3038', hue: 205, light: 40, sky: 0x0c1018, tree: 0xd8eaff, trunk: 0x8aa0b8, rock: 0xa8c0d8, edge: 0x141a22, crown: 'crystal', crownGlow: 0x6a9ac8, glossGlow: 0x3a5a7a },
   quiet: { ground: '#18161e', hue: 260, sky: 0x020204, tree: 0x2a2830, trunk: 0x14121a, rock: 0x2a2832, edge: 0x040406, crown: 'spike', glossGlow: 0x14102a },
+  // Caelum (0.64): white stone and gold above the clouds; 'rocks' are cloud banks, 'trees' gold spires
+  caelum: { ground: '#bdb6a6', hue: 42, light: 58, sky: 0x8a96aa, tree: 0xffe8b0, trunk: 0xe8dcc0, rock: 0xf4f0ea, edge: 0x9aa4b8, crown: 'crystal', crownGlow: 0xc8a050, glossGlow: 0x8a7040 },
   // The Shattered Wilds (0.41): pieces of four lands, with violet light in the seams between them.
   shattered: { ground: '#3a3a30', hue: 270, sky: 0x120c1c, tree: 0x3a5a2a, trunk: 0x3a2c22, rock: 0x5a5466, edge: 0x140c1c, glossGlow: 0x3a1a6a },
 };
@@ -570,6 +573,8 @@ export class Renderer {
     }
     // The Deep (0.54): each domain's own landmark, in a ring beyond its edge
     const DEEP_PROP = { deepash: 'ashspire', drowned: 'drownedarch', rootdeep: 'rootheart', choir: 'glasspillar', quiet: 'stillstone' };
+    const SKY_PROP = { skyroad: 'skygate', answers: 'courtpillar', wants: 'wantaltar', zenith: 'zenithspire' }; // (0.64) Caelum's, by map
+    if (SKY_PROP[map.id] && PROPS[SKY_PROP[map.id]]) DEEP_PROP[look] = SKY_PROP[map.id];
     if (DEEP_PROP[look] && PROPS[DEEP_PROP[look]]) {
       const ring = [];
       const n = 9;
@@ -2180,6 +2185,11 @@ export class Renderer {
 
   syncTelegraphs(world) {
     const seen = new Set();
+    // (0.64) Clouded sight: short of a Caelum map's Animus, the ground warnings flicker (they never vanish
+    // for long, and the moment to parry still turns white; it is only harder to read).
+    const C = world.map && CAELUM.maps[world.map.id];
+    const clouded = !!C && !!world.player && animusShort(world.player.animus, C.animus);
+    const now = performance.now() / 1000;
     for (const t of world.telegraphs) {
       seen.add(t.id);
       let v = this.teleViews.get(t.id);
@@ -2203,10 +2213,19 @@ export class Renderer {
       const k = Math.min(1, t.t / t.dur);
       v.group.position.set(t.x, 0, t.z);
       v.group.rotation.y = -t.dir;
-      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : t.pool ? FX_COLOR[t.poolKind] || 0x9cff4a : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : COLORS.parryable;
+      const color = t.friendly ? COLORS.friendly : t.doom ? COLORS.doom : t.pool ? FX_COLOR[t.poolKind] || 0x9cff4a : !t.parryable ? COLORS.danger : t.cue ? COLORS.cue : t.dominion != null ? COLORS.dominion : COLORS.parryable;
+      if (clouded && !t.friendly) {
+        const slot = Math.floor(now * 11 + t.id * 0.37);
+        const r = ((slot * 2654435761) >>> 0) % 7;
+        v.group.visible = t.cue || r > 1; // out for about two frames in seven, never during the cue
+        v.base.material.opacity = 0.1 + (r / 7) * 0.2;
+      } else {
+        v.group.visible = true;
+        v.base.material.opacity = t.dominion != null ? 0.42 : 0.24;
+      }
       v.base.material.color.set(color);
       v.fill.material.color.set(color);
-      v.fill.material.opacity = t.doom || t.pool ? 0.6 : t.cue && t.parryable ? 0.7 : 0.4;
+      v.fill.material.opacity = t.doom || t.pool ? 0.6 : t.cue && t.parryable ? 0.7 : t.dominion != null ? 0.62 : 0.4;
       if (t.kind === 'rect') {
         v.base.scale.set(t.length, 1, t.width);
         v.fill.scale.set(t.length * k, 1, t.width);

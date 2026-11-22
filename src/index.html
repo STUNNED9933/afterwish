@@ -97,14 +97,24 @@
 <section id="inventory" class="drawer hidden" aria-label="Gear">
   <div class="drawer-head">
     <h2>Gear</h2>
+    <div class="inv-tabs" role="tablist">
+      <button type="button" id="tab-gear" class="ghost inv-tab on" role="tab" aria-selected="true">Gear</button>
+      <button type="button" id="tab-eternal" class="ghost inv-tab et-tab hidden" role="tab" aria-selected="false">✧ Eternal</button>
+    </div>
     <span class="drawer-note" id="inv-res"></span>
     <button type="button" id="inv-close" class="ghost">Close <kbd>Tab</kbd></button>
   </div>
-  <div class="drawer-body">
+  <div class="drawer-body hidden" id="inv-eternal-body">
+    <div id="eternal-box" class="et-page">
+      <h3>Eternal gear <small id="eternal-ess"></small></h3>
+      <p class="setting-desc">The tier above Immortal, one piece a slot for each class, from Caelum's Granted (or forged from Eternity Essence). Soulbound: never traded, scrapped or lost, and kept through every rebirth. Wear it here; feed it Immortals from your gear box, or Essence, to level it.</p>
+      <div id="eternal"></div>
+    </div>
+  </div>
+  <div class="drawer-body" id="inv-gear-body">
     <div class="inv-left">
       <h3>Equipped</h3>
       <div id="equipped"></div>
-      <div id="eternal-box" class="hidden"><h3>Eternal <small id="eternal-ess"></small></h3><div id="eternal"></div></div>
       <div id="power-card" title="Combat Power is mostly how hard you hit (Might), with how much you can take (Resolve) counting too. Tanks shine in their Resolve. It is only a number to watch grow: nothing in the game asks for it."></div>
       <div id="glow-row" class="glow-row"></div>
       <h3>Stats</h3>

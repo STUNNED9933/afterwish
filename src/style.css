@@ -1188,3 +1188,14 @@ button.cell:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) {
   .drawer:not(.hidden), .screen:not(.hidden), .screen:not(.hidden) .menu-card, .menu-overlay:not(.hidden), #tooltip:not(.hidden), .badge:not(.hidden), .float.crit > span { animation: none; }
 }
+/* (0.74.1) the gear drawer's tabs */
+.inv-tabs { display: flex; gap: 4px; margin-left: 12px; }
+.inv-tab { padding: 3px 12px; border-radius: 4px 4px 0 0; opacity: 0.7; }
+.inv-tab.on { opacity: 1; border-bottom-color: transparent; background: rgba(255, 255, 255, 0.06); }
+.inv-tab.et-tab { color: #ffd8dc; border-color: rgba(255, 61, 79, 0.45); }
+.inv-tab.et-tab.on { background: rgba(255, 61, 79, 0.14); color: #fff; text-shadow: 0 0 6px #ff3d4f; }
+.inv-tab.et-tab.glow { animation: eternal-glow 1.8s ease-in-out infinite; }
+#inv-eternal-body { display: block; }
+#inv-eternal-body.hidden { display: none; }
+.et-page { max-width: 760px; margin: 0 auto; }
+.et-page > .setting-desc { margin-bottom: 10px; }

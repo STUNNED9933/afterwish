@@ -30,6 +30,7 @@ export const ETERNAL = {
   forgeCost: 8, // (0.74) Essence to forge a piece you do not have (the four first kills make one)
   veteran: 4, // (0.74) more, once, for each Granted a hero had beaten before 0.74 (when they had twice the health)
   GRANTED: ['ianitor', 'arbiter', 'desiderium', 'fiat'],
+  partyShare: 2, // (0.74.1) a party shares twice the chance between them (a pair: the whole of it each)
   pity: 0.02, // (0.71.1) +2% for each Granted beaten without one (reset when one falls)
   // The chance a Granted lets one fall, by Caelum map (the Sky Road first)
   chance: { skyroad: 0.05, answers: 0.06, wants: 0.07, zenith: 0.08 },

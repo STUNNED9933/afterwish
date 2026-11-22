@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Eternal in its own tab; a party shares twice the chance (0.74.1)
+
+- **Eternal gear has its own tab** in the gear drawer (Tab, then ✧ Eternal), shown from level 100, so the
+  gear screen stays as it was. The tab glows while you have Essence enough to forge a piece you lack.
+- **A party shares twice the Eternal chance:** alone you roll it all; a pair each roll the whole of it;
+  three roll two-thirds each; four, half each.
+
 ### Fair fights with the Granted, forging, and loot that tidies itself (0.74)
 
 - **Bosses no longer walk off healing mid-fight.** A boss someone has hit in the last 6 seconds keeps
@@ -170,7 +177,7 @@ also keeps its own beat instead of the frame that noticed it.
 - **Forge an Eternal piece** you lack from 8 Eternity Essence (the Forge button in the Eternal panel).
 - **Thanks for the early ones:** a hero who had beaten Granted before this gets each one's first-kill
   Essence if they missed it (kills before 0.73), and 4 more for each, once.
-- **The Eternal panel** (gear screen, Tab, under what you wear) now shows from level 100.
+- **The Eternal panel** now shows from level 100.
 - **Loot left lying is scrapped for you:** after 25 seconds, or at once past 24 pieces on the ground,
   you get its scrap and Wishdust. Immortals, Eternals, set pieces and anything a friend dropped for you
   are never touched. (Piles of loot around a boss fight made every update heavy.)

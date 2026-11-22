@@ -6295,9 +6295,11 @@ export class World {
     }
     const r = this.streamRng('eternalDrop', (p.bossKills[e.type] || 0) * 13 + this.ticks);
     // (0.71.1) +2% for every kill without one (reset when one falls), and in a party the chance is shared
-    // out among those there: each rolls their own, at a share of it.
+    // out among those there: each rolls their own, at a share of it. (0.74.1) A party shares twice the
+    // chance: a pair each roll the whole of it, three two-thirds each, four half each.
     const party = Math.max(1, this.heroes.filter((h) => h.player && !h.player.dead).length || 1);
-    const odds = (chance + ETERNAL.pity * (p.eternalPity || 0)) / party;
+    const share = party === 1 ? 1 : ETERNAL.partyShare / party;
+    const odds = (chance + ETERNAL.pity * (p.eternalPity || 0)) * share;
     if (r() >= odds) {
       p.eternalPity = (p.eternalPity || 0) + 1;
       return;

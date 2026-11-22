@@ -4860,7 +4860,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...and it resets when one falls', w.player.eternalPity === 0 && Object.values(w.player.eternals).some(Boolean));
   ETERNAL.chance.skyroad = keep;
   // the party's share: two heroes, each at half the odds
-  let solo = 0, duo = 0;
+  let solo = 0, duo = 0, trio = 0;
   for (let k = 0; k < 400; k++) {
     const a = new World({ seed: 200 + k, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, tierMax: 5 }) });
     a.loadMap('skyroad', 'town');
@@ -4871,9 +4871,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     a.player.eternals = {}; a.player.eternalPity = 0;
     a.eternalDrop(boss);
     if (Object.values(a.player.eternals).some(Boolean)) duo++;
+    a.addHero(3, { save: Object.assign(geared('rogue', 100, 5), { acctLives: all }), name: 'C' });
+    a.player.eternals = {}; a.player.eternalPity = 0;
+    a.eternalDrop(boss);
+    if (Object.values(a.player.eternals).some(Boolean)) trio++;
   }
   ETERNAL.chance.skyroad = keep;
-  check('...in a party the chance is shared out (two heroes: about half each)', solo > 160 && duo < solo * 0.7 && duo > 60, `${solo} solo, ${duo} in two`);
+  check('...(0.74.1) a party shares twice the chance: a pair each roll the whole of it, three two-thirds each', solo > 160 && Math.abs(duo - solo) < solo * 0.2 && trio < solo * 0.85 && trio > solo * 0.5, `${solo} solo, ${duo} in two, ${trio} in three`);
   check('The Granted\'s loot (0.71.1): 20x gold, twice the hoard, a 40% Immortal best piece and a sure Immortal, 3x keys', CL.bossLoot.gold === 20 && CL.bossLoot.items === 2 && CL.bossLoot.top[6] === 40 && CL.bossLoot.immortal === 1 && CL.bossLoot.keys === 3);
   for (let i = 0; i < 5; i++) w.step(CONFIG.TICK);
   const gb = w.enemies.find((e) => e.def.boss && e.def.granted);

@@ -179,6 +179,14 @@ export class Inventory {
     this.keep = keep || { get: () => [], set: () => {} };
     $('btn-scrap').addEventListener('click', () => this.send({ type: 'scrap', keep: this.keep.get() }));
     $('btn-equip-all').addEventListener('click', () => this.send({ type: 'autoEquip' })); // (0.61.9)
+    // (0.74.1) Eternal gear in a tab of its own
+    this.tab = 'gear';
+    for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal']]) {
+      $(id).addEventListener('click', () => {
+        this.tab = tab;
+        if (this.world) this.render(this.world);
+      });
+    }
     // One toggle per rarity from Rare up: kept items stay in the bag even when they are worse.
     const root = $('keep-rarities');
     RARITIES.forEach((r, i) => {
@@ -452,12 +460,19 @@ export class Inventory {
     const p = world.player;
     const box = $('eternal-box');
     const owned = SLOTS.filter((s) => world.eternalAt && world.eternalAt(s));
-    // (0.74) shown from level 100 (when Caelum is in reach), so it can be found before the first piece
-    if (world.trial || (!owned.length && !(p.eternalEssence > 0) && p.level < 100)) {
-      box.classList.add('hidden');
-      return;
+    // (0.74) shown from level 100 (when Caelum is in reach), so it can be found before the first piece;
+    // (0.74.1) in its own tab
+    const shown = !world.trial && (owned.length || p.eternalEssence > 0 || p.level >= 100);
+    if (!shown) this.tab = 'gear';
+    $('tab-eternal').classList.toggle('hidden', !shown);
+    $('tab-eternal').classList.toggle('glow', shown && (p.eternalEssence || 0) >= ETERNAL.forgeCost && owned.length < 5);
+    for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal']]) {
+      $(id).classList.toggle('on', this.tab === tab);
+      $(id).setAttribute('aria-selected', this.tab === tab ? 'true' : 'false');
     }
-    box.classList.remove('hidden');
+    $('inv-gear-body').classList.toggle('hidden', this.tab !== 'gear');
+    $('inv-eternal-body').classList.toggle('hidden', this.tab !== 'eternal');
+    if (!shown) return;
     $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence &middot; ${owned.length ? 'feed it, or forge a piece you lack' : 'from the Granted, in Caelum: forge a piece with it, or keep it to feed one'}`;
     const root = $('eternal');
     root.innerHTML = '';

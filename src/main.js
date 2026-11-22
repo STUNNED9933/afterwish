@@ -3799,6 +3799,7 @@ function start(hot = {}) {
       return null;
     }
   }
+  let autoScrapSum = null; // (0.75.3) auto-scrapped gear, added up for one line
   function gearToast(html, color = null) {
     if (!world || world.trial) return;
     const cp = measureCp();
@@ -4111,12 +4112,28 @@ function start(hot = {}) {
       case 'riftEnd':
         hud.feedText('You left the rift.');
         break;
+      case 'autoScrapNew': {
+        // (0.75.3) gear auto-scrapped as it came: added up, one quiet line a moment
+        const A = (autoScrapSum = autoScrapSum || { n: 0, scrap: 0, dust: 0, t: null });
+        A.n++;
+        A.scrap += ev.scrap;
+        A.dust += ev.dust;
+        if (!A.t) A.t = setTimeout(() => {
+          hud.feedText(`Auto-scrapped ${A.n} piece${A.n > 1 ? 's' : ''}: +${A.scrap.toLocaleString()} scrap${A.dust ? `, +${A.dust} Wishdust` : ''}`);
+          if (mode === 'gear') refreshMenus();
+          autoScrapSum = null;
+        }, 1500);
+        break;
+      }
       case 'itemLocked':
-        hud.feedText(`${ev.name} ${ev.locked ? 'locked: nothing can use it up now' : 'unlocked'}`); // (0.75.2)
+        // (0.75.2); (0.75.3) shown over the gear screen as well, where it is done, not only behind it
+        hud.feedText(`${ev.name} ${ev.locked ? 'locked: nothing can use it up now' : 'unlocked'}`);
+        gearToast(`<b>${esc(ev.name)}</b> ${ev.locked ? 'locked: nothing can scrap, feed, trade or drop it now' : 'unlocked'}`, ev.locked ? '#ffd24a' : '#9aa3b5');
         sfx.upgrade();
         break;
       case 'itemIsLocked':
         hud.feedText(`${ev.name} is locked. Unlock it first (Alt+click, or Lock items).`);
+        gearToast(`<b>${esc(ev.name)}</b> is locked, so it was kept. Unlock it first (Alt+click, or Lock items).`, '#ffd24a');
         sfx.denied();
         break;
       case 'giftBound':
@@ -4705,6 +4722,8 @@ function start(hot = {}) {
         sfx.upgrade();
         if (ev.level > ev.from) hud.banner(`${ev.name} · level ${ev.level}`, `${ev.slots} passive${ev.slots > 1 ? 's' : ''} open${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
         else hud.feedText(`${ev.auto ? `Auto-fed ${ev.food} to ` : ''}${ev.name}${ev.auto ? '' : ` fed${ev.eaten > 1 ? ` ${ev.eaten} Immortals` : ''}`}${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
+        if (!ev.auto) gearToast(`<b>${esc(ev.name)}</b> fed${ev.eaten > 1 ? ` ${ev.eaten} Immortals` : ''}: level ${ev.level}${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`, '#ff3d4f'); // (0.75.3) seen on the gear screen
+        refreshMenus();
         break;
       case 'autoScrap':
         hud.feedText(`${ev.count} piece${ev.count > 1 ? 's' : ''} left on the ground scrapped: +${ev.scrap} scrap${ev.dust ? `, +${ev.dust} Wishdust` : ''}`); // (0.74)
@@ -4740,6 +4759,11 @@ function start(hot = {}) {
       case 'rerolled': {
         sfx.upgrade();
         const tier = RARITIES[ev.tier];
+        if (ev.tier === 7) {
+          // (0.75.3) an Eternal-tier line, past Immortal: only on Eternal gear
+          sfx.eternal();
+          hud.banner(`Eternal roll · ${STATS[ev.key].label}`, `${ev.name}: ${ev.value.toLocaleString()}, the best 1% it can be`);
+        }
         hud.feedText(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} (${tier.name} roll)`);
         gearToast(`${ev.name}: ${STATS[ev.key].label} ${ev.from} → ${ev.value} <span style="color:${tier.color}">(${tier.name} roll${ev.pity ? ', guaranteed' : ''})</span>`);
         refreshMenus();

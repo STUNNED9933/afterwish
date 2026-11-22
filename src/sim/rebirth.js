@@ -229,6 +229,7 @@ export function rebirthSave(old, starterWeapon, heirloomSlot = null, relevel = n
     eternalFirsts: old.eternalFirsts || [], // (0.73) once a hero, ever
     eternalVet: !!old.eternalVet,
     eternalAuto: old.eternalAuto || null, // (0.75)
+    autoScrapAt: Number.isInteger(old.autoScrapAt) ? old.autoScrapAt : null, // (0.75.3)
     borrowed: old.borrowed ? { d: old.borrowed.d || null, f: old.borrowed.f || null } : undefined, // (0.70) the skills borrowed from old lives stay chosen
     rebirth: rb,
     acctRebirths: (old.acctRebirths || 0) + 1,

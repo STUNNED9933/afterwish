@@ -2,7 +2,7 @@
 import { sourcesOf, usesOf } from '../sim/sources.js';
 import { CONFIG } from '../config.js';
 import { ECHOES } from '../sim/rebirth.js';
-import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT, starPotency } from '../sim/items.js';
+import { itemTypeName, SLOTS, SLOT_NAMES, STAT_KEYS, STATS, RARITIES, EFFECTS, effectFor, itemScore, itemStats, itemName, scrapValue, formatStat, SETS, setCounts, enchantable, enchantCost, dustValue, MISC, MISC_IDS, rerollCost, reforgeChoices, rollQuality, rollTier, lineTier, topTier, statRange, isMainStat, bestUpgrades, REROLL_PITY, ROLL_TIER_AT, starPotency } from '../sim/items.js';
 import { SPECS } from '../sim/talents.js';
 import { GLOWS, GLOW_IDS } from '../sim/cosmetics.js';
 import { FRAGMENTS, SIGIL, GLASS, BOUNTY, MERCHANT } from '../sim/surprises.js';
@@ -28,7 +28,7 @@ export function itemTooltip(item, compareTo) {
   if (item.eternal) html += eternalHead(item) + eternalPassives(item); // (0.75.1) its passives first, where they are seen
   keys.forEach((k, i) => {
     const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Reforged: only this line can be reforged again">✦</span>' : '';
-    html += `<div class="tt-stat${i === 0 ? ' main' : ''}${item.eternal ? ' et' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
+    html += `<div class="tt-stat${i === 0 ? ' main' : ''}${item.eternal ? ' et' : ''}${item.eternal && lineTier(item, k) === 7 ? ' et-top' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
   });
   if (item.eternal) {
     // (0.75) every stat, at ten times a made Immortal's; the speeds have a ceiling
@@ -91,9 +91,11 @@ function eternalPassives(item) {
 /** A small mark in the colour of how well a line rolled (0.43): Common for a low roll, Immortal for the best. */
 export function rollPip(item, key) {
   const q = rollQuality(item, key);
-  const t = RARITIES[rollTier(q)];
-  const top = rollTier(q) === 6; // an Immortal roll shimmers like Immortal gear (0.43.1)
-  return `<span class="roll-pip${top ? ' imm' : ''}" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
+  const tier = rollTier(q, !!item.eternal);
+  const t = RARITIES[tier];
+  // an Immortal roll shimmers like Immortal gear (0.43.1); (0.75.3) an Eternal one, on Eternal gear, burns white and red
+  const cls = tier === 7 ? ' eter' : tier === 6 ? ' imm' : '';
+  return `<span class="roll-pip${cls}" style="--tier:${t.color}" title="${t.name} roll: ${Math.round(q * 100)}% of the way to the best this line can be"></span>`;
 }
 
 /** "Combat Power +123 (Might +200, Resolve −77)" for wearing this item, when the gear drawer can work it out. */
@@ -200,6 +202,20 @@ export class Inventory {
         if (this.world) this.render(this.world);
       });
     }
+    // (0.75.3) Auto-scrap new gear up to a rarity (Ancient at most), saved on the hero
+    const as = $('auto-scrap');
+    as.innerHTML = '<option value="">Off</option>' + RARITIES.slice(0, 6).map((r, i) => `<option value="${i}">${i ? `${r.name} and below` : 'Common only'}</option>`).join('');
+    as.addEventListener('change', () => {
+      const v = as.value === '' ? null : Number(as.value);
+      if (v != null) {
+        const n = this.world ? this.world.player.bag.filter((it) => it && !it.locked && !it.set && it.rarity <= v && itemScore(it) <= itemScore(this.world.player.equipped[it.slot])).length : 0;
+        if (n && !window.confirm(`Auto-scrap ${RARITIES[v].name}${v ? ' and below' : ''}: this also scraps the ${n} piece${n > 1 ? 's' : ''} like that in your gear box now (not upgrades, set pieces or locked ones). Go ahead?`)) {
+          if (this.world) this.render(this.world);
+          return;
+        }
+      }
+      this.send({ type: 'autoScrap', to: v });
+    });
     // One toggle per rarity from Rare up: kept items stay in the bag even when they are worse.
     const root = $('keep-rarities');
     RARITIES.forEach((r, i) => {
@@ -470,6 +486,12 @@ export class Inventory {
     const eqAll = $('btn-equip-all');
     eqAll.textContent = ups ? `Equip every upgrade (${ups})` : 'No upgrades to equip';
     eqAll.disabled = !ups || !!world.trial;
+    const asel = $('auto-scrap'); // (0.75.3)
+    if (asel) {
+      asel.value = p.autoScrapAt == null ? '' : String(p.autoScrapAt);
+      asel.disabled = !!world.trial;
+      asel.style.color = p.autoScrapAt == null ? '' : RARITIES[p.autoScrapAt].color;
+    }
     const lk = $('btn-lock-mode'); // (0.75.2)
     if (lk) {
       lk.classList.toggle('on', !!this.lockMode);
@@ -679,7 +701,8 @@ export class Inventory {
     const left = REROLL_PITY - (item.pity || 0);
     const pity = document.createElement('div');
     pity.className = 'ench-pity';
-    pity.innerHTML = `<span>Immortal-tier line guaranteed within <b>${String(left).padStart(2, '\u2007')}</b> rerolls on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Lock Immortal-tier lines (no rerolling them)</label>`;
+    const topName = item.eternal ? 'Eternal' : 'Immortal'; // (0.75.3)
+    pity.innerHTML = `<span>${topName}-tier line guaranteed within <b>${String(left).padStart(2, '\u2007')}</b> rerolls on this item</span><label><input type="checkbox"${guard ? ' checked' : ''}> Lock ${topName}-tier lines (no rerolling them)</label>`;
     pity.querySelector('input').addEventListener('change', (e) => {
       setGuardImmortal(e.target.checked);
       this.armed = null;
@@ -690,7 +713,7 @@ export class Inventory {
     Object.keys(item.stats).forEach((k) => {
       const row = document.createElement('div');
       row.className = 'ench-row';
-      const isImm = rollTier(rollQuality(item, k)) >= ROLL_TIER_AT.length;
+      const isImm = lineTier(item, k) >= topTier(item); // (0.75.3) on Eternal gear the lock is for Eternal-tier lines
       // (0.65) A guarded Immortal-tier line is locked outright: its buttons go grey the moment it lands,
       // so spam-clicking Reroll can never take it away (the old 'Sure?' could be clicked through).
       const locked = guard && isImm;
@@ -698,7 +721,7 @@ export class Inventory {
         if (!locked) this.send(msg);
       };
       const q = rollQuality(item, k);
-      const t = RARITIES[rollTier(q)];
+      const t = RARITIES[lineTier(item, k)];
       const { lo, hi } = statRange(item, k);
       row.innerHTML = `<span class="ench-stat">${rollPip(item, k)}${formatStat(k, stats[k])}${item.enchantKey === k ? ' ✦' : ''}${isMainStat(item, k) ? ' <small>(main)</small>' : ''}</span><span class="ench-q" style="color:${t.color}" title="Rolls between ${lo} and ${hi} before upgrades">${t.name} · ${item.stats[k]} of ${lo}–${hi}</span>`;
       const btns = document.createElement('span');
@@ -708,7 +731,7 @@ export class Inventory {
       b.className = 'ghost tiny';
       b.textContent = locked ? 'Locked' : 'Reroll';
       b.disabled = locked || !canRoll || q >= 1;
-      b.title = q >= 1 ? 'Already the best roll this line can have' : locked ? 'An Immortal-tier line: untick the lock above to reroll it' : `A fresh roll between ${lo} and ${hi}`;
+      b.title = q >= 1 ? 'Already the best roll this line can have' : locked ? `${topName === 'Eternal' ? 'An Eternal' : 'An Immortal'}-tier line: untick the lock above to reroll it` : `A fresh roll between ${lo} and ${hi}`;
       b.addEventListener('click', () => reroll({ type: 'enchant', slot, key: k }));
       btns.appendChild(b);
       if (p.rebirth && p.rebirth.n) {

@@ -575,11 +575,18 @@ export function relevelItem(item, ilvl) {
 }
 /** Roll quality as a rarity index, Common (0) to Immortal (6): Immortal is the very top of the range. */
 export const ROLL_TIER_AT = [0.3, 0.5, 0.68, 0.82, 0.92, 0.98];
-export function rollTier(q) {
+export function rollTier(q, eternal = false) {
   let t = 0;
   while (t < ROLL_TIER_AT.length && q >= ROLL_TIER_AT[t] - 1e-9) t++;
+  if (eternal === true && t === ROLL_TIER_AT.length && q >= ETERNAL_TIER_AT - 1e-9) t = ETERNAL_RARITY; // (0.75.3)
   return t;
 }
+/** (0.75.3) On Eternal gear a line can roll past Immortal: the best 1% of its range is an Eternal-tier line. */
+export const ETERNAL_TIER_AT = 0.99;
+/** The best tier a line on this item can reach (Immortal, or Eternal on Eternal gear). */
+export const topTier = (item) => (item && item.eternal ? ETERNAL_RARITY : ROLL_TIER_AT.length);
+/** The tier of one line of an item. */
+export const lineTier = (item, key) => rollTier(rollQuality(item, key), !!(item && item.eternal));
 /** A fresh roll for one line of an item (main or bonus), as rerolling and reforging give. */
 export function rollLine(key, item, rng, main = isMainStat(item, key)) {
   if (item.eternal) {
@@ -596,7 +603,8 @@ export const REROLL_PITY = 30;
 /** A roll for one line in its Immortal tier (the top of ROLL_TIER_AT), for the pity. */
 export function immortalLine(key, item, rng) {
   const { lo, hi } = statRange(item, key);
-  const min = Math.min(hi, Math.ceil(lo + ROLL_TIER_AT[ROLL_TIER_AT.length - 1] * (hi - lo)));
+  const at = item.eternal ? ETERNAL_TIER_AT : ROLL_TIER_AT[ROLL_TIER_AT.length - 1]; // (0.75.3) the pity on Eternal gear: an Eternal-tier line
+  const min = Math.min(hi, Math.ceil(lo + at * (hi - lo)));
   return min + Math.floor(rng() * (hi - min + 1));
 }
 /** (0.29 name) A fresh bonus-stat roll. */

@@ -160,6 +160,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Auto-scrap, Eternal-tier rolls, and notices you can see on the gear screen (0.75.3)
+
+- **Auto-scrap new gear** (under the bag): choose a rarity, from Common only up to Ancient and below, and
+  new pieces of it are broken down for scrap and Wishdust as they come (picked up, from caches, the
+  Ring), with one line adding them up. Never an upgrade for you, a set piece, a locked piece, or an
+  Immortal or better. Choosing it also clears the gear box of such pieces once (it asks first). Kept on
+  the hero, and through rebirth.
+- **Eternal-tier lines:** on Eternal gear a line can now roll past Immortal. The best 1% of its range is
+  an Eternal-tier roll, marked by a new white-and-red diamond that turns, pulses and glints, with the
+  line itself lit. Landing one gets a banner. The reroll pity on Eternal gear (30 rerolls) guarantees an
+  Eternal-tier line, and "Lock Eternal-tier lines" keeps them safe.
+- **Lock, unlock, "it is locked" and feeding notices now show over the gear screen** (as rerolls do),
+  not only in the corner behind it.
+
 ### Lock the gear you want to keep (0.75.2)
 
 - **Lock items** under the bag (or Alt+click any item, or the Lock button beside worn gear). A locked

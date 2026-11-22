@@ -5167,4 +5167,44 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'lockItem', slot: 'ring' }); w.runCommands();
   check('...worn gear can be locked too, and stays locked in the save', p.equipped.ring === a && a.locked && w.toSave().equipped.ring.locked === true);
 }
+
+// --- 0.75.3: auto-scrap below a rarity, and Eternal-tier lines on Eternal gear --------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { rollEternal } = await import('../src/sim/eternal.js');
+  const I = await import('../src/sim/items.js');
+  const w = new World({ seed: 12, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 5) });
+  const p = w.player;
+  const of = (r, ilvl = 1, extra = {}) => Object.assign(I.rollItem(() => 0.3, ilvl, { weights: I.RARITIES.map((_, i) => (i === r ? 1 : 0)), slot: 'ring' }), extra);
+  const loot = (item) => { w.loot.push({ id: w.nextId++, x: p.x, z: p.z, item, age: 0, magnet: true, owner: w.cur.pid }); for (let i = 0; i < 30; i++) w.step(CONFIG.TICK); };
+  const keepLocked = of(1, 1, { locked: true });
+  p.bag = [of(0), of(3), keepLocked, of(5, 1, { set: 'bloodbound' })];
+  w.command({ type: 'autoScrap', to: 3 }); w.runCommands();
+  check('Auto-scrap (0.75.3): choosing Epic and below clears the gear box of it once (not locked or set pieces)', p.autoScrapAt === 3 && p.bag.length === 2 && p.bag.includes(keepLocked) && p.bag.some((it) => it.set), `${p.bag.map((it) => it.rarity)}`);
+  const n0 = p.bag.length, s0 = p.scrap;
+  loot(of(2));
+  loot(of(4));
+  check('...then new gear of that rarity or lower is scrapped as it comes; better rarities still go to the bag', p.bag.length === n0 + 1 && p.bag[p.bag.length - 1].rarity === 4 && p.scrap > s0, `${p.bag.map((it) => it.rarity)}`);
+  const up = of(1, 100);
+  p.equipped.ring = null;
+  loot(up);
+  check('...never one you could use (an empty slot wears it)', p.equipped.ring === up);
+  w.command({ type: 'autoScrap', to: 6 }); w.runCommands();
+  check('...never Immortal (it turns off rather than reach it)', p.autoScrapAt === null);
+  w.command({ type: 'autoScrap', to: 5 }); w.runCommands();
+  check('...kept in the save', w.toSave().autoScrapAt === 5);
+  // Eternal-tier lines
+  const e = rollEternal(() => 0.5, 100, 'weapon', 'warrior');
+  const { lo, hi } = I.statRange(e, 'ad');
+  e.stats.ad = hi;
+  const imm = of(6, 100);
+  imm.stats[Object.keys(imm.stats)[0]] = I.statRange(imm, Object.keys(imm.stats)[0]).hi;
+  check('Eternal tier (0.75.3): on Eternal gear the best 1% of a line is an Eternal-tier roll; an Immortal tops out at Immortal', I.lineTier(e, 'ad') === 7 && I.lineTier(imm, Object.keys(imm.stats)[0]) === 6 && (e.stats.ad = Math.round(lo + 0.985 * (hi - lo)), I.lineTier(e, 'ad') === 6));
+  p.equipped.weapon = e;
+  p.gold = 1e12; p.scrap = 1e9;
+  e.stats.crit = I.statRange(e, 'crit').lo; e.pity = 0;
+  let saw = false;
+  for (let i = 0; i < 30; i++) { w.command({ type: 'enchant', slot: 'weapon', key: 'crit' }); w.runCommands(); if (I.lineTier(e, 'crit') === 7) { saw = true; break; } }
+  check('...and the reroll pity on Eternal gear lands an Eternal-tier line within 30', saw, `${e.pity}`);
+}
 process.exit(failed ? 1 : 0);

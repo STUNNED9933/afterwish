@@ -22,7 +22,7 @@ import { CONFIG } from '../config.js';
 import { makeRng } from './rng.js';
 import { ABILITIES, OLD_SELVES, ENEMIES, buildWave, enemyScale, expToNext, checkpointFor, levelBandMult } from './defs.js';
 import { migrateRebirth, rebirthBlock, starmarksFor, starmarksForGear, rebirthSave, perkRank, expMult, PERKS, ECHOES, essenceFor, rebirthGear, REBIRTH_GLOWS, REBIRTH } from './rebirth.js';
-import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, KEPT_RATE, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, starPotency, applyPotent, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
+import { relevelItem, SLOTS, rollItem, starterWeapon, itemScore, sumGearStats, scrapValue, upgradeCost, MAX_PLUS, CACHES, CASTER_CLASSES, bestUpgrades, statRange, KEPT_RATE, REROLL_PITY, immortalLine, ROLL_TIER_AT, CHEST_TIERS, starPotency, applyPotent, SETS, setCounts, rollSetPiece, enchantable, enchantCost, rollBonusStat, ENCHANT_POOL, rerollCost, rollLine, reforgeChoices, rollQuality, rollTier, dustValue, migrateItem, topTier, lineTier, rollUnique, REMNANT_UNIQUE, MAX_STARS, IMMORTAL, SPEC_IMMORTALS, EFFECTS } from './items.js';
 import { classPower } from './balance.js';
 // Deadeye's pierces (0.51): damage for the 1st to 4th enemy on the line, and what each pierce adds.
 const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin: 1.5, splinter: 0.35, splinterR: 3 };
@@ -95,7 +95,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'lockItem', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -527,6 +527,7 @@ export class World {
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
       eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
       eternalAuto: AUTO_FEED.includes(save?.eternalAuto) ? save.eternalAuto : null, // (0.75) off unless the player turns it on
+      autoScrapAt: Number.isInteger(save?.autoScrapAt) && save.autoScrapAt >= 0 && save.autoScrapAt < IMMORTAL ? save.autoScrapAt : null, // (0.75.3)
       eternalVet: save?.eternalVet === true, // (0.74) the once-only thanks for those who beat the Granted at their hardest
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
@@ -760,6 +761,7 @@ export class World {
       eternalFirsts: p.eternalFirsts,
       eternalVet: p.eternalVet,
       eternalAuto: p.eternalAuto,
+      autoScrapAt: p.autoScrapAt,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -836,6 +838,7 @@ export class World {
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'lockItem') this.lockItem(c.index, c.slot); // (0.75.2)
+      else if (c.type === 'autoScrap') this.setAutoScrap(c.to == null ? null : Number(c.to)); // (0.75.3)
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
       else if (c.type === 'enchant') this.rerollLine(c.slot, c.key, !!c.essence);
@@ -4162,7 +4165,7 @@ export class World {
     if (!p.equipped[item.slot]) {
       p.equipped[item.slot] = item;
       this.recalcStats();
-    } else if (this.autoFeed(item)) {
+    } else if (this.autoTake(item)) {
       // (0.75) fed to an Eternal
     } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
     else this.loot.push({ id: this.nextId++, x: p.x, z: p.z, item, age: 0, magnet: false, owner: this.cur.pid }); // only theirs, even in a party
@@ -4662,16 +4665,16 @@ export class World {
     item.stats[key] = rollLine(key, item, this.rng);
     item.rerolls = (item.rerolls || 0) + 1;
     // (0.62) pity: the 30th reroll without an Immortal-tier line lands one
-    const top = ROLL_TIER_AT.length;
+    const top = topTier(item); // (0.75.3) on Eternal gear the pity is for an Eternal-tier line
     let pity = false;
-    if (rollTier(rollQuality(item, key)) >= top) item.pity = 0;
+    if (lineTier(item, key) >= top) item.pity = 0;
     else if ((item.pity = (item.pity || 0) + 1) >= REROLL_PITY) {
       item.stats[key] = immortalLine(key, item, this.rng);
       item.pity = 0;
       pity = true;
     }
     this.recalcStats();
-    this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: rollTier(rollQuality(item, key)), name: item.name, pity });
+    this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: lineTier(item, key), name: item.name, pity });
   }
 
   /** Reforging (0.29 enchanting; 0.43: you choose the stat): turn one bonus stat into another, for gold and Wishdust. */
@@ -5458,7 +5461,7 @@ export class World {
         if (!p.equipped[item.slot]) {
           p.equipped[item.slot] = item;
           this.recalcStats();
-        } else if (this.autoFeed(item)) {
+        } else if (this.autoTake(item)) {
           // (0.75) fed to an Eternal
         } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
         else {
@@ -5495,7 +5498,7 @@ export class World {
         p.equipped[l.item.slot] = l.item;
         this.recalcStats();
         got++;
-      } else if (this.autoFeed(l.item)) {
+      } else if (this.autoTake(l.item)) {
         got++;
       } else if (p.bag.length < this.bagSize(p)) {
         p.bag.push(l.item);
@@ -6048,7 +6051,7 @@ export class World {
           p.equipped[l.item.slot] = l.item; // empty slot: wear it straight away
           this.recalcStats();
           this.emit('pickup', { item: l.item, equipped: true, upgrade: true });
-        } else if (this.autoFeed(l.item)) {
+        } else if (this.autoTake(l.item)) {
           // (0.75) fed to an Eternal (its own message)
         } else {
           p.bag.push(l.item);
@@ -6309,6 +6312,51 @@ export class World {
     this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length, eaten });
   }
 
+  /** (0.75.3) A piece coming to the hero: auto-scrapped, auto-fed, or neither (false: it goes to the bag). */
+  autoTake(item) {
+    return this.autoScrapNew(item) || this.autoFeed(item);
+  }
+
+  /**
+   * (0.75.3) Auto-scrap, when the player has chosen a rarity: a new piece of that rarity or lower is broken
+   * down as it comes (scrap and Wishdust, as Shift-click gives), unless it would be an upgrade on them or
+   * is a set piece. Never an Immortal or better.
+   */
+  autoScrapNew(item) {
+    const p = this.player;
+    const at = p.autoScrapAt;
+    if (at == null || this.trial || !item || item.rarity > at || item.rarity >= IMMORTAL || item.set || item.eternal || item.locked) return false;
+    if (itemScore(item) > itemScore(p.equipped[item.slot])) return false;
+    const scrap = scrapValue(item);
+    const dust = this.keptRate(dustValue(item));
+    p.scrap += scrap;
+    p.dust += dust;
+    this.emit('autoScrapNew', { scrap, dust, rarity: item.rarity });
+    return true;
+  }
+
+  /** (0.75.3) Choose the auto-scrap rarity (null: off; 0 Common up to 5 Ancient), and clear the bag of it once. */
+  setAutoScrap(to) {
+    const p = this.player;
+    p.autoScrapAt = Number.isInteger(to) && to >= 0 && to < IMMORTAL ? to : null;
+    if (p.autoScrapAt == null) return;
+    const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
+    let scrap = 0, dust = 0, count = 0;
+    p.bag = p.bag.filter((it) => {
+      if (!it || it.locked || it.set || it.rarity > p.autoScrapAt || trading.has(it.id) || itemScore(it) > itemScore(p.equipped[it.slot])) return true;
+      scrap += scrapValue(it);
+      dust += dustValue(it);
+      count++;
+      return false;
+    });
+    if (count) {
+      dust = this.keptRate(dust);
+      p.scrap += scrap;
+      p.dust += dust;
+      this.emit('discard', { count, scrap, dust });
+    }
+  }
+
   /**
    * (0.75) Auto-feed, when the player has turned it on: an Immortal that comes to them (picked up, from a
    * cache or the Ring) goes straight to an Eternal that is not full yet, the one they chose or else the
@@ -6496,7 +6544,7 @@ export class World {
       p.gold -= gold;
       p.keys -= keys;
       const item = rollItem(this.rng, Math.max(1, this.player.level), { weights: def.odds, cls: this.cls });
-      if (!this.autoFeed(item)) p.bag.push(item);
+      if (!this.autoTake(item)) p.bag.push(item);
       items.push(item);
     }
     if (items.length === 1) this.emit('cacheOpened', { item: items[0], tier });

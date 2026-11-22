@@ -519,6 +519,7 @@ export class World {
       eternals: cleanEternals(save?.eternals), // (0.71) the Eternal pieces not being worn (sim/eternal.js)
       eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
+      eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
@@ -715,6 +716,7 @@ export class World {
       eternals: p.eternals,
       eternalEssence: p.eternalEssence,
       eternalPity: p.eternalPity,
+      eternalFirsts: p.eternalFirsts,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -6206,6 +6208,13 @@ export class World {
     const p = this.player;
     const chance = this.map && ETERNAL.chance[this.map.id];
     if (!chance || !e.def.granted || !e.def.boss || this.trial) return;
+    if (!p.eternalFirsts.includes(e.type)) {
+      // (0.73) the first time each Granted falls to this hero: Eternity Essence, waiting in the Eternal
+      // panel for the first piece (and kept through every rebirth)
+      p.eternalFirsts.push(e.type);
+      p.eternalEssence += ETERNAL.firstKill;
+      this.emit('eternalDrop', { essence: ETERNAL.firstKill, first: true, boss: e.def.name, x: e.x, z: e.z });
+    }
     const r = this.streamRng('eternalDrop', (p.bossKills[e.type] || 0) * 13 + this.ticks);
     // (0.71.1) +2% for every kill without one (reset when one falls), and in a party the chance is shared
     // out among those there: each rolls their own, at a share of it.

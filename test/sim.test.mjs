@@ -4978,4 +4978,25 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...a boss a fifth of the way', bd < b0 - 0.6 && bd > b0 * 0.6, `${b0} -> ${bd}`);
   check('...and with Glacier Spin it freezes (Shatters) what it drags in, and turns shots for as long as it holds', e.frostLock > 0 && p.frostSpinT > 3);
 }
+
+// --- 0.73: the first time each Granted falls, Eternity Essence --------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { ETERNAL } = await import('../src/sim/eternal.js');
+  const { ENEMIES: EN } = await import('../src/sim/defs.js');
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const { relevelItem, starterWeapon: sw } = await import('../src/sim/items.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [6, 7, 8, 9, 10] }, rogue: { prim: [6, 7, 8, 9, 10] } };
+  const w = new World({ seed: 110, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 5), { acctLives: all, tierMax: 5 }) });
+  w.loadMap('skyroad', 'town');
+  const keep = ETERNAL.chance.skyroad;
+  ETERNAL.chance.skyroad = 1e-9; // (no piece, to see the Essence alone)
+  w.eternalDrop({ def: EN.ianitor, type: 'ianitor', x: 0, z: 0 });
+  const one = w.player.eternalEssence;
+  w.eternalDrop({ def: EN.ianitor, type: 'ianitor', x: 0, z: 0 });
+  w.eternalDrop({ def: EN.arbiter, type: 'arbiter', x: 0, z: 0 });
+  ETERNAL.chance.skyroad = keep;
+  check('First kills (0.73): each Granted\'s first fall gives Eternity Essence, once', one === ETERNAL.firstKill && w.player.eternalEssence === 2 * ETERNAL.firstKill && w.events.some((e) => e.type === 'eternalDrop' && e.first));
+  const rs = rebirthSave(w.toSave(), sw, null, relevelItem);
+  check('...kept through rebirth, and never given twice', rs.eternalEssence === 2 * ETERNAL.firstKill && rs.eternalFirsts.join() === 'ianitor,arbiter')}
 process.exit(failed ? 1 : 0);

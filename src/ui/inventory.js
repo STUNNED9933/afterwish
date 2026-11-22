@@ -457,7 +457,7 @@ export class Inventory {
       return;
     }
     box.classList.remove('hidden');
-    $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence`;
+    $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence${owned.length ? '' : ' &middot; kept until your first piece falls (a Granted, in Caelum)'}`;
     const root = $('eternal');
     root.innerHTML = '';
     const immortals = p.bag.map((it, i) => [it, i]).filter(([it]) => it && it.rarity === 6);

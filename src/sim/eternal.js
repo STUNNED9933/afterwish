@@ -24,6 +24,7 @@ export const ETERNAL = {
   plusXp: 5, // and each blacksmith +
   essenceXp: 600, // one Eternity Essence
   essencePerDrop: 3, // what a piece falls as when the hero has all five
+  firstKill: 2, // (0.73) Eternity Essence the first time each Granted falls to a hero (8 in all: a piece nearly to the top)
   pity: 0.02, // (0.71.1) +2% for each Granted beaten without one (reset when one falls)
   // The chance a Granted lets one fall, by Caelum map (the Sky Road first)
   chance: { skyroad: 0.05, answers: 0.06, wants: 0.07, zenith: 0.08 },

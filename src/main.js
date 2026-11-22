@@ -4628,7 +4628,8 @@ function start(hot = {}) {
         // (0.71) the tier above Immortal
         sfx.eternal(); // (0.72)
         hud.screenFlash(0.35);
-        if (ev.essence) hud.banner('Eternity Essence', `+${ev.essence} · every Eternal piece is yours: feed it to them (Tab)`);
+        if (ev.first) hud.banner(`${ev.boss} falls for the first time`, `+${ev.essence} Eternity Essence · food for Eternal gear, kept in the Eternal panel (Tab) through every rebirth, waiting for your first piece`);
+        else if (ev.essence) hud.banner('Eternity Essence', `+${ev.essence} · every Eternal piece is yours: feed it to them (Tab)`);
         else hud.banner(`An Eternal falls: ${ev.name}`, 'Soulbound, kept through every rebirth · wear and feed it in the Eternal panel (Tab)');
         refreshMenus();
         break;

@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A taste of Eternity (0.73)
+
+- The first time each of the Granted (Caelum's four bosses) falls to a hero, it gives **2 Eternity
+  Essence**, 8 in all: enough to take a piece most of the way to level 10. It waits in the Eternal panel
+  (Tab), kept through every rebirth, so the first Eternal piece can be fed the moment it falls.
+
 ### Damage numbers, clearer (0.72.1)
 
 - Critical hits no longer fly in from the right: they pop where they land (the pop scaled the number's

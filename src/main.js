@@ -1781,9 +1781,9 @@ function start(hot = {}) {
       b.className = 'ghost tiny';
       b.textContent = r >= pk.max ? 'Max' : `+ (${pk.cost})`;
       b.disabled = r >= pk.max || rb.marks < pk.cost;
-      b.title = `${pk.each} a rank, for ${pk.cost} Starmark${pk.cost === 1 ? '' : 's'}`;
-      b.addEventListener('click', () => {
-        applyNow({ type: 'rebirthPerk', id });
+      b.title = `${pk.each} a rank, for ${pk.cost} Starmark${pk.cost === 1 ? '' : 's'} (Shift + click: up to 10 ranks)`;
+      b.addEventListener('click', (e) => {
+        applyNow({ type: 'rebirthPerk', id, n: e.shiftKey ? 10 : 1 }); // (0.71.7)
         renderTalents();
       });
       row.appendChild(b);

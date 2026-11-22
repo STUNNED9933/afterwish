@@ -160,6 +160,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Rebirth perks, much higher caps (0.71.7)
+
+| Perk | Was | Now (at the cap) |
+| --- | --- | --- |
+| Starborn | 25 (+50%) | 100 (+200% damage and health) |
+| Deep Pockets | 3 (+12 slots) | 12 (+48 slots, 72 in all) |
+| Quick Study | 10 | 30 (+300% EXP) |
+| Fortune | 10 | 30 (+300% gold) |
+| Lucky Star | 5 | 12 (48% of drops a rarity higher) |
+| Head Start | 5 | 15 skill points |
+| Old Wishes | 6 | 12 (60% less EXP a Wishborne level) |
+
+Costs are unchanged. Shift + click a perk's button to buy up to 10 ranks at once.
+
 ### Hold the Line, harder (0.71.6)
 
 - The Bulwark's **Hold the Line** drags everything within 8 m right up to you, and now drags bosses

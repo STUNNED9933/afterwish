@@ -28,14 +28,15 @@ export const REBIRTH = {
 };
 
 /** Rebirth perks: bought with Starmarks, kept for every life after. `cost` is per rank. */
+// (0.71.7) caps raised a long way (Starborn 25 -> 100, Deep Pockets 3 -> 12, the rest 2x to 3x)
 export const PERKS = {
-  starborn: { name: 'Starborn', max: 25, cost: 2, each: '+2% damage and health', desc: (r) => `+${2 * r}% damage and health.` },
-  study: { name: 'Quick Study', max: 10, cost: 1, each: '+10% EXP', desc: (r) => `+${10 * r}% EXP.` },
-  fortune: { name: 'Fortune', max: 10, cost: 1, each: '+10% gold', desc: (r) => `+${10 * r}% gold from enemies and chests.` },
-  luck: { name: 'Lucky Star', max: 5, cost: 3, each: '+4% better drops', desc: (r) => `${4 * r}% of gear that drops comes one rarity higher (up to Ancient).` },
-  head: { name: 'Head Start', max: 5, cost: 2, each: '+1 skill point', desc: (r) => `Begin each life with ${r} extra skill point${r === 1 ? '' : 's'}.` },
-  pockets: { name: 'Deep Pockets', max: 3, cost: 3, each: '+4 bag slots', desc: (r) => `+${4 * r} bag slots.` },
-  wishes: { name: 'Old Wishes', max: 6, cost: 2, each: '5% quicker Wishborne levels', desc: (r) => `Wishborne levels need ${5 * r}% less EXP.` },
+  starborn: { name: 'Starborn', max: 100, cost: 2, each: '+2% damage and health', desc: (r) => `+${2 * r}% damage and health.` },
+  study: { name: 'Quick Study', max: 30, cost: 1, each: '+10% EXP', desc: (r) => `+${10 * r}% EXP.` },
+  fortune: { name: 'Fortune', max: 30, cost: 1, each: '+10% gold', desc: (r) => `+${10 * r}% gold from enemies and chests.` },
+  luck: { name: 'Lucky Star', max: 12, cost: 3, each: '+4% better drops', desc: (r) => `${4 * r}% of gear that drops comes one rarity higher (up to Ancient).` },
+  head: { name: 'Head Start', max: 15, cost: 2, each: '+1 skill point', desc: (r) => `Begin each life with ${r} extra skill point${r === 1 ? '' : 's'}.` },
+  pockets: { name: 'Deep Pockets', max: 12, cost: 3, each: '+4 bag slots', desc: (r) => `+${4 * r} bag slots.` },
+  wishes: { name: 'Old Wishes', max: 12, cost: 2, each: '5% quicker Wishborne levels', desc: (r) => `Wishborne levels need ${5 * r}% less EXP.` },
 };
 export const PERK_IDS = Object.keys(PERKS);
 

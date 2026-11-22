@@ -977,7 +977,7 @@ export class World {
           this.player.tomasMet = true;
           break;
         case 'rebirthPerk':
-          this.buyPerk(c.id);
+          this.buyPerk(c.id, c.n); // (0.71.7) Shift: up to 10 at once
           break;
         case 'wishSpend':
           this.wishSpend(c.stat, c.n);
@@ -5870,18 +5870,24 @@ export class World {
   }
 
   /** Buy one rank of a Rebirth perk with Starmarks. */
-  buyPerk(id) {
+  buyPerk(id, n = 1) {
     const p = this.player;
     const perk = PERKS[id];
     const rb = p.rebirth;
     if (!perk || this.trial) return;
-    const r = perkRank(rb, id);
-    if (r >= perk.max || rb.marks < perk.cost) return;
-    rb.marks -= perk.cost;
-    rb.perks[id] = r + 1;
-    if (id === 'head') p.skillPoints++; // a Head Start bought mid-life counts at once
+    const want = Math.max(1, Math.min(10, Math.floor(Number(n) || 1)));
+    let got = 0;
+    for (let i = 0; i < want; i++) {
+      const r = perkRank(rb, id);
+      if (r >= perk.max || rb.marks < perk.cost) break;
+      rb.marks -= perk.cost;
+      rb.perks[id] = r + 1;
+      if (id === 'head') p.skillPoints++; // a Head Start bought mid-life counts at once
+      got++;
+    }
+    if (!got) return;
     this.recalcStats();
-    this.emit('perkBought', { id, rank: r + 1 });
+    this.emit('perkBought', { id, rank: perkRank(rb, id), n: got });
   }
 
   /** Something for the pouch (0.32). */

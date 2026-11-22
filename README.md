@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Hold the Line, harder (0.71.6)
+
+- The Bulwark's **Hold the Line** drags everything within 8 m right up to you, and now drags bosses
+  too, a fifth of the way.
+- With **Glacier Spin** borrowed, Hold the Line also freezes (Shatters) everything it drags in at once,
+  and turns enemy shots back as yours for as long as it holds (5 seconds), like the spin does.
+
 ### Live by hitting (0.71.5)
 
 - Under **Crimson Oath** or **Blood Oath** (every class that borrows it), your **lifesteal is 25 times

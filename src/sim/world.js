@@ -60,6 +60,9 @@ const dist = (ax, az, bx, bz) => dHypot(ax - bx, az - bz);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Signed smallest difference between two angles. */
+/** (0.71.6) How far Hold the Line drags a boss: a fifth of the way. */
+const BASTION_BOSS_PULL = 0.2;
+
 /** (0.70.1) The road the Waygate opens once the Cinder has fallen: the Greenwood to Starfall Sanctum. */
 export const ROAD_MAPS = MAP_IDS.slice(MAP_IDS.indexOf('greenwood'), MAP_IDS.indexOf('sanctum') + 1);
 
@@ -2389,13 +2392,21 @@ export class World {
           e.tauntPid = this.cur.pid;
           e.tauntT = def.taunt;
           e.tauntVuln = m.tauntVuln || 0;
+          // (0.71.6) a harder drag: everything right up to you (a boss a fifth of the way)
+          const gap = Math.max(0, de - (e.radius + p.radius + 0.4)) * (e.def.boss ? BASTION_BOSS_PULL : 1.1);
+          const de1 = Math.max(de, 0.01);
+          e.kx = ((p.x - e.x) / de1) * gap * 9;
+          e.kz = ((p.z - e.z) / de1) * gap * 9;
           if (!e.def.boss) {
-            const gap = Math.max(0, de - (e.radius + p.radius + 0.4));
-            const de1 = Math.max(de, 0.01);
-            e.kx = ((p.x - e.x) / de1) * gap * 9;
-            e.kz = ((p.z - e.z) / de1) * gap * 9;
             if (!e.def.heavy) this.stun(e, def.stun);
           } else this.addPosture(e, 1, false);
+          if (m.wFrostSpin > 0 && !e.dead) this.addFrost(e, m.frostMax || 6); // (0.71.6) Glacier Spin: frozen solid at once
+        }
+        if (m.wFrostSpin > 0) {
+          // (0.71.6) Glacier Spin: Hold the Line is a Rimewall round you too, for as long as it holds
+          p.frostSpinT = Math.max(p.frostSpinT || 0, def.duration + (m.rDuration || 0));
+          p.frostSpinR = Math.max(p.frostSpinR || 0, 4.8);
+          this.emit('frostShatter', { x: p.x, z: p.z, radius });
         }
         p.bastionT = def.duration + (m.rDuration || 0);
         this.emit('cast', { slot, fx: 'bastion', x: p.x, z: p.z, radius });

@@ -4953,4 +4953,29 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   g.step(CONFIG.TICK);
   check('...and while it spins, shots that come near fly back as yours', shot.owner === 'player' && shot.vx > 0);
 }
+
+// --- 0.71.6: Hold the Line drags harder; with Glacier Spin it freezes and turns shots ---------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+  const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  const w = new World({ seed: 109, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { spec: 'bulwark', talents: {}, acctLives: all, borrowed: { d: 'frostbinder' } }) });
+  w.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+  const p = w.player;
+  const e = w.enemies.find((o) => !o.dead && o.state !== 'spawn' && !o.def.boss);
+  e.hp = e.maxHp = 1e8;
+  p.x = p.px = e.x + 6.5; p.z = p.pz = e.z;
+  const boss = Object.assign({}, e, { id: w.nextId++, def: Object.assign({}, e.def, { boss: true }), x: p.x - 7, z: p.z + 0.01, px: p.x - 7, pz: p.z, kx: 0, kz: 0, hp: 1e9, maxHp: 1e9, frostStacks: 0, frostT: 0 });
+  w.enemies.push(boss);
+  const b0 = dist(boss.x, boss.z, p.x, p.z);
+  p.cd.r = 0;
+  w.command({ type: 'cast', slot: 'r', x: p.x, z: p.z }); w.runCommands();
+  for (let i = 0; i < 40; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
+  const ed = dist(e.x, e.z, p.x, p.z) - e.radius - p.radius;
+  const bd = dist(boss.x, boss.z, p.x, p.z);
+  check('Hold the Line (0.71.6): a normal enemy is dragged right up to you', ed < 1.5, `${ed}`);
+  check('...a boss a fifth of the way', bd < b0 - 0.6 && bd > b0 * 0.6, `${b0} -> ${bd}`);
+  check('...and with Glacier Spin it freezes (Shatters) what it drags in, and turns shots for as long as it holds', e.frostLock > 0 && p.frostSpinT > 3);
+}
 process.exit(failed ? 1 : 0);

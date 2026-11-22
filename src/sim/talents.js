@@ -65,7 +65,7 @@ export const SPECS = {
       r: {
         key: 'R', name: 'Hold the Line', type: 'bastion', icon: 'bastion', unlock: 6, cd: 45, radius: 8, duration: 5, dr: 0.35, taunt: 4, stun: 0.75,
         dmg: (s, lvl) => 1.4 * s.ad + 30 + 8 * lvl,
-        desc: 'Slam your shield down: everything within 8 m is dragged to you, stunned for a moment (not bosses) and must fight you for 4 seconds. For 5 seconds you and every friend within 8 m of you take 35% less damage.',
+        desc: 'Slam your shield down: everything within 8 m is dragged right up to you (a boss a fifth of the way), stunned for a moment (not bosses) and must fight you for 4 seconds. For 5 seconds you and every friend within 8 m of you take 35% less damage.',
       },
     },
     talents: [

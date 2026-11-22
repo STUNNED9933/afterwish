@@ -12,12 +12,14 @@
 import { RARITIES, ETERNAL_RARITY, statValue, WEAPONS, SLOTS } from './items.js';
 
 export const ETERNAL = {
-  maxLevel: 10,
-  slotsAt: [1, 4, 7, 10], // the levels that open a passive slot (one at level 1)
-  statPerLevel: 0.04, // +4% to every stat a level, on top of what it rolled
-  potencyPerLevel: 0.05, // and +5% to its passives
-  /** Experience from one level to the next. 4,500 from 1 to 10. */
-  xpFor: (level) => 100 * level,
+  // (0.73.1) a long road, not an afternoon: 30 levels on a rising curve (about 56,000 experience, some
+  // 560 Immortals, to the top), its five passive slots spread along it
+  maxLevel: 30,
+  slotsAt: [1, 6, 12, 20, 30], // the levels that open a passive slot (one at level 1)
+  statPerLevel: 0.02, // +2% to every stat a level, on top of what it rolled (+58% at 30)
+  potencyPerLevel: 0.025, // and +2.5% to its passives (+72.5% at 30)
+  /** Experience from one level to the next: 54 at 1, 750 at 10, 4,520 at 29. */
+  xpFor: (level) => 50 * level + 4 * level * level,
   // What Feeding gives
   immortalXp: 100, // an Immortal...
   starXp: 25, // ...and a little more for each of its stars
@@ -73,8 +75,14 @@ export function passiveText(p, item, html = false) {
   return P.desc.replace('{v}', html ? `<b class="pot">${num}</b>` : num);
 }
 
-/** How many passive slots a piece has open at its level. */
-export const slotsOpen = (item) => ETERNAL.slotsAt.filter((l) => (item.level || 1) >= l).length;
+/** How many passive slots a piece has open at its level (a piece from before 0.73.1 keeps any extra it had). */
+export const slotsOpen = (item) => Math.max(ETERNAL.slotsAt.filter((l) => (item.level || 1) >= l).length, (item.passives || []).length);
+
+/** (0.73.1) The level that opens this piece's next passive slot, or null. */
+export function nextSlotAt(item) {
+  const have = (item.passives || []).length;
+  return ETERNAL.slotsAt.find((l, i) => i >= have && l > (item.level || 1)) ?? null;
+}
 
 /** Experience still to go to the last level. */
 export function xpToMax(item) {
@@ -99,7 +107,8 @@ function newPassive(item, rng) {
 /** Fill any passive slot its level has opened. */
 export function fillSlots(item, rng) {
   item.passives = item.passives || [];
-  while (item.passives.length < slotsOpen(item)) item.passives.push(newPassive(item, rng));
+  const open = ETERNAL.slotsAt.filter((l) => (item.level || 1) >= l).length;
+  while (item.passives.length < open && item.passives.length < ETERNAL_KEYS.length) item.passives.push(newPassive(item, rng));
 }
 
 /**

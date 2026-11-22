@@ -10,7 +10,7 @@ import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 import { itemLore } from './lore.js';
 import { emberOf, DEEP, DEPTH_IDS } from '../sim/endgame.js';
-import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue } from '../sim/eternal.js';
+import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue, nextSlotAt } from '../sim/eternal.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
@@ -78,7 +78,7 @@ function eternalHead(item) {
 function eternalPassives(item) {
   let html = '<div class="tt-effect eternal">';
   for (const ps of item.passives || []) html += `<div><b>${ETERNAL_PASSIVES[ps.key] ? ETERNAL_PASSIVES[ps.key].name : ps.key}</b> ${passiveText(ps, item, true)}</div>`;
-  const next = ETERNAL.slotsAt.find((l) => l > (item.level || 1));
+  const next = nextSlotAt(item);
   if (next) html += `<div class="et-locked">Another passive at level ${next}.</div>`;
   return html + '</div>';
 }

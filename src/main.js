@@ -2359,6 +2359,11 @@ function start(hot = {}) {
       }
     } else if (msg.t === 'chat') {
       chatLine(msg.from ? `${msg.from}: ${msg.text}` : msg.text, !msg.from);
+    } else if (msg.t === 'announce') {
+      // (0.73.1) for the whole server: an Eternal found
+      chatLine(`✧ ${msg.text}`, true);
+      hud.banner('✧ Server', msg.text);
+      sfx.eternal();
     } else if (msg.t === 'inspect') {
       showInspect(msg); // (0.62)
     } else if (msg.t === 'roster') {

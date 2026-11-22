@@ -602,7 +602,7 @@ export const PLUS_BONUS = 0.08; // each +1 adds 8% to every stat on the item
 export function itemStats(item) {
   const plus = item.plus || 0;
   const stars = item.stars || 0;
-  const grown = item.eternal ? 1 + 0.04 * ((item.level || 1) - 1) : 1; // (0.71) an Eternal grows with its level (ETERNAL.statPerLevel)
+  const grown = item.eternal ? 1 + 0.02 * ((item.level || 1) - 1) : 1; // (0.71) an Eternal grows with its level (ETERNAL.statPerLevel, 0.73.1)
   if (!plus && !stars && grown === 1) return item.stats;
   const out = {};
   for (const k in item.stats) out[k] = Math.round(item.stats[k] * (1 + PLUS_BONUS * plus) * (1 + STAR_BONUS * stars) * grown);

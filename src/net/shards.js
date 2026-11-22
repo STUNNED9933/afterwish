@@ -414,6 +414,15 @@ export class ServerWorld {
     for (const o of this.players.values()) if (!o.alone) this.send(o.conn, { t: 'chat', text });
   }
 
+  /** (0.73.1) Something everyone on the server should see: a banner, and a line in the chat. */
+  announceAll(text, finder) {
+    for (const o of this.players.values()) {
+      if (o.alone) continue;
+      // the finder has their own banner already: a line in the chat is enough for them
+      this.send(o.conn, o.pid === finder ? { t: 'chat', text: `✧ ${text}` } : { t: 'announce', text });
+    }
+  }
+
   partyInvite(pl, pid) {
     const o = this.players.get(pid);
     if (!o || o === pl || o.alone || pl.alone || (pl.party && pl.party === o.party)) return;
@@ -501,6 +510,10 @@ export class ServerWorld {
         const pl = this.players.get(h.pid);
         if (!pl) continue;
         for (const ev of events) {
+          if (ev.type === 'eternalDrop' && ev.slot && ev.hero === h.pid && !pl.alone) {
+            // (0.73.1) an Eternal piece: told to the whole server
+            this.announceAll(`${pl.name} has found ${ev.name}, an Eternal piece!`, h.pid);
+          }
           if (ev.type === 'mapChange' || !eventFor(ev, h.pid)) continue;
           // a hero coming or going in Haven is someone passing through, not a party member
           if ((ev.type === 'partyJoin' || ev.type === 'partyLeave') && this.isHaven(copy.key)) continue;

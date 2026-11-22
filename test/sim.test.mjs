@@ -4806,17 +4806,18 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const n0 = p.bag.filter((b) => b.rarity === 6).length;
   for (let i = 0; i < 6; i++) { const at = p.bag.findIndex((b) => b.rarity === 6); w.command({ type: 'feedEternal', slot: 'helm', index: at }); w.runCommands(); }
   check('Feeding: Immortals from the gear box are used up and give experience (600: level 1 to 4)', it.level === 4 && p.bag.filter((b) => b.rarity === 6).length === n0 - 6, `${it.level} ${it.xp}`);
-  check('...level 4 opens a second passive, each a different one', it.passives.length === 2 && it.passives[0].key !== it.passives[1].key);
-  p.eternalEssence = 100;
+  check('...(0.73.1) a second passive waits for level 6', it.passives.length === 1);
+  p.eternalEssence = 200;
   w.command({ type: 'feedEternal', slot: 'helm' }); w.runCommands();
-  check('...Essence takes it to the last level, using only what it needs', it.level === ETERNAL.maxLevel && slotsOpen(it) === 4 && it.passives.length === 4 && Math.abs(p.eternalEssence - (100 - (4500 - 600) / ETERNAL.essenceXp)) < 1e-6, `${it.level} ${p.eternalEssence}`);
+  const total = Array.from({ length: ETERNAL.maxLevel - 1 }, (_, i) => ETERNAL.xpFor(i + 1)).reduce((a, b) => a + b, 0);
+  check('...Essence takes it to the last level (30, about 56,000 in all), five passives, using only what it needs', it.level === ETERNAL.maxLevel && slotsOpen(it) === 5 && it.passives.length === 5 && new Set(it.passives.map((q) => q.key)).size === 5 && total > 50000 && Math.abs(p.eternalEssence - (200 - (total - 600) / ETERNAL.essenceXp)) < 1e-6, `${it.level} ${p.eternalEssence} ${total}`);
   const t = rollEternal(() => 0.3, 100, 'boots', 'rogue');
-  const over = feed(t, 5000, () => 0.4);
+  const over = feed(t, total + 500, () => 0.4);
   check('...and what goes past the last level comes back (as Essence)', t.level === ETERNAL.maxLevel && Math.abs(over - 500) < 1e-6, `${over}`);
   // its passives
   const target = { def: { boss: true }, x: 0, z: 0 };
   const m0 = eternalMods({ helm: it });
-  check('Eternal passives: about a boss, and they add up across worn pieces', Object.keys(m0).length === 4 && Object.keys(eternalMods({ helm: it, boots: t })).length >= 4);
+  check('Eternal passives: about a boss, and they add up across worn pieces', Object.keys(m0).length === 5 && Object.keys(eternalMods({ helm: it, boots: t })).length >= 5);
   const dw = mk();
   dw.loadMap('greenwood', 'town');
   for (let i = 0; i < 150; i++) dw.step(CONFIG.TICK);
@@ -4834,7 +4835,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const back = new World({ seed: 101, mode: 'explore', cls: 'rogue', save: Object.assign(sv, { acctLives: all }) });
   check('Eternal: kept in the save, worn and stowed', back.player.equipped.helm.eternal && back.player.equipped.helm.level === ETERNAL.maxLevel && ['weapon', 'chest', 'boots', 'ring'].every((s) => back.player.eternals[s]));
   const rs = rebirthSave(sv, sw, null, relevelItem);
-  check('...a rebirth keeps every piece, worn where it was, back at level 1, its own level and passives kept', rs.equipped.helm && rs.equipped.helm.eternal && rs.equipped.helm.ilvl === 1 && rs.equipped.helm.level === ETERNAL.maxLevel && rs.equipped.helm.passives.length === 4 && ['weapon', 'chest', 'boots', 'ring'].every((s) => rs.eternals[s] && rs.eternals[s].ilvl === 1));
+  check('...a rebirth keeps every piece, worn where it was, back at level 1, its own level and passives kept', rs.equipped.helm && rs.equipped.helm.eternal && rs.equipped.helm.ilvl === 1 && rs.equipped.helm.level === ETERNAL.maxLevel && rs.equipped.helm.passives.length === 5 && ['weapon', 'chest', 'boots', 'ring'].every((s) => rs.eternals[s] && rs.eternals[s].ilvl === 1));
   const fresh = new World({ seed: 102, mode: 'explore', cls: 'rogue', save: rs });
   fresh.recalcStats();
   check('...and it grows with you again', fresh.player.equipped.helm.ilvl === 1 && (fresh.player.level = 50, fresh.recalcStats(), fresh.player.equipped.helm.ilvl === 50));
@@ -4999,4 +5000,14 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('First kills (0.73): each Granted\'s first fall gives Eternity Essence, once', one === ETERNAL.firstKill && w.player.eternalEssence === 2 * ETERNAL.firstKill && w.events.some((e) => e.type === 'eternalDrop' && e.first));
   const rs = rebirthSave(w.toSave(), sw, null, relevelItem);
   check('...kept through rebirth, and never given twice', rs.eternalEssence === 2 * ETERNAL.firstKill && rs.eternalFirsts.join() === 'ianitor,arbiter')}
+
+// --- 0.73.1: Eternal on a longer road, and the whole server hears of one ----------------------------
+{
+  const { ETERNAL, rollEternal, feed, nextSlotAt } = await import('../src/sim/eternal.js');
+  const old = rollEternal(() => 0.2, 100, 'ring', 'mage');
+  old.level = 10; old.passives = [{ key: 'colossus', q: 0.5 }, { key: 'sunder', q: 0.5 }, { key: 'focus', q: 0.5 }, { key: 'titanfall', q: 0.5 }];
+  feed(old, 1, () => 0.3);
+  check('Eternal (0.73.1): a level-10 piece from before keeps its four passives; its fifth waits for level 30', old.passives.length === 4 && nextSlotAt(old) === 30);
+  const at10 = Array.from({ length: 9 }, (_, i) => ETERNAL.xpFor(i + 1)).reduce((a, b) => a + b, 0);
+  check('...level 10 is a third of the way, and the rest is the long part', ETERNAL.maxLevel === 30 && at10 < 4000 && Array.from({ length: 29 }, (_, i) => ETERNAL.xpFor(i + 1)).reduce((a, b) => a + b, 0) > 12 * at10)}
 process.exit(failed ? 1 : 0);

@@ -423,5 +423,20 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('...and gets its head start and Animus from them', out.ember === 40 && Math.abs(out.animus - 0.15) < 1e-9, `${out.ember} ${out.animus}`);
 }
 
+// (0.73.1) An Eternal found is told to the whole server
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), close: () => {}, passcode: 'stun', seed: 31 });
+  const a = { name: 'a' }, b = { name: 'b' };
+  box.set(a, []); box.set(b, []);
+  sv.message(a, hello('Finder', 'mage'));
+  sv.message(b, hello('Other', 'rogue'));
+  const pid = box.get(a).find((m) => m.t === 'welcome').pid;
+  const w = sv.players.get(pid).copy.world;
+  w.as(w.heroByPid(pid), () => w.emit('eternalDrop', { slot: 'ring', name: 'The Last Ring', x: 0, z: 0 }));
+  sv.tick();
+  check('Server (0.73.1): an Eternal found is announced to everyone (a banner for others, a chat line for the finder)', box.get(b).some((m) => m.t === 'announce' && /Finder has found The Last Ring/.test(m.text)) && box.get(a).some((m) => m.t === 'chat' && /The Last Ring/.test(m.text)) && !box.get(a).some((m) => m.t === 'announce'));
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

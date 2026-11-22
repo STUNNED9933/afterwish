@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Eternal: a longer road, and the whole server hears (0.73.1)
+
+- **An Eternal piece found is announced to the whole server**: a banner and a chat line for everyone
+  (the finder has their own banner, and the chat line).
+- **Eternal gear takes far longer to max:** 30 levels instead of 10, on a rising curve (about 56,000
+  experience, some 560 Immortals, to the top; level 10 is reached about as soon as before). Each level
+  adds +2% to its stats and +2.5% to its passives (+58% and +72.5% at 30), and its five passive slots open
+  at levels 1, 6, 12, 20 and 30. A piece from before keeps the passives it already has.
+
 ### A taste of Eternity (0.73)
 
 - The first time each of the Granted (Caelum's four bosses) falls to a hero, it gives **2 Eternity

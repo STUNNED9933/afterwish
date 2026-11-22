@@ -2421,6 +2421,13 @@ export class World {
         const c = aimPoint();
         this.pullStun(c.x, c.z, grav, 1.5, 0, slot, m.gravityVuln || 0); // Gravity Anchor: drawn in first, then the spell lands
       }
+      if (m.wFrostSpin > 0 && slot === 'w') {
+        // (0.71.4) Glacier Spin: a Rimewall turned round you for as long as you spin
+        const spinFor = def.type === 'spin' ? def.duration + (m.wSpinTime || 0) : 0;
+        p.frostSpinT = Math.max(p.frostSpinT || 0, spinFor + m.wFrostSpin);
+        p.frostSpinR = Math.max(3.2, (def.radius || 4) * reach + 0.6);
+        this.emit('frostShatter', { x: p.x, z: p.z, radius: p.frostSpinR });
+      }
       if (m.wTornado > 0 && slot === 'w') {
         const tr = 3.2, td = p.stats.ad * (m.wTornadoDmg || 0.25);
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: p.x, z: p.z, dir: 0, radius: tr, t: 0, dur: m.wTornado, parryable: false };
@@ -2678,17 +2685,13 @@ export class World {
     if (p.surgeT > 0 && (p.surgeT -= dt) <= 0) p.surgeN = 0;
     if (p.lockImmT > 0) p.lockImmT -= dt;
     if (p.merchantCd > 0) p.merchantCd -= dt;
+    if (p.frostSpinT > 0) p.frostSpinT -= dt; // (0.71.4) Glacier Spin
     if (p.dead) p.oathOn = p.frenzyOn = false; // (0.71.2) the toggles go off when you fall
     if (p.oathT > 0) p.oathT -= dt;
-    if (p.oathOn || p.oathT > 0) {
-      // (0.70) Blood Oath: held at 40% health while it is on
-      if (p.hp > p.stats.maxHp * OATH.hpTo) p.hp = p.stats.maxHp * OATH.hpTo;
-    }
-    if (p.frenzyOn && this.kit.r && this.kit.r.type === 'frenzy') {
-      // (0.71.2) Crimson Oath, on: held at its 40% too
-      const cap = p.stats.maxHp * this.kit.r.hpTo;
-      if (p.hp > cap) p.hp = cap;
-    } else if (p.frenzyOn) p.frenzyOn = false; // no longer a Berserker (a respec)
+    // (0.71.4) While an Oath is on you are HELD at 40%: never above it, and anything short of a killing
+    // blow is made good at once (a hit for more than 40% of your health still kills).
+    if (p.frenzyOn && !(this.kit.r && this.kit.r.type === 'frenzy')) p.frenzyOn = false; // no longer a Berserker (a respec)
+    if (!p.dead && (p.oathOn || p.oathT > 0 || p.frenzyOn)) p.hp = p.stats.maxHp * (p.frenzyOn ? this.kit.r.hpTo : OATH.hpTo);
     if (p.lockT > 0) {
       // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
       const L = CONFIG.MIND_LOCK;
@@ -7245,6 +7248,7 @@ export class World {
       if (bm.hitBurn > 0 && !(e.hitBurnT > this.time)) { e.hitBurnT = this.time + 0.4; this.addBurn(e, bm.hitBurn); }
       if (bm.hitFrost > 0 && !(e.hitFrostT > this.time) && !e.dead) { e.hitFrostT = this.time + 0.5; this.addFrost(e, bm.hitFrost); }
       if (bm.qBurn > 0 && opts.source === 'q' && this.kit.q && this.kit.q.type !== 'bolt' && !e.dead) this.addBurn(e, bm.qBurn);
+      if (bm.wFrost > 0 && opts.source === 'w' && !e.dead && !(e.wFrostT > this.time)) { e.wFrostT = this.time + 0.2; this.addFrost(e, bm.wFrost); } // (0.71.4) Glacier Spin
       if (bm.wBurn > 0 && opts.source === 'w' && !e.dead && !(e.wBurnT > this.time)) { e.wBurnT = this.time + 0.25; this.addBurn(e, bm.wBurn); } // Ember Brand on Whirlwind
       const ol = this.oathOf();
       if (ol && ol.leech && !opts.basic && !p.dead) this.healPlayer(dmg * ol.leech, false);
@@ -7835,6 +7839,28 @@ export class World {
         pr.dead = true;
         if (pr.pool && pr.owner === 'enemy') this.addPool(this.enemyById(pr.srcId), pr.x, pr.z, pr.pool);
         continue;
+      }
+      if (pr.owner === 'enemy') {
+        // (0.71.4) Glacier Spin: a Warrior spinning in ice sends shots back, outward, as their own
+        const sh = this.heroes.find((x) => x.player.frostSpinT > 0 && !x.player.dead && dist(pr.x, pr.z, x.player.x, x.player.z) <= (x.player.frostSpinR || 3.5) + pr.radius);
+        if (sh) {
+          const hp = sh.player;
+          const oa = dAtan2(pr.z - hp.z, pr.x - hp.x);
+          const sp = Math.max(pr.speed || 12, dHypot(pr.vx, pr.vz)) * 1.5;
+          pr.vx = dCos(oa) * sp;
+          pr.vz = dSin(oa) * sp;
+          pr.x += pr.vx * d;
+          pr.z += pr.vz * d;
+          pr.owner = 'player';
+          pr.reflected = true;
+          pr.walled = true;
+          pr.pid = sh.pid;
+          pr.life = 3;
+          pr.seek = 0;
+          pr.dmg = pr.dmg * 2.5 + hp.stats.ad;
+          this.emit('reflect', { x: pr.x, z: pr.z });
+          continue;
+        }
       }
       if (pr.owner === 'enemy' && this.walls.length) {
         const wl = this.walls.find((x) => this.wallDist(x, pr.x, pr.z) <= pr.radius);

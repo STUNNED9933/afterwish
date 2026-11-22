@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Held at 40%, and a Warrior's Glacier Spin (0.71.4)
+
+- While **Crimson Oath** or **Blood Oath** is on you are **held** at 40% health: never above it, and
+  anything short of a killing blow is made good at once (1 health a moment ago, 40% now). The risk is
+  a single hit for more than 40%: that still kills.
+- A Warrior's Frostbinder borrowing is now **Glacier Spin** (a passive, was Glacier Wall): while you
+  spin, and for 1.5 seconds after any Whirlwind, every enemy shot that comes near flies back, faster,
+  as yours, and every Whirlwind hit gives 2 Hoarfrost, freezing what fills up, as a Frostbinder does.
+
 ### The road's errands, done for you (0.71.3)
 
 - Once the road is open (any class has beaten the Cinder), the story's "go there" steps on it are done

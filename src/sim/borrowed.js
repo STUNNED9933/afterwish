@@ -28,7 +28,7 @@ export const OATH = {
 };
 const bloodOath = {
   name: 'Blood Oath', type: 'bloodoath', icon: 'frenzy', unlock: 1, cd: OATH.cd, toggleCd: OATH.cd, toggle: true, duration: OATH.duration, hpTo: OATH.hpTo, dmg: () => 0,
-  desc: `A toggle. Turn it on to drain yourself to ${OATH.hpTo * 100}% health and stay there (nothing heals you above it) until you turn it off: you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
+  desc: `A toggle. Turn it on to drain yourself to ${OATH.hpTo * 100}% health and be held there until you turn it off (nothing heals you above it, and anything short of a killing blow is made good at once): you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
 };
 
 /**
@@ -62,7 +62,7 @@ export const BORROWED = {
     assassin: { name: 'Shadow Lunge', type: 'strike', icon: 'strike', unlock: 1, cd: 8, range: 12, gap: true, behind: 0.5, execute: 0.3, dmg: ad(4.0, 50, 12), desc: 'Lunge behind an enemy up to 12 m away and strike: 50% more from behind, and double if it is below 30% health.' },
     shadowdancer: { name: 'Mirror Blade', passive: true, icon: 'kunai', apply: (m) => { m.echoQ = Math.max(m.echoQ || 0, 0.75); }, desc: 'A shade at your back swings your Cleave again a moment after you do, for 75%.' },
     pyromancer: { name: 'Ember Brand', passive: true, icon: 'smoulder', apply: (m) => { lendBurn(m); m.qBurn = Math.max(m.qBurn || 0, 2); m.wBurn = Math.max(m.wBurn || 0, 2); m.wBurning = Math.max(m.wBurning || 0, 0.4); }, desc: 'Cleave and Whirlwind set heavy burns on everything they hit, and Whirlwind deals 40% more to burning enemies.' },
-    frostbinder: { name: 'Glacier Wall', type: 'wall', icon: 'wall', unlock: 1, cd: 13, range: 10, length: 12, duration: 6, stun: 1.5, rise: 0.8, apply: lendFrost, dmg: ad(3.4, 40, 10), desc: 'Slam up a 12 m wall of ice for 6 seconds. Enemy shots that touch it fly back as yours. It rises hard and, when it shatters, hits and freezes everything beside it for 1.5 s.' },
+    frostbinder: { name: 'Glacier Spin', passive: true, icon: 'wall', apply: (m) => { lendFrost(m); m.wFrostSpin = Math.max(m.wFrostSpin || 0, 1.5); m.wFrost = Math.max(m.wFrost || 0, 2); }, desc: 'Your Whirlwind is a Rimewall turned round you: while you spin (and for 1.5 s after a Whirlwind), every enemy shot that comes near flies back, faster, as yours, and every Whirlwind hit gives 2 Hoarfrost, freezing what fills up, as a Frostbinder does.' }, // (0.71.4) was Glacier Wall
   },
   rogue: {
     sharpshooter: { name: 'Long Kunai', type: 'kunai', icon: 'kunai', unlock: 1, cd: 6, range: 26, speed: 46, width: 1.2, seek: 10, mark: 0.25, dmg: ad(3.4, 40, 10), desc: 'Throw a starglass kunai a long way (26 m). What it hits is Marked: it takes 25% more damage from everyone for 5 seconds.' },

@@ -4724,7 +4724,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const { BORROWED } = await import('../src/sim/borrowed.js');
   const { SPECS } = await import('../src/sim/talents.js');
   const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
-  check('Borrowed (0.70.5): every Frostbinder borrowing is its reflecting wall', ['archer', 'warrior', 'rogue'].every((c) => BORROWED[c].frostbinder.type === 'wall'));
+  check('Borrowed (0.70.5): every Frostbinder borrowing reflects (a wall; a Warrior\'s spin, 0.71.4)', ['archer', 'rogue'].every((c) => BORROWED[c].frostbinder.type === 'wall') && BORROWED.warrior.frostbinder.name === 'Glacier Spin');
   check('...the Fire Bomb bursts wider than Cinderfall and leaves the ground burning', BORROWED.rogue.pyromancer.radius > SPECS.pyromancer.kit.r.radius && BORROWED.rogue.pyromancer.burnZone);
   const w = new World({ seed: 97, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: all, borrowed: { d: 'pyromancer' } }) });
   const d1 = w.abilityDamage('d');
@@ -4910,5 +4910,38 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const n = mk(null);
   n.acceptQuest('w');
   check('...not before the road is open', n.questState('w') === 'active');
+}
+
+// --- 0.71.4: held at 40% under an Oath; a Warrior's Glacier Spin ---------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  const w = new World({ seed: 107, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { spec: 'berserker', talents: {}, acctLives: all }) });
+  w.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+  const p = w.player;
+  p.cd.r = 0;
+  w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands(); w.step(CONFIG.TICK);
+  p.hp = 1;
+  w.step(CONFIG.TICK);
+  check('Crimson Oath (0.71.4): held at 40%: 1 health a moment ago, 40% now', Math.abs(p.hp - p.stats.maxHp * 0.4) < 1);
+  p.bloodSaveT = 999; // (its own once-a-while save aside)
+  w.takeDamage(p.stats.maxHp * 3, {}); // (after armour, well over 40%)
+  check('...a hit for more than 40% still kills', p.dead || p.hp <= 0);
+  // Glacier Spin
+  const g = new World({ seed: 108, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { spec: 'bulwark', talents: {}, acctLives: all, borrowed: { d: 'frostbinder' } }) });
+  g.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) g.step(CONFIG.TICK);
+  const q = g.player;
+  const e = g.enemies.find((o) => !o.dead && o.state !== 'spawn');
+  e.hp = e.maxHp = 1e8;
+  q.x = q.px = e.x + 2; q.z = q.pz = e.z;
+  q.cd.w = 0;
+  g.command({ type: 'cast', slot: 'w', x: e.x, z: e.z }); g.runCommands(); g.step(CONFIG.TICK);
+  check('Glacier Spin (0.71.4): Whirlwind hits give Hoarfrost', (e.frostStacks || 0) >= 2 && q.frostSpinT > 0, `${e.frostStacks} ${q.frostSpinT}`);
+  const shot = { id: g.nextId++, owner: 'enemy', kind: 'bolt', x: q.x + 2.5, z: q.z, px: q.x + 3, pz: q.z, vx: -10, vz: 0, speed: 10, radius: 0.4, dmg: 50, parryable: false, reflected: false, life: 3, dead: false, srcId: e.id };
+  g.projectiles.push(shot);
+  g.step(CONFIG.TICK);
+  check('...and while it spins, shots that come near fly back as yours', shot.owner === 'player' && shot.vx > 0);
 }
 process.exit(failed ? 1 : 0);

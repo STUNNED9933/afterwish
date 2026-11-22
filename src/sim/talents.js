@@ -41,7 +41,7 @@ export const SPECS = {
       r: {
         key: 'R', name: 'Crimson Oath', type: 'frenzy', icon: 'frenzy', unlock: 6, cd: 3, toggleCd: 3, toggle: true, radius: 4.5, duration: 6, hpTo: 0.4,
         dmg: (s, lvl) => 1.4 * s.ad + 25 + 7 * lvl,
-        desc: 'A toggle. Turn it on to cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. Until you turn it off, nothing heals you above 40%, your lifesteal is doubled, Red Embrace rises to 50% more up close, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
+        desc: 'A toggle. Turn it on to cut yourself open: drop to 40% health at once (if you are above it) with a roar that damages everything near you. Until you turn it off you are held at 40%: nothing heals you above it, and anything short of a killing blow is made good at once (a hit for more than 40% still kills). Your lifesteal is doubled, Red Embrace rises to 50% more up close, and Crimson Reach burns brighter: crescents fly 9.5 m and cut wider (80% to those behind), Cleave reaches 75% further and 40% wider, and Whirlwind spins 75% wider.',
       },
     },
     talents: [

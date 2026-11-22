@@ -32,7 +32,7 @@ import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
-import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal } from './eternal.js';
+import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal, OTHER_SHARE } from './eternal.js';
 const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -7297,41 +7297,39 @@ export class World {
         if (e.def.boss || e.rare || e.remnant) extra = Math.min(extra, p.stats.ad * H.cap);
         dmg += extra;
       }
-      const ev = im.eternal; // (0.71) Eternal passives: bringing a boss down
+      const ev = im.eternal; // (0.71) Eternal passives; (0.75.1) all damage, full on a boss, OTHER_SHARE on the rest
       if (ev) {
         const boss = !!e.def.boss;
+        const sh = boss ? 1 : OTHER_SHARE;
         const hit = !opts.dot;
         const pid = this.cur.pid;
-        if (boss && ev.colossus) dmg *= 1 + ev.colossus;
-        if (boss && ev.sunder) {
+        if (ev.colossus) dmg *= 1 + ev.colossus * sh;
+        if (ev.sunder) {
           const st = (e.sund || (e.sund = {}))[pid] || (e.sund[pid] = { n: 0, t: 0 });
           if (st.t < this.time) st.n = 0; // 8 s since your last hit
           dmg *= 1 + ev.sunder * st.n;
           if (hit) {
-            st.n = Math.min(30, st.n + 1);
+            st.n = Math.min(boss ? 30 : 10, st.n + 1);
             st.t = this.time + 8;
           }
         }
         if (ev.focus && hit) {
           if (p.focusId !== e.id) { p.focusId = e.id; p.focusN = 0; }
           dmg *= 1 + ev.focus * (p.focusN || 0);
-          p.focusN = Math.min(20, (p.focusN || 0) + 1);
+          p.focusN = Math.min(boss ? 30 : 20, (p.focusN || 0) + 1);
         }
-        if (boss && ev.openwound && crit) dmg *= 1 + ev.openwound;
-        if (boss && ev.guardbreak && stunned) dmg *= 1 + ev.guardbreak;
-        if (ev.duelist && !this.enemies.some((o) => o !== e && !o.dead && o.state !== 'spawn' && dist(o.x, o.z, p.x, p.z) <= 12)) dmg *= 1 + ev.duelist;
-        if (boss && ev.deathmark && hit && !(p.markAt > this.time)) {
-          dmg *= 1 + ev.deathmark;
+        if (ev.openwound && crit) dmg *= 1 + ev.openwound * sh;
+        if (ev.relentless && e.maxHp > 0) dmg *= 1 + ev.relentless * sh * Math.min(10, Math.floor(10 * (1 - Math.max(0, e.hp) / e.maxHp)));
+        if (ev.guardbreak && (stunned || e.slowT > 0)) dmg *= 1 + ev.guardbreak * sh;
+        if (ev.duelist && !this.enemies.some((o) => o !== e && !o.dead && o.state !== 'spawn' && (!boss || o.def.boss) && dist(o.x, o.z, p.x, p.z) <= 12)) dmg *= 1 + ev.duelist;
+        if (ev.deathmark && hit && !(p.markAt > this.time)) {
+          dmg *= 1 + ev.deathmark * sh;
           p.markAt = this.time + 8;
-          this.emit('deathMark', { id: e.id, x: e.x, z: e.z });
+          if (boss) this.emit('deathMark', { id: e.id, x: e.x, z: e.z });
         }
-        if (boss && ev.titanfall && hit && !(p.titanAt > this.time)) {
-          dmg += p.stats.ad * ev.titanfall;
+        if (ev.titanfall && hit && !(p.titanAt > this.time)) {
+          dmg += p.stats.ad * ev.titanfall * sh;
           p.titanAt = this.time + 0.25;
-        }
-        if (boss && ev.relentless && hit && !(p.relentAt > this.time)) {
-          p.relentAt = this.time + 0.25;
-          for (const k in p.cd) if (k !== opts.source) p.cd[k] = Math.max(0, p.cd[k] - ev.relentless);
         }
       }
       if (e.ember > 0) {

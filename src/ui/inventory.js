@@ -25,7 +25,7 @@ export function itemTooltip(item, compareTo) {
   const stats = itemStats(item);
   const keys = Object.keys(stats);
   let html = `<div class="tt-name">${itemName(item)}</div><div class="tt-meta">${rarity.name} ${itemTypeName(item)} &middot; item level ${item.ilvl} &middot; gear score ${Math.round(itemScore(item))}</div>`;
-  if (item.eternal) html += eternalHead(item);
+  if (item.eternal) html += eternalHead(item) + eternalPassives(item); // (0.75.1) its passives first, where they are seen
   keys.forEach((k, i) => {
     const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Reforged: only this line can be reforged again">✦</span>' : '';
     html += `<div class="tt-stat${i === 0 ? ' main' : ''}${item.eternal ? ' et' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
@@ -33,7 +33,7 @@ export function itemTooltip(item, compareTo) {
   if (item.eternal) {
     // (0.75) every stat, at ten times a made Immortal's; the speeds have a ceiling
     const cap = CONFIG.ETERNAL_GEAR_CAP;
-    html += `<div class="tt-as">Every line is at least ten times the best a made Immortal can have (+10, five stars). With Eternal gear on, your gear's Attack Speed counts up to +${cap.as}%, Move Speed +${cap.ms}%, Ability Haste ${cap.haste} and Crit Chance ${cap.crit}%.</div>`;
+    html += `<div class="tt-as">At least ten times a made Immortal's every line. Gear limits with Eternal on: Attack Speed +${cap.as}%, Move Speed +${cap.ms}%, Haste ${cap.haste}, Crit ${cap.crit}%.</div>`;
   }
   if (item.set && SETS[item.set]) {
     // A set piece (0.29): its set's bonuses, lit when enough pieces are worn.
@@ -41,7 +41,6 @@ export function itemTooltip(item, compareTo) {
     const n = setsWorn[item.set] || 0;
     html += `<div class="tt-set"><b>${set.name} set</b> &middot; ${SPECS[set.spec] ? SPECS[set.spec].name : ''} &middot; ${n} of 4 worn<div class="${n >= 2 ? 'on' : ''}">(2) ${set.two.desc}</div><div class="${n >= 4 ? 'on' : ''}">(4) ${set.four.desc}</div></div>`;
   }
-  if (item.eternal) html += eternalPassives(item);
   if (item.effect && EFFECTS[item.effect]) {
     const k = starPotency(item); // (0.65) the passive grows with the stars; (0.67) its numbers worked out, the grown ones in gold
     const fx = effectFor(item.effect, item.cls || gearClassNow(), gearSpecNow(), k, true);
@@ -81,7 +80,7 @@ function eternalHead(item) {
 }
 /** (0.71) An Eternal's passives, open and still to open. */
 function eternalPassives(item) {
-  let html = '<div class="tt-effect eternal">';
+  let html = `<div class="tt-effect eternal"><div class="et-ptitle">Passives &middot; strongest on bosses, half on the rest</div>`;
   for (const ps of item.passives || []) html += `<div><b>${ETERNAL_PASSIVES[ps.key] ? ETERNAL_PASSIVES[ps.key].name : ps.key}</b> ${passiveText(ps, item, true)}</div>`;
   const next = nextSlotAt(item);
   if (next) html += `<div class="et-locked">Another passive at level ${next}.</div>`;
@@ -505,7 +504,7 @@ export class Inventory {
       const lv = it ? it.level || 1 : 0;
       const need = it && lv < ETERNAL.maxLevel ? ETERNAL.xpFor(lv) : 0;
       text.innerHTML = it
-        ? `<div class="eq-slot">${SLOT_NAMES[slot]} &middot; level ${lv}/${ETERNAL.maxLevel} &middot; ${slotsOpen(it)} passive${slotsOpen(it) > 1 ? 's' : ''}${worn ? ' &middot; worn' : ''}</div><div class="eq-name eternal">${itemName(it)}</div><div class="et-xp"><i style="width:${need ? Math.round(((it.xp || 0) / need) * 100) : 100}%"></i></div>`
+        ? `<div class="eq-slot">${SLOT_NAMES[slot]} &middot; level ${lv}/${ETERNAL.maxLevel} &middot; ${slotsOpen(it)} passive${slotsOpen(it) > 1 ? 's' : ''}${worn ? ' &middot; worn' : ''}</div><div class="eq-name eternal">${itemName(it)}</div><div class="et-xp"><i style="width:${need ? Math.round(((it.xp || 0) / need) * 100) : 100}%"></i></div><div class="et-passives">${(it.passives || []).map((ps) => `<div><b>${ETERNAL_PASSIVES[ps.key] ? ETERNAL_PASSIVES[ps.key].name : ps.key}</b> ${passiveText(ps, it, true)}</div>`).join('')}${nextSlotAt(it) ? `<div class="et-locked">Another passive at level ${nextSlotAt(it)}.</div>` : ''}</div>`
         : `<div class="eq-slot">${SLOT_NAMES[slot]}</div><div class="eq-name" style="color:var(--muted)">Not found yet: the Granted, in Caelum, or forge it (${ETERNAL.forgeCost} Essence)</div>`;
       row.append(cell, text);
       const btns = document.createElement('div');

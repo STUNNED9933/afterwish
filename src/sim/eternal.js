@@ -8,7 +8,7 @@
 // - It grows by Feeding: an Immortal from the gear box, or Eternity Essence, gives it experience. Each
 //   level adds to its stats; levels 4, 7 and 10 open another passive slot. Feeding past the last level
 //   comes back as Essence.
-// - Its passives are its own pool, about one thing: bringing a boss down (see ETERNAL_PASSIVES).
+// - Its passives are its own pool, all damage: strongest on a boss, half that on anything else (ETERNAL_PASSIVES).
 import { ETERNAL_RARITY, WEAPONS, SLOTS, STAT_KEYS, statRange } from './items.js';
 
 export const ETERNAL = {
@@ -45,20 +45,22 @@ const NAMES = {
 };
 
 /**
- * The pool: every passive is about a boss (a Primordial, a Granted, the Unmade...) and most only work on
- * one. [lo, hi] is the range a roll lands in (q, 0 to 1); level adds potencyPerLevel on top. {v} is the
- * number, worked out, in the text.
+ * The pool (0.75.1): every passive is damage. Each is at its strongest on a boss (a Primordial, a Granted,
+ * the Unmade...) and gives OTHER_SHARE of that against everything else, so it is worth wearing everywhere.
+ * [lo, hi] is the range a roll lands in (q, 0 to 1); level adds potencyPerLevel on top. {v} is the boss
+ * number and {o} the one for everything else, worked out, in the text.
  */
+export const OTHER_SHARE = 0.5;
 export const ETERNAL_PASSIVES = {
-  colossus: { name: 'Colossus Breaker', range: [0.15, 0.25], pct: true, desc: 'You deal {v} more damage to bosses.' },
-  sunder: { name: 'Sunder', range: [0.004, 0.006], pct: true, dec: 1, desc: 'Each of your hits on a boss makes it take {v} more from you, stacking up to 30 times (for 8 s after your last hit).' },
-  focus: { name: 'Fixed Gaze', range: [0.015, 0.025], pct: true, dec: 1, desc: 'Each hit on the same enemy deals {v} more than the last, up to 20 hits. Hitting another starts again.' },
-  titanfall: { name: 'Titanfall', range: [1.5, 2.5], pct: true, desc: 'Your hits on a boss deal an extra {v} of your attack damage (at most 4 times a second).' },
-  openwound: { name: 'Open Wound', range: [0.4, 0.6], pct: true, desc: 'Your critical hits on bosses deal {v} more.' },
-  relentless: { name: 'Relentless', range: [0.08, 0.15], dec: 2, unit: ' s', desc: 'Each hit on a boss takes {v} off your other cooldowns (at most 4 times a second).' },
-  guardbreak: { name: 'Guardbreaker', range: [0.5, 0.8], pct: true, desc: 'A boss whose guard you have broken (stunned) takes {v} more from you.' },
-  duelist: { name: 'Duelist', range: [0.2, 0.3], pct: true, desc: 'While only one enemy is within 12 m of you, you deal {v} more to it.' },
-  deathmark: { name: 'Death Mark', range: [3, 5], pct: true, desc: 'Every 8 seconds, your next hit on a boss deals {v} more.' },
+  colossus: { name: 'Colossus Breaker', range: [0.25, 0.4], pct: true, desc: 'You deal {v} more damage to bosses, and {o} more to everything else.' },
+  sunder: { name: 'Sunder', range: [0.005, 0.008], pct: true, dec: 1, all: true, desc: 'Each of your hits makes the enemy take {v} more from you, stacking up to 30 times on a boss and 10 on anything else (for 8 s after your last hit).' },
+  focus: { name: 'Fixed Gaze', range: [0.02, 0.03], pct: true, dec: 1, all: true, desc: 'Each hit on the same enemy deals {v} more than the last, up to 20 hits (30 on a boss). Hitting another starts again.' },
+  titanfall: { name: 'Titanfall', range: [2, 3], pct: true, desc: 'Your hits deal an extra {v} of your attack damage to a boss, {o} to anything else (at most 4 times a second).' },
+  openwound: { name: 'Open Wound', range: [0.5, 0.8], pct: true, desc: 'Your critical hits deal {v} more to bosses, and {o} more to everything else.' },
+  relentless: { name: 'Relentless', range: [0.04, 0.06], pct: true, dec: 1, desc: 'For every tenth of its health an enemy has lost, you deal {v} more to it if it is a boss ({o} otherwise): up to ten times that near the end.' },
+  guardbreak: { name: 'Guardbreaker', range: [0.5, 0.8], pct: true, desc: 'An enemy that is stunned or slowed takes {v} more from you if it is a boss (its guard broken), {o} otherwise.' },
+  duelist: { name: 'Duelist', range: [0.25, 0.35], pct: true, all: true, desc: 'You deal {v} more to an enemy with no other within 12 m of you. A boss counts as alone with only its lesser enemies around.' },
+  deathmark: { name: 'Death Mark', range: [3, 5], pct: true, desc: 'Every 8 seconds, your next hit deals {v} more to a boss, {o} more to anything else.' },
 };
 export const ETERNAL_KEYS = Object.keys(ETERNAL_PASSIVES);
 
@@ -75,8 +77,9 @@ export function passiveText(p, item, html = false) {
   const P = ETERNAL_PASSIVES[p.key];
   if (!P) return '';
   const v = passiveValue(p, item);
-  const num = P.pct ? `${(v * 100).toFixed(P.dec || 0)}%` : `${v.toFixed(P.dec || 0)}${P.unit || ''}`;
-  return P.desc.replace('{v}', html ? `<b class="pot">${num}</b>` : num);
+  const fmt = (x) => (P.pct ? `${(x * 100).toFixed(P.dec || 0)}%` : `${x.toFixed(P.dec || 0)}${P.unit || ''}`);
+  const b = (t) => (html ? `<b class="pot">${t}</b>` : t);
+  return P.desc.replace('{v}', b(fmt(v))).replace('{o}', b(fmt(v * OTHER_SHARE)));
 }
 
 /** How many passive slots a piece has open at its level (a piece from before 0.73.1 keeps any extra it had). */

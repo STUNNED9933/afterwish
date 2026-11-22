@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Eternal passives you can see, and all of them damage (0.75.1)
+
+- **Each piece's passives are listed on its row** in the Eternal tab, with their numbers worked out, and
+  at the top of its tooltip (they were at the bottom and could fall off the screen).
+- **Every passive is now damage, strongest on bosses and half as strong on everything else:**
+  Colossus Breaker 25 to 40% more; Sunder up to 30 stacks on a boss, 10 on others; Fixed Gaze up to 30
+  hits on a boss; Titanfall 200 to 300% of your attack damage; Open Wound 50 to 80% on crits;
+  Guardbreaker on stunned or slowed enemies; Duelist ignores a boss's lesser enemies; Death Mark on
+  anything. **Relentless** now deals 4 to 6% more for each tenth of health the enemy has lost (up to
+  ten times that at the end), instead of cutting cooldowns. Pieces keep their rolls; the numbers follow.
+
 ### Eternal at ten times a made Immortal, rerolls, choosing what to feed, and Bram's anvil (0.75)
 
 - **Eternal pieces carry every stat** (Attack Damage, or Spell Power for the Mage, Health, Armor, Attack

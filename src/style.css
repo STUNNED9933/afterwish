@@ -1158,6 +1158,12 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .tt-effect.eternal b { color: #fff; }
 .tt-effect.eternal b.pot { color: #ff7a88; display: inline; }
 .et-locked { color: #8f7a7e; font-style: italic; }
+.et-ptitle { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ff9aa4; margin-bottom: 3px; }
+.et-passives { margin-top: 5px; font-size: 12.5px; line-height: 1.35; color: #e9d9db; }
+.et-passives > div { margin: 2px 0; }
+.et-passives b { color: #ffd8dc; }
+.et-passives b.pot { color: #ffd24a; }
+#tooltip { max-height: calc(100vh - 16px); overflow: hidden; }
 #eternal-box h3 small { font-weight: 400; color: #ffb3bb; margin-left: 6px; }
 .et-row .eq-name.eternal { font-size: 14px; }
 .et-feed .et-food { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }

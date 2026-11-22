@@ -286,6 +286,11 @@ export class World {
       this.caelumWarn(map.id);
       this.questEvent('reach', map.id);
       this.autoRoadQuests(); // (0.71.3)
+      for (const h of this.heroes) if (h.player && (h.player.frenzyOn || h.player.oathOn)) {
+        // (0.71.5) a new map turns the Oaths off (online, you arrive as a new hero): never shown on when it is not
+        h.player.frenzyOn = h.player.oathOn = false;
+        this.emit('buffEnd', { name: 'Oath' });
+      }
     });
   }
 
@@ -506,6 +511,8 @@ export class World {
       talentBuilds: migrateBuilds(save?.talentBuilds),
       talentSeq: [], // this subclass's points, in the order spent this time
       ranks: Object.assign({ q: 1, w: 1, e: 1, r: 1 }, save?.ranks || {}, { d: 1, f: 1 }),
+      frenzyOn: false, // (0.71.5) the Oath toggles, always present so a friend's game always hears when they go off
+      oathOn: false,
       eternals: cleanEternals(save?.eternals), // (0.71) the Eternal pieces not being worn (sim/eternal.js)
       eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
@@ -1068,7 +1075,7 @@ export class World {
     const p = this.player;
     if (p.dead) return 0; // a fallen teammate's level-up waits until they are back up
     const before = p.hp;
-    p.hp = Math.min(p.stats.maxHp, p.hp + amount);
+    p.hp = Math.min(p.stats.maxHp * (this.oathLeech(p) ? OATH.hpCap : 1), p.hp + amount); // (0.71.5) no higher than 49% under an Oath
     const healed = Math.round(p.hp - before);
     if (show && healed > 0) this.emit('heal', { x: p.x, z: p.z, amount: healed });
   }
@@ -2688,10 +2695,10 @@ export class World {
     if (p.frostSpinT > 0) p.frostSpinT -= dt; // (0.71.4) Glacier Spin
     if (p.dead) p.oathOn = p.frenzyOn = false; // (0.71.2) the toggles go off when you fall
     if (p.oathT > 0) p.oathT -= dt;
-    // (0.71.4) While an Oath is on you are HELD at 40%: never above it, and anything short of a killing
-    // blow is made good at once (a hit for more than 40% of your health still kills).
+    // (0.71.5) While an Oath is on, nothing takes you above 49%: you stay alive by hitting (lifesteal
+    // 25 times over, uncapped, see hitEnemy), not by waiting.
     if (p.frenzyOn && !(this.kit.r && this.kit.r.type === 'frenzy')) p.frenzyOn = false; // no longer a Berserker (a respec)
-    if (!p.dead && (p.oathOn || p.oathT > 0 || p.frenzyOn)) p.hp = p.stats.maxHp * (p.frenzyOn ? this.kit.r.hpTo : OATH.hpTo);
+    if (!p.dead && this.oathLeech(p) && p.hp > p.stats.maxHp * OATH.hpCap) p.hp = p.stats.maxHp * OATH.hpCap;
     if (p.lockT > 0) {
       // Mind-Locked (0.64): nothing but a parry press (applyCommands) until it ends or breaks.
       const L = CONFIG.MIND_LOCK;
@@ -2789,7 +2796,7 @@ export class World {
       if (p.quickT <= 0) p.quickShots = 0;
     }
     p.veilT = Math.max(0, p.veilT - dt);
-    p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.regen * dt);
+    if (!this.oathLeech(p) || p.hp < p.stats.maxHp * OATH.hpCap) p.hp = Math.min(p.stats.maxHp * (this.oathLeech(p) ? OATH.hpCap : 1), p.hp + p.stats.regen * dt); // (0.71.5)
     // Berserker: Bloodied while below half health (attack speed needs a stat rebuild when it flips).
     const bloodied = !!this.mods.bloodRage && p.hp < p.stats.maxHp * 0.5;
     if (bloodied !== !!p.bloodied) {
@@ -3452,6 +3459,11 @@ export class World {
     p.cd[slot] = Math.max(p.cd[slot] || 0, this.map && this.map.safe ? 0 : 5); // no swapping one in fresh mid-fight
     this.recalcStats();
     this.emit('borrowed', { slot, spec: p.borrowed[slot] });
+  }
+
+  /** (0.71.5) Is an Oath on that turns lifesteal up (Crimson Oath, or the Berserker's Blood Oath borrowed)? */
+  oathLeech(p = this.player) {
+    return this.frenzyActive(p) || !!(p && (p.oathOn || p.oathT > 0));
   }
 
   /** (0.71.2) Is Crimson Oath on (the toggle, or the Crown of the Last Breath's few seconds)? */
@@ -7229,16 +7241,20 @@ export class World {
     }
     if (!p.dead && !opts.dot) {
       // Lifesteal: full from basic attacks, a third from abilities, capped (see CONFIG).
-      let ls = Math.min(p.stats.lifesteal, CONFIG.LIFESTEAL_CAP) + (p.bloodied ? this.mods.bloodLeech : 0);
+      // (0.71.5) Under an Oath (Crimson or Blood): no cap and no budget, 25 times over, up to 49% health.
+      const oath = this.oathLeech(p);
+      let ls = (oath ? Math.max(p.stats.lifesteal, OATH.leechFloor) : Math.min(p.stats.lifesteal, CONFIG.LIFESTEAL_CAP)) + (p.bloodied ? this.mods.bloodLeech : 0);
       if (!opts.basic) ls *= CONFIG.ABILITY_LIFESTEAL;
-      if (this.frenzyActive(p)) ls *= 2; // Crimson Oath
+      if (oath) ls *= OATH.leech;
       let heal = (dmg * ls) / 100;
-      // The budget (0.32): no more than LIFESTEAL_RATE of max health a second (twice that during Crimson Oath).
-      const boost = this.frenzyActive(p) ? 2 : 1;
-      heal = Math.min(heal, (p.lsPool || 0) * boost);
-      p.lsPool = Math.max(0, (p.lsPool || 0) - heal / boost);
-      // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.
-      if (this.mods.bloodCap && p.bloodied) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
+      if (oath) heal = Math.min(heal, Math.max(0, p.stats.maxHp * OATH.hpCap - p.hp));
+      else {
+        // The budget (0.32): no more than LIFESTEAL_RATE of max health a second.
+        heal = Math.min(heal, p.lsPool || 0);
+        p.lsPool = Math.max(0, (p.lsPool || 0) - heal);
+        // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.
+        if (this.mods.bloodCap && p.bloodied) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
+      }
       if (heal > 0) this.healPlayer(heal, false);
     }
     this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, stunned, far, basic: !!opts.basic, dot: !!opts.dot });
@@ -8129,6 +8145,11 @@ inTown() {
       q.leap = null;
       q.atkWind = 0;
       if (i) this.pushOut(q, q.radius);
+      if (q.frenzyOn || q.oathOn) {
+        // (0.71.5) a new map turns the Oaths off, offline as online (where you arrive as a new hero)
+        q.frenzyOn = q.oathOn = false;
+        this.emit('buffEnd', { name: 'Oath' });
+      }
       this.portalT = 0;
       this.portalOn = null;
       this.portalArmed = false; // must step off the arrival portal before it works again

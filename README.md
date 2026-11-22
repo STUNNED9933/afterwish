@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Live by hitting (0.71.5)
+
+- Under **Crimson Oath** or **Blood Oath** (every class that borrows it), your **lifesteal is 25 times
+  over** with no cap and no per-second budget (at least 2%, so a hero with none still heals), and
+  nothing takes you above **49%**. There is no healing back on its own: keep hitting to stay alive.
+  (This replaces 0.71.4's hold at 40%.)
+- Entering another map turns an Oath off, offline as online, so it is never shown as on when it is not.
+
 ### Held at 40%, and a Warrior's Glacier Spin (0.71.4)
 
 - While **Crimson Oath** or **Blood Oath** is on you are **held** at 40% health: never above it, and

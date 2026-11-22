@@ -4617,7 +4617,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const at = p.hp / p.stats.maxHp;
     p.hp = p.stats.maxHp;
     w.step(CONFIG.TICK);
-    check('Blood Oath: drains you to 40% health and holds you there while it lasts', Math.abs(at - OATH.hpTo) < 0.02 && p.hp <= p.stats.maxHp * OATH.hpTo * 1.02 && p.oathOn, `${at}`);
+    check('Blood Oath: drains you to 40% health and holds you there while it lasts', Math.abs(at - OATH.hpTo) < 0.02 && p.hp <= p.stats.maxHp * OATH.hpCap + 1e-6 && p.oathOn, `${at} ${p.hp / p.stats.maxHp} ${p.oathOn}`);
     for (let i = 0; i < 20; i++) w.step(CONFIG.TICK);
     p.cd.r = 0;
     w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z }); w.runCommands(); w.step(CONFIG.TICK);
@@ -4891,7 +4891,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   p.hp = p.stats.maxHp; p.cd.r = 0;
   w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands();
   for (let i = 0; i < 600; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); }
-  check('Crimson Oath (0.71.2): a toggle, on until you turn it off (10 s later, still on, still held at 40%)', p.frenzyOn && w.frenzyActive() && p.hp <= p.stats.maxHp * 0.4 + 1 && w.bloodReach() === 2);
+  check('Crimson Oath (0.71.2): a toggle, on until you turn it off (10 s later, still on, still held at 40%)', p.frenzyOn && w.frenzyActive() && p.hp <= p.stats.maxHp * 0.49 + 1 && w.bloodReach() === 2);
   check('...the wait between presses is short', p.cd.r <= 0);
   w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands();
   p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
@@ -4924,10 +4924,19 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'cast', slot: 'r', x: p.x + 1, z: p.z }); w.runCommands(); w.step(CONFIG.TICK);
   p.hp = 1;
   w.step(CONFIG.TICK);
-  check('Crimson Oath (0.71.4): held at 40%: 1 health a moment ago, 40% now', Math.abs(p.hp - p.stats.maxHp * 0.4) < 1);
-  p.bloodSaveT = 999; // (its own once-a-while save aside)
-  w.takeDamage(p.stats.maxHp * 3, {}); // (after armour, well over 40%)
-  check('...a hit for more than 40% still kills', p.dead || p.hp <= 0);
+  check('Crimson Oath (0.71.5): no healing by waiting (1 health stays 1)', p.hp < 2);
+  const foe = w.enemies.find((o) => !o.dead && o.state !== 'spawn');
+  foe.hp = foe.maxHp = 1e9;
+  w.hitEnemy(foe, 2000, { basic: true });
+  const once = p.hp;
+  for (let i = 0; i < 20; i++) w.hitEnemy(foe, 5000, { basic: true });
+  check('...you live by hitting: lifesteal 25 times over, uncapped', once > 1 + 2000 * 0.25 * 0.5, `${once}`);
+  const top = p.hp;
+  p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
+  check('...but never above 49%', Math.abs(top - p.stats.maxHp * 0.49) < 1 && p.hp <= p.stats.maxHp * 0.49 + 1e-6, `${top / p.stats.maxHp}`);
+  w.loadMap('frost', 'town');
+  w.step(CONFIG.TICK);
+  check('...a new map turns it off (so it is never shown on when it is not)', !p.frenzyOn && 'frenzyOn' in p);
   // Glacier Spin
   const g = new World({ seed: 108, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { spec: 'bulwark', talents: {}, acctLives: all, borrowed: { d: 'frostbinder' } }) });
   g.loadMap('greenwood', 'town');

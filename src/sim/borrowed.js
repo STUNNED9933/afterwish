@@ -17,7 +17,8 @@ export const lendFrost = (m) => { if (!(m.frostMax > 0)) m.frostMax = 6; };
 
 /** What a Blood Oath does for each subclass's signature move, while it holds. */
 export const OATH = {
-  hpTo: 0.4, duration: 8, cd: 3, dmg: 0.2, // health held at 40%; everything you deal +20%. (0.71.2) A toggle: cd is the wait between presses
+  hpTo: 0.4, hpCap: 0.49, leech: 25, leechFloor: 2, duration: 8, cd: 3, dmg: 0.2, // (0.71.5) under an Oath: lifesteal x25, uncapped (at least 2%), health no higher than 49%
+  // health held at 40%; everything you deal +20%. (0.71.2) A toggle: cd is the wait between presses
   sharpshooter: { name: 'Deadeye', text: 'Deadeye fires with no draw, 2.2 times as wide, and deals 40% more.', width: 2.2, mult: 1.4, noChannel: true },
   windrunner: { name: 'Hurricane', text: 'Hurricane looses 3 more arrows, each 50% stronger.', extra: 3, mult: 1.5 },
   assassin: { name: 'Shadowstrike', text: 'Shadowstrike reaches 60% further and deals 50% more, and every ability heals you for 15% of what it deals.', range: 1.6, mult: 1.5, leech: 0.15 },
@@ -28,7 +29,7 @@ export const OATH = {
 };
 const bloodOath = {
   name: 'Blood Oath', type: 'bloodoath', icon: 'frenzy', unlock: 1, cd: OATH.cd, toggleCd: OATH.cd, toggle: true, duration: OATH.duration, hpTo: OATH.hpTo, dmg: () => 0,
-  desc: `A toggle. Turn it on to drain yourself to ${OATH.hpTo * 100}% health and be held there until you turn it off (nothing heals you above it, and anything short of a killing blow is made good at once): you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
+  desc: `A toggle. Turn it on to drain yourself to ${OATH.hpTo * 100}% health; until you turn it off nothing takes you above ${OATH.hpCap * 100}%, but your lifesteal is ${OATH.leech} times over, with no cap (at least ${OATH.leechFloor}%), so you live by hitting: you deal ${OATH.dmg * 100}% more, and your subclass's signature move goes past its limits.`,
 };
 
 /**

@@ -452,12 +452,13 @@ export class Inventory {
     const p = world.player;
     const box = $('eternal-box');
     const owned = SLOTS.filter((s) => world.eternalAt && world.eternalAt(s));
-    if (world.trial || (!owned.length && !(p.eternalEssence > 0))) {
+    // (0.74) shown from level 100 (when Caelum is in reach), so it can be found before the first piece
+    if (world.trial || (!owned.length && !(p.eternalEssence > 0) && p.level < 100)) {
       box.classList.add('hidden');
       return;
     }
     box.classList.remove('hidden');
-    $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence${owned.length ? '' : ' &middot; kept until your first piece falls (a Granted, in Caelum)'}`;
+    $('eternal-ess').innerHTML = `${owned.length} of 5 &middot; <b>${(p.eternalEssence || 0).toFixed(1)}</b> Eternity Essence &middot; ${owned.length ? 'feed it, or forge a piece you lack' : 'from the Granted, in Caelum: forge a piece with it, or keep it to feed one'}`;
     const root = $('eternal');
     root.innerHTML = '';
     const immortals = p.bag.map((it, i) => [it, i]).filter(([it]) => it && it.rarity === 6);
@@ -476,7 +477,7 @@ export class Inventory {
       const need = it && lv < ETERNAL.maxLevel ? ETERNAL.xpFor(lv) : 0;
       text.innerHTML = it
         ? `<div class="eq-slot">${SLOT_NAMES[slot]} &middot; level ${lv}/${ETERNAL.maxLevel} &middot; ${slotsOpen(it)} passive${slotsOpen(it) > 1 ? 's' : ''}${worn ? ' &middot; worn' : ''}</div><div class="eq-name eternal">${itemName(it)}</div><div class="et-xp"><i style="width:${need ? Math.round(((it.xp || 0) / need) * 100) : 100}%"></i></div>`
-        : `<div class="eq-slot">${SLOT_NAMES[slot]}</div><div class="eq-name" style="color:var(--muted)">Not found yet: the Granted, in Caelum</div>`;
+        : `<div class="eq-slot">${SLOT_NAMES[slot]}</div><div class="eq-name" style="color:var(--muted)">Not found yet: the Granted, in Caelum, or forge it (${ETERNAL.forgeCost} Essence)</div>`;
       row.append(cell, text);
       const btns = document.createElement('div');
       btns.className = 'eq-btns';
@@ -490,6 +491,7 @@ export class Inventory {
         b.addEventListener('click', () => (typeof cmd === 'function' ? cmd() : this.send(cmd)));
         btns.appendChild(b);
       };
+      if (!it) add(`Forge · ${ETERNAL.forgeCost}`, `Forge this piece from ${ETERNAL.forgeCost} Eternity Essence (you have ${(p.eternalEssence || 0).toFixed(1)})`, { type: 'forgeEternal', slot }, (p.eternalEssence || 0) < ETERNAL.forgeCost - 1e-9); // (0.74)
       if (it) {
         if (worn) add('Take off', 'Back here; the slot is left empty', { type: 'stowEternal', slot });
         else add('Wear', 'Put it on; what you wear there goes to the gear box', { type: 'wearEternal', slot });

@@ -60,6 +60,10 @@ const dist = (ax, az, bx, bz) => dHypot(ax - bx, az - bz);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Signed smallest difference between two angles. */
+/** (0.74) Loot lying on the ground is scrapped for its owner after this long, or past this many pieces. */
+const LOOT_AGE = 25;
+const LOOT_KEEP = 24;
+
 /** (0.71.6) How far Hold the Line drags a boss: a fifth of the way. */
 const BASTION_BOSS_PULL = 0.2;
 
@@ -88,8 +92,9 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
+const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const ETERNAL_LOCKED = new Set(['upgrade', 'enchant', 'recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal
-const TRIAL_LOCKED = new Set(['wearEternal', 'stowEternal', 'feedEternal', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'wearEternal', 'stowEternal', 'feedEternal', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -520,6 +525,7 @@ export class World {
       eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
       eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
+      eternalVet: save?.eternalVet === true, // (0.74) the once-only thanks for those who beat the Granted at their hardest
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
       // After The Unmade (0.26): world tiers, Echo Rifts, Wishborne levels
@@ -572,6 +578,26 @@ export class World {
     if (save) {
       for (const slot of SLOTS) p.equipped[slot] = migrateItem(save.equipped?.[slot] || null);
       p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE + 4 * perkRank(p.rebirth, 'pockets')).map(migrateItem); // (0.30: rarity names moved)
+      // (0.74) Thanks, once, to a hero who had beaten Granted before now (at twice today's health, or before
+      // they had a hundred bars and anything worth having): each one's first-kill Essence if it was missed
+      // (kills before 0.73), and a veteran's share more.
+      if (!p.eternalVet) {
+        p.eternalVet = true;
+        let got = 0, beat = 0;
+        for (const t of ETERNAL.GRANTED) {
+          if (!(p.bossKills[t] > 0) && !p.eternalFirsts.includes(t)) continue;
+          beat++;
+          if (!p.eternalFirsts.includes(t)) {
+            p.eternalFirsts.push(t);
+            got += ETERNAL.firstKill;
+          }
+          got += ETERNAL.veteran;
+        }
+        if (got) {
+          p.eternalEssence += got;
+          p.vetGift = { essence: got, beat }; // told once the hero is in the world
+        }
+      }
       // (0.71) an Eternal is never in the gear box, and one a slot: a worn one is not also stowed
       p.bag = p.bag.filter((it) => it && !it.eternal);
       for (const slot of SLOTS) if (p.equipped[slot] && p.equipped[slot].eternal) { if (p.equipped[slot].slot !== slot) p.equipped[slot] = null; else p.eternals[slot] = null; }
@@ -717,6 +743,7 @@ export class World {
       eternalEssence: p.eternalEssence,
       eternalPity: p.eternalPity,
       eternalFirsts: p.eternalFirsts,
+      eternalVet: p.eternalVet,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -788,6 +815,7 @@ export class World {
       else if (c.type === 'wearEternal') this.wearEternal(c.slot);
       else if (c.type === 'stowEternal') this.stowEternal(c.slot);
       else if (c.type === 'feedEternal') this.feedEternal(c.slot, c.index, c.essence);
+      else if (c.type === 'forgeEternal') this.forgeEternal(c.slot); // (0.74)
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
@@ -2706,6 +2734,10 @@ export class World {
     if (p.lockImmT > 0) p.lockImmT -= dt;
     if (p.merchantCd > 0) p.merchantCd -= dt;
     if (p.frostSpinT > 0) p.frostSpinT -= dt; // (0.71.4) Glacier Spin
+    if (p.vetGift) {
+      this.emit('vetGift', p.vetGift); // (0.74) told once, in the world
+      p.vetGift = null;
+    }
     if (p.dead) p.oathOn = p.frenzyOn = false; // (0.71.2) the toggles go off when you fall
     if (p.oathT > 0) p.oathT -= dt;
     // (0.71.5) While an Oath is on, nothing takes you above 49%: you stay alive by hitting (lifesteal
@@ -5997,7 +6029,42 @@ export class World {
         }
       }
     }
+    this.autoScrapLoot(); // (0.74)
     this.loot = this.loot.filter((l) => !l.taken);
+  }
+
+  /**
+   * (0.74) Loot left lying is scrapped for you: after 25 seconds, or at once past 24 pieces on the ground
+   * (oldest first), you get its scrap and Wishdust as if you had scrapped it. Immortals, Eternals, set
+   * pieces and anything a friend dropped for you are never touched. (A hundred pieces lying about a
+   * boss fight made every update heavy.)
+   */
+  autoScrapLoot() {
+    const mine = this.loot.filter((l) => !l.taken && (l.owner === undefined || l.owner === this.cur.pid) && l.item && l.item.rarity < IMMORTAL && !l.item.eternal && !l.item.set && l.droppedBy === undefined);
+    const over = Math.max(0, mine.length - LOOT_KEEP);
+    const old = mine.filter((l) => l.age > LOOT_AGE);
+    const go = new Set(old);
+    for (const l of mine.slice().sort((a, b) => b.age - a.age).slice(0, over)) go.add(l);
+    if (!go.size) return;
+    const p = this.player;
+    let scrap = 0, dust = 0;
+    for (const l of go) {
+      l.taken = true;
+      scrap += scrapValue(l.item);
+      dust += dustValue(l.item);
+    }
+    dust = this.keptRate(dust);
+    p.scrap += scrap;
+    p.dust += dust;
+    p.autoScrapN = (p.autoScrapN || 0) + go.size;
+    p.autoScrapS = (p.autoScrapS || 0) + scrap;
+    p.autoScrapD = (p.autoScrapD || 0) + dust;
+    if (!(p.autoScrapAt > this.time)) {
+      // told in one line every few seconds, not a line a piece
+      p.autoScrapAt = this.time + 5;
+      this.emit('autoScrap', { count: p.autoScrapN, scrap: p.autoScrapS, dust: p.autoScrapD });
+      p.autoScrapN = p.autoScrapS = p.autoScrapD = 0;
+    }
   }
 
   // =========================================================================
@@ -6201,6 +6268,17 @@ export class World {
     if (over > 0) p.eternalEssence += over / ETERNAL.essenceXp; // the rest comes back
     this.recalcStats();
     this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length });
+  }
+
+  /** (0.74) Forge an Eternal piece you lack, from Eternity Essence. */
+  forgeEternal(slot) {
+    const p = this.player;
+    if (this.trial || !SLOTS.includes(slot) || this.eternalAt(slot)) return;
+    if (p.eternalEssence < ETERNAL.forgeCost - 1e-9) return this.emit('eternalShort', { need: ETERNAL.forgeCost });
+    p.eternalEssence = Math.max(0, p.eternalEssence - ETERNAL.forgeCost);
+    const it = rollEternal(this.streamRng('eternalForge', this.ticks + SLOTS.indexOf(slot) * 31), Math.max(1, Math.round(p.level)), slot, this.cls);
+    p.eternals[slot] = it;
+    this.emit('eternalDrop', { slot, name: it.name, forged: true, x: p.x, z: p.z });
   }
 
   /** (0.71) A Granted beaten in Caelum: now and then, an Eternal piece the hero lacks (or Essence once they have all five). */
@@ -7245,6 +7323,7 @@ export class World {
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
+    e.hitAt = this.time; // (0.74) a boss being fought keeps its patience
     if (e.def.thief && dmg > 0 && e.hp > 0) {
       // The Wishthief spills gold as it is hit.
       if (!e.fleeing) {
@@ -8384,6 +8463,12 @@ inTown() {
   /** Patience drains while an enemy is dragged far from home, whatever it is doing (0.44: kits keep it busy). */
   drainPatience(e, dh, dt) {
     const boss = !!e.def.boss;
+    // (0.74) A boss someone hit in the last 6 seconds is being fought, wherever it has been dragged: its
+    // patience holds. (Long fights drifted past 22 m, it lost patience and walked home healing to full.)
+    if (boss && this.time - (e.hitAt ?? -99) < 6) {
+      if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
+      return;
+    }
     if (e.aggro && dh > (boss ? CONFIG.PATIENCE_RANGE_BOSS : CONFIG.PATIENCE_RANGE)) e.patience = Math.max(0, e.patience - dt / (boss ? CONFIG.PATIENCE_TIME_BOSS : CONFIG.PATIENCE_TIME));
     else if (e.patience < 1) e.patience = Math.min(1, e.patience + dt / 2);
   }
@@ -8394,7 +8479,8 @@ inTown() {
     // Patience, like a jungle camp: dragged out past PATIENCE_RANGE it loses patience; back near home it recovers.
     this.drainPatience(e, dh, dt);
     const boss = !!e.def.boss;
-    if (e.aggro && (p.dead || this.inTown(p) || dh > (boss ? CONFIG.LEASH_RANGE_BOSS : CONFIG.LEASH_RANGE) || e.patience <= 0)) {
+    const fought = boss && this.time - (e.hitAt ?? -99) < 6; // (0.74) not leashed while it is being fought
+    if (e.aggro && (p.dead || this.inTown(p) || (!fought && dh > (boss ? CONFIG.LEASH_RANGE_BOSS : CONFIG.LEASH_RANGE)) || e.patience <= 0)) {
       e.aggro = false;
       e.returning = true;
     }
@@ -8424,7 +8510,10 @@ inTown() {
       }
     }
     if (e.returning || dh > 7) {
-      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.3 * dt); // heals on the walk home
+      // heals on the walk home; (0.74) a boss of many bars only back to the top of the bar it is on
+      const per = e.bars > 1 ? e.maxHp / e.bars : 0;
+      const top = per ? Math.min(e.maxHp, Math.ceil(e.hp / per - 1e-9) * per) : e.maxHp;
+      if (e.hp < top) e.hp = Math.min(top, e.hp + e.maxHp * (per ? 0.3 / e.bars : 0.3) * dt);
       if (dh < 3) {
         e.returning = false;
       } else {

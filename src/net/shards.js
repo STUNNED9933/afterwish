@@ -512,7 +512,7 @@ export class ServerWorld {
         for (const ev of events) {
           if (ev.type === 'eternalDrop' && ev.slot && ev.hero === h.pid && !pl.alone) {
             // (0.73.1) an Eternal piece: told to the whole server
-            this.announceAll(`${pl.name} has found ${ev.name}, an Eternal piece!`, h.pid);
+            this.announceAll(`${pl.name} has ${ev.forged ? 'forged' : 'found'} ${ev.name}, an Eternal piece!`, h.pid);
           }
           if (ev.type === 'mapChange' || !eventFor(ev, h.pid)) continue;
           // a hero coming or going in Haven is someone passing through, not a party member

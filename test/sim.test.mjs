@@ -4763,7 +4763,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 5; i++) cw.step(CONFIG.TICK);
   const gb = cw.enemies.find((e) => e.def.boss && e.def.granted);
   const plain = cw.enemies.find((e) => !e.def.boss);
-  check('The Granted (0.71): a hundred times the health, in a hundred bars', gb && gb.bars === CL.bossBars && CL.bossHp === 100 && !plain.bars, gb && `${gb.maxHp}`);
+  check('The Granted (0.71): many times the health (0.74: 50x), in a hundred bars', gb && gb.bars === CL.bossBars && CL.bossBars === 100 && CL.bossHp === 50 && !plain.bars, gb && `${gb.maxHp}`);
   const { ENEMIES: EN } = await import('../src/sim/defs.js');
   const fast = ['latch', 'threshold', 'everydoor', 'gavel', 'judgement', 'objection', 'take', 'craving', 'more', 'fiatlux', 'itisdone', 'everything'];
   const names = new Set(['ianitor', 'arbiter', 'desiderium', 'fiat'].flatMap((b) => EN[b].attacks.map((a) => a.name)));
@@ -5010,4 +5010,59 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Eternal (0.73.1): a level-10 piece from before keeps its four passives; its fifth waits for level 30', old.passives.length === 4 && nextSlotAt(old) === 30);
   const at10 = Array.from({ length: 9 }, (_, i) => ETERNAL.xpFor(i + 1)).reduce((a, b) => a + b, 0);
   check('...level 10 is a third of the way, and the rest is the long part', ETERNAL.maxLevel === 30 && at10 < 4000 && Array.from({ length: 29 }, (_, i) => ETERNAL.xpFor(i + 1)).reduce((a, b) => a + b, 0) > 12 * at10)}
+
+// --- 0.74: bosses that do not walk off healing, thanks for the early ones, forging, loot left lying ---
+{
+  const { geared } = await import('./balance.mjs');
+  const { ETERNAL } = await import('../src/sim/eternal.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [6, 7, 8, 9, 10] }, rogue: { prim: [6, 7, 8, 9, 10] } };
+  // a Granted dragged far from home while it is being hit keeps fighting
+  const w = new World({ seed: 111, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 6), { acctLives: all, tierMax: 5 }) });
+  w.loadMap('skyroad', 'town');
+  for (let i = 0; i < 5; i++) w.step(CONFIG.TICK);
+  const b = w.enemies.find((e) => e.def.boss && e.def.granted);
+  const p = w.player;
+  b.aggro = true; b.state = 'chase';
+  b.x = b.home.x + 30; b.z = b.home.z; p.x = p.px = b.x + 6; p.z = p.pz = b.z;
+  b.hp = b.maxHp * 0.505;
+  for (let i = 0; i < 60 * 15; i++) {
+    p.stats.maxHp = 1e15; p.hp = 1e15; p.dead = false; // (the test is the boss's patience, not the hero's health)
+    if (i % 30 === 0) { const keep = b.hp; w.hitEnemy(b, 1, {}); b.hp = keep; }
+    b.x = b.home.x + 30; b.z = b.home.z;
+    w.step(CONFIG.TICK);
+  }
+  check('Granted (0.74): fought 30 m from home for 15 s, it keeps its patience and does not walk off healing', b.aggro && !b.returning && b.hp <= b.maxHp * 0.506, `${b.patience} ${b.aggro} ${b.hp / b.maxHp}`);
+  b.hitAt = -99; b.aggro = false; b.returning = true;
+  for (let i = 0; i < 60 * 30; i++) w.step(CONFIG.TICK);
+  check('...left alone it goes home, healing only to the top of the bar it was on', b.hp <= b.maxHp * 0.51 + 1 && b.hp >= b.maxHp * 0.505, `${b.hp / b.maxHp}`);
+  // thanks for the early ones
+  const vet = new World({ seed: 112, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { bossKills: { ianitor: 3, arbiter: 1 } }) });
+  check('Veterans (0.74): Granted beaten before now give their first-kill Essence and a veteran share, once', vet.player.eternalEssence === 2 * (ETERNAL.firstKill + ETERNAL.veteran) && vet.player.eternalVet);
+  const again = new World({ seed: 113, mode: 'explore', cls: 'rogue', save: vet.toSave() });
+  const late = new World({ seed: 114, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { eternalFirsts: ['ianitor'], eternalEssence: 2 }) });
+  check('...never twice, and a first kill since 0.73 counts too (its veteran share only)', again.player.eternalEssence === vet.player.eternalEssence && late.player.eternalEssence === 2 + ETERNAL.veteran);
+  const fresh = new World({ seed: 115, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), {}) });
+  check('...and a new hero gets nothing until they beat one (then only the first-kill Essence)', fresh.player.eternalEssence === 0 && fresh.player.eternalVet);
+  // forging
+  vet.command({ type: 'forgeEternal', slot: 'boots' }); vet.runCommands();
+  check('Forging (0.74): 8 Eternity Essence makes a piece you lack', vet.player.eternals.boots && vet.player.eternals.boots.eternal && vet.player.eternalEssence === 12 - ETERNAL.forgeCost && vet.events.some((e) => e.type === 'eternalDrop' && e.forged));
+  vet.command({ type: 'forgeEternal', slot: 'boots' }); vet.runCommands();
+  vet.command({ type: 'forgeEternal', slot: 'ring' }); vet.runCommands();
+  check('...not one you have, nor without the Essence', vet.player.eternalEssence === 4 && !vet.player.eternals.ring);
+  // loot left lying
+  const lw = new World({ seed: 116, mode: 'explore', cls: 'archer', save: geared('archer', 100, 5) });
+  lw.loadMap('greenwood', 'town');
+  const lp = lw.player;
+  lp.x = lp.px = 0; lp.z = lp.pz = 0;
+  const { rollItem: ri, RARITIES: RR } = await import('../src/sim/items.js');
+  const mkItem = (r) => ri(() => 0.5, 100, { weights: RR.map((_, i) => (i === r ? 1 : 0)), slot: 'helm' });
+  for (let i = 0; i < 30; i++) lw.loot.push({ id: lw.nextId++, x: 40 + i * 0.1, z: 40, item: mkItem(3), age: 0, magnet: false, owner: lw.cur.pid });
+  lw.loot.push({ id: lw.nextId++, x: 41, z: 41, item: mkItem(6), age: 0, magnet: false, owner: lw.cur.pid });
+  const s0 = lp.scrap;
+  lw.step(CONFIG.TICK);
+  check('Auto-scrap (0.74): past 24 pieces on the ground, the oldest go to scrap at once', lw.loot.length === 25 && lp.scrap > s0, `${lw.loot.length}`);
+  for (let i = 0; i < 60 * 26; i++) lw.step(CONFIG.TICK);
+  const left = lw.loot.filter((l) => l.owner === lw.cur.pid);
+  check('...after 25 seconds the rest go too; an Immortal is never touched', !left.some((l) => l.age > 25.5 && l.item.rarity < 6) && left.some((l) => l.item.rarity === 6), `${left.map((l) => l.item.rarity)}`);
+}
 process.exit(failed ? 1 : 0);

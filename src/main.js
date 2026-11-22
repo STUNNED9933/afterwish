@@ -4633,7 +4633,8 @@ function start(hot = {}) {
         // (0.71) the tier above Immortal
         sfx.eternal(); // (0.72)
         hud.screenFlash(0.35);
-        if (ev.first) hud.banner(`${ev.boss} falls for the first time`, `+${ev.essence} Eternity Essence · food for Eternal gear, kept in the Eternal panel (Tab) through every rebirth, waiting for your first piece`);
+        if (ev.forged) hud.banner(`Forged: ${ev.name}`, 'An Eternal piece, from Eternity Essence · wear and feed it in the Eternal panel (Tab)');
+        else if (ev.first) hud.banner(`${ev.boss} falls for the first time`, `+${ev.essence} Eternity Essence · food for Eternal gear, kept in the Eternal panel (Tab) through every rebirth, waiting for your first piece`);
         else if (ev.essence) hud.banner('Eternity Essence', `+${ev.essence} · every Eternal piece is yours: feed it to them (Tab)`);
         else hud.banner(`An Eternal falls: ${ev.name}`, 'Soulbound, kept through every rebirth · wear and feed it in the Eternal panel (Tab)');
         refreshMenus();
@@ -4642,6 +4643,17 @@ function start(hot = {}) {
         sfx.upgrade();
         if (ev.level > ev.from) hud.banner(`${ev.name} · level ${ev.level}`, `${ev.slots} passive${ev.slots > 1 ? 's' : ''} open${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
         else hud.feedText(`${ev.name} fed${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
+        break;
+      case 'autoScrap':
+        hud.feedText(`${ev.count} piece${ev.count > 1 ? 's' : ''} left on the ground scrapped: +${ev.scrap} scrap${ev.dust ? `, +${ev.dust} Wishdust` : ''}`); // (0.74)
+        break;
+      case 'vetGift':
+        // (0.74) thanks for beating the Granted at their hardest
+        sfx.eternal();
+        hud.banner(`+${ev.essence} Eternity Essence`, `For the ${ev.beat} Granted you had already beaten at their hardest · forge or feed Eternal gear in the Eternal panel (Tab)`);
+        break;
+      case 'eternalShort':
+        hud.feedText(`Forging needs ${ev.need} Eternity Essence.`);
         break;
       case 'eternalFull':
         hud.feedText('That Eternal is at its last level.');

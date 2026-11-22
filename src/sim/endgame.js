@@ -158,7 +158,7 @@ export const CAELUM = {
   },
   ids: ['skyroad', 'answers', 'wants', 'zenith'],
   hard: { hp: 1.5, dmg: 1.2 }, // (0.70) every map, on top of its own: the borrowed skills (beat the Quiet first) came with a price
-  bossHp: 100, // (0.71) the Granted themselves: a hundred times the health, shown as a hundred bars (they let Eternal gear fall)
+  bossHp: 50, // (0.71) the Granted themselves: a hundred bars (they let Eternal gear fall); (0.74) halved, 50 times the health
   bossBars: 100,
   // (0.71.1) ...and paid for it: 20x the gold, twice the hoard, a better best piece, a sure Immortal, 3x keys and shards
   bossLoot: { gold: 20, items: 2, top: [0, 0, 0, 0, 10, 50, 40], immortal: 1, keys: 3 },

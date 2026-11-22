@@ -4111,6 +4111,14 @@ function start(hot = {}) {
       case 'riftEnd':
         hud.feedText('You left the rift.');
         break;
+      case 'itemLocked':
+        hud.feedText(`${ev.name} ${ev.locked ? 'locked: nothing can use it up now' : 'unlocked'}`); // (0.75.2)
+        sfx.upgrade();
+        break;
+      case 'itemIsLocked':
+        hud.feedText(`${ev.name} is locked. Unlock it first (Alt+click, or Lock items).`);
+        sfx.denied();
+        break;
       case 'giftBound':
         hud.feedText(`${ev.name} was a gift: it stays with you.`);
         sfx.denied();

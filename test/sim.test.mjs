@@ -5137,4 +5137,34 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   fw.command({ type: 'eternalAuto', to: 'nonsense' }); fw.runCommands();
   check('...and it can be turned off again', fp.eternalAuto === null);
 }
+
+// --- 0.75.2: locked gear ------------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { rollEternal } = await import('../src/sim/eternal.js');
+  const I = await import('../src/sim/items.js');
+  const w = new World({ seed: 9, mode: 'explore', cls: 'archer', save: geared('archer', 100, 5) });
+  const p = w.player;
+  const im = () => I.rollItem(() => 0.2, 100, { weights: I.RARITIES.map((_, i) => (i === 6 ? 1 : 0)), slot: 'ring' });
+  p.bag = [im(), im()];
+  const [a, b] = p.bag;
+  w.command({ type: 'lockItem', index: 0 }); w.runCommands();
+  check('Locking (0.75.2): a click locks a piece', a.locked === true);
+  w.command({ type: 'discard', index: 0 }); w.runCommands();
+  const junk = I.rollItem(() => 0.2, 1, { weights: I.RARITIES.map((_, i) => (i === 0 ? 1 : 0)), slot: 'ring' });
+  p.bag = [a, junk];
+  a.ilvl = 1; // not an upgrade either, so only the lock keeps it
+  w.command({ type: 'scrap', keep: [] }); w.runCommands();
+  check('...a locked piece is never discarded or bulk-scrapped (the other one is)', p.bag.length === 1 && p.bag[0] === a, `${p.bag.length}`);
+  a.ilvl = 100;
+  p.bag.push(b);
+  p.eternals.helm = rollEternal(() => 0.5, 100, 'helm', 'archer');
+  w.command({ type: 'feedEternal', slot: 'helm', ids: [a.id, b.id] }); w.runCommands();
+  check('...and never fed to an Eternal, even when chosen', p.bag.length === 1 && p.bag[0] === a);
+  w.command({ type: 'lockItem', index: 0 }); w.runCommands();
+  check('...click again to unlock', !a.locked);
+  w.command({ type: 'equip', index: 0 }); w.runCommands();
+  w.command({ type: 'lockItem', slot: 'ring' }); w.runCommands();
+  check('...worn gear can be locked too, and stays locked in the save', p.equipped.ring === a && a.locked && w.toSave().equipped.ring.locked === true);
+}
 process.exit(failed ? 1 : 0);

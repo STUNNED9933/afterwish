@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lock the gear you want to keep (0.75.2)
+
+- **Lock items** under the bag (or Alt+click any item, or the Lock button beside worn gear). A locked
+  piece shows a gold padlock and can never be scrapped (one at a time or in bulk), fed to an Eternal
+  (by hand or by auto-feed), traded, dropped for a friend, or used up to ascend another. Click again to
+  unlock. The lock stays on the piece when you take it off and through saves. A rebirth still turns
+  gear into Echo Essence as before; keep a piece through one as your Heirloom.
+
 ### Eternal passives you can see, and all of them damage (0.75.1)
 
 - **Each piece's passives are listed on its row** in the Eternal tab, with their numbers worked out, and

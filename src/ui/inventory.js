@@ -66,6 +66,7 @@ export function itemTooltip(item, compareTo) {
   }
   if (item.gift) html += '<div class="tt-gift">A gift from a friend: yours to use. It cannot be passed on, and gives the star nothing at a rebirth.</div>'; // (0.58)
   const dust = dustValue(item);
+  if (item.locked) html += `<div class="tt-lock">${LOCK_SVG} Locked: never scrapped, fed, traded, dropped or used to ascend. Alt+click (or Lock mode) to unlock.</div>`; // (0.75.2)
   if (!item.eternal) html += `<div class="tt-desc">Scraps for ${scrapValue(item)} scrap${dust ? ` and ${dust} Wishdust` : ""}</div>`; // (0.71) an Eternal is never scrapped
   return html;
 }
@@ -152,6 +153,9 @@ function setGuardImmortal(on) {
   } catch {}
 }
 
+// (0.75.2) a small padlock for locked gear
+export const LOCK_SVG = '<svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="4.5" y="10" width="15" height="11" rx="2" fill="currentColor"/></svg>';
+
 export function itemCell(tooltip, item, { button = false, compareTo = null, upgrade = false } = {}) {
   const el = document.createElement(button ? 'button' : 'div');
   if (button) el.type = 'button';
@@ -160,7 +164,8 @@ export function itemCell(tooltip, item, { button = false, compareTo = null, upgr
     const color = RARITIES[item.rarity].color;
     el.style.setProperty('--rarity', color);
     const imm = item.eternal ? 'eternal' : !!RARITIES[item.rarity].effect;
-    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.eternal ? `L${item.level || 1}` : item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}${imm === true ? '<span class="imm-star" aria-hidden="true">✦</span>' : item.eternal ? '<span class="imm-star et" aria-hidden="true">✧</span>' : ''}`;
+    el.innerHTML = `${gearIcon(item)}<span class="lvl">${item.eternal ? `L${item.level || 1}` : item.ilvl}${item.plus ? `<small>+${item.plus}</small>` : ''}</span>${upgrade ? '<span class="arrow">▲</span>' : ''}${imm === true ? '<span class="imm-star" aria-hidden="true">✦</span>' : item.eternal ? '<span class="imm-star et" aria-hidden="true">✧</span>' : ''}${item.locked ? `<span class="lock-mark" aria-hidden="true">${LOCK_SVG}</span>` : ''}`;
+    if (item.locked) el.classList.add('locked');
     el.addEventListener('mouseenter', () => tooltip.show(itemTooltip(item, compareTo), el, color, imm));
     el.addEventListener('mouseleave', () => tooltip.hide());
     if (button) el.setAttribute('aria-label', `${itemName(item)}, ${RARITIES[item.rarity].name} ${itemTypeName(item)}${upgrade ? ', upgrade' : ''}`);
@@ -183,6 +188,10 @@ export class Inventory {
     this.keep = keep || { get: () => [], set: () => {} };
     $('btn-scrap').addEventListener('click', () => this.send({ type: 'scrap', keep: this.keep.get() }));
     $('btn-equip-all').addEventListener('click', () => this.send({ type: 'autoEquip' })); // (0.61.9)
+    $('btn-lock-mode').addEventListener('click', () => {
+      this.lockMode = !this.lockMode; // (0.75.2) while on, a click on a bag item locks or unlocks it
+      if (this.world) this.render(this.world);
+    });
     // (0.74.1) Eternal gear in a tab of its own
     this.tab = 'gear';
     for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal']]) {
@@ -289,6 +298,16 @@ export class Inventory {
           this.reforgeKey = null;
           this.render(world);
         });
+        btns.appendChild(b);
+      }
+      if (item && !item.eternal && !world.trial) {
+        // (0.75.2) lock what you wear, so it stays safe when it goes back to the gear box
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ghost tiny ench-btn lock-btn' + (item.locked ? ' on' : '');
+        b.innerHTML = `${LOCK_SVG}${item.locked ? 'Unlock' : 'Lock'}`;
+        b.title = item.locked ? 'Locked: never scrapped, fed, traded or dropped. Click to unlock.' : 'Lock it: never scrapped, fed to an Eternal, traded or dropped by accident';
+        b.addEventListener('click', () => this.send({ type: 'lockItem', slot }));
         btns.appendChild(b);
       }
       if (btns.children.length) row.appendChild(btns);
@@ -399,13 +418,14 @@ export class Inventory {
       const item = p.bag[i] || null;
       const current = item ? p.equipped[item.slot] : null;
       const upgrade = item ? itemScore(item) > itemScore(current) : false;
-      if (item && !upgrade && !keep.has(item.rarity)) scrapTotal += scrapValue(item);
+      if (item && !upgrade && !keep.has(item.rarity) && !item.locked) scrapTotal += scrapValue(item);
       const el = itemCell(this.tooltip, item, { button: !!item, compareTo: current, upgrade });
       const offered = this.trade.offered ? this.trade.offered() : null;
       if (item && offered && offered.has(item.id)) el.classList.add('offered');
       if (item) {
         el.addEventListener('click', (ev) => {
-          if (offered) return this.trade.toggle(item.id); // trading: a click puts it in (or takes it out of) your offer
+          if (this.lockMode || ev.altKey) return this.send({ type: 'lockItem', index: i }); // (0.75.2)
+          if (offered) return item.locked ? null : this.trade.toggle(item.id); // trading: a click puts it in (or takes it out of) your offer
           if ((ev.ctrlKey || ev.metaKey) && this.trade.party && this.trade.party()) return this.send({ type: 'dropItem', index: i });
           this.send({ type: ev.shiftKey ? 'discard' : 'equip', index: i });
         });
@@ -450,6 +470,13 @@ export class Inventory {
     const eqAll = $('btn-equip-all');
     eqAll.textContent = ups ? `Equip every upgrade (${ups})` : 'No upgrades to equip';
     eqAll.disabled = !ups || !!world.trial;
+    const lk = $('btn-lock-mode'); // (0.75.2)
+    if (lk) {
+      lk.classList.toggle('on', !!this.lockMode);
+      lk.innerHTML = `${LOCK_SVG}${this.lockMode ? 'Done locking (click items to lock or unlock)' : `Lock items${p.bag.some((it) => it && it.locked) ? ` (${p.bag.filter((it) => it && it.locked).length} locked)` : ''}`}`;
+      lk.disabled = !!world.trial;
+    }
+    $('bag').classList.toggle('lock-mode', !!this.lockMode);
     const btn = $('btn-scrap');
     btn.textContent = scrapTotal ? `Scrap everything that is not an upgrade (+${scrapTotal} scrap)` : 'Nothing to scrap';
     btn.title = keep.size ? `Keeps ${[...keep].sort().map((i) => RARITIES[i].name).join(', ')} items however they compare` : '';
@@ -546,6 +573,13 @@ export class Inventory {
         for (const [food] of immortals) {
           const id = String(food.id);
           const c = itemCell(this.tooltip, food, { button: true });
+          if (food.locked) {
+            // (0.75.2) locked: shown, never chosen
+            c.disabled = true;
+            c.title = 'Locked: unlock it in the gear box (Alt+click) to feed it';
+            list.appendChild(c);
+            continue;
+          }
           c.classList.toggle('picked', pick.ids.has(id));
           c.title = `${pick.ids.has(id) ? 'Chosen' : 'Choose it'} (+${feedValue(food)})`;
           c.addEventListener('click', () => {
@@ -564,10 +598,11 @@ export class Inventory {
           const all = document.createElement('button');
           all.type = 'button';
           all.className = 'ghost tiny';
-          const every = pick.ids.size === immortals.length;
+          const free = immortals.filter(([f]) => !f.locked);
+          const every = free.length > 0 && pick.ids.size === free.length;
           all.textContent = every ? 'Choose none' : 'Choose all';
           all.addEventListener('click', () => {
-            pick.ids = every ? new Set() : new Set(immortals.map(([f]) => String(f.id)));
+            pick.ids = every ? new Set() : new Set(free.map(([f]) => String(f.id)));
             pick.armed = false;
             this.render(world);
           });

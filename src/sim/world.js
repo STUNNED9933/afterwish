@@ -95,7 +95,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'lockItem', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -835,6 +835,7 @@ export class World {
       else if (c.type === 'forgeEternal') this.forgeEternal(c.slot); // (0.74)
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
+      else if (c.type === 'lockItem') this.lockItem(c.index, c.slot); // (0.75.2)
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
       else if (c.type === 'enchant') this.rerollLine(c.slot, c.key, !!c.essence);
@@ -5151,6 +5152,7 @@ export class World {
     const dup = p.bag[index];
     if (!item || !dup || item.rarity !== IMMORTAL || dup.rarity !== IMMORTAL || !item.effect || dup.effect !== item.effect || dup === item) return;
     if ((item.stars || 0) >= MAX_STARS) return;
+    if (dup.locked) return this.emit('itemIsLocked', { name: dup.name }); // (0.75.2)
     this.tradeItemGone(dup.id);
     p.bag.splice(index, 1);
     item.stars = (item.stars || 0) + 1;
@@ -6102,6 +6104,7 @@ export class World {
     const item = p.bag[index];
     if (!item || !this.party || this.mode !== 'explore' || p.dead) return;
     if (item.gift) return this.emit('giftBound', { name: item.name }); // (0.58)
+    if (item.locked) return this.emit('itemIsLocked', { name: item.name }); // (0.75.2)
     p.bag.splice(index, 1);
     this.tradeItemGone(item.id);
     const a = this.rng() * TAU;
@@ -6158,7 +6161,7 @@ export class World {
     const t = this.tradeFor(me);
     if (!t || !t.open) return;
     const p = this.player;
-    const list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => p.bag.some((it) => it.id === id && !it.gift)).slice(0, 8) : []; // (0.58) not a gift
+    const list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => p.bag.some((it) => it.id === id && !it.gift && !it.locked)).slice(0, 8) : []; // (0.58) not a gift
     t.items[me] = list;
     t.gold[me] = Math.max(0, Math.min(p.gold, Math.floor(Number(gold) || 0)));
     t.ok[t.a] = t.ok[t.b] = false;
@@ -6283,7 +6286,7 @@ export class World {
       const take = [];
       for (let i = 0; i < p.bag.length && xp < room; i++) {
         const food = p.bag[i];
-        if (!food || !want.has(String(food.id)) || food.rarity !== IMMORTAL || food.eternal) continue; // Immortals only
+        if (!food || food.locked || !want.has(String(food.id)) || food.rarity !== IMMORTAL || food.eternal) continue; // Immortals only, (0.75.2) never a locked one
         take.push(i);
         xp += feedValue(food);
       }
@@ -6404,10 +6407,22 @@ export class World {
   }
 
   /** Break one bag item down into scrap. */
+  /** (0.75.2) Lock (or unlock) a piece in the bag or worn: a locked piece is never scrapped, fed, traded or dropped. */
+  lockItem(index, slot) {
+    const p = this.player;
+    const item = slot != null ? SLOTS.includes(slot) && p.equipped[slot] : p.bag[index];
+    if (!item || item.eternal) return; // an Eternal can never be lost anyway
+    if (item.locked) delete item.locked;
+    else item.locked = true;
+    if (item.locked) this.tradeItemGone(item.id);
+    this.emit('itemLocked', { name: item.name, locked: !!item.locked });
+  }
+
   discard(index) {
     const p = this.player;
     const item = p.bag[index];
     if (!item) return;
+    if (item.locked) return this.emit('itemIsLocked', { name: item.name }); // (0.75.2)
     this.tradeItemGone(item.id);
     p.bag.splice(index, 1);
     const scrap = scrapValue(item);
@@ -6427,7 +6442,7 @@ export class World {
     let count = 0;
     const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
     p.bag = p.bag.filter((it) => {
-      if (kept.has(it.rarity) || trading.has(it.id)) return true; // never scrap what is on offer in a trade
+      if (it.locked || kept.has(it.rarity) || trading.has(it.id)) return true; // never scrap what is on offer in a trade, or (0.75.2) locked
       if (itemScore(it) > itemScore(p.equipped[it.slot])) return true;
       scrap += scrapValue(it);
       dust += dustValue(it);

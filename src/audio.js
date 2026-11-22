@@ -116,6 +116,61 @@ export class Sfx {
     } else if (slot === 'e') this.noise(0.22, { vol: 0.28, freq: 3500, type: 'bandpass', slide: -2800, q: 1.4 });
     else if (slot === 'r') this.tone(180, 0.5, { type: 'sawtooth', vol: 0.14, slide: 600 });
   }
+  // --- (0.72) the borrowed skills, the Oaths, the Eternal -------------------------------------
+  /** Dragon's Breath: a roar of flame that rises, and a crackle in it. */
+  fireBreath() {
+    this.noise(0.7, { vol: 0.42, freq: 300, type: 'bandpass', slide: 1600, q: 0.6 });
+    this.noise(0.5, { vol: 0.18, freq: 4000, type: 'highpass', delay: 0.05 });
+    this.tone(90, 0.6, { type: 'sawtooth', vol: 0.12, slide: 60 });
+  }
+  /** A drag inwards (Anchor Shot, Smoke Snare, Gravity Anchor, Hold the Line): a reversed whoosh and a thud. */
+  pullIn() {
+    this.noise(0.35, { vol: 0.3, freq: 5000, type: 'bandpass', slide: -4400, q: 1.1 });
+    this.tone(70, 0.35, { type: 'sine', vol: 0.45, slide: -25, delay: 0.3 });
+  }
+  /** A wall of ice rising: glassy chimes over a crack. */
+  iceWall() {
+    this.noise(0.2, { vol: 0.25, freq: 3000, type: 'highpass' });
+    [1568, 2093, 2637].forEach((f, i) => this.tone(f, 0.5, { type: 'sine', vol: 0.08, delay: 0.03 * i }));
+    this.tone(110, 0.3, { type: 'triangle', vol: 0.2, slide: -40 });
+  }
+  /** A lobbed bomb: a falling whistle. */
+  lob() {
+    this.tone(1400, 0.4, { type: 'sine', vol: 0.08, slide: -900 });
+  }
+  /** Blink Strike: a quick zip out and back. */
+  blink() {
+    this.tone(400, 0.12, { type: 'square', vol: 0.06, slide: 1800 });
+    this.noise(0.12, { vol: 0.14, freq: 6000, type: 'highpass', delay: 0.06 });
+  }
+  /** An Oath taken: a heartbeat and a growl. */
+  oathOn() {
+    this.tone(60, 0.18, { type: 'sine', vol: 0.6, slide: -15 });
+    this.tone(60, 0.18, { type: 'sine', vol: 0.5, slide: -15, delay: 0.22 });
+    this.tone(110, 0.6, { type: 'sawtooth', vol: 0.12, slide: -30, delay: 0.05 });
+    this.noise(0.5, { vol: 0.15, freq: 500, type: 'lowpass', delay: 0.05 });
+  }
+  /** An Oath let go: a long breath out. */
+  oathOff() {
+    this.noise(0.5, { vol: 0.12, freq: 1200, type: 'bandpass', slide: -800, q: 0.8 });
+  }
+  /** Death Mark: a deep bell. */
+  deathMark() {
+    this.tone(98, 1.2, { type: 'sine', vol: 0.45 });
+    this.tone(98 * 2.76, 0.6, { type: 'sine', vol: 0.12 });
+    this.noise(0.08, { vol: 0.25, freq: 2500, type: 'bandpass' });
+  }
+  /** A shot turned back by ice: a bright ping. */
+  ping() {
+    this.tone(2200, 0.15, { type: 'sine', vol: 0.1, slide: 600 });
+  }
+  /** An Eternal falls: a rising choir of chimes over a low swell. */
+  eternal() {
+    this.tone(65, 1.6, { type: 'sine', vol: 0.4, attack: 0.3 });
+    [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 1.1, { type: 'triangle', vol: 0.12, delay: 0.1 + i * 0.09 }));
+    this.noise(1.4, { vol: 0.1, freq: 6000, type: 'highpass', delay: 0.2 });
+  }
+
   /** Deadeye (0.42): a hard crack, a deep boom and a long rolling echo. */
   sniper() {
     this.noise(0.06, { vol: 0.7, freq: 4200, type: 'highpass', q: 0.7 });

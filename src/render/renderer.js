@@ -1129,6 +1129,18 @@ export class Renderer {
           if (!ev.echo) an.move = 'cone';
           // One shape, flat on the ground, exactly the area that is hit (0.36.1: a raised copy
           // and a wider ground sweep made it unclear where the hit really was).
+          if (ev.fire) {
+            // (0.72) Dragon's Breath: a cone of flame, embers thrown along it, the ground left glowing
+            this.flash(this.sectorGeo(ev.angle, 0.02), { x: ev.x, z: ev.z, y: 0.1, dir: ev.dir, color: 0xff7a2a, from: ev.range * 0.3, to: ev.range, dur: 0.45, opacity: 0.75 });
+            this.flash(this.sectorGeo(ev.angle * 0.7, 0.02), { x: ev.x, z: ev.z, y: 0.12, dir: ev.dir, color: 0xffd36a, from: ev.range * 0.2, to: ev.range * 0.8, dur: 0.35, opacity: 0.8 });
+            for (let i = 0; i < 9; i++) {
+              const a = ev.dir + (i / 8 - 0.5) * ev.angle * 0.9;
+              const r = ev.range * (0.35 + (i % 3) * 0.22);
+              this.burst(ev.x + Math.cos(a) * r, 0.9, ev.z + Math.sin(a) * r, { count: 7, color: i % 2 ? 0xff5a1f : 0xffc24a, speed: 5, up: 5, life: 0.6 });
+            }
+            this.shake = Math.max(this.shake, 0.3);
+            break;
+          }
           this.flash(this.sectorGeo(ev.angle, 0.12), { x: ev.x, z: ev.z, y: 0.08, dir: ev.dir, color: ev.echo ? 0xffe2a0 : 0xd8f2ff, from: ev.range * 0.85, to: ev.range, dur: 0.32, opacity: 0.7 });
           this.flash(this.sectorGeo(ev.angle, 0.93), { x: ev.x, z: ev.z, y: 0.09, dir: ev.dir, color: 0xffffff, from: ev.range, to: ev.range, dur: 0.32, opacity: 0.9 }); // its edge
           // sparks thrown off along the arc
@@ -1140,6 +1152,16 @@ export class Renderer {
         } else if (fx === 'barrage') {
           an.swing = 0;
           an.swingDur = 0.12;
+        } else if (fx === 'nova' && ev.pull) {
+          // (0.72) a drag inwards: violet rings closing, dust pulled to the middle
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xb99cff, from: ev.radius * 1.1, to: 0.6, dur: 0.38, opacity: 0.9 });
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.6, color: 0xffffff, from: ev.radius * 0.8, to: 0.4, dur: 0.3, opacity: 0.6 });
+          this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x6a4ad0, from: ev.radius, to: 1, dur: 0.4, opacity: 0.25 });
+          for (let i = 0; i < 10; i++) {
+            const a = (i / 10) * Math.PI * 2;
+            this.burst(ev.x + Math.cos(a) * ev.radius * 0.9, 0.5, ev.z + Math.sin(a) * ev.radius * 0.9, { count: 3, color: 0xd2c2ff, speed: 2, up: 1, life: 0.35 });
+          }
+          this.shake = Math.max(this.shake, 0.28);
         } else if (fx === 'nova') {
           an.spin = 1;
           this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.9, color: 0xbfeaff, from: ev.pull ? ev.radius : 1, to: ev.pull ? 1 : ev.radius, dur: 0.32, opacity: 0.9 });
@@ -1371,6 +1393,35 @@ export class Renderer {
         this.burst(ev.x, 1, ev.z, { count: 40, color: 0xc8f0ff, speed: 11, up: 6, size: 1.4, life: 0.6 });
         this.shake = Math.max(this.shake, 0.35);
         break;
+      case 'iceGuard':
+        // (0.72) Glacier Spin: a shell of ice snaps up round you
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.6, color: 0xdff6ff, from: 0.8, to: ev.radius, dur: 0.3, opacity: 1 });
+        this.burst(ev.x, 1.1, ev.z, { count: 26, color: 0xc8f0ff, speed: 7, up: 4, life: 0.5 });
+        break;
+      case 'bloodOath':
+      case 'bloodCost':
+        // (0.72) an Oath taken: a red burst and a ring of blood at your feet
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xff2a3a, from: 0.6, to: 4.2, dur: 0.5, opacity: 0.95 });
+        this.burst(ev.x, 1.2, ev.z, { count: 34, color: 0xff2a3a, speed: 8, up: 6, life: 0.6, size: 1.2 });
+        this.shake = Math.max(this.shake, 0.3);
+        break;
+      case 'deathMark': {
+        // (0.72) Death Mark (Eternal): a black-red ring snaps shut on the boss
+        const tgt = world.enemies.find((e) => e.id === ev.id);
+        const r = tgt ? tgt.def.radius || 1.5 : 1.5;
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.2, color: 0xff1030, from: r * 3, to: r * 0.8, dur: 0.3, opacity: 1 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffffff, from: r, to: r * 2.6, dur: 0.4, opacity: 0.8 });
+        this.burst(ev.x, 1.6, ev.z, { count: 26, color: 0xff3d4f, speed: 10, up: 5, life: 0.5 });
+        this.shake = Math.max(this.shake, 0.4);
+        break;
+      }
+      case 'eternalDrop':
+        // (0.72) an Eternal: a pillar of white and red light where the Granted fell
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffffff, from: 0.5, to: 6, dur: 0.9, opacity: 0.85 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.2, color: 0xff3d4f, from: 1, to: 9, dur: 1.2, opacity: 1 });
+        for (let i = 0; i < 6; i++) this.later(i * 0.12, () => this.burst(ev.x, 1 + i * 1.4, ev.z, { count: 24, color: i % 2 ? 0xff3d4f : 0xffffff, speed: 4, up: 14, life: 0.9, size: 1.5 }));
+        this.shake = Math.max(this.shake, 0.6);
+        break;
       case 'bloodied':
         if (ev.on) this.burst(ev.x, 1.2, ev.z, { count: 26, color: 0xff3344, speed: 6, up: 5, life: 0.5 });
         break;
@@ -1516,7 +1567,11 @@ export class Renderer {
       case 'damage':
         if (ev.who === 'enemy') {
           this.burst(ev.x, 1.1, ev.z, { count: ev.crit ? 12 : 6, color: ev.stunned ? 0xffe27a : 0xffb3a0, speed: 5, up: 3 });
-          if (ev.crit) this.shake = Math.max(this.shake, 0.15);
+          if (ev.crit && !ev.dot) {
+            // (0.72) a crit lands: a quick white ring where it hit
+            this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.1, color: 0xfff2c8, from: 0.3, to: 1.6, dur: 0.16, opacity: 0.9 });
+            this.shake = Math.max(this.shake, 0.18);
+          }
         } else {
           this.burst(ev.x, 1.2, ev.z, { count: 10, color: 0xff4a55, speed: 6, up: 4 });
           this.shake = Math.max(this.shake, 0.3);
@@ -1736,6 +1791,44 @@ export class Renderer {
     }
   }
 
+  /**
+   * (0.72) Rings under the hero while something lasts: a slow red pulse while an Oath is on, an icy
+   * turning ring while Glacier Spin turns shots back. Drawn from the state itself, never left behind.
+   */
+  syncAuras(p, x, z, dt) {
+    const make = (color) => {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      const m = new THREE.Mesh(this.ringGeo(), mat);
+      m.visible = false;
+      this.scene.add(m);
+      return m;
+    };
+    if (!this.auraOath) {
+      this.auraOath = make(0xff2a3a);
+      this.auraIce = make(0xbfeaff);
+      this.auraT = 0;
+    }
+    for (const m of [this.auraOath, this.auraIce]) if (m.parent !== this.scene) this.scene.add(m); // (a new map's scene)
+    this.auraT += dt;
+    const oath = !!(p.frenzyOn || p.oathOn || p.oathT > 0);
+    const ice = p.frostSpinT > 0;
+    const o = this.auraOath, i = this.auraIce;
+    o.visible = oath;
+    if (oath) {
+      const k = 0.5 + 0.5 * Math.sin(this.auraT * 5);
+      o.position.set(x, 0.08, z);
+      o.scale.setScalar(1.3 + 0.25 * k);
+      o.material.opacity = 0.45 + 0.35 * k;
+    }
+    i.visible = ice;
+    if (ice) {
+      i.position.set(x, 0.5, z);
+      i.rotation.y = this.auraT * 3;
+      i.scale.setScalar(p.frostSpinR || 3.5);
+      i.material.opacity = 0.35 + 0.2 * Math.sin(this.auraT * 9);
+    }
+  }
+
   syncHero(world, alpha, dt) {
     const p = world.player;
     const h = this.hero;
@@ -1752,6 +1845,7 @@ export class Renderer {
     if (p.leap) y = Math.sin(Math.PI * Math.min(1, p.leap.t / p.leap.dur)) * 5.5;
     g.position.set(x, y, z);
     g.rotation.y = Math.PI / 2 - (pr ? pr.facing : p.facing);
+    this.syncAuras(p, x, z, dt); // (0.72)
     const walking = p.moving || !!(pr && Math.hypot(pr.dx, pr.dz) > 0.05);
 
     // Legs + bob

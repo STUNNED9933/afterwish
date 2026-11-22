@@ -2406,7 +2406,7 @@ export class World {
           // (0.71.6) Glacier Spin: Hold the Line is a Rimewall round you too, for as long as it holds
           p.frostSpinT = Math.max(p.frostSpinT || 0, def.duration + (m.rDuration || 0));
           p.frostSpinR = Math.max(p.frostSpinR || 0, 4.8);
-          this.emit('frostShatter', { x: p.x, z: p.z, radius });
+          this.emit('iceGuard', { x: p.x, z: p.z, radius: p.frostSpinR });
         }
         p.bastionT = def.duration + (m.rDuration || 0);
         this.emit('cast', { slot, fx: 'bastion', x: p.x, z: p.z, radius });
@@ -2444,7 +2444,7 @@ export class World {
         const spinFor = def.type === 'spin' ? def.duration + (m.wSpinTime || 0) : 0;
         p.frostSpinT = Math.max(p.frostSpinT || 0, spinFor + m.wFrostSpin);
         p.frostSpinR = Math.max(3.2, (def.radius || 4) * reach + 0.6);
-        this.emit('frostShatter', { x: p.x, z: p.z, radius: p.frostSpinR });
+        this.emit('iceGuard', { x: p.x, z: p.z, radius: p.frostSpinR }); // (0.72) its own look and sound
       }
       if (m.wTornado > 0 && slot === 'w') {
         const tr = 3.2, td = p.stats.ad * (m.wTornadoDmg || 0.25);

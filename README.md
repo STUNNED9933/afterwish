@@ -160,6 +160,23 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Music and polish (0.72)
+
+- **Fourteen new themes**, written for this game in the spirit of the classic JRPGs and MMOs (harp
+  preludes, heroic brass, bright bouncing field tunes): one for each Caelum map (Above the Clouds, The
+  Decided Court, Everything You Asked For, Let There Be), one for each Depth (Embers Under Everything,
+  Fathoms, What Grows Down, Many Voices None, Enough), and fight themes for the Granted (A Hundred
+  Lives Deep), the Primordials (Older Than the Wish), the Quiet's Stillness (Wanting Nothing), the
+  Herald and the Asker (The Asking), and the Echo Ring (Echoes Without End).
+- **Music that follows the play:** songs crossfade; a boss fight brings in its own theme; the drums and
+  string stabs swell when enemies close in and settle when it is calm; a menu softens and muffles the
+  music behind it.
+- **Combat feel:** a crit lands with a flash and a pop; very big numbers read as 125K / 13.7M / 2.1B.
+- **New skill effects and sounds:** Dragon's Breath is a cone of real fire; pulls draw violet rings
+  inwards; a red ring pulses under you while an Oath is on, and an ice ring turns while Glacier Spin
+  guards you; Death Mark and Eternal drops have their own light and sound; walls of ice chime.
+- **UI:** panels and menus ease in, buttons answer a press, tooltips fade in, badges pop.
+
 ### Rebirth perks, much higher caps (0.71.7)
 
 | Perk | Was | Now (at the cap) |

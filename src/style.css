@@ -190,7 +190,9 @@ body.slowmo #slowtint { opacity: 1; }
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9); white-space: nowrap;
   animation: floatUp 0.85s ease-out forwards; will-change: transform, opacity;
 }
-.float.crit { font-size: 26px; color: #ffd27a; }
+.float.crit { font-size: 26px; color: #ffd27a; animation-name: floatCrit; } /* (0.72) a crit lands with a pop */
+.float.huge { font-size: 30px; letter-spacing: 0.02em; }
+.float.crit.huge { font-size: 34px; color: #fff0b8; text-shadow: 0 0 12px rgba(255, 190, 80, 0.9), 0 2px 3px #000; }
 .float.hurt { color: var(--danger); font-size: 22px; }
 .float.heal { color: var(--life); }
 .float.dot { color: #ff9aa2; font-size: 14px; }
@@ -209,6 +211,12 @@ body.slowmo #slowtint { opacity: 1; }
   0% { opacity: 0; margin-top: 8px; }
   12% { opacity: 1; margin-top: 0; }
   100% { opacity: 0; margin-top: -54px; }
+}
+@keyframes floatCrit {
+  0% { opacity: 0; margin-top: 4px; scale: 1.8; }
+  10% { opacity: 1; margin-top: 0; scale: 1.25; }
+  22% { scale: 1; }
+  100% { opacity: 0; margin-top: -60px; scale: 1; }
 }
 
 /* ---------- Top: wave + boss ---------- */
@@ -1159,3 +1167,27 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 @media (prefers-reduced-motion: reduce) { .cell.eternal, #tooltip.eternal, .eq-name.eternal { animation: none; } }
 #tooltip .tt-effect.eternal b.pot { color: #ff7a88; }
 .et-food .cell { width: 46px; height: 46px; }
+
+/* ===================================================================== (0.72) polish
+   Panels ease in rather than snapping, buttons answer a press, tooltips fade, and the HUD's
+   ability slots flash when used. All of it steps aside for reduced motion. */
+.drawer:not(.hidden) { animation: drawerIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes drawerIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.screen:not(.hidden) { animation: screenIn 0.18s ease-out; }
+.screen:not(.hidden) .menu-card { animation: cardIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cardIn { from { transform: translateY(14px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.menu-overlay:not(.hidden) { animation: screenIn 0.16s ease-out; }
+#tooltip:not(.hidden) { animation: tipIn 0.12s ease-out; }
+@keyframes tipIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.ghost, .primary, .hud-btn { transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s, transform 0.08s, color 0.15s; }
+.ghost:active:not(:disabled), .primary:active:not(:disabled), .hud-btn:active:not(:disabled) { transform: translateY(1px) scale(0.985); }
+.ghost:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.04); }
+.hud-btn:hover { box-shadow: 0 0 14px rgba(159, 232, 255, 0.18); }
+button.cell { transition: background-color 0.12s, border-color 0.12s, transform 0.08s; }
+button.cell:active { transform: scale(0.96); }
+.badge:not(.hidden) { animation: badgePop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes badgePop { from { transform: scale(0.4); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .drawer:not(.hidden), .screen:not(.hidden), .screen:not(.hidden) .menu-card, .menu-overlay:not(.hidden), #tooltip:not(.hidden), .badge:not(.hidden) { animation: none; }
+}

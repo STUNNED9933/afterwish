@@ -3,6 +3,10 @@
 // slightly ahead of time so the rhythm stays steady even if the game stutters.
 import { SONGS, arrange, freq } from './songs.js';
 
+// (0.72) The drums and the short string stabs are the "drive": they swell in a fight and sit back when
+// things are calm (setIntensity). Everything else is the core of the song.
+const DRIVE = new Set(['kick', 'snare', 'hat', 'timp', 'stab']);
+
 // How loud each instrument is in the mix.
 const MIX = { flute: 0.2, oboe: 0.17, brass: 0.15, square: 0.11, strings: 0.035, organ: 0.04, harp: 0.09, bell: 0.085, stab: 0.035, bass: 0.17, kick: 0.3, snare: 0.11, hat: 0.03, timp: 0.24 };
 
@@ -16,6 +20,8 @@ export class Music {
     this.current = null; // id of the song that is playing (or wanted, before audio is unlocked)
     this.arranged = {};
     this.timer = null;
+    this.intensity = 0.5; // (0.72) 0 calm ... 1 a fight
+    this.ducked = false; // (0.72) a menu is open: softer and muffled
     if (ctx) this.attach(ctx);
   }
 
@@ -24,8 +30,12 @@ export class Music {
     this.ctx = ctx;
     this.out = ctx.createGain(); // master music volume
     this.out.connect(ctx.destination);
-    this.bus = ctx.createGain(); // every instrument plays into this; fades with the song
-    this.bus.connect(this.out);
+    // (0.72) the whole mix goes through one gentle low-pass: brighter in a fight, muffled behind a menu
+    this.mix = ctx.createBiquadFilter();
+    this.mix.type = 'lowpass';
+    this.mix.Q.value = 0.5;
+    this.mix.frequency.value = 16000;
+    this.mix.connect(this.out);
     // A simple hall reverb: a burst of fading noise used as the room's echo.
     const len = Math.floor(ctx.sampleRate * 2.2);
     const ir = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -40,8 +50,8 @@ export class Music {
     const wet = ctx.createGain();
     wet.gain.value = 0.3;
     this.hall = ctx.createGain(); // every bus also feeds the reverb through here
-    this.hall.connect(hall).connect(wet).connect(this.out);
-    this.bus.connect(this.hall);
+    this.hall.connect(hall).connect(wet).connect(this.mix);
+    this.newBus(1);
     this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); // one second of noise for drums
     const nd = this.noise.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = rnd();
@@ -49,9 +59,60 @@ export class Music {
     if (this.current) this.start(this.current);
   }
 
+  /**
+   * (0.72) A fresh set of buses for a song: `bus` (melody, chords, bass) and `drive` (drums and stabs),
+   * both into `songOut`, which fades the song in and out as a whole.
+   */
+  newBus(start = 0) {
+    const ctx = this.ctx;
+    this.songOut = ctx.createGain();
+    this.songOut.gain.value = start;
+    this.songOut.connect(this.mix);
+    this.songOut.connect(this.hall);
+    this.bus = ctx.createGain();
+    this.bus.connect(this.songOut);
+    this.drive = ctx.createGain();
+    this.drive.gain.value = this.driveLevel();
+    this.drive.connect(this.songOut);
+  }
+
+  driveLevel() {
+    return 0.35 + 0.65 * this.intensity;
+  }
+
+  /** (0.72) How hard the music is pushing, 0 (calm) to 1 (a fight). Eased in over a second or two. */
+  setIntensity(x) {
+    x = Math.max(0, Math.min(1, x));
+    if (Math.abs(x - this.intensity) < 0.01) return;
+    this.intensity = x;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.drive.gain.cancelScheduledValues(t);
+    this.drive.gain.setTargetAtTime(this.driveLevel(), t, 0.6);
+    this.applyTone();
+  }
+
+  /** (0.72) A menu over the game: the music steps back (quieter, muffled) and comes forward again after. */
+  setDucked(d) {
+    if (d === this.ducked) return;
+    this.ducked = d;
+    this.applyVolume();
+    this.applyTone();
+  }
+
+  applyTone() {
+    if (!this.ctx) return;
+    const f = this.ducked ? 1400 : 5500 + 10500 * this.intensity;
+    this.mix.frequency.cancelScheduledValues(this.ctx.currentTime);
+    this.mix.frequency.setTargetAtTime(f, this.ctx.currentTime, 0.25);
+  }
+
   applyVolume() {
     // 0.68 leaves headroom so the busiest theme does not distort with the slider at full.
-    if (this.out) this.out.gain.value = this.muted || this.paused ? 0 : this.volume * 0.68;
+    if (!this.out) return;
+    const v = this.muted || this.paused ? 0 : this.volume * 0.68 * (this.ducked ? 0.5 : 1);
+    this.out.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.out.gain.setTargetAtTime(v, this.ctx.currentTime, this.muted || this.paused ? 0.01 : 0.15);
   }
   setVolume(v) {
     this.volume = v;
@@ -78,16 +139,17 @@ export class Music {
     this.current = id;
     if (!this.ctx) return; // remembered; starts when audio is unlocked
     this.stopTimer();
-    // Fade out whatever is ringing, then give the new song a fresh bus.
+    // (0.72) A crossfade: the old song eases out over a second and a half while the new one eases in.
     const t = this.ctx.currentTime;
-    const old = this.bus;
+    const old = this.songOut;
+    old.gain.cancelScheduledValues(t);
     old.gain.setValueAtTime(old.gain.value, t);
-    old.gain.linearRampToValueAtTime(0, t + 0.7);
-    setTimeout(() => old.disconnect(), 3200);
-    this.bus = this.ctx.createGain();
-    this.bus.connect(this.out);
-    this.bus.connect(this.hall);
-    if (id && !this.paused) this.start(id, 0.35);
+    old.gain.linearRampToValueAtTime(0, t + 1.5);
+    setTimeout(() => old.disconnect(), 4500);
+    this.newBus(0);
+    this.songOut.gain.setValueAtTime(0, t + 0.25);
+    this.songOut.gain.linearRampToValueAtTime(1, t + 1.6);
+    if (id && !this.paused) this.start(id, 0.25);
   }
 
   song(id) {
@@ -149,14 +211,14 @@ export class Music {
   }
 
   /** Volume envelope: rise over `attack`, hold, fall away over `release` after the note ends. */
-  env(t, dur, peak, attack, release, sustain = 1) {
+  env(t, dur, peak, attack, release, sustain = 1, dest = this.dest || this.bus) {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(peak, t + attack);
     if (sustain < 1) g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * sustain), t + Math.max(attack + 0.01, dur));
     else g.gain.setValueAtTime(peak, t + Math.max(attack, dur));
     g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(attack, dur) + release);
-    g.connect(this.bus);
+    g.connect(dest);
     return g;
   }
 
@@ -185,11 +247,12 @@ export class Music {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(peak, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f).connect(g).connect(this.bus);
+    src.connect(f).connect(g).connect(this.dest || this.bus);
     src.start(t, Math.random() * 0.5, dur + 0.02);
   }
 
   note(ev, t, dur) {
+    this.dest = DRIVE.has(ev.inst) ? this.drive || this.bus : this.bus; // (0.72) drums and stabs on the drive bus
     const v = (MIX[ev.inst] || 0.1) * ev.vol;
     const f = ev.midi ? freq(ev.midi) : 0;
     switch (ev.inst) {
@@ -294,7 +357,7 @@ export class Music {
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(v, t);
         g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-        o.connect(g).connect(this.bus);
+        o.connect(g).connect(this.dest);
         o.start(t);
         o.stop(t + 0.22);
         break;
@@ -314,7 +377,7 @@ export class Music {
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(v, t);
         g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-        o.connect(g).connect(this.bus);
+        o.connect(g).connect(this.dest);
         o.start(t);
         o.stop(t + 0.75);
         this.noiseHit(t, 0.06, v * 0.4, 'lowpass', 400);

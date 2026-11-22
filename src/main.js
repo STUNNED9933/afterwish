@@ -18,7 +18,7 @@ import { Town } from './ui/town.js';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
 import { Music } from './music/player.js';
-import { MAP_SONG, BOSS_SONG } from './music/songs.js';
+import { MAP_SONG, BOSS_SONG, MAP_ID_SONG, fightSong } from './music/songs.js';
 import { MAPS, MAP_IDS } from './sim/maps.js';
 import { BOSSES, ENEMIES } from './sim/defs.js';
 import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
@@ -339,6 +339,16 @@ function start(hot = {}) {
     },
   });
 
+  /** (0.72) A damage number short enough to read at a glance: 9,400 / 125K / 13.7M / 2.1B. */
+  function shortNum(n) {
+    n = Math.round(Number(n) || 0);
+    const a = Math.abs(n);
+    if (a < 1e5) return n.toLocaleString('en-US');
+    if (a < 1e6) return Math.round(n / 1e3) + 'K';
+    if (a < 1e9) return (n / 1e6).toFixed(a < 1e7 ? 2 : 1) + 'M';
+    return (n / 1e9).toFixed(a < 1e10 ? 2 : 1) + 'B';
+  }
+
   /** Pick the music for where the player is right now. */
   function tune() {
     let id;
@@ -346,11 +356,35 @@ function start(hot = {}) {
     else if (mode === 'title' || mode === 'town' || (mode === 'gear' && gearReturn === 'town')) id = 'haven';
     else if (world.mode === 'explore') {
       const guardian = world.rift && world.rift.state === 'guardian' ? world.enemies.find((e) => e.riftGuardian) : null;
-      id = guardian ? BOSS_SONG[guardian.type] : world.map.song || MAP_SONG[world.map.theme]; // a rift's guardian brings its own theme; a map may have its own song
+      const foe = fightNow(); // (0.72) a boss fight on the map has its own theme
+      id = guardian ? BOSS_SONG[guardian.type] : (foe && fightSong(foe.def, foe.type)) || MAP_ID_SONG[world.map.id] || world.map.song || MAP_SONG[world.map.theme]; // a rift's guardian brings its own theme; a map may have its own song
     }
     else if (world.wave.phase === 'active' && world.wave.n % CONFIG.BOSS_EVERY === 0) id = BOSS_SONG[BOSSES[(world.wave.n / CONFIG.BOSS_EVERY - 1) % BOSSES.length]]; // each boss brings its own theme
-    else id = 'arena';
+    else id = world.ring ? 'ring' : 'arena'; // (0.72) the Echo Ring has its own
     music.play(id);
+  }
+
+  /** (0.72) The boss you are fighting right now (awake, and within 30 m), if any. */
+  function fightNow() {
+    const p = world.player;
+    if (!p) return null;
+    return world.enemies.find((e) => e.def.boss && !e.dead && e.aggro && Math.hypot(e.x - p.x, e.z - p.z) < 30) || null;
+  }
+
+  /** (0.72) Twice a second: the right song, how hard it pushes, and whether a menu is over it. */
+  function musicMood() {
+    music.setDucked(!['play', 'title', 'defeat'].includes(mode));
+    if (mode !== 'play') {
+      music.setIntensity(mode === 'town' || mode === 'title' ? 0.15 : 0.4);
+      return;
+    }
+    tune();
+    const p = world.player;
+    if (!p) return;
+    if (fightNow()) return music.setIntensity(1);
+    let near = 0;
+    for (const e of world.enemies) if (!e.dead && e.aggro && Math.hypot(e.x - p.x, e.z - p.z) < 16) near++;
+    music.setIntensity(world.map && world.map.id === 'town' ? 0.15 : Math.min(1, 0.3 + 0.12 * near));
   }
 
   // ----------------------------------------------------------------- modes
@@ -3834,6 +3868,7 @@ function start(hot = {}) {
         sfx.shatter();
         break;
       case 'reflect':
+        sfx.ping(); // (0.72)
         hud.float(renderer, ev.x, 2.6, ev.z, 'Returned', 'word');
         break;
       case 'perfectDodge':
@@ -3859,14 +3894,21 @@ function start(hot = {}) {
       case 'damage':
         if (ev.who === 'enemy') {
           if (!ev.dot) sfx.hit(ev.crit);
-          hud.float(renderer, ev.x, 2.3, ev.z, ev.amount, (ev.crit ? 'crit' : ev.dot ? 'dot' : '') + (ev.far ? ' far' : ''));
+          hud.float(renderer, ev.x, 2.3, ev.z, shortNum(ev.amount), (ev.crit ? 'crit' : ev.dot ? 'dot' : '') + (ev.far ? ' far' : '') + (ev.amount >= 1e5 ? ' huge' : ''));
         } else {
           sfx.hurt();
-          hud.float(renderer, ev.x, 2.6, ev.z, '-' + ev.amount, 'hurt');
+          hud.float(renderer, ev.x, 2.6, ev.z, '-' + shortNum(ev.amount), 'hurt');
         }
         break;
       case 'heal':
         hud.float(renderer, ev.x, 2.8, ev.z, '+' + ev.amount, 'heal');
+        break;
+      case 'bloodOath':
+        sfx.oathOn(); // (0.72)
+        hud.screenFlash(0.15);
+        break;
+      case 'deathMark':
+        sfx.deathMark();
         break;
       case 'bloodCost':
         hud.float(renderer, ev.x, 2.6, ev.z, '-' + ev.amount, 'blood');
@@ -3884,6 +3926,12 @@ function start(hot = {}) {
       case 'mark':
         hud.float(renderer, ev.x, 3.4, ev.z, 'Marked', 'word mark');
         break;
+      case 'iceGuard':
+        sfx.iceWall(); // (0.72) Glacier Spin
+        break;
+      case 'buffEnd':
+        if (/Oath/.test(ev.name || '')) sfx.oathOff(); // (0.72)
+        break;
       case 'shadowSwap':
         sfx.cast('e');
         break;
@@ -3892,6 +3940,7 @@ function start(hot = {}) {
         break;
       case 'wallRise':
         sfx.slam();
+        sfx.iceWall(); // (0.72) and the ice in it
         break;
       case 'swing':
         sfx.swing();
@@ -3901,6 +3950,11 @@ function start(hot = {}) {
           sfx.sniper();
           hud.screenFlash(0.25);
         } else if (ev.fx === 'focus') sfx.breath();
+        else if (ev.fire) sfx.fireBreath(); // (0.72)
+        else if (ev.pull) sfx.pullIn();
+        else if (ev.fx === 'frenzy') sfx.oathOn();
+        else if ((ev.slot === 'd' || ev.slot === 'f') && ev.fx === 'meteor') sfx.lob();
+        else if (ev.slot === 'd' || ev.slot === 'f') sfx.cast(ev.fx === 'wall' || ev.fx === 'zone' ? 'w' : 'q'); // a borrowed skill
         else sfx.cast(ev.slot);
         if (!ev.echo) hud.flashSlot(ev.slot);
         break;
@@ -4551,8 +4605,8 @@ function start(hot = {}) {
         break;
       case 'eternalDrop':
         // (0.71) the tier above Immortal
-        sfx.pickup(7);
-        sfx.levelUp();
+        sfx.eternal(); // (0.72)
+        hud.screenFlash(0.35);
         if (ev.essence) hud.banner('Eternity Essence', `+${ev.essence} · every Eternal piece is yours: feed it to them (Tab)`);
         else hud.banner(`An Eternal falls: ${ev.name}`, 'Soulbound, kept through every rebirth · wear and feed it in the Eternal panel (Tab)');
         refreshMenus();
@@ -4782,10 +4836,15 @@ function start(hot = {}) {
     return `ping ${Math.round(ping)} ms · ${Math.round(1000 / gapMs)} updates a second · a click shows after about ${Math.round(click)} ms · jitter ${Math.round(net.jitter || 0)} ms${net.relay ? ' · via relay' : ''}`;
   }
 
+  let moodT = 0;
   function frame(now) {
     requestAnimationFrame(frame);
     const jsStart = performance.now();
     const rawDt = Math.max(0, (now - last) / 1000);
+    if ((moodT -= rawDt) <= 0) {
+      moodT = 0.5;
+      musicMood(); // (0.72)
+    }
     const dt = Math.min(0.1, rawDt);
     last = now;
     if (settings.graphics === 'auto' && gfx.drops < 3 && mode === 'play' && !document.hidden && rawDt < 3) {

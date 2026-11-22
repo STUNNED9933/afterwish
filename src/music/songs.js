@@ -196,6 +196,190 @@ export const SONGS = {
       'F5:6 E5:2 D5:8', 'C5:4 E5:4 r:8', 'G5:6 F5:2 D5:8', 'C5:4 A4:4 r:8',
       'D5:6 Bb4:2 G4:8', 'E5:4 G5:4 r:8', 'D5:4 C5:4 Bb4:4 G4:4', 'F4:12 r:4',
     ],
+  },  // ======================================================================= (0.72) new themes
+  // Written in the spirit of the classic JRPGs and MMOs (harp preludes, heroic brass, bright bouncing
+  // field tunes), every one an original melody for this game.
+
+  // The Sky Road (Caelum I): out above the clouds at last. Bb major, a bright bounding field tune.
+  skyroad: {
+    name: 'Above the Clouds', bpm: 128,
+    style: { lead: 'bell', pad: 'strings', arp: 'harp16', bass: 'walk', stabs: false, drums: 'bounce' },
+    chords: ['Bb', 'F/A', 'Gm', 'Eb', 'Bb', 'F', 'Eb', 'F', 'Gm', 'Dm', 'Eb', 'Bb', 'Cm', 'F', 'Bb', 'F'],
+    melody: [
+      'D5:2 F5:2 Bb5:4 A5:2 F5:2 C6:4', 'C6:6 Bb5:2 A5:8', 'G5:2 Bb5:2 D6:4 C6:2 Bb5:2 G5:4', 'G5:6 F5:2 Eb5:8',
+      'F5:2 Bb5:2 D6:4 F6:4 D6:4', 'C6:4 A5:4 F5:4 A5:4', 'Bb5:4 G5:2 Eb5:2 G5:4 Bb5:4', 'C6:12 r:4',
+      'D6:4 Bb5:2 G5:2 D5:4 G5:4', 'F5:2 A5:2 D6:4 C6:4 A5:4', 'G5:2 Bb5:2 Eb6:4 D6:2 C6:2 Bb5:4', 'D6:6 C6:2 Bb5:8',
+      'Eb5:2 G5:2 C6:4 Bb5:2 G5:2 Eb6:4', 'D6:4 C6:4 A5:4 F5:4', 'Bb5:2 D6:2 F6:4 D6:2 Bb5:2 F5:4', 'A5:8 C6:4 r:4',
+    ],
+  },
+
+  // The Court of Answers (Caelum II): every question already decided. D minor, stately and cold.
+  answers: {
+    name: 'The Decided Court', bpm: 100,
+    style: { lead: 'oboe', pad: 'organ', arp: 'harp8', bass: 'walk', stabs: true, drums: 'timpani' },
+    chords: ['Dm', 'Dm', 'Bb', 'A', 'Dm', 'Gm', 'C', 'F', 'Bb', 'Gm', 'A', 'Dm', 'Gm', 'Bb', 'A', 'A'],
+    melody: [
+      'D5:4 F5:4 A5:6 G5:2', 'F5:4 E5:4 D5:8', 'D5:2 F5:2 Bb5:4 A5:4 G5:4', 'E5:8 C#5:4 A4:4',
+      'D5:4 A5:4 D6:6 C6:2', 'Bb5:4 G5:4 D5:8', 'E5:2 G5:2 C6:4 Bb5:4 G5:4', 'A5:12 r:4',
+      'Bb5:6 A5:2 G5:4 F5:4', 'G5:4 Bb5:4 D6:8', 'C#6:6 B5:2 A5:4 E5:4', 'F5:4 E5:4 D5:8',
+      'G5:4 Bb5:4 D6:4 Bb5:4', 'F5:4 D5:4 Bb4:8', 'A4:2 C#5:2 E5:4 G5:4 E5:4', 'A5:12 r:4',
+    ],
+  },
+
+  // The Hall of Wants (Caelum III): soft carpets and too much gold. E minor, slinking.
+  wants: {
+    name: 'Everything You Asked For', bpm: 94,
+    style: { lead: 'oboe', pad: 'strings', arp: 'harp8', arpInst: 'bell', bass: 'eighth', stabs: false, drums: 'hand' },
+    chords: ['Em', 'C', 'Am', 'B', 'Em', 'C', 'D', 'B', 'Am', 'D', 'G', 'Em', 'Am', 'C', 'B', 'B'],
+    melody: [
+      'B4:3 E5:3 G5:2 F#5:4 E5:4', 'G5:3 E5:3 C5:2 E5:8', 'A5:3 G5:3 E5:2 C5:4 A4:4', 'B4:3 D#5:3 F#5:2 A5:8',
+      'G5:3 F#5:3 E5:2 B5:8', 'C6:3 B5:3 G5:2 E5:8', 'F#5:3 A5:3 D6:2 C6:4 A5:4', 'B5:12 r:4',
+      'C6:4 B5:2 A5:2 E5:8', 'F#5:3 A5:3 D6:2 C6:4 A5:4', 'B5:4 D6:4 G5:8', 'E5:3 G5:3 B5:2 E6:8',
+      'E6:3 C6:3 A5:2 E5:8', 'G5:3 E5:3 C5:2 G5:8', 'F#5:3 A5:3 B5:2 D#6:8', 'E6:8 B5:4 r:4',
+    ],
+  },
+
+  // The Zenith (Caelum IV): the top of everything, the Queen's light. C major, slow and enormous.
+  zenith: {
+    name: 'Let There Be', bpm: 72,
+    style: { lead: 'flute', pad: 'organ', arp: 'harp16', arpInst: 'bell', bass: 'half', stabs: false, drums: 'soft' },
+    chords: ['C', 'G/B', 'Am', 'Em', 'F', 'C/E', 'Dm', 'G', 'Am', 'F', 'C', 'G', 'F', 'G', 'C', 'C'],
+    melody: [
+      'E4:4 G4:4 C5:8', 'B4:4 D5:4 G4:8', 'A4:4 C5:4 E5:6 D5:2', 'B4:8 G4:8',
+      'A4:4 F4:4 C5:8', 'G4:4 E4:4 C4:8', 'D4:4 F4:4 A4:4 C5:4', 'B4:12 r:4',
+      'C5:6 B4:2 A4:4 E4:4', 'F4:4 A4:4 C5:4 F5:4', 'E5:6 D5:2 C5:4 G4:4', 'D5:12 r:4',
+      'C5:4 A4:4 F4:4 A4:4', 'B4:4 D5:4 G5:8', 'E5:6 D5:2 C5:4 E5:4', 'C5:12 r:4',
+    ],
+  },
+
+  // The Granted (Caelum's bosses): a hundred lives deep, and they want you to know it. F minor, furious.
+  granted: {
+    name: 'A Hundred Lives Deep', bpm: 152,
+    style: { lead: 'brass', pad: 'strings', arp: 'harp16', bass: 'drive', stabs: true, drums: 'epic' },
+    chords: ['Fm', 'Fm', 'Db', 'Eb', 'Fm', 'Ab', 'Bbm', 'C', 'Db', 'Eb', 'Cm', 'Fm', 'Db', 'Bbm', 'C', 'C'],
+    melody: [
+      'F4:2 F4:2 C5:4 Ab4:2 F4:2 C5:4', 'Db5:4 C5:4 Ab4:4 F4:4', 'F4:2 Ab4:2 Db5:4 F5:4 Db5:4', 'Eb5:6 Db5:2 Bb4:8',
+      'C5:2 C5:2 F5:4 Eb5:2 C5:2 Ab4:4', 'Ab4:2 C5:2 Eb5:4 Ab5:8', 'Bb4:4 Db5:4 F5:4 Db5:4', 'E5:8 G5:4 C5:4',
+      'Ab4:2 Db5:2 F5:4 Db5:2 Ab4:2 F4:4', 'G4:2 Bb4:2 Eb5:4 G5:8', 'G4:4 C5:4 Eb5:4 G5:4', 'F5:8 C5:4 Ab4:4',
+      'Db5:4 F5:4 Ab5:6 G5:2', 'F5:4 Db5:4 Bb4:8', 'C5:2 E5:2 G5:4 Bb5:4 G5:4', 'C6:8 G5:4 E5:4',
+    ],
+  },
+
+  // The Ashen Deep (Depth VI, the Cinder): heat under the mountain. A minor, slow and smouldering.
+  deepash: {
+    name: 'Embers Under Everything', bpm: 86,
+    style: { lead: 'oboe', pad: 'organ', arp: null, bass: 'eighth', stabs: false, drums: 'timpani' },
+    chords: ['Am', 'Am', 'F', 'E', 'Am', 'Dm', 'G', 'C', 'F', 'Dm', 'E', 'Am', 'Dm', 'F', 'E', 'E'],
+    melody: [
+      'A4:6 C5:2 E5:8', 'D5:4 C5:4 A4:8', 'F5:6 E5:2 C5:8', 'B4:4 G#4:4 E4:8',
+      'A4:4 E5:4 A5:6 G5:2', 'F5:4 D5:4 A4:8', 'B4:4 D5:4 G5:6 F5:2', 'E5:12 r:4',
+      'F5:6 A5:2 C6:8', 'A5:4 F5:4 D5:8', 'E5:4 G#5:4 B5:6 A5:2', 'A5:8 E5:8',
+      'D5:4 F5:4 A5:4 D6:4', 'C6:6 A5:2 F5:8', 'E5:2 G#5:2 B5:4 E6:8', 'E6:12 r:4',
+    ],
+  },
+
+  // The Drowned Deep (Depth VII, the Undertow): cold water closing over. D minor, bells and slow harp.
+  drowned: {
+    name: 'Fathoms', bpm: 68,
+    style: { lead: 'bell', pad: 'strings', arp: 'harp16', bass: 'half', stabs: false, drums: null },
+    chords: ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'Gm', 'A', 'Bb', 'F', 'Gm', 'Dm', 'Bb', 'C', 'A', 'A'],
+    melody: [
+      'D5:4 A5:4 F5:8', 'D5:4 F5:4 Bb5:8', 'A5:4 C6:4 F5:8', 'E5:4 G5:4 C5:8',
+      'F5:4 A5:4 D6:8', 'Bb5:4 F5:4 D5:8', 'G5:6 Bb5:2 D6:8', 'C#6:12 r:4',
+      'D6:4 Bb5:4 F5:8', 'C6:4 A5:4 F5:8', 'Bb5:4 G5:4 D5:8', 'A5:4 F5:4 D5:8',
+      'F5:4 Bb5:4 D6:8', 'E5:4 G5:4 C6:8', 'C#6:4 E6:4 A5:8', 'A5:12 r:4',
+    ],
+  },
+
+  // The Root Deep (Depth VIII, the Rootmother): something growing in the dark. G minor, hand drums.
+  rootdeep: {
+    name: 'What Grows Down', bpm: 100,
+    style: { lead: 'flute', pad: 'strings', arp: 'harp8', bass: 'walk', stabs: false, drums: 'hand' },
+    chords: ['Gm', 'Gm', 'Eb', 'D', 'Gm', 'Cm', 'F', 'Bb', 'Eb', 'Cm', 'D', 'Gm', 'Cm', 'Eb', 'D', 'D'],
+    melody: [
+      'G4:3 Bb4:3 D5:2 C5:4 Bb4:4', 'A4:4 G4:4 D4:8', 'G4:3 Eb4:3 G4:2 Bb4:8', 'A4:3 F#4:3 D4:2 A4:8',
+      'Bb4:3 D5:3 G5:2 F5:4 D5:4', 'Eb5:4 C5:4 G4:8', 'F4:3 A4:3 C5:2 Eb5:8', 'D5:12 r:4',
+      'Eb5:4 D5:2 C5:2 Bb4:8', 'G4:3 C5:3 Eb5:2 D5:4 C5:4', 'A4:3 C5:3 D5:2 F#5:8', 'G5:8 D5:8',
+      'G4:3 C5:3 Eb5:2 G5:8', 'F5:4 Eb5:4 Bb4:8', 'A4:3 C5:3 F#5:2 A5:8', 'G5:12 r:4',
+    ],
+  },
+
+  // The Choir Deep (Depth IX): voices with nobody singing them. E minor, organ and a high flute.
+  choir: {
+    name: 'Many Voices, None', bpm: 64,
+    style: { lead: 'flute', pad: 'organ', arp: null, bass: 'half', stabs: false, drums: null },
+    chords: ['Em', 'C', 'G', 'D', 'Em', 'Am', 'B', 'B', 'C', 'G', 'Am', 'Em', 'C', 'D', 'B', 'Em'],
+    melody: [
+      'E5:8 G5:4 B5:4', 'C6:8 B5:4 G5:4', 'D6:8 B5:8', 'A5:8 F#5:8',
+      'G5:4 B5:4 E6:8', 'C6:4 A5:4 E5:8', 'F#5:4 A5:4 D#6:8', 'B5:12 r:4',
+      'C6:8 E6:4 C6:4', 'B5:8 G5:8', 'A5:4 C6:4 E6:8', 'G5:8 E5:8',
+      'E5:4 G5:4 C6:8', 'D6:8 A5:8', 'F#5:4 B5:4 D#6:8', 'E6:12 r:4',
+    ],
+  },
+
+  // The Quiet (Depth X): almost nothing. B minor, a bell and long rests.
+  quiet: {
+    name: 'Enough', bpm: 54,
+    style: { lead: 'bell', pad: 'strings', arp: null, bass: 'half', stabs: false, drums: null },
+    chords: ['Bm', 'G', 'D', 'A', 'Bm', 'G', 'Em', 'F#', 'Bm', 'G', 'D', 'A', 'G', 'Em', 'F#', 'Bm'],
+    melody: [
+      'B4:8 F#5:8', 'D5:8 r:8', 'A5:8 F#5:8', 'E5:8 r:8',
+      'B4:8 D5:4 F#5:4', 'G5:8 r:8', 'E5:8 G5:8', 'F#5:12 r:4',
+      'D5:8 B4:8', 'G5:8 r:8', 'F#5:4 A5:4 D6:8', 'C#6:8 r:8',
+      'B5:8 G5:8', 'E5:8 r:8', 'C#5:4 F#5:4 A#5:8', 'B5:12 r:4',
+    ],
+  },
+
+  // The Primordials (Depths VI-IX): the oldest things, woken. C minor, a great dark charge.
+  primordial: {
+    name: 'Older Than the Wish', bpm: 144,
+    style: { lead: 'brass', pad: 'organ', arp: 'harp16', bass: 'drive', stabs: true, drums: 'epic' },
+    chords: ['Cm', 'Cm', 'Ab', 'G', 'Cm', 'Fm', 'Bb', 'Eb', 'Ab', 'Fm', 'G', 'Cm', 'Ab', 'Bb', 'G', 'G'],
+    melody: [
+      'C4:4 G4:4 C5:6 Bb4:2', 'Ab4:2 G4:2 Eb4:4 C4:8', 'C4:2 Eb4:2 Ab4:4 C5:4 Ab4:4', 'B4:6 D5:2 G4:8',
+      'C5:2 C5:2 G5:4 F5:2 Eb5:2 C5:4', 'Ab4:4 C5:4 F5:8', 'F5:4 D5:4 Bb4:4 F5:4', 'G5:8 Eb5:4 Bb4:4',
+      'Ab4:2 C5:2 Eb5:4 Ab5:4 Eb5:4', 'F5:4 C5:4 Ab4:8', 'G4:2 B4:2 D5:4 G5:4 F5:4', 'Eb5:8 C5:4 G4:4',
+      'Eb5:4 Ab5:4 C6:6 Bb5:2', 'Bb5:4 F5:4 D5:8', 'B4:2 D5:2 G5:4 B5:4 G5:4', 'G5:12 r:4',
+    ],
+  },
+
+  // The Quiet's Stillness (the last Primordial): it does not want to fight. Then it does. E minor.
+  stillness: {
+    name: 'Wanting Nothing', bpm: 132,
+    style: { lead: 'flute', pad: 'organ', arp: 'harp16', arpInst: 'bell', bass: 'drive', stabs: true, drums: 'epic' },
+    chords: ['Em', 'C', 'Am', 'B', 'Em', 'C', 'D', 'B', 'C', 'D', 'Bm', 'Em', 'Am', 'C', 'B', 'B'],
+    melody: [
+      'E4:4 B4:4 G4:4 E5:4', 'E5:6 D5:2 C5:8', 'A4:4 C5:4 E5:6 D5:2', 'D#5:8 B4:8',
+      'G4:4 B4:4 E5:4 G5:4', 'G5:6 F#5:2 E5:4 C5:4', 'D5:4 F#5:4 A5:6 G5:2', 'F#5:12 r:4',
+      'E5:4 G5:4 C6:6 B5:2', 'A5:4 F#5:4 D5:8', 'D5:4 F#5:4 B5:8', 'G5:8 E5:8',
+      'C5:4 E5:4 A5:6 G5:2', 'G5:4 E5:4 C5:8', 'B4:2 D#5:2 F#5:4 B5:4 A5:4', 'B5:12 r:4',
+    ],
+  },
+
+  // The Herald and the Asker: an ordeal, not a war. G minor, quick strings and brass.
+  ordeal: {
+    name: 'The Asking', bpm: 140,
+    style: { lead: 'brass', pad: 'strings', arp: 'harp16', bass: 'drive', stabs: true, drums: 'battle' },
+    chords: ['Gm', 'Gm', 'Eb', 'F', 'Gm', 'Cm', 'D', 'D', 'Eb', 'F', 'Dm', 'Gm', 'Cm', 'Eb', 'D', 'D'],
+    melody: [
+      'G4:2 Bb4:2 D5:4 C5:2 Bb4:2 G4:4', 'A4:2 Bb4:2 C5:4 Bb4:4 A4:4', 'G4:2 Bb4:2 Eb5:4 D5:4 C5:4', 'F4:2 A4:2 C5:4 F5:8',
+      'D5:4 G5:4 F5:2 D5:2 Bb4:4', 'C5:4 Eb5:4 G5:8', 'F#5:4 D5:4 A4:4 D5:4', 'F#5:12 r:4',
+      'Eb5:2 D5:2 C5:4 G4:4 C5:4', 'F5:2 Eb5:2 D5:4 A4:4 D5:4', 'F5:4 D5:4 A4:8', 'G4:2 Bb4:2 D5:4 G5:8',
+      'G5:4 Eb5:4 C5:4 G4:4', 'Bb4:4 Eb5:4 G5:8', 'F#5:2 A5:2 D6:4 C6:4 A5:4', 'G5:8 D5:4 r:4',
+    ],
+  },
+
+  // The Echo Ring: wave after wave, and it keeps building. A minor, a bouncing chiptune-bright drive.
+  ring: {
+    name: 'Echoes Without End', bpm: 150,
+    style: { lead: 'square', pad: 'strings', arp: 'harp16', bass: 'drive', stabs: true, drums: 'battle' },
+    chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'E', 'F', 'G', 'Em', 'Am', 'Dm', 'F', 'E', 'E'],
+    melody: [
+      'A4:2 A4:2 E5:2 A4:2 C5:4 E5:4', 'F5:4 E5:4 C5:4 A4:4', 'G4:2 C5:2 E5:2 G5:2 E5:4 C5:4', 'D5:4 B4:4 G4:8',
+      'A4:2 C5:2 E5:4 A5:4 G5:4', 'F5:2 E5:2 D5:2 C5:2 A4:8', 'B4:2 D5:2 G5:4 F5:4 D5:4', 'E5:4 G#5:4 B5:8',
+      'A5:4 F5:2 C5:2 F5:4 A5:4', 'G5:4 D5:2 B4:2 D5:4 G5:4', 'E5:4 B4:4 G4:4 B4:4', 'A4:2 C5:2 E5:4 A5:8',
+      'F5:2 D5:2 A4:4 D5:4 F5:4', 'A5:2 G5:2 F5:4 C5:4 A4:4', 'G#4:2 B4:2 E5:4 G#5:4 B5:4', 'E6:8 B5:4 r:4',
+    ],
   },
 };
 
@@ -209,6 +393,12 @@ export const MAP_SONG = {
 };
 /** Each arena boss brings a theme of its own. */
 export const BOSS_SONG = { boss: 'keep', boss2: 'maw', boss3: 'spire' };
+/** (0.72) A map's own song, by its id, ahead of its theme's. */
+export const MAP_ID_SONG = { skyroad: 'skyroad', answers: 'answers', wants: 'wants', zenith: 'zenith', deep6: 'deepash', deep7: 'drowned', deep8: 'rootdeep', deep9: 'choir', deep10: 'quiet' };
+/** (0.72) The song for a boss fight on an ordinary map, by the boss (and its kind). */
+export const FIGHT_SONG = { herald: 'ordeal', asker: 'ordeal', stillness: 'stillness', boss: 'keep', boss2: 'maw', boss3: 'spire' };
+/** (0.72) For kinds of boss with no song of their own: the Granted, and the Primordials. */
+export const fightSong = (def, type) => FIGHT_SONG[type] || (def.granted ? 'granted' : def.primordial ? 'primordial' : null);
 
 export const BAR = 16; // sixteenth notes in a bar
 
@@ -252,6 +442,8 @@ const DRUMS = {
   battle: { kick: 'x..x..x.x..x..x.', snare: '....x.......x...', hat: 'x.xxx.xxx.xxx.xx', timp: '................' },
   timpani: { kick: 'x.......x.......', snare: '....x.......x...', hat: '................', timp: 'x.....x...x.x...' },
   hand: { kick: 'x.....x...x.....', snare: '....x.......x..x', hat: 'x.xx.xx.x.xx.xx.', timp: '................' },
+  bounce: { kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', timp: '................' }, // (0.72) a bright field-tune skip
+  epic: { kick: 'x..x..x...x.x...', snare: '....x..x....x...', hat: 'xxxxxxxxxxxxxxxx', timp: 'x.......x...x...' }, // (0.72) the big fights
 };
 
 /**

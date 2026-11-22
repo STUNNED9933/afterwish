@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### All in on a Wishborne stat, and Esc closes pop-ups (0.75.4)
+
+- **All in** beside each Wishborne stat puts every Wish point into it, after a check in the middle of
+  the screen showing the points and the bonus before and after. Its button waits a moment before it
+  can be pressed, so a double-click cannot go straight through.
+- **Esc closes the pop-up on top first:** that check, someone's gear (Inspect), the players list (O),
+  and augment priority. With none open it pauses, as before.
+- **The players list is easier to find:** the first time you play on a server world you are told about
+  O (until you have opened it once), and O and Esc are in the controls list.
+
 ### Auto-scrap, Eternal-tier rolls, and notices you can see on the gear screen (0.75.3)
 
 - **Auto-scrap new gear** (under the bag): choose a rarity, from Common only up to Ancient and below, and

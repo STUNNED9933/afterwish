@@ -422,6 +422,7 @@ function start(hot = {}) {
       renderHall();
     }
     if (mode === 'augment') renderOffer();
+    if (mode === 'play' && net && net.server && !net.alone && !settings.knowsPlayers) hintOnce('players', 'Press O (or click the server badge on the right) to see everyone on this world: look at their gear, invite them to a party, or go to them. Enter chats.', 10); // (0.75.4)
     if (mode === 'travel') renderTravel();
     if (mode === 'talk') renderTalk();
     if (mode === 'read') renderRead();
@@ -1841,6 +1842,30 @@ function start(hot = {}) {
         renderTalents();
       });
       row.appendChild(b);
+      // (0.75.4) All in: every point on this one stat, after a check in the middle of the screen
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'ghost tiny wish-all';
+      all.textContent = 'All in';
+      all.disabled = !p.wishPts;
+      all.title = `Put all ${p.wishPts || 0} points into ${st.name} (asks first)`;
+      all.addEventListener('click', () => {
+        const pts = world.player.wishPts || 0;
+        if (!pts) return;
+        const now = +(st.each * n).toFixed(1), after = +(st.each * (n + pts)).toFixed(1);
+        confirmModal({
+          title: `All in on ${st.name}?`,
+          html: `<p>Put <b>all ${pts.toLocaleString()} Wish point${pts === 1 ? '' : 's'}</b> into <b>${esc(st.name)}</b>.</p>
+            <div class="cm-change"><span>${esc(st.name)}</span><b>+${now}${unit}</b><span class="cm-arrow">→</span><b class="cm-new">+${after}${unit}</b></div>
+            <p class="setting-desc">${n.toLocaleString()} → ${(n + pts).toLocaleString()} points on it. Nothing is left for the other stats; only an Unwishing Glass takes spent points back.</p>`,
+          ok: `Put all ${pts.toLocaleString()} into ${st.name}`,
+          onOk: () => {
+            applyNow({ type: 'wishSpend', stat: k, n: pts });
+            renderTalents();
+          },
+        });
+      });
+      row.appendChild(all);
       panel.appendChild(row);
     }
     // An Unwishing Glass (0.32) takes every spent point back.
@@ -3151,6 +3176,60 @@ function start(hot = {}) {
     playersOpen = !playersOpen;
     playersPanel.classList.toggle('hidden', !playersOpen);
     if (playersOpen) renderPlayers();
+    if (playersOpen && !settings.knowsPlayers) {
+      settings.knowsPlayers = true; // (0.75.4) they have found it: no more reminders
+      storeSettings(settings);
+    }
+  }
+
+  /**
+   * (0.75.4) A check in the middle of the screen before something that cannot be taken back. Its button
+   * ignores clicks for a moment after it opens, so a double-click on what opened it does not go through.
+   */
+  function confirmModal({ title, html, ok = 'Confirm', cancel = 'Cancel', onOk }) {
+    let box = $('confirm-modal');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'confirm-modal';
+      box.className = 'hidden';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      document.body.appendChild(box);
+    }
+    box.innerHTML = `<div class="cm-card"><h3>${esc(title)}</h3><div class="cm-body">${html}</div><div class="cm-btns"><button type="button" class="ghost" data-act="no">${esc(cancel)} <kbd>Esc</kbd></button><button type="button" class="primary" data-act="yes" disabled>${esc(ok)}</button></div></div>`;
+    box.classList.remove('hidden');
+    tooltip.hide();
+    const yes = box.querySelector('[data-act="yes"]');
+    setTimeout(() => (yes.disabled = false), 450);
+    box.onclick = (e) => {
+      const b = e.target.closest('button');
+      if (e.target === box || (b && b.dataset.act === 'no')) return closeConfirm();
+      if (b && b.dataset.act === 'yes' && !b.disabled) {
+        closeConfirm();
+        onOk();
+      }
+    };
+  }
+  function closeConfirm() {
+    const box = $('confirm-modal');
+    if (box) box.classList.add('hidden');
+  }
+
+  /**
+   * (0.75.4) Escape closes the pop-up on top first (a check, a player's gear, the players list, augment
+   * priority), and only then pauses or leaves a screen. True if it closed one.
+   */
+  function closeTopOverlay() {
+    const open = (id) => $(id) && !$(id).classList.contains('hidden');
+    if (open('confirm-modal')) return closeConfirm(), true;
+    if (open('inspect-panel')) {
+      $('inspect-panel').classList.add('hidden');
+      tooltip.hide();
+      return true;
+    }
+    if (open('augpri')) return $('augpri').classList.add('hidden'), true;
+    if (playersOpen) return closePlayers(), true;
+    return false;
   }
   document.addEventListener('keydown', (e) => {
     if (!net || !net.server || mode !== 'play') return;
@@ -3283,6 +3362,7 @@ function start(hot = {}) {
       }
     },
     togglePause() {
+      if (closeTopOverlay()) return; // (0.75.4) a pop-up first
       if (mode === 'watch') return stopWatch();
       if (mode === 'trial') return enterTown();
       if (mode === 'play') setMode('pause');

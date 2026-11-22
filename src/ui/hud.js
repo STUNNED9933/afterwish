@@ -1034,7 +1034,7 @@ export class Hud {
     const html = info.alone
       ? `Playing alone · <b>online</b>${ping}` // (0.57.1) your online character, a Haven of your own
       : info.server
-      ? `Server world <b>${info.code}</b> · ${info.players} online${ping} · <kbd>O</kbd> players · <kbd>Enter</kbd> chat`
+      ? `Server world <b>${info.code}</b> · ${info.players} online${ping} · <span class="rb-players" title="Everyone on this world (press O)"><kbd>O</kbd> players</span> · <kbd>Enter</kbd> chat`
       : `Room <b>${info.code}</b> · ${info.players} player${info.players === 1 ? '' : 's'}${info.host ? ' · hosting' : ''}${ping}`;
     if (el.innerHTML !== html) el.innerHTML = html;
   }

@@ -190,9 +190,11 @@ body.slowmo #slowtint { opacity: 1; }
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9); white-space: nowrap;
   animation: floatUp 0.85s ease-out forwards; will-change: transform, opacity;
 }
-.float.crit { font-size: 26px; color: #ffd27a; animation-name: floatCrit; } /* (0.72) a crit lands with a pop */
-.float.huge { font-size: 30px; letter-spacing: 0.02em; }
-.float.crit.huge { font-size: 34px; color: #fff0b8; text-shadow: 0 0 12px rgba(255, 190, 80, 0.9), 0 2px 3px #000; }
+.float.crit { font-size: 24px; color: #ffd27a; } /* (0.72.1) a crit pops: its text, not its place */
+.float > span { display: inline-block; }
+.float.crit > span { animation: critPop 0.2s ease-out; }
+.float.huge { font-size: 24px; letter-spacing: 0.02em; }
+.float.crit.huge { font-size: 28px; color: #fff0b8; text-shadow: 0 0 8px rgba(255, 190, 80, 0.7), 0 2px 3px #000; }
 .float.hurt { color: var(--danger); font-size: 22px; }
 .float.heal { color: var(--life); }
 .float.dot { color: #ff9aa2; font-size: 14px; }
@@ -212,12 +214,7 @@ body.slowmo #slowtint { opacity: 1; }
   12% { opacity: 1; margin-top: 0; }
   100% { opacity: 0; margin-top: -54px; }
 }
-@keyframes floatCrit {
-  0% { opacity: 0; margin-top: 4px; scale: 1.8; }
-  10% { opacity: 1; margin-top: 0; scale: 1.25; }
-  22% { scale: 1; }
-  100% { opacity: 0; margin-top: -60px; scale: 1; }
-}
+@keyframes critPop { from { transform: scale(1.4); } to { transform: none; } }
 
 /* ---------- Top: wave + boss ---------- */
 #top { position: fixed; top: 14px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; padding: 0 16px; }
@@ -1189,5 +1186,5 @@ button.cell:active { transform: scale(0.96); }
 .badge:not(.hidden) { animation: badgePop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
 @keyframes badgePop { from { transform: scale(0.4); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .drawer:not(.hidden), .screen:not(.hidden), .screen:not(.hidden) .menu-card, .menu-overlay:not(.hidden), #tooltip:not(.hidden), .badge:not(.hidden) { animation: none; }
+  .drawer:not(.hidden), .screen:not(.hidden), .screen:not(.hidden) .menu-card, .menu-overlay:not(.hidden), #tooltip:not(.hidden), .badge:not(.hidden), .float.crit > span { animation: none; }
 }

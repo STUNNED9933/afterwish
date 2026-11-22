@@ -1568,9 +1568,13 @@ export class Renderer {
         if (ev.who === 'enemy') {
           this.burst(ev.x, 1.1, ev.z, { count: ev.crit ? 12 : 6, color: ev.stunned ? 0xffe27a : 0xffb3a0, speed: 5, up: 3 });
           if (ev.crit && !ev.dot) {
-            // (0.72) a crit lands: a quick white ring where it hit
-            this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.1, color: 0xfff2c8, from: 0.3, to: 1.6, dur: 0.16, opacity: 0.9 });
-            this.shake = Math.max(this.shake, 0.18);
+            // (0.72) a crit lands: a quick white ring where it hit. (0.72.1) Not on a boss: in a long
+            // fight the rings and shakes piled up over its own warnings.
+            const tgt = world.enemies.find((e) => e.id === ev.id);
+            if (!(tgt && tgt.def.boss)) {
+              this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 1.1, color: 0xfff2c8, from: 0.3, to: 1.4, dur: 0.14, opacity: 0.75 });
+              this.shake = Math.max(this.shake, 0.15);
+            }
           }
         } else {
           this.burst(ev.x, 1.2, ev.z, { count: 10, color: 0xff4a55, speed: 6, up: 4 });

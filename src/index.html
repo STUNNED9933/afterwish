@@ -398,6 +398,16 @@
       <input type="range" id="music-volume" min="0" max="100" step="5" value="25">
     </div>
     <div class="setting row">
+      <label class="setting-label" for="dmg-numbers">Damage numbers</label>
+      <select id="dmg-numbers">
+        <option value="fewer">Fewer in boss fights</option>
+        <option value="all">All</option>
+        <option value="crits">Critical hits only</option>
+        <option value="off">Off</option>
+      </select>
+      <span class="setting-desc">Fewer in boss fights leaves out burns and other damage over time, and small hits, while a boss is fighting you, so you can see what it is doing.</span>
+    </div>
+    <div class="setting row">
       <label class="setting-label" for="graphics">Graphics</label>
       <select id="graphics">
         <option value="auto">Auto</option>

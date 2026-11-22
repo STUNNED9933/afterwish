@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Damage numbers, clearer (0.72.1)
+
+- Critical hits no longer fly in from the right: they pop where they land (the pop scaled the number's
+  position as well as its size).
+- A new **Damage numbers** setting (Menu): **Fewer in boss fights** (the default) leaves out burns and
+  other damage over time, and small hits, while a boss is fighting you; or All, Critical hits only, Off.
+- Crits on a boss no longer flash a ring and shake the camera, and big numbers are a little smaller,
+  so a long boss fight stays readable.
+
 ### Music and polish (0.72)
 
 - **Fourteen new themes**, written for this game in the spirit of the classic JRPGs and MMOs (harp

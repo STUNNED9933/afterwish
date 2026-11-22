@@ -339,6 +339,22 @@ function start(hot = {}) {
     },
   });
 
+  /**
+   * (0.72.1) Whether to show this damage number (the Damage numbers setting). "Fewer in boss fights":
+   * while a boss is fighting you, no damage over time and no hit smaller than a fifth of your biggest
+   * lately, so the boss's own warnings stay readable.
+   */
+  let bigHit = 0;
+  function showNumber(ev) {
+    const how = settings.dmgNumbers || 'fewer';
+    if (how === 'off') return false;
+    if (how === 'crits') return !!ev.crit && !ev.dot;
+    bigHit = Math.max(ev.amount || 0, bigHit * 0.995);
+    if (how === 'all' || !fightNow()) return true;
+    if (ev.dot) return false;
+    return ev.crit || (ev.amount || 0) >= bigHit * 0.2;
+  }
+
   /** (0.72) A damage number short enough to read at a glance: 9,400 / 125K / 13.7M / 2.1B. */
   function shortNum(n) {
     n = Math.round(Number(n) || 0);
@@ -3683,6 +3699,11 @@ function start(hot = {}) {
     if (!net || net.role === 'host') world.player.autoAttack = settings.autoAttack; // a joiner's goes to the host below
     world.command({ type: 'setAutoAttack', on: settings.autoAttack });
   });
+  $('dmg-numbers').value = settings.dmgNumbers || 'fewer'; // (0.72.1)
+  $('dmg-numbers').addEventListener('change', (e) => {
+    settings.dmgNumbers = e.target.value;
+    storeSettings(settings);
+  });
   $('graphics').value = settings.graphics;
   $('graphics').addEventListener('change', (e) => {
     settings.graphics = e.target.value;
@@ -3894,7 +3915,7 @@ function start(hot = {}) {
       case 'damage':
         if (ev.who === 'enemy') {
           if (!ev.dot) sfx.hit(ev.crit);
-          hud.float(renderer, ev.x, 2.3, ev.z, shortNum(ev.amount), (ev.crit ? 'crit' : ev.dot ? 'dot' : '') + (ev.far ? ' far' : '') + (ev.amount >= 1e5 ? ' huge' : ''));
+          if (showNumber(ev)) hud.float(renderer, ev.x, 2.3, ev.z, shortNum(ev.amount), (ev.crit ? 'crit' : ev.dot ? 'dot' : '') + (ev.far ? ' far' : '') + (ev.amount >= 1e5 ? ' huge' : ''));
         } else {
           sfx.hurt();
           hud.float(renderer, ev.x, 2.6, ev.z, '-' + shortNum(ev.amount), 'hurt');

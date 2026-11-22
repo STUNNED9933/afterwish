@@ -916,12 +916,17 @@ export class Hud {
     const s = renderer.project(x, y, z);
     const el = document.createElement('div');
     el.className = 'float ' + cls;
-    el.textContent = text;
+    // (0.72.1) the text in its own span: a crit's pop scales the span, never the placed box (scaling the
+    // box scaled its position too, so crits flew in from the right)
+    const inner = document.createElement('span');
+    inner.textContent = text;
+    el.appendChild(inner);
     const jitter = cls.includes('word') ? 0 : (Math.random() - 0.5) * 36;
     el.style.transform = `translate(${Math.round(s.x + jitter)}px, ${Math.round(s.y)}px) translate(-50%, -50%)`;
     this.worldUi.appendChild(el);
     this.floatCount++;
-    el.addEventListener('animationend', () => {
+    el.addEventListener('animationend', (e) => {
+      if (e.target !== el) return; // (0.72.1) the crit's own pop ends first; only the float's rise removes it
       el.remove();
       this.floatCount--;
     });

@@ -9,7 +9,7 @@
 //   level adds to its stats; levels 4, 7 and 10 open another passive slot. Feeding past the last level
 //   comes back as Essence.
 // - Its passives are its own pool, about one thing: bringing a boss down (see ETERNAL_PASSIVES).
-import { RARITIES, ETERNAL_RARITY, statValue, WEAPONS, SLOTS } from './items.js';
+import { ETERNAL_RARITY, WEAPONS, SLOTS, STAT_KEYS, statRange } from './items.js';
 
 export const ETERNAL = {
   // (0.73.1) a long road, not an afternoon: 30 levels on a rising curve (about 56,000 experience, some
@@ -135,23 +135,58 @@ export function feed(item, xp, rng) {
   return over;
 }
 
+/**
+ * (0.75) Every stat on every piece: its slot's main stat first, then all the rest. The power line is the
+ * class's own (Spell Power for the Mage, Attack Damage for the rest), so none of it is wasted.
+ */
+export function eternalLines(slot, cls) {
+  const power = cls === 'mage' ? 'sp' : 'ad';
+  const main = { weapon: power, helm: 'hp', chest: 'armor', boots: 'ms', ring: 'haste' }[slot] || power;
+  return [main, ...STAT_KEYS.filter((k) => k !== main && k !== (power === 'ad' ? 'sp' : 'ad'))];
+}
+
+/** Set every line of a piece from its roll quality (0 to 1 a line), at its item level. */
+function setLines(item, q) {
+  item.stats = {};
+  item.q = {};
+  item.qv = {};
+  for (const k of eternalLines(item.slot, item.ecls)) {
+    item.stats[k] = 1; // the key first, so statRange sees the line
+    const { lo, hi } = statRange(item, k);
+    item.q[k] = q[k];
+    item.stats[k] = item.qv[k] = Math.max(1, Math.round(lo + q[k] * (hi - lo)));
+  }
+}
+
 /** A new Eternal piece for this class and slot. */
 export function rollEternal(rng, ilvl, slot, cls) {
-  const R = RARITIES[ETERNAL_RARITY];
-  const weapon = slot === 'weapon' ? WEAPONS[cls] || WEAPONS.warrior : null;
-  const main = weapon ? weapon.main : { weapon: 'ad', helm: 'hp', chest: 'armor', boots: 'ms', ring: 'haste' }[slot];
-  const bonus = weapon ? weapon.bonus : { helm: ['armor', 'haste', 'crit', 'lifesteal'], chest: ['hp', 'lifesteal', 'haste', 'as'], boots: ['as', 'hp', 'armor', 'crit'], ring: ['crit', 'lifesteal', 'ad', 'as'] }[slot];
-  const stats = { [main]: statValue(main, ilvl, R.mult, rng) };
-  for (const k of bonus.slice(0, R.affixes)) stats[k] = statValue(k, ilvl, R.mult * 0.5, rng);
   const n = NAMES[slot];
   const item = {
     id: 'e' + slot + '-' + Math.floor(rng() * 1e9).toString(36),
     name: typeof n === 'string' ? n : n[cls] || n.warrior,
-    slot, rarity: ETERNAL_RARITY, ilvl, stats, plus: 0, rv: 2,
+    slot, rarity: ETERNAL_RARITY, ilvl, stats: {}, plus: 0, rv: 2, ev: 3, ecls: cls || 'warrior',
     eternal: true, level: 1, xp: 0, passives: [],
   };
-  if (weapon && cls) item.cls = cls;
+  if (slot === 'weapon' && cls && WEAPONS[cls]) item.cls = cls;
+  const q = {};
+  for (const k of eternalLines(slot, item.ecls)) q[k] = Math.round(rng() * 100) / 100;
+  setLines(item, q);
   fillSlots(item, rng);
+  return item;
+}
+
+/**
+ * (0.75) A piece from before 0.75 (four lines, a little above an Immortal) made over with every stat at
+ * the new strength. Its level, experience, passives and blacksmith work are kept; each line is set at a
+ * good roll (70%), the old ones and the new alike, to be rerolled from there.
+ */
+export function remakeEternal(item, cls) {
+  if (!item || !item.eternal || item.ev === 3) return item;
+  item.ev = 3;
+  item.ecls = item.cls || cls || 'warrior';
+  const q = {};
+  for (const k of eternalLines(item.slot, item.ecls)) q[k] = 0.7;
+  setLines(item, q);
   return item;
 }
 

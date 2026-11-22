@@ -32,7 +32,7 @@ import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
-import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax } from './eternal.js';
+import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal } from './eternal.js';
 const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -93,8 +93,9 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
-const ETERNAL_LOCKED = new Set(['upgrade', 'enchant', 'recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal
-const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'wearEternal', 'stowEternal', 'feedEternal', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
+const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -525,6 +526,7 @@ export class World {
       eternalEssence: Math.max(0, Number(save?.eternalEssence) || 0),
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
       eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
+      eternalAuto: AUTO_FEED.includes(save?.eternalAuto) ? save.eternalAuto : null, // (0.75) off unless the player turns it on
       eternalVet: save?.eternalVet === true, // (0.74) the once-only thanks for those who beat the Granted at their hardest
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
       skillPoints: save?.skillPoints ?? Math.max(0, (save?.level ?? 1) - 1),
@@ -578,6 +580,11 @@ export class World {
     if (save) {
       for (const slot of SLOTS) p.equipped[slot] = migrateItem(save.equipped?.[slot] || null);
       p.bag = (save.bag || []).slice(0, CONFIG.BAG_SIZE + 4 * perkRank(p.rebirth, 'pockets')).map(migrateItem); // (0.30: rarity names moved)
+      for (const slot of SLOTS) {
+        // (0.75) Eternal pieces from before 0.75 made over with every stat, at ten times a made Immortal
+        remakeEternal(p.equipped[slot], this.cls);
+        remakeEternal(p.eternals[slot], this.cls);
+      }
       // (0.74) Thanks, once, to a hero who had beaten Granted before now (at twice today's health, or before
       // they had a hundred bars and anything worth having): each one's first-kill Essence if it was missed
       // (kills before 0.73), and a veteran's share more.
@@ -686,7 +693,15 @@ export class World {
       if (p.equipped[slot] && p.equipped[slot].eternal) relevelItem(p.equipped[slot], p.level);
       if (p.eternals && p.eternals[slot]) relevelItem(p.eternals[slot], p.level);
     }
-    const g = sumGearStats(p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped);
+    const gearNow = p.keepsake ? Object.assign({}, p.equipped, { keepsake: p.keepsake }) : p.equipped;
+    const g = sumGearStats(gearNow);
+    if (SLOTS.some((s) => gearNow[s] && gearNow[s].eternal)) {
+      // (0.75) the speeds from Eternal gear stop at ETERNAL_GEAR_CAP (never below what the rest gives alone)
+      const rest = {};
+      for (const k in gearNow) if (!(gearNow[k] && gearNow[k].eternal)) rest[k] = gearNow[k];
+      const g0 = sumGearStats(rest);
+      for (const k in CONFIG.ETERNAL_GEAR_CAP) g[k] = Math.min(g[k], Math.max(CONFIG.ETERNAL_GEAR_CAP[k], g0[k]));
+    }
     const L = p.level - 1;
     const prevMax = p.stats.maxHp || 0;
     const slip = p.slipT > 0;
@@ -744,6 +759,7 @@ export class World {
       eternalPity: p.eternalPity,
       eternalFirsts: p.eternalFirsts,
       eternalVet: p.eternalVet,
+      eternalAuto: p.eternalAuto,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -814,7 +830,8 @@ export class World {
       if (c.type === 'equip') this.equip(c.index);
       else if (c.type === 'wearEternal') this.wearEternal(c.slot);
       else if (c.type === 'stowEternal') this.stowEternal(c.slot);
-      else if (c.type === 'feedEternal') this.feedEternal(c.slot, c.index, c.essence);
+      else if (c.type === 'feedEternal') this.feedEternal(c.slot, c.index, c.essence, c.ids);
+      else if (c.type === 'eternalAuto') p.eternalAuto = AUTO_FEED.includes(c.to) ? c.to : null; // (0.75)
       else if (c.type === 'forgeEternal') this.forgeEternal(c.slot); // (0.74)
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
@@ -4144,6 +4161,8 @@ export class World {
     if (!p.equipped[item.slot]) {
       p.equipped[item.slot] = item;
       this.recalcStats();
+    } else if (this.autoFeed(item)) {
+      // (0.75) fed to an Eternal
     } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
     else this.loot.push({ id: this.nextId++, x: p.x, z: p.z, item, age: 0, magnet: false, owner: this.cur.pid }); // only theirs, even in a party
   }
@@ -5437,6 +5456,8 @@ export class World {
         if (!p.equipped[item.slot]) {
           p.equipped[item.slot] = item;
           this.recalcStats();
+        } else if (this.autoFeed(item)) {
+          // (0.75) fed to an Eternal
         } else if (p.bag.length < this.bagSize(p)) p.bag.push(item);
         else {
           p.scrap += scrapValue(item);
@@ -5471,6 +5492,8 @@ export class World {
       if (!p.equipped[l.item.slot]) {
         p.equipped[l.item.slot] = l.item;
         this.recalcStats();
+        got++;
+      } else if (this.autoFeed(l.item)) {
         got++;
       } else if (p.bag.length < this.bagSize(p)) {
         p.bag.push(l.item);
@@ -6023,6 +6046,8 @@ export class World {
           p.equipped[l.item.slot] = l.item; // empty slot: wear it straight away
           this.recalcStats();
           this.emit('pickup', { item: l.item, equipped: true, upgrade: true });
+        } else if (this.autoFeed(l.item)) {
+          // (0.75) fed to an Eternal (its own message)
         } else {
           p.bag.push(l.item);
           this.emit('pickup', { item: l.item, equipped: false, upgrade });
@@ -6243,20 +6268,31 @@ export class World {
    * (0.71) Feed an Eternal: an Immortal from the gear box (index), or Eternity Essence (essence: how much,
    * as much as it can take when not said). What would go past its last level comes back as Essence.
    */
-  feedEternal(slot, index, essence) {
+  feedEternal(slot, index, essence, ids) {
     const p = this.player;
     const it = this.eternalAt(slot);
     if (!it) return;
     const room = xpToMax(it);
     if (room <= 0) return this.emit('eternalFull', { slot });
     const before = it.level;
-    let xp = 0;
-    if (index != null) {
-      const food = p.bag[index];
-      if (!food || food.rarity !== IMMORTAL || food.eternal) return; // Immortals only
-      this.tradeItemGone(food.id);
-      p.bag.splice(index, 1);
-      xp = feedValue(food);
+    let xp = 0, eaten = 0;
+    if (Array.isArray(ids) || index != null) {
+      // (0.75) the Immortals the player chose, all at once (or one by its place in the bag, as before 0.75).
+      // Only as many as it can still take: once it is full, the rest stay in the bag.
+      const want = new Set(Array.isArray(ids) ? ids.slice(0, 200).map(String) : p.bag[index] ? [String(p.bag[index].id)] : []);
+      const take = [];
+      for (let i = 0; i < p.bag.length && xp < room; i++) {
+        const food = p.bag[i];
+        if (!food || !want.has(String(food.id)) || food.rarity !== IMMORTAL || food.eternal) continue; // Immortals only
+        take.push(i);
+        xp += feedValue(food);
+      }
+      if (!take.length) return;
+      for (let j = take.length - 1; j >= 0; j--) {
+        this.tradeItemGone(p.bag[take[j]].id);
+        p.bag.splice(take[j], 1);
+      }
+      eaten = take.length;
     } else {
       const want = essence == null ? Infinity : Math.max(0, Number(essence) || 0);
       const units = Math.min(p.eternalEssence, want, room / ETERNAL.essenceXp);
@@ -6267,7 +6303,30 @@ export class World {
     const over = feedEternalXp(it, xp, this.streamRng('eternal', this.ticks + it.level * 7 + xp));
     if (over > 0) p.eternalEssence += over / ETERNAL.essenceXp; // the rest comes back
     this.recalcStats();
-    this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length });
+    this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length, eaten });
+  }
+
+  /**
+   * (0.75) Auto-feed, when the player has turned it on: an Immortal that comes to them (picked up, from a
+   * cache or the Ring) goes straight to an Eternal that is not full yet, the one they chose or else the
+   * lowest. Never a set piece, an Heirloom, or one that would be an upgrade on them. True if it was eaten.
+   */
+  autoFeed(item) {
+    const p = this.player;
+    if (!p.eternalAuto || this.trial || !item || item.rarity !== IMMORTAL || item.eternal || item.set || item.heirloom) return false;
+    if (itemScore(item) > itemScore(p.equipped[item.slot])) return false;
+    const lv = (s) => (this.eternalAt(s) ? this.eternalAt(s).level || 1 : 99);
+    const order = [...(p.eternalAuto === 'low' ? [] : [p.eternalAuto]), ...SLOTS.slice().sort((a, b) => lv(a) - lv(b))];
+    const slot = order.find((s) => this.eternalAt(s) && xpToMax(this.eternalAt(s)) > 0);
+    if (!slot) return false;
+    const it = this.eternalAt(slot);
+    const before = it.level;
+    const xp = feedValue(item);
+    const over = feedEternalXp(it, xp, this.streamRng('eternal', this.ticks + it.level * 7 + xp));
+    if (over > 0) p.eternalEssence += over / ETERNAL.essenceXp;
+    this.recalcStats();
+    this.emit('eternalFed', { slot, name: it.name, level: it.level, from: before, back: over / ETERNAL.essenceXp, slots: it.passives.length, eaten: 1, auto: true, food: item.name });
+    return true;
   }
 
   /** (0.74) Forge an Eternal piece you lack, from Eternity Essence. */
@@ -6422,7 +6481,7 @@ export class World {
       p.gold -= gold;
       p.keys -= keys;
       const item = rollItem(this.rng, Math.max(1, this.player.level), { weights: def.odds, cls: this.cls });
-      p.bag.push(item);
+      if (!this.autoFeed(item)) p.bag.push(item);
       items.push(item);
     }
     if (items.length === 1) this.emit('cacheOpened', { item: items[0], tier });

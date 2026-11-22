@@ -509,7 +509,7 @@ export function enchantCost(item) {
 }
 /** Which of an item's bonus stats can be reforged right now. */
 export function enchantable(item) {
-  if (!item) return [];
+  if (!item || item.eternal) return []; // (0.75) an Eternal has every stat already: reroll, never reforge
   const keys = Object.keys(item.stats).slice(1); // the first is the main stat
   if (item.enchantKey && keys.includes(item.enchantKey)) return [item.enchantKey];
   return keys;
@@ -525,8 +525,18 @@ export function isMainStat(item, key) {
 /** The value a line would have at an average roll, before upgrades. */
 function nominalStat(item, key) {
   const s = STATS[key];
-  const mult = RARITIES[item.rarity].mult * (isMainStat(item, key) ? 1 : 0.5);
+  // (0.75) an Eternal's every line is a main stat at ETERNAL_LINE times an Immortal's (eternalLineMult)
+  const mult = item.eternal ? eternalLineMult() : RARITIES[item.rarity].mult * (isMainStat(item, key) ? 1 : 0.5);
   return s.base * (1 + s.growth * ((item.ilvl || 1) - 1)) * mult;
+}
+/**
+ * (0.75) Eternal lines: even the lowest roll is ETERNAL_LINE (10) times the best a fully made Immortal
+ * line can be (the top of its roll, +10 at the blacksmith and five stars). The best roll is about 11.7 times.
+ */
+export const ETERNAL_LINE = 10;
+export function eternalLineMult() {
+  const maxedTop = RARITIES[IMMORTAL].mult * (1 + ROLL_SPREAD) * (1 + PLUS_BONUS * MAX_PLUS) * (1 + STAR_BONUS * MAX_STARS);
+  return (ETERNAL_LINE * maxedTop) / (1 - ROLL_SPREAD);
 }
 /** Lowest and highest whole number a line can roll. */
 export function statRange(item, key) {
@@ -572,6 +582,10 @@ export function rollTier(q) {
 }
 /** A fresh roll for one line of an item (main or bonus), as rerolling and reforging give. */
 export function rollLine(key, item, rng, main = isMainStat(item, key)) {
+  if (item.eternal) {
+    const { lo, hi } = statRange(item, key); // (0.75) anywhere in an Eternal line's own range
+    return Math.max(1, Math.round(lo + rng() * (hi - lo)));
+  }
   return statValue(key, item.ilvl, RARITIES[item.rarity].mult * (main ? 1 : 0.5), rng);
 }
 /**

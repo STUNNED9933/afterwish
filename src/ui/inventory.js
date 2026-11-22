@@ -10,7 +10,7 @@ import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 import { itemLore } from './lore.js';
 import { emberOf, DEEP, DEPTH_IDS } from '../sim/endgame.js';
-import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue, nextSlotAt } from '../sim/eternal.js';
+import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue, nextSlotAt, feed as feedPreview } from '../sim/eternal.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
 let powerProbe = null;
@@ -28,8 +28,13 @@ export function itemTooltip(item, compareTo) {
   if (item.eternal) html += eternalHead(item);
   keys.forEach((k, i) => {
     const ench = item.enchantKey === k ? ' <span class="tt-ench" title="Reforged: only this line can be reforged again">✦</span>' : '';
-    html += `<div class="tt-stat${i === 0 ? ' main' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
+    html += `<div class="tt-stat${i === 0 ? ' main' : ''}${item.eternal ? ' et' : ''}">${rollPip(item, k)}${formatStat(k, stats[k])}${ench}</div>`;
   });
+  if (item.eternal) {
+    // (0.75) every stat, at ten times a made Immortal's; the speeds have a ceiling
+    const cap = CONFIG.ETERNAL_GEAR_CAP;
+    html += `<div class="tt-as">Every line is at least ten times the best a made Immortal can have (+10, five stars). With Eternal gear on, your gear's Attack Speed counts up to +${cap.as}%, Move Speed +${cap.ms}%, Ability Haste ${cap.haste} and Crit Chance ${cap.crit}%.</div>`;
+  }
   if (item.set && SETS[item.set]) {
     // A set piece (0.29): its set's bonuses, lit when enough pieces are worn.
     const set = SETS[item.set];
@@ -273,8 +278,8 @@ export class Inventory {
         b.addEventListener('click', () => this.send({ type: 'stowEternal', slot }));
         btns.appendChild(b);
       }
-      if (item && !world.trial && !item.eternal) {
-        // Rerolling and reforging (0.43; enchanting since 0.29)
+      if (item && !world.trial) {
+        // Rerolling and reforging (an Eternal since 0.75: rerolls only) (0.43; enchanting since 0.29)
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'ghost tiny ench-btn';
@@ -477,6 +482,15 @@ export class Inventory {
     const root = $('eternal');
     root.innerHTML = '';
     const immortals = p.bag.map((it, i) => [it, i]).filter(([it]) => it && it.rarity === 6);
+    if (owned.length) {
+      // (0.75) Auto-feed: off unless chosen. New Immortals (not set pieces, Heirlooms or upgrades) go to an Eternal.
+      const auto = document.createElement('label');
+      auto.className = 'et-auto setting-desc';
+      const opts = [[null, 'Off'], ['low', 'The lowest-level piece'], ...SLOTS.filter((s) => world.eternalAt(s)).map((s) => [s, SLOT_NAMES[s]])];
+      auto.innerHTML = `Auto-feed new Immortals to <select>${opts.map(([v, l]) => `<option value="${v || ''}"${(p.eternalAuto || null) === v ? ' selected' : ''}>${l}</option>`).join('')}</select> <small>(not set pieces, Heirlooms, or one that would be an upgrade for you; the ones in your gear box now are never touched)</small>`;
+      auto.querySelector('select').addEventListener('change', (e) => this.send({ type: 'eternalAuto', to: e.target.value || null }));
+      root.appendChild(auto);
+    }
     for (const slot of SLOTS) {
       const it = world.eternalAt(slot);
       const row = document.createElement('div');
@@ -523,16 +537,61 @@ export class Inventory {
         fp.className = 'ench-panel et-feed';
         const room = xpToMax(it);
         fp.innerHTML = `<div class="setting-desc">An Immortal gives ${ETERNAL.immortalXp} (+${ETERNAL.starXp} a star); one Essence ${ETERNAL.essenceXp}. ${Math.round(room)} more to its last level; anything past that comes back as Essence.</div>`;
+        // (0.75) choose the Immortals first (click to pick, again to put back), then feed them with one button
+        // that asks once more; nothing is eaten from a single click any more
+        if (!this.feedPick || this.feedPick.slot !== slot) this.feedPick = { slot, ids: new Set(), armed: false };
+        const pick = this.feedPick;
+        for (const id of [...pick.ids]) if (!immortals.some(([f]) => String(f.id) === id)) pick.ids.delete(id);
         const list = document.createElement('div');
         list.className = 'et-food';
-        for (const [food, i] of immortals) {
+        for (const [food] of immortals) {
+          const id = String(food.id);
           const c = itemCell(this.tooltip, food, { button: true });
-          c.title = `Feed it (+${feedValue(food)})`;
-          c.addEventListener('click', () => this.send({ type: 'feedEternal', slot, index: i }));
+          c.classList.toggle('picked', pick.ids.has(id));
+          c.title = `${pick.ids.has(id) ? 'Chosen' : 'Choose it'} (+${feedValue(food)})`;
+          c.addEventListener('click', () => {
+            if (pick.ids.has(id)) pick.ids.delete(id);
+            else pick.ids.add(id);
+            pick.armed = false;
+            this.render(world);
+          });
           list.appendChild(c);
         }
         if (!immortals.length) list.innerHTML = '<span class="setting-desc">No Immortals in your gear box.</span>';
         fp.appendChild(list);
+        if (immortals.length) {
+          const bar = document.createElement('div');
+          bar.className = 'et-feed-bar';
+          const all = document.createElement('button');
+          all.type = 'button';
+          all.className = 'ghost tiny';
+          const every = pick.ids.size === immortals.length;
+          all.textContent = every ? 'Choose none' : 'Choose all';
+          all.addEventListener('click', () => {
+            pick.ids = every ? new Set() : new Set(immortals.map(([f]) => String(f.id)));
+            pick.armed = false;
+            this.render(world);
+          });
+          let xp = 0;
+          for (const [f] of immortals) if (pick.ids.has(String(f.id))) xp += feedValue(f);
+          const copy = { level: it.level || 1, xp: it.xp || 0, passives: (it.passives || []).slice() };
+          feedPreview(copy, Math.min(xp, room), () => 0);
+          const go = document.createElement('button');
+          go.type = 'button';
+          go.className = pick.armed ? 'primary tiny danger' : 'primary tiny';
+          go.disabled = !pick.ids.size;
+          go.textContent = !pick.ids.size ? 'Choose Immortals to feed' : pick.armed ? `Click again: feed ${pick.ids.size} Immortal${pick.ids.size > 1 ? 's' : ''} (they are gone for good)` : `Feed ${pick.ids.size} chosen · +${xp.toLocaleString()} exp · level ${it.level || 1} → ${copy.level}${xp > room ? ' (the rest stay in your box)' : ''}`;
+          go.addEventListener('click', () => {
+            if (!pick.armed) {
+              pick.armed = true;
+              return this.render(world);
+            }
+            this.send({ type: 'feedEternal', slot, ids: [...pick.ids] });
+            this.feedPick = null;
+          });
+          bar.append(all, go);
+          fp.appendChild(bar);
+        }
         const eb = document.createElement('button');
         eb.type = 'button';
         eb.className = 'primary tiny';
@@ -580,7 +639,7 @@ export class Inventory {
     const canForge = p.gold >= fc.gold && (p.dust || 0) >= fc.dust;
     const open = enchantable(item);
     const choices = reforgeChoices(item);
-    box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time. The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust; once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
+    box.innerHTML = `<p class="setting-desc"><b>Reroll</b> a line for a fresh number of the same stat, as often as you like: <b>${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap</b> a time. The mark beside each line shows how good its roll is, in the rarity colours, from Common up to Immortal for the very best. ${this.reforgeKey || item.eternal ? '' : `<b>Reforge</b> turns a bonus line into a stat you choose: ${fc.gold.toLocaleString()} gold + ${fc.dust} Wishdust; once reforged, only that line can be reforged again, and each time costs more.`}</p>`;
     // (0.62) the pity count, and a guard against rerolling an Immortal-tier line by accident
     const guard = guardImmortal();
     const left = REROLL_PITY - (item.pity || 0);

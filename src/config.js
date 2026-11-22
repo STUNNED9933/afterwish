@@ -140,6 +140,10 @@ export const CONFIG = {
   // (an ability that hits ten enemies would otherwise refill you at once), damage over
   // time does not heal at all, and lifesteal above the cap does nothing.
   LIFESTEAL_CAP: 25,
+  // (0.75) Eternal lines are ten times a made Immortal's, too much for the speeds: with Eternal gear worn, these
+  // gear totals stop here (or at what the rest of your gear gives, if that is more). A full set of made
+  // Immortals comes to about 300% attack speed, 80% move speed, 590 haste and 190% crit.
+  ETERNAL_GEAR_CAP: { as: 400, ms: 100, haste: 700, crit: 250 },
   ABILITY_LIFESTEAL: 0.33,
   // 0.32: lifesteal heals at most this share of max health per second (it fills back at that rate,
   // holding one second's worth), so a single huge hit late in the game cannot heal you to full.

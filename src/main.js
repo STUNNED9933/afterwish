@@ -25,7 +25,7 @@ import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/st
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
-import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES } from './sim/items.js';
+import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1599,7 +1599,10 @@ function start(hot = {}) {
     }
     const ch = world.player.choices && world.player.choices.scarf;
     if (talkTo === 'pip' && ch && !shown && !after) { $('talk-line').textContent = npc[ch]; return; }
-    if (talkTo === 'bram' && world.mode === 'explore') renderVault(list); // (0.62) the Warden's caches, opened at the forge
+    if (talkTo === 'bram' && world.mode === 'explore') {
+      renderSmith(list); // (0.75) the blacksmith's +1 to +10 again, here in Haven
+      renderVault(list); // (0.62) the Warden's caches, opened at the forge
+    }
     $('talk-line').textContent = talkTo === 'tomas' ? (world.player.tomasMet ? npc.idle : npc.greet) : talkNote || (after && !shown ? npc.after : shown ? npc.greet : npc.idle + (later !== null && world.player.level < later - 4 ? ` (More at level ${later - 4}.)` : ''));
     if (talkTo === 'tomas' && !world.player.tomasMet) {
       // (0.70.3) once, and marked here at once: online the command goes to the server, and the flag only
@@ -1608,6 +1611,57 @@ function start(hot = {}) {
       world.player.tomasMet = true;
       applyNow({ type: 'metTomas' });
     }
+  }
+
+  /**
+   * (0.75) Bram's anvil: the blacksmith's upgrades (+8% to every stat on a piece a time, up to +10), for
+   * scrap and gold, on what you wear. It was only on the Ring's hub screen; now it is beside the caches.
+   */
+  function renderSmith(list) {
+    const p = world.player;
+    const box = document.createElement('div');
+    box.className = 'quest vault';
+    box.innerHTML = `<h4>Bram's anvil<small>${(p.scrap || 0).toLocaleString()} scrap &middot; ${(p.gold || 0).toLocaleString()} gold</small></h4><p>"Leave it with me a minute. Every pass on the anvil and it's that bit better, up to ten."</p><p class="setting-desc">Each upgrade adds 8% to every stat on the piece, up to +10. Hold Shift and click to go as far as your scrap and gold allow.</p>`;
+    for (const slot of SLOTS) {
+      const item = p.equipped[slot];
+      const row = document.createElement('div');
+      row.className = 'vault-row';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ghost';
+      if (!item) {
+        row.innerHTML = `<div><b style="color:var(--muted)">No ${SLOT_NAMES[slot].toLowerCase()} worn</b></div>`;
+        b.textContent = 'Upgrade';
+        b.disabled = true;
+      } else {
+        const plus = item.plus || 0;
+        const cost = upgradeCost(item);
+        row.innerHTML = `<div><b style="color:${RARITIES[item.rarity].color}">${esc(itemName(item))}</b><div class="odds">${SLOT_NAMES[slot]}${plus >= MAX_PLUS ? ' &middot; fully upgraded' : ` &middot; ${cost.scrap.toLocaleString()} scrap + ${cost.gold.toLocaleString()} gold`}</div></div>`;
+        b.textContent = plus >= MAX_PLUS ? 'Max' : `Upgrade to +${plus + 1}`;
+        b.disabled = plus >= MAX_PLUS || p.scrap < cost.scrap || p.gold < cost.gold;
+        b.title = 'Shift+click: as many upgrades as you can afford, up to +10';
+        b.addEventListener('click', (ev) => {
+          // Shift: work out how many it can afford from here, and send that many
+          let n = 1;
+          if (ev.shiftKey) {
+            let scrap = p.scrap, gold = p.gold;
+            n = 0;
+            for (let k = plus; k < MAX_PLUS; k++) {
+              const c = upgradeCost(Object.assign({}, item, { plus: k }));
+              if (scrap < c.scrap || gold < c.gold) break;
+              scrap -= c.scrap;
+              gold -= c.gold;
+              n++;
+            }
+          }
+          for (let i = 0; i < Math.max(1, n); i++) applyNow({ type: 'upgrade', slot });
+          renderTalk();
+        });
+      }
+      row.appendChild(b);
+      box.appendChild(row);
+    }
+    list.appendChild(box);
   }
 
   /**
@@ -4642,7 +4696,7 @@ function start(hot = {}) {
       case 'eternalFed':
         sfx.upgrade();
         if (ev.level > ev.from) hud.banner(`${ev.name} · level ${ev.level}`, `${ev.slots} passive${ev.slots > 1 ? 's' : ''} open${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
-        else hud.feedText(`${ev.name} fed${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
+        else hud.feedText(`${ev.auto ? `Auto-fed ${ev.food} to ` : ''}${ev.name}${ev.auto ? '' : ` fed${ev.eaten > 1 ? ` ${ev.eaten} Immortals` : ''}`}${ev.back > 0 ? ` · ${ev.back.toFixed(1)} Essence back` : ''}`);
         break;
       case 'autoScrap':
         hud.feedText(`${ev.count} piece${ev.count > 1 ? 's' : ''} left on the ground scrapped: +${ev.scrap} scrap${ev.dust ? `, +${ev.dust} Wishdust` : ''}`); // (0.74)
@@ -4685,6 +4739,7 @@ function start(hot = {}) {
       }
       case 'upgrade':
         sfx.upgrade();
+        if (mode === 'talk') renderTalk(); // (0.75) Bram's anvil
         break;
       case 'cacheOpened':
         sfx.pickup(ev.item.rarity);

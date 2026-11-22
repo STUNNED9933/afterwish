@@ -160,6 +160,27 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Eternal at ten times a made Immortal, rerolls, choosing what to feed, and Bram's anvil (0.75)
+
+- **Eternal pieces carry every stat** (Attack Damage, or Spell Power for the Mage, Health, Armor, Attack
+  Speed, Move Speed, Ability Haste, Crit Chance and Lifesteal), each line **at least ten times** the best a
+  fully made Immortal line can be (top roll, +10, five stars), up to about 11.7 times, and still growing
+  2% a level as it is fed. Pieces from before are made over at a good roll (70%) on every line, keeping
+  their level, passives and blacksmith work.
+- **The speeds have a ceiling:** with Eternal gear on, your gear's Attack Speed counts up to +400%, Move
+  Speed +100%, Ability Haste 700 and Crit Chance 250% (a full set of made Immortals is about 300%, 80%,
+  590 and 190%), so attacks and running stay playable. Power, Health and Armor have none.
+- **Eternal lines can be rerolled** (gold and scrap, with the usual pity), and the blacksmith works on
+  them. They are never reforged: they already have every stat.
+- **Feeding is your choice now:** click Immortals to choose them, see the experience and the level it
+  will reach, then press Feed (twice, to be sure). Nothing is eaten from one click. Once a piece is full
+  the rest stay in your gear box.
+- **Auto-feed (off unless you turn it on):** new Immortals you pick up, open or win go to the piece you
+  choose (or the lowest-level one). Never a set piece, an Heirloom, or one that would be an upgrade on
+  you, and never what is already in your gear box.
+- **Bram's anvil is back in Haven:** talk to Bram for the blacksmith's +1 to +10 (8% to every stat on a
+  piece each time), beside the Warden's caches. Shift+click goes as far as your scrap and gold allow.
+
 ### Eternal in its own tab; a party shares twice the chance (0.74.1)
 
 - **Eternal gear has its own tab** in the gear drawer (Tab, then ✧ Eternal), shown from level 100, so the

@@ -1164,6 +1164,12 @@ button.tiny { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 @media (prefers-reduced-motion: reduce) { .cell.eternal, #tooltip.eternal, .eq-name.eternal { animation: none; } }
 #tooltip .tt-effect.eternal b.pot { color: #ff7a88; }
 .et-food .cell { width: 46px; height: 46px; }
+.et-food .cell.picked { outline: 2px solid #ff3d4f; box-shadow: 0 0 10px rgba(255, 61, 79, 0.6); transform: translateY(-2px); }
+.et-feed-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 2px 0 8px; }
+button.danger { background: linear-gradient(180deg, #ff5a68, #c01c2c); }
+.et-auto { display: block; margin: 4px 0 10px; }
+.et-auto select { margin: 0 4px; }
+.tt-stat.et { color: #ffe3e6; }
 
 /* ===================================================================== (0.72) polish
    Panels ease in rather than snapping, buttons answer a press, tooltips fade, and the HUD's

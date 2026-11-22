@@ -4797,8 +4797,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'autoEquip' }); w.runCommands();
   w.command({ type: 'scrap', keep: [] }); w.runCommands();
   check('...Equip every upgrade never takes it off, scrapping never reaches it', p.equipped.helm.eternal && !p.bag.some((it) => it.eternal));
+  p.scrap += 1e7; p.gold += 1e9;
   w.command({ type: 'upgrade', slot: 'helm' }); w.runCommands();
-  check('...and the blacksmith does not touch it (it grows by Feeding)', !(p.equipped.helm.plus > 0));
+  check('...(0.75) and the blacksmith works on it too', p.equipped.helm.plus === 1);
+  p.equipped.helm.plus = 0;
   // feeding
   const it = p.equipped.helm;
   const imm = () => ri(() => 0.5, 100, { weights: RR.map((_, i) => (i === 6 ? 1 : 0)), slot: 'ring' });
@@ -5068,5 +5070,59 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 60 * 26; i++) lw.step(CONFIG.TICK);
   const left = lw.loot.filter((l) => l.owner === lw.cur.pid);
   check('...after 25 seconds the rest go too; an Immortal is never touched', !left.some((l) => l.age > 25.5 && l.item.rarity < 6) && left.some((l) => l.item.rarity === 6), `${left.map((l) => l.item.rarity)}`);
+}
+
+// --- 0.75: Eternal at ten times a made Immortal, every stat, rerolls, choosing what to feed, auto-feed ---
+{
+  const { geared } = await import('./balance.mjs');
+  const { rollEternal, remakeEternal, eternalLines } = await import('../src/sim/eternal.js');
+  const I = await import('../src/sim/items.js');
+  const all = { warrior: { prim: [6, 7, 8, 9, 10] }, archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [6, 7, 8, 9, 10] }, rogue: { prim: [6, 7, 8, 9, 10] } };
+  const e = rollEternal(() => 0, 100, 'helm', 'rogue');
+  const imm = { rarity: 6, ilvl: 100, slot: 'helm', stats: { hp: 1 } };
+  const madeTop = (k) => { const o = Object.assign({}, imm, { stats: { [k]: 1 } }); return I.statRange(o, k).hi * (1 + I.PLUS_BONUS * I.MAX_PLUS) * (1 + I.STAR_BONUS * I.MAX_STARS); };
+  const keys = Object.keys(e.stats);
+  check('Eternal (0.75): every stat on every piece (the power line its class\'s own)', keys.length === 8 && keys[0] === 'hp' && keys.includes('ad') && !keys.includes('sp') && eternalLines('ring', 'mage').includes('sp') && !eternalLines('ring', 'mage').includes('ad'), keys.join());
+  check('...even the lowest roll is ten times the best line a made Immortal (+10, five stars) can have', keys.every((k) => e.stats[k] >= 10 * madeTop(k) * 0.96), keys.map((k) => `${k} ${e.stats[k]}/${Math.round(madeTop(k))}`).join(' '));
+  const old = { eternal: true, rarity: 7, slot: 'weapon', ilvl: 100, stats: { ad: 400, as: 30 }, level: 7, xp: 12, plus: 2, passives: [{ key: 'colossus', q: 0.5 }], cls: 'archer', rv: 2 };
+  remakeEternal(old, 'warrior');
+  check('...a piece from before is made over (level, passives and + kept)', old.ev === 3 && Object.keys(old.stats).length === 8 && old.stats.ad > 10000 && old.level === 7 && old.plus === 2 && old.passives.length === 1);
+  // worn: the speeds stop at their ceiling, the rest is huge; rerolls work and stay in range
+  const w = new World({ seed: 7, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 6), { acctLives: all, tierMax: 5 }) });
+  const p = w.player;
+  const ad0 = p.stats.ad, hp0 = p.stats.maxHp;
+  for (const s of I.SLOTS) p.equipped[s] = rollEternal(() => 0.5, 100, s, 'rogue');
+  w.recalcStats();
+  const g = I.sumGearStats(p.equipped);
+  check('...worn, power and health leap (many times), while attack speed, move speed and haste stop at their ceiling', p.stats.ad > 20 * ad0 && p.stats.maxHp > 20 * hp0 && p.stats.haste <= CONFIG.ETERNAL_GEAR_CAP.haste + 200 && p.stats.ms < 6.4 * 3 && p.stats.as < 12 && g.as > 1000, `${ad0}->${p.stats.ad} ${hp0}->${p.stats.maxHp} as ${p.stats.as.toFixed(2)} ms ${p.stats.ms.toFixed(1)} haste ${p.stats.haste}`);
+  p.gold = 1e12; p.scrap = 1e9;
+  const before = p.equipped.weapon.stats.crit;
+  const { lo, hi } = I.statRange(p.equipped.weapon, 'crit');
+  let ok = true;
+  for (let i = 0; i < 20; i++) { w.command({ type: 'enchant', slot: 'weapon', key: 'crit' }); w.runCommands(); const v = p.equipped.weapon.stats.crit; if (v < lo || v > hi) ok = false; }
+  check('...its lines can be rerolled, always inside its own range (never reforged)', ok && p.equipped.weapon.rerolls === 20 && I.enchantable(p.equipped.weapon).length === 0, `${before} ${lo}-${hi}`);
+  // feeding: only the chosen ones, and only as many as it can still take
+  const fw = new World({ seed: 8, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: all, tierMax: 5 }) });
+  const fp = fw.player;
+  fp.eternals.ring = rollEternal(() => 0.5, 100, 'ring', 'rogue');
+  const im = () => I.rollItem(() => 0.5, 100, { weights: I.RARITIES.map((_, i) => (i === 6 ? 1 : 0)), slot: 'boots' });
+  fp.bag = [im(), im(), im(), im()];
+  const ids = fp.bag.map((b) => b.id);
+  fw.command({ type: 'feedEternal', slot: 'ring', ids: [ids[0], ids[2]] }); fw.runCommands();
+  check('Feeding (0.75): only the Immortals chosen are eaten', fp.bag.length === 2 && fp.bag[0].id === ids[1] && fp.bag[1].id === ids[3] && fp.eternals.ring.level > 1, `${fp.bag.map((b) => b.id)} ${fp.eternals.ring.level}`);
+  // auto-feed: off by default; when on, a new Immortal goes to an Eternal, a set piece or upgrade does not
+  const loot = (item) => { fw.loot.push({ id: fw.nextId++, x: fp.x, z: fp.z, item, age: 0, magnet: true, owner: fw.cur.pid }); for (let i = 0; i < 30; i++) fw.step(CONFIG.TICK); };
+  for (const s of I.SLOTS) if (!fp.equipped[s]) fp.equipped[s] = im();
+  const n0 = fp.bag.length;
+  const lv0 = fp.eternals.ring.xp + fp.eternals.ring.level * 1e6;
+  loot(Object.assign(im(), { stats: { ms: 1 } }));
+  check('Auto-feed (0.75): off unless turned on (a new Immortal goes to the gear box)', fp.eternalAuto === null && fp.bag.length === n0 + 1);
+  fw.command({ type: 'eternalAuto', to: 'low' }); fw.runCommands();
+  loot(Object.assign(im(), { stats: { ms: 1 } }));
+  check('...turned on, the next one is fed to an Eternal instead', fp.eternalAuto === 'low' && fp.bag.length === n0 + 1 && fp.eternals.ring.xp + fp.eternals.ring.level * 1e6 > lv0, `${fp.bag.length} ${n0}`);
+  loot(Object.assign(im(), { stats: { ms: 1 }, set: 'shadowmark' }));
+  check('...but never a set piece', fp.bag.length === n0 + 2);
+  fw.command({ type: 'eternalAuto', to: 'nonsense' }); fw.runCommands();
+  check('...and it can be turned off again', fp.eternalAuto === null);
 }
 process.exit(failed ? 1 : 0);

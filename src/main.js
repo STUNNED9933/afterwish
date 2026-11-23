@@ -1956,7 +1956,7 @@ function start(hot = {}) {
       $('talk-name').textContent = `${world.keepVisitOf || 'A friend'}'s Wishkeep`;
       $('talk-keys').classList.add('hidden');
       $('talk-quests').innerHTML = '';
-      $('talk-line').textContent = `This keep is ${world.keepVisitOf || 'theirs'}: only they can tend it, raise it and call its night. If they call the night while you are here, you can watch their heroes hold it: your blows do not land on their night (it is theirs to win). Your own keep is through the Waygate.`;
+      $('talk-line').textContent = `This keep is ${world.keepVisitOf || 'theirs'}: only they can tend it, raise it and call its night. If they call the night while you are here, you can watch their heroes hold it: in a friend's keep your skills and blows do nothing (no walls, freezes or pulls in their night; it is theirs to win). Your own keep is through the Waygate.`;
       return;
     }
     if (talkTo === 'wishes') return renderKeepBoard(); // (0.80) the Wishkeep
@@ -5206,7 +5206,7 @@ function start(hot = {}) {
           sfx.levelUp();
           const gear = (ev.gear || []).map((g) => `<span style="color:${RARITIES[g.r].color}">${RARITIES[g.r].name} ${esc(g.name)}</span>`).join(', ');
           hud.banner(ev.first ? `Night ${ev.level} held` : 'Morning', `The keep held. +${ev.faith.toLocaleString()} Faith, +${ev.stone} Wishstone, +${ev.sigils} Sigil${ev.sigils > 1 ? 's' : ''}.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend at the Hearth).` : ''}${ev.first && ev.level < NIGHT.max ? ` Night ${ev.level + 1} is open.` : ''}`);
-          if (gear) gearToast(`Hero gear for the Armory: ${gear}${ev.salvaged ? ` (the Armory was full: ${ev.salvaged} Wishstone from the rest)` : ''}`);
+          if (gear || ev.salvaged) gearToast(`${gear ? `Hero gear for the Armory: ${gear}` : 'No Hero gear kept'}${ev.salvaged ? ` (${ev.auto ? `${ev.auto} broken down as you chose` : 'the Armory was full'}: +${ev.salvaged} Wishstone)` : ''}`);
           if ((ev.gear || []).some((g) => g.r >= 6)) sfx.eternal();
         } else {
           sfx.denied();

@@ -5715,4 +5715,41 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'keepClock', now: now + 60000 }); w.runCommands();
   check('...so a minute later, after a save and a load, a minute\'s worth comes in, not a day\'s', p.keep.faith - f0 < 5, `${p.keep.faith - f0}`);
 }
+
+// --- 0.82.5: breaking down Hero gear, by hand and as it comes ---------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 191, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e5;
+  w.command({ type: 'keepRecruit', cls: 'archer' }); w.runCommands();
+  const h = k.troops[0];
+  let n = 0;
+  const mk = (slot, r, v) => { const g = K.rollHeroGear(() => 0.5, 5, 'y' + ++n, slot); g.r = r; g.main.v = v; g.lines = []; return g; };
+  const worn = mk('weapon', 3, 0.3); worn.hero = h.id;
+  const worse = mk('weapon', 1, 0.1), better = mk('weapon', 2, 0.5), armour = mk('armor', 0, 0.05), imm = mk('weapon', 6, 0.05);
+  k.armory = [worn, worse, better, armour, imm];
+  check('Hero gear (0.82.5): an upgrade is a piece better than what a hero wears there, or for a slot left empty', !K.heroGearUpgrade(worse, k) && K.heroGearUpgrade(better, k) && K.heroGearUpgrade(armour, k));
+  const sal = K.heroSalvageable(k, [6]);
+  check('...Break down takes what is no hero\'s upgrade, never worn, nor a rarity you keep', sal.length === 1 && sal[0] === worse);
+  const s0 = k.stone;
+  w.command({ type: 'keepAutoSalvage', to: 2 }); w.runCommands();
+  check('...choosing auto-break down clears the Armory of such pieces once (upgrades and Immortals stay)', k.autoSalvageAt === 2 && !k.armory.includes(worse) && k.armory.includes(better) && k.armory.includes(armour) && k.armory.includes(imm) && k.stone === s0 + K.HERO_GEAR.salvage(worse));
+  // a night's drops: Common to Rare broken down as they come, unless an upgrade
+  k.armory.push(mk('charm', 3, 0.3));
+  w.command({ type: 'keepGearBest' }); w.runCommands();
+  for (const g of k.armory) { g.main.v = 5; }
+  k.autoSalvageAt = 5; // (Ancient and below, so the night's pieces fall under it whatever they roll)
+  w.keepTroopsUp(); w.keepBuildsUp();
+  const before = k.armory.length;
+  w.command({ type: 'keepTide', level: 1 }); w.runCommands();
+  let end = null;
+  for (let i = 0; i < 60 * 300 && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) if (e.type === 'tideEnd') end = e; w.events = []; }
+  check('...and a night\'s pieces at or below the rarity chosen are broken down for Wishstone as they come', end && end.won && end.auto >= 1 && end.salvaged > 0 && k.armory.length === before, JSON.stringify(end && { auto: end.auto, s: end.salvaged, gear: end.gear }));
+  check('...kept through a save', K.cleanKeep(JSON.parse(JSON.stringify(k))).autoSalvageAt === 5 && K.cleanKeep({ tier: 1 }).autoSalvageAt === null);
+}
 process.exit(failed ? 1 : 0);

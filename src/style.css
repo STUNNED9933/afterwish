@@ -1350,3 +1350,9 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 .night-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0; }
 .night-pick select { background: #141824; color: var(--bone); border: 1px solid #c89a4a; border-radius: 4px; padding: 3px 6px; font-size: 14px; }
 .night-pick .setting-desc { flex: 1 1 280px; margin: 0; }
+
+/* (0.82.5) Hero gear: break down and auto-break down */
+.keep-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.arm-auto { background: #141824; color: var(--bone); border: 1px solid #3a4258; border-radius: 4px; padding: 2px 4px; font-size: 13px; }
+.arm-up { position: absolute; right: 4px; bottom: 2px; color: #7fe0a0; font-size: 12px; }
+body.keep-guest #abilities > * { opacity: 0.35; filter: grayscale(0.8); }

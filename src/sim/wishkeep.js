@@ -313,6 +313,24 @@ export function troopStats(t, armory = null) {
   out.cd = T.cd / (1 + out.haste);
   return out;
 }
+/**
+ * (0.82.5) Is a piece an upgrade for one of the keep's heroes: one has that slot empty, or wears something
+ * worse there? (Auto-salvage and Break down leave such pieces alone, as the hero's own scrap does.)
+ */
+export function heroGearUpgrade(g, keep) {
+  if (!keep || !g) return false;
+  for (const t of keep.troops || []) {
+    const now = (keep.armory || []).find((o) => o.hero === t.id && o.slot === g.slot && o !== g);
+    if (!now || heroGearScore(g) > heroGearScore(now)) return true;
+  }
+  return false;
+}
+/** (0.82.5) What Break down would take: unworn, unlocked, not of a kept rarity, and no hero's upgrade. */
+export function heroSalvageable(keep, keepRar = []) {
+  const kept = new Set(keepRar);
+  return (keep.armory || []).filter((g) => g.hero == null && !g.locked && !kept.has(g.r) && !heroGearUpgrade(g, keep));
+}
+
 /** (0.82) What a hero wears, slot by slot. */
 export function heroWorn(t, armory) {
   const out = {};
@@ -475,6 +493,7 @@ export function cleanKeep(raw) {
     night: int(raw.night, 1, 1, NIGHT.max), // (0.82) the level last chosen
     armory: [], // (0.82) Hero gear
     gearN: int(raw.gearN),
+    autoSalvageAt: raw.autoSalvageAt == null ? null : int(raw.autoSalvageAt, 0, 0, 5), // (0.82.5) Hero gear broken down as it comes, up to this rarity
     works: {}, // (0.82.1) the Mine and the Fields
     btier: {}, // (0.82.1) each building's tier, Common (0) to Immortal (6)
     spent: int(raw.spent), // (0.82.1) everything spent on the keep, for its growth

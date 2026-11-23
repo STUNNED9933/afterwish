@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Breaking down Hero gear; guests cast nothing (0.82.5)
+
+- **Break down Hero gear like your own gear.** In the Armory:
+  - **Break down everything that is no hero's upgrade.** Never a worn or locked piece, or one better than what a hero wears in that slot (or for a slot left empty).
+  - **"Never break down" chips** for the rarities to keep, Immortal by default.
+  - **Shift-click** a piece to break it down.
+  - A green ▲ marks a piece that would be an upgrade for one of your heroes.
+- **Auto-break down new Hero gear:** Off, or Common up to Ancient and below. A held night's pieces at or below it go straight to Wishstone unless one is a hero's upgrade; the night's report says how many. Choosing it also clears the Armory of such pieces once (with a check first). Saved with the keep.
+- **A visitor casts nothing in a friend's keep:** no walls, freezes, pulls or burns in the keeper's night, and no attacks on it. Their skill bar greys out while they're there.
+
 ### The keep's clock; a friend's night is theirs (0.82.4)
 
 - **Fixed: "While you were away" paid a full day on every visit.** The keep's save capped its numbers at 10¹², and today's clock (in milliseconds) is past that, so every save rewound the last visit to 2001. The time is kept as it is now, so only the real time away counts (still banked up to 24 hours).

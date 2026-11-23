@@ -95,11 +95,11 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -872,6 +872,7 @@ export class World {
       else if (c.type === 'keepGearLock') this.keepGearLock(c.gid);
       else if (c.type === 'keepSalvage') this.keepSalvage(c.ids);
       else if (c.type === 'keepGearBest') this.keepGearBest();
+      else if (c.type === 'keepAutoSalvage') this.keepAutoSalvage(c.to == null ? null : Number(c.to)); // (0.82.5)
       else if (c.type === 'keepWork') this.keepWork(c.id); // (0.82.1) the Mine and the Fields
       else if (c.type === 'keepBuildTier') this.keepBuildTier(c.id); // (0.82.1) building tiers
       else if (c.type === 'keepRecruit') this.keepRecruit(c.cls); // (0.81) the keep's heroes and halls
@@ -2071,6 +2072,7 @@ export class World {
    * (see sim/classes.js); the numbers come from the class kit.
    */
   castAbility(slot, x, z) {
+    if (this.map && this.map.id === KEEP.map && !this.keepOwns()) return; // (0.82.5) a visitor casts nothing in a friend's keep (no walls, freezes or pulls in their night)
     if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) return slot === INCARNATE.key ? this.incarnate() : this.miracle(slot, x, z); // (0.81; 0.81.1; 0.82.2 a visitor fights)
     const p = this.player;
     const m = this.mods;
@@ -3312,8 +3314,8 @@ export class World {
     if (p.castLock > 0) return;
 
     // Targeting
-    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) {
-      // (0.81) in a Tide the hero is the keep's god: miracles (Q, W, E), never a sword (unless incarnate, 0.81.1)
+    if (this.tide && this.tide.state === 'on' && (!this.keepOwns() || !(this.tide.inc > 0))) {
+      // (0.81) in a Tide the hero is the keep's god; (0.82.5) a visitor attacks nothing in it: miracles (Q, W, E), never a sword (unless incarnate, 0.81.1)
       p.targetId = null;
       p.attackMove = null;
       p.autoAcquire = false;
@@ -5979,6 +5981,20 @@ export class World {
     k.stone += stone;
     this.emit('keepSalvaged', { n, stone });
   }
+  /**
+   * (0.82.5) Auto-salvage for Hero gear (null: off; 0 Common up to 5 Ancient): new pieces at or below it are
+   * broken down for Wishstone as the night gives them, unless one is a hero's upgrade. Choosing it clears
+   * the Armory of such pieces once (never worn or locked ones).
+   */
+  keepAutoSalvage(to) {
+    const k = this.player.keep;
+    if (!k) return;
+    k.autoSalvageAt = Number.isInteger(to) && to >= 0 && to <= 5 ? to : null;
+    if (k.autoSalvageAt == null) return;
+    const ids = k.armory.filter((g) => g.hero == null && !g.locked && g.r <= k.autoSalvageAt && !heroGearUpgrade(g, k)).map((g) => g.id);
+    if (ids.length) this.keepSalvage(ids);
+  }
+
   /** Put the best piece for each slot on every hero, the rarest heroes choosing first. */
   keepGearBest() {
     const k = this.player.keep;
@@ -6234,8 +6250,14 @@ export class World {
     const rng = this.streamRng('herogear', t.seed * 7 + L);
     const got = [];
     let salvaged = 0;
+    let auto = 0;
     for (let i = 0; i < NIGHT.pieces(L); i++) {
       const g = rollHeroGear(rng, L, 'g' + ++k.gearN);
+      if (k.autoSalvageAt != null && g.r <= k.autoSalvageAt && !heroGearUpgrade(g, k)) {
+        salvaged += HERO_GEAR.salvage(g); // (0.82.5) auto-salvage: broken down as it comes (never a hero's upgrade)
+        auto++;
+        continue;
+      }
       if (k.armory.length >= ARMORY_MAX) {
         salvaged += HERO_GEAR.salvage(g); // (a full Armory: broken down for Wishstone at once)
         continue;
@@ -6245,7 +6267,7 @@ export class World {
     }
     k.stone += salvaged;
     this.keepEvent('tide');
-    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, first });
+    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, auto, first });
   }
 
   /** Damage to a building (a ward stops it). */

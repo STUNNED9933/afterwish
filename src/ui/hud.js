@@ -1125,7 +1125,8 @@ export class Hud {
   updateMiracles(world) {
     const el = $('miracles');
     const t = world.tide;
-    const on = !!(t && t.state === 'on' && world.map && world.map.id === 'wishkeep' && !world.keepVisit); // (0.82.2) a visitor fights; the miracles are the keeper's
+    const on = !!(t && t.state === 'on' && world.map && world.map.id === 'wishkeep' && !world.keepVisit); // (0.82.2) the miracles are the keeper's
+    document.body.classList.toggle('keep-guest', !!(world.keepVisit && world.map && world.map.id === 'wishkeep')); // (0.82.5) a visitor's skills are greyed: they do nothing here
     el.classList.toggle('hidden', !on);
     document.body.classList.toggle('god', on && !(t.inc > 0)); // (0.81.1) the hero's own skill bar dims while they are a god
     if (!on) return (this.mirKey = null);

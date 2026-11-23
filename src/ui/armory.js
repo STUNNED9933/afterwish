@@ -3,7 +3,24 @@
 // are kept here, apart from the player's own bag. Choose a hero, then a piece, then put it on.
 import { RARITIES } from '../sim/items.js';
 import { CLASSES } from '../sim/classes.js';
-import { HERO_SLOTS, HERO_SLOT_NAMES, HERO_GEAR, HERO_RARITY, ARMORY_MAX, heroGearScore, troopStats, heroWorn } from '../sim/wishkeep.js';
+import { HERO_SLOTS, HERO_SLOT_NAMES, HERO_GEAR, HERO_RARITY, ARMORY_MAX, heroGearScore, troopStats, heroWorn, heroGearUpgrade, heroSalvageable } from '../sim/wishkeep.js';
+
+// (0.82.5) the rarities Break down never takes, kept in this browser (Immortal by default, as for your own gear)
+function loadKeepRar() {
+  try {
+    const v = JSON.parse(localStorage.getItem('afterwish.herokeep') || '[6]');
+    return Array.isArray(v) ? v.filter((x) => Number.isInteger(x) && x >= 0 && x <= 6) : [6];
+  } catch {
+    return [6];
+  }
+}
+function storeKeepRar(v) {
+  try {
+    localStorage.setItem('afterwish.herokeep', JSON.stringify(v));
+  } catch {
+    /* private mode */
+  }
+}
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const pc = (v) => `${Math.round(v * 1000) / 10}%`;
@@ -45,7 +62,7 @@ export function renderArmory(root, world, ui, send, tooltip, redraw) {
   if (!k.troops.some((t) => t.id === ui.hero)) ui.hero = k.troops.length ? k.troops[0].id : null;
   const head = document.createElement('div');
   head.className = 'arm-head';
-  head.innerHTML = `<span><b>The Armory</b> · ${armory.length} / ${ARMORY_MAX} pieces · ${k.sigils || 0} Ascension Sigils · ${k.stone} Wishstone</span><span class="setting-desc">Hero gear is for the keep's heroes only. The nights it holds give it, rarer the deeper the Night. Choose a hero, then a piece.${busy ? ' (Not while the night is on.)' : ''}</span>`;
+  head.innerHTML = `<span><b>The Armory</b> · ${armory.length} / ${ARMORY_MAX} pieces · ${k.sigils || 0} Ascension Sigils · ${k.stone} Wishstone</span><span class="setting-desc">Hero gear is for the keep's heroes only. The nights it holds give it, rarer the deeper the Night. Choose a hero, then a piece; shift-click a piece to break it down. A green ▲ marks one that would be an upgrade for a hero.${busy ? ' (Not while the night is on.)' : ''}</span>`;
   const btns = document.createElement('div');
   btns.className = 'arm-btns';
   const best = document.createElement('button');
@@ -55,15 +72,59 @@ export function renderArmory(root, world, ui, send, tooltip, redraw) {
   best.disabled = busy || !armory.length || !k.troops.length;
   best.title = 'Every hero gets the best piece left for each slot, the rarest heroes choosing first';
   best.addEventListener('click', () => send({ type: 'keepGearBest' }));
-  const junk = armory.filter((g) => g.hero == null && !g.locked && g.r <= 2);
+  // (0.82.5) Break down, as your own gear's Scrap: everything that is no hero's upgrade, never worn, locked
+  // or of a rarity you keep
+  const keepRar = loadKeepRar();
+  const junk = heroSalvageable(k, keepRar);
   const sal = document.createElement('button');
   sal.type = 'button';
   sal.className = 'ghost tiny';
-  sal.textContent = junk.length ? `Break down unworn Common to Rare (${junk.length}) · +${junk.reduce((a, g) => a + HERO_GEAR.salvage(g), 0)} Wishstone` : 'Nothing Common to Rare to break down';
+  sal.textContent = junk.length ? `Break down everything that is no hero's upgrade (${junk.length}) · +${junk.reduce((a, g) => a + HERO_GEAR.salvage(g), 0)} Wishstone` : 'Nothing to break down';
+  sal.title = keepRar.length ? `Keeps ${keepRar.slice().sort().map((i) => RARITIES[i].name).join(', ')} pieces however they compare` : '';
   sal.disabled = !junk.length;
   sal.addEventListener('click', () => send({ type: 'keepSalvage', ids: junk.map((g) => g.id) }));
   btns.append(best, sal);
   head.appendChild(btns);
+  const keepRow = document.createElement('div');
+  keepRow.className = 'keep-row';
+  keepRow.innerHTML = '<span>Never break down:</span>';
+  const chips = document.createElement('span');
+  chips.className = 'keep-chips';
+  for (let r = 2; r <= 6; r++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'keep-chip';
+    b.style.setProperty('--rc', RARITIES[r].color);
+    b.textContent = RARITIES[r].name;
+    b.setAttribute('aria-pressed', keepRar.includes(r) ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      const next = keepRar.includes(r) ? keepRar.filter((x) => x !== r) : keepRar.concat(r);
+      storeKeepRar(next);
+      redraw();
+    });
+    chips.appendChild(b);
+  }
+  keepRow.appendChild(chips);
+  head.appendChild(keepRow);
+  const autoRow = document.createElement('label');
+  autoRow.className = 'keep-row';
+  autoRow.innerHTML = `<span>Auto-break down new Hero gear:</span>`;
+  const asel = document.createElement('select');
+  asel.className = 'arm-auto';
+  asel.innerHTML = '<option value="">Off</option>' + RARITIES.slice(0, 6).map((r, i) => `<option value="${i}"${k.autoSalvageAt === i ? ' selected' : ''}>${i ? `${r.name} and below` : 'Common only'}</option>`).join('');
+  if (k.autoSalvageAt == null) asel.value = '';
+  asel.style.color = k.autoSalvageAt == null ? '' : RARITIES[k.autoSalvageAt].color;
+  asel.title = 'Pieces a night gives at or below this rarity are broken down for Wishstone at once, unless one is an upgrade for a hero (a slot empty, or something worse worn there). Never an Immortal.';
+  asel.addEventListener('change', () => {
+    const v = asel.value === '' ? null : Number(asel.value);
+    if (v != null) {
+      const n = armory.filter((g) => g.hero == null && !g.locked && g.r <= v && !heroGearUpgrade(g, k)).length;
+      if (n && !window.confirm(`Auto-break down ${RARITIES[v].name}${v ? ' and below' : ''}: this also breaks down the ${n} piece${n > 1 ? 's' : ''} like that in the Armory now (never worn or locked ones, or a hero's upgrade). Go ahead?`)) return redraw();
+    }
+    send({ type: 'keepAutoSalvage', to: v });
+  });
+  autoRow.appendChild(asel);
+  head.appendChild(autoRow);
   root.appendChild(head);
 
   // the heroes, three slots each
@@ -137,8 +198,10 @@ export function renderArmory(root, world, ui, send, tooltip, redraw) {
     tile.className = 'arm-piece' + (ui.piece === g.id ? ' on' : '') + (g.hero != null ? ' worn' : '');
     tile.style.setProperty('--rc', R.color);
     const who = g.hero != null && byId.get(g.hero);
-    tile.innerHTML = `<i>${SLOT_ICON[g.slot]}</i><span class="arm-n">${heroLine(g.main.k, g.main.v)}</span>${who ? `<span class="arm-who">${esc(who.name.split(' ')[0])}</span>` : ''}${g.locked ? '<span class="arm-lock">🔒</span>' : ''}${g.r >= 6 ? '<span class="arm-imm">✦</span>' : ''}`;
-    tile.addEventListener('click', () => {
+    tile.innerHTML = `<i>${SLOT_ICON[g.slot]}</i><span class="arm-n">${heroLine(g.main.k, g.main.v)}</span>${who ? `<span class="arm-who">${esc(who.name.split(' ')[0])}</span>` : ''}${g.locked ? '<span class="arm-lock">🔒</span>' : ''}${g.r >= 6 ? '<span class="arm-imm">✦</span>' : ''}${g.hero == null && heroGearUpgrade(g, k) ? '<span class="arm-up">▲</span>' : ''}`;
+    tile.title = g.hero == null && !g.locked ? 'Shift-click: break it down for Wishstone' : '';
+    tile.addEventListener('click', (ev) => {
+      if (ev.shiftKey && g.hero == null && !g.locked) return send({ type: 'keepSalvage', ids: [g.id] }); // (0.82.5) as your own gear
       ui.piece = ui.piece === g.id ? null : g.id;
       redraw();
     });

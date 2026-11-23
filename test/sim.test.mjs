@@ -5220,4 +5220,24 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
   check('Auto-scrap setting (0.75.5): left alone when old ground loot is scrapped, and still saved', p.autoScrapAt === 4 && w.toSave().autoScrapAt === 4, `${p.autoScrapAt}`);
 }
+
+// --- 0.76: the Eternal form ---------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { rollEternal, eternalForm } = await import('../src/sim/eternal.js');
+  const I = await import('../src/sim/items.js');
+  const w = new World({ seed: 21, mode: 'explore', cls: 'rogue', save: geared('rogue', 100, 5) });
+  const p = w.player;
+  check('Eternal form (0.76): not with ordinary gear', !eternalForm(p));
+  for (const s of I.SLOTS.slice(0, 4)) p.equipped[s] = rollEternal(() => 0.5, 100, s, 'rogue');
+  check('...not with four pieces of five', !eternalForm(p));
+  p.equipped.ring = rollEternal(() => 0.5, 100, 'ring', 'rogue');
+  check('...taken with all five worn', eternalForm(p));
+  w.command({ type: 'eternalForm', on: false }); w.runCommands();
+  check('...and it can be hidden (kept in the save)', !eternalForm(p) && w.toSave().eformOff === true);
+  w.command({ type: 'eternalForm', on: true }); w.runCommands();
+  check('...or shown again', eternalForm(p) && w.toSave().eformOff === false);
+  const { RIGGED, heroLook } = await import('../src/render/rigged.js').catch(() => ({}));
+  if (heroLook) check('...the renderer picks the ascended model for it (the Shadowdancer too)', heroLook('rogue', 'shadowdancer', true) === 'rogue_eternal' && heroLook('rogue', 'shadowdancer', false) === 'ninja' && RIGGED.hero_warrior_eternal.url === 'models/warrior_eternal.glb');
+}
 process.exit(failed ? 1 : 0);

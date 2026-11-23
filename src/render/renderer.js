@@ -14,6 +14,7 @@ import { NPCS } from '../sim/story.js';
 import { buildBiome, biomeMaterials, lookOf, BIOMES, poolRadius } from './biomes.js';
 import { QUALITY, GROUND, MOODS, THEME_MOOD, groundMaterial, groundMask, buildRain, pebbleGeometry, tuftGeometry, swayMaterial, scatterSpots, buildMotes, addRim } from './environment.js';
 import { PostFX } from './postfx.js';
+import { eternalForm } from '../sim/eternal.js';
 import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook, hideWhileLoading, preload } from './rigged.js';
 import { propInstances, PROPS } from './props.js';
 import { SlashTrail } from './slash.js';
@@ -833,9 +834,10 @@ export class Renderer {
   }
 
   /** Swap the hero model when a different class is played. */
-  setHeroClass(cls, spec = null) {
-    const look = heroLook(cls, spec);
+  setHeroClass(cls, spec = null, eternal = false) {
+    const look = heroLook(cls, spec, eternal);
     if (cls === this.heroCls && look === this.heroLook) return;
+    const ascended = look.endsWith('_eternal') && this.heroLook && !this.heroLook.endsWith('_eternal') && cls === this.heroCls;
     this.heroCls = cls;
     this.heroLook = look;
     this.hero.disposed = true;
@@ -843,6 +845,12 @@ export class Renderer {
     this.hero = buildHero(cls);
     upgradeHero(this.hero, cls, look); // the rigged model, when there is one (0.35; the ninja, 0.42)
     this.scene.add(this.hero.group);
+    if (ascended && this.lastHeroPos) {
+      // (0.76) the moment of becoming Eternal: a white-and-crimson burst where the hero stands
+      const { x, z } = this.lastHeroPos;
+      this.burst(x, 1.2, z, { count: 60, color: 0xffffff, speed: 7, up: 5, life: 0.9 });
+      this.burst(x, 1.0, z, { count: 50, color: 0xff3d4f, speed: 5, up: 6, life: 1.1 });
+    }
   }
 
   buildHero() {
@@ -2459,7 +2467,9 @@ export class Renderer {
 
   render(world, alpha, dt) {
     this.time += dt;
-    if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec);
+    const eform = eternalForm(world.player); // (0.76)
+    if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec, eform) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec, eform);
+    this.lastHeroPos = { x: world.player.x, z: world.player.z };
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
     this.syncExtras(world, dt);
@@ -2725,7 +2735,7 @@ export class Renderer {
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      const look = heroLook(a.cls, a.spec);
+      const look = heroLook(a.cls, a.spec, !!a.eform);
       if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);

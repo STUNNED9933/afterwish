@@ -193,6 +193,11 @@ export function remakeEternal(item, cls) {
   return item;
 }
 
+/** (0.76) Wearing a full set of Eternal gear (and not choosing to hide it): the hero takes their Eternal form. */
+export function eternalForm(p) {
+  return !!p && !p.eformOff && !!p.equipped && SLOTS.every((s) => p.equipped[s] && p.equipped[s].eternal);
+}
+
 /** The pieces a hero has, worn or stowed, by slot. */
 export function eternalsOwned(p) {
   const out = {};

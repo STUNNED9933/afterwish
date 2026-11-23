@@ -538,6 +538,13 @@ export class Inventory {
       auto.innerHTML = `Auto-feed new Immortals to <select>${opts.map(([v, l]) => `<option value="${v || ''}"${(p.eternalAuto || null) === v ? ' selected' : ''}>${l}</option>`).join('')}</select> <small>(not set pieces, Heirlooms, or one that would be an upgrade for you; the ones in your gear box now are never touched)</small>`;
       auto.querySelector('select').addEventListener('change', (e) => this.send({ type: 'eternalAuto', to: e.target.value || null }));
       root.appendChild(auto);
+      // (0.76) the Eternal form: with all five pieces worn the hero ascends (others see it too)
+      const full = SLOTS.every((s) => p.equipped[s] && p.equipped[s].eternal);
+      const form = document.createElement('label');
+      form.className = 'et-auto setting-desc';
+      form.innerHTML = `<input type="checkbox"${p.eformOff ? '' : ' checked'}> <b>Eternal form</b> <small>${full ? 'you wear all five pieces: your hero takes their ascended form, and everyone sees it' : `wear all five Eternal pieces to take your hero's ascended form (${SLOTS.filter((s) => p.equipped[s] && p.equipped[s].eternal).length}/5 worn)`}</small>`;
+      form.querySelector('input').addEventListener('change', (e) => this.send({ type: 'eternalForm', on: e.target.checked }));
+      root.appendChild(form);
     }
     for (const slot of SLOTS) {
       const it = world.eternalAt(slot);

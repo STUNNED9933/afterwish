@@ -121,6 +121,21 @@ export const RIGGED = {
   get hero_ninja() {
     return { ...RIGGED.hero_rogue, url: 'models/ninja.glb', height: 2.0 };
   },
+  // (0.76) The Eternal forms: each hero ascended, in white and crimson, worn with a full set of Eternal
+  // gear. Their own Tripo idle and flinch (and the Warrior's swing and run); every other move is the
+  // hero's own, copied onto the new rig by tools/models/copy-clips.mjs.
+  get hero_warrior_eternal() {
+    return { ...RIGGED.hero_warrior, url: 'models/warrior_eternal.glb' };
+  },
+  get hero_archer_eternal() {
+    return { ...RIGGED.hero_archer, url: 'models/archer_eternal.glb' };
+  },
+  get hero_mage_eternal() {
+    return { ...RIGGED.hero_mage, url: 'models/mage_eternal.glb' };
+  },
+  get hero_rogue_eternal() {
+    return { ...RIGGED.hero_rogue, url: 'models/rogue_eternal.glb' };
+  },
   // The Mage (0.37.3): Tripo's idle and flinch; Frozen Orb is an overhand throw from the
   // library; her run, sparks, Fire Bolt, Starwake, Meteor and the fall are our own
   // (tools/models/mage-moves.js). Her staff stays upright, leaning with her forearm.
@@ -894,7 +909,8 @@ function warp(keys, t) {
  * is hidden and its weapon moves into the rigged model's hand.
  */
 /** Which model a hero wears (0.42): a rogue with a subclass becomes the ninja. */
-export function heroLook(cls, spec) {
+export function heroLook(cls, spec, eternal = false) {
+  if (eternal && RIGGED[`hero_${cls}_eternal`]) return `${cls}_eternal`; // (0.76) the Eternal form comes first
   return cls === 'rogue' && spec ? 'ninja' : cls;
 }
 

@@ -32,7 +32,7 @@ import { CLASSES } from './classes.js';
 import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
-import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal, OTHER_SHARE } from './eternal.js';
+import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal, OTHER_SHARE, eternalForm } from './eternal.js';
 const MOD_BASE = defaultMods(); // (0.65) each modifier's starting value, for applyPotent
 import { SPECS, ROW_NEED, talentPointsAt } from './talents.js';
 
@@ -393,7 +393,7 @@ export class World {
     for (const h of this.heroes) {
       if (h === this.cur) continue;
       const p = h.player;
-      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null,
+      out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null, eform: eternalForm(p), // (0.76) their Eternal form
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
         dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0 });
     }
@@ -527,6 +527,7 @@ export class World {
       eternalPity: Math.max(0, Math.min(200, Math.floor(Number(save?.eternalPity) || 0))), // (0.71.1) kills since the last Eternal
       eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
       eternalAuto: AUTO_FEED.includes(save?.eternalAuto) ? save.eternalAuto : null, // (0.75) off unless the player turns it on
+      eformOff: save?.eformOff === true, // (0.76)
       autoScrapAt: Number.isInteger(save?.autoScrapAt) && save.autoScrapAt >= 0 && save.autoScrapAt < IMMORTAL ? save.autoScrapAt : null, // (0.75.3)
       eternalVet: save?.eternalVet === true, // (0.74) the once-only thanks for those who beat the Granted at their hardest
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
@@ -762,6 +763,7 @@ export class World {
       eternalVet: p.eternalVet,
       eternalAuto: p.eternalAuto,
       autoScrapAt: p.autoScrapAt,
+      eformOff: !!p.eformOff,
       skillPoints: p.skillPoints,
       tierMax: p.tierMax,
       worldTier: p.worldTier,
@@ -838,6 +840,7 @@ export class World {
       else if (c.type === 'autoEquip') this.equipUpgrades();
       else if (c.type === 'discard') this.discard(c.index);
       else if (c.type === 'lockItem') this.lockItem(c.index, c.slot); // (0.75.2)
+      else if (c.type === 'eternalForm') p.eformOff = c.on === false; // (0.76) show (or hide) the Eternal form
       else if (c.type === 'autoScrap') this.setAutoScrap(c.to == null ? null : Number(c.to)); // (0.75.3)
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);

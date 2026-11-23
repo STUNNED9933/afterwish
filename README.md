@@ -160,6 +160,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Eternal forms (0.76)
+
+- **Wear all five Eternal pieces and your hero ascends:** a new model for each class, the same hero in
+  white-and-crimson armour with gold filigree, glowing red runes, a crimson gem and a white-gold circlet.
+  It bursts in white and crimson the moment you take it, and friends and everyone on the server see it.
+- **Every move is kept:** the Warrior's swings, spin and leaps, the Archer's shots, the Mage's spells and
+  the Rogue's blades are the same animations, moved onto the new skeletons
+  (`tools/models/copy-clips.mjs`). The Shadowdancer and Assassin take the Eternal form too.
+- **"Eternal form"** in the Eternal tab shows or hides it, kept in your save.
+- Made with Tripo: 320 credits for the four models, and 65 more to re-rig the Warrior on his old
+  skeleton so his moves fit.
+
 ### Two fixes: Wishborne points after All in, and auto-scrap turning itself off (0.75.5)
 
 - **Wishborne:** online, the panel now shows your points as soon as they are spent (after All in it

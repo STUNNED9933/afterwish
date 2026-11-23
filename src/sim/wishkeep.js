@@ -321,7 +321,7 @@ export function wishText(w) {
 
 /** What a wish asks, in a few words (for the board). */
 export function wishGoal(w) {
-  if (w.kind === 'kill') return `Defeat ${w.need} enemies on ${w.mapName}`;
+  if (w.kind === 'kill') return `Defeat ${w.need} enemies in ${w.mapName}`;
   if (w.kind === 'boss') return `Defeat ${w.bossName}`;
   if (w.kind === 'offer') return `Give ${w.need.toLocaleString('en-US')} ${{ scrap: 'scrap', dust: 'Wishdust', gold: 'gold', fragment: 'wish fragments' }[w.what]}`;
   if (w.kind === 'tide') return "Win a Tide: hold the keep's fires through three waves";

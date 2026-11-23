@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Wishes say where to go (0.81.2)
+
+- Every wish that sends you somewhere names the place. Boss wishes say where the boss lives, for example "The Drowned Court · Depth VII" for the Undertow. Pilgrimages in the Deep give their Depth too.
+- On the board, a "Where:" line adds the Depth and that it's reached by the Waygate.
+- In the tracker, the settler's name now reads "for Bastian", so it can't be mistaken for a place such as the Bastion.
+
 ### Incarnate, and the keep's own people (0.81.1)
 
 - **Incarnate.** In a Tide, press **R** (30 Faith) to step down and fight beside your heroes for 20 seconds with your own skills. You fight as a mortal: one blow takes at most a fifth of an Unmade's health, and the Tide can strike you back. Falling only ends the incarnation, and you are a god again with miracles on Q, W and E. It can be used again 45 seconds after it starts. The miracle bar shows it, and the hero's skill bar dims while you are a god.

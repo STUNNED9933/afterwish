@@ -1292,3 +1292,6 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 .quest.urgent { border-color: #ff3d4f; box-shadow: 0 0 0 1px rgba(255, 61, 79, 0.35) inset; }
 .qt.urgent { border-left-color: #ff3d4f; background: rgba(60, 10, 16, 0.85); }
 .qt.urgent b { color: #ffb0b8; }
+
+/* (0.81.2) where a wish is done */
+.keep-wish .where { font-size: 13px; color: #9fd0ff; margin-top: 2px; }

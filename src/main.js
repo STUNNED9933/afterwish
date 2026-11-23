@@ -26,6 +26,7 @@ import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
+import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
 import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
@@ -1303,7 +1304,7 @@ function start(hot = {}) {
       const el = document.createElement('div');
       el.className = 'quest keep-wish' + (w.done ? ' ready' : '');
       const prog = w.kind === 'kill' ? `${w.n} / ${w.need}` : w.kind === 'offer' || w.kind === 'tell' ? '' : w.done ? '' : 'Not yet';
-      el.innerHTML = `<h4>${esc(who.name)}<small>${esc(who.role)}</small></h4><p>"${esc(wishText(w))}"</p><div class="goal">${esc(wishGoal(w))}${prog ? ` · ${prog}` : ''}</div><div class="rewards">Answered: ${Math.round(w.reward.faith * world.keepMult())} Faith${w.reward.stone ? `, ${w.reward.stone} Wishstone` : ''}, and ${esc(who.name)} grows closer</div>`;
+      el.innerHTML = `<h4>${esc(who.name)}<small>${esc(who.role)}</small></h4><p>"${esc(wishText(w))}"</p><div class="goal">${esc(wishGoal(w))}${prog ? ` · ${prog}` : ''}</div>${wishWhere(w) && wishWhere(w) !== w.mapName ? `<div class="where">Where: ${esc(wishWhere(w))}</div>` : ''}<div class="rewards">Answered: ${Math.round(w.reward.faith * world.keepMult())} Faith${w.reward.stone ? `, ${w.reward.stone} Wishstone` : ''}, and ${esc(who.name)} grows closer</div>`;
       const row = document.createElement('div');
       row.className = 'bounty-btns';
       const go = document.createElement('button');

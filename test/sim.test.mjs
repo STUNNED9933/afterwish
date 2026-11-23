@@ -5411,4 +5411,12 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
   check('...a keep survives being saved and loaded, every field checked', JSON.stringify(back) === JSON.stringify(K.cleanKeep(back)) && back.tier === 3 && back.halls.archer === 1 && back.troops.length === 8 && back.told.includes('road') && K.cleanKeep({ tier: 99, faith: -5, halls: { warrior: 9 } }).tier === 3 && K.cleanKeep({ faith: -5 }).faith === 0 && K.cleanKeep(null) === null);
 }
+
+// --- 0.81.2: a wish says where it is done ---------------------------------------------------------------
+{
+  const { wishWhere } = await import('../src/sim/wishwhere.js');
+  const bosses = ['boss', 'boss2', 'boss3', 'herald', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness'];
+  const all = bosses.every((b) => wishWhere({ kind: 'boss', boss: b }));
+  check('Wishkeep (0.81.2): every boss a wish can ask for, and every pilgrimage, names its place (the Deep with its Depth)', all && wishWhere({ kind: 'boss', boss: 'undertow' }) === 'The Drowned Court (Depth VII, by the Waygate)' && wishWhere({ kind: 'kill', map: 'fen' }) === 'Spitter Fen' && wishWhere({ kind: 'tide' }) === '');
+}
 process.exit(failed ? 1 : 0);

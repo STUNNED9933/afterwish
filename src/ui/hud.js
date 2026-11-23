@@ -17,6 +17,7 @@ import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
+import { wishWhere } from '../sim/wishwhere.js'; // (0.81.2)
 import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -954,7 +955,9 @@ export class Hud {
             how = have >= w.need ? 'You have it: give it at the board' : `you have ${have.toLocaleString()}`;
           } else if (w.kind === 'tide') how = 'Call the night at the Hearth';
           else if (w.kind === 'tell') how = 'at the Wishes board';
-          return `<div class="qt keep"><b>${escT(wishGoal(w))}</b><span>${escT(who)}${how ? ` · ${escT(how)}` : ''}</span></div>`;
+          // (0.81.2) where to go, then how far along, then whose wish it is (a name, not a place)
+          const where = wishWhere(w, true);
+          return `<div class="qt keep"><b>${escT(w.kind === 'kill' ? `Defeat ${w.need} enemies` : wishGoal(w))}</b><span>${where ? `${escT(where)} · ` : ''}${how ? `${escT(how)} · ` : ''}for ${escT(who)}</span></div>`;
         });
         // (0.81.1) the keep's hurts at the top, with what to do about them
         const hurt = Object.keys(k.builds || {}).length;

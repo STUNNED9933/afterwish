@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -104,6 +104,7 @@ function start(hot = {}) {
   try {
     renderer = new Renderer(canvas);
     renderer.keepTier = () => (world && world.player && world.player.keep ? world.player.keep.tier : 1); // (0.81) people walking about the keep
+    renderer.keepStage = () => (world && world.player && world.player.keep ? keepStage(world.player.keep) : 0); // (0.82.1) and more as it grows
   } catch (err) {
     $('title-save').textContent = 'This game needs WebGL, which this browser or device has turned off. Try a current version of Chrome, Edge or Firefox.';
     $('btn-explore').disabled = true;
@@ -1384,6 +1385,44 @@ function start(hot = {}) {
     return '';
   };
 
+  /** (0.82.1) The Mine or the Fields: what it makes, who works it, and raising it. */
+  function renderKeepWorks(id) {
+    const k = world.player.keep, W = WORKS[id];
+    $('talk-role').textContent = id === 'mine' ? 'Under the keep' : 'Beyond the halls';
+    $('talk-name').textContent = W.name;
+    $('talk-keys').classList.add('hidden');
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    if (!k) return ($('talk-line').textContent = 'Nobody to work it yet.');
+    const lvl = k.works[id] || 0, hands = workHands(k);
+    const rate = lvl ? W.rate(lvl, hands) : 0;
+    $('talk-line').innerHTML = talkNote ? esc(talkNote) : `${esc(W.desc)} ${keepHave(k)}`;
+    const card = keepCard(lvl ? `${W.name}, level ${lvl} of ${W.max}` : `${W.name}: not yet built`, lvl ? `${Math.round(rate * 10) / 10} ${W.what} an hour` : '', `<p class="setting-desc">Worked between nights by your heroes (each one a hand, a quarter more for each step of rarity) and your settlers (half a hand each): ${hands.toFixed(1)} hands now. It pays while you are here, a minute at a time, and while you are away (up to ${KEEP.produce.capHours} hours banked).</p>`);
+    if (lvl < W.max) {
+      const c = W.cost(lvl + 1);
+      const next = W.rate(lvl + 1, hands);
+      card.appendChild(keepBtn(`${lvl ? 'Raise it' : 'Build it'} · ${keepCost(c)} → ${Math.round(next * 10) / 10} ${W.what} an hour`, () => applyNow({ type: 'keepWork', id }), { primary: true, disabled: k.faith < c.faith || k.stone < (c.stone || 0) }));
+    }
+    list.appendChild(card);
+    const r = keepRates(k, world.hallWorks('rogue'));
+    list.appendChild(keepCard('All the keep makes', 'an hour', `<p>${Math.round(r.faith * 10) / 10} Faith (the Hearth's faithful ${KEEP.produce.base}, the Market, the Fields) and ${Math.round(r.stone * 10) / 10} Wishstone (the Mine). The road pays a tithe too: a little Faith for every kill, and Faith and Wishstone for every boss.</p>`));
+  }
+  /** (0.82.1) A building's tier card: Common to Immortal once its hall is at its last level. */
+  function tierCard(id, list) {
+    const k = world.player.keep;
+    const t = k.btier[id] || 0;
+    const ready = id === 'hearth' ? k.tier >= 3 : (k.halls[id] || 0) >= KEEP.hallMax;
+    const R = RARITIES[t];
+    const card = keepCard(`Tier: <span style="color:${R.color}">${R.name}</span>`, ready ? (t < BUILD_TIER.max ? `next: ${RARITIES[t + 1].name}` : 'the last') : id === 'hearth' ? 'opens at keep tier III' : 'opens at its last level', `<p class="setting-desc">${t ? esc(BUILD_TIER.perk[id](t)) + ' ' : ''}Each tier makes it far sturdier (×${BUILD_TIER.hp[t]} health now) and its work stronger.${t < BUILD_TIER.max ? ` Next: ${esc(BUILD_TIER.perk[id](t + 1))}` : ''}</p>`);
+    if (ready && t < BUILD_TIER.max) {
+      const c = BUILD_TIER.cost(t + 1);
+      const b = keepBtn(`Raise it to ${RARITIES[t + 1].name} · ${keepCost(c)}`, () => applyNow({ type: 'keepBuildTier', id }), { primary: true, disabled: k.faith < c.faith || k.stone < c.stone || (world.tide && world.tide.state === 'on') });
+      b.style.borderColor = RARITIES[t + 1].color;
+      card.appendChild(b);
+    }
+    list.appendChild(card);
+  }
+
   /** The Hearth: the keep's tier, its heroes, mending, its Altar (what the account has done), and the night. */
   function renderKeepHearth() {
     const p = world.player, k = p.keep;
@@ -1474,11 +1513,15 @@ function start(hot = {}) {
       tier.appendChild(keepBtn(`Raise it · ${keepCost(next.cost)}`, () => applyNow({ type: 'keepTier' }), { primary: true, disabled: k.faith < next.cost.faith || k.stone < next.cost.stone }));
       list.appendChild(tier);
     }
+    // (0.82.1) the Hearth's own tier, and how far the keep has grown
+    tierCard('hearth', list);
+    const st = keepStage(k), nextAt = GROWTH.at[st + 1];
+    list.appendChild(keepCard(`The keep: ${esc(GROWTH.names[st])}`, `stage ${st + 1} of ${GROWTH.at.length}`, `<p class="setting-desc">The keep grows with what you spend on it (Faith, and Wishstone counted ten times): a wider ground, more cottages, more people. ${nextAt ? `${(k.spent || 0).toLocaleString()} of ${nextAt.toLocaleString()} spent toward ${esc(GROWTH.names[st + 1])}.` : 'It has grown as far as it can.'} The works (the Mine and the Fields, out past the halls) make Faith and Wishstone for you.</p>`));
     // the Altar: what the account has done
     const relic = (sl) => `<span class="relic${rec.relics.includes(sl) ? ' lit' : ''}" title="${rec.relics.includes(sl) ? `An Eternal ${SLOT_NAMES[sl].toLowerCase()}: ${RELIC_NAMES[sl]}` : `No Eternal ${SLOT_NAMES[sl].toLowerCase()} yet`}">${esc(RELIC_NAMES[sl].replace(/^the /, ''))}</span>`;
     const alt = keepCard('The Altar', 'what you have done, on every class', `<div class="relics">${SLOTS.map(relic).join('')}</div>
       <p class="setting-desc">${rec.relics.length} of 5 Eternal relics (each +${Math.round(KEEP.faithPerRelic * 100)}% Faith) · ${rec.halls.length} of 4 classes mastered (each opens its hall, and its heroes) · ${rec.echoes.length} of 4 Granted beaten (each sends an echo to stand behind your heroes: +10% damage in a Tide) · ${rec.wish.toLocaleString()} Wishborne levels.</p>
-      <p class="setting-desc">Faith from each answered wish: ×${world.keepMult().toFixed(2)}. ${k.answered} wish${k.answered === 1 ? '' : 'es'} answered, ${k.tides} Tide${k.tides === 1 ? '' : 's'} held. Faith while you are away: ${KEEP.produce.base + (world.hallWorks('rogue') ? KEEP.produce.perMarket * k.halls.rogue : 0)} an hour.</p>`);
+      <p class="setting-desc">Faith from each answered wish: ×${world.keepMult().toFixed(2)}. ${k.answered} wish${k.answered === 1 ? '' : 'es'} answered, ${k.tides} Tide${k.tides === 1 ? '' : 's'} held. The keep makes ${Math.round(keepRates(k, world.hallWorks('rogue')).faith)} Faith and ${Math.round(keepRates(k, world.hallWorks('rogue')).stone * 10) / 10} Wishstone an hour, here and away.</p>`);
     list.appendChild(alt);
   }
 
@@ -1502,11 +1545,12 @@ function start(hot = {}) {
       up.appendChild(keepBtn(`Raise it · ${keepCost(c)}`, () => applyNow({ type: 'keepHall', cls }), { primary: true, disabled: k.faith < c.faith || k.stone < c.stone }));
       list.appendChild(up);
     }
+    if (lvl >= KEEP.hallMax) tierCard(cls, list); // (0.82.1)
     if (!world.hallWorks(cls)) return;
     const on = world.tide && world.tide.state === 'on';
     if (cls === 'warrior' && k.troops.length) list.appendChild(keepBtn(`Open the Armory: Hero gear (${(k.armory || []).length})`, () => openArmory(), { primary: true })); // (0.82)
     if (cls === 'warrior') {
-      const max = KEEP.armMax(lvl);
+      const max = KEEP.armMax(lvl, k.btier.warrior || 0);
       const card = keepCard('Arm your heroes', `arms up to ${max}`, `<p class="setting-desc">Each point of arms (the Bastion's, apart from Hero gear): +${Math.round(KEEP.perGear * 100)}% health and damage. Every building in the keep is ${Math.round(KEEP.perBastionHp * lvl * 100)}% sturdier for the Bastion.</p>`);
       for (const t of k.troops) {
         const row = document.createElement('div');
@@ -1522,7 +1566,7 @@ function start(hot = {}) {
     if (cls === 'archer' || cls === 'mage') {
       const school = cls === 'archer' ? 'phys' : 'magic';
       if (cls === 'archer') {
-        const max = KEEP.trainMax(lvl);
+        const max = KEEP.trainMax(lvl, k.btier.archer || 0);
         const card = keepCard('Train your heroes', `levels up to ${max}`, `<p class="setting-desc">Each level: +${Math.round(KEEP.perLvl * 100)}% health and damage.</p>`);
         for (const t of k.troops) {
           const row = document.createElement('div');
@@ -1807,6 +1851,7 @@ function start(hot = {}) {
   }
   let ringStart = 0;
   let keepNight = 0; // (0.82) the Night level picked at the Hearth
+  let keepClockAt = 0; // (0.82.1)
   /** (0.82) The Armory: the gear window, on its Heroes tab. */
   function openArmory() {
     inventory.tab = 'heroes';
@@ -1907,6 +1952,7 @@ function start(hot = {}) {
     if (talkTo === 'tomashusk') return renderTomasHusk();
     if (talkTo === 'wishes') return renderKeepBoard(); // (0.80) the Wishkeep
     if (talkTo === 'keepaltar') return renderKeepHearth();
+    if (WORKS[talkTo]) return renderKeepWorks(talkTo); // (0.82.1)
     if (String(talkTo).startsWith('hall_')) return renderKeepHall(String(talkTo).slice(5));
     if (SETTLERS[talkTo]) return renderSettler(talkTo);
     if (String(talkTo).startsWith('chapter:')) return renderChapter(String(talkTo).slice(8));
@@ -5212,7 +5258,26 @@ function start(hot = {}) {
         if (mode === 'talk') renderTalk();
         break;
       case 'keepProduced':
-        hud.feedText(`While you were away: +${ev.faith} Faith (${ev.hours} hours at ${ev.rate} an hour).`);
+        hud.feedText(`While you were away (${ev.hours} hours): +${ev.faith.toLocaleString()} Faith${ev.stone ? `, +${ev.stone.toLocaleString()} Wishstone` : ''} from the keep's works.`);
+        break;
+      case 'keepGrew':
+        sfx.levelUp();
+        hud.banner(`The keep grows: ${ev.name}`, 'More room, more roofs, more people. You will see it the next time you come through the Waygate.');
+        break;
+      case 'keepWorkUp':
+        sfx.upgrade();
+        hud.feedText(`${ev.name} is level ${ev.level} now.`);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepBuildTier':
+        sfx.upgrade();
+        if (ev.tier >= 6) sfx.eternal();
+        hud.banner(`${ev.name}: ${RARITIES[ev.tier].name}`, BUILD_TIER.perk[ev.id](ev.tier));
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepTierShut':
+        sfx.denied();
+        hud.feedText(ev.id === 'hearth' ? 'The Hearth can be raised through the tiers once the keep is at tier III.' : 'A building can be raised through the tiers once its hall is at its last level.');
         break;
       case 'bountyDone':
         sfx.pickup(3);
@@ -5702,6 +5767,10 @@ function start(hot = {}) {
     }
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
+    if (world && world.map && world.map.id === KEEP.map && now >= keepClockAt) {
+      keepClockAt = now + 60000; // (0.82.1) the works pay while you are in the keep too, a minute at a time
+      applyNow({ type: 'keepClock', now: Date.now() });
+    }
     if (now >= cpCheckAt && world && !world.trial && world.player && world.player.stats) {
       // (0.61.1) keep the Combat Power the next gear change is measured against up to date
       cpCheckAt = now + 2000;

@@ -907,7 +907,7 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? (near.id === 'wishes' ? 'Read the Wishes' : 'Read the Bounty Board') : near.kind === 'keepaltar' ? 'Tend the Hearth' : near.kind === 'hall' ? 'Visit ' + ((HALLS[near.cls] && HALLS[near.cls].name) || 'the hall') : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Touch the glimmer: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? (near.id === 'wishes' ? 'Read the Wishes' : 'Read the Bounty Board') : near.kind === 'keepaltar' ? 'Tend the Hearth' : near.kind === 'works' ? 'See to ' + near.name : near.kind === 'hall' ? 'Visit ' + ((HALLS[near.cls] && HALLS[near.cls].name) || 'the hall') : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Touch the glimmer: ' + near.name}`;
   }
 
   /**

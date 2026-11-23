@@ -160,6 +160,24 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The keep's works, tiers and growth; heroes who find their way (0.82.1)
+
+- **More Faith and Wishstone.**
+  - **The Mine** (Wishstone) and **the Fields** (Faith) stand out past the halls. Build them and raise them to level 5 with Faith. They're worked between nights by your heroes (each a hand, a quarter more for each step of rarity) and your settlers (half a hand each). They pay while you're in the keep, a minute at a time, and while you're away, banked up to 24 hours (was 16).
+  - **The road's tithe:** a little Faith for every kill anywhere (a quarter each), and 12 Faith and 2 Wishstone for every boss.
+  - **Wishes pay half as much again.**
+- **Cheaper mending.** A Wishstone mends 120 health (was 40), and after every night held the keep's people mend a quarter of every building free.
+- **Building tiers.** Once a hall is at its last level (the Hearth: once the keep is at tier III), it can be raised Common to Immortal with Faith and Wishstone. Each tier makes it far sturdier (×20 health at Immortal) and its work stronger:
+  - the Bastion: more arms
+  - the Lodge: heroes trained further, up to level 16
+  - the Observatory: stronger blessings
+  - the Market: more Faith
+  - the Hearth: every hero deals more, every wish gives more Faith
+  
+  A hall's tier shows in the cap of its banner and a ring at its foot, in the tier's colour.
+- **The keep grows** with what you spend on it (Faith, and Wishstone counted ten times), through six stages from "A Fire in the Dark" to "The Wishkeep Entire". Each stage is a wider ground (32 m to 47 m across the radius), more trees, a pair of cottages, and more people walking about. The Hearth shows how far it has come.
+- **Heroes who find their way.** The keep has a walking grid. Heroes and the Unmade alike take paths round the halls, cottages, trees and rocks instead of pressing into them, and walk straight when the way is clear. Heroes also count a detour as further than it looks, and finish off one of the Unmade that is nearly down. In test nights, Nights 12 and 18 were held with every building whole; before, halls fell.
+
 ### Heroes worth the name (0.82)
 
 The keep's heroes can now hold the night on their own.

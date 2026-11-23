@@ -15,7 +15,7 @@
 // Everything solid is in `obstacles`. The simulation stops heroes and enemies
 // walking through them, and the renderer draws them, from this one list.
 import { NPCS, SIGNS } from './story.js';
-import { SETTLERS, SETTLER_SPOTS } from './wishkeep.js';
+import { SETTLERS, SETTLER_SPOTS, GROWTH } from './wishkeep.js';
 import { makeRng } from './rng.js';
 import { dAtan2, dCos, dHypot, dSin } from './dmath.js';
 
@@ -214,7 +214,7 @@ export function buildMap(id, custom = null) {
       keepClear.push({ x, z, r: 4.5 });
     }
   }
-  if (def.wishkeep) layKeep(R, obstacles, keepClear);
+  if (def.wishkeep) layKeep(R, obstacles, keepClear, def.keepStage || 0);
   if (def.theme === 'town' && !def.wishkeep) {
     keepClear.push({ x: 0, z: 0, r: 9 });
     for (let i = 0; i < def.houses; i++) {
@@ -366,13 +366,38 @@ export function buildMap(id, custom = null) {
   };
 }
 
+/** (0.82.1) The Wishkeep's map at a stage of its growth: wider, with more trees and cottages. */
+export function buildKeepMap(stage = 0) {
+  const st = Math.max(0, Math.min(GROWTH.at.length - 1, Math.floor(stage) || 0));
+  const def = Object.assign({}, MAPS.wishkeep, { radius: GROWTH.radius(st), trees: MAPS.wishkeep.trees + 6 * st, rocks: MAPS.wishkeep.rocks + 2 * st, keepStage: st });
+  return buildMap('wishkeep', { def, key: 'wishkeep' });
+}
+
 /**
  * (0.80) The Wishkeep's ground: the Hearth's Altar in the middle, the wishes board, four braziers, the four
  * class halls round the plaza (a hall, and a banner in front of it you speak to), and a spot for each settler
  * (world.js leaves out those who have not come yet).
  */
-function layKeep(R, obstacles, keepClear) {
+function layKeep(R, obstacles, keepClear, stage = 0) {
   keepClear.push({ x: 0, z: 0, r: 11 }, { x: 0, z: 9, r: 3 });
+  // (0.82.1) the works, out past the halls: the Mine (a mouth in the rock) and the Fields (rows of grain)
+  for (const [id, a] of [['mine', 1.18], ['fields', -1.18]]) {
+    const x = dCos(a) * 23, z = dSin(a) * 23;
+    obstacles.push({ kind: 'works', shape: 'circle', id, name: id === 'mine' ? 'The Mine' : 'The Fields', x, z, r: 1, soft: true, pickR: 2.2, reach: 2.6 });
+    keepClear.push({ x, z, r: id === 'mine' ? 5 : 6 });
+  }
+  // (0.82.1) cottages, more as the keep grows, round the edge (never on a gate, the road home or the works)
+  const shut = [0, 1.571, 2.75, 4.712, Math.PI, 1.18, -1.18 + Math.PI * 2]; // gates, the road home, the works
+  let placed = 0;
+  for (let i = 0; i < 40 && placed < 2 * stage; i++) {
+    const a = ((i * 0.618034) % 1) * Math.PI * 2;
+    if (shut.some((b) => Math.abs(dAtan2(dSin(a - b), dCos(a - b))) < 0.22)) continue;
+    const rr = R - 7 - (placed % 2) * 2;
+    const x = dCos(a) * rr, z = dSin(a) * rr;
+    obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 2.1, hd: 1.8, rot: a + Math.PI / 2, height: 3.2, r: 3.1, cottage: true });
+    keepClear.push({ x, z, r: 4 });
+    placed++;
+  }
   obstacles.push({ kind: 'keepaltar', shape: 'circle', id: 'keepaltar', name: 'The Hearth', x: 0, z: 0, r: 1.6, pickR: 2.4 });
   obstacles.push({ kind: 'board', shape: 'circle', id: 'wishes', name: 'The Wishes', x: 4.6, z: 1.6, r: 0.6, pickR: 1.3 });
   for (let i = 0; i < 4; i++) {

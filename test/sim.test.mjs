@@ -5338,7 +5338,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'keepClock', now: 1e12 + 2 * 3.6e6 }); w.runCommands();
   const twoH = k.faith - fc;
   w.command({ type: 'keepClock', now: 1e12 + 200 * 3.6e6 }); w.runCommands();
-  check('...Faith comes in while away (no Market: 4 an hour), banked up to 16 hours', twoH === 8 && k.faith - fc === 8 + 64 && k.last === 1e12 + 200 * 3.6e6, `${twoH}, ${k.faith - fc}`);
+  check('...Faith comes in while away (no Market: 4 an hour), banked up to 24 hours (0.82.1)', twoH === 8 && k.faith - fc === 8 + 96 && k.last === 1e12 + 200 * 3.6e6, `${twoH}, ${k.faith - fc}`);
   // a Tide with nobody to hold it, and a god who cannot fight in it
   const w3 = new World({ seed: 33, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
   const p3 = w3.player;
@@ -5404,9 +5404,9 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const darkNote = w3.events.find((e) => e.type === 'keepShort');
   w3.events = [];
   const cost = w3.keepRepairCost();
-  k3.stone = 5;
+  k3.stone = 2;
   w3.command({ type: 'keepRepair' }); w3.runCommands();
-  check('(0.81.1) with too little Wishstone, mending does what it can, the Hearth first', k3.stone === 0 && k3.builds.hearth === 5 * K.KEEP.repairPer && w3.keepRepairCost() === cost - 5 && darkNote && darkNote.what === 'repair' && darkNote.need === Math.ceil(K.buildMax('hearth', k3) / K.KEEP.repairPer), JSON.stringify({ b: k3.builds, cost }));
+  check('(0.81.1) with too little Wishstone, mending does what it can, the Hearth first', k3.stone === 0 && k3.builds.hearth === 2 * K.KEEP.repairPer && w3.keepRepairCost() === cost - 2 && darkNote && darkNote.what === 'repair' && darkNote.need === Math.ceil(K.buildMax('hearth', k3) / K.KEEP.repairPer), JSON.stringify({ b: k3.builds, cost }));
   k3.stone = 1000;
   w3.command({ type: 'keepRepair' }); w3.runCommands();
   check('...and is mended at the Hearth with Wishstone', Object.keys(k3.builds).length === 0 && k3.stone < 1000 && w3.keepBuilds.every((b) => b.hp === b.max));
@@ -5652,5 +5652,46 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   tr.reT = 0; tr.targetId = null;
   w.stepTroops(CONFIG.TICK);
   check('Smarter heroes (0.82): a hero goes for the wrecker at a hall before the Unmade right beside them', tr.targetId === sieger.id, `${tr.targetId} (near ${near.id}, sieger ${sieger.id})`);
+}
+
+// --- 0.82.1: the keep's works, building tiers and growth --------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 189, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  check('Works (0.82.1): the Mine and the Fields stand out past the halls', ['mine', 'fields'].every((id) => w.obstacles.some((o) => o.kind === 'works' && o.id === id)) && w.interactables().some((o) => o.id === 'mine'));
+  k.faith = 1e6; k.stone = 1e5;
+  w.command({ type: 'keepRecruit', cls: 'archer' }); w.runCommands();
+  w.command({ type: 'keepWork', id: 'mine' }); w.command({ type: 'keepWork', id: 'fields' }); w.command({ type: 'keepWork', id: 'fields' }); w.runCommands();
+  const r = K.keepRates(k, false);
+  check('...built and raised with Faith: the Fields make Faith and the Mine Wishstone, more with more hands', k.works.mine === 1 && k.works.fields === 2 && r.stone === K.WORKS.mine.rate(1, K.workHands(k)) && r.faith === K.KEEP.produce.base + K.WORKS.fields.rate(2, K.workHands(k)));
+  const f0 = k.faith, s0 = k.stone;
+  w.command({ type: 'keepClock', now: 1e12 }); w.runCommands();
+  w.command({ type: 'keepClock', now: 1e12 + 10 * 3.6e6 }); w.runCommands();
+  check('...and pay while you are away', k.faith - f0 === Math.floor(r.faith * 10) && k.stone - s0 === Math.floor(r.stone * 10), `${k.faith - f0} ${k.stone - s0}`);
+  // building tiers
+  w.command({ type: 'keepBuildTier', id: 'archer' }); w.runCommands();
+  check('Building tiers: shut until the hall is at its last level', !k.btier.archer && w.events.some((e) => e.type === 'keepTierShut'));
+  k.halls.archer = 3;
+  const hp0 = K.buildMax('archer', k);
+  for (let i = 0; i < 7; i++) { w.command({ type: 'keepBuildTier', id: 'archer' }); w.runCommands(); }
+  check('...then Common to Immortal, each far sturdier, and its work stronger (the Lodge trains further)', k.btier.archer === 6 && K.buildMax('archer', k) === hp0 * 20 && K.KEEP.trainMax(3, 6) === 15);
+  // growth
+  const spentBefore = k.spent;
+  check('Growth: what is spent on the keep counts toward its growth', spentBefore > 0 && K.keepStage(k) >= 1);
+  w.command({ type: 'travel', to: 'town' }); w.runCommands();
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands();
+  check('...and the keep is wider (and has cottages) the next time you come', w.map.radius === K.GROWTH.radius(K.keepStage(k)) && w.map.radius > 32 && w.obstacles.some((o) => o.cottage));
+  // the tithe
+  const t0 = k.faith, b0 = k.stone;
+  for (let i = 0; i < 8; i++) w.keepEvent('kill', { map: 'fen' });
+  w.keepEvent('boss', { type: 'boss' });
+  check('The road\'s tithe: Faith for kills, Faith and Wishstone for a boss', k.faith - t0 === 2 + 12 && k.stone - b0 === 2, `${k.faith - t0} ${k.stone - b0}`);
+  const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
+  check('...works, tiers and growth survive a save', back.works.fields === 2 && back.btier.archer === 6 && back.spent === k.spent);
 }
 process.exit(failed ? 1 : 0);

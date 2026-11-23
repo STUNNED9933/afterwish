@@ -13,7 +13,7 @@ const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar']); // (0.80: the Wishkeep's halls and Hearth)
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar', 'works']); // (0.80: the Wishkeep's halls and Hearth)
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
@@ -29,7 +29,7 @@ const DEADEYE_PIERCE = { mult: [1, 0.7, 0.5, 0.35], mark: 0.2, markTime: 5, pin:
 import { RARE, rareName, THIEF, REMNANT, remnantName, EVENTS, MERCHANT, GLASS, BOUNTY, FRAGMENTS, SIGIL, WILDS, ELITE_SPOILS } from './surprises.js';
 import { GLOWS, REMNANT_GLOW } from './cosmetics.js';
 import { CLASSES } from './classes.js';
-import { buildRiftMap, buildMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
+import { buildRiftMap, buildMap, buildKeepMap, buildDelveRoom, delveRoute, DELVE_ROOMS, MAPS, MAP_IDS } from './maps.js';
 import { AUGMENTS, AUGMENT_IDS, defaultMods } from './augments.js';
 import { BORROW_SLOTS, borrowable, borrowedKit, OATH } from './borrowed.js';
 import { ETERNAL, rollEternal, eternalMods, cleanEternals, feed as feedEternalXp, feedValue, xpToMax, remakeEternal, OTHER_SHARE, eternalForm } from './eternal.js';
@@ -95,11 +95,11 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -872,6 +872,8 @@ export class World {
       else if (c.type === 'keepGearLock') this.keepGearLock(c.gid);
       else if (c.type === 'keepSalvage') this.keepSalvage(c.ids);
       else if (c.type === 'keepGearBest') this.keepGearBest();
+      else if (c.type === 'keepWork') this.keepWork(c.id); // (0.82.1) the Mine and the Fields
+      else if (c.type === 'keepBuildTier') this.keepBuildTier(c.id); // (0.82.1) building tiers
       else if (c.type === 'keepRecruit') this.keepRecruit(c.cls); // (0.81) the keep's heroes and halls
       else if (c.type === 'keepTrain') this.keepTrain(c.id);
       else if (c.type === 'keepArm') this.keepArm(c.id);
@@ -5655,7 +5657,7 @@ export class World {
     if (!k) return 1;
     let lv = 0;
     for (const id in k.settlers) lv += settlerLevel(k.settlers[id]);
-    return 1 + KEEP.faithPerRelic * this.keepRecord().relics.length + KEEP.faithPerSettlerLvl * lv;
+    return (1 + KEEP.faithPerRelic * this.keepRecord().relics.length + KEEP.faithPerSettlerLvl * lv) * (1 + 0.05 * ((k.btier && k.btier.hearth) || 0)); // (0.82.1) the Hearth's tier
   }
 
   keepFill() {
@@ -5707,6 +5709,15 @@ export class World {
   keepEvent(kind, ctx = {}) {
     const k = this.player.keep;
     if (!k || this.trial) return;
+    // (0.82.1) a tithe from the hero's road: a little Faith for every kill, more and Wishstone for a boss
+    if (kind === 'kill' || kind === 'boss') {
+      const acc = k.acc || (k.acc = { faith: 0, stone: 0 });
+      const f = acc.faith + (kind === 'boss' ? 12 : 0.25), st = acc.stone + (kind === 'boss' ? 2 : 0.02);
+      k.faith += Math.floor(f);
+      k.stone += Math.floor(st);
+      acc.faith = Math.round((f - Math.floor(f)) * 1000) / 1000;
+      acc.stone = Math.round((st - Math.floor(st)) * 1000) / 1000;
+    }
     for (const w of k.wishes) {
       if (w.done) continue;
       if (kind === 'kill' && w.kind === 'kill' && w.map === ctx.map) w.n++;
@@ -5758,6 +5769,7 @@ export class World {
     if (!k || !k.wishes[i] || k.wishes[i].done || !this.map || this.map.id !== KEEP.map) return;
     if (k.faith < KEEP.skip) return this.emit('keepShort', { what: 'faith', need: KEEP.skip, have: k.faith });
     k.faith -= KEEP.skip;
+    this.keepSpend({ faith: KEEP.skip });
     k.wishes.splice(i, 1);
     this.keepFill();
   }
@@ -5770,6 +5782,7 @@ export class World {
     if (k.faith < next.cost.faith || k.stone < next.cost.stone) return this.emit('keepShort', { what: 'tier', need: next.cost.faith, have: k.faith });
     k.faith -= next.cost.faith;
     k.stone -= next.cost.stone;
+    this.keepSpend(next.cost);
     const had = new Set(settlersAt(k.tier));
     k.tier++;
     const came = settlersAt(k.tier).filter((id) => !had.has(id));
@@ -5790,6 +5803,7 @@ export class World {
     if (k.faith < cost.faith || k.stone < cost.stone) return this.emit('keepShort', { what: 'hall', need: cost.faith, have: k.faith });
     k.faith -= cost.faith;
     k.stone -= cost.stone;
+    this.keepSpend(cost);
     k.halls[cls] = lvl + 1;
     this.emit('keepHallUp', { name: HALLS[cls].name, level: lvl + 1 });
   }
@@ -5813,7 +5827,44 @@ export class World {
     }
     k.faith -= cost.faith || 0;
     k.stone -= cost.stone || 0;
+    this.keepSpend(cost);
     return true;
+  }
+  /** (0.82.1) What is spent on the keep makes it grow (Wishstone counted ten times). */
+  keepSpend(cost) {
+    const k = this.player.keep;
+    if (!k) return;
+    const before = keepStage(k);
+    k.spent = (k.spent || 0) + (cost.faith || 0) + 10 * (cost.stone || 0);
+    const after = keepStage(k);
+    if (after > before) this.emit('keepGrew', { stage: after, name: GROWTH.names[after] });
+  }
+  /** (0.82.1) Build or raise one of the works (the Mine, the Fields). */
+  keepWork(id) {
+    const k = this.player.keep, W = WORKS[id];
+    if (!this.inKeep() || !W) return;
+    const lvl = (k.works[id] || 0) + 1;
+    if (lvl > W.max) return this.emit('keepMaxed', { name: W.name, what: 'level' });
+    this.keepClock(this.keepNow || 0); // (bank what came in at the old rate first)
+    if (!this.keepPay(W.cost(lvl))) return;
+    k.works[id] = lvl;
+    this.emit('keepWorkUp', { id, name: W.name, level: lvl });
+  }
+  /** (0.82.1) Raise a building a tier (Common to Immortal), once its hall is at its last level. */
+  keepBuildTier(id) {
+    const k = this.player.keep;
+    if (!this.inKeep() || !BUILD_IDS.includes(id) || (this.tide && this.tide.state === 'on')) return;
+    const ready = id === 'hearth' ? k.tier >= 3 : (k.halls[id] || 0) >= KEEP.hallMax;
+    if (!ready) return this.emit('keepTierShut', { id });
+    const t = (k.btier[id] || 0) + 1;
+    if (t > BUILD_TIER.max) return this.emit('keepMaxed', { name: id, what: 'tier' });
+    const hurt = k.builds[id] != null ? buildMax(id, k) - k.builds[id] : 0;
+    if (!this.keepPay(BUILD_TIER.cost(t))) return;
+    k.btier[id] = t;
+    if (k.builds[id] != null) k.builds[id] = Math.max(0, buildMax(id, k) - hurt); // (what it had taken, it still has)
+    this.keepBuildsUp();
+    if (id === 'hearth') this.keepTroopsUp();
+    this.emit('keepBuildTier', { id, tier: t, name: id === 'hearth' ? 'The Hearth' : HALLS[id].name });
   }
   inKeep() {
     return !!(this.map && this.map.id === KEEP.map && this.player.keep);
@@ -5854,7 +5905,7 @@ export class World {
     const k = this.player.keep, t = this.keepTroop(id);
     if (!this.inKeep() || !t) return;
     if (!this.hallWorks('archer')) return this.emit('keepHallShut', { name: HALLS.archer.name, cls: 'archer', down: this.wrecked('archer') });
-    if (t.lvl >= KEEP.trainMax(k.halls.archer)) return this.emit('keepMaxed', { name: t.name, what: 'level' });
+    if (t.lvl >= KEEP.trainMax(k.halls.archer, k.btier.archer || 0)) return this.emit('keepMaxed', { name: t.name, what: 'level' });
     if (!this.keepPay(KEEP.train(t.lvl))) return;
     t.lvl++;
     this.keepTroopsUp();
@@ -5865,7 +5916,7 @@ export class World {
     const k = this.player.keep, t = this.keepTroop(id);
     if (!this.inKeep() || !t) return;
     if (!this.hallWorks('warrior')) return this.emit('keepHallShut', { name: HALLS.warrior.name, cls: 'warrior', down: this.wrecked('warrior') });
-    if (t.gear >= KEEP.armMax(k.halls.warrior)) return this.emit('keepMaxed', { name: t.name, what: 'gear' });
+    if (t.gear >= KEEP.armMax(k.halls.warrior, k.btier.warrior || 0)) return this.emit('keepMaxed', { name: t.name, what: 'gear' });
     if (!this.keepPay(KEEP.arm(t.gear))) return;
     t.gear++;
     this.keepTroopsUp();
@@ -5993,6 +6044,7 @@ export class World {
       if (n <= 0) break;
       k.stone -= n;
       stone += n;
+      this.keepSpend({ stone: n });
       k.builds[b] = Math.min(max, k.builds[b] + n * KEEP.repairPer);
       if (k.builds[b] >= max) delete k.builds[b];
     }
@@ -6015,15 +6067,18 @@ export class World {
     now = Math.floor(Number(now) || 0);
     if (!k || now <= 0) return;
     if (k.last > 0 && now > k.last) {
+      // (0.82.1) the Market and the Fields make Faith, the Mine Wishstone; fractions carry over
       const P = KEEP.produce;
       const hours = Math.min(P.capHours, (now - k.last) / 3.6e6);
-      const rate = P.base + (this.hallWorks('rogue') ? P.perMarket * k.halls.rogue : 0);
-      const faith = Math.floor(rate * hours);
-      if (faith >= 1) {
-        k.faith += faith;
-        this.emit('keepProduced', { faith, hours: Math.round(hours * 10) / 10, rate });
-      }
-      if (faith < 1 && hours < P.capHours) return; // (not yet a whole Faith: keep counting from the old time)
+      const r = keepRates(k, this.hallWorks('rogue'));
+      const acc = k.acc || (k.acc = { faith: 0, stone: 0 });
+      const f = r.faith * hours + acc.faith, st = r.stone * hours + acc.stone;
+      const faith = Math.floor(f), stone = Math.floor(st);
+      acc.faith = Math.round((f - faith) * 1000) / 1000;
+      acc.stone = Math.round((st - stone) * 1000) / 1000;
+      k.faith += faith;
+      k.stone += stone;
+      if ((faith || stone) && hours >= 0.25) this.emit('keepProduced', { faith, stone, hours: Math.round(hours * 10) / 10, rate: r.faith, srate: Math.round(r.stone * 10) / 10 });
     }
     k.last = now;
   }
@@ -6077,7 +6132,7 @@ export class World {
     const rec = this.keepRecord();
     this.tide = {
       state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
-      night: NIGHT.power(L), level: L, bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
+      night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
       mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0,
     };
     k.blessings = []; // (they are for this night)
@@ -6153,6 +6208,14 @@ export class World {
     const wrecked = (this.keepBuilds || []).filter((b) => b.hp <= 0).map((b) => (b.id === 'hearth' ? 'the Hearth' : HALLS[b.id].name));
     const L = t.level || 1;
     if (!won) return this.emit('tideEnd', { won: false, wrecked, level: L });
+    // (0.82.1) a held night: the keep's people mend a quarter of every building by morning, free
+    for (const b of BUILD_IDS) {
+      if (k.builds[b] == null) continue;
+      const max = buildMax(b, k);
+      k.builds[b] = Math.min(max, k.builds[b] + Math.round(max * 0.25));
+      if (k.builds[b] >= max) delete k.builds[b];
+    }
+    this.keepBuildsUp();
     k.tides++;
     const R = NIGHT.reward(L);
     const faith = Math.round((40 + 10 * k.tier) * this.keepMult() * R);
@@ -6233,10 +6296,10 @@ export class World {
     e.facing = turnToward(e.facing, dAtan2(dz, dx), 8 * dt);
     if (d > reach) {
       const sp = F.speed * (e.slowT > 0 ? 1 - e.slow : 1);
-      e.x += (dx / d) * sp * dt;
-      e.z += (dz / d) * sp * dt;
+      e.px = e.x;
+      e.pz = e.z;
+      this.navStep(e, tg.x, tg.z, sp, dt, e.radius); // (0.82.1) round what is in the way
       e.moving = true;
-      this.pushOut(e, e.radius);
       return;
     }
     e.tAtk -= dt;
@@ -6247,7 +6310,7 @@ export class World {
     if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1), e); // (0.82) buildings feel deep nights less than heroes do
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
-      const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
+      const stone = this.tide.bless.includes('stoneskin') ? 1 - Math.min(0.6, 0.3 * (this.tide.blessPow || 1)) : 1;
       tg.hp -= e.tdmg * stone * (1 - (tg.guard || 0)); // (0.82) Hero gear: Damage taken
       tg.hurtT = 0.25;
       if (tg.hp <= 0 && tg.unbroken) {
@@ -6267,8 +6330,9 @@ export class World {
   /** The keep's heroes: to the nearest enemy and at it, their skills when they are ready; back to their posts after. */
   stepTroops(dt) {
     const t = this.tide;
-    const swift = t.bless.includes('swift') ? 1.3 : 1;
-    let fury = (t.bless.includes('fury') ? 1.3 : 1) * t.echo;
+    const bp = t.blessPow || 1; // (0.82.1) the Observatory's tier
+    const swift = t.bless.includes('swift') ? 1 + 0.3 * bp : 1;
+    let fury = (t.bless.includes('fury') ? 1 + 0.3 * bp : 1) * t.echo * (t.hearthDmg || 1);
     // (0.82) an Immortal hero lifts them all
     const imm = this.troops.filter((tr) => !tr.dead && tr.rar >= HERO_RAR_MAX).length;
     fury *= 1 + HERO_RARITY.aura * Math.min(3, imm);
@@ -6314,7 +6378,9 @@ export class World {
           const crowd = (claims.get(e) || 0) * (many ? 5 : 2);
           const oath = tr.fx && tr.fx.charm && th >= 6 ? 8 : 0; // Warden's Oath: they run to a building
           const leash = tr.range > 3 && d > 14 && !(e.tTarget && e.tTarget.id === 'hearth') ? (d - 14) * 2 : 0; // (never kept from the Hearth)
-          const score = d - th - oath + crowd + leash + (e === was ? -2 : 0);
+          const detour = d > 3 && !this.navClear(tr.x, tr.z, e.x, e.z) ? 5 : 0; // (0.82.1) something in the way: further than it looks
+          const finish = e.hp < e.maxHp * 0.25 ? 3 : 0; // one nearly down: finish it
+          const score = d - th - oath + crowd + leash + detour - finish + (e === was ? -2 : 0);
           if (score < bs) [best, bs] = [e, score];
         }
         tr.targetId = best ? best.id : null;
@@ -6326,11 +6392,10 @@ export class World {
       const d = dHypot(dx, dz) || 0.001;
       if (d > 0.05) tr.facing = turnToward(tr.facing, dAtan2(dz, dx), 9 * dt);
       if (d > reach) {
-        const step = Math.min(d - reach + 0.01, tr.speed * swift * dt);
-        tr.x += (dx / d) * step;
-        tr.z += (dz / d) * step;
+        // (0.82.1) round the halls and the trees, not into them
+        const fa = this.navStep(tr, goal.x, goal.z, Math.min((d - reach + 0.01) / dt, tr.speed * swift), dt, 0.5);
+        tr.facing = turnToward(tr.facing, fa, 9 * dt);
         tr.moving = true;
-        this.pushOut(tr, 0.5);
         continue;
       }
       if (!best || tr.atkT > 0) continue;
@@ -6445,6 +6510,7 @@ export class World {
       z = b.z;
     }
     k.faith -= M.faith;
+    this.keepSpend({ faith: M.faith });
     t.mcd[id] = M.cd;
     if (id === 'smite') {
       for (const e of this.enemies) if (e.tide && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, x, z) <= M.radius + e.radius) this.troopStrike(e, M.dmg * (1 + 0.25 * (k.tier - 1)), false);
@@ -6466,6 +6532,7 @@ export class World {
     if (!t || t.state !== 'on' || !k || p.dead || t.inc > 0 || t.icd > 0) return;
     if (k.faith < INCARNATE.faith) return this.emit('keepShort', { what: 'faith', need: INCARNATE.faith, have: k.faith });
     k.faith -= INCARNATE.faith;
+    this.keepSpend({ faith: INCARNATE.faith });
     t.inc = INCARNATE.dur;
     t.icd = INCARNATE.cd;
     for (const c of ['q', 'w', 'e', 'r']) if (p.cd[c] > 0) p.cd[c] = 0; // (a fresh start for the hero's own kit)
@@ -9615,7 +9682,7 @@ inTown() {
       this.rift = null;
     }
     if (id !== 'delve' && this.delve) this.delve = null; // leaving a delve ends it (0.46)
-    const map = (this.map = id === 'rift' && this.rift ? buildRiftMap(this.rift.theme, this.rift.seed) : id === 'delve' && this.delve ? buildDelveRoom(this.delve.route[this.delve.room], this.delve.seed + this.delve.room) : buildMap(id));
+    const map = (this.map = id === 'rift' && this.rift ? buildRiftMap(this.rift.theme, this.rift.seed) : id === 'delve' && this.delve ? buildDelveRoom(this.delve.route[this.delve.room], this.delve.seed + this.delve.room) : id === KEEP.map ? buildKeepMap(keepStage(this.player.keep)) : buildMap(id)); // (0.82.1) the keep, as grown
     const actor = this.cur;
     const p = this.player;
     this.radius = map.radius;
@@ -9732,7 +9799,7 @@ inTown() {
 
   /** A joiner's copy of the world: show a map without spawning anything (the host sends what is on it). */
   loadMapMirror(id) {
-    const map = (this.map = buildMap(id));
+    const map = (this.map = id === KEEP.map ? buildKeepMap(keepStage(this.player.keep)) : buildMap(id)); // (0.82.1)
     this.radius = map.radius;
     if (id === 'town') this.townShown = this.townKey();
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
@@ -9755,6 +9822,161 @@ inTown() {
   }
 
   /** Keep a round body out of everything solid on the map. Returns true if it was pushed. */
+  /**
+   * (0.82.1) A walking grid for the Wishkeep (one cell a metre), so its heroes and the Unmade go round the
+   * halls, cottages, trees and rocks instead of pressing into them. Built once a map.
+   */
+  navGrid() {
+    if (this.nav && this.nav.map === this.map) return this.nav;
+    const R = Math.ceil(this.radius), n = 2 * R + 1, pad = 0.6;
+    const block = new Uint8Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (dHypot(i - R, j - R) > this.radius - 1.2) block[j * n + i] = 1;
+    for (const ob of this.obstacles) {
+      if (ob.soft) continue;
+      const ext = (ob.shape === 'box' ? dHypot(ob.hw, ob.hd) : ob.r) + pad;
+      const c = ob.shape === 'box' ? dCos(ob.rot) : 1, sn = ob.shape === 'box' ? dSin(ob.rot) : 0;
+      for (let j = Math.max(0, Math.floor(ob.z - ext) + R); j <= Math.min(n - 1, Math.ceil(ob.z + ext) + R); j++) {
+        for (let i = Math.max(0, Math.floor(ob.x - ext) + R); i <= Math.min(n - 1, Math.ceil(ob.x + ext) + R); i++) {
+          const dx = i - R - ob.x, dz = j - R - ob.z;
+          let hit;
+          if (ob.shape === 'box') {
+            const lx = dx * c + dz * sn, lz = -dx * sn + dz * c;
+            hit = Math.abs(lx) < ob.hw + pad && Math.abs(lz) < ob.hd + pad;
+          } else hit = dHypot(dx, dz) < ob.r + pad;
+          if (hit) block[j * n + i] = 1;
+        }
+      }
+    }
+    return (this.nav = { map: this.map, R, n, block });
+  }
+  navFree(x, z) {
+    const N = this.navGrid();
+    const i = Math.round(x) + N.R, j = Math.round(z) + N.R;
+    return i >= 0 && j >= 0 && i < N.n && j < N.n && !N.block[j * N.n + i];
+  }
+  /** A straight walk from a to b crosses nothing solid. */
+  navClear(ax, az, bx, bz) {
+    const d = dHypot(bx - ax, bz - az), steps = Math.ceil(d / 0.5);
+    for (let k = 1; k < steps; k++) if (!this.navFree(ax + ((bx - ax) * k) / steps, az + ((bz - az) * k) / steps)) return false;
+    return true;
+  }
+  /** A* over the grid (8 ways), smoothed to the fewest straight legs. Null if there is no way. */
+  navPath(sx, sz, tx, tz) {
+    const N = this.navGrid(), n = N.n, R = N.R;
+    const cell = (x, z) => [Math.max(0, Math.min(n - 1, Math.round(x) + R)), Math.max(0, Math.min(n - 1, Math.round(z) + R))];
+    let [si, sj] = cell(sx, sz);
+    let [ti, tj] = cell(tx, tz);
+    const free = (i, j) => i >= 0 && j >= 0 && i < n && j < n && !N.block[j * n + i];
+    const nearestFree = (i0, j0) => {
+      if (free(i0, j0)) return [i0, j0];
+      for (let r = 1; r < 8; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if ((Math.abs(di) === r || Math.abs(dj) === r) && free(i0 + di, j0 + dj)) return [i0 + di, j0 + dj];
+      return null;
+    };
+    const s0 = nearestFree(si, sj), t0 = nearestFree(ti, tj);
+    if (!s0 || !t0) return null;
+    [si, sj] = s0;
+    [ti, tj] = t0;
+    const start = sj * n + si, goal = tj * n + ti;
+    const g = new Map([[start, 0]]), from = new Map();
+    const heap = [[0, 0, start]]; // [f, order, cell]
+    let order = 1, found = false, budget = 6000;
+    const push = (it) => {
+      heap.push(it);
+      let c = heap.length - 1;
+      while (c > 0) {
+        const pa = (c - 1) >> 1;
+        if (heap[pa][0] < it[0] || (heap[pa][0] === it[0] && heap[pa][1] < it[1])) break;
+        heap[c] = heap[pa];
+        c = pa;
+      }
+      heap[c] = it;
+    };
+    const less = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        let c = 0;
+        for (;;) {
+          const l = 2 * c + 1, r = l + 1;
+          let m = c;
+          if (l < heap.length && less(heap[l], heap[m])) m = l;
+          if (r < heap.length && less(heap[r], heap[m])) m = r;
+          if (m === c) break;
+          [heap[c], heap[m]] = [heap[m], heap[c]];
+          c = m;
+        }
+      }
+      return top;
+    };
+    const h = (i, j) => {
+      const dx = Math.abs(i - ti), dz = Math.abs(j - tj);
+      return 10 * (dx + dz) - 6 * Math.min(dx, dz);
+    };
+    while (heap.length && budget-- > 0) {
+      const [, , cur] = pop();
+      if (cur === goal) {
+        found = true;
+        break;
+      }
+      const ci = cur % n, cj = (cur - ci) / n, gc = g.get(cur);
+      for (let dj = -1; dj <= 1; dj++) {
+        for (let di = -1; di <= 1; di++) {
+          if (!di && !dj) continue;
+          const ni = ci + di, nj = cj + dj;
+          if (!free(ni, nj) || (di && dj && (!free(ci + di, cj) || !free(ci, cj + dj)))) continue; // no cutting corners
+          const nc = nj * n + ni, ng = gc + (di && dj ? 14 : 10);
+          if (g.has(nc) && g.get(nc) <= ng) continue;
+          g.set(nc, ng);
+          from.set(nc, cur);
+          push([ng + h(ni, nj), order++, nc]);
+        }
+      }
+    }
+    if (!found) return null;
+    const cells = [];
+    for (let c = goal; c !== undefined; c = from.get(c)) cells.push([(c % n) - R, ((c - (c % n)) / n) - R]);
+    cells.reverse();
+    // smooth: from each point, the furthest one still in a straight, clear line
+    const pts = [];
+    let a = [sx, sz], k = 0;
+    while (k < cells.length - 1) {
+      let best = k + 1;
+      for (let m = cells.length - 1; m > k + 1; m--) if (this.navClear(a[0], a[1], cells[m][0], cells[m][1])) { best = m; break; }
+      pts.push({ x: cells[best][0], z: cells[best][1] });
+      a = cells[best];
+      k = best;
+    }
+    return pts;
+  }
+  /**
+   * (0.82.1) Walk toward (gx, gz) at `speed`: straight when the way is clear, else along a path round what
+   * is in the way (worked out again now and then, or when the goal moves). Sliding along walls as ever.
+   */
+  navStep(o, gx, gz, speed, dt, rad) {
+    o.navT = (o.navT || 0) - dt;
+    let wx = gx, wz = gz;
+    if (!this.navClear(o.x, o.z, gx, gz)) {
+      const stale = !o.navPath || o.navT <= 0 || dHypot((o.navGoal ? o.navGoal.x : 1e9) - gx, (o.navGoal ? o.navGoal.z : 1e9) - gz) > 2;
+      if (stale) {
+        o.navPath = this.navPath(o.x, o.z, gx, gz) || [];
+        o.navGoal = { x: gx, z: gz };
+        o.navT = 0.7;
+      }
+      while (o.navPath.length && dHypot(o.navPath[0].x - o.x, o.navPath[0].z - o.z) < 0.7) o.navPath.shift();
+      if (o.navPath.length) {
+        wx = o.navPath[0].x;
+        wz = o.navPath[0].z;
+      }
+    } else o.navPath = null;
+    const dx = wx - o.x, dz = wz - o.z, d = dHypot(dx, dz) || 0.001;
+    const step = Math.min(d, speed * dt);
+    o.x += (dx / d) * step;
+    o.z += (dz / d) * step;
+    this.moveSolid(o, rad);
+    return dAtan2(dz, dx);
+  }
+
   pushOut(o, rad) {
     let pushed = false;
     for (const ob of this.obstacles) {

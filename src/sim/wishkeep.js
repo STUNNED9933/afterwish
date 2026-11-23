@@ -17,7 +17,7 @@ export const KEEP = {
     { numeral: 'III', name: 'The Wishkeep', board: 5, settlers: 6, cost: { faith: 900, stone: 90 } },
   ],
   // what each answered wish gives, by kind (before the keep's own bonuses)
-  reward: { kill: [30, 4], boss: [45, 6], offer: [25, 2], tide: [50, 8], tell: [20, 1] },
+  reward: { kill: [45, 7], boss: [70, 10], offer: [40, 5], tide: [75, 12], tell: [30, 3] }, // (0.82.1: half as much again)
   killNeed: [30, 50], // a pilgrimage: this many on its map
   offers: { scrap: 400, dust: 120, gold: 25000, fragment: 3 }, // what an offering asks
   skip: 10, // Faith to swap a wish for another
@@ -42,16 +42,16 @@ export const KEEP = {
   heroCap: [0, 3, 5, 8], // heroes the keep can have, by tier: few, and good
   recruit: (n) => ({ faith: 120 * (n + 1) }), // the n-th (from 0)
   train: (lvl) => ({ faith: 50 * lvl }), // from lvl to lvl + 1 (at the Lodge)
-  trainMax: (lodge) => (lodge ? 3 + 2 * lodge : 1), // a hero's level cap (the Lodge's level)
+  trainMax: (lodge, tier = 0) => (lodge ? 3 + 2 * lodge : 1) + tier, // a hero's level cap (the Lodge's level, and its tier, 0.82.1)
   arm: (gear) => ({ faith: 40 * (gear + 1), stone: 8 * (gear + 1) }), // gear to gear + 1 (at the Bastion)
-  armMax: (bastion) => 3 * bastion,
+  armMax: (bastion, tier = 0) => 3 * bastion + tier, // (and the Bastion's tier, 0.82.1)
   learn: { faith: 100 }, // teaching a hero a skill
   perLvl: 0.12, // a hero's health and damage per level
   perGear: 0.15, // ... and per point of gear
   buildHp: { hearth: 600, hall: 400 },
   perBastionHp: 0.25, // every building's health, per level of the Bastion
-  repairPer: 40, // health a Wishstone mends
-  produce: { base: 4, perMarket: 15, capHours: 16 }, // Faith an hour, while you are away (the Market)
+  repairPer: 120, // health a Wishstone mends (0.82.1: three times as much)
+  produce: { base: 4, perMarket: 15, capHours: 24 }, // Faith an hour, while you are away (the Market; 0.82.1: a day banked)
   trade: { stoneFor: (market) => 40 + 10 * market, faithPer: 100, stoneOut: (market) => 6 + 2 * market }, // 10 Wishstone sells for stoneFor Faith; 100 Faith buys stoneOut
 };
 
@@ -110,6 +110,69 @@ export const FOES = {
   unnamed: { hp: 170, dmg: 12, speed: 2.8, range: 1.8, cd: 1.3 },
   ashwalker: { hp: 110, dmg: 9, speed: 3.2, range: 1.7, cd: 1.1, siege: 2.5 },
   rootbound: { hp: 240, dmg: 14, speed: 2.4, range: 1.9, cd: 1.6, siege: 1.5 },
+};
+
+// ---------------------------------------------------------------------------------------------- (0.82.1)
+/**
+ * (0.82.1) The keep's works: the Mine (Wishstone) and the Fields (Faith), built and raised with Faith and
+ * worked by its heroes (more by rarer ones) and settlers between nights. They pay while you are there and
+ * while you are away (banked up to KEEP.produce.capHours).
+ */
+export const WORKS = {
+  mine: { name: 'The Mine', what: 'Wishstone', max: 5, cost: (lvl) => ({ faith: 120 * lvl * lvl, stone: 6 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (1.5 + 0.35 * hands), desc: 'Star-glass in the rock under the keep. Wishstone, every hour.' },
+  fields: { name: 'The Fields', what: 'Faith', max: 5, cost: (lvl) => ({ faith: 100 * lvl * lvl, stone: 5 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (8 + 2 * hands), desc: "Bread for the keep's table, and what is left is offered at the Hearth. Faith, every hour." },
+};
+export const WORK_IDS = Object.keys(WORKS);
+/** Hands at the works: each hero (1, and a quarter more for each step of rarity) and each settler (a half). */
+export function workHands(keep) {
+  if (!keep) return 0;
+  let h = 0;
+  for (const t of keep.troops || []) h += 1 + 0.25 * (t.rar || 0);
+  return h + 0.5 * Object.keys(keep.settlers || {}).length;
+}
+/** What the keep makes an hour: Faith (the base, the Market, the Fields) and Wishstone (the Mine). */
+export function keepRates(keep, marketWorks = false) {
+  if (!keep) return { faith: 0, stone: 0 };
+  const P = KEEP.produce, hands = workHands(keep), w = keep.works || {};
+  const market = marketWorks ? P.perMarket * (keep.halls.rogue || 0) * (1 + 0.25 * ((keep.btier && keep.btier.rogue) || 0)) : 0;
+  return {
+    faith: P.base + market + (w.fields ? WORKS.fields.rate(w.fields, hands) : 0),
+    stone: w.mine ? WORKS.mine.rate(w.mine, hands) : 0,
+  };
+}
+
+/**
+ * (0.82.1) Building tiers: once a hall is at its last level (the Hearth: once the keep is at tier III), it
+ * can be raised through the rarities, Common to Immortal. Each tier makes it far sturdier and its work
+ * stronger (BUILD_TIER.perk).
+ */
+export const BUILD_TIER = {
+  max: 6,
+  hp: [1, 1.7, 2.8, 4.6, 7.5, 12, 20],
+  cost: (t) => ({ faith: 800 * t * t, stone: 60 * t * t }),
+  perk: {
+    hearth: (t) => `Every hero deals ${4 * t}% more, and every answered wish gives ${5 * t}% more Faith.`,
+    warrior: (t) => `${t} more points of arms a hero can take.`,
+    archer: (t) => `Heroes can be trained ${t} levels further.`,
+    mage: (t) => `Blessings are ${10 * t}% stronger.`,
+    rogue: (t) => `The Market makes ${25 * t}% more Faith.`,
+  },
+};
+
+/**
+ * (0.82.1) The keep grows with what is spent on it (Faith, and Wishstone counted ten times): a wider
+ * map, more cottages, lanterns and people. GROWTH.at are the spends for each stage.
+ */
+export const GROWTH = {
+  at: [0, 1500, 6000, 18000, 45000, 110000],
+  names: ['A Fire in the Dark', 'A Few Roofs', 'A Hamlet', 'A Village', 'A Market Town', 'The Wishkeep Entire'],
+  radius: (stage) => 32 + 3 * stage,
+};
+export const keepStage = (keep) => {
+  const s = (keep && keep.spent) || 0;
+  let st = 0;
+  while (st + 1 < GROWTH.at.length && s >= GROWTH.at[st + 1]) st++;
+  return st;
 };
 
 // ------------------------------------------------------------------------------------------------ (0.82)
@@ -257,7 +320,7 @@ export function heroWorn(t, armory) {
 }
 
 /** A building's full health (the Bastion makes them all sturdier). */
-export const buildMax = (id, keep) => Math.round((id === 'hearth' ? KEEP.buildHp.hearth : KEEP.buildHp.hall) * (1 + KEEP.perBastionHp * ((keep && keep.halls.warrior) || 0)));
+export const buildMax = (id, keep) => Math.round((id === 'hearth' ? KEEP.buildHp.hearth : KEEP.buildHp.hall) * (1 + KEEP.perBastionHp * ((keep && keep.halls.warrior) || 0)) * BUILD_TIER.hp[(keep && keep.btier && keep.btier[id]) || 0]);
 export const BUILD_IDS = ['hearth', 'warrior', 'archer', 'mage', 'rogue'];
 
 /** The four halls, one for each class, opened by mastering it. */
@@ -411,7 +474,13 @@ export function cleanKeep(raw) {
     night: int(raw.night, 1, 1, NIGHT.max), // (0.82) the level last chosen
     armory: [], // (0.82) Hero gear
     gearN: int(raw.gearN),
+    works: {}, // (0.82.1) the Mine and the Fields
+    btier: {}, // (0.82.1) each building's tier, Common (0) to Immortal (6)
+    spent: int(raw.spent), // (0.82.1) everything spent on the keep, for its growth
+    acc: { faith: Math.max(0, Math.min(1, Number(raw.acc && raw.acc.faith) || 0)), stone: Math.max(0, Math.min(1, Number(raw.acc && raw.acc.stone) || 0)) },
   };
+  for (const w of WORK_IDS) if (raw.works && raw.works[w]) k.works[w] = int(raw.works[w], 0, 0, WORKS[w].max);
+  for (const b of BUILD_IDS) if (raw.btier && raw.btier[b]) k.btier[b] = int(raw.btier[b], 0, 0, BUILD_TIER.max);
   if (Array.isArray(raw.armory)) {
     for (const g of raw.armory.slice(0, ARMORY_MAX)) {
       if (!g || !HERO_SLOTS.includes(g.slot) || !g.main || !['dmg', 'hp'].includes(g.main.k)) continue;
@@ -427,7 +496,7 @@ export function cleanKeep(raw) {
   if (Array.isArray(raw.troops)) {
     for (const t of raw.troops.slice(0, 8)) {
       if (!t || !TROOPS[t.cls]) continue;
-      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 10), gear: int(t.gear, 0, 0, 9), skill: SKILLS[t.skill] ? t.skill : null, rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
+      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 16), gear: int(t.gear, 0, 0, 15), skill: SKILLS[t.skill] ? t.skill : null, rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
     }
   }
   // (0.82) gear on a hero who has gone home goes back to the Armory; one piece a slot a hero

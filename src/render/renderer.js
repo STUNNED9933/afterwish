@@ -325,6 +325,8 @@ export class Renderer {
    */
   setMap(map) {
     this.keepFlames = []; // (0.80)
+    this.worksViews = []; // (0.82.1)
+    this.tierViews = [];
     for (const w of this.walkers || []) this.disposeGroup(w.g);
     this.walkers = [];
     if (this.wardViews) for (const v of this.wardViews.values()) this.scene.remove(v);
@@ -332,14 +334,15 @@ export class Renderer {
     if (map.id === 'wishkeep') {
       // (0.81) people walking about the keep: more as it grows
       const tier = (this.keepTier && this.keepTier()) || 1;
+      const stage = (this.keepStage && this.keepStage()) || 0; // (0.82.1) more people as the keep grows
       // (0.81.1) the keep's own folk, each with a trade: farmers, a baker, elders, children at play ...
-      for (let i = 0; i < 3 + 3 * tier; i++) {
+      for (let i = 0; i < 3 + 3 * tier + 2 * stage; i++) {
         const m = buildVillager(VILLAGER_KINDS[i % VILLAGER_KINDS.length], i + 1);
         const g = m.group;
         const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 6;
         g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
         this.scene.add(g);
-        this.walkers.push({ g, m, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier });
+        this.walkers.push({ g, m, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier + 2 * stage });
       }
     }
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
@@ -577,6 +580,63 @@ export class Renderer {
         ring.position.set(o.x, 0.06, o.z);
         g.add(altar, flame, core, light, ring);
         (this.keepFlames = this.keepFlames || []).push(flame, core);
+      } else if (o.kind === 'works') {
+        // (0.82.1) the keep's works: the Mine (a mouth in the rock, timbered, star-glass glinting) and the Fields
+        const d = new THREE.Group();
+        d.position.set(o.x, 0, o.z);
+        d.rotation.y = Math.atan2(-o.x, -o.z); // facing the Hearth
+        const lit = [];
+        if (o.id === 'mine') {
+          const rock = new THREE.MeshStandardMaterial({ color: 0x6a6270, roughness: 0.95, flatShading: true });
+          const mound = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2, 0), rock);
+          mound.scale.set(1.3, 0.75, 1);
+          mound.position.set(0, 1.2, -2.2);
+          mound.castShadow = mound.receiveShadow = true;
+          const mouth = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 1.2), new THREE.MeshBasicMaterial({ color: 0x0a0808 }));
+          mouth.position.set(0, 1.1, 0.2);
+          const timber = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.9 });
+          const pL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.6, 0.25), timber), pR = pL.clone(), lin = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 0.3), timber);
+          pL.position.set(-1.05, 1.3, 0.85);
+          pR.position.set(1.05, 1.3, 0.85);
+          lin.position.set(0, 2.6, 0.85);
+          const cart = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.8), timber);
+          cart.position.set(1.9, 0.5, 1.6);
+          d.add(mound, mouth, pL, pR, lin, cart);
+          const glass = new THREE.MeshStandardMaterial({ color: 0x9fe6ff, emissive: 0x4ab8ff, emissiveIntensity: 1.6 });
+          for (let i = 0; i < 6; i++) {
+            const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), glass);
+            c.position.set(-1.8 + i * 0.7, 1.4 + (i % 3) * 0.6, -0.3 - (i % 2) * 0.8);
+            c.scale.y = 1.8;
+            d.add(c);
+            lit.push(c);
+          }
+          const cargo = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), glass);
+          cargo.position.set(1.9, 0.95, 1.6);
+          d.add(cargo);
+          lit.push(cargo);
+        } else {
+          const soil = new THREE.Mesh(new THREE.BoxGeometry(7, 0.12, 5), new THREE.MeshStandardMaterial({ color: 0x5a3e26, roughness: 1 }));
+          soil.position.set(0, 0.06, -1.5);
+          soil.receiveShadow = true;
+          d.add(soil);
+          const grain = new THREE.MeshStandardMaterial({ color: 0xd8b05a, roughness: 0.8 });
+          for (let r = 0; r < 5; r++) {
+            const row = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 0.45), grain);
+            row.position.set(0, 0.45, -3.4 + r * 0.95);
+            row.castShadow = true;
+            d.add(row);
+            lit.push(row);
+          }
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 5), new THREE.MeshStandardMaterial({ color: 0x6b4a2e }));
+          pole.position.set(2.9, 1.1, 0.9);
+          const hat = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.35, 8), grain);
+          hat.position.set(2.9, 2.3, 0.9);
+          const arms = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.08), new THREE.MeshStandardMaterial({ color: 0x8a5a3a }));
+          arms.position.set(2.9, 1.8, 0.9);
+          d.add(pole, hat, arms);
+        }
+        g.add(d);
+        (this.worksViews = this.worksViews || []).push({ id: o.id, lit });
       } else if (o.kind === 'hall') {
         // (0.80) a class's hall in the Wishkeep: a banner in its colour before the door
         const color = { warrior: 0xc8463a, archer: 0x4a9a4a, mage: 0x4a6ad8, rogue: 0x8a4ac8 }[o.cls] || 0xd8c070;
@@ -594,6 +654,12 @@ export class Renderer {
         cap.position.y = 3.9;
         d.add(pole, cloth, trim, cap);
         g.add(d);
+        // (0.82.1) its tier: the cap and a ring at the hall's foot take the tier's colour
+        const tierRing = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+        tierRing.position.set(o.x * (17 / 12.4), 0.07, o.z * (17 / 12.4));
+        tierRing.scale.setScalar(5);
+        g.add(tierRing);
+        (this.tierViews = this.tierViews || []).push({ id: o.cls, cap, ring: tierRing, tier: -1 });
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);
@@ -3158,6 +3224,23 @@ export class Renderer {
   /** (0.81) Per frame in the Wishkeep: wards shining, wrecks smoking, and the people walking about. */
   updateKeep(world, dt) {
     const builds = world.keepBuilds || [];
+    const kp = world.player && world.player.keep;
+    if (kp) {
+      // (0.82.1) the works show their level; the halls their tier
+      for (const v of this.worksViews || []) {
+        const lvl = (kp.works && kp.works[v.id]) || 0;
+        v.lit.forEach((m, i) => (m.visible = lvl > 0 && i < 1 + lvl));
+      }
+      for (const v of this.tierViews || []) {
+        const t = (kp.btier && kp.btier[v.id]) || 0;
+        if (t === v.tier) continue;
+        v.tier = t;
+        const c = t ? RARITIES[t].color : '#ff3d4f';
+        v.cap.material.color.set(c);
+        v.ring.material.color.set(c);
+        v.ring.material.opacity = t ? 0.35 + 0.08 * t : 0;
+      }
+    }
     // (0.81.1) the incarnate god's light
     const inc = world.tide && world.tide.state === 'on' && world.tide.inc > 0 && world.player;
     if (inc && !this.incAura) {

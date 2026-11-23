@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The keep's clock, and the night is the heroes' (0.82.3)
+
+- **Fixed: "While you were away" paid a full day on every visit.** The keep's save capped its numbers at 10¹², and today's clock (in milliseconds) is past that, so every save rewound the last visit to 2001. The time is kept as it is now, so only the real time away counts (still banked up to 24 hours).
+- **No hero's blow lands on the night:** not the god's, not an incarnate god's, not a visiting friend's. Holding it is what your heroes are levelled, armed and ascended for. The miracles (Smite, Mend, Ward) are unchanged.
+- **Incarnate leads instead of fighting.** For 20 seconds every hero within 9 m of you deals 40% more and strikes 25% faster, and the Unmade near you turn on you instead of the buildings. You can take their blows, and falling only ends it. Where you stand matters: walk to the hall under attack and bring the heroes' strength there.
+
 ### Visiting a friend's keep (0.82.2)
 
 - **Go to them** (the players list, O) now works for a party member who is in their Wishkeep. It takes you into their keep, laid out as theirs has grown, with their heroes, buildings and settlers.

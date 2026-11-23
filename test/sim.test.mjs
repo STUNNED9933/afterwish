@@ -5384,13 +5384,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
         for (const e of w3.events) if (e.type === 'damage' && e.who === 'enemy' && e.id === f.id) maxHit = Math.max(maxHit, e.amount);
         w3.events = [];
       }
-      incOk = { paid, on, hurt: f.dead || f.hp < hp0, maxHit, cap: Math.round(f.maxHp * K.INCARNATE.hitCap) };
+      incOk = { paid, on, hurt: f.dead || f.hp < hp0, maxHit };
     }
     w3.step(CONFIG.TICK);
     for (const e of w3.events) if (e.type === 'tideEnd') end = e;
     w3.events = [];
   }
-  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith, and then their blows land, a fifth of a foe at most', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt && incOk.maxHit <= incOk.cap + 1, JSON.stringify(incOk));
+  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith; (0.82.3) and even so their blows never land on the night', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && !incOk.hurt && incOk.maxHit === 0, JSON.stringify(incOk));
   if (w3.tide && w3.tide.inc > 0) {
     for (let i = 0; i < 60 * (K.INCARNATE.dur + 1) && w3.tide && w3.tide.inc > 0; i++) { w3.step(CONFIG.TICK); for (const e of w3.events) if (e.type === 'tideEnd') end = e; w3.events = []; }
   }
@@ -5693,5 +5693,41 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('The road\'s tithe: Faith for kills, Faith and Wishstone for a boss', k.faith - t0 === 2 + 12 && k.stone - b0 === 2, `${k.faith - t0} ${k.stone - b0}`);
   const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
   check('...works, tiers and growth survive a save', back.works.fields === 2 && back.btier.archer === 6 && back.spent === k.spent);
+}
+
+// --- 0.82.3: the keep's clock survives a save; the night is the heroes' -----------------------------------
+{
+  const K = await import('../src/sim/wishkeep.js');
+  const now = 1795470000000; // a day in November 2026
+  const back = K.cleanKeep({ tier: 1, last: now });
+  check('Keep clock (0.82.3): the last visit survives a save (it was cut to 2001, and every return paid a full day)', back.last === now, String(back.last));
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 190, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e5;
+  w.command({ type: 'keepClock', now }); w.runCommands();
+  const f0 = k.faith;
+  const saved = K.cleanKeep(JSON.parse(JSON.stringify(k)));
+  p.keep = saved;
+  w.command({ type: 'keepClock', now: now + 60000 }); w.runCommands();
+  check('...so a minute later, after a save and a load, a minute\'s worth comes in, not a day\'s', p.keep.faith - f0 < 5, `${p.keep.faith - f0}`);
+  // Incarnate leads the heroes instead
+  w.command({ type: 'keepRecruit', cls: 'archer' }); w.runCommands();
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 1 }); w.runCommands();
+  w.enemies = w.enemies.filter((e) => !e.tide);
+  w.tide.next = 999;
+  const tr = w.troops[0];
+  const e = w.spawnEnemy('unnamed', { x: tr.x + 3, z: tr.z, level: 100 });
+  Object.assign(e, { tide: true, noLoot: true, state: 'chase', hp: 1e7, maxHp: 1e7, tdmg: 0, tbdmg: 0, tAtk: 99, tRe: 99, tTarget: null });
+  const strike = () => { tr.atkT = 0; tr.reT = 0; tr.targetId = null; const h0 = e.hp; w.stepTroops(CONFIG.TICK); return h0 - e.hp; };
+  const plain = strike();
+  w.tide.inc = 10;
+  p.x = tr.x; p.z = tr.z;
+  const led = strike();
+  check('Incarnate (0.82.3): the god leads: a hero near them hits harder', plain > 0 && Math.abs(led / plain - (1 + K.INCARNATE.dmg)) < 0.05, `${plain} ${led}`);
 }
 process.exit(failed ? 1 : 0);

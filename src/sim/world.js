@@ -6341,6 +6341,7 @@ export class World {
     const imm = this.troops.filter((tr) => !tr.dead && tr.rar >= HERO_RAR_MAX).length;
     fury *= 1 + HERO_RARITY.aura * Math.min(3, imm);
     const foes = this.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn');
+    const lead = t.inc > 0 && !this.player.dead ? this.player : null; // (0.82.3) Incarnate: the god leads them
     // (0.82) Smarter heroes: how much each of the Unmade threatens the keep. One at a building (worse at
     // the Hearth, or at one already hurt) or a wrecker comes first; heroes spread over the threats rather
     // than all chasing the nearest, and archers and mages do not chase far from what they guard.
@@ -6365,7 +6366,7 @@ export class World {
       tr.moving = false;
       if (tr.hurtT > 0) tr.hurtT -= dt;
       if (tr.dead) continue;
-      tr.atkT -= dt * swift;
+      tr.atkT -= dt * swift * (lead && dist(tr.x, tr.z, lead.x, lead.z) <= INCARNATE.radius ? 1 + INCARNATE.haste : 1);
       tr.skillT -= dt;
       if (tr.skill && tr.skillT <= 0 && foes.length && this.troopSkill(tr, foes, fury)) tr.skillT = SKILLS[tr.skill].cd * (1 - (tr.focus || 0));
       tr.reT = (tr.reT || 0) - dt;
@@ -6408,6 +6409,7 @@ export class World {
       const atB = (threat.get(best) || 0) >= 6;
       if (atB || (FOES[best.type] && FOES[best.type].siege)) dmg *= 1 + (tr.siege || 0); // Hero gear: wreckers and foes at a building
       if (atB && tr.fx && tr.fx.charm) dmg *= 1.4; // Warden's Oath
+      if (lead && dist(tr.x, tr.z, lead.x, lead.z) <= INCARNATE.radius) dmg *= 1 + INCARNATE.dmg; // (0.82.3) the incarnate god beside them
       const crit = tr.crit && this.rng() < tr.crit;
       if (crit) dmg *= 2;
       this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: best.x, tz: best.z, dir: tr.facing, ranged: tr.range > 3 });
@@ -8766,11 +8768,7 @@ export class World {
         this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: back, reflected: true });
       }
     }
-    if (e.tide) {
-      // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate, and as a mortal's
-      if (!this.tide || (!(this.tide.inc > 0) && this.keepOwns())) return; // (0.82.2) a visiting friend fights as a mortal, as the incarnate god does
-      dmg = Math.min(dmg, Math.max(1, Math.round(e.maxHp * (opts.dot ? INCARNATE.dotCap : INCARNATE.hitCap))));
-    }
+    if (e.tide) return; // (0.82.3) the night is the keep's heroes' to fight: no hero's blow lands on it (not the god's, not a visitor's)
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;

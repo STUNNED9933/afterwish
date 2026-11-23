@@ -1,0 +1,93 @@
+{
+  "id": "archer_eternal",
+  "prompt": "the same young adult woman ranger archer ascended to a demigod: auburn braid threaded with white-gold rings, a fitted white leather jerkin with crimson panels and silver filigree, glowing crimson gem at the collar, thin glowing red rune lines along her bracers and boots, a white quiver with crimson fletching strapped on her back, a short white hooded mantle lined in crimson with the hood down, slim white-gold circlet, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-23T13:12:50.514Z",
+  "creditsBefore": 1780,
+  "steps": {
+    "model": {
+      "task": "e058f174-7ebf-48dc-bb24-a94fa848edca",
+      "result": {
+        "task_id": "e058f174-7ebf-48dc-bb24-a94fa848edca",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/archer_eternal/1-model/tripo-out/the-same-young-adult-woman-range-e058f174",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/archer_eternal/1-model/tripo-out/the-same-young-adult-woman-range-e058f174/model.glb",
+        "preview": "out/models/archer_eternal/1-model/tripo-out/the-same-young-adult-woman-range-e058f174/preview.png"
+      }
+    },
+    "check": {
+      "task": "86e120ce-e81c-498a-93c8-f8a201f7800e",
+      "result": {
+        "task_id": "86e120ce-e81c-498a-93c8-f8a201f7800e",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/archer_eternal/2-check/tripo-out/rig-check-2-86e120ce",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "61dfd6d1-879e-4feb-9687-46130e730ec1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "61dfd6d1-879e-4feb-9687-46130e730ec1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/archer_eternal/3-rig/tripo-out/rig-2-61dfd6d1",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/archer_eternal/3-rig/tripo-out/rig-2-61dfd6d1/model.glb",
+        "preview": "out/models/archer_eternal/3-rig/tripo-out/rig-2-61dfd6d1/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "aa6f8519-332e-4c2b-a6d5-facd3832f27a",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_02"
+        ],
+        "result": {
+          "task_id": "aa6f8519-332e-4c2b-a6d5-facd3832f27a",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/archer_eternal/4-anim-1/tripo-out/retarget-2-aa6f8519",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/archer_eternal/4-anim-1/tripo-out/retarget-2-aa6f8519/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1705,
+  "creditsUsed": 75,
+  "finished": "2026-11-23T13:17:58.334Z",
+  "files": [
+    "1-model/tripo-out/the-same-young-adult-woman-range-e058f174/generated_image.jpeg",
+    "1-model/tripo-out/the-same-young-adult-woman-range-e058f174/model.glb",
+    "1-model/tripo-out/the-same-young-adult-woman-range-e058f174/preview.png",
+    "1-model/tripo-out/the-same-young-adult-woman-range-e058f174/rendered_image.webp",
+    "1-model/tripo-out/the-same-young-adult-woman-range-e058f174/task.json",
+    "2-check/tripo-out/rig-check-2-86e120ce/task.json",
+    "3-rig/tripo-out/rig-2-61dfd6d1/model.glb",
+    "3-rig/tripo-out/rig-2-61dfd6d1/preview.png",
+    "3-rig/tripo-out/rig-2-61dfd6d1/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-61dfd6d1/task.json",
+    "4-anim-1/tripo-out/retarget-2-aa6f8519/model.glb",
+    "4-anim-1/tripo-out/retarget-2-aa6f8519/task.json",
+    "manifest.json"
+  ]
+}

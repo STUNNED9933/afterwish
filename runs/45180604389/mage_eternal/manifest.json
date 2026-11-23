@@ -1,0 +1,93 @@
+{
+  "id": "mage_eternal",
+  "prompt": "the same young adult woman mage ascended to a demigod: long silver-white hair, a white high-collared knee-length coat with crimson lining, gold filigree and glowing red rune embroidery along the hems, a glowing crimson gem at the throat, a wide white belt with a small gilded book, fitted dark trousers, tall white boots with gold trim, slim white-gold circlet, eyes faintly glowing, no hat, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-23T13:17:58.335Z",
+  "creditsBefore": 1705,
+  "steps": {
+    "model": {
+      "task": "94ed88e4-efe2-4ac3-918d-a8a06d75c6c7",
+      "result": {
+        "task_id": "94ed88e4-efe2-4ac3-918d-a8a06d75c6c7",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/mage_eternal/1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/mage_eternal/1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/model.glb",
+        "preview": "out/models/mage_eternal/1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/preview.png"
+      }
+    },
+    "check": {
+      "task": "160fcba5-2c4c-4bee-b99a-72b3ec8211e2",
+      "result": {
+        "task_id": "160fcba5-2c4c-4bee-b99a-72b3ec8211e2",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/mage_eternal/2-check/tripo-out/rig-check-3-160fcba5",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "f4d1af4c-5e58-4dc1-baa7-e956d977306c",
+      "rigType": "biped",
+      "result": {
+        "task_id": "f4d1af4c-5e58-4dc1-baa7-e956d977306c",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/mage_eternal/3-rig/tripo-out/rig-3-f4d1af4c",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/mage_eternal/3-rig/tripo-out/rig-3-f4d1af4c/model.glb",
+        "preview": "out/models/mage_eternal/3-rig/tripo-out/rig-3-f4d1af4c/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "bef4ae88-6528-4d68-872b-fcac277b6863",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_02"
+        ],
+        "result": {
+          "task_id": "bef4ae88-6528-4d68-872b-fcac277b6863",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/mage_eternal/4-anim-1/tripo-out/retarget-3-bef4ae88",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/mage_eternal/4-anim-1/tripo-out/retarget-3-bef4ae88/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1630,
+  "creditsUsed": 75,
+  "finished": "2026-11-23T13:23:29.288Z",
+  "files": [
+    "1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/generated_image.jpeg",
+    "1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/model.glb",
+    "1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/preview.png",
+    "1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/rendered_image.webp",
+    "1-model/tripo-out/the-same-young-adult-woman-mage-94ed88e4/task.json",
+    "2-check/tripo-out/rig-check-3-160fcba5/task.json",
+    "3-rig/tripo-out/rig-3-f4d1af4c/model.glb",
+    "3-rig/tripo-out/rig-3-f4d1af4c/preview.png",
+    "3-rig/tripo-out/rig-3-f4d1af4c/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-f4d1af4c/task.json",
+    "4-anim-1/tripo-out/retarget-3-bef4ae88/model.glb",
+    "4-anim-1/tripo-out/retarget-3-bef4ae88/task.json",
+    "manifest.json"
+  ]
+}

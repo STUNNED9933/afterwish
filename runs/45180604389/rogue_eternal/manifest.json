@@ -1,0 +1,93 @@
+{
+  "id": "rogue_eternal",
+  "prompt": "the same lean young man rogue ascended to a demigod: short dark hair with a white streak, a fitted white-and-charcoal leather jacket with crimson inner lining and silver filigree, the hood down, a crimson scarf, a glowing crimson gem at the collar, thin glowing red rune lines along his bracers and boots, belts with two empty white dagger sheaths at the hips, fitted dark trousers, soft white boots, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-23T13:23:29.290Z",
+  "creditsBefore": 1630,
+  "steps": {
+    "model": {
+      "task": "ff6f6fec-18d1-4f8a-b46f-01e6641b65e5",
+      "result": {
+        "task_id": "ff6f6fec-18d1-4f8a-b46f-01e6641b65e5",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/rogue_eternal/1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/rogue_eternal/1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/model.glb",
+        "preview": "out/models/rogue_eternal/1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/preview.png"
+      }
+    },
+    "check": {
+      "task": "a983fcea-2195-48b5-bae4-c1aadc39dcd9",
+      "result": {
+        "task_id": "a983fcea-2195-48b5-bae4-c1aadc39dcd9",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/rogue_eternal/2-check/tripo-out/rig-check-4-a983fcea",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "c524f0b8-564d-4f72-999d-03b0ff05cf67",
+      "rigType": "biped",
+      "result": {
+        "task_id": "c524f0b8-564d-4f72-999d-03b0ff05cf67",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/rogue_eternal/3-rig/tripo-out/rig-4-c524f0b8",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/rogue_eternal/3-rig/tripo-out/rig-4-c524f0b8/model.glb",
+        "preview": "out/models/rogue_eternal/3-rig/tripo-out/rig-4-c524f0b8/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "24db84a6-ce65-4a2c-bb0c-1854518734ec",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "24db84a6-ce65-4a2c-bb0c-1854518734ec",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/rogue_eternal/4-anim-1/tripo-out/retarget-4-24db84a6",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/rogue_eternal/4-anim-1/tripo-out/retarget-4-24db84a6/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1555,
+  "creditsUsed": 75,
+  "finished": "2026-11-23T13:29:35.886Z",
+  "files": [
+    "1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/generated_image.jpeg",
+    "1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/model.glb",
+    "1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/preview.png",
+    "1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/rendered_image.webp",
+    "1-model/tripo-out/the-same-lean-young-man-rogue-as-ff6f6fec/task.json",
+    "2-check/tripo-out/rig-check-4-a983fcea/task.json",
+    "3-rig/tripo-out/rig-4-c524f0b8/model.glb",
+    "3-rig/tripo-out/rig-4-c524f0b8/preview.png",
+    "3-rig/tripo-out/rig-4-c524f0b8/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-c524f0b8/task.json",
+    "4-anim-1/tripo-out/retarget-4-24db84a6/model.glb",
+    "4-anim-1/tripo-out/retarget-4-24db84a6/task.json",
+    "manifest.json"
+  ]
+}

@@ -142,6 +142,23 @@ function walletTooltip(w, n) {
 }
 
 /** (0.62) Ask before rerolling an Immortal-tier line (on unless turned off; kept in this browser). */
+/** (0.81.6) The auto-roller's choices, per slot, kept in this browser. */
+function loadAutoRoll() {
+  try {
+    const v = JSON.parse(localStorage.getItem('afterwish.autoroll') || '{}');
+    return v && typeof v === 'object' ? v : {};
+  } catch {
+    return {};
+  }
+}
+function storeAutoRoll(v) {
+  try {
+    localStorage.setItem('afterwish.autoroll', JSON.stringify(v));
+  } catch {
+    /* private mode: kept for this visit only */
+  }
+}
+
 function guardImmortal() {
   try {
     return localStorage.getItem('afterwish-guard-immortal') !== '0';
@@ -786,7 +803,111 @@ export class Inventory {
         box.appendChild(pick);
       }
     });
+    box.appendChild(this.autoRollBox(world, slot, item));
     return box;
+  }
+
+  /**
+   * (0.81.6) The auto-roller: choose the tier each line should reach, and it rerolls them for you until
+   * they do (or the limit, or your gold and scrap, runs out). Open once a class has beaten the Quiet.
+   */
+  autoRollBox(world, slot, item) {
+    const p = world.player;
+    const wrap = document.createElement('div');
+    wrap.className = 'auto-roll';
+    if (!(world.autoRollOpen && world.autoRollOpen())) {
+      wrap.innerHTML = `<p class="setting-desc locked-note"><b>Auto-roll</b> opens once any class on your account has beaten the Quiet (mastered).</p>`;
+      return wrap;
+    }
+    const all = loadAutoRoll();
+    const cfg = all[slot] || (all[slot] = { targets: {}, max: 50, essence: false });
+    const save = () => storeAutoRoll(all);
+    const top = topTier(item);
+    const tiers = [];
+    for (let t = 3; t <= top; t++) tiers.push(t); // Epic and up: below that a single reroll does it
+    const opt = (t, sel) => `<option value="${t}"${sel ? ' selected' : ''} style="color:${RARITIES[t].color}">${RARITIES[t].name}${t === top ? '' : ' or better'}</option>`;
+    const head = document.createElement('div');
+    head.className = 'auto-roll-head';
+    head.innerHTML = `<b>Auto-roll</b><span class="setting-desc">Pick how good each line should be; it rerolls them until they all are. A line already there is never touched.</span>`;
+    const setAll = document.createElement('select');
+    setAll.innerHTML = `<option value="">Set every line…</option><option value="0">Off</option>${tiers.map((t) => opt(t, false)).join('')}`;
+    setAll.addEventListener('change', () => {
+      if (setAll.value === '') return;
+      for (const k of Object.keys(item.stats)) cfg.targets[k] = Number(setAll.value);
+      save();
+      this.render(world);
+    });
+    head.appendChild(setAll);
+    wrap.appendChild(head);
+    const stats = itemStats(item);
+    let need = 0;
+    for (const k of Object.keys(item.stats)) {
+      const row = document.createElement('label');
+      row.className = 'auto-roll-row';
+      const now = lineTier(item, k);
+      const want = cfg.targets[k] || 0;
+      const met = !want || now >= Math.min(top, want);
+      if (!met) need++;
+      row.innerHTML = `<span>${formatStat(k, stats[k])} <small style="color:${RARITIES[now].color}">${RARITIES[now].name}</small></span>`;
+      const sel = document.createElement('select');
+      sel.innerHTML = `<option value="0"${!want ? ' selected' : ''}>Off</option>${tiers.map((t) => opt(t, want === t)).join('')}`;
+      sel.addEventListener('change', () => {
+        cfg.targets[k] = Number(sel.value);
+        save();
+        this.render(world);
+      });
+      row.appendChild(sel);
+      const mark = document.createElement('i');
+      mark.className = met ? 'ok' : 'todo';
+      mark.textContent = !want ? '' : met ? '✓' : '…';
+      row.appendChild(mark);
+      wrap.appendChild(row);
+    }
+    const foot = document.createElement('div');
+    foot.className = 'auto-roll-foot';
+    const maxIn = document.createElement('input');
+    maxIn.type = 'number';
+    maxIn.min = '1';
+    maxIn.max = '500';
+    maxIn.value = String(cfg.max || 50);
+    maxIn.title = 'The most rerolls one press may spend (up to 500)';
+    maxIn.addEventListener('change', () => {
+      cfg.max = Math.max(1, Math.min(500, Math.floor(Number(maxIn.value)) || 50));
+      save();
+      this.render(world);
+    });
+    const lim = document.createElement('label');
+    lim.append('At most ', maxIn, ' rerolls');
+    foot.appendChild(lim);
+    const reborn = p.rebirth && p.rebirth.n;
+    if (reborn) {
+      const pay = document.createElement('select');
+      pay.innerHTML = `<option value="g"${cfg.essence ? '' : ' selected'}>with gold and scrap</option><option value="e"${cfg.essence ? ' selected' : ''}>with Echo Essence (${ECHOES.reroll} each)</option>`;
+      pay.addEventListener('change', () => {
+        cfg.essence = pay.value === 'e';
+        save();
+        this.render(world);
+      });
+      foot.appendChild(pay);
+    }
+    const ess = !!(reborn && cfg.essence);
+    const rc = rerollCost(item);
+    const n = cfg.max || 50;
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'primary tiny';
+    const afford = ess ? Math.floor((p.rebirth.essence || 0) / ECHOES.reroll) : Math.min(Math.floor(p.gold / rc.gold), Math.floor(p.scrap / rc.scrap));
+    go.disabled = !need || afford < 1;
+    go.textContent = !need ? (Object.values(cfg.targets).some((t) => t > 0) ? 'Every chosen line is there' : 'Choose a tier for a line first') : afford < 1 ? 'Not enough to reroll' : `Auto-roll ${need} line${need > 1 ? 's' : ''}`;
+    go.title = ess ? `Up to ${Math.min(n, afford)} rerolls, ${ECHOES.reroll} Echo Essence each` : `Up to ${Math.min(n, afford)} rerolls, ${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap each (at most ${(rc.gold * Math.min(n, afford)).toLocaleString()} gold + ${(rc.scrap * Math.min(n, afford)).toLocaleString()} scrap)`;
+    go.addEventListener('click', () => this.send({ type: 'autoRoll', slot, targets: cfg.targets, max: cfg.max || 50, essence: ess }));
+    foot.appendChild(go);
+    const cost = document.createElement('span');
+    cost.className = 'setting-desc';
+    cost.textContent = ess ? `${ECHOES.reroll} Essence a reroll` : `${rc.gold.toLocaleString()} gold + ${rc.scrap.toLocaleString()} scrap a reroll`;
+    foot.appendChild(cost);
+    wrap.appendChild(foot);
+    return wrap;
   }
 
   /** How many bag items are better than what is equipped (shown on the Gear button). */

@@ -5538,4 +5538,41 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 60 && w.projectiles.length; i++) w.step(CONFIG.TICK);
   check('...and all of it lands when it does', hp0 - e.hp > main.dmg * 1.5 && !main.fold, `${hp0 - e.hp} vs ${main.dmg}`);
 }
+
+// --- 0.81.6: the auto-roller ------------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const I = await import('../src/sim/items.js');
+  const { AUTO_ROLL_MAX } = await import('../src/sim/world.js');
+  const mk = (lives) => new World({ seed: 187, mode: 'explore', cls: 'warrior', save: Object.assign(geared('warrior', 100, 5), { acctLives: lives }) });
+  const shut = mk(null);
+  shut.player.gold = 1e12; shut.player.scrap = 1e12;
+  const it0 = shut.player.equipped.helm, v0 = JSON.stringify(it0.stats);
+  shut.command({ type: 'autoRoll', slot: 'helm', targets: Object.fromEntries(Object.keys(it0.stats).map((k) => [k, 6])), max: 50 }); shut.runCommands();
+  check('Auto-roll (0.81.6): shut until a class on the account has beaten the Quiet', JSON.stringify(it0.stats) === v0 && shut.events.some((e) => e.type === 'autoRollShut'));
+  const w = mk({ mage: { prim: [6, 7, 8, 9, 10] } });
+  const p = w.player;
+  p.gold = 1e12; p.scrap = 1e12;
+  const it = p.equipped.helm;
+  const keys = Object.keys(it.stats);
+  const keep = keys[keys.length - 1], keepV = it.stats[keep];
+  const targets = Object.fromEntries(keys.slice(0, -1).map((k) => [k, 5]));
+  w.events = [];
+  w.command({ type: 'autoRoll', slot: 'helm', targets, max: AUTO_ROLL_MAX }); w.runCommands();
+  const ev = w.events.find((e) => e.type === 'autoRolled');
+  check('...open once one has: it rerolls the chosen lines until each is the tier asked for (Ancient here), and leaves the rest alone', ev && ev.why === 'done' && keys.slice(0, -1).every((k) => I.lineTier(it, k) >= 5) && it.stats[keep] === keepV && ev.gold === ev.rolls * I.rerollCost(it).gold, JSON.stringify(ev && { r: ev.rolls, why: ev.why }));
+  const again = ev.rolls;
+  w.events = [];
+  w.command({ type: 'autoRoll', slot: 'helm', targets, max: 50 }); w.runCommands();
+  check('...a line already there is never touched (pressing again spends nothing)', w.events.find((e) => e.type === 'autoRolled').rolls === 0 && again > 0);
+  w.events = [];
+  w.command({ type: 'autoRoll', slot: 'helm', targets: Object.fromEntries(keys.map((k) => [k, 6])), max: 3 }); w.runCommands();
+  const lim = w.events.find((e) => e.type === 'autoRolled');
+  check('...it stops at the limit you set', lim.rolls <= 3 && (lim.why === 'limit' || lim.why === 'done'));
+  p.gold = I.rerollCost(it).gold * 2; p.scrap = 1e12;
+  w.events = [];
+  w.command({ type: 'autoRoll', slot: 'helm', targets: Object.fromEntries(keys.map((k) => [k, 6])), max: 400 }); w.runCommands();
+  const broke = w.events.find((e) => e.type === 'autoRolled');
+  check('...and when the gold runs out', broke.rolls <= 2 && (broke.why === 'funds' || broke.why === 'done') && p.gold >= 0, JSON.stringify(broke && { r: broke.rolls, why: broke.why }));
+}
 process.exit(failed ? 1 : 0);

@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The auto-roller (0.81.6)
+
+- **Auto-roll**, in every equipped piece's Reroll panel. It opens once any class on the account has beaten the Quiet, like the world tiers do.
+  - Choose how good each line should be: Epic, Mythic or Ancient or better, Immortal, or Eternal on Eternal gear. Use "Set every line…" to set them all at once.
+  - Set how many rerolls one press may spend (up to 500). Once reborn, you can pay with Echo Essence instead of gold and scrap.
+  - One press rerolls the lines that fall short until each is there, the limit is reached, or you can't pay for another. It never touches a line that's already good enough.
+  - It costs the same as rerolling by hand, and the 30-reroll pity still counts.
+  - The result arrives as one report (rerolls, what was paid, which lines rose and to what), not a message per reroll.
+- Your choices for each slot are remembered in this browser.
+
 ### Fewer arrows, the same rain (0.81.5)
 
 - A Windrunner's Crosswind arrows, and Hurricane's arrows when there's no one else to curve at, are now folded into the arrow she looses. They land with it at full damage: each kind is its own hit with its own crit roll, and carries the Tailwind of every arrow in it. Hurricane still curves up to two arrows at other enemies nearby.

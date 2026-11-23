@@ -5309,6 +5309,25 @@ function start(hot = {}) {
         gearToast(`Reforged ${ev.name}: ${STATS[ev.from].label} became ${formatStat(ev.to, ev.value)}`);
         refreshMenus();
         break;
+      case 'autoRolled': {
+        // (0.81.6) the auto-roller's report, all at once
+        const up = ev.lines.filter((l) => l.tier > l.fromTier);
+        const best = Math.max(...ev.lines.map((l) => l.tier));
+        if (ev.rolls) sfx.upgrade();
+        if (ev.lines.some((l) => l.tier === 7 && l.fromTier < 7)) sfx.eternal();
+        const paid = ev.essence ? `${ev.essence} Echo Essence` : `${ev.gold.toLocaleString()} gold + ${ev.scrap.toLocaleString()} scrap`;
+        const why = ev.why === 'done' ? 'every chosen line is there' : ev.why === 'limit' ? 'stopped at the reroll limit' : 'stopped: not enough to reroll again';
+        const msg = `${ev.name}: ${ev.rolls} reroll${ev.rolls === 1 ? '' : 's'}${ev.rolls ? ` (${paid})` : ''}, ${why}.${up.length ? ' ' + up.map((l) => `${STATS[l.key].label} <span style="color:${RARITIES[l.tier].color}">${RARITIES[l.tier].name}</span>`).join(', ') : ''}`;
+        gearToast(msg);
+        hud.feedText(msg.replace(/<[^>]+>/g, ''));
+        if (ev.why === 'done' && ev.rolls) hud.banner('Auto-roll done', `${ev.name}: ${ev.rolls} rerolls, best line ${RARITIES[best].name}`);
+        refreshMenus();
+        break;
+      }
+      case 'autoRollShut':
+        sfx.denied();
+        hud.feedText('Auto-roll opens once a class on your account has beaten the Quiet.');
+        break;
       case 'rerolled': {
         sfx.upgrade();
         const tier = RARITIES[ev.tier];

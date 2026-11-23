@@ -1295,3 +1295,18 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 
 /* (0.81.2) where a wish is done */
 .keep-wish .where { font-size: 13px; color: #9fd0ff; margin-top: 2px; }
+
+/* (0.81.6) the auto-roller */
+.auto-roll { margin-top: 10px; padding: 8px 10px; border: 1px solid rgba(255, 210, 74, 0.35); border-radius: 6px; background: rgba(255, 210, 74, 0.04); }
+.auto-roll-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 4px; }
+.auto-roll-head b { color: #ffd24a; }
+.auto-roll-head .setting-desc { flex: 1 1 260px; margin: 0; }
+.auto-roll-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 14px; }
+.auto-roll-row > span { flex: 1; }
+.auto-roll-row i { width: 14px; font-style: normal; text-align: center; }
+.auto-roll-row i.ok { color: #7fe0a0; }
+.auto-roll-row i.todo { color: #ffd24a; }
+.auto-roll select { background: #141824; color: var(--bone); border: 1px solid #3a4258; border-radius: 4px; font-size: 13px; padding: 2px 4px; }
+.auto-roll-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.auto-roll-foot input { width: 64px; background: #141824; color: var(--bone); border: 1px solid #3a4258; border-radius: 4px; padding: 2px 4px; }
+.auto-roll .locked-note { margin: 0; opacity: 0.8; }

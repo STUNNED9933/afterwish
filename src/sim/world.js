@@ -96,7 +96,8 @@ const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
 const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
-const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
@@ -851,6 +852,7 @@ export class World {
       else if (c.type === 'scrap') this.scrapNonUpgrades(c.keep);
       else if (c.type === 'upgrade') this.upgradeItem(c.slot);
       else if (c.type === 'enchant') this.rerollLine(c.slot, c.key, !!c.essence);
+      else if (c.type === 'autoRoll') this.autoRoll(c.slot, c.targets, c.max, !!c.essence); // (0.81.6)
       else if (c.type === 'recall') this.recallMemory(c.slot);
       else if (c.type === 'echoUp') this.echoUpgrade(c.slot);
       else if (c.type === 'reforge') this.enchantItem(c.slot, c.key, c.to);
@@ -4925,19 +4927,19 @@ export class World {
   }
 
   /** Rerolling (0.43): a fresh number for one line of an equipped item, the same stat, for gold and scrap. */
-  rerollLine(slot, key, essence = false) {
+  rerollLine(slot, key, essence = false, quiet = false) {
     const p = this.player;
     const item = p.equipped[slot];
-    if (!item || !(key in item.stats)) return;
+    if (!item || !(key in item.stats)) return false;
     if (essence) {
       // Echoes (0.53): a reroll for Echo Essence instead of gold and scrap
-      if (!p.rebirth || p.rebirth.essence < ECHOES.reroll) return this.emit('cantAfford');
+      if (!p.rebirth || p.rebirth.essence < ECHOES.reroll) return quiet ? false : this.emit('cantAfford');
       p.rebirth.essence -= ECHOES.reroll;
     } else {
       const cost = rerollCost(item);
       if (p.gold < cost.gold || p.scrap < cost.scrap) {
-        this.emit('cantAfford');
-        return;
+        if (!quiet) this.emit('cantAfford');
+        return false;
       }
       p.gold -= cost.gold;
       p.scrap -= cost.scrap;
@@ -4954,8 +4956,55 @@ export class World {
       item.pity = 0;
       pity = true;
     }
+    if (quiet) return true; // (0.81.6) the auto-roller tells it all at once
     this.recalcStats();
     this.emit('rerolled', { slot, key, from, value: item.stats[key], tier: lineTier(item, key), name: item.name, pity });
+    return true;
+  }
+
+  /**
+   * (0.81.6) The auto-roller, once a class on the account has beaten the Quiet: reroll the chosen lines of
+   * one equipped piece until each is at least the tier asked for, or the rerolls allowed (at most
+   * AUTO_ROLL_MAX), or the gold and scrap (or Echo Essence), run out. A line already there is never touched.
+   * `targets`: { statKey: tier } with tier a rarity index (3 Epic ... 6 Immortal, 7 Eternal on Eternal gear).
+   */
+  autoRoll(slot, targets, max, essence = false) {
+    const p = this.player;
+    const item = p.equipped[slot];
+    if (!item || !targets || typeof targets !== 'object') return;
+    if (!this.autoRollOpen()) return this.emit('autoRollShut');
+    const top = topTier(item);
+    const want = {};
+    for (const k of Object.keys(item.stats)) {
+      const t = Math.floor(Number(targets[k]));
+      if (Number.isFinite(t) && t >= 1) want[k] = Math.min(top, t);
+    }
+    if (!Object.keys(want).length) return;
+    max = Math.max(1, Math.min(AUTO_ROLL_MAX, Math.floor(Number(max)) || 50));
+    const before = {};
+    for (const k in want) before[k] = { tier: lineTier(item, k), value: item.stats[k] };
+    const g0 = p.gold, s0 = p.scrap, e0 = p.rebirth ? p.rebirth.essence : 0;
+    let rolls = 0, why = 'done';
+    for (;;) {
+      const k = Object.keys(want).find((x) => lineTier(item, x) < want[x] && rollQuality(item, x) < 1);
+      if (!k) break;
+      if (rolls >= max) {
+        why = 'limit';
+        break;
+      }
+      if (!this.rerollLine(slot, k, essence, true)) {
+        why = 'funds';
+        break;
+      }
+      rolls++;
+    }
+    if (rolls) this.recalcStats();
+    const lines = Object.keys(want).map((k) => ({ key: k, from: before[k].value, to: item.stats[k], fromTier: before[k].tier, tier: lineTier(item, k), want: want[k] }));
+    this.emit('autoRolled', { slot, name: item.name, rolls, why, gold: g0 - p.gold, scrap: s0 - p.scrap, essence: e0 - (p.rebirth ? p.rebirth.essence : 0), lines });
+  }
+  /** (0.81.6) The auto-roller opens with the first class on the account to beat the Quiet. */
+  autoRollOpen(p = this.player) {
+    return !this.trial && this.mastery(p).mastered.length > 0;
   }
 
   /** Reforging (0.29 enchanting; 0.43: you choose the stat): turn one bonus stat into another, for gold and Wishdust. */

@@ -996,6 +996,51 @@
       "style": "stylised-realistic fantasy game environment prop, one single object standing on its own, no ground, no terrain, no base plate, no people, clean readable silhouette seen from above, hand-painted PBR-style textures, ivory white marble and pale gold",
       "faceLimit": 4000,
       "prompt": "a slender white and gold spire with a ring of glowing golden script floating around it and a bright white star at its tip"
+    },
+    "warrior_eternal": {
+      "prompt": "the same bearded human warrior ascended to a demigod: ornate white-and-silver full plate with crimson enamel trim and fine gold filigree, a glowing crimson gem set in the breastplate, thin glowing red rune lines along the pauldrons gauntlets and greaves, a short crimson tabard, white fur trim at the collar, a slim circlet of white gold on the brow, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "animations": [
+        "preset:idle",
+        "preset:run",
+        "preset:slash",
+        "preset:hurt",
+        "preset:fall"
+      ]
+    },
+    "archer_eternal": {
+      "prompt": "the same young adult woman ranger archer ascended to a demigod: auburn braid threaded with white-gold rings, a fitted white leather jerkin with crimson panels and silver filigree, glowing crimson gem at the collar, thin glowing red rune lines along her bracers and boots, a white quiver with crimson fletching strapped on her back, a short white hooded mantle lined in crimson with the hood down, slim white-gold circlet, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:run",
+        "preset:biped:shoot",
+        "preset:biped:fire",
+        "preset:biped:dive",
+        "preset:biped:hit_to_body_02",
+        "preset:biped:fall"
+      ]
+    },
+    "mage_eternal": {
+      "prompt": "the same young adult woman mage ascended to a demigod: long silver-white hair, a white high-collared knee-length coat with crimson lining, gold filigree and glowing red rune embroidery along the hems, a glowing crimson gem at the throat, a wide white belt with a small gilded book, fitted dark trousers, tall white boots with gold trim, slim white-gold circlet, eyes faintly glowing, no hat, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:run",
+        "preset:biped:hit_to_body_02"
+      ]
+    },
+    "rogue_eternal": {
+      "prompt": "the same lean young man rogue ascended to a demigod: short dark hair with a white streak, a fitted white-and-charcoal leather jacket with crimson inner lining and silver filigree, the hood down, a crimson scarf, a glowing crimson gem at the collar, thin glowing red rune lines along his bracers and boots, belts with two empty white dagger sheaths at the hips, fitted dark trousers, soft white boots, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:run",
+        "preset:biped:hit_to_body_01"
+      ]
     }
   }
 }

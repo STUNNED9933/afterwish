@@ -1136,7 +1136,7 @@ export class Hud {
     this.mirKey = key;
     const card = (k, name, cost, cd, max, desc, extra = '') => `<div class="mir${cd > 0 ? ' cool' : ''}${faith < cost ? ' poor' : ''}${extra}" title="${desc}"><kbd>${k.toUpperCase()}</kbd> <b>${name}</b>${cost} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / max) * 100) : 100}%"></i></div>`;
     el.innerHTML = inc
-      ? `<div class="mir incarnate" title="${INCARNATE.desc}"><b>Incarnate</b>heroes near you +${Math.round(INCARNATE.dmg * 100)}% · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
+      ? `<div class="mir incarnate" title="${INCARNATE.desc}"><b>Incarnate</b>your own skills · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
       : MIRACLE_IDS.map((m) => card(MIRACLES[m].key, MIRACLES[m].name, MIRACLES[m].faith, (t.mcd && t.mcd[m]) || 0, MIRACLES[m].cd, MIRACLES[m].desc)).join('') + card(INCARNATE.key, 'Incarnate', INCARNATE.faith, t.icd || 0, INCARNATE.cd, INCARNATE.desc, ' inc');
   }
 

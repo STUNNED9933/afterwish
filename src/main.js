@@ -1453,7 +1453,7 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you walk among them as their banner: heroes within ${INCARNATE.radius} m of you deal ${Math.round(INCARNATE.dmg * 100)}% more and strike ${Math.round(INCARNATE.haste * 100)}% faster, and the Unmade near you turn on you. Your own blows never land on the night: it is your heroes' to win. Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you fight beside them with your own skills. Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
@@ -1956,7 +1956,7 @@ function start(hot = {}) {
       $('talk-name').textContent = `${world.keepVisitOf || 'A friend'}'s Wishkeep`;
       $('talk-keys').classList.add('hidden');
       $('talk-quests').innerHTML = '';
-      $('talk-line').textContent = `This keep is ${world.keepVisitOf || 'theirs'}: only they can tend it, raise it and call its night. If they call the night while you are here, you can watch their heroes hold it (no hero's blow lands on the night: it is the keep's heroes' to win). Your own keep is through the Waygate.`;
+      $('talk-line').textContent = `This keep is ${world.keepVisitOf || 'theirs'}: only they can tend it, raise it and call its night. If they call the night while you are here, you can watch their heroes hold it: your blows do not land on their night (it is theirs to win). Your own keep is through the Waygate.`;
       return;
     }
     if (talkTo === 'wishes') return renderKeepBoard(); // (0.80) the Wishkeep
@@ -5165,7 +5165,7 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         sfx.levelUp();
-        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and lead them.` : 'Nobody stands at the posts, and your own blows do not land on the night: only your miracles (Q, W, E) slow it. Raise heroes at the Hearth.');
+        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and fight beside them.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
         break;
       case 'keepAscended':
         sfx.levelUp();
@@ -5190,7 +5190,7 @@ function start(hot = {}) {
         break;
       case 'incarnate':
         sfx.levelUp();
-        hud.banner('Incarnate', `For ${ev.dur} seconds you are their banner: heroes near you hit ${Math.round(INCARNATE.dmg * 100)}% harder and faster, and the Unmade near you turn on you.`);
+        hud.banner('Incarnate', `For ${ev.dur} seconds you fight beside your heroes with your own skills. The Unmade can strike you back.`);
         renderer.keepFx(ev);
         break;
       case 'incarnateEnd':

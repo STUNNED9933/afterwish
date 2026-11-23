@@ -500,6 +500,17 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   w.as(hb, () => w.command({ type: 'keepTide' }));
   for (let i = 0; i < 2; i++) sv.tick();
   check('...a visitor cannot call the night, nor spend their own keep in it', !w.tide && guestKeep.faith === 9);
+  // (0.82.4) the keeper calls it; the visitor's blows do not land on it, the keeper's incarnate ones do
+  const ha = w.heroByPid(A);
+  w.as(ha, (p) => { p.keep.faith = 1000; });
+  sv.command(sv.players.get(A), { type: 'keepTide' });
+  for (let i = 0; i < 60 * 5; i++) sv.tick();
+  const foe = w.enemies.find((e) => e.tide && !e.dead && e.state !== 'spawn');
+  const h0 = foe && foe.hp;
+  if (foe) w.as(hb, () => w.hitEnemy(foe, 1e9, { source: 'basic', basic: true }));
+  const visitorMissed = foe && foe.hp === h0;
+  if (foe) { w.tide.inc = 5; w.as(ha, () => w.hitEnemy(foe, 1e9, { source: 'basic', basic: true })); }
+  check('...in the keeper\'s night a visitor\'s blows do not land; the incarnate keeper\'s do (a fifth at most)', foe && visitorMissed && foe.hp < h0 && h0 - foe.hp <= Math.round(foe.maxHp * 0.2) + 1, foe ? `${h0} -> ${foe.hp}` : 'no foe');
   sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
   for (let i = 0; i < 6; i++) sv.tick();
   check('...when the keeper leaves, the visitor walks back to Haven', sv.players.get(B).copy.world.map.id === 'town');

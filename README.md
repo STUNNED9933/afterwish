@@ -160,6 +160,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Fewer arrows, the same rain (0.81.5)
+
+- A Windrunner's Crosswind arrows, and Hurricane's arrows when there's no one else to curve at, are now folded into the arrow she looses. They land with it at full damage: each kind is its own hit with its own crit roll, and carries the Tailwind of every arrow in it. Hurricane still curves up to two arrows at other enemies nearby.
+- So the feel stays, the arrows that landed rain down from the sky onto the target: thin golden streaks from one instanced mesh, which costs one draw call however many there are.
+- Every shot now shares one shape instead of building a new one, and arrows leave fewer sparks.
+- Arrows in the air per second, for the same damage:
+
+  | Gear | Before | Now |
+  |---|---|---|
+  | Immortal gear | 176 a second (about 46 at once) | 26 a second (about 5 at once) |
+  | Eternal gear with Umbra Gemina | 58 a second | 19 a second |
+
 ### The Windrunner's wind (0.81.4)
 
 - **Gale Force** (new, part of the Windrunner's perk). Every arrow she looses deals 6% more for each attack a second, counted up to 20 a second (+120%). Crosswind already looses more arrows the faster she shoots, so attack speed now counts twice: more arrows, and harder ones.

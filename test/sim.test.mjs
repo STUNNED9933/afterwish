@@ -1754,14 +1754,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     w.projectiles = [];
     w.basicAttack(e);
     arrows = w.projectiles.filter((pr) => pr.arc);
-    check('Hurricane: with no one else near, both arrows go for the target', arrows.length === 2 && arrows.every((a) => a.targetId === e.id));
-    const a0 = Math.atan2(arrows[0].vz, arrows[0].vx), toE = Math.atan2(e.z - p.z, e.x - p.x);
-    check('...sweeping out wide first', Math.abs(a0 - toE) > 0.8);
-    e.hp = e.maxHp = 1e9;
-    const hp0 = e.hp;
+    const carry = w.projectiles.find((pr) => pr.basic && !pr.arc);
+    check('Hurricane: with no one else near, both arrows go for the target (0.81.5: folded into the arrow loosed, rained down where it lands)', arrows.length === 0 && carry && carry.targetId === e.id && carry.fold && carry.fold.some((f) => f.tails === 0) && carry.volley >= 2);
+    // the arcs at other enemies still sweep out wide and curve in (bring one back to aim at)
+    const o2 = others[0];
+    o2.dead = false; o2.hp = o2.maxHp = 1e9;
+    o2.x = o2.px = p.x; o2.z = o2.pz = p.z + 6; // off to one side, clear of the target
+    w.enemies.push(o2);
+    w.projectiles = [];
+    w.basicAttack(e);
+    arrows = w.projectiles.filter((pr) => pr.arc);
+    const a0 = Math.atan2(arrows[0].vz, arrows[0].vx), toO = Math.atan2(o2.z - p.z, o2.x - p.x);
+    check('...an arc at another enemy sweeps out wide first', arrows.length === 1 && arrows[0].targetId === o2.id && Math.abs(a0 - toO) > 0.8);
+    const hp0 = o2.hp;
     w.projectiles = arrows;
     for (let i = 0; i < 120 && w.projectiles.some((x) => x.arc); i++) w.stepProjectiles(CONFIG.TICK, CONFIG.TICK);
-    check('...and curving in to hit it', e.hp < hp0 && !w.projectiles.some((x) => x.arc), `${hp0 - e.hp}`);
+    check('...and curves in to hit it', o2.hp < hp0 && !w.projectiles.some((x) => x.arc), `${hp0 - o2.hp}`);
   }
   // (0.60.2) Crimson Reach: a Bloodied Berserker's swings fly on as red crescents
   {
@@ -5507,5 +5515,27 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const roll = (r) => I.rollItem(() => 0.3, p.level, { weights: I.RARITIES.map((x, i) => (i === r ? 1 : 0)), slot: 'helm', cls: 'archer' });
   const got = [5, 3, 0, 5].map((r) => { const it = roll(r); const gone = w2.autoScrapNew(it); if (!gone) p.bag.push(it); return gone; });
   check('Auto-scrap (0.81.4): kept through a rebirth, and on a bare new life only the best piece for a slot is kept, not every one that drops', p.autoScrapAt === 5 && got.join() === 'false,true,true,true' && p.bag.filter((it) => it && it.slot === 'helm').length === 1, got.join());
+}
+
+// --- 0.81.5: a Windrunner's extra arrows are folded into the one she looses (fewer in the air) -------------
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 186, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { spec: 'windrunner' }) });
+  w.loadMap('greenwood', 'town');
+  for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+  const p = w.player;
+  const e = w.enemies.find((o) => !o.dead && !o.def.boss && o.state !== 'spawn');
+  w.enemies = [e]; // one target: Hurricane has no one else to curve at
+  e.hp = e.maxHp = 1e9;
+  p.x = p.px = e.x + 8; p.z = p.pz = e.z;
+  p.crossAcc = 2.5;
+  w.projectiles = [];
+  w.basicAttack(e);
+  const shots = w.projectiles.filter((pr) => pr.basic);
+  const main = shots[0];
+  check('Windrunner (0.81.5): on one target, one arrow leaves the string, carrying Crosswind\'s and Hurricane\'s', shots.length === 1 && main.fold && main.fold.length === 2 && main.volley >= 4, `${shots.length} arrows, volley ${main && main.volley}`);
+  const hp0 = e.hp;
+  for (let i = 0; i < 60 && w.projectiles.length; i++) w.step(CONFIG.TICK);
+  check('...and all of it lands when it does', hp0 - e.hp > main.dmg * 1.5 && !main.fold, `${hp0 - e.hp} vs ${main.dmg}`);
 }
 process.exit(failed ? 1 : 0);

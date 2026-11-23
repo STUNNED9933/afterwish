@@ -2258,10 +2258,19 @@ export class Renderer {
           geo.rotateZ(-Math.PI * 0.425);
           geo.rotateX(-Math.PI / 2);
           m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0.9 }));
-        } else m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 1), new THREE.MeshBasicMaterial({ color: 0xd78bff }));
+        } else {
+          // (0.81.5) one shared shape for every shot (a fresh one per arrow was most of a Windrunner's lag)
+          if (!this.shotGeo) {
+            this.shotGeo = new THREE.IcosahedronGeometry(0.32, 1);
+            this.shotGeo.userData.keep = true;
+          }
+          m = new THREE.Mesh(this.shotGeo, new THREE.MeshBasicMaterial({ color: 0xd78bff }));
+        }
         this.scene.add(m);
         this.projViews.set(pr.id, m);
       }
+      if (pr.volley > 0) m.userData.volley = pr.volley; // (0.81.5) arrows folded into this one
+      m.userData.kind = pr.kind;
       const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a }[pr.kind]; // the hero's own shots
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
@@ -2298,17 +2307,75 @@ export class Renderer {
         m.rotation.x += 0.07;
         if (Math.random() < 0.8) this.burst(m.position.x, 1.2, m.position.z, { count: 2, color: 0xe8fbff, speed: 2.5, up: 1, gravity: 0, life: 0.5, size: 1.1 });
       }
-      if (Math.random() < 0.6) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: own || (pr.reflected ? 0x9fe8ff : 0xb44aff), speed: 0.6, up: 0.4, gravity: 0, life: 0.35, size: 0.9 });
+      if (Math.random() < (pr.kind === 'arrow' ? 0.3 : 0.6)) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: own || (pr.reflected ? 0x9fe8ff : 0xb44aff), speed: 0.6, up: 0.4, gravity: 0, life: 0.35, size: 0.9 });
     }
     for (const [id, m] of this.projViews) {
       if (!seen.has(id)) {
-        this.burst(m.position.x, 1.2, m.position.z, { count: 8, color: m.userData.color || 0xd78bff, speed: 4, up: 2 });
+        this.burst(m.position.x, 1.2, m.position.z, { count: m.userData.kind === 'arrow' ? 4 : 8, color: m.userData.color || 0xd78bff, speed: 4, up: 2 });
+        if (m.userData.volley > 0) this.rainArrows(m.position.x, m.position.z, m.userData.volley);
         this.scene.remove(m);
-        m.geometry.dispose();
+        if (!m.geometry.userData.keep) m.geometry.dispose();
         m.material.dispose();
         this.projViews.delete(id);
       }
     }
+    this.stepRain();
+  }
+
+  /**
+   * (0.81.5) Arrows raining down where a Windrunner's volley lands: drawn only (the damage came with the
+   * arrow that carried them), all in one instanced mesh, so a sky full of them costs one draw.
+   */
+  rainArrows(x, z, n) {
+    if (!this.arrowRain) {
+      const N = 256;
+      const geo = new THREE.BoxGeometry(0.09, 0.09, 1.6);
+      geo.translate(0, 0, -0.8); // the tip at the origin, the shaft trailing behind
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+      const mesh = new THREE.InstancedMesh(geo, mat, N);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      this.arrowRain = { mesh, live: [], N, next: 0, m: new THREE.Matrix4(), q: new THREE.Quaternion(), v: new THREE.Vector3(), d: new THREE.Vector3(), s: new THREE.Vector3(1, 1, 1), z: new THREE.Vector3(0, 0, 1) };
+      const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+      for (let i = 0; i < N; i++) mesh.setMatrixAt(i, zero);
+    }
+    const R = this.arrowRain;
+    if (R.mesh.parent !== this.scene) this.scene.add(R.mesh);
+    const shown = Math.min(6, Math.max(1, Math.round(n)));
+    for (let i = 0; i < shown; i++) {
+      const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.1;
+      const ex = x + Math.cos(a) * r, ez = z + Math.sin(a) * r;
+      const from = Math.random() * Math.PI * 2;
+      R.live.push({ slot: R.next, t: -i * 0.035, dur: 0.2, sx: ex + Math.cos(from) * 2.2, sy: 7.5, sz: ez + Math.sin(from) * 2.2, ex, ez });
+      R.next = (R.next + 1) % R.N;
+    }
+    if (R.live.length > R.N) R.live.splice(0, R.live.length - R.N);
+  }
+  stepRain() {
+    const R = this.arrowRain;
+    if (!R || !R.live.length) return;
+    const dt = this.lastDt || 1 / 60;
+    const zero = R.m.clone().makeScale(0, 0, 0);
+    R.live = R.live.filter((a) => {
+      a.t += dt;
+      if (a.t < 0) {
+        R.mesh.setMatrixAt(a.slot, zero);
+        return true;
+      }
+      if (a.t >= a.dur) {
+        R.mesh.setMatrixAt(a.slot, zero);
+        if (Math.random() < 0.5) this.burst(a.ex, 0.2, a.ez, { count: 1, color: 0xfff0b0, speed: 1.5, up: 1.2, life: 0.25 });
+        return false;
+      }
+      const k = a.t / a.dur;
+      R.v.set(a.sx + (a.ex - a.sx) * k, a.sy * (1 - k) + 0.1, a.sz + (a.ez - a.sz) * k);
+      R.d.set(a.ex - a.sx, -a.sy, a.ez - a.sz).normalize();
+      R.q.setFromUnitVectors(R.z, R.d);
+      R.m.compose(R.v, R.q, R.s);
+      R.mesh.setMatrixAt(a.slot, R.m);
+      return true;
+    });
+    R.mesh.instanceMatrix.needsUpdate = true;
   }
 
   syncLoot(world) {
@@ -2525,6 +2592,7 @@ export class Renderer {
   }
 
   render(world, alpha, dt) {
+    this.lastDt = dt; // (0.81.5) for the arrow rain
     this.time += dt;
     const eform = eternalForm(world.player); // (0.76)
     if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec, eform) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec, eform);

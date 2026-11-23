@@ -44,7 +44,7 @@ const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
 // What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
 const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius', 'rare', 'remnant'];
 const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'mirrorT', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT', 'oldCls', 'ember', 'burnCap'];
-const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice', 'fx'];
+const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice', 'fx', 'volley']; // (0.81.5) volley: arrows folded into this one, rained down where it lands
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue', 'doom', 'pool', 'inner', 'poolKind', 'dominion', 'will']; // (0.68) dominion: amber online too (it was missing)
 const pack = (o, keys) => {
   const a = keys.map((k) => r2(o[k]));

@@ -1913,9 +1913,10 @@ export class World {
       p.quickShots--;
       gale = true;
     }
+    let mainShot = null; // (0.81.5) what Crosswind and Hurricane fold into
     if (b.shot) {
       const a = dAtan2(target.z - p.z, target.x - p.x);
-      this.projectiles.push({
+      this.projectiles.push(mainShot = {
         id: this.nextId++, owner: 'player', kind: b.shot, basic: true, gale, targetId: target.id, forceCrit, critBonus, pierce: gale || (critBonus > 0 && this.mods.steadyPierce) ? [] : null,
         x: p.x + dCos(a) * 0.7, z: p.z + dSin(a) * 0.7, px: p.x, pz: p.z,
         vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed,
@@ -1966,7 +1967,7 @@ export class World {
           // (0.81.4) a Windrunner's shadow looses everything her bow does, as one heavier arrow: Hurricane's
           // and Crosswind's extra arrows are folded into its damage, not flown (fewer arrows in the air)
           const more = (1 + this.windExtras()) * (gale ? p.quickMult || 1.25 : 1); // (and a Skirmish Step shot's strength)
-          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: more > 1 ? 0.4 : 0.3, dmg: dmg * m2.shadeEcho * more, parryable: false, reflected: false, life: 1.2, dead: false });
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: more > 1 ? 0.4 : 0.3, dmg: dmg * m2.shadeEcho * more, parryable: false, reflected: false, life: 1.2, dead: false, volley: more > 1.5 ? 2 : undefined });
         } else this.hitEnemy(target, dmg * m2.shadeEcho, { source: 'shade' });
         this.emit('shadowSlash', { x: sx, z: sz, tx: target.x, tz: target.z, veil: true });
       }
@@ -1987,14 +1988,11 @@ export class World {
       p.crossAcc = (p.crossAcc || 0) + (p.stats.as * p.stats.as) / 32;
       const n = Math.min(6, Math.floor(p.crossAcc));
       p.crossAcc -= n;
-      for (let i = 0; i < n; i++) {
-        const a3 = dAtan2(target.z - p.z, target.x - p.x) + (i % 2 ? 1 : -1) * (0.08 + 0.05 * (i >> 1));
-        this.projectiles.push({
-          id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: target.id, critBonus: 0, gust: true, cross: true,
-          x: p.x + dCos(a3) * 0.7, z: p.z + dSin(a3) * 0.7, px: p.x, pz: p.z,
-          vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed,
-          radius: 0.3, dmg: dmg * this.mods.crosswind, parryable: false, reflected: false, life: 1.2, dead: false,
-        });
+      // (0.81.5) folded into the arrow just loosed, not flown: they land with it, and the renderer rains
+      // them down on the target (dozens of arrows a second in the air were slowing the game)
+      if (n > 0 && mainShot) {
+        (mainShot.fold = mainShot.fold || []).push({ dmg: dmg * this.mods.crosswind * n, tails: n, gust: true });
+        mainShot.volley = (mainShot.volley || 0) + n;
       }
     }
     const hur = this.kit.r;
@@ -2006,9 +2004,13 @@ export class World {
       const reach = this.basicRange() + 1.5;
       const others = this.enemies.filter((e) => e !== target && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= reach + e.radius)
         .sort((a, c) => dist(a.x, a.z, p.x, p.z) - dist(c.x, c.z, p.x, p.z)).slice(0, n);
-      const aims = others.slice();
-      while (aims.length < n && !target.dead) aims.push(target);
+      const aims = others.slice(0, 2); // (0.81.5) at most two arcs in the air, at other enemies...
       const mult = Math.max(hur.extraMult, this.mods.hurricaneMult || 0) * (1 + (hur.rankMult || 0) * Math.max(0, (p.ranks.r || 1) - 1)) * (this.mods.hurricaneDmg || 1) * (oh && oh.extra ? oh.mult : 1);
+      const rest = n - aims.length; // ...and the rest land on the target with the arrow just loosed
+      if (rest > 0 && mainShot && !target.dead) {
+        (mainShot.fold = mainShot.fold || []).push({ dmg: dmg * mult * rest, tails: 0 });
+        mainShot.volley = (mainShot.volley || 0) + rest;
+      }
       aims.forEach((o, i) => {
         const side = i % 2 ? 1 : -1;
         const a2 = dAtan2(o.z - p.z, o.x - p.x) + side * (0.95 + 0.15 * (i >> 1)); // out wide first...
@@ -8344,8 +8346,9 @@ export class World {
     if (this.mods.bluetrim && p.hp > p.stats.maxHp * 0.7) dmg *= 1 + 0.18 * this.pot('bluetrim'); // Edric's Colours (0.61.5: 18% above 70%)
     if (opts.basic && !opts.noTail && this.mods.tailwind > 0 && (p.rushT > 0 || p.hurricaneT > 0 || this.galeAlways())) {
       // Tailwind (Windrunner): on-hit damage (before the crit roll since 0.43, so it crits too), and the next roll comes sooner.
-      dmg += p.stats.ad * this.mods.tailwind + 2 * p.level;
-      if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr);
+      const k = opts.tails ?? 1; // (0.81.5) a folded volley carries the Tailwind of every arrow in it
+      dmg += (p.stats.ad * this.mods.tailwind + 2 * p.level) * k;
+      if (p.cd.e > 0) p.cd.e = Math.max(0, p.cd.e - this.mods.tailwindCdr * k);
     }
     let crit = false;
     const chance = p.stats.crit + (opts.critBonus || 0);
@@ -9229,6 +9232,12 @@ export class World {
               if (pr.slot === 'q' && this.mods.qBurn > 0 && !e.dead) this.addBurn(e, this.mods.qBurn); // Everything Burns
               if (pr.basic && this.mods.basicBurn > 0 && !e.dead) this.addBurn(e, this.mods.basicBurn);
               this.hitEnemy(e, pr.dmg, { basic: !!pr.basic, noTail: !!pr.noTail, gale: !!pr.gale, source: pr.basic ? 'basic' : pr.slot, forceCrit: pr.forceCrit, critBonus: pr.critBonus || 0 });
+              if (pr.fold) {
+                // (0.81.5) the arrows folded into this one (Crosswind's, Hurricane's on the same target) land with
+                // it: each kind its own hit, its own crit roll, and its own Tailwind for every arrow in it
+                for (const f of pr.fold) if (!e.dead) this.hitEnemy(e, f.dmg, { basic: true, noTail: !f.tails, tails: f.tails || 0, gale: !!f.gust, source: 'basic', critBonus: 0 });
+                pr.fold = null;
+              }
               const m = this.mods;
               if (m.frostMax > 0 && !e.dead) {
                 // Hoarfrost (Frostbinder)

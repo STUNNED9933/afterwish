@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Two fixes: Wishborne points after All in, and auto-scrap turning itself off (0.75.5)
+
+- **Wishborne:** online, the panel now shows your points as soon as they are spent (after All in it
+  still said you had points left until you closed and opened it).
+- **Auto-scrap new gear no longer resets:** the timer for the "left on the ground, scrapped" message
+  had the same name as the setting and overwrote it a few seconds into play, the next time old loot was
+  scrapped; the next map change or save then dropped it. If yours shows Off, choose it once more.
+
 ### All in on a Wishborne stat, and Esc closes pop-ups (0.75.4)
 
 - **All in** beside each Wishborne stat puts every Wish point into it, after a check in the middle of

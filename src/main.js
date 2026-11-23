@@ -4297,6 +4297,7 @@ function start(hot = {}) {
         break;
       case 'wishSpent':
         talentBadge();
+        if (mode === 'talents') renderTalents(); // (0.75.5) online the points arrive after the click: show them
         break;
       case 'shieldBreak':
         hud.float(renderer, ev.x, 2.6, ev.z, 'Shield broken', 'word');

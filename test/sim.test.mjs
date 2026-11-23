@@ -5207,4 +5207,17 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 30; i++) { w.command({ type: 'enchant', slot: 'weapon', key: 'crit' }); w.runCommands(); if (I.lineTier(e, 'crit') === 7) { saw = true; break; } }
   check('...and the reroll pity on Eternal gear lands an Eternal-tier line within 30', saw, `${e.pity}`);
 }
+
+// --- 0.75.5: the auto-scrap setting survives ground loot being scrapped (a timer had the same name) ------
+{
+  const { geared } = await import('./balance.mjs');
+  const I = await import('../src/sim/items.js');
+  const w = new World({ seed: 13, mode: 'explore', cls: 'mage', save: geared('mage', 100, 5) });
+  const p = w.player;
+  w.command({ type: 'autoScrap', to: 4 }); w.runCommands();
+  for (let i = 0; i < 400; i++) w.step(CONFIG.TICK); // past 4 s on the clock: the old timer took over then
+  for (let i = 0; i < 30; i++) w.loot.push({ id: w.nextId++, x: p.x + 40, z: p.z + 40, item: I.rollItem(() => 0.3, 1, { weights: I.RARITIES.map((_, j) => (j === 1 ? 1 : 0)) }), age: 999, magnet: false, owner: w.cur.pid });
+  for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
+  check('Auto-scrap setting (0.75.5): left alone when old ground loot is scrapped, and still saved', p.autoScrapAt === 4 && w.toSave().autoScrapAt === 4, `${p.autoScrapAt}`);
+}
 process.exit(failed ? 1 : 0);

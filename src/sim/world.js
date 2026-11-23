@@ -6089,9 +6089,9 @@ export class World {
     p.autoScrapN = (p.autoScrapN || 0) + go.size;
     p.autoScrapS = (p.autoScrapS || 0) + scrap;
     p.autoScrapD = (p.autoScrapD || 0) + dust;
-    if (!(p.autoScrapAt > this.time)) {
+    if (!(p.groundScrapTold > this.time)) {
       // told in one line every few seconds, not a line a piece
-      p.autoScrapAt = this.time + 5;
+      p.groundScrapTold = this.time + 5; // (0.75.5: was autoScrapAt, the same name as the auto-scrap setting, which it overwrote)
       this.emit('autoScrap', { count: p.autoScrapN, scrap: p.autoScrapS, dust: p.autoScrapD });
       p.autoScrapN = p.autoScrapS = p.autoScrapD = 0;
     }

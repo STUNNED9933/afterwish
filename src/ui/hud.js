@@ -17,7 +17,7 @@ import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
-import { SETTLERS, HALLS, wishGoal } from '../sim/wishkeep.js';
+import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** (0.80.1) Which groups of the tracker are folded, kept in this browser. */
@@ -582,6 +582,7 @@ export class Hud {
     this.updateEnemyBars(world, renderer);
     this.updateAllies(world, renderer);
     this.updatePortalLabels(world, renderer);
+    this.updateMiracles(world);
 
     if (this.hintTimer > 0) {
       this.hintTimer -= dt;
@@ -1060,7 +1061,14 @@ export class Hud {
   /** Name, level and health over each party member. */
   updateAllies(world, renderer) {
     if (!this.allyTags) this.allyTags = new Map();
-    const list = world.mode === 'explore' && world.allies ? world.allies() : [];
+    const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
+    // (0.81) the Wishkeep's heroes, and (when hurt or in a Tide) its buildings, with the same plates
+    for (const tr of world.troops || []) list.push({ pid: 'troop:' + tr.id, name: tr.name, level: `level ${tr.lvl}`, dead: !!tr.dead, hp: tr.hp, maxHp: tr.maxHp, x: tr.x, z: tr.z, troop: true });
+    const night = world.tide && world.tide.state === 'on';
+    for (const b of world.keepBuilds || []) {
+      if (!night && b.hp >= b.max) continue;
+      list.push({ pid: 'build:' + b.id, name: b.id === 'hearth' ? 'The Hearth' : (HALLS[b.id] && HALLS[b.id].name) || b.id, level: b.hp <= 0 ? 'wrecked' : b.wardT > 0 ? 'warded' : `${Math.ceil((b.hp / b.max) * 100)}%`, dead: b.hp <= 0, hp: b.hp, maxHp: b.max, x: b.x, z: b.z, build: true, y: b.id === 'hearth' ? 4.2 : 5.6 });
+    }
     const seen = new Set();
     for (const a of list) {
       let t = this.allyTags.get(a.pid);
@@ -1068,19 +1076,21 @@ export class Hud {
         const el = document.createElement('div');
         el.className = 'ally-tag';
         el.innerHTML = '<b></b><div class="abar"><div class="afill"></div></div>';
+        if (a.troop) el.classList.add('troop');
+        if (a.build) el.classList.add('build');
         this.worldUi.appendChild(el);
         t = { el, name: el.firstChild, fill: el.querySelector('.afill'), key: '' };
         this.allyTags.set(a.pid, t);
       }
       seen.add(a.pid);
-      const key = `${a.name} · ${a.level}${a.dead ? ' · down' : ''}`;
+      const key = `${a.name} · ${a.level}${a.dead && !a.build ? ' · down' : ''}`;
       if (t.key !== key) {
         t.key = key;
         t.name.textContent = key;
         t.el.classList.toggle('down', a.dead);
       }
       t.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, a.hp / a.maxHp))})`;
-      const s = renderer.project(a.x, 2.9, a.z);
+      const s = renderer.project(a.x, a.y || 2.9, a.z);
       t.el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
     }
     for (const [pid, t] of this.allyTags) {
@@ -1088,6 +1098,23 @@ export class Hud {
       t.el.remove();
       this.allyTags.delete(pid);
     }
+  }
+
+  /** (0.81) In a Tide, the god's miracles over the hero's skills: what each costs, and when it is ready. */
+  updateMiracles(world) {
+    const el = $('miracles');
+    const t = world.tide;
+    const on = !!(t && t.state === 'on' && world.map && world.map.id === 'wishkeep');
+    el.classList.toggle('hidden', !on);
+    if (!on) return (this.mirKey = null);
+    const faith = world.player.keep ? world.player.keep.faith : 0;
+    const key = MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}:${faith >= MIRACLES[m].faith}`).join('|') + faith;
+    if (key === this.mirKey) return;
+    this.mirKey = key;
+    el.innerHTML = MIRACLE_IDS.map((m) => {
+      const M = MIRACLES[m], cd = (t.mcd && t.mcd[m]) || 0;
+      return `<div class="mir${cd > 0 ? ' cool' : ''}${faith < M.faith ? ' poor' : ''}" title="${M.desc}"><kbd>${M.key.toUpperCase()}</kbd> <b>${M.name}</b>${M.faith} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / M.cd) * 100) : 100}%"></i></div>`;
+    }).join('');
   }
 
   /** "Room K7QXM · 3 players", top of the screen, while in a room. */

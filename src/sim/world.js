@@ -95,10 +95,10 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide']; // (0.80)
+const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, FOES, troopStats, buildMax, BUILD_IDS } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -193,6 +193,8 @@ export class World {
     this.basic = CLASSES[this.cls].basic;
     this.zones = [];
     this.shadows = []; // Shadowdancer shadows: { id, pid, src, x, z, t, dur, facing, cls }
+    this.troops = []; // (0.81) the Wishkeep's heroes, while you are there
+    this.keepBuilds = []; // (0.81) ... and its buildings
     this.walls = []; // Frostbinder Rimewalls: { id, pid, x, z, rot, hw, hd, t, dur, dmg, stun, ob }
 
     const save = opts.save || null;
@@ -861,6 +863,15 @@ export class World {
       else if (c.type === 'keepTier') this.keepTier();
       else if (c.type === 'keepHall') this.keepHall(c.cls);
       else if (c.type === 'keepTide') this.keepTideStart();
+      else if (c.type === 'keepRecruit') this.keepRecruit(c.cls); // (0.81) the keep's heroes and halls
+      else if (c.type === 'keepTrain') this.keepTrain(c.id);
+      else if (c.type === 'keepArm') this.keepArm(c.id);
+      else if (c.type === 'keepLearn') this.keepLearn(c.id, c.skill);
+      else if (c.type === 'keepDismiss') this.keepDismiss(c.id);
+      else if (c.type === 'keepBless') this.keepBless(c.id);
+      else if (c.type === 'keepTrade') this.keepTrade(c.dir);
+      else if (c.type === 'keepRepair') this.keepRepair();
+      else if (c.type === 'keepClock') this.keepClock(c.now);
       else if (c.type === 'swapBounty') this.swapBounty(c.i);
       else if (c.type === 'craftImmortal') this.craftImmortal(c.slot);
       else if (c.type === 'summonRemnant') this.summonRemnant();
@@ -1899,6 +1910,7 @@ export class World {
    * (see sim/classes.js); the numbers come from the class kit.
    */
   castAbility(slot, x, z) {
+    if (this.tide && this.tide.state === 'on') return this.miracle(slot, x, z); // (0.81)
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
@@ -3049,6 +3061,12 @@ export class World {
     if (p.castLock > 0) return;
 
     // Targeting
+    if (this.tide && this.tide.state === 'on') {
+      // (0.81) in a Tide the hero is the keep's god: miracles (Q, W, E), never a sword
+      p.targetId = null;
+      p.attackMove = null;
+      p.autoAcquire = false;
+    }
     let target = p.targetId != null ? this.enemyById(p.targetId) : null;
     if (p.targetId != null && !target) p.targetId = null;
     if (!target && p.attackMove) {
@@ -5326,13 +5344,22 @@ export class World {
     if (p.keep.tier >= 3 && !p.glows.includes('wishkeep')) this.unlockGlow('wishkeep');
   }
 
+  /** (0.81) After the map is in place: the keep's heroes at their posts and its buildings as they were left. */
+  keepArrive() {
+    this.troops = [];
+    this.keepBuilds = [];
+    if (!this.inKeep()) return;
+    this.keepTroopsUp();
+    this.keepBuildsUp();
+  }
+
   /** Faith answered wishes bring, times this: the Observatory, the Altar's relics and the settlers' levels. */
   keepMult() {
     const k = this.player.keep;
     if (!k) return 1;
     let lv = 0;
     for (const id in k.settlers) lv += settlerLevel(k.settlers[id]);
-    return 1 + 0.1 * (k.halls.mage || 0) + KEEP.faithPerRelic * this.keepRecord().relics.length + KEEP.faithPerSettlerLvl * lv;
+    return 1 + KEEP.faithPerRelic * this.keepRecord().relics.length + KEEP.faithPerSettlerLvl * lv;
   }
 
   keepFill() {
@@ -5366,14 +5393,14 @@ export class World {
       w.map = maps[Math.floor(rng() * maps.length)];
       w.mapName = MAPS[w.map].name;
       const [lo, hi] = KEEP.killNeed;
-      w.need = Math.max(5, Math.round((lo + Math.floor(rng() * (hi - lo + 1))) * (1 - 0.15 * (k.halls.archer || 0))));
+      w.need = Math.max(5, Math.round((lo + Math.floor(rng() * (hi - lo + 1)))));
     } else if (kind === 'boss') {
       w.boss = bosses[Math.floor(rng() * bosses.length)];
       w.bossName = ENEMIES[w.boss].name;
     } else if (kind === 'offer') {
       const whats = Object.keys(KEEP.offers).filter((x) => !on.some((o) => o.kind === 'offer' && o.what === x)); // (0.80.1) never the same offering twice
       w.what = (whats.length ? whats : Object.keys(KEEP.offers))[Math.floor(rng() * (whats.length || Object.keys(KEEP.offers).length))];
-      w.need = Math.max(1, Math.round(KEEP.offers[w.what] * (1 - 0.15 * (k.halls.rogue || 0))));
+      w.need = Math.max(1, Math.round(KEEP.offers[w.what]));
     } else if (kind === 'tell') w.ch = chapter.id;
     const base = KEEP.reward[kind];
     w.reward = { faith: Math.round(base[0] * (0.85 + rng() * 0.3)), stone: base[1] };
@@ -5471,14 +5498,202 @@ export class World {
     this.emit('keepHallUp', { name: HALLS[cls].name, level: lvl + 1 });
   }
 
-  /** Call the night: a Tide, three waves of the Unmade for the Hearth. */
+  // ---------------------------------------------------------------- (0.81) the keep's heroes and halls
+  /** Is this hall standing and raised (level 1+), so its work can be used? */
+  hallWorks(cls) {
+    const k = this.player.keep;
+    return !!k && (k.halls[cls] || 0) >= 1 && this.keepRecord().halls.includes(cls) && !this.wrecked(cls);
+  }
+  wrecked(id) {
+    const k = this.player.keep;
+    return !!k && k.builds[id] != null && k.builds[id] <= 0;
+  }
+  /** Pay from the keep, or say what is short. True if paid. */
+  keepPay(cost, what) {
+    const k = this.player.keep;
+    if (!k || k.faith < (cost.faith || 0) || k.stone < (cost.stone || 0)) {
+      this.emit('keepShort', { what: what || 'faith', need: cost.faith || 0, have: k ? k.faith : 0, stone: cost.stone || 0 });
+      return false;
+    }
+    k.faith -= cost.faith || 0;
+    k.stone -= cost.stone || 0;
+    return true;
+  }
+  inKeep() {
+    return !!(this.map && this.map.id === KEEP.map && this.player.keep);
+  }
+
+  /** Raise a new hero (Faith), of a class whose hall is open: the keep holds few, and good. */
+  keepRecruit(cls) {
+    const k = this.player.keep;
+    if (!this.inKeep() || !TROOPS[cls] || (this.tide && this.tide.state === 'on')) return;
+    if (!this.keepRecord().halls.includes(cls)) return this.emit('keepHallShut', { name: HALLS[cls].name, cls });
+    if (k.troops.length >= KEEP.heroCap[k.tier]) return this.emit('keepFull', { cap: KEEP.heroCap[k.tier] });
+    if (!this.keepPay(KEEP.recruit(k.troops.length))) return;
+    k.troopN++;
+    const names = TROOP_NAMES[cls];
+    const used = new Set(k.troops.map((t) => t.name));
+    const name = names.find((n) => !used.has(n)) || names[k.troopN % names.length];
+    const t = { id: k.troopN, cls, name, lvl: 1, gear: 0, skill: null };
+    k.troops.push(t);
+    this.keepTroopsUp();
+    this.emit('keepRecruited', { name, cls });
+  }
+  keepDismiss(id) {
+    const k = this.player.keep;
+    if (!this.inKeep() || (this.tide && this.tide.state === 'on')) return;
+    const i = k.troops.findIndex((t) => t.id === id);
+    if (i < 0) return;
+    const [t] = k.troops.splice(i, 1);
+    this.keepTroopsUp();
+    this.emit('keepDismissed', { name: t.name });
+  }
+  keepTroop(id) {
+    const k = this.player.keep;
+    return k ? k.troops.find((t) => t.id === id) : null;
+  }
+  /** Train a hero a level, at the Lodge (its level sets how far). */
+  keepTrain(id) {
+    const k = this.player.keep, t = this.keepTroop(id);
+    if (!this.inKeep() || !t) return;
+    if (!this.hallWorks('archer')) return this.emit('keepHallShut', { name: HALLS.archer.name, cls: 'archer', down: this.wrecked('archer') });
+    if (t.lvl >= KEEP.trainMax(k.halls.archer)) return this.emit('keepMaxed', { name: t.name, what: 'level' });
+    if (!this.keepPay(KEEP.train(t.lvl))) return;
+    t.lvl++;
+    this.keepTroopsUp();
+    this.emit('keepTrained', { name: t.name, lvl: t.lvl });
+  }
+  /** Arm a hero a point of gear, at the Bastion. */
+  keepArm(id) {
+    const k = this.player.keep, t = this.keepTroop(id);
+    if (!this.inKeep() || !t) return;
+    if (!this.hallWorks('warrior')) return this.emit('keepHallShut', { name: HALLS.warrior.name, cls: 'warrior', down: this.wrecked('warrior') });
+    if (t.gear >= KEEP.armMax(k.halls.warrior)) return this.emit('keepMaxed', { name: t.name, what: 'gear' });
+    if (!this.keepPay(KEEP.arm(t.gear))) return;
+    t.gear++;
+    this.keepTroopsUp();
+    this.emit('keepArmed', { name: t.name, gear: t.gear });
+  }
+  /** Teach a hero a skill: physical at the Lodge, magic at the Observatory, up to the hall's rank. */
+  keepLearn(id, skill) {
+    const k = this.player.keep, t = this.keepTroop(id), S = SKILLS[skill];
+    if (!this.inKeep() || !t || !S || t.skill === skill) return;
+    const hall = S.school === 'phys' ? 'archer' : 'mage';
+    if (!this.hallWorks(hall)) return this.emit('keepHallShut', { name: HALLS[hall].name, cls: hall, down: this.wrecked(hall) });
+    if ((k.halls[hall] || 0) < S.rank) return this.emit('keepMaxed', { name: S.name, what: 'rank', rank: S.rank, hall: HALLS[hall].name });
+    if (!this.keepPay(KEEP.learn)) return;
+    t.skill = skill;
+    this.keepTroopsUp();
+    this.emit('keepLearned', { name: t.name, skill: S.name });
+  }
+  /** A blessing for the next Tide, at the Observatory. */
+  keepBless(id) {
+    const k = this.player.keep, B = BLESSINGS[id];
+    if (!this.inKeep() || !B || k.blessings.includes(id) || (this.tide && this.tide.state === 'on')) return;
+    if (!this.hallWorks('mage')) return this.emit('keepHallShut', { name: HALLS.mage.name, cls: 'mage', down: this.wrecked('mage') });
+    if ((k.halls.mage || 0) < B.rank) return this.emit('keepMaxed', { name: B.name, what: 'rank', rank: B.rank, hall: HALLS.mage.name });
+    if (!this.keepPay({ faith: B.faith })) return;
+    k.blessings.push(id);
+    this.emit('keepBlessed', { name: B.name });
+  }
+  /** Trade at the Market: 10 Wishstone for Faith, or 100 Faith for Wishstone. */
+  keepTrade(dir) {
+    const k = this.player.keep;
+    if (!this.inKeep()) return;
+    if (!this.hallWorks('rogue')) return this.emit('keepHallShut', { name: HALLS.rogue.name, cls: 'rogue', down: this.wrecked('rogue') });
+    const T = KEEP.trade, L = k.halls.rogue;
+    if (dir === 'sell') {
+      if (!this.keepPay({ stone: 10 }, 'stone')) return;
+      k.faith += T.stoneFor(L);
+    } else {
+      if (!this.keepPay({ faith: T.faithPer })) return;
+      k.stone += T.stoneOut(L);
+    }
+    this.emit('keepTraded', { dir });
+  }
+  /** Mend every damaged building, with Wishstone (one mends KEEP.repairPer). */
+  keepRepair() {
+    const k = this.player.keep;
+    if (!this.inKeep() || (this.tide && this.tide.state === 'on')) return;
+    let need = 0;
+    for (const b of BUILD_IDS) if (k.builds[b] != null) need += buildMax(b, k) - k.builds[b];
+    const stone = Math.ceil(need / KEEP.repairPer);
+    if (!stone) return;
+    if (!this.keepPay({ stone }, 'stone')) return;
+    k.builds = {};
+    this.keepBuildsUp();
+    this.emit('keepRepaired', { stone });
+  }
+  /**
+   * (0.81) Faith that came in while away: the host gives the time (the server its own clock), banked up
+   * to produce.capHours. The first call only starts the clock.
+   */
+  keepClock(now) {
+    const k = this.player.keep;
+    now = Math.floor(Number(now) || 0);
+    if (!k || now <= 0) return;
+    if (k.last > 0 && now > k.last) {
+      const P = KEEP.produce;
+      const hours = Math.min(P.capHours, (now - k.last) / 3.6e6);
+      const rate = P.base + (this.hallWorks('rogue') ? P.perMarket * k.halls.rogue : 0);
+      const faith = Math.floor(rate * hours);
+      if (faith >= 1) {
+        k.faith += faith;
+        this.emit('keepProduced', { faith, hours: Math.round(hours * 10) / 10, rate });
+      }
+      if (faith < 1 && hours < P.capHours) return; // (not yet a whole Faith: keep counting from the old time)
+    }
+    k.last = now;
+  }
+
+  /** The keep's buildings as the world uses them (where, how big, how hurt). */
+  keepBuildsUp() {
+    const k = this.player.keep;
+    if (!this.inKeep()) return (this.keepBuilds = []);
+    const at = { hearth: { x: 0, z: 0, r: 2.2 } };
+    for (const o of this.obstacles) if (o.kind === 'house' && o.hall) at[o.hall] = { x: o.x, z: o.z, r: 3.4 };
+    this.keepBuilds = BUILD_IDS.filter((b) => at[b]).map((b) => {
+      const max = buildMax(b, k);
+      return { id: b, x: at[b].x, z: at[b].z, r: at[b].r, max, hp: k.builds[b] != null ? Math.min(max, k.builds[b]) : max, wardT: 0 };
+    });
+  }
+  /** The keep's heroes in the world, from the keep (keeping where they stand and how hurt they are). */
+  keepTroopsUp() {
+    const k = this.player.keep;
+    if (!this.inKeep()) return (this.troops = []);
+    const old = new Map((this.troops || []).map((t) => [t.id, t]));
+    const n = k.troops.length;
+    this.troops = k.troops.map((src, i) => {
+      const st = troopStats(src);
+      const a = (i / Math.max(1, n)) * Math.PI * 2 + 0.4;
+      const post = { x: dCos(a) * 5.2, z: dSin(a) * 5.2 };
+      const o = old.get(src.id);
+      const t = o || { id: src.id, x: post.x, z: post.z, facing: a + Math.PI, hp: st.hp, atkT: 0.5, skillT: 2, dead: false, swing: 0 };
+      const frac = o ? o.hp / o.maxHp : 1;
+      Object.assign(t, { cls: src.cls, name: src.name, lvl: src.lvl, gear: src.gear, skill: src.skill, post, maxHp: st.hp, dmg: st.dmg, cd: st.cd, range: st.range, speed: st.speed, splash: st.splash || 0, crit: st.crit || 0 });
+      t.hp = Math.max(t.dead ? 0 : 1, Math.round(st.hp * frac));
+      t.px = t.x;
+      t.pz = t.z;
+      return t;
+    });
+  }
+
+  /** Call the night: a Tide, three waves of the Unmade for the keep's buildings. Its heroes fight; its god works miracles. */
   keepTideStart() {
     const k = this.player.keep;
-    if (!k || !this.map || this.map.id !== KEEP.map || (this.tide && this.tide.state === 'on') || this.player.dead) return;
+    if (!this.inKeep() || (this.tide && this.tide.state === 'on') || this.player.dead) return;
+    if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: 0, have: 0 });
     const T = KEEP.tide;
-    const warmthMax = T.warmth + T.perBastion * (k.halls.warrior || 0) + T.perEcho * this.keepRecord().echoes.length;
-    this.tide = { state: 'on', wave: 0, next: 2.5, warmth: warmthMax, warmthMax, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973) };
-    this.emit('tideStart', { waves: T.waves, warmth: warmthMax });
+    this.keepTroopsUp();
+    this.keepBuildsUp();
+    const rec = this.keepRecord();
+    this.tide = {
+      state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
+      night: T.night(k.tier, k.tides), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
+      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0,
+    };
+    k.blessings = []; // (they are for this night)
+    this.emit('tideStart', { waves: T.waves, heroes: this.troops.length, bless: this.tide.bless });
   }
 
   stepTide(dt) {
@@ -5488,7 +5703,11 @@ export class World {
       if (t.after > 10) this.tide = null;
       return;
     }
-    if (t.warmth <= 0) return this.tideEnd(false);
+    for (const c in t.mcd) if (t.mcd[c] > 0) t.mcd[c] = Math.max(0, t.mcd[c] - dt);
+    for (const b of this.keepBuilds || []) if (b.wardT > 0) b.wardT -= dt;
+    this.stepTroops(dt);
+    const hearth = (this.keepBuilds || []).find((b) => b.id === 'hearth');
+    if (hearth && hearth.hp <= 0) return this.tideEnd(false);
     if (this.enemies.some((e) => e.tide && !e.dead)) return;
     if (t.wave >= KEEP.tide.waves) return this.tideEnd(true);
     t.next -= dt;
@@ -5500,19 +5719,22 @@ export class World {
     t.wave++;
     t.next = T.gap;
     const rng = this.streamRng('tide', t.seed * 13 + t.wave);
-    const n = T.perWave(k.tier);
+    const n = T.perWave(k.tier) + (t.wave === T.waves ? 2 : 0);
     const gates = this.map.gates || [{ x: this.radius - 4, z: 0 }];
-    // each gate's enemies go for the keep's fire nearest it (a brazier round the plaza): four places to be at once
-    const halls = this.obstacles.filter((o) => o.kind === 'brazier');
-    const near = (g) => halls.reduce((b, h) => (!b || dist(h.x, h.z, g.x, g.z) < dist(b.x, b.z, g.x, g.z) ? h : b), null) || { x: 0, z: 0 };
     for (let i = 0; i < n; i++) {
       const g = gates[i % gates.length];
-      const e = this.spawnEnemy(T.roster[Math.floor(rng() * T.roster.length)], { x: g.x, z: g.z, level: T.level });
-      const at = near(g);
+      const type = T.roster[Math.floor(rng() * T.roster.length)];
+      const F = FOES[type];
+      const e = this.spawnEnemy(type, { x: g.x, z: g.z, level: T.level });
       e.home = null;
       e.aggro = true;
       e.tide = true;
-      e.tideAt = { x: at.x, z: at.z };
+      e.noLoot = true; // (the night pays in Faith and Wishstone when it is held, not in loot: no farming the dark)
+      e.maxHp = e.hp = Math.round(F.hp * t.night);
+      e.tdmg = F.dmg * t.night;
+      e.tAtk = 0.6 + rng() * 0.6;
+      e.tTarget = null;
+      e.tRe = 0;
     }
     this.emit('tideWave', { wave: t.wave, of: T.waves, n });
   }
@@ -5522,39 +5744,246 @@ export class World {
     t.state = won ? 'won' : 'lost';
     t.after = 0;
     this.enemies = this.enemies.filter((e) => !e.tide || e.dead); // (on a loss, the rest melt back into the dark)
-    if (!won) return this.emit('tideEnd', { won: false });
+    // what the buildings took stays until it is mended (at the Hearth, with Wishstone)
+    for (const b of this.keepBuilds || []) {
+      if (b.hp >= b.max) delete k.builds[b.id];
+      else k.builds[b.id] = Math.max(0, Math.round(b.hp));
+    }
+    // the fallen get up at morning
+    for (const tr of this.troops || []) {
+      tr.dead = false;
+      tr.hp = tr.maxHp;
+    }
+    const wrecked = (this.keepBuilds || []).filter((b) => b.hp <= 0).map((b) => (b.id === 'hearth' ? 'the Hearth' : HALLS[b.id].name));
+    if (!won) return this.emit('tideEnd', { won: false, wrecked });
     k.tides++;
     const faith = Math.round((40 + 10 * k.tier) * this.keepMult());
     const stone = 6 + 2 * k.tier;
     k.faith += faith;
     k.stone += stone;
     this.keepEvent('tide');
-    this.emit('tideEnd', { won: true, faith, stone, warmth: Math.ceil(t.warmth), of: t.warmthMax });
+    this.emit('tideEnd', { won: true, faith, stone, wrecked });
   }
 
-  /** A Tide's enemy, when no hero is near it: it goes for the Hearth, and takes its warmth. True if it was moved here. */
+  /** Damage to a building (a ward stops it). */
+  hurtBuild(b, dmg, from) {
+    if (b.hp <= 0 || b.wardT > 0) return;
+    b.hp = Math.max(0, b.hp - dmg);
+    this.emit('buildHit', { id: b.id, x: b.x, z: b.z, hp: Math.round(b.hp), max: b.max, fx: from ? from.x : b.x, fz: from ? from.z : b.z });
+    if (b.hp <= 0) this.emit('buildWrecked', { id: b.id, x: b.x, z: b.z, name: b.id === 'hearth' ? 'The Hearth' : HALLS[b.id].name });
+  }
+
+  /** A Tide's enemy: the nearest of the keep's heroes if one is close, else the nearest standing building. */
   stepTideFoe(e, dt) {
-    if (e.state !== 'chase' || !this.tide || this.tide.state !== 'on') return false;
+    if (e.state === 'spawn') {
+      e.t -= dt;
+      if (e.t <= 0) e.state = 'chase';
+      return;
+    }
+    if (!this.tide || this.tide.state !== 'on') return;
+    const F = FOES[e.type] || FOES.hush;
     const T = KEEP.tide;
-    if (e.hitAt != null && this.time - e.hitAt < T.aggro) return false; // struck by a hero: it turns on them for a while
-    const at = e.tideAt || { x: 0, z: 0 };
-    const dx = at.x - e.x, dz = at.z - e.z;
+    e.tRe -= dt;
+    if (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead) {
+      e.tRe = 0.5;
+      let best = null, bd = T.engage;
+      for (const tr of this.troops) {
+        if (tr.dead) continue;
+        const d = dist(tr.x, tr.z, e.x, e.z);
+        if (d < bd) [best, bd] = [tr, d];
+      }
+      if (!best) {
+        bd = 1e9;
+        for (const b of this.keepBuilds || []) {
+          if (b.hp <= 0) continue;
+          const d = dist(b.x, b.z, e.x, e.z) - b.r;
+          if (d < bd) [best, bd] = [b, d];
+        }
+      }
+      e.tTarget = best;
+    }
+    const tg = e.tTarget;
+    if (!tg) return;
+    const isB = tg.max != null && tg.r != null && tg.hp != null && !tg.cls;
+    const reach = F.range + e.radius + (isB ? tg.r : 0.4);
+    const dx = tg.x - e.x, dz = tg.z - e.z;
     const d = dHypot(dx, dz) || 0.001;
-    if (d > T.reach + e.radius) {
-      const sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1);
+    e.facing = turnToward(e.facing, dAtan2(dz, dx), 8 * dt);
+    if (d > reach) {
+      const sp = F.speed * (e.slowT > 0 ? 1 - e.slow : 1);
       e.x += (dx / d) * sp * dt;
       e.z += (dz / d) * sp * dt;
       e.moving = true;
-      e.facing = turnToward(e.facing, dAtan2(dz, dx), 7 * dt);
-    } else {
-      e.biteT = (e.biteT ?? 0.4) - dt;
-      if (e.biteT <= 0) {
-        e.biteT = T.every;
-        this.tide.warmth = Math.max(0, this.tide.warmth - 1);
-        this.emit('hearthBite', { x: e.x, z: e.z, warmth: this.tide.warmth, of: this.tide.warmthMax });
+      this.pushOut(e, e.radius);
+      return;
+    }
+    e.tAtk -= dt;
+    if (e.tAtk > 0) return;
+    e.tAtk = F.cd;
+    e.state = 'chase';
+    this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
+    if (isB) this.hurtBuild(tg, e.tdmg * (F.siege || 1), e);
+    else {
+      const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
+      tg.hp -= e.tdmg * stone;
+      tg.hurtT = 0.25;
+      if (tg.hp <= 0) {
+        tg.hp = 0;
+        tg.dead = true;
+        this.emit('troopFall', { id: tg.id, name: tg.name, x: tg.x, z: tg.z });
       }
     }
-    return true;
+  }
+
+  /** The keep's heroes: to the nearest enemy and at it, their skills when they are ready; back to their posts after. */
+  stepTroops(dt) {
+    const t = this.tide;
+    const swift = t.bless.includes('swift') ? 1.3 : 1;
+    const fury = (t.bless.includes('fury') ? 1.3 : 1) * t.echo;
+    const foes = this.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn');
+    for (const tr of this.troops) {
+      tr.px = tr.x;
+      tr.pz = tr.z;
+      tr.moving = false;
+      if (tr.hurtT > 0) tr.hurtT -= dt;
+      if (tr.dead) continue;
+      tr.atkT -= dt * swift;
+      tr.skillT -= dt;
+      if (tr.skill && tr.skillT <= 0 && foes.length && this.troopSkill(tr, foes, fury)) tr.skillT = SKILLS[tr.skill].cd;
+      let best = null, bd = 1e9;
+      for (const e of foes) {
+        const d = dist(e.x, e.z, tr.x, tr.z);
+        if (d < bd) [best, bd] = [e, d];
+      }
+      const goal = best || tr.post;
+      const reach = best ? tr.range + best.radius : 0.3;
+      const dx = goal.x - tr.x, dz = goal.z - tr.z;
+      const d = dHypot(dx, dz) || 0.001;
+      if (d > 0.05) tr.facing = turnToward(tr.facing, dAtan2(dz, dx), 9 * dt);
+      if (d > reach) {
+        const step = Math.min(d - reach + 0.01, tr.speed * swift * dt);
+        tr.x += (dx / d) * step;
+        tr.z += (dz / d) * step;
+        tr.moving = true;
+        this.pushOut(tr, 0.5);
+        continue;
+      }
+      if (!best || tr.atkT > 0) continue;
+      tr.atkT = tr.cd;
+      let dmg = tr.dmg * fury;
+      const crit = tr.crit && this.rng() < tr.crit;
+      if (crit) dmg *= 2;
+      this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: best.x, tz: best.z, dir: tr.facing, ranged: tr.range > 3 });
+      this.troopStrike(best, dmg, crit);
+      if (tr.splash) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= tr.splash) this.troopStrike(o, dmg * 0.5, false);
+    }
+  }
+
+  /** One of the keep's heroes hits an enemy of the Tide (its own numbers). */
+  troopStrike(e, dmg, crit) {
+    if (e.dead) return;
+    dmg = Math.max(1, Math.round(dmg));
+    e.hp -= dmg;
+    e.hitFlash = 0.12;
+    this.emit('damage', { who: 'enemy', id: e.id, x: e.x, z: e.z, amount: dmg, crit, troop: true });
+    if (e.hp <= 0) this.killEnemy(e, 'troop');
+  }
+
+  /** A hero's skill, if there is a reason to use it now. True if used. */
+  troopSkill(tr, foes, fury) {
+    const S = SKILLS[tr.skill];
+    const near = (r, x = tr.x, z = tr.z) => foes.filter((e) => !e.dead && dist(e.x, e.z, x, z) <= r + e.radius);
+    let used = false;
+    if (tr.skill === 'cleave') {
+      const hit = near(2.8);
+      if (hit.length) for (const e of hit) this.troopStrike(e, tr.dmg * 2 * fury, false), (used = true);
+    } else if (tr.skill === 'volley') {
+      const hit = foes.filter((e) => !e.dead).sort((a, b) => dist(a.x, a.z, tr.x, tr.z) - dist(b.x, b.z, tr.x, tr.z)).slice(0, 3).filter((e) => dist(e.x, e.z, tr.x, tr.z) <= 11);
+      for (const e of hit) {
+        this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: e.x, tz: e.z, dir: tr.facing, ranged: true, skill: 'volley' });
+        this.troopStrike(e, tr.dmg * 1.6 * fury, false);
+        used = true;
+      }
+    } else if (tr.skill === 'lunge') {
+      let best = null, bd = 1e9;
+      for (const e of foes) {
+        if (e.dead || !e.tTarget || e.tTarget.cls) continue; // (one going for a building)
+        const d = dist(e.x, e.z, tr.x, tr.z);
+        if (d < bd && d < 16) [best, bd] = [e, d];
+      }
+      if (best) {
+        const a = dAtan2(tr.z - best.z, tr.x - best.x);
+        tr.x = best.x + dCos(a) * (best.radius + 0.9);
+        tr.z = best.z + dSin(a) * (best.radius + 0.9);
+        this.pushOut(tr, 0.5);
+        this.troopStrike(best, tr.dmg * 4 * fury, true);
+        used = true;
+      }
+    } else if (tr.skill === 'fireball') {
+      let best = null, bn = 0;
+      for (const e of foes) {
+        if (e.dead || dist(e.x, e.z, tr.x, tr.z) > 11) continue;
+        const n = near(2.5, e.x, e.z).length;
+        if (n > bn) [best, bn] = [e, n];
+      }
+      if (best) {
+        for (const e of near(2.5, best.x, best.z)) this.troopStrike(e, tr.dmg * 2.5 * fury, false);
+        used = true;
+        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: best.x, tz: best.z });
+        return true;
+      }
+    } else if (tr.skill === 'mend') {
+      const hurt = this.troops.filter((o) => !o.dead && o.hp < o.maxHp * 0.75 && dist(o.x, o.z, tr.x, tr.z) <= 10).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (hurt) {
+        hurt.hp = Math.min(hurt.maxHp, hurt.hp + hurt.maxHp * 0.4);
+        used = true;
+        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: hurt.x, tz: hurt.z });
+        return true;
+      }
+    } else if (tr.skill === 'ward') {
+      const b = (this.keepBuilds || []).filter((o) => o.hp > 0 && o.hp < o.max && !(o.wardT > 0)).sort((a, b2) => a.hp / a.max - b2.hp / b2.max)[0];
+      if (b) {
+        b.wardT = 5;
+        used = true;
+        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: b.x, tz: b.z });
+        return true;
+      }
+    }
+    if (used) this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: tr.x, tz: tr.z });
+    return used;
+  }
+
+  /** The god's miracles (the hero's Q, W and E in a Tide), paid in Faith. */
+  miracle(slot, x, z) {
+    const t = this.tide, k = this.player.keep;
+    const id = Object.keys(MIRACLES).find((m) => MIRACLES[m].key === slot);
+    if (!id || !t || !k) return;
+    const M = MIRACLES[id];
+    if (t.mcd[id] > 0) return;
+    if (k.faith < M.faith) return this.emit('keepShort', { what: 'faith', need: M.faith, have: k.faith });
+    x = Number.isFinite(x) ? x : this.player.x;
+    z = Number.isFinite(z) ? z : this.player.z;
+    if (id === 'ward') {
+      const b = (this.keepBuilds || []).filter((o) => o.hp > 0 && dist(o.x, o.z, x, z) <= M.radius + o.r).sort((a, b2) => dist(a.x, a.z, x, z) - dist(b2.x, b2.z, x, z))[0];
+      if (!b) return this.emit('miracleMiss', { id });
+      b.wardT = M.dur;
+      x = b.x;
+      z = b.z;
+    }
+    k.faith -= M.faith;
+    t.mcd[id] = M.cd;
+    if (id === 'smite') {
+      for (const e of this.enemies) if (e.tide && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, x, z) <= M.radius + e.radius) this.troopStrike(e, M.dmg * (1 + 0.25 * (k.tier - 1)), false);
+    } else if (id === 'mend') {
+      for (const tr of this.troops) {
+        if (dist(tr.x, tr.z, x, z) > M.radius) continue;
+        if (tr.dead) {
+          tr.dead = false;
+          tr.hp = tr.maxHp * 0.5;
+        } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * 0.5);
+      }
+    }
+    this.emit('miracle', { id, x, z, r: M.radius });
   }
 
   /** Hand in a finished job at the board (in Haven): its rewards, and a new job in its place. */
@@ -8040,6 +8469,10 @@ export class World {
       e.moving = false;
       if (e.dead) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt;
+      if (e.tide) {
+        this.stepTideFoe(e, dt); // (0.81) a Tide's own: for the keep's buildings and heroes
+        continue;
+      }
       if (e.offerT > 0) {
         // The Asker waits for your answer (0.40); whoever has not answered when time runs out has refused.
         e.offerT -= dt;
@@ -8141,7 +8574,6 @@ export class World {
         this.stepStill(e, dt);
         continue;
       }
-      if (e.tide && this.stepTideFoe(e, dt)) continue; // (0.80) for the Hearth, unless a hero is close
       const dx = p.x - e.x;
       const dz = p.z - e.z;
       const d = dHypot(dx, dz) || 0.001;
@@ -8611,7 +9043,9 @@ inTown() {
     }
     if (m.id === KEEP.map && this.tide) {
       const t = this.tide; // (0.80)
-      return { name: m.name, sub: t.state === 'won' ? 'morning · the fires held' : t.state === 'lost' ? 'morning · the fires went out' : `Tide · wave ${t.wave} of ${KEEP.tide.waves} · warmth ${Math.ceil(t.warmth)} of ${t.warmthMax}` };
+      const h = (this.keepBuilds || []).find((b) => b.id === 'hearth');
+      const up = (this.troops || []).filter((tr) => !tr.dead).length;
+      return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `Tide · wave ${t.wave} of ${KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
     }
     if (m.id === KEEP.map && this.player.keep) return { name: m.name, sub: `Tier ${KEEP.tiers[this.player.keep.tier].numeral} · ${this.player.keep.faith.toLocaleString('en-US')} Faith · ${this.player.keep.stone} Wishstone` };
     const dn = this.depthNow();
@@ -8661,6 +9095,7 @@ inTown() {
     this.delayed = [];
     this.falls = []; // the final boss's falling stars (stepFalls)
     this.slowT = 0;
+    this.keepArrive(); // (0.81) the Wishkeep's heroes and buildings (none anywhere else)
     const gate = map.portals.find((g) => g.to === from);
     const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
     p.x = p.px = gate ? gate.x * k : 0;
@@ -8756,6 +9191,10 @@ inTown() {
     this.radius = map.radius;
     if (id === 'town') this.townShown = this.townKey();
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
+    if (id === KEEP.map) {
+      const here = new Set(settlersAt(this.player.keep ? this.player.keep.tier : 1)); // (0.81) the settlers who have come, online too
+      map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || here.has(o.id));
+    }
     this.sideStoryProps(map);
     this.obstacles = map.obstacles;
     this.enemies = [];

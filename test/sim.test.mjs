@@ -5290,38 +5290,88 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...and opens (and rises) once it is', k.halls.archer === 1 && k.faith === 4550);
   w.command({ type: 'keepTier' }); w.runCommands();
   check('...tier III: all six settlers, a weapon glow of its own', k.tier === 3 && Object.keys(k.settlers).length === 6 && p.glows.includes('wishkeep'));
-  // the Tide
+  // (0.81) the keep's heroes, and the halls' work
+  k.faith = 100000; k.stone = 1000;
+  w.command({ type: 'keepRecruit', cls: 'warrior' }); w.runCommands();
+  check('Wishkeep (0.81): a hero is raised only at a hall whose class is mastered', k.troops.length === 0 && evs(w).includes('keepHallShut'));
+  for (let i = 0; i < 9; i++) { w.command({ type: 'keepRecruit', cls: i % 2 ? 'mage' : 'archer' }); w.runCommands(); }
+  const rg = evs(w);
+  check('...up to eight at tier III, each dearer than the last, and they stand in the keep', k.troops.length === 8 && rg.includes('keepFull') && k.faith === 100000 - 120 * 36 && w.troops.length === 8 && new Set(k.troops.map((t) => t.name)).size === 8);
+  const t1 = k.troops[0];
+  for (let i = 0; i < 6; i++) { w.command({ type: 'keepTrain', id: t1.id }); w.runCommands(); }
+  check('...the Lodge trains them, as far as its level allows (level 1: to 5)', t1.lvl === 5 && evs(w).includes('keepMaxed'));
+  w.command({ type: 'keepArm', id: t1.id }); w.runCommands();
+  check('...the Bastion arms them, and is shut until the warrior is mastered', t1.gear === 0 && evs(w).includes('keepHallShut'));
+  w.command({ type: 'keepLearn', id: t1.id, skill: 'volley' }); w.runCommands();
+  const lv = evs(w);
+  w.command({ type: 'keepLearn', id: t1.id, skill: 'cleave' }); w.runCommands();
+  check('...the Lodge teaches physical skills up to its level', lv.includes('keepMaxed') && t1.skill === 'cleave');
+  w.command({ type: 'keepLearn', id: k.troops[1].id, skill: 'fireball' }); w.runCommands();
+  const fb = evs(w);
+  w.command({ type: 'keepHall', cls: 'mage' }); w.runCommands();
+  w.command({ type: 'keepLearn', id: k.troops[1].id, skill: 'fireball' }); w.runCommands();
+  check('...the Observatory teaches magic once it is raised', fb.includes('keepHallShut') && k.troops[1].skill === 'fireball');
+  w.command({ type: 'keepBless', id: 'stoneskin' }); w.runCommands();
+  w.command({ type: 'keepBless', id: 'fury' }); w.runCommands();
+  check('...and blesses the next night, up to its level', k.blessings.join() === 'fury' && evs(w).includes('keepMaxed'));
+  const st0 = k.stone;
+  w.command({ type: 'keepTrade', dir: 'sell' }); w.runCommands();
+  check('...the Market trades only once the rogue is mastered', k.stone === st0 && evs(w).includes('keepHallShut'));
+  const fc = k.faith;
+  w.command({ type: 'keepClock', now: 1e12 }); w.runCommands();
+  w.command({ type: 'keepClock', now: 1e12 + 2 * 3.6e6 }); w.runCommands();
+  const twoH = k.faith - fc;
+  w.command({ type: 'keepClock', now: 1e12 + 200 * 3.6e6 }); w.runCommands();
+  check('...Faith comes in while away (no Market: 4 an hour), banked up to 16 hours', twoH === 8 && k.faith - fc === 8 + 64 && k.last === 1e12 + 200 * 3.6e6, `${twoH}, ${k.faith - fc}`);
+  // a Tide with nobody to hold it, and a god who cannot fight in it
+  const w3 = new World({ seed: 33, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p3 = w3.player;
+  p3.lives = p.lives;
+  w3.command({ type: 'travel', to: 'wishkeep' }); w3.runCommands();
+  const k3 = p3.keep;
+  k3.faith = 1000;
+  w3.command({ type: 'keepTide' }); w3.runCommands();
+  let foes = 0, hits = 0, hurt = false, end = null, mir = null;
+  for (let i = 0; i < 60 * 240 && !end; i++) {
+    const live = w3.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn');
+    if (i % 10 === 0 && live.length && !mir) { p3.x = live[0].x + 1; p3.z = live[0].z; w3.command({ type: 'attack', id: live[0].id }); }
+    if (i === 60 * 20 && live.length) {
+      const f0 = k3.faith, e0 = live[0], h0 = e0.hp;
+      w3.command({ type: 'cast', slot: 'q', x: e0.x, z: e0.z }); w3.runCommands();
+      const f1 = k3.faith;
+      w3.command({ type: 'cast', slot: 'q', x: e0.x, z: e0.z }); w3.runCommands();
+      mir = { paid: f0 - f1, again: f1 - k3.faith, dmg: e0.dead || e0.hp < h0 };
+    }
+    w3.step(CONFIG.TICK);
+    foes = Math.max(foes, w3.enemies.filter((e) => e.tide).length);
+    if (!mir && w3.enemies.some((e) => e.tide && e.hp < e.maxHp)) hurt = true;
+    for (const e of w3.events) { if (e.type === 'buildHit') hits++; if (e.type === 'tideEnd') end = e; }
+    w3.events = [];
+  }
+  check('...a Tide comes in waves, and the hero (a god now) cannot strike it', foes >= K.KEEP.tide.perWave(1) && !hurt, `${foes} foes`);
+  check('...the god works miracles instead: Smite costs Faith, hurts the Tide, and has a cooldown', mir && mir.paid === K.MIRACLES.smite.faith && mir.again === 0 && mir.dmg, JSON.stringify(mir));
+  check('...left to the Tide, the buildings are battered and the night is lost', hits > 0 && end && end.won === false && !w3.enemies.some((e) => e.tide), `${hits} hits, ${JSON.stringify(end)}`);
+  const hurtB = Object.keys(k3.builds);
+  check('...the damage stays after the night (saved with the keep)', hurtB.length > 0 && hurtB.every((b) => k3.builds[b] < K.buildMax(b, k3)) && JSON.stringify(K.cleanKeep(JSON.parse(JSON.stringify(k3))).builds) === JSON.stringify(k3.builds), JSON.stringify(k3.builds));
+  for (let i = 0; i < 60 * 11; i++) w3.step(CONFIG.TICK);
+  k3.stone = 1000;
+  w3.command({ type: 'keepRepair' }); w3.runCommands();
+  check('...and is mended at the Hearth with Wishstone', Object.keys(k3.builds).length === 0 && k3.stone < 1000 && w3.keepBuilds.every((b) => b.hp === b.max));
+  // heroes who are trained and armed hold it
+  for (const t of k.troops) { t.lvl = 9; t.gear = 9; }
+  w.keepTroopsUp();
+  k.wishes = [{ id: 't', kind: 'tide', who: 'maren', line: 0, n: 0, need: 1, done: false, reward: { faith: 50, stone: 8 } }];
   w.command({ type: 'keepTide' }); w.runCommands();
-  let foes = 0, bites = 0, end = null;
-  for (let i = 0; i < 60 * 90 && !end; i++) {
+  end = null;
+  let swings = 0;
+  for (let i = 0; i < 60 * 300 && !end; i++) {
     w.step(CONFIG.TICK);
-    foes = Math.max(foes, w.enemies.filter((e) => e.tide).length);
-    for (const e of w.events) { if (e.type === 'hearthBite') bites++; if (e.type === 'tideEnd') end = e; }
+    for (const e of w.events) { if (e.type === 'troopHit') swings++; if (e.type === 'tideEnd') end = e; }
     w.events = [];
   }
-  check('...a Tide left alone: they come from four ways in, go for the fires, and the fires go out (no reward, nobody lost)', foes === 6 + 3 * 3 && bites > 0 && end && end.won === false && !w.enemies.some((e) => e.tide), `${foes} foes, ${bites} bites`);
-  // an Eternal hero who goes where they are holds it
-  const w2 = new World({ seed: 32, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
-  const q = w2.player;
-  q.lives = p.lives;
-  for (const sl of I.SLOTS) q.equipped[sl] = rollEternal(() => 0.5, 100, sl, 'warrior');
-  w2.recalcStats();
-  w2.command({ type: 'travel', to: 'wishkeep' }); w2.runCommands();
-  q.keep.wishes = [{ id: 't', kind: 'tide', who: 'maren', line: 0, n: 0, need: 1, done: false, reward: { faith: 50, stone: 8 } }];
-  w2.command({ type: 'keepTide' }); w2.runCommands();
-  end = null;
-  for (let i = 0; i < 60 * 200 && !end; i++) {
-    if (i % 6 === 0) {
-      const f = w2.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn').sort((a, b) => Math.hypot(a.x - a.tideAt.x, a.z - a.tideAt.z) - Math.hypot(b.x - b.tideAt.x, b.z - b.tideAt.z));
-      if (f.length) w2.command({ type: 'attack', id: f[0].id });
-    }
-    w2.step(CONFIG.TICK);
-    for (const e of w2.events) if (e.type === 'tideEnd') end = e;
-    w2.events = [];
-  }
-  check('...a full-Eternal hero who goes where they are holds it: Faith, Wishstone, and the Tide wish done', end && end.won && end.faith > 0 && q.keep.tides === 1 && q.keep.wishes.find((x) => x.id === 't').done, JSON.stringify(end));
+  check('...eight trained, armed heroes hold the night: they fight it, and it pays Faith, Wishstone and the Tide wish', end && end.won && end.faith > 0 && swings > 20 && k.tides === 1 && k.wishes.find((x) => x.id === 't').done && k.blessings.length === 0, JSON.stringify(end) + ' ' + swings);
   // the keep's numbers stay sane through a save
   const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
-  check('...a keep survives being saved and loaded, every field checked', JSON.stringify(back) === JSON.stringify(K.cleanKeep(back)) && back.tier === 3 && back.halls.archer === 1 && back.told.includes('road') && K.cleanKeep({ tier: 99, faith: -5, halls: { warrior: 9 } }).tier === 3 && K.cleanKeep({ faith: -5 }).faith === 0 && K.cleanKeep(null) === null);
+  check('...a keep survives being saved and loaded, every field checked', JSON.stringify(back) === JSON.stringify(K.cleanKeep(back)) && back.tier === 3 && back.halls.archer === 1 && back.troops.length === 8 && back.told.includes('road') && K.cleanKeep({ tier: 99, faith: -5, halls: { warrior: 9 } }).tier === 3 && K.cleanKeep({ faith: -5 }).faith === 0 && K.cleanKeep(null) === null);
 }
 process.exit(failed ? 1 : 0);

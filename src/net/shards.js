@@ -415,6 +415,7 @@ export class ServerWorld {
         return this.joinMember(pl, Number(cmd.pid));
     }
     if (!SERVER_CMDS.has(cmd.type) || !pl.copy) return;
+    if (cmd.type === 'keepClock') cmd = { type: 'keepClock', now: Date.now() }; // (0.81) the server's clock, never the player's
     pl.copy.world.command(Object.assign({}, cmd, { pid: pl.pid }));
   }
 

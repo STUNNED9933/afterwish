@@ -26,7 +26,7 @@ import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, BUILD_IDS, buildMax } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -102,6 +102,7 @@ function start(hot = {}) {
   let renderer;
   try {
     renderer = new Renderer(canvas);
+    renderer.keepTier = () => (world && world.player && world.player.keep ? world.player.keep.tier : 1); // (0.81) people walking about the keep
   } catch (err) {
     $('title-save').textContent = 'This game needs WebGL, which this browser or device has turned off. Try a current version of Chrome, Edge or Firefox.';
     $('btn-explore').disabled = true;
@@ -1346,7 +1347,39 @@ function start(hot = {}) {
     });
   }
 
-  /** The Hearth: the keep's tier, its Altar (what the account has done), and the night. */
+  // (0.81) small helpers for the keep's panels
+  const keepBtn = (label, onClick, { primary = false, disabled = false, quick = false, title = '' } = {}) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = (primary ? 'primary' : 'ghost') + (quick ? '' : ' no-quick') + ' tiny';
+    b.textContent = label;
+    b.disabled = disabled;
+    if (title) b.title = title;
+    b.addEventListener('click', () => {
+      talkNote = '';
+      onClick();
+    });
+    return b;
+  };
+  const keepCard = (title, small, html = '') => {
+    const el = document.createElement('div');
+    el.className = 'quest';
+    el.innerHTML = `<h4>${title}${small ? `<small>${small}</small>` : ''}</h4>${html}`;
+    return el;
+  };
+  const troopLine = (t) => {
+    const st = troopStats(t);
+    return `<b>${esc(t.name)}</b> · ${CLASSES[t.cls].name} · level ${t.lvl} · gear ${t.gear} · ${st.hp} health, ${st.dmg} damage${t.skill ? ` · ${esc(SKILLS[t.skill].name)}` : ''}`;
+  };
+  const hallNote = (cls) => {
+    const k = world.player.keep;
+    if (!world.keepRecord().halls.includes(cls)) return `Shut: it opens once a ${CLASSES[cls].name} on your account has beaten the Quiet.`;
+    if (world.wrecked(cls)) return 'Wrecked in a Tide: mend it at the Hearth (Wishstone) to use it again.';
+    if (!(k.halls[cls] >= 1)) return 'Derelict: raise it to level 1 below to put it to work.';
+    return '';
+  };
+
+  /** The Hearth: the keep's tier, its heroes, mending, its Altar (what the account has done), and the night. */
   function renderKeepHearth() {
     const p = world.player, k = p.keep;
     $('talk-role').textContent = 'The middle of everything';
@@ -1357,75 +1390,147 @@ function start(hot = {}) {
     if (!k) return ($('talk-line').textContent = 'A fire, and nobody tending it yet.');
     const rec = world.keepRecord();
     const T = KEEP.tiers[k.tier], next = KEEP.tiers[k.tier + 1];
-    $('talk-line').innerHTML = talkNote ? esc(talkNote) : `Tier ${T.numeral}: ${esc(T.name)}. ${keepHave(k)}`;
-    // the Altar: what the account has done
-    const alt = document.createElement('div');
-    alt.className = 'quest keep-altar';
-    const relic = (s) => `<span class="relic${rec.relics.includes(s) ? ' lit' : ''}" title="${rec.relics.includes(s) ? `An Eternal ${SLOT_NAMES[s].toLowerCase()}: ${RELIC_NAMES[s]}` : `No Eternal ${SLOT_NAMES[s].toLowerCase()} yet`}">${esc(RELIC_NAMES[s].replace(/^the /, ''))}</span>`;
-    alt.innerHTML = `<h4>The Altar<small>what you have done, on every class</small></h4>
-      <div class="relics">${SLOTS.map(relic).join('')}</div>
-      <p class="setting-desc">${rec.relics.length} of 5 Eternal relics (each +${Math.round(KEEP.faithPerRelic * 100)}% Faith) · ${rec.halls.length} of 4 classes mastered (each opens its hall) · ${rec.echoes.length} of 4 Granted beaten (each sends an echo to guard the fires: +${KEEP.tide.perEcho} warmth in a Tide) · ${rec.wish.toLocaleString()} Wishborne levels.</p>
-      <p class="setting-desc">Faith from each answered wish: ×${world.keepMult().toFixed(2)}. ${k.answered} wish${k.answered === 1 ? '' : 'es'} answered, ${k.tides} Tide${k.tides === 1 ? '' : 's'} held.</p>`;
-    list.appendChild(alt);
-    // the tier
-    const tier = document.createElement('div');
-    tier.className = 'quest';
-    if (next) {
-      tier.innerHTML = `<h4>Raise the keep: tier ${next.numeral}<small>${esc(next.name)}</small></h4><p>A bigger board (${next.board} wishes), and more people come to live here.${k.tier + 1 >= 3 ? ' And a weapon glow of your own: Kept.' : ''}</p><div class="rewards">Costs ${keepCost(next.cost)}</div>`;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'primary no-quick';
-      b.textContent = `Raise it · ${keepCost(next.cost)}`;
-      b.disabled = k.faith < next.cost.faith || k.stone < next.cost.stone;
-      b.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'keepTier' }); });
-      tier.appendChild(b);
-    } else tier.innerHTML = '<h4>The Wishkeep<small>tier III</small></h4><p>As high as it goes, for now. The halls can still grow.</p>';
-    list.appendChild(tier);
-    // the night
-    const night = document.createElement('div');
-    night.className = 'quest';
     const on = world.tide && world.tide.state === 'on';
-    const T2 = KEEP.tide;
-    night.innerHTML = `<h4>Call the night<small>a Tide</small></h4><p>Three waves of the Unmade, from four ways in, each going for the keep's fire nearest it. The keep holds ${T2.warmth + T2.perBastion * (k.halls.warrior || 0) + T2.perEcho * rec.echoes.length} warmth; every bite at a fire takes one. Be where they are. Hold until morning for Faith and Wishstone.</p>`;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'primary no-quick';
-    b.textContent = on ? 'The Tide is coming' : 'Call the night';
-    b.disabled = on;
-    b.addEventListener('click', () => {
+    $('talk-line').innerHTML = talkNote ? esc(talkNote) : `Tier ${T.numeral}: ${esc(T.name)}. ${keepHave(k)}`;
+    // the night
+    const night = keepCard('Call the night', 'a Tide', `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}). A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    night.appendChild(keepBtn(on ? 'The Tide is coming' : world.wrecked('hearth') ? 'Mend the Hearth first' : `Call the night (${k.troops.length} hero${k.troops.length === 1 ? '' : 'es'})`, () => {
       applyNow({ type: 'keepTide' });
       setMode('play');
-    });
-    night.appendChild(b);
+    }, { primary: true, disabled: on || world.wrecked('hearth') }));
     list.appendChild(night);
+    // the heroes
+    const cap = KEEP.heroCap[k.tier];
+    const heroes = keepCard('Your heroes', `${k.troops.length} of ${cap} at tier ${T.numeral}`, `<p class="setting-desc">Few, and good. Arm them at the Bastion, train and teach them at the Lodge and the Observatory. A hero of a class comes from that class's hall, once it is open.</p>`);
+    for (const t of k.troops) {
+      const row = document.createElement('div');
+      row.className = 'keep-troop';
+      row.innerHTML = `<span>${troopLine(t)}</span>`;
+      row.appendChild(keepBtn('Send home', () => applyNow({ type: 'keepDismiss', id: t.id }), { disabled: on, title: 'They leave the keep (what was spent on them is not returned)' }));
+      heroes.appendChild(row);
+    }
+    if (k.troops.length < cap) {
+      const cost = KEEP.recruit(k.troops.length);
+      const row = document.createElement('div');
+      row.className = 'keep-troop';
+      row.innerHTML = `<span>A new hero: ${keepCost(cost)}</span>`;
+      for (const cls of HALL_IDS) {
+        const open = rec.halls.includes(cls);
+        row.appendChild(keepBtn(CLASSES[cls].name, () => applyNow({ type: 'keepRecruit', cls }), { disabled: !open || on || k.faith < cost.faith, title: open ? `A ${CLASSES[cls].name.toLowerCase()} from ${HALLS[cls].name}` : `${HALLS[cls].name} is shut: master the ${CLASSES[cls].name} first` }));
+      }
+      heroes.appendChild(row);
+    }
+    list.appendChild(heroes);
+    // mending
+    let need = 0;
+    const hurt = [];
+    for (const b of BUILD_IDS) {
+      if (k.builds[b] == null) continue;
+      need += buildMax(b, k) - k.builds[b];
+      hurt.push(`${b === 'hearth' ? 'the Hearth' : HALLS[b].name} ${k.builds[b] <= 0 ? '(wrecked)' : `${Math.round((k.builds[b] / buildMax(b, k)) * 100)}%`}`);
+    }
+    if (need > 0) {
+      const stone = Math.ceil(need / KEEP.repairPer);
+      const fix = keepCard('Mend the keep', `${stone} Wishstone`, `<p>Hurt in the last Tide: ${hurt.join(', ')}.</p>`);
+      fix.appendChild(keepBtn(`Mend everything · ${stone} Wishstone`, () => applyNow({ type: 'keepRepair' }), { primary: true, disabled: k.stone < stone || on }));
+      list.appendChild(fix);
+    }
+    // the tier
+    if (next) {
+      const tier = keepCard(`Raise the keep: tier ${next.numeral}`, esc(next.name), `<p>A bigger board (${next.board} wishes), more people come to live here, and room for ${KEEP.heroCap[k.tier + 1]} heroes.${k.tier + 1 >= 3 ? ' And a weapon glow of your own: Kept.' : ''} The nights grow stronger with it.</p><div class="rewards">Costs ${keepCost(next.cost)}</div>`);
+      tier.appendChild(keepBtn(`Raise it · ${keepCost(next.cost)}`, () => applyNow({ type: 'keepTier' }), { primary: true, disabled: k.faith < next.cost.faith || k.stone < next.cost.stone }));
+      list.appendChild(tier);
+    }
+    // the Altar: what the account has done
+    const relic = (sl) => `<span class="relic${rec.relics.includes(sl) ? ' lit' : ''}" title="${rec.relics.includes(sl) ? `An Eternal ${SLOT_NAMES[sl].toLowerCase()}: ${RELIC_NAMES[sl]}` : `No Eternal ${SLOT_NAMES[sl].toLowerCase()} yet`}">${esc(RELIC_NAMES[sl].replace(/^the /, ''))}</span>`;
+    const alt = keepCard('The Altar', 'what you have done, on every class', `<div class="relics">${SLOTS.map(relic).join('')}</div>
+      <p class="setting-desc">${rec.relics.length} of 5 Eternal relics (each +${Math.round(KEEP.faithPerRelic * 100)}% Faith) · ${rec.halls.length} of 4 classes mastered (each opens its hall, and its heroes) · ${rec.echoes.length} of 4 Granted beaten (each sends an echo to stand behind your heroes: +10% damage in a Tide) · ${rec.wish.toLocaleString()} Wishborne levels.</p>
+      <p class="setting-desc">Faith from each answered wish: ×${world.keepMult().toFixed(2)}. ${k.answered} wish${k.answered === 1 ? '' : 'es'} answered, ${k.tides} Tide${k.tides === 1 ? '' : 's'} held. Faith while you are away: ${KEEP.produce.base + (world.hallWorks('rogue') ? KEEP.produce.perMarket * k.halls.rogue : 0)} an hour.</p>`);
+    list.appendChild(alt);
   }
 
-  /** A class's hall: shut until that class is mastered; raised with Faith and Wishstone. */
+  /** A class's hall: shut until that class is mastered; raised with Faith and Wishstone; then its work. */
   function renderKeepHall(cls) {
     const k = world.player.keep, H = HALLS[cls];
     if (!H) return;
-    $('talk-role').textContent = `The ${CLASSES[cls].name}'s hall: ${H.what}`;
+    $('talk-role').textContent = `${H.what}`;
     $('talk-name').textContent = H.name;
     $('talk-keys').classList.add('hidden');
     const list = $('talk-quests');
     list.innerHTML = '';
     const open = world.keepRecord().halls.includes(cls);
     const lvl = (k && k.halls[cls]) || 0;
-    $('talk-line').innerHTML = talkNote ? esc(talkNote) : open ? `${esc(H.per)} Level ${lvl} of ${KEEP.hallMax}. ${k ? keepHave(k) : ''}` : `The door is shut. It opens once a ${esc(CLASSES[cls].name)} on your account has beaten the Quiet.`;
+    const note = hallNote(cls);
+    $('talk-line').innerHTML = talkNote ? esc(talkNote) : `${esc(H.per)} ${open ? `Level ${lvl} of ${KEEP.hallMax}.` : ''} ${note ? `<b>${esc(note)}</b>` : ''} ${k ? keepHave(k) : ''}`;
     if (!open || !k) return;
-    if (lvl >= KEEP.hallMax) return;
-    const c = KEEP.hallCost(lvl + 1);
-    const el = document.createElement('div');
-    el.className = 'quest';
-    el.innerHTML = `<h4>Raise ${esc(H.name)} to level ${lvl + 1}</h4><div class="rewards">Costs ${keepCost(c)}</div>`;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'primary no-quick';
-    b.textContent = `Raise it · ${keepCost(c)}`;
-    b.disabled = k.faith < c.faith || k.stone < c.stone;
-    b.addEventListener('click', () => { talkNote = ''; applyNow({ type: 'keepHall', cls }); });
-    el.appendChild(b);
-    list.appendChild(el);
+    if (lvl < KEEP.hallMax) {
+      const c = KEEP.hallCost(lvl + 1);
+      const up = keepCard(`Raise ${esc(H.name)} to level ${lvl + 1}`, '', `<div class="rewards">Costs ${keepCost(c)}</div>`);
+      up.appendChild(keepBtn(`Raise it · ${keepCost(c)}`, () => applyNow({ type: 'keepHall', cls }), { primary: true, disabled: k.faith < c.faith || k.stone < c.stone }));
+      list.appendChild(up);
+    }
+    if (!world.hallWorks(cls)) return;
+    const on = world.tide && world.tide.state === 'on';
+    if (cls === 'warrior') {
+      const max = KEEP.armMax(lvl);
+      const card = keepCard('Arm your heroes', `gear up to ${max}`, `<p class="setting-desc">Each point of gear: +${Math.round(KEEP.perGear * 100)}% health and damage. Every building in the keep is ${Math.round(KEEP.perBastionHp * lvl * 100)}% sturdier for the Bastion.</p>`);
+      for (const t of k.troops) {
+        const row = document.createElement('div');
+        row.className = 'keep-troop';
+        row.innerHTML = `<span>${troopLine(t)}</span>`;
+        const c = KEEP.arm(t.gear);
+        row.appendChild(keepBtn(t.gear >= max ? 'Fully armed' : `Arm · ${keepCost(c)}`, () => applyNow({ type: 'keepArm', id: t.id }), { primary: true, disabled: t.gear >= max || k.faith < c.faith || k.stone < c.stone }));
+        card.appendChild(row);
+      }
+      if (!k.troops.length) card.innerHTML += '<p>No heroes yet: raise one at the Hearth.</p>';
+      list.appendChild(card);
+    }
+    if (cls === 'archer' || cls === 'mage') {
+      const school = cls === 'archer' ? 'phys' : 'magic';
+      if (cls === 'archer') {
+        const max = KEEP.trainMax(lvl);
+        const card = keepCard('Train your heroes', `levels up to ${max}`, `<p class="setting-desc">Each level: +${Math.round(KEEP.perLvl * 100)}% health and damage.</p>`);
+        for (const t of k.troops) {
+          const row = document.createElement('div');
+          row.className = 'keep-troop';
+          row.innerHTML = `<span>${troopLine(t)}</span>`;
+          const c = KEEP.train(t.lvl);
+          row.appendChild(keepBtn(t.lvl >= max ? 'As far as the Lodge can take them' : `Train · ${keepCost(c)}`, () => applyNow({ type: 'keepTrain', id: t.id }), { primary: true, disabled: t.lvl >= max || k.faith < c.faith }));
+          card.appendChild(row);
+        }
+        if (!k.troops.length) card.innerHTML += '<p>No heroes yet: raise one at the Hearth.</p>';
+        list.appendChild(card);
+      }
+      const skills = SKILL_IDS.filter((sk) => SKILLS[sk].school === school);
+      const card = keepCard(school === 'phys' ? 'Physical skills' : 'Magic', `rank ${lvl} of 3 taught here`, `<p class="setting-desc">${skills.map((sk) => `<b>${SKILLS[sk].name}</b> (rank ${SKILLS[sk].rank}): ${esc(SKILLS[sk].desc)}`).join('<br>')}<br>A hero knows one skill at a time; teaching another replaces it (${keepCost(KEEP.learn)}).</p>`);
+      for (const t of k.troops) {
+        const row = document.createElement('div');
+        row.className = 'keep-troop';
+        row.innerHTML = `<span>${troopLine(t)}</span>`;
+        for (const sk of skills) row.appendChild(keepBtn(SKILLS[sk].name, () => applyNow({ type: 'keepLearn', id: t.id, skill: sk }), { disabled: t.skill === sk || lvl < SKILLS[sk].rank || k.faith < KEEP.learn.faith, title: lvl < SKILLS[sk].rank ? `Needs ${H.name} at level ${SKILLS[sk].rank}` : SKILLS[sk].desc }));
+        card.appendChild(row);
+      }
+      list.appendChild(card);
+      if (cls === 'mage') {
+        const bl = keepCard('Bless the next night', 'for one Tide', '');
+        for (const id of BLESSING_IDS) {
+          const B = BLESSINGS[id];
+          const row = document.createElement('div');
+          row.className = 'keep-troop';
+          row.innerHTML = `<span><b>${B.name}</b> (rank ${B.rank}): ${esc(B.desc)}</span>`;
+          row.appendChild(keepBtn(k.blessings.includes(id) ? 'Blessed' : `${B.faith} Faith`, () => applyNow({ type: 'keepBless', id }), { primary: true, disabled: k.blessings.includes(id) || lvl < B.rank || k.faith < B.faith || on }));
+          bl.appendChild(row);
+        }
+        list.appendChild(bl);
+      }
+    }
+    if (cls === 'rogue') {
+      const T = KEEP.trade;
+      const card = keepCard('Trade', '', `<p class="setting-desc">Faith comes in while you are away: ${KEEP.produce.base + KEEP.produce.perMarket * lvl} an hour with the Market at level ${lvl} (up to ${KEEP.produce.capHours} hours banked).</p>`);
+      card.appendChild(keepBtn(`Sell 10 Wishstone for ${T.stoneFor(lvl)} Faith`, () => applyNow({ type: 'keepTrade', dir: 'sell' }), { primary: true, disabled: k.stone < 10 }));
+      card.appendChild(keepBtn(`Buy ${T.stoneOut(lvl)} Wishstone for ${T.faithPer} Faith`, () => applyNow({ type: 'keepTrade', dir: 'buy' }), { primary: true, disabled: k.faith < T.faithPer }));
+      list.appendChild(card);
+    }
   }
 
   /** A settler: who they are, how close you are, and the story Ysolde tells. */
@@ -3542,12 +3647,12 @@ function start(hot = {}) {
     },
     /** G: talk to the person, or read the sign, you are standing next to. */
     /** G: in a conversation, do the obvious thing (hand in, else accept); on a sign, step away. */
-    interact() {
+    interact(target = null) {
       if (mode === 'talk') return quickQuest(null);
       if (mode === 'read') return setMode('play');
       if (mode !== 'play') return;
       pendingTalk = null;
-      const near = world.interactable();
+      const near = target || world.interactable();
       if (!near) return;
       world.command({ type: 'stop' });
       sfx.ui();
@@ -4932,7 +5037,8 @@ function start(hot = {}) {
         break;
       case 'keepShort':
         sfx.denied();
-        talkNote = ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()} (and the Wishstone too).` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
+        talkNote = ev.what === 'repair' ? 'The Hearth is wrecked: mend the keep first.' : ev.what === 'stone' ? 'Not enough Wishstone.' : ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()}${ev.stone ? `, and ${ev.stone} Wishstone` : ''}.` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
+        if (mode === 'play') hud.feedText(talkNote);
         if (mode === 'talk') renderTalk();
         break;
       case 'keepStory':
@@ -4951,7 +5057,7 @@ function start(hot = {}) {
         break;
       case 'keepHallShut':
         sfx.denied();
-        talkNote = `${ev.name} opens once a ${CLASSES[ev.cls].name} on your account has beaten the Quiet.`;
+        talkNote = ev.down ? `${ev.name} is wrecked: mend it at the Hearth first.` : `${ev.name} opens once a ${CLASSES[ev.cls].name} on your account has beaten the Quiet, and works once it is raised to level 1.`;
         if (mode === 'talk') renderTalk();
         break;
       case 'keepHallUp':
@@ -4960,24 +5066,75 @@ function start(hot = {}) {
         if (mode === 'talk') renderTalk();
         break;
       case 'tideStart':
-        sfx.bossSpawn ? sfx.bossSpawn() : sfx.ui();
-        hud.banner('The night is coming', `${ev.waves} waves of the Unmade, from four ways in, for the keep's fires. Be where they are.`);
+        sfx.levelUp();
+        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, paid in Faith.` : 'Nobody stands at the posts. Only your miracles (Q, W, E) keep the night off. Raise heroes at the Hearth.');
         break;
       case 'tideWave':
-        hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them.`);
-        break;
-      case 'hearthBite':
-        renderer.burst(ev.x, 1, ev.z, { count: 6, color: 0xff7a3a, speed: 2, up: 2, life: 0.5 });
-        if (ev.warmth > 0 && ev.warmth <= Math.ceil(ev.of / 4) && ev.warmth % 3 === 0) hud.feedText(`The fires are guttering: ${ev.warmth} warmth left.`);
+        hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them, from four ways in.`);
         break;
       case 'tideEnd':
         if (ev.won) {
           sfx.levelUp();
-          hud.banner('Morning', `The keep held, with ${ev.warmth} of ${ev.of} warmth. +${ev.faith} Faith, +${ev.stone} Wishstone.`);
+          hud.banner('Morning', `The keep held. +${ev.faith} Faith, +${ev.stone} Wishstone.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend at the Hearth).` : ''}`);
         } else {
           sfx.denied();
-          hud.banner('The fires went out', 'Nobody was lost: they sheltered at the Hearth until morning. Try again when you are ready.');
+          hud.banner('The Hearth went dark', `The night is lost.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')}.` : ''} Nobody was taken; mend the keep with Wishstone at the Hearth and try again.`);
         }
+        if (mode === 'talk') renderTalk();
+        break;
+      // (0.81) the keep's heroes, halls and miracles
+      case 'troopHit':
+      case 'troopSkill':
+      case 'foeHit':
+      case 'buildHit':
+      case 'miracle':
+        renderer.keepFx(ev);
+        if (ev.type === 'miracle') sfx.ui();
+        break;
+      case 'troopFall':
+        hud.feedText(`${ev.name} has fallen. Mend (W) where they lie raises them.`);
+        renderer.keepFx(ev);
+        break;
+      case 'buildWrecked':
+        sfx.denied();
+        hud.banner(`${ev.name} is wrecked`, ev.id === 'hearth' ? '' : 'It stops working until it is mended.');
+        renderer.keepFx(ev);
+        break;
+      case 'miracleMiss':
+        hud.feedText('Ward needs a building near where you aim.');
+        sfx.denied();
+        break;
+      case 'keepRecruited':
+        sfx.levelUp();
+        hud.feedText(`${ev.name}, a ${CLASSES[ev.cls].name.toLowerCase()}, joins the keep.`);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepDismissed':
+        hud.feedText(`${ev.name} goes home.`);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepTrained':
+      case 'keepArmed':
+      case 'keepLearned':
+      case 'keepBlessed':
+      case 'keepTraded':
+      case 'keepRepaired':
+        sfx.upgrade();
+        hud.feedText(ev.type === 'keepTrained' ? `${ev.name} is level ${ev.lvl} now.` : ev.type === 'keepArmed' ? `${ev.name}: gear ${ev.gear}.` : ev.type === 'keepLearned' ? `${ev.name} learned ${ev.skill}.` : ev.type === 'keepBlessed' ? `${ev.name}, for the next night.` : ev.type === 'keepRepaired' ? `The keep is mended (${ev.stone} Wishstone).` : 'Traded.');
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepFull':
+        sfx.denied();
+        talkNote = `The keep has room for ${ev.cap} heroes at this tier. Raise it at the Hearth for more.`;
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepMaxed':
+        sfx.denied();
+        talkNote = ev.what === 'rank' ? `${ev.name} needs ${ev.hall} at level ${ev.rank}.` : `${ev.name} is as far as this hall can take them: raise the hall.`;
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepProduced':
+        hud.feedText(`While you were away: +${ev.faith} Faith (${ev.hours} hours at ${ev.rate} an hour).`);
         break;
       case 'bountyDone':
         sfx.pickup(3);
@@ -5198,6 +5355,7 @@ function start(hot = {}) {
         if (ev.id !== 'town') hud.feedText(`Discovered ${ev.name}. The Waygate in Haven can take you back here.`);
         break;
       case 'mapChange':
+        if (world.map && world.map.id === KEEP.map) applyNow({ type: 'keepClock', now: Date.now() }); // (0.81) Faith that came in while away (online, the server's clock)
         $('rift-home').classList.add('hidden'); // (0.58)
         $('ring-bank').classList.add('hidden');
         if (world.mode === 'arena') {
@@ -5377,9 +5535,13 @@ function start(hot = {}) {
     }
     if (pendingTalk) {
       // Walking to someone you right-clicked: open the conversation when they are in reach.
-      const near = mode === 'play' ? world.interactable() : null;
-      if (mode !== 'play' || now > pendingTalk.until || world.player.dead) pendingTalk = null;
-      else if (near && near.id === pendingTalk.id) actions.interact();
+      // (0.80.2) the thing you clicked, once it is in reach, even when someone else is standing nearer
+      // (the Wishes board beside Maren took a second click)
+      const p = world.player;
+      const want = mode === 'play' ? world.interactables().find((o) => o.id === pendingTalk.id) : null;
+      const inReach = want && Math.hypot(p.x - want.x, p.z - want.z) - want.r <= (want.reach ?? CONFIG.INTERACT_RANGE);
+      if (mode !== 'play' || now > pendingTalk.until || p.dead) pendingTalk = null;
+      else if (inReach) actions.interact(want);
     }
     if (mode === 'play' && world.mode === 'explore' && ((frameNo = (frameNo + 1) % 6) === 0)) {
       canvas.classList.toggle('hover-talk', !!renderer.pickInteractable(input.mouse.x, input.mouse.y, world));

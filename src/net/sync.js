@@ -237,6 +237,12 @@ export function makeSnapshot(world, pid, memo) {
       depth: world.depthNow() || undefined, // (0.54)
       happening: world.happening ? { kind: world.happening.kind, x: r2(world.happening.x), z: r2(world.happening.z), r: world.happening.r, state: world.happening.state, t: r2(world.happening.t), left: world.happening.left || 0, grace: r2(world.happening.grace || 0) } : null,
       merchant: world.merchant ? { id: world.merchant.id, x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: merchantStock(world.merchant, pid, memo) } : null, // (0.66) what this player has bought, only when it changes
+      // (0.81) the Wishkeep: its night, its heroes and its buildings
+      keep: world.map && world.map.id === 'wishkeep' ? {
+        tide: world.tide ? { state: world.tide.state, wave: world.tide.wave, mcd: world.tide.mcd, bless: world.tide.bless } : null,
+        troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), px: r2(t.px), pz: r2(t.pz), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl })),
+        builds: (world.keepBuilds || []).map((b) => ({ id: b.id, x: b.x, z: b.z, r: b.r, hp: Math.round(b.hp), max: b.max, wardT: b.wardT > 0 ? r2(b.wardT) : undefined })),
+      } : undefined,
       delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,
       rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
     };
@@ -267,6 +273,9 @@ export function applySnapshot(world, snap, alpha = 1) {
   const riftKey = snap.rift ? `${snap.rift.theme}:${snap.rift.seed}` : snap.delve ? `delve:${snap.delve.seed}:${snap.delve.room}` : '';
   world.delve = snap.delve || null;
   world.rift = snap.rift || null;
+  world.tide = snap.keep ? snap.keep.tide : null; // (0.81)
+  world.troops = snap.keep ? snap.keep.troops : [];
+  world.keepBuilds = snap.keep ? snap.keep.builds : [];
   world.syncTier = snap.tier || 1;
   world.syncDepth = snap.depth || 0;
   if (snap.map === 'ring') {

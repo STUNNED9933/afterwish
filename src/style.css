@@ -1266,3 +1266,20 @@ button.cell:active { transform: scale(0.96); }
 .keep-have { white-space: nowrap; color: #ffd8a8; }
 .keep-chapter p { margin: 0 0 10px; line-height: 1.55; font-size: 15.5px; }
 .keep-row b { color: #ffd8dc; }
+
+/* (0.81) the keep's heroes and buildings */
+.ally-tag.troop b { color: #ffd8dc; }
+.ally-tag.troop .afill { background: linear-gradient(90deg, #ff3d4f, #ff8a96); }
+.ally-tag.build b { color: #ffe0b0; font-size: 12px; }
+.ally-tag.build .abar { width: 90px; }
+.ally-tag.build .afill { background: linear-gradient(90deg, #d8a040, #ffd27a); }
+.keep-troop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.keep-troop > span { flex: 1 1 240px; font-size: 14px; }
+.keep-troop button.tiny { padding: 3px 9px; }
+#miracles { position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 6; pointer-events: none; }
+#miracles.hidden { display: none; }
+#miracles .mir { min-width: 118px; padding: 6px 10px; background: rgba(20, 8, 12, 0.88); border: 1px solid #ff3d4f; border-radius: 6px; text-align: center; font-size: 13px; color: #ffe0e4; position: relative; overflow: hidden; }
+#miracles .mir b { display: block; font-size: 15px; color: #fff; }
+#miracles .mir i { position: absolute; left: 0; bottom: 0; height: 3px; background: #ff3d4f; }
+#miracles .mir.cool { opacity: 0.55; }
+#miracles .mir.poor { border-color: #6a4a50; }

@@ -324,6 +324,22 @@ export class Renderer {
    */
   setMap(map) {
     this.keepFlames = []; // (0.80)
+    for (const w of this.walkers || []) this.disposeGroup(w.g);
+    this.walkers = [];
+    if (this.wardViews) for (const v of this.wardViews.values()) this.scene.remove(v);
+    this.wardViews = new Map();
+    if (map.id === 'wishkeep') {
+      // (0.81) people walking about the keep: more as it grows
+      const tier = (this.keepTier && this.keepTier()) || 1;
+      const robes = [0x8a5a2a, 0x4a7a4a, 0x5a4a6a, 0x4a5a6a, 0xa86a3a, 0x6a3a4a, 0x3a5a7a, 0x7a7a5a];
+      for (let i = 0; i < 3 + 3 * tier; i++) {
+        const g = buildNpc({ robe: robes[i % robes.length], trim: 0xe8dcc8, hair: [0x2a1a10, 0x6a4a2a, 0xc89048, 0xe8e4dc][i % 4], scale: i % 5 === 4 ? 0.7 : 0.9 + (i % 3) * 0.06 });
+        const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 6;
+        g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+        this.scene.add(g);
+        this.walkers.push({ g, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier });
+      }
+    }
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
@@ -2508,6 +2524,7 @@ export class Renderer {
     this.lastHeroPos = { x: world.player.x, z: world.player.z };
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
+    this.updateKeep(world, dt); // (0.81)
     this.syncExtras(world, dt);
     this.syncShadows(world, dt);
     this.syncWalls(world);
@@ -2767,7 +2784,9 @@ export class Renderer {
 
   syncAllies(world, alpha, dt) {
     if (!this.allyViews) this.allyViews = new Map();
-    const list = world.mode === 'explore' && world.allies ? world.allies() : [];
+    const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
+    // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
+    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, glow: 'wishkeep' });
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
@@ -2827,6 +2846,114 @@ export class Renderer {
       this.disposeGroup(v.model.group);
       this.allyViews.delete(pid);
       if (this.allyAnims) this.allyAnims.delete(pid);
+    }
+  }
+
+  /** (0.81) The Wishkeep's events: its heroes' blows and skills, the Tide's blows, wards and wrecks, the god's miracles. */
+  keepFx(ev) {
+    const streak = (x, z, tx, tz, color, w = 0.12, dur = 0.18) => {
+      const len = Math.hypot(tx - x, tz - z) || 0.1;
+      this.flash(this.rectGeo(), { x, z, y: 1.2, dir: Math.atan2(tz - z, tx - x), color, from: len, to: len, sz: w / len, dur, opacity: 0.85 });
+    };
+    if (ev.type === 'troopHit') {
+      const an = this.allyAnim('troop:' + ev.id);
+      an.cls = ev.cls;
+      an.swing = 0;
+      an.swingDur = 0.22;
+      if (ev.ranged) streak(ev.x, ev.z, ev.tx, ev.tz, ev.cls === 'mage' ? 0xb48cff : 0xfff0c0);
+      else this.flash(this.sectorGeo(2.2, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xffd8dc, from: 2.0, to: 2.6, dur: 0.18, opacity: 0.45 });
+    } else if (ev.type === 'troopSkill') {
+      const an = this.allyAnim('troop:' + ev.id);
+      an.swing = 0;
+      an.swingDur = 0.3;
+      const color = { cleave: 0xffd8a0, volley: 0xfff0c0, lunge: 0xff9a7a, fireball: 0xff6a2a, mend: 0x7fe0a0, ward: 0x8ac8ff }[ev.skill] || 0xffffff;
+      if (ev.skill === 'cleave') this.flash(this.discGeo(), { x: ev.x, z: ev.z, color, from: 0.5, to: 2.8, dur: 0.3, opacity: 0.5 });
+      else {
+        streak(ev.x, ev.z, ev.tx, ev.tz, color, 0.25, 0.3);
+        this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, color, from: 0.4, to: ev.skill === 'fireball' ? 2.5 : 1.6, dur: 0.4, opacity: 0.8 });
+        this.burst(ev.tx, 1, ev.tz, { count: 14, color, speed: 5, up: 4, life: 0.5 });
+      }
+    } else if (ev.type === 'foeHit') {
+      if (ev.ranged) streak(ev.x, ev.z, ev.tx, ev.tz, 0x9a6aff, 0.1, 0.2);
+      this.burst(ev.tx, 1, ev.tz, { count: 3, color: 0x9a6aff, speed: 2, up: 2, life: 0.3 });
+    } else if (ev.type === 'buildHit') {
+      this.burst(ev.fx, 1.2, ev.fz, { count: 4, color: 0xd8b080, speed: 3, up: 3, life: 0.4 });
+    } else if (ev.type === 'buildWrecked') {
+      this.burst(ev.x, 2, ev.z, { count: 40, color: 0x5a4a3a, speed: 6, up: 7, life: 1.2 });
+      this.burst(ev.x, 1.5, ev.z, { count: 20, color: 0xff7a3a, speed: 5, up: 5, life: 0.8 });
+      this.shake = Math.max(this.shake, 0.5);
+    } else if (ev.type === 'troopFall') {
+      this.burst(ev.x, 1, ev.z, { count: 12, color: 0xff3d4f, speed: 3, up: 3, life: 0.6 });
+    } else if (ev.type === 'miracle') {
+      if (ev.id === 'smite') {
+        for (let i = 0; i < 3; i++) streak(ev.x + (i - 1) * 0.4, ev.z - 0.01, ev.x, ev.z, 0xffffff, 0.3, 0.3);
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xfff2c8, from: 0.4, to: ev.r, dur: 0.45, opacity: 0.85 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xff3d4f, from: ev.r * 0.6, to: ev.r * 1.15, dur: 0.5, opacity: 0.9 });
+        this.burst(ev.x, 1.5, ev.z, { count: 50, color: 0xfff2c8, speed: 9, up: 8, life: 0.7 });
+        this.shake = Math.max(this.shake, 0.6);
+      } else if (ev.id === 'mend') {
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fe0a0, from: 0.5, to: ev.r, dur: 0.6, opacity: 0.45 });
+        this.burst(ev.x, 1, ev.z, { count: 40, color: 0xb8ffd0, speed: 4, up: 6, life: 1 });
+      } else {
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0x8ac8ff, from: 1, to: 5, dur: 0.6, opacity: 0.9 });
+      }
+    }
+  }
+
+  /** (0.81) Per frame in the Wishkeep: wards shining, wrecks smoking, and the people walking about. */
+  updateKeep(world, dt) {
+    const builds = world.keepBuilds || [];
+    this.wardViews = this.wardViews || new Map();
+    for (const b of builds) {
+      let v = this.wardViews.get(b.id);
+      if (b.wardT > 0 && !v) {
+        v = new THREE.Mesh(new THREE.SphereGeometry(b.r + 1.2, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8ac8ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        v.position.set(b.x, 0, b.z);
+        this.scene.add(v);
+        this.wardViews.set(b.id, v);
+      } else if (!(b.wardT > 0) && v) {
+        this.scene.remove(v);
+        v.geometry.dispose();
+        v.material.dispose();
+        this.wardViews.delete(b.id);
+      }
+      if (b.hp <= 0) {
+        b.smokeT = (b.smokeT || 0) - dt;
+        if (b.smokeT <= 0) {
+          b.smokeT = 0.35;
+          this.burst(b.x + (Math.random() - 0.5) * b.r, 2.5, b.z + (Math.random() - 0.5) * b.r, { count: 3, color: 0x4a4440, speed: 0.6, up: 2.5, life: 1.6, gravity: -1 });
+        }
+      }
+    }
+    for (const w of this.walkers || []) {
+      // the keep's people, wandering the plaza (only drawn, never part of the game)
+      const dx = w.tx - w.g.position.x, dz = w.tz - w.g.position.z;
+      const d = Math.hypot(dx, dz);
+      if (w.wait > 0) {
+        w.wait -= dt;
+        continue;
+      }
+      if (d < 0.2) {
+        const a = Math.random() * Math.PI * 2, r = 3.5 + Math.random() * (w.reach - 3.5);
+        w.tx = Math.cos(a) * r;
+        w.tz = Math.sin(a) * r;
+        w.wait = Math.random() < 0.5 ? 1 + Math.random() * 3 : 0;
+        continue;
+      }
+      const step = Math.min(d, 1.4 * dt);
+      w.g.position.x += (dx / d) * step;
+      w.g.position.z += (dz / d) * step;
+      for (const o of world.obstacles || []) {
+        // step around the settlers, the Hearth's candles and the braziers rather than through them
+        const ox = w.g.position.x - o.x, oz = w.g.position.z - o.z, od = Math.hypot(ox, oz), need = (o.r || 0.5) + 0.45;
+        if (od < need && od > 1e-3) {
+          w.g.position.x = o.x + (ox / od) * need;
+          w.g.position.z = o.z + (oz / od) * need;
+        }
+      }
+      w.g.rotation.y = Math.atan2(dx, dz);
+      w.bob = (w.bob || 0) + dt * 9;
+      w.g.position.y = Math.abs(Math.sin(w.bob)) * 0.06;
     }
   }
 

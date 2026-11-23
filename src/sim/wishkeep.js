@@ -28,27 +28,100 @@ export const KEEP = {
   bondPerLvl: 3, // answered wishes for each of a settler's levels
   settlerMax: 5,
   start: { perWish: 6, wishMax: 400, perRebirth: 20, rebirthMax: 200 }, // Faith the faithful bring on the first day
+  // (0.81) A Tide: the keep's own heroes defend it; the player is its god (miracles, no sword). Its enemies
+  // have their own small numbers (FOES), apart from the hero's world, so a keep's strength is its heroes'.
   tide: {
     waves: 3,
-    perWave: (tier) => 6 + 3 * tier,
-    warmth: 60, // the keep's (the Hearth's), shared by its four fires, which the Tide goes for
-    perBastion: 10,
-    perEcho: 5, // each Granted beaten: one of its echoes guards the Hearth
-    reach: 2.2, // how close to the fire it goes for an enemy must be to take the keep's warmth
-    every: 2, // seconds between each enemy's bites at it
-    aggro: 3, // seconds an enemy a hero has struck turns on them, before it goes back to the Hearth
-    gap: 4, // seconds between waves
-    level: 100,
+    perWave: (tier) => 6 + 2 * tier,
+    gap: 5, // seconds between waves
+    level: 100, // (only for how they look and what they drop)
     roster: ['hush', 'echo', 'unnamed', 'ashwalker', 'rootbound'],
+    engage: 4.5, // an enemy turns on a hero of the keep this close
+    night: (tier, tides) => 1 + 0.3 * (tier - 1) + 0.05 * Math.min(tides, 30), // the night grows stronger as the keep does
   },
+  heroCap: [0, 3, 5, 8], // heroes the keep can have, by tier: few, and good
+  recruit: (n) => ({ faith: 120 * (n + 1) }), // the n-th (from 0)
+  train: (lvl) => ({ faith: 50 * lvl }), // from lvl to lvl + 1 (at the Lodge)
+  trainMax: (lodge) => (lodge ? 3 + 2 * lodge : 1), // a hero's level cap (the Lodge's level)
+  arm: (gear) => ({ faith: 40 * (gear + 1), stone: 8 * (gear + 1) }), // gear to gear + 1 (at the Bastion)
+  armMax: (bastion) => 3 * bastion,
+  learn: { faith: 100 }, // teaching a hero a skill
+  perLvl: 0.12, // a hero's health and damage per level
+  perGear: 0.15, // ... and per point of gear
+  buildHp: { hearth: 600, hall: 400 },
+  perBastionHp: 0.25, // every building's health, per level of the Bastion
+  repairPer: 40, // health a Wishstone mends
+  produce: { base: 4, perMarket: 15, capHours: 16 }, // Faith an hour, while you are away (the Market)
+  trade: { stoneFor: (market) => 40 + 10 * market, faithPer: 100, stoneOut: (market) => 6 + 2 * market }, // 10 Wishstone sells for stoneFor Faith; 100 Faith buys stoneOut
 };
+
+/** (0.81) The keep's heroes, by class: their own small numbers (tide units, as FOES). */
+export const TROOPS = {
+  warrior: { hp: 300, dmg: 20, cd: 1.0, range: 2.0, speed: 4.4 },
+  archer: { hp: 170, dmg: 17, cd: 0.9, range: 9, speed: 4.6 },
+  mage: { hp: 150, dmg: 18, cd: 1.3, range: 8, speed: 4.2, splash: 1.8 },
+  rogue: { hp: 210, dmg: 13, cd: 0.55, range: 1.8, speed: 5.2, crit: 0.3 },
+};
+export const TROOP_NAMES = {
+  warrior: ['Bram the Younger', 'Ida', 'Tobin', 'Greta', 'Osric', 'Halla', 'Wendel', 'Runa'],
+  archer: ['Fenna', 'Arlo', 'Sable', 'Kit', 'Merrow', 'Lark', 'Tamsin', 'Rook'],
+  mage: ['Elowen', 'Cassius', 'Nim', 'Orla', 'Peregrin', 'Vesna', 'Aurel', 'Quill'],
+  rogue: ['Jory', 'Vix', 'Moth', 'Dace', 'Sly', 'Wren the Less', 'Penn', 'Ash'],
+};
+
+/** (0.81) Skills a hero can learn: physical at the Lodge, magic at the Observatory (the hall's level is the rank it teaches). */
+export const SKILLS = {
+  cleave: { name: 'Cleave', school: 'phys', rank: 1, cd: 6, desc: 'Strikes every enemy within 2.8 m for twice their damage.' },
+  volley: { name: 'Volley', school: 'phys', rank: 2, cd: 7, desc: 'Three shots at the three nearest enemies, each for 1.6 times their damage.' },
+  lunge: { name: 'Lunge', school: 'phys', rank: 3, cd: 8, desc: 'Leaps onto the enemy nearest a building and strikes for four times their damage.' },
+  fireball: { name: 'Fireball', school: 'magic', rank: 1, cd: 7, desc: 'A blast where the enemies are thickest: 2.5 times their damage to all within 2.5 m.' },
+  mend: { name: 'Mend', school: 'magic', rank: 2, cd: 9, desc: 'Heals the most hurt hero nearby for 40% of their health.' },
+  ward: { name: 'Ward', school: 'magic', rank: 3, cd: 12, desc: 'The building in most danger takes no damage for 5 seconds.' },
+};
+export const SKILL_IDS = Object.keys(SKILLS);
+
+/** (0.81) Blessings, from the Observatory: bought for the next Tide only. */
+export const BLESSINGS = {
+  fury: { name: 'Fury', rank: 1, faith: 60, desc: 'Your heroes deal 30% more damage.' },
+  stoneskin: { name: 'Stoneskin', rank: 2, faith: 80, desc: 'Your heroes take 30% less damage.' },
+  swift: { name: 'Swiftness', rank: 3, faith: 100, desc: 'Your heroes move and strike 30% faster.' },
+};
+export const BLESSING_IDS = Object.keys(BLESSINGS);
+
+/** (0.81) The god's miracles in a Tide (the hero keys Q, W and E), paid in Faith. */
+export const MIRACLES = {
+  smite: { key: 'q', name: 'Smite', faith: 20, cd: 3, radius: 3.2, dmg: 140, desc: 'Fire from above: 140 to every enemy where you aim.' },
+  mend: { key: 'w', name: 'Mend', faith: 25, cd: 8, radius: 5, desc: 'Heals your heroes where you aim by half their health, and raises the fallen.' },
+  ward: { key: 'e', name: 'Ward', faith: 20, cd: 12, radius: 7, dur: 6, desc: 'The building nearest where you aim takes no damage for 6 seconds.' },
+};
+export const MIRACLE_IDS = Object.keys(MIRACLES);
+
+/** (0.81) The Unmade in a Tide: their own numbers. siege: how much harder they hit buildings. */
+export const FOES = {
+  hush: { hp: 70, dmg: 7, speed: 4.4, range: 1.6, cd: 1.0 },
+  echo: { hp: 55, dmg: 9, speed: 3.6, range: 6, cd: 1.4, ranged: true },
+  unnamed: { hp: 170, dmg: 12, speed: 2.8, range: 1.8, cd: 1.3 },
+  ashwalker: { hp: 110, dmg: 9, speed: 3.2, range: 1.7, cd: 1.1, siege: 2.5 },
+  rootbound: { hp: 240, dmg: 14, speed: 2.4, range: 1.9, cd: 1.6, siege: 1.5 },
+};
+
+/** A hero's health and damage, with their level and gear. */
+export function troopStats(t) {
+  const T = TROOPS[t.cls] || TROOPS.warrior;
+  const m = (1 + KEEP.perLvl * ((t.lvl || 1) - 1)) * (1 + KEEP.perGear * (t.gear || 0));
+  return { ...T, hp: Math.round(T.hp * m), dmg: Math.round(T.dmg * m * 10) / 10 };
+}
+
+/** A building's full health (the Bastion makes them all sturdier). */
+export const buildMax = (id, keep) => Math.round((id === 'hearth' ? KEEP.buildHp.hearth : KEEP.buildHp.hall) * (1 + KEEP.perBastionHp * ((keep && keep.halls.warrior) || 0)));
+export const BUILD_IDS = ['hearth', 'warrior', 'archer', 'mage', 'rogue'];
 
 /** The four halls, one for each class, opened by mastering it. */
 export const HALLS = {
-  warrior: { name: 'The Bastion', what: 'walls and watchmen', per: 'The keep holds 10 more warmth in a Tide for each level.' },
-  archer: { name: 'The Lodge', what: 'scouts who find the lost', per: 'Pilgrimages ask 15% fewer for each level.' },
-  mage: { name: 'The Observatory', what: 'the keep\'s learning', per: 'Every answered wish brings 10% more Faith for each level.' },
-  rogue: { name: 'The Market', what: 'trade, and a little haggling', per: 'Offerings ask 15% less for each level.' },
+  warrior: { name: 'The Bastion', what: 'arms and walls', per: 'Arms your heroes (each level, three more points of gear) and makes every building 25% sturdier.' },
+  archer: { name: 'The Lodge', what: 'training and the hunt', per: 'Trains your heroes (each level, two more levels they can reach) and teaches physical skills up to its rank.' },
+  mage: { name: 'The Observatory', what: 'magic and blessings', per: 'Teaches magic skills up to its rank, and blesses your heroes before a Tide.' },
+  rogue: { name: 'The Market', what: 'trade and plenty', per: 'Faith comes in while you are away (15 an hour each level), and Wishstone and Faith trade here.' },
 };
 export const HALL_IDS = Object.keys(HALLS);
 export const RELIC_NAMES = { weapon: 'the Blade', helm: 'the Crown', chest: 'the Heart', boots: 'the Road', ring: 'the Promise' };
@@ -184,7 +257,19 @@ export function cleanKeep(raw) {
     settlers: {},
     told: Array.isArray(raw.told) ? raw.told.filter((c) => CHAPTER_IDS.includes(c)).slice(0, CHAPTER_IDS.length) : [],
     wishes: [],
+    troops: [], // (0.81) the keep's heroes
+    troopN: int(raw.troopN),
+    builds: {}, // (0.81) each building's health (missing: whole)
+    blessings: Array.isArray(raw.blessings) ? raw.blessings.filter((b) => BLESSING_IDS.includes(b)).slice(0, 3) : [],
+    last: int(raw.last), // (0.81) when Faith last came in (ms)
   };
+  if (Array.isArray(raw.troops)) {
+    for (const t of raw.troops.slice(0, 8)) {
+      if (!t || !TROOPS[t.cls]) continue;
+      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 10), gear: int(t.gear, 0, 0, 9), skill: SKILLS[t.skill] ? t.skill : null });
+    }
+  }
+  for (const b of BUILD_IDS) if (raw.builds && raw.builds[b] != null) k.builds[b] = int(raw.builds[b], 0, 0, 1e5);
   for (const h of HALL_IDS) k.halls[h] = int(raw.halls && raw.halls[h], 0, 0, KEEP.hallMax);
   for (const s of SETTLER_IDS) {
     const r = raw.settlers && raw.settlers[s];

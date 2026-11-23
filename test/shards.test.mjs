@@ -465,6 +465,10 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   sv.sendSave(sv.players.get(A), true);
   const saved = [...box.get(a)].reverse().find((m) => m.t === 'save');
   check('...and its changes go home with the save, like the wallet', saved && saved.keep && saved.keep.faith === 77 && !('keep' in saved.save), JSON.stringify(saved && saved.keep && { t: saved.keep.tier, f: saved.keep.faith }));
+  heroOf(A).keep.last = Date.now() - 2 * 3.6e6 - 60000;
+  sv.command(sv.players.get(A), { type: 'keepClock', now: 9e15 });
+  for (let i = 0; i < 2; i++) sv.tick();
+  check('...(0.81) Faith made while away is counted on the server\'s clock, never the player\'s', heroOf(A).keep.faith === 85 && Math.abs(heroOf(A).keep.last - Date.now()) < 5000, `${heroOf(A).keep.faith}`);
   sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
   for (let i = 0; i < 4; i++) sv.tick();
   check('...and it comes along to Haven', sv.players.get(A).copy.world.map.id === 'town' && heroOf(A).keep && heroOf(A).keep.tier === 2);

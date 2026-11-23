@@ -160,6 +160,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Wishkeep's heroes hold the night (0.81)
+
+The keep is now something to defend, and the Tide is a fight you watch and steer rather than one you stand in.
+
+- **Heroes.** Raise up to 3, 5 or 8 heroes (by keep tier) at the Hearth, each of a class whose hall is open: warriors, archers, mages and rogues, each with a name. They stand around the Hearth and fight every Tide where you can see it, with their own swings, arrows, bolts and skills.
+- **The halls work.** The **Bastion** arms heroes (gear, +15% each) and makes every building 25% sturdier per level. The **Lodge** trains them (+12% health and damage a level, two more levels per Lodge level) and teaches physical skills: Cleave, Volley, Lunge. The **Observatory** teaches magic (Fireball, Mend, Ward) and sells blessings for the next night: Fury, Stoneskin, Swiftness. The **Market** makes Faith while you are away (4 an hour, 15 more per Market level, banked up to 16 hours, counted on the server's clock) and trades Wishstone and Faith.
+- **Buildings take damage.** The Tide's five kinds of Unmade (Hush, Echo, Unnamed, Ashwalker, Rootbound; the last two are wreckers) go for the heroes in reach, else the nearest building. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost. Damage stays after the night and is mended at the Hearth with Wishstone (one mends 40). Nothing is lost for good.
+- **A god, not a soldier.** In a Tide your hero cannot strike. Q, W and E become miracles, paid in Faith: **Smite** (20) strikes a crowd, **Mend** (25) heals and raises fallen heroes, **Ward** (20) shields a building for 6 seconds. A bar over your skills shows their costs and cooldowns.
+- **People walk about.** The keep's folk wander the plaza (more as the keep grows), and heroes and hurt buildings carry health plates.
+- A held night pays Faith, Wishstone and the Tide wish. Its foes drop no loot, so the night can't be farmed for gear.
+- **Fixed:** the wishes board (or anyone behind something) now opens in one click.
+
 ### The tracker follows the board and the keep (0.80.1)
 
 - **The quest tracker** (under the minimap) now has three groups: your **Quests**, the **Bounty Board**'s

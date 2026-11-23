@@ -219,6 +219,7 @@ export function makeSnapshot(world, pid, memo) {
       seq: memo.seq,
       full: full || undefined,
       map: world.mode === 'arena' ? 'ring' : world.map.id, // (0.59) an Echo Ring run has no map
+      keepMap: world.map && world.map.id === 'wishkeep' ? { stage: world.map.keepStage || 0, tier: world.keepTierShown || 1, visit: world.keepOwner != null && world.keepOwner !== pid, owner: world.keepOwnerName || null } : undefined, // (0.82.2) whose keep, how grown
       arena: world.mode === 'arena' ? { wave: { n: world.wave.n, phase: world.wave.phase, timer: r2(world.wave.timer), cleared: world.wave.cleared, total: world.wave.total || 0, qn: world.wave.queue.length }, ring: world.ring ? { kind: world.ring.kind, slot: world.ring.slot, pot: world.ring.pot, wave: world.ring.wave, hold: !!world.ring.hold } : null, offer: world.offer, augments: world.augments, rerolls: world.rerolls, bestWave: world.bestWave, over: !!world.gameOver } : undefined,
       slowT: r2(world.slowT),
       me: changedOnly(lightPlayer(p), memo),
@@ -274,6 +275,8 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.delve = snap.delve || null;
   world.rift = snap.rift || null;
   world.tide = snap.keep ? snap.keep.tide : null; // (0.81)
+  world.keepVisit = !!(snap.keepMap && snap.keepMap.visit); // (0.82.2) in a friend's keep
+  world.keepVisitOf = snap.keepMap && snap.keepMap.visit ? snap.keepMap.owner : null;
   world.troops = snap.keep ? snap.keep.troops : [];
   world.keepBuilds = snap.keep ? snap.keep.builds : [];
   world.syncTier = snap.tier || 1;
@@ -304,6 +307,7 @@ export function applySnapshot(world, snap, alpha = 1) {
       world.gameOver = false;
       world.wave = Object.assign(world.wave || {}, { phase: 'explore', queue: [] });
     }
+    world.keepMapInfo = snap.keepMap || null; // (0.82.2) a keep is built as its owner's has grown
     world.loadMapMirror(snap.map);
     if (snap.map === 'rift' && snap.rift) {
       // The rift's layout is built from its theme and seed, the same as on the host.

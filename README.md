@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Visiting a friend's keep (0.82.2)
+
+- **Go to them** (the players list, O) now works for a party member who is in their Wishkeep. It takes you into their keep, laid out as theirs has grown, with their heroes, buildings and settlers.
+- **It stays theirs.** You can't tend it, raise it, answer its wishes or call its night; speaking to the Hearth, a hall or a settler says so. You can't spend your own keep there either.
+- **If they call the night while you're there,** you fight beside their heroes with your own skills. Your blows land as a mortal's, at most a fifth of an Unmade's health a blow, as the incarnate god's do. The miracle bar stays the keeper's.
+- When the keeper leaves, visitors walk back to Haven.
+
 ### The keep's works, tiers and growth; heroes who find their way (0.82.1)
 
 - **More Faith and Wishstone.**

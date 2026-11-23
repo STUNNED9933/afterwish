@@ -370,7 +370,9 @@ export function buildMap(id, custom = null) {
 export function buildKeepMap(stage = 0) {
   const st = Math.max(0, Math.min(GROWTH.at.length - 1, Math.floor(stage) || 0));
   const def = Object.assign({}, MAPS.wishkeep, { radius: GROWTH.radius(st), trees: MAPS.wishkeep.trees + 6 * st, rocks: MAPS.wishkeep.rocks + 2 * st, keepStage: st });
-  return buildMap('wishkeep', { def, key: 'wishkeep' });
+  const m = buildMap('wishkeep', { def, key: 'wishkeep' });
+  m.keepStage = st;
+  return m;
 }
 
 /**

@@ -474,5 +474,36 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('...and it comes along to Haven', sv.players.get(A).copy.world.map.id === 'town' && heroOf(A).keep && heroOf(A).keep.tier === 2);
 }
 
+// (0.82.2) visiting a party member's Wishkeep
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), passcode: 'stun', name: 'Visit World', seed: 11 });
+  const cn = (n) => { const c = { n }; box.set(c, []); return c; };
+  const lives = { archer: { prim: [6, 7, 8, 9, 10] } };
+  const mk = (name, cls, keep) => ({ t: 'hello', v: NET_VERSION, pass: 'stun', name, cls, save: Object.assign(geared(cls, 100, 6), { acctLives: lives }), gold: 100, tickets: 3, keep });
+  const a = cn('a'), b = cn('b');
+  sv.message(a, mk('Keeper', 'warrior', { tier: 3, faith: 500, stone: 50, spent: 20000 }));
+  sv.message(b, mk('Guest', 'mage', { tier: 1, faith: 9, stone: 1 }));
+  const A = box.get(a).find((m) => m.t === 'welcome').pid, B = box.get(b).find((m) => m.t === 'welcome').pid;
+  sv.partyInvite(sv.players.get(A), B);
+  sv.partyAccept(sv.players.get(B), A);
+  sv.command(sv.players.get(A), { type: 'travel', to: 'wishkeep' });
+  for (let i = 0; i < 4; i++) sv.tick();
+  sv.command(sv.players.get(B), { type: 'joinMember', pid: A });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const ka = sv.players.get(A).copy, kb = sv.players.get(B).copy;
+  check('Server (0.82.2): Go to them takes a party member into their friend\'s Wishkeep (the friend\'s copy, as grown)', ka === kb && ka.key === `wishkeep:${A}` && ka.world.map.radius > 32);
+  const snapB = [...box.get(b)].reverse().find((m) => m.t === 'snap' && m.keepMap);
+  check('...and is told it is a visit (so the keeper\'s panels are not theirs)', snapB && snapB.keepMap.visit === true && snapB.keepMap.stage >= 1, JSON.stringify(snapB && snapB.keepMap));
+  const w = ka.world, hb = w.heroByPid(B);
+  const guestKeep = w.as(hb, (p) => p.keep);
+  w.as(hb, () => w.command({ type: 'keepTide' }));
+  for (let i = 0; i < 2; i++) sv.tick();
+  check('...a visitor cannot call the night, nor spend their own keep in it', !w.tide && guestKeep.faith === 9);
+  sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
+  for (let i = 0; i < 6; i++) sv.tick();
+  check('...when the keeper leaves, the visitor walks back to Haven', sv.players.get(B).copy.world.map.id === 'town');
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

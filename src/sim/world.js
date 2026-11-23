@@ -2071,7 +2071,7 @@ export class World {
    * (see sim/classes.js); the numbers come from the class kit.
    */
   castAbility(slot, x, z) {
-    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0)) return slot === INCARNATE.key ? this.incarnate() : this.miracle(slot, x, z); // (0.81; 0.81.1)
+    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) return slot === INCARNATE.key ? this.incarnate() : this.miracle(slot, x, z); // (0.81; 0.81.1; 0.82.2 a visitor fights)
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
@@ -3312,7 +3312,7 @@ export class World {
     if (p.castLock > 0) return;
 
     // Targeting
-    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0)) {
+    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) {
       // (0.81) in a Tide the hero is the keep's god: miracles (Q, W, E), never a sword (unless incarnate, 0.81.1)
       p.targetId = null;
       p.attackMove = null;
@@ -5867,7 +5867,11 @@ export class World {
     this.emit('keepBuildTier', { id, tier: t, name: id === 'hearth' ? 'The Hearth' : HALLS[id].name });
   }
   inKeep() {
-    return !!(this.map && this.map.id === KEEP.map && this.player.keep);
+    return !!(this.map && this.map.id === KEEP.map && this.player.keep && this.keepOwns());
+  }
+  /** (0.82.2) Is the hero in hand the keep's owner (not a party member visiting it)? */
+  keepOwns() {
+    return this.keepOwner == null || !this.cur || this.cur.pid === this.keepOwner;
   }
 
   /** Raise a new hero (Faith), of a class whose hall is open: the keep holds few, and good. */
@@ -8764,7 +8768,7 @@ export class World {
     }
     if (e.tide) {
       // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate, and as a mortal's
-      if (!this.tide || !(this.tide.inc > 0)) return;
+      if (!this.tide || (!(this.tide.inc > 0) && this.keepOwns())) return; // (0.82.2) a visiting friend fights as a mortal, as the incarnate god does
       dmg = Math.min(dmg, Math.max(1, Math.round(e.maxHp * (opts.dot ? INCARNATE.dotCap : INCARNATE.hitCap))));
     }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
@@ -9707,6 +9711,9 @@ inTown() {
     this.delayed = [];
     this.falls = []; // the final boss's falling stars (stepFalls)
     this.slowT = 0;
+    this.keepOwner = id === KEEP.map && this.cur ? this.cur.pid : null; // (0.82.2) whose keep this copy is (visitors may come)
+    this.keepOwnerName = id === KEEP.map && this.cur ? this.cur.name || null : null;
+    this.keepTierShown = id === KEEP.map && this.player.keep ? this.player.keep.tier : 1;
     this.keepArrive(); // (0.81) the Wishkeep's heroes and buildings (none anywhere else)
     const gate = map.portals.find((g) => g.to === from);
     const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
@@ -9799,12 +9806,13 @@ inTown() {
 
   /** A joiner's copy of the world: show a map without spawning anything (the host sends what is on it). */
   loadMapMirror(id) {
-    const map = (this.map = id === KEEP.map ? buildKeepMap(keepStage(this.player.keep)) : buildMap(id)); // (0.82.1)
+    const info = id === KEEP.map ? this.keepMapInfo : null; // (0.82.2) someone else's keep: as theirs has grown
+    const map = (this.map = id === KEEP.map ? buildKeepMap(info ? info.stage : keepStage(this.player.keep)) : buildMap(id)); // (0.82.1)
     this.radius = map.radius;
     if (id === 'town') this.townShown = this.townKey();
     if (id === 'town') map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id));
     if (id === KEEP.map) {
-      const here = new Set(settlersAt(this.player.keep ? this.player.keep.tier : 1)); // (0.81) the settlers who have come, online too
+      const here = new Set(settlersAt(info ? info.tier : this.player.keep ? this.player.keep.tier : 1)); // (0.81) the settlers who have come, online too
       map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || here.has(o.id));
     }
     this.sideStoryProps(map);
@@ -10409,6 +10417,11 @@ inTown() {
   /** Exploration upkeep in a party: shared enemy respawns, then each hero's own portals and knockouts. */
   stepPartyExplore(dt) {
     const lead = this.heroes[0];
+    if (this.tide) {
+      // (0.82.2) a night in a keep with visitors: it is the owner's
+      const owner = (this.keepOwner != null && this.heroByPid(this.keepOwner)) || lead;
+      this.as(owner, () => this.stepTide(dt));
+    }
     // Enemies come back a while after they are killed, but not right on top of anyone; (0.61) faster
     // the more heroes share the map (not the bosses), so each can hold a stretch of it.
     const faster = 1 + CONFIG.PARTY_RESPAWN * (this.heroes.length - 1);

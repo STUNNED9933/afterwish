@@ -488,6 +488,10 @@ export class ServerWorld {
     const o = this.players.get(pid);
     if (!o || !pl.party || o.party !== pl.party || !o.copy || o.copy === pl.copy) return;
     const to = mapOf(o.copy.world);
+    if (to === KEEP.map) {
+      // (0.82.2) a friend's Wishkeep: into their copy of it, as a visitor (they keep it; you may fight its nights)
+      return this.moves.push({ pid: pl.pid, copy: pl.copy, to, from: mapOf(pl.copy.world), extra: { joinKey: o.copy.key } });
+    }
     if (to === 'rift' || to === 'delve') return this.send(pl.conn, { t: 'chat', text: `${o.name} is in a ${to === 'rift' ? 'rift' : 'delve'}: it cannot be joined part-way.` });
     pl.copy.world.as(pl.copy.world.heroByPid(pl.pid), () => pl.copy.world.command({ type: 'travel', to, pid: pl.pid }));
   }
@@ -561,6 +565,18 @@ export class ServerWorld {
       if (!pl || seen.has(mv.pid) || pl.copy !== mv.copy) continue;
       seen.add(mv.pid);
       this.move(pl, mv.to, mv.from, mv.extra);
+    }
+    // (0.82.2) a keep whose owner has gone: its visitors go back to Haven
+    for (const [key, copy] of this.copies) {
+      if (!key.startsWith(KEEP.map + ':')) continue;
+      const owner = Number(key.split(':')[1]);
+      if (copy.world.heroByPid(owner) || !copy.world.heroes.length) continue;
+      for (const h of copy.world.heroes.slice()) {
+        const pl = this.players.get(h.pid);
+        if (!pl || pl.copy !== copy) continue;
+        this.send(pl.conn, { t: 'chat', text: 'The keep\'s keeper has gone: you walk back to Haven.' });
+        this.move(pl, 'town', KEEP.map, null);
+      }
     }
     // (0.55.1) Updates every step while few are on (the server is close by, so this is what makes
     // a click feel immediate), every second step up to 16 players, then every third.

@@ -1950,6 +1950,15 @@ function start(hot = {}) {
     if (talkTo === 'delve') return renderDelve();
     if (talkTo === 'ringstones') return renderRingStones();
     if (talkTo === 'tomashusk') return renderTomasHusk();
+    if (world.keepVisit && (talkTo === 'keepaltar' || talkTo === 'wishes' || String(talkTo).startsWith('hall_') || WORKS[talkTo] || SETTLERS[talkTo])) {
+      // (0.82.2) a friend's keep: theirs to tend
+      $('talk-role').textContent = "A friend's keep";
+      $('talk-name').textContent = `${world.keepVisitOf || 'A friend'}'s Wishkeep`;
+      $('talk-keys').classList.add('hidden');
+      $('talk-quests').innerHTML = '';
+      $('talk-line').textContent = `This keep is ${world.keepVisitOf || 'theirs'}: only they can tend it, raise it and call its night. If they call the night while you are here, fight beside their heroes: your blows land as a mortal's, as the incarnate god's do. Your own keep is through the Waygate.`;
+      return;
+    }
     if (talkTo === 'wishes') return renderKeepBoard(); // (0.80) the Wishkeep
     if (talkTo === 'keepaltar') return renderKeepHearth();
     if (WORKS[talkTo]) return renderKeepWorks(talkTo); // (0.82.1)

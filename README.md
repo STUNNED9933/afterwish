@@ -160,6 +160,20 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Windrunner's wind (0.81.4)
+
+- **Gale Force** (new, part of the Windrunner's perk). Every arrow she looses deals 6% more for each attack a second, counted up to 20 a second (+120%). Crosswind already looses more arrows the faster she shoots, so attack speed now counts twice: more arrows, and harder ones.
+- **No more double hop.** With Umbra Gemina slotted, the shadow's copy of Skirmish Step no longer hops you a second time. It adds two more of the next shots at once instead, and makes every one of them hit harder.
+- **The Windrunner's shadow keeps up.** Umbra Gemina's arrow now carries everything her bow looses: Hurricane's extra arrows and Crosswind's (on average, at her attack speed) are folded into its damage as one heavier arrow, never extra arrows in the air. It also carries a Skirmish Step shot's strength.
+- **Auto-scrap after a rebirth.** The setting always came through a rebirth, but on a new life every slot is bare, so every drop counted as "an upgrade" and was kept. Now a piece is kept only if it beats both what you wear and anything already in your bag for that slot (one per slot). Choosing a rarity clears the bag the same way.
+- Boss damage in full level-30 Eternal gear, before and after this patch:
+
+  | | Windrunner | Sharpshooter |
+  |---|---|---|
+  | Before | about 36 billion a second | about 47 to 62 billion |
+  | Now | about 53 billion | about 47 to 62 billion (unchanged) |
+  | Both with Umbra Gemina | about 87 billion | about 95 to 127 billion |
+
 ### Umbra Gemina, Ember Clones and Rime Halo (0.81.3)
 
 - **Umbra Gemina** (Latin for "the twin shadow"; the Archer's Shadowdancer borrowing, formerly Shade Partner). A see-through twin of your hero walks at your shoulder for as long as the skill is slotted. It wears whatever model you wear, Eternal forms included. Its copies of your basic attacks and Q now come from where it stands. A Sharpshooter's twin also looses its own Deadeye a moment after yours, from its position, for 60%. The Mage's Echo Caster and the Warrior's Mirror Blade shades walk with you too, and cast from where they stand.

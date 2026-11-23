@@ -1900,7 +1900,10 @@ export class World {
     const p = this.player;
     const b = this.basic;
     p.swingCount++;
-    const dmg = dmgOverride ?? p.stats.ad * b.mult;
+    let dmg = dmgOverride ?? p.stats.ad * b.mult;
+    // (0.81.4) Gale Force (Windrunner): every arrow hits harder the faster she shoots, on top of Crosswind
+    // loosing more of them, so attack speed counts twice over
+    if (b.shot && this.mods.galeForce > 0) dmg *= this.galeForce();
     // Steady Aim: every third shot gets +100% crit chance; anything over 100% becomes crit damage.
     const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
     const forceCrit = false;
@@ -1960,7 +1963,10 @@ export class World {
         }
         if (b.shot) {
           const a3 = dAtan2(target.z - sz, target.x - sx);
-          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: 0.3, dmg: dmg * m2.shadeEcho, parryable: false, reflected: false, life: 1.2, dead: false });
+          // (0.81.4) a Windrunner's shadow looses everything her bow does, as one heavier arrow: Hurricane's
+          // and Crosswind's extra arrows are folded into its damage, not flown (fewer arrows in the air)
+          const more = (1 + this.windExtras()) * (gale ? p.quickMult || 1.25 : 1); // (and a Skirmish Step shot's strength)
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: more > 1 ? 0.4 : 0.3, dmg: dmg * m2.shadeEcho * more, parryable: false, reflected: false, life: 1.2, dead: false });
         } else this.hitEnemy(target, dmg * m2.shadeEcho, { source: 'shade' });
         this.emit('shadowSlash', { x: sx, z: sz, tx: target.x, tz: target.z, veil: true });
       }
@@ -2015,6 +2021,37 @@ export class World {
       });
     }
     if (this.mods.stormcaller && this.cls === 'archer' && p.swingCount % 4 === 0) this.lightning(target); // Stormstring
+  }
+
+  /** (0.81.4) Umbra Gemina's copy of Skirmish Step: more of its shots, and each harder (no second hop). */
+  quickEcho(mult, q) {
+    const p = this.player;
+    p.quickShots += Math.max(1, Math.round(q.shots * mult));
+    p.quickMult = (p.quickMult || 1) * (1 + 0.5 * mult);
+    p.quickT = Math.max(p.quickT || 0, q.time);
+    this.emit('buff', { name: 'Twin Step', x: p.x, z: p.z });
+  }
+
+  /** (0.81.4) Gale Force: how much harder each of a Windrunner's arrows hits at her attack speed. */
+  galeForce() {
+    const m = this.mods, p = this.player;
+    return 1 + (m.galeForce || 0) * Math.min(p.stats.as, CONFIG.GALE_FORCE_CAP);
+  }
+  /**
+   * (0.81.4) A Windrunner's extra arrows on one basic attack, in arrows' worth of damage: Hurricane's
+   * (at their own strength) and Crosswind's (on average, at her attack speed).
+   */
+  windExtras() {
+    const p = this.player, m = this.mods;
+    let more = 0;
+    const hur = this.kit.r;
+    if (hur && hur.passive && hur.extra && this.abilityUnlocked('r')) {
+      const oh = this.oathOf();
+      const n = hur.extra + (m.hurricaneExtra || 0) + (oh && oh.extra ? oh.extra : 0);
+      more += n * Math.max(hur.extraMult, m.hurricaneMult || 0) * (1 + (hur.rankMult || 0) * Math.max(0, (p.ranks.r || 1) - 1)) * (m.hurricaneDmg || 1) * (oh && oh.extra ? oh.mult : 1);
+    }
+    if (m.crosswind > 0) more += Math.min(6, (p.stats.as * p.stats.as) / 32) * m.crosswind;
+    return more;
   }
 
   /**
@@ -2819,6 +2856,18 @@ export class World {
       }
       if (d.t > 0) continue;
       d.done = true;
+      if (d.kind === 'recast' && this.kit[d.slot] && this.kit[d.slot].type === 'dash') {
+        // (0.81.4) a shade never hops you a second time: it feeds the hop's gift instead (Skirmish Step:
+        // more shots at once, each harder)
+        const q = this.kit[d.slot].quick;
+        if (q) {
+          if (p.dash && p.dash.quick) p.dash.quickEcho = d.mult;
+          else if (p.quickShots > 0) this.quickEcho(d.mult, q);
+        }
+        if (p.shadeAt) p.shadeAt.atk = this.ticks;
+        this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
+        continue;
+      }
       if (d.kind === 'recast') {
         // (0.70) a shade casts your Q again, weaker (Echo Caster, Mirror Blade, Shade Partner)
         const keep = { cd: p.cd[d.slot], lock: p.castLock, emp: p.empowerT };
@@ -3191,6 +3240,7 @@ export class World {
           p.quickShots = ds.quick.shots;
           p.quickT = ds.quick.time;
           p.quickMult = 1 + (ds.quick.mult - 1) * over;
+          if (ds.quickEcho) this.quickEcho(ds.quickEcho, ds.quick); // (0.81.4) the shadow's copy of the hop
           p.attackCd = 0;
           p.atkWind = 0;
           p.autoAcquire = true;
@@ -7302,13 +7352,23 @@ export class World {
     const p = this.player;
     const at = p.autoScrapAt;
     if (at == null || this.trial || !item || item.rarity > at || item.rarity >= IMMORTAL || item.set || item.eternal || item.locked) return false;
-    if (itemScore(item) > itemScore(p.equipped[item.slot])) return false;
+    // (0.81.4) kept only if it beats what you wear AND anything already waiting in the bag for that slot:
+    // after a rebirth every slot is bare, and "an upgrade" used to keep every piece that dropped
+    if (itemScore(item) > this.bestFor(item.slot)) return false;
     const scrap = scrapValue(item);
     const dust = this.keptRate(dustValue(item));
     p.scrap += scrap;
     p.dust += dust;
     this.emit('autoScrapNew', { scrap, dust, rarity: item.rarity });
     return true;
+  }
+
+  /** (0.81.4) The best score among what is worn in a slot and what waits in the bag for it. */
+  bestFor(slot, skip = null) {
+    const p = this.player;
+    let best = itemScore(p.equipped[slot]);
+    for (const it of p.bag) if (it && it !== skip && it.slot === slot) best = Math.max(best, itemScore(it));
+    return best;
   }
 
   /** (0.75.3) Choose the auto-scrap rarity (null: off; 0 Common up to 5 Ancient), and clear the bag of it once. */
@@ -7318,8 +7378,18 @@ export class World {
     if (p.autoScrapAt == null) return;
     const trading = new Set(this.tradeFor(this.cur.pid)?.items[this.cur.pid] || []);
     let scrap = 0, dust = 0, count = 0;
+    // (0.81.4) of the pieces that beat what you wear, only the best for each slot is kept
+    const keep = new Set();
+    for (const it of p.bag) {
+      if (!it || itemScore(it) <= itemScore(p.equipped[it.slot])) continue;
+      const cur = [...keep].find((k) => k.slot === it.slot);
+      if (!cur || itemScore(it) > itemScore(cur)) {
+        if (cur) keep.delete(cur);
+        keep.add(it);
+      }
+    }
     p.bag = p.bag.filter((it) => {
-      if (!it || it.locked || it.set || it.rarity > p.autoScrapAt || trading.has(it.id) || itemScore(it) > itemScore(p.equipped[it.slot])) return true;
+      if (!it || it.locked || it.set || it.rarity > p.autoScrapAt || trading.has(it.id) || keep.has(it)) return true;
       scrap += scrapValue(it);
       dust += dustValue(it);
       count++;

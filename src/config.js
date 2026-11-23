@@ -9,6 +9,7 @@ export const CONFIG = {
   PARTY_BOSS_HP: 0.7,
   PARTY_BOSS_POISE: 0.5,
   // (0.60.2) Crimson Reach (Berserker): by level (0 none, 1 Bloodied, 2 Crimson Oath)
+  GALE_FORCE_CAP: 20, // (0.81.4) Gale Force counts attack speed up to this many attacks a second
   CRESCENT: {
     reach: [0, 6, 9.5], // a swing reaches this far as a red crescent
     width: [0, 0.8, 1.3], // how wide the crescent cuts

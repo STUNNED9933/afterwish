@@ -21,6 +21,7 @@ import { CONFIG } from '../config.js';
 const pct = (n) => Math.round(n * 100);
 /** (0.60.2) Hurricane (Windrunner, passive): what each extra arrow deals, and how much more per rank after the first. */
 export const HURRICANE = { mult: 0.3, rank: 0.03 };
+export const GALE_FORCE = 0.06; // (0.81.4) each arrow +6% damage for every attack a second (see world.js galeForce)
 
 export const SPECS = {
   // ------------------------------------------------------------------ Warrior
@@ -116,11 +117,11 @@ export const SPECS = {
   },
   windrunner: {
     cls: 'archer', name: 'Windrunner',
-    blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner. Hurricane, always with her, turns every shot into three.',
+    blurb: 'Never where the blow lands. Roll, and the wind is at your back: every arrow hits harder and brings the next roll sooner, and the faster she shoots, the harder every arrow lands. Hurricane, always with her, turns every shot into three.',
     perk: {
       name: 'Tailwind',
-      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Crosswind: your basic attacks loose extra arrows at the same target for 65% damage, and more the faster you shoot: half an extra arrow per shot at 4 attacks a second, 2 at 8, 4 and a half at 12 (up to 6). Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
-      apply: (m) => { m.crosswind = Math.max(m.crosswind, 0.65); m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); },
+      desc: "After Evasive Roll, for as long as its attack speed bonus lasts, you have Tailwind: every basic attack (Barrage arrows too) deals extra damage on hit equal to 30% attack damage plus 2 per level, and takes 0.3 seconds off Evasive Roll's cooldown. The faster you attack, the more it adds up. Crosswind: your basic attacks loose extra arrows at the same target for 65% damage, and more the faster you shoot: half an extra arrow per shot at 4 attacks a second, 2 at 8, 4 and a half at 12 (up to 6). Gale Force: every arrow she looses deals 6% more for each attack a second (up to 20 a second: +120%), so attack speed counts twice over, in more arrows and in harder ones. Piercing Shot becomes Skirmish Step and Arrow Storm becomes Hurricane.",
+      apply: (m) => { m.crosswind = Math.max(m.crosswind, 0.65); m.tailwind = Math.max(m.tailwind, 0.3); m.tailwindCdr = Math.max(m.tailwindCdr, 0.3); m.galeForce = Math.max(m.galeForce || 0, GALE_FORCE); },
     },
     kit: {
       q: {

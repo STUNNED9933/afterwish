@@ -5459,4 +5459,53 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const w3 = make('mage', null, { d: 'shadowdancer' });
   check('...Echo Caster\'s shade walks with you too (it casts from there)', !!w3.player.shadeAt);
 }
+
+// --- 0.81.4: Windrunner: Gale Force, the shadow's hop, and the shadow's heavier arrow ------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { GALE_FORCE } = await import('../src/sim/talents.js');
+  const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  const make = (borrowed) => {
+    const w = new World({ seed: 184, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { acctLives: all, spec: 'windrunner', borrowed }) });
+    w.loadMap('greenwood', 'town');
+    for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+    return w;
+  };
+  const w = make({ d: 'shadowdancer' });
+  const p = w.player;
+  check('Gale Force (0.81.4): a Windrunner\'s arrows hit harder the faster she shoots', w.mods.galeForce === GALE_FORCE && Math.abs(w.galeForce() - (1 + GALE_FORCE * Math.min(p.stats.as, CONFIG.GALE_FORCE_CAP))) < 1e-9 && w.galeForce() > 1.2, `${p.stats.as} ${w.galeForce()}`);
+  const e = w.enemies.find((o) => !o.dead && !o.def.boss && o.state !== 'spawn');
+  e.hp = e.maxHp = 1e9;
+  p.x = p.px = e.x + 8; p.z = p.pz = e.z;
+  p.cd.q = 0; w.events = [];
+  w.command({ type: 'cast', slot: 'q', x: e.x - 20, z: e.z });
+  let dashes = 0, was = false, most = 0, gusts = 0;
+  for (let i = 0; i < 60; i++) {
+    p.hp = p.stats.maxHp; w.step(CONFIG.TICK);
+    if (p.dash && !was) dashes++; was = !!p.dash; most = Math.max(most, p.quickShots || 0);
+    gusts += w.projectiles.filter((pr) => pr.gale && !pr.counted && (pr.counted = true)).length;
+  }
+  check('...with Umbra Gemina, Skirmish Step hops once, and the shadow\'s copy gives more shots, harder, instead of a second hop', dashes === 1 && gusts >= 5 && p.quickMult > 1.5, `${dashes} hops, ${gusts} gusts (most ${most}) x${p.quickMult}`);
+  // the shadow's arrow carries Hurricane's and Crosswind's arrows in its damage
+  p.quickShots = 0;
+  w.projectiles = [];
+  w.basicAttack(e);
+  const mine = w.projectiles.filter((pr) => pr.basic && !pr.shade && !pr.gust && !pr.cross);
+  const shade = w.projectiles.find((pr) => pr.shade);
+  check('...and its shadow looses one heavier arrow for all the extra ones (Hurricane, Crosswind), never more arrows', shade && mine.length === 1 && Math.abs(shade.dmg / (mine[0].dmg * w.mods.shadeEcho) - (1 + w.windExtras())) < 1e-6 && w.windExtras() > 0.5, `${shade && shade.dmg} ${mine[0] && mine[0].dmg} ${w.windExtras()}`);
+}
+
+// --- 0.81.4: auto-scrap after a rebirth -------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { rebirthSave } = await import('../src/sim/rebirth.js');
+  const I = await import('../src/sim/items.js');
+  const w = new World({ seed: 185, mode: 'explore', cls: 'archer', save: Object.assign(geared('archer', 100, 5), { autoScrapAt: 5 }) });
+  const save = rebirthSave(w.toSave(), I.starterWeapon, null, I.relevelItem);
+  const w2 = new World({ seed: 185, mode: 'explore', cls: 'archer', save });
+  const p = w2.player;
+  const roll = (r) => I.rollItem(() => 0.3, p.level, { weights: I.RARITIES.map((x, i) => (i === r ? 1 : 0)), slot: 'helm', cls: 'archer' });
+  const got = [5, 3, 0, 5].map((r) => { const it = roll(r); const gone = w2.autoScrapNew(it); if (!gone) p.bag.push(it); return gone; });
+  check('Auto-scrap (0.81.4): kept through a rebirth, and on a bare new life only the best piece for a slot is kept, not every one that drops', p.autoScrapAt === 5 && got.join() === 'false,true,true,true' && p.bag.filter((it) => it && it.slot === 'helm').length === 1, got.join());
+}
 process.exit(failed ? 1 : 0);

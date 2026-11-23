@@ -98,7 +98,7 @@ const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0
 const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, FOES, troopStats, buildMax, BUILD_IDS } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -1910,7 +1910,7 @@ export class World {
    * (see sim/classes.js); the numbers come from the class kit.
    */
   castAbility(slot, x, z) {
-    if (this.tide && this.tide.state === 'on') return this.miracle(slot, x, z); // (0.81)
+    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0)) return slot === INCARNATE.key ? this.incarnate() : this.miracle(slot, x, z); // (0.81; 0.81.1)
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
@@ -3061,8 +3061,8 @@ export class World {
     if (p.castLock > 0) return;
 
     // Targeting
-    if (this.tide && this.tide.state === 'on') {
-      // (0.81) in a Tide the hero is the keep's god: miracles (Q, W, E), never a sword
+    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0)) {
+      // (0.81) in a Tide the hero is the keep's god: miracles (Q, W, E), never a sword (unless incarnate, 0.81.1)
       p.targetId = null;
       p.attackMove = null;
       p.autoAcquire = false;
@@ -5615,14 +5615,30 @@ export class World {
   keepRepair() {
     const k = this.player.keep;
     if (!this.inKeep() || (this.tide && this.tide.state === 'on')) return;
-    let need = 0;
-    for (const b of BUILD_IDS) if (k.builds[b] != null) need += buildMax(b, k) - k.builds[b];
-    const stone = Math.ceil(need / KEEP.repairPer);
-    if (!stone) return;
-    if (!this.keepPay({ stone }, 'stone')) return;
-    k.builds = {};
+    const need = this.keepRepairCost();
+    if (!need) return;
+    if (k.stone <= 0) return this.emit('keepShort', { what: 'stone', need, have: 0, mend: true });
+    // (0.81.1) as much as the Wishstone on hand allows, the Hearth first
+    let stone = 0;
+    for (const b of BUILD_IDS) {
+      if (k.builds[b] == null) continue;
+      const max = buildMax(b, k);
+      const n = Math.min(k.stone, Math.ceil((max - k.builds[b]) / KEEP.repairPer));
+      if (n <= 0) break;
+      k.stone -= n;
+      stone += n;
+      k.builds[b] = Math.min(max, k.builds[b] + n * KEEP.repairPer);
+      if (k.builds[b] >= max) delete k.builds[b];
+    }
     this.keepBuildsUp();
-    this.emit('keepRepaired', { stone });
+    this.emit('keepRepaired', { stone, left: this.keepRepairCost(), hearth: !this.wrecked('hearth') });
+  }
+  /** (0.81.1) Wishstone it would take to mend every building. */
+  keepRepairCost() {
+    const k = this.player.keep;
+    let stone = 0;
+    if (k) for (const b of BUILD_IDS) if (k.builds[b] != null) stone += Math.ceil((buildMax(b, k) - k.builds[b]) / KEEP.repairPer);
+    return stone;
   }
   /**
    * (0.81) Faith that came in while away: the host gives the time (the server its own clock), banked up
@@ -5682,7 +5698,7 @@ export class World {
   keepTideStart() {
     const k = this.player.keep;
     if (!this.inKeep() || (this.tide && this.tide.state === 'on') || this.player.dead) return;
-    if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: 0, have: 0 });
+    if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: Math.ceil(buildMax('hearth', k) / KEEP.repairPer), have: k.stone });
     const T = KEEP.tide;
     this.keepTroopsUp();
     this.keepBuildsUp();
@@ -5690,7 +5706,7 @@ export class World {
     this.tide = {
       state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
       night: T.night(k.tier, k.tides), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
-      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0,
+      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0,
     };
     k.blessings = []; // (they are for this night)
     this.emit('tideStart', { waves: T.waves, heroes: this.troops.length, bless: this.tide.bless });
@@ -5704,6 +5720,11 @@ export class World {
       return;
     }
     for (const c in t.mcd) if (t.mcd[c] > 0) t.mcd[c] = Math.max(0, t.mcd[c] - dt);
+    if (t.icd > 0) t.icd = Math.max(0, t.icd - dt);
+    if (t.inc > 0) {
+      t.inc -= dt;
+      if (t.inc <= 0) this.incarnateEnd(false);
+    }
     for (const b of this.keepBuilds || []) if (b.wardT > 0) b.wardT -= dt;
     this.stepTroops(dt);
     const hearth = (this.keepBuilds || []).find((b) => b.id === 'hearth');
@@ -5743,6 +5764,7 @@ export class World {
     const t = this.tide, k = this.player.keep;
     t.state = won ? 'won' : 'lost';
     t.after = 0;
+    t.inc = 0; // (0.81.1)
     this.enemies = this.enemies.filter((e) => !e.tide || e.dead); // (on a loss, the rest melt back into the dark)
     // what the buildings took stays until it is mended (at the Hearth, with Wishstone)
     for (const b of this.keepBuilds || []) {
@@ -5792,6 +5814,8 @@ export class World {
         const d = dist(tr.x, tr.z, e.x, e.z);
         if (d < bd) [best, bd] = [tr, d];
       }
+      const me = this.player;
+      if (this.tide.inc > 0 && !me.dead && dist(me.x, me.z, e.x, e.z) < bd) best = me; // (0.81.1) the god, walking among them
       if (!best) {
         bd = 1e9;
         for (const b of this.keepBuilds || []) {
@@ -5804,7 +5828,11 @@ export class World {
     }
     const tg = e.tTarget;
     if (!tg) return;
-    const isB = tg.max != null && tg.r != null && tg.hp != null && !tg.cls;
+    if (tg === this.player && !(this.tide.inc > 0)) {
+      e.tTarget = null;
+      return;
+    }
+    const isB = tg.max != null && tg.r != null && tg.hp != null && !tg.cls && tg !== this.player;
     const reach = F.range + e.radius + (isB ? tg.r : 0.4);
     const dx = tg.x - e.x, dz = tg.z - e.z;
     const d = dHypot(dx, dz) || 0.001;
@@ -5823,6 +5851,7 @@ export class World {
     e.state = 'chase';
     this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
     if (isB) this.hurtBuild(tg, e.tdmg * (F.siege || 1), e);
+    else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
       tg.hp -= e.tdmg * stone;
@@ -5984,6 +6013,38 @@ export class World {
       }
     }
     this.emit('miracle', { id, x, z, r: M.radius });
+  }
+
+  /** (0.81.1) R in a Tide: the god takes the field with the heroes for a while (Faith). */
+  incarnate() {
+    const t = this.tide, k = this.player.keep, p = this.player;
+    if (!t || t.state !== 'on' || !k || p.dead || t.inc > 0 || t.icd > 0) return;
+    if (k.faith < INCARNATE.faith) return this.emit('keepShort', { what: 'faith', need: INCARNATE.faith, have: k.faith });
+    k.faith -= INCARNATE.faith;
+    t.inc = INCARNATE.dur;
+    t.icd = INCARNATE.cd;
+    for (const c of ['q', 'w', 'e', 'r']) if (p.cd[c] > 0) p.cd[c] = 0; // (a fresh start for the hero's own kit)
+    p.hp = p.stats.maxHp;
+    this.emit('incarnate', { x: p.x, z: p.z, dur: INCARNATE.dur });
+  }
+  incarnateEnd(fell) {
+    const t = this.tide, p = this.player;
+    if (!t) return;
+    t.inc = 0;
+    p.targetId = null;
+    p.attackMove = null;
+    if (fell) p.hp = Math.max(1, Math.round(p.stats.maxHp * 0.25));
+    this.emit('incarnateEnd', { fell: !!fell, x: p.x, z: p.z });
+  }
+  /** A Tide foe's blow on the incarnate god: a fall ends the incarnation, never the hero. */
+  incarnateHurt(dmg) {
+    const p = this.player;
+    const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
+    // (as a mortal: health counted as if it were INCARNATE.body, so any hero's gear makes the same fight)
+    const n = Math.max(1, Math.round((p.stats.maxHp * dmg * stone) / INCARNATE.body));
+    p.hp -= n;
+    this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: n });
+    if (p.hp <= 1) this.incarnateEnd(true);
   }
 
   /** Hand in a finished job at the board (in Haven): its rewards, and a new job in its place. */
@@ -8167,6 +8228,11 @@ export class World {
         p.hp -= back;
         this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: back, reflected: true });
       }
+    }
+    if (e.tide) {
+      // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate, and as a mortal's
+      if (!this.tide || !(this.tide.inc > 0)) return;
+      dmg = Math.min(dmg, Math.max(1, Math.round(e.maxHp * (opts.dot ? INCARNATE.dotCap : INCARNATE.hitCap))));
     }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;

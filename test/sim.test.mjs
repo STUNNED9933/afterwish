@@ -5332,7 +5332,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   k3.faith = 1000;
   w3.command({ type: 'keepTide' }); w3.runCommands();
   let foes = 0, hits = 0, hurt = false, end = null, mir = null;
-  for (let i = 0; i < 60 * 240 && !end; i++) {
+  for (let i = 0; i < 60 * 240 && !end && !(mir && i > 60 * 22); i++) {
     const live = w3.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn');
     if (i % 10 === 0 && live.length && !mir) { p3.x = live[0].x + 1; p3.z = live[0].z; w3.command({ type: 'attack', id: live[0].id }); }
     if (i === 60 * 20 && live.length) {
@@ -5350,10 +5350,47 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   check('...a Tide comes in waves, and the hero (a god now) cannot strike it', foes >= K.KEEP.tide.perWave(1) && !hurt, `${foes} foes`);
   check('...the god works miracles instead: Smite costs Faith, hurts the Tide, and has a cooldown', mir && mir.paid === K.MIRACLES.smite.faith && mir.again === 0 && mir.dmg, JSON.stringify(mir));
+  // (0.81.1) Incarnate: R takes the field for a while, for Faith; blows are capped; the Tide can strike back
+  const liveFoe = () => w3.enemies.find((e) => e.tide && !e.dead && e.state !== 'spawn');
+  let incOk = null;
+  for (let i = 0; i < 60 * 60 && !incOk && !end; i++) {
+    const f = liveFoe();
+    if (f && w3.tide && w3.tide.state === 'on' && !(w3.tide.mcd.smite > 0)) {
+      const f0 = k3.faith;
+      w3.command({ type: 'cast', slot: 'r' }); w3.runCommands();
+      const paid = f0 - k3.faith, on = w3.tide.inc > 0;
+      p3.x = f.x + 1.2; p3.z = f.z;
+      const hp0 = f.hp;
+      let maxHit = 0;
+      for (let j = 0; j < 60 * 3 && !f.dead; j++) {
+        w3.command({ type: 'attack', id: f.id });
+        w3.step(CONFIG.TICK);
+        for (const e of w3.events) if (e.type === 'damage' && e.who === 'enemy' && e.id === f.id) maxHit = Math.max(maxHit, e.amount);
+        w3.events = [];
+      }
+      incOk = { paid, on, hurt: f.dead || f.hp < hp0, maxHit, cap: Math.round(f.maxHp * K.INCARNATE.hitCap) };
+    }
+    w3.step(CONFIG.TICK);
+    for (const e of w3.events) if (e.type === 'tideEnd') end = e;
+    w3.events = [];
+  }
+  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith, and then their blows land, a fifth of a foe at most', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt && incOk.maxHit <= incOk.cap + 1, JSON.stringify(incOk));
+  if (w3.tide && w3.tide.inc > 0) {
+    for (let i = 0; i < 60 * (K.INCARNATE.dur + 1) && w3.tide && w3.tide.inc > 0; i++) { w3.step(CONFIG.TICK); for (const e of w3.events) if (e.type === 'tideEnd') end = e; w3.events = []; }
+  }
+  check('...and it fades on its own', !w3.tide || !(w3.tide.inc > 0));
+  for (let i = 0; i < 60 * 240 && !end; i++) { w3.step(CONFIG.TICK); for (const e of w3.events) { if (e.type === 'buildHit') hits++; if (e.type === 'tideEnd') end = e; } w3.events = []; }
   check('...left to the Tide, the buildings are battered and the night is lost', hits > 0 && end && end.won === false && !w3.enemies.some((e) => e.tide), `${hits} hits, ${JSON.stringify(end)}`);
   const hurtB = Object.keys(k3.builds);
   check('...the damage stays after the night (saved with the keep)', hurtB.length > 0 && hurtB.every((b) => k3.builds[b] < K.buildMax(b, k3)) && JSON.stringify(K.cleanKeep(JSON.parse(JSON.stringify(k3))).builds) === JSON.stringify(k3.builds), JSON.stringify(k3.builds));
   for (let i = 0; i < 60 * 11; i++) w3.step(CONFIG.TICK);
+  w3.command({ type: 'keepTide' }); w3.runCommands();
+  const darkNote = w3.events.find((e) => e.type === 'keepShort');
+  w3.events = [];
+  const cost = w3.keepRepairCost();
+  k3.stone = 5;
+  w3.command({ type: 'keepRepair' }); w3.runCommands();
+  check('(0.81.1) with too little Wishstone, mending does what it can, the Hearth first', k3.stone === 0 && k3.builds.hearth === 5 * K.KEEP.repairPer && w3.keepRepairCost() === cost - 5 && darkNote && darkNote.what === 'repair' && darkNote.need === Math.ceil(K.buildMax('hearth', k3) / K.KEEP.repairPer), JSON.stringify({ b: k3.builds, cost }));
   k3.stone = 1000;
   w3.command({ type: 'keepRepair' }); w3.runCommands();
   check('...and is mended at the Hearth with Wishstone', Object.keys(k3.builds).length === 0 && k3.stone < 1000 && w3.keepBuilds.every((b) => b.hp === b.max));

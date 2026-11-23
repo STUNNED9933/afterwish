@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
+import { buildKeepHero, buildVillager, VILLAGER_KINDS } from './keepmodels.js'; // (0.81.1)
 import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, buildAltar } from './models.js';
 import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
@@ -331,13 +332,14 @@ export class Renderer {
     if (map.id === 'wishkeep') {
       // (0.81) people walking about the keep: more as it grows
       const tier = (this.keepTier && this.keepTier()) || 1;
-      const robes = [0x8a5a2a, 0x4a7a4a, 0x5a4a6a, 0x4a5a6a, 0xa86a3a, 0x6a3a4a, 0x3a5a7a, 0x7a7a5a];
+      // (0.81.1) the keep's own folk, each with a trade: farmers, a baker, elders, children at play ...
       for (let i = 0; i < 3 + 3 * tier; i++) {
-        const g = buildNpc({ robe: robes[i % robes.length], trim: 0xe8dcc8, hair: [0x2a1a10, 0x6a4a2a, 0xc89048, 0xe8e4dc][i % 4], scale: i % 5 === 4 ? 0.7 : 0.9 + (i % 3) * 0.06 });
+        const m = buildVillager(VILLAGER_KINDS[i % VILLAGER_KINDS.length], i + 1);
+        const g = m.group;
         const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 6;
         g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
         this.scene.add(g);
-        this.walkers.push({ g, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier });
+        this.walkers.push({ g, m, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier });
       }
     }
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
@@ -2234,7 +2236,7 @@ export class Renderer {
       if (o.geometry && !shared.has(o.geometry) && !o.geometry.userData.keep) o.geometry.dispose();
       if (o.material) {
         if (o.material.map && !o.material.map.userData.keep) o.material.map.dispose();
-        o.material.dispose();
+        if (!o.material.userData.keep) o.material.dispose(); // (0.81.1) the keep's people share theirs
       }
     });
   }
@@ -2786,15 +2788,22 @@ export class Renderer {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
-    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, glow: 'wishkeep' });
+    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, troop: t.id });
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      const look = heroLook(a.cls, a.spec, !!a.eform);
+      const look = a.troop ? 'keep' : heroLook(a.cls, a.spec, !!a.eform);
       if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);
         v = null;
+      }
+      if (!v && a.troop) {
+        // (0.81.1) the keep's heroes are its own sworn, not copies of a player's hero
+        const model = buildKeepHero(a.cls, a.troop);
+        this.scene.add(model.group);
+        v = { model, cls: a.cls, look, walk: 0 };
+        this.allyViews.set(a.pid, v);
       }
       if (!v) {
         const model = buildHero(a.cls);
@@ -2803,7 +2812,7 @@ export class Renderer {
         v = { model, cls: a.cls, look, walk: 0 };
         this.allyViews.set(a.pid, v);
       }
-      if ((a.glow || null) !== (v.model.glowId ?? null)) this.applyGlow(v.model, a.glow);
+      if (!v.model.keep && (a.glow || null) !== (v.model.glowId ?? null)) this.applyGlow(v.model, a.glow);
       seen.add(a.pid);
       const g = v.model.group;
       g.visible = true;
@@ -2816,7 +2825,10 @@ export class Renderer {
       const attackStart = an.swing === 0;
       if (an.swing < 1) an.swing = Math.min(1, an.swing + dt / an.swingDur);
       if (an.spin > 0) an.spin = Math.max(0, an.spin - dt / 0.32);
-      if (v.model.rig) {
+      if (v.model.keep) {
+        g.position.set(x, 0, z);
+        v.model.anim(dt, { moving: a.moving, dead: a.dead, swing: an.swing });
+      } else if (v.model.rig) {
         g.rotation.x = 0;
         g.position.set(x, 0, z);
         // their attacks, skills, rolls and leaps, like this player's own (0.41.1)
@@ -2884,6 +2896,13 @@ export class Renderer {
       this.shake = Math.max(this.shake, 0.5);
     } else if (ev.type === 'troopFall') {
       this.burst(ev.x, 1, ev.z, { count: 12, color: 0xff3d4f, speed: 3, up: 3, life: 0.6 });
+    } else if (ev.type === 'incarnate') {
+      // (0.81.1) the god steps down: a pillar of light, then a ring of it at their feet while it lasts
+      for (let i = 0; i < 5; i++) this.later(i * 0.06, () => this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1 + i * 0.6, color: 0xffd27a, from: 2.6 - i * 0.3, to: 0.6, dur: 0.5, opacity: 0.9 }));
+      this.burst(ev.x, 2, ev.z, { count: 60, color: 0xfff2c8, speed: 6, up: 10, life: 0.9 });
+      this.shake = Math.max(this.shake, 0.4);
+    } else if (ev.type === 'incarnateEnd') {
+      this.burst(ev.x, 1.5, ev.z, { count: 30, color: ev.fell ? 0xff3d4f : 0xffd27a, speed: 4, up: 6, life: 0.8 });
     } else if (ev.type === 'miracle') {
       if (ev.id === 'smite') {
         for (let i = 0; i < 3; i++) streak(ev.x + (i - 1) * 0.4, ev.z - 0.01, ev.x, ev.z, 0xffffff, 0.3, 0.3);
@@ -2903,6 +2922,23 @@ export class Renderer {
   /** (0.81) Per frame in the Wishkeep: wards shining, wrecks smoking, and the people walking about. */
   updateKeep(world, dt) {
     const builds = world.keepBuilds || [];
+    // (0.81.1) the incarnate god's light
+    const inc = world.tide && world.tide.state === 'on' && world.tide.inc > 0 && world.player;
+    if (inc && !this.incAura) {
+      this.incAura = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.25, 40), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+      this.incAura.rotation.x = -Math.PI / 2;
+      this.scene.add(this.incAura);
+    } else if (!inc && this.incAura) {
+      this.scene.remove(this.incAura);
+      this.incAura.geometry.dispose();
+      this.incAura.material.dispose();
+      this.incAura = null;
+    }
+    if (this.incAura) {
+      const pv = this.hero && this.hero.group ? this.hero.group.position : world.player;
+      this.incAura.position.set(pv.x, 0.06, pv.z);
+      this.incAura.material.opacity = 0.45 + 0.25 * Math.sin(performance.now() / 160);
+    }
     this.wardViews = this.wardViews || new Map();
     for (const b of builds) {
       let v = this.wardViews.get(b.id);
@@ -2931,6 +2967,7 @@ export class Renderer {
       const d = Math.hypot(dx, dz);
       if (w.wait > 0) {
         w.wait -= dt;
+        w.m.anim(dt, { moving: false, swing: 1 });
         continue;
       }
       if (d < 0.2) {
@@ -2940,7 +2977,8 @@ export class Renderer {
         w.wait = Math.random() < 0.5 ? 1 + Math.random() * 3 : 0;
         continue;
       }
-      const step = Math.min(d, 1.4 * dt);
+      const step = Math.min(d, 1.4 * (w.m.speed || 1) * dt);
+      w.m.anim(dt, { moving: true, swing: 1 });
       w.g.position.x += (dx / d) * step;
       w.g.position.z += (dz / d) * step;
       for (const o of world.obstacles || []) {
@@ -2952,8 +2990,6 @@ export class Renderer {
         }
       }
       w.g.rotation.y = Math.atan2(dx, dz);
-      w.bob = (w.bob || 0) + dt * 9;
-      w.g.position.y = Math.abs(Math.sin(w.bob)) * 0.06;
     }
   }
 

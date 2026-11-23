@@ -17,7 +17,7 @@ import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
-import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS } from '../sim/wishkeep.js';
+import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** (0.80.1) Which groups of the tracker are folded, kept in this browser. */
@@ -915,6 +915,16 @@ export class Hud {
    */
   drawQuestTracker(world) {
     const el = $('quest-track');
+    // (0.81.1) always just under the server/room badge, however many lines it wraps to
+    const badge = $('room-badge');
+    const rect = badge && !badge.classList.contains('hidden') ? badge.getBoundingClientRect() : null;
+    const below = rect && rect.height > 0 ? rect.bottom : 0; // (fixed, so no offsetParent: hidden means no size)
+    const top = below > 0 ? Math.round(below + 8) : 0;
+    if (top !== this.trackTop) {
+      this.trackTop = top;
+      el.style.top = top ? `${top}px` : '';
+      el.style.maxHeight = top ? `calc(100vh - ${top}px - 190px)` : '';
+    }
     const groups = [];
     const p = world.player;
     if (world.mode === 'explore' && !world.trial) {
@@ -946,6 +956,13 @@ export class Hud {
           else if (w.kind === 'tell') how = 'at the Wishes board';
           return `<div class="qt keep"><b>${escT(wishGoal(w))}</b><span>${escT(who)}${how ? ` · ${escT(how)}` : ''}</span></div>`;
         });
+        // (0.81.1) the keep's hurts at the top, with what to do about them
+        const hurt = Object.keys(k.builds || {}).length;
+        if (hurt) {
+          const dark = k.builds.hearth != null && k.builds.hearth <= 0;
+          const cost = world.keepRepairCost ? world.keepRepairCost() : 0;
+          wishes.unshift(`<div class="qt keep${dark ? ' urgent' : ''}"><b>${dark ? 'The Hearth is dark' : 'Mend the keep'}</b><span>${dark ? 'No night until it is mended · ' : ''}${cost} Wishstone at the Hearth (you have ${k.stone})</span></div>`);
+        }
         groups.push({ id: 'keep', name: 'The Wishkeep', rows: wishes, ready: k.wishes.filter((w) => w.done).length });
       }
     }
@@ -1106,15 +1123,17 @@ export class Hud {
     const t = world.tide;
     const on = !!(t && t.state === 'on' && world.map && world.map.id === 'wishkeep');
     el.classList.toggle('hidden', !on);
+    document.body.classList.toggle('god', on && !(t.inc > 0)); // (0.81.1) the hero's own skill bar dims while they are a god
     if (!on) return (this.mirKey = null);
     const faith = world.player.keep ? world.player.keep.faith : 0;
-    const key = MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}:${faith >= MIRACLES[m].faith}`).join('|') + faith;
+    const inc = t.inc > 0;
+    const key = (inc ? `inc${Math.ceil(t.inc)}` : MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}`).join('|') + `|${Math.ceil(t.icd || 0)}`) + '|' + faith;
     if (key === this.mirKey) return;
     this.mirKey = key;
-    el.innerHTML = MIRACLE_IDS.map((m) => {
-      const M = MIRACLES[m], cd = (t.mcd && t.mcd[m]) || 0;
-      return `<div class="mir${cd > 0 ? ' cool' : ''}${faith < M.faith ? ' poor' : ''}" title="${M.desc}"><kbd>${M.key.toUpperCase()}</kbd> <b>${M.name}</b>${M.faith} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / M.cd) * 100) : 100}%"></i></div>`;
-    }).join('');
+    const card = (k, name, cost, cd, max, desc, extra = '') => `<div class="mir${cd > 0 ? ' cool' : ''}${faith < cost ? ' poor' : ''}${extra}" title="${desc}"><kbd>${k.toUpperCase()}</kbd> <b>${name}</b>${cost} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / max) * 100) : 100}%"></i></div>`;
+    el.innerHTML = inc
+      ? `<div class="mir incarnate" title="${INCARNATE.desc}"><b>Incarnate</b>your own skills · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
+      : MIRACLE_IDS.map((m) => card(MIRACLES[m].key, MIRACLES[m].name, MIRACLES[m].faith, (t.mcd && t.mcd[m]) || 0, MIRACLES[m].cd, MIRACLES[m].desc)).join('') + card(INCARNATE.key, 'Incarnate', INCARNATE.faith, t.icd || 0, INCARNATE.cd, INCARNATE.desc, ' inc');
   }
 
   /** "Room K7QXM · 3 players", top of the screen, while in a room. */

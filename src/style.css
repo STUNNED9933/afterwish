@@ -1283,3 +1283,12 @@ button.cell:active { transform: scale(0.96); }
 #miracles .mir i { position: absolute; left: 0; bottom: 0; height: 3px; background: #ff3d4f; }
 #miracles .mir.cool { opacity: 0.55; }
 #miracles .mir.poor { border-color: #6a4a50; }
+
+/* (0.81.1) Incarnate, and the keep's urgent notes */
+#miracles .mir.inc { border-color: #ffd27a; }
+#miracles .mir.incarnate { min-width: 220px; border-color: #ffd27a; background: rgba(40, 26, 6, 0.9); color: #ffe9b8; }
+#miracles .mir.incarnate i { background: #ffd27a; }
+body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
+.quest.urgent { border-color: #ff3d4f; box-shadow: 0 0 0 1px rgba(255, 61, 79, 0.35) inset; }
+.qt.urgent { border-left-color: #ff3d4f; background: rgba(60, 10, 16, 0.85); }
+.qt.urgent b { color: #ffb0b8; }

@@ -26,7 +26,7 @@ import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, BUILD_IDS, buildMax } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1392,8 +1392,21 @@ function start(hot = {}) {
     const T = KEEP.tiers[k.tier], next = KEEP.tiers[k.tier + 1];
     const on = world.tide && world.tide.state === 'on';
     $('talk-line').innerHTML = talkNote ? esc(talkNote) : `Tier ${T.numeral}: ${esc(T.name)}. ${keepHave(k)}`;
+    // (0.81.1) mending first when anything is hurt: what is hurt, what it costs, where Wishstone comes from
+    const hurt = [];
+    for (const b of BUILD_IDS) if (k.builds[b] != null) hurt.push(`${b === 'hearth' ? 'the Hearth' : HALLS[b].name} ${k.builds[b] <= 0 ? '(wrecked)' : `${Math.round((k.builds[b] / buildMax(b, k)) * 100)}%`}`);
+    const need = world.keepRepairCost();
+    if (need > 0) {
+      const dark = world.wrecked('hearth');
+      const fix = keepCard(dark ? 'The Hearth is dark: mend it' : 'Mend the keep', `${need} Wishstone for all of it`, `<p>${dark ? 'The last night put the fire out. <b>No night can be called until the Hearth is mended.</b> ' : ''}Hurt: ${hurt.join(', ')}. A wrecked hall does no work until it is mended.</p>
+        <p class="setting-desc">Each Wishstone mends ${KEEP.repairPer} health, the Hearth first. You have ${k.stone}. Wishstone comes from answering wishes on the board, from every night the keep holds, and from the Market (it trades Faith for Wishstone once it is raised).</p>`);
+      if (dark) fix.classList.add('urgent');
+      const all = k.stone >= need;
+      fix.appendChild(keepBtn(all ? `Mend everything · ${need} Wishstone` : k.stone > 0 ? `Mend what you can · ${k.stone} of ${need} Wishstone` : 'No Wishstone yet: answer wishes on the board', () => applyNow({ type: 'keepRepair' }), { primary: true, disabled: k.stone <= 0 || on }));
+      list.appendChild(fix);
+    }
     // the night
-    const night = keepCard('Call the night', 'a Tide', `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}). A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', 'a Tide', `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you fight beside them with your own skills. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     night.appendChild(keepBtn(on ? 'The Tide is coming' : world.wrecked('hearth') ? 'Mend the Hearth first' : `Call the night (${k.troops.length} hero${k.troops.length === 1 ? '' : 'es'})`, () => {
       applyNow({ type: 'keepTide' });
       setMode('play');
@@ -1421,20 +1434,6 @@ function start(hot = {}) {
       heroes.appendChild(row);
     }
     list.appendChild(heroes);
-    // mending
-    let need = 0;
-    const hurt = [];
-    for (const b of BUILD_IDS) {
-      if (k.builds[b] == null) continue;
-      need += buildMax(b, k) - k.builds[b];
-      hurt.push(`${b === 'hearth' ? 'the Hearth' : HALLS[b].name} ${k.builds[b] <= 0 ? '(wrecked)' : `${Math.round((k.builds[b] / buildMax(b, k)) * 100)}%`}`);
-    }
-    if (need > 0) {
-      const stone = Math.ceil(need / KEEP.repairPer);
-      const fix = keepCard('Mend the keep', `${stone} Wishstone`, `<p>Hurt in the last Tide: ${hurt.join(', ')}.</p>`);
-      fix.appendChild(keepBtn(`Mend everything · ${stone} Wishstone`, () => applyNow({ type: 'keepRepair' }), { primary: true, disabled: k.stone < stone || on }));
-      list.appendChild(fix);
-    }
     // the tier
     if (next) {
       const tier = keepCard(`Raise the keep: tier ${next.numeral}`, esc(next.name), `<p>A bigger board (${next.board} wishes), more people come to live here, and room for ${KEEP.heroCap[k.tier + 1]} heroes.${k.tier + 1 >= 3 ? ' And a weapon glow of your own: Kept.' : ''} The nights grow stronger with it.</p><div class="rewards">Costs ${keepCost(next.cost)}</div>`);
@@ -5037,7 +5036,7 @@ function start(hot = {}) {
         break;
       case 'keepShort':
         sfx.denied();
-        talkNote = ev.what === 'repair' ? 'The Hearth is wrecked: mend the keep first.' : ev.what === 'stone' ? 'Not enough Wishstone.' : ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()}${ev.stone ? `, and ${ev.stone} Wishstone` : ''}.` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
+        talkNote = ev.what === 'repair' ? `The Hearth is dark, so no night can be called. Mend it here at the Hearth: "Mend the keep" below (${ev.need} Wishstone for the Hearth; you have ${ev.have}).` : ev.what === 'stone' && ev.mend ? 'No Wishstone to mend with. Answer wishes on the board (most pay Wishstone), or trade Faith for it at the Market.' : ev.what === 'stone' ? 'Not enough Wishstone.' : ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()}${ev.stone ? `, and ${ev.stone} Wishstone` : ''}.` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
         if (mode === 'play') hud.feedText(talkNote);
         if (mode === 'talk') renderTalk();
         break;
@@ -5067,7 +5066,17 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         sfx.levelUp();
-        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, paid in Faith.` : 'Nobody stands at the posts. Only your miracles (Q, W, E) keep the night off. Raise heroes at the Hearth.');
+        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and fight beside them.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
+        break;
+      case 'incarnate':
+        sfx.levelUp();
+        hud.banner('Incarnate', `For ${ev.dur} seconds you fight beside your heroes with your own skills. The Unmade can strike you back.`);
+        renderer.keepFx(ev);
+        break;
+      case 'incarnateEnd':
+        if (ev.fell) sfx.denied();
+        hud.feedText(ev.fell ? 'Struck down: you rise again as the keep\'s god (miracles on Q, W, E).' : 'The incarnation fades: miracles on Q, W, E again.');
+        renderer.keepFx(ev);
         break;
       case 'tideWave':
         hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them, from four ways in.`);
@@ -5078,7 +5087,7 @@ function start(hot = {}) {
           hud.banner('Morning', `The keep held. +${ev.faith} Faith, +${ev.stone} Wishstone.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend at the Hearth).` : ''}`);
         } else {
           sfx.denied();
-          hud.banner('The Hearth went dark', `The night is lost.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')}.` : ''} Nobody was taken; mend the keep with Wishstone at the Hearth and try again.`);
+          hud.banner('The Hearth went dark', `The night is lost.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')}.` : ''} Nobody was taken. Walk to the Hearth and choose "Mend the keep" (Wishstone) before the next night; the board's wishes pay Wishstone.`);
         }
         if (mode === 'talk') renderTalk();
         break;
@@ -5097,7 +5106,8 @@ function start(hot = {}) {
         break;
       case 'buildWrecked':
         sfx.denied();
-        hud.banner(`${ev.name} is wrecked`, ev.id === 'hearth' ? '' : 'It stops working until it is mended.');
+        if (ev.id === 'hearth') hud.banner('The Hearth is wrecked', '');
+        else hud.feedText(`${ev.name} is wrecked: it does no work until it is mended at the Hearth (Wishstone).`);
         renderer.keepFx(ev);
         break;
       case 'miracleMiss':
@@ -5120,7 +5130,7 @@ function start(hot = {}) {
       case 'keepTraded':
       case 'keepRepaired':
         sfx.upgrade();
-        hud.feedText(ev.type === 'keepTrained' ? `${ev.name} is level ${ev.lvl} now.` : ev.type === 'keepArmed' ? `${ev.name}: gear ${ev.gear}.` : ev.type === 'keepLearned' ? `${ev.name} learned ${ev.skill}.` : ev.type === 'keepBlessed' ? `${ev.name}, for the next night.` : ev.type === 'keepRepaired' ? `The keep is mended (${ev.stone} Wishstone).` : 'Traded.');
+        hud.feedText(ev.type === 'keepTrained' ? `${ev.name} is level ${ev.lvl} now.` : ev.type === 'keepArmed' ? `${ev.name}: gear ${ev.gear}.` : ev.type === 'keepLearned' ? `${ev.name} learned ${ev.skill}.` : ev.type === 'keepBlessed' ? `${ev.name}, for the next night.` : ev.type === 'keepRepaired' ? (ev.left ? `Mended with ${ev.stone} Wishstone${ev.hearth ? ' (the Hearth is lit again)' : ''}; ${ev.left} more mends the rest.` : `The keep is mended (${ev.stone} Wishstone).`) : 'Traded.');
         if (mode === 'talk') renderTalk();
         break;
       case 'keepFull':

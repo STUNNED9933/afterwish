@@ -160,6 +160,19 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Incarnate, and the keep's own people (0.81.1)
+
+- **Incarnate.** In a Tide, press **R** (30 Faith) to step down and fight beside your heroes for 20 seconds with your own skills. You fight as a mortal: one blow takes at most a fifth of an Unmade's health, and the Tide can strike you back. Falling only ends the incarnation, and you are a god again with miracles on Q, W and E. It can be used again 45 seconds after it starts. The miracle bar shows it, and the hero's skill bar dims while you are a god.
+- **The keep's own heroes and folk.** Heroes are no longer copies of player heroes:
+  - Shieldbearer: kettle helm, round crimson shield and spear.
+  - Warden: hood, quiver and a longbow they draw.
+  - Lanternkeeper: robe, cowl and a crooked staff with a lantern of the Hearth's fire.
+  - Nightwatch: masked and hooded, with a hooked knife in each hand.
+  
+  All of them wear the keep's crimson and bone, and they walk, strike and fall. Farmers, a baker, elders, children (some with wooden swords), a smith, a washerwoman, a pilgrim and a lamplighter walk the plaza and step around things.
+- **Clearer mending.** When anything is hurt, the Hearth's panel opens with a card saying what is hurt, what it costs, and where Wishstone comes from. Mending now uses whatever Wishstone you have, the Hearth first. A dark Hearth shows at the top of the tracker until it is lit again, and the messages say where to go.
+- **Fixed:** the server world tag no longer covers the quest tracker. The tracker now sits just under it, however many lines the tag takes.
+
 ### The Wishkeep's heroes hold the night (0.81)
 
 The keep is now something to defend, and the Tide is a fight you watch and steer rather than one you stand in.

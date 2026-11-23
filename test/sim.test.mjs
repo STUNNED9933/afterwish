@@ -5582,4 +5582,75 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const late = ringTable(100, 56);
   check('Echo Ring (0.81.7): starting deep (wave 56), What the Stones Remember still has its rows, from that wave on', late.length === 10 && late[0].wave === 56 && late.every((r, i) => i === 0 || r.wave > late[i - 1].wave) && late[late.length - 1].total.fragment > late[0].fragment, late.map((r) => r.wave).join());
 }
+
+// --- 0.82: heroes' rarity, Night levels, Hero gear and smarter heroes --------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 188, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [6, 7, 8, 9, 10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5;
+  for (const c of ['rogue', 'archer', 'mage']) { w.command({ type: 'keepRecruit', cls: c }); w.runCommands(); }
+  const t = k.troops[0];
+  const base = K.troopStats(t, k.armory);
+  w.events = [];
+  w.command({ type: 'keepAscend', id: t.id }); w.runCommands();
+  check('Heroes (0.82): ascending needs Ascension Sigils', (t.rar || 0) === 0 && w.events.some((e) => e.type === 'keepShort' && e.what === 'sigils'));
+  k.sigils = 1000;
+  for (let i = 0; i < 9; i++) { w.command({ type: 'keepAscend', id: t.id }); w.runCommands(); }
+  const top = K.troopStats(t, k.armory);
+  check('...with them (and Faith) a hero climbs from Common to Immortal, one step at a time, and no further', t.rar === K.HERO_RAR_MAX && Math.abs(top.dmg / base.dmg - K.HERO_RARITY.mult[6]) < 0.02 && k.sigils === 1000 - [1, 2, 3, 4, 5, 6].reduce((a, r) => a + K.HERO_RARITY.ascend(r).sigils, 0));
+  // Night levels
+  w.command({ type: 'keepTide', level: 9 }); w.runCommands();
+  check('Night levels: you can call one past the highest held, no further (Night 1 the first time)', w.tide && w.tide.level === 1 && w.tide.night === K.NIGHT.power(1));
+  let end = null;
+  for (let i = 0; i < 60 * 300 && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) if (e.type === 'tideEnd') end = e; w.events = []; }
+  check('...a night held opens the next, and pays Sigils and Hero gear into the Armory', end && end.won && k.nightMax === 1 && end.sigils === K.NIGHT.sigils(1) && k.armory.length === K.NIGHT.pieces(1) && end.first, JSON.stringify(end));
+  for (let i = 0; i < 60 * 11; i++) w.step(CONFIG.TICK);
+  // the Armory
+  let gid = 0;
+  const mk = (slot, r) => { const g = K.rollHeroGear(() => 0.5, 10, 'x' + ++gid, slot); g.r = r; g.main.v = K.HERO_GEAR.main[r]; return g; };
+  k.armory = [mk('weapon', 2), mk('weapon', 5), mk('armor', 4), mk('charm', 6)];
+  const h = k.troops[1];
+  const s0 = K.troopStats(h, k.armory);
+  w.command({ type: 'keepGearOn', gid: k.armory[1].id, hero: h.id }); w.runCommands();
+  check('The Armory: a piece put on a hero makes them stronger (only them)', k.armory[1].hero === h.id && K.troopStats(h, k.armory).dmg > s0.dmg * 1.5 && K.troopStats(k.troops[2], k.armory).dmg === K.troopStats(k.troops[2], []).dmg);
+  w.command({ type: 'keepGearOn', gid: k.armory[0].id, hero: h.id }); w.runCommands();
+  check('...one piece a slot: the one worn there goes back to the Armory', k.armory[0].hero === h.id && k.armory[1].hero === null);
+  w.command({ type: 'keepGearBest' }); w.runCommands();
+  check('...Equip the best: the rarest hero gets the best of each slot', k.armory[1].hero === t.id && k.armory[2].hero === t.id && k.armory[3].hero === t.id && k.armory[0].hero !== t.id);
+  const st = K.troopStats(t, k.armory);
+  check('...an Immortal charm brings its effect', st.fx.charm === true);
+  w.command({ type: 'keepSalvage', ids: [k.armory[1].id] }); w.runCommands();
+  check('...a worn piece is never broken down', k.armory.length === 4);
+  k.armory.push(mk('armor', 1));
+  const lone = k.armory.find((g) => g.hero == null);
+  const stone0 = k.stone;
+  w.command({ type: 'keepGearLock', gid: lone.id }); w.command({ type: 'keepSalvage', ids: [lone.id] }); w.runCommands();
+  const lockedKept = k.armory.includes(lone);
+  w.command({ type: 'keepGearLock', gid: lone.id }); w.command({ type: 'keepSalvage', ids: [lone.id] }); w.runCommands();
+  check('...nor a locked one; an unworn, unlocked one breaks down for Wishstone', lockedKept && !k.armory.includes(lone) && k.stone === stone0 + K.HERO_GEAR.salvage(lone));
+  const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
+  check('...the Armory, rarities, Sigils and Night levels survive a save', back.armory.length === k.armory.length && back.troops[0].rar === 6 && back.nightMax === 1 && back.sigils === k.sigils && back.armory.every((g, i) => g.hero === k.armory[i].hero));
+  w.command({ type: 'keepDismiss', id: t.id }); w.runCommands();
+  check('...a hero sent home leaves their gear in the Armory', k.armory.every((g) => g.hero !== t.id) && k.armory.length === back.armory.length);
+  // smarter heroes: one at a building comes before one nearer
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 1 }); w.runCommands();
+  w.enemies = w.enemies.filter((e) => !e.tide);
+  w.tide.next = 999;
+  const tr = w.troops[0];
+  const hall = w.keepBuilds.find((b) => b.id !== 'hearth');
+  tr.x = hall.x * 0.5; tr.z = hall.z * 0.5; // between the Hearth and the hall, as posted
+  const near = w.spawnEnemy('hush', { x: tr.x + 2, z: tr.z, level: 100 });
+  const sieger = w.spawnEnemy('ashwalker', { x: hall.x + (hall.r + 0.5), z: hall.z, level: 100 });
+  for (const e of [near, sieger]) { e.tide = true; e.noLoot = true; e.state = 'chase'; e.hp = e.maxHp = 1e6; e.tdmg = 1; e.tbdmg = 1; e.tAtk = 9; e.tRe = 9; e.x = e.px = e.x; }
+  near.tTarget = w.troops[1]; sieger.tTarget = hall;
+  tr.reT = 0; tr.targetId = null;
+  w.stepTroops(CONFIG.TICK);
+  check('Smarter heroes (0.82): a hero goes for the wrecker at a hall before the Unmade right beside them', tr.targetId === sieger.id, `${tr.targetId} (near ${near.id}, sieger ${sieger.id})`);
+}
 process.exit(failed ? 1 : 0);

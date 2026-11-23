@@ -1083,7 +1083,7 @@ export class Hud {
     if (!this.allyTags) this.allyTags = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, and (when hurt or in a Tide) its buildings, with the same plates
-    for (const tr of world.troops || []) list.push({ pid: 'troop:' + tr.id, name: tr.name, level: `level ${tr.lvl}`, dead: !!tr.dead, hp: tr.hp, maxHp: tr.maxHp, x: tr.x, z: tr.z, troop: true });
+    for (const tr of world.troops || []) list.push({ pid: 'troop:' + tr.id, name: tr.name, level: `level ${tr.lvl}`, dead: !!tr.dead, hp: tr.hp, maxHp: tr.maxHp, x: tr.x, z: tr.z, troop: true, color: tr.rar ? RARITIES[tr.rar].color : null }); // (0.82) in their rarity's colour
     const night = world.tide && world.tide.state === 'on';
     for (const b of world.keepBuilds || []) {
       if (!night && b.hp >= b.max) continue;
@@ -1107,6 +1107,7 @@ export class Hud {
       if (t.key !== key) {
         t.key = key;
         t.name.textContent = key;
+        t.name.style.color = a.color || '';
         t.el.classList.toggle('down', a.dead);
       }
       t.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, a.hp / a.maxHp))})`;

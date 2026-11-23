@@ -95,11 +95,11 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -865,7 +865,13 @@ export class World {
       else if (c.type === 'keepSkip') this.keepSkip(c.i);
       else if (c.type === 'keepTier') this.keepTier();
       else if (c.type === 'keepHall') this.keepHall(c.cls);
-      else if (c.type === 'keepTide') this.keepTideStart();
+      else if (c.type === 'keepTide') this.keepTideStart(c.level); // (0.82) at a Night level
+      else if (c.type === 'keepAscend') this.keepAscend(c.id); // (0.82) a hero's rarity, a step up
+      else if (c.type === 'keepGearOn') this.keepGearOn(c.gid, c.hero); // (0.82) the Armory
+      else if (c.type === 'keepGearOff') this.keepGearOff(c.gid);
+      else if (c.type === 'keepGearLock') this.keepGearLock(c.gid);
+      else if (c.type === 'keepSalvage') this.keepSalvage(c.ids);
+      else if (c.type === 'keepGearBest') this.keepGearBest();
       else if (c.type === 'keepRecruit') this.keepRecruit(c.cls); // (0.81) the keep's heroes and halls
       else if (c.type === 'keepTrain') this.keepTrain(c.id);
       else if (c.type === 'keepArm') this.keepArm(c.id);
@@ -5835,6 +5841,7 @@ export class World {
     const i = k.troops.findIndex((t) => t.id === id);
     if (i < 0) return;
     const [t] = k.troops.splice(i, 1);
+    for (const g of k.armory || []) if (g.hero === t.id) g.hero = null; // (0.82) their gear goes back to the Armory
     this.keepTroopsUp();
     this.emit('keepDismissed', { name: t.name });
   }
@@ -5864,6 +5871,75 @@ export class World {
     this.keepTroopsUp();
     this.emit('keepArmed', { name: t.name, gear: t.gear });
   }
+  /** (0.82) Raise a hero a rarity, at the Hearth: Faith and Ascension Sigils (the night gives them). */
+  keepAscend(id) {
+    const k = this.player.keep, t = this.keepTroop(id);
+    if (!this.inKeep() || !t || (this.tide && this.tide.state === 'on')) return;
+    const to = (t.rar || 0) + 1;
+    if (to > HERO_RAR_MAX) return this.emit('keepMaxed', { name: t.name, what: 'rarity' });
+    const c = HERO_RARITY.ascend(to);
+    if (k.sigils < c.sigils) return this.emit('keepShort', { what: 'sigils', need: c.sigils, have: k.sigils });
+    if (!this.keepPay({ faith: c.faith })) return;
+    k.sigils -= c.sigils;
+    t.rar = to;
+    this.keepTroopsUp();
+    this.emit('keepAscended', { name: t.name, rar: to, cls: t.cls });
+  }
+  /** (0.82) The Armory: put a piece on a hero (what they wore in that slot goes back), take it off, lock, break down. */
+  keepGearOn(gid, hero) {
+    const k = this.player.keep;
+    if (!k || (this.tide && this.tide.state === 'on')) return;
+    const g = k.armory.find((x) => x.id === gid), t = this.keepTroop(Math.floor(Number(hero)));
+    if (!g || !t) return;
+    for (const o of k.armory) if (o.hero === t.id && o.slot === g.slot) o.hero = null;
+    g.hero = t.id;
+    this.keepTroopsUp();
+    this.emit('keepGeared', { name: t.name, piece: g.name, r: g.r });
+  }
+  keepGearOff(gid) {
+    const k = this.player.keep;
+    const g = k && k.armory.find((x) => x.id === gid);
+    if (!g || (this.tide && this.tide.state === 'on')) return;
+    g.hero = null;
+    this.keepTroopsUp();
+  }
+  keepGearLock(gid) {
+    const k = this.player.keep;
+    const g = k && k.armory.find((x) => x.id === gid);
+    if (g) g.locked = !g.locked;
+  }
+  /** Break pieces down for Wishstone (never one worn or locked). */
+  keepSalvage(ids) {
+    const k = this.player.keep;
+    if (!k || !Array.isArray(ids)) return;
+    const want = new Set(ids.slice(0, ARMORY_MAX).map(String));
+    let stone = 0, n = 0;
+    k.armory = k.armory.filter((g) => {
+      if (!want.has(g.id) || g.hero != null || g.locked) return true;
+      stone += HERO_GEAR.salvage(g);
+      n++;
+      return false;
+    });
+    if (!n) return;
+    k.stone += stone;
+    this.emit('keepSalvaged', { n, stone });
+  }
+  /** Put the best piece for each slot on every hero, the rarest heroes choosing first. */
+  keepGearBest() {
+    const k = this.player.keep;
+    if (!k || (this.tide && this.tide.state === 'on')) return;
+    for (const g of k.armory) g.hero = null;
+    const order = k.troops.slice().sort((a, b) => (b.rar || 0) - (a.rar || 0) || b.lvl - a.lvl);
+    for (const slot of HERO_SLOTS) {
+      const pool = k.armory.filter((g) => g.slot === slot).sort((a, b) => heroGearScore(b) - heroGearScore(a));
+      order.forEach((t, i) => {
+        if (pool[i]) pool[i].hero = t.id;
+      });
+    }
+    this.keepTroopsUp();
+    this.emit('keepGeared', { all: true });
+  }
+
   /** Teach a hero a skill: physical at the Lodge, magic at the Observatory, up to the hall's rank. */
   keepLearn(id, skill) {
     const k = this.player.keep, t = this.keepTroop(id), S = SKILLS[skill];
@@ -5969,14 +6045,17 @@ export class World {
     if (!this.inKeep()) return (this.troops = []);
     const old = new Map((this.troops || []).map((t) => [t.id, t]));
     const n = k.troops.length;
+    // (0.82) posts between the Hearth and the halls, spread over them (the Unmade come for the halls first)
+    const halls = this.obstacles.filter((o) => o.kind === 'house' && o.hall);
     this.troops = k.troops.map((src, i) => {
-      const st = troopStats(src);
-      const a = (i / Math.max(1, n)) * Math.PI * 2 + 0.4;
-      const post = { x: dCos(a) * 5.2, z: dSin(a) * 5.2 };
+      const st = troopStats(src, k.armory); // (0.82) rarity and Hero gear
+      const a = halls.length ? dAtan2(halls[i % halls.length].z, halls[i % halls.length].x) + (i >= halls.length ? 0.35 : 0) : (i / Math.max(1, n)) * Math.PI * 2 + 0.4;
+      const pr = halls.length ? 10.5 - (i >= halls.length ? 3 : 0) : 5.2;
+      const post = { x: dCos(a) * pr, z: dSin(a) * pr };
       const o = old.get(src.id);
       const t = o || { id: src.id, x: post.x, z: post.z, facing: a + Math.PI, hp: st.hp, atkT: 0.5, skillT: 2, dead: false, swing: 0 };
       const frac = o ? o.hp / o.maxHp : 1;
-      Object.assign(t, { cls: src.cls, name: src.name, lvl: src.lvl, gear: src.gear, skill: src.skill, post, maxHp: st.hp, dmg: st.dmg, cd: st.cd, range: st.range, speed: st.speed, splash: st.splash || 0, crit: st.crit || 0 });
+      Object.assign(t, { cls: src.cls, name: src.name, lvl: src.lvl, gear: src.gear, skill: src.skill, rar: st.rar, post, maxHp: st.hp, dmg: st.dmg, cd: st.cd, range: st.range, speed: st.speed, splash: st.splash || 0, crit: st.crit || 0, guard: st.guard, leech: st.leech, focus: st.focus, siege: st.siege, fx: st.fx });
       t.hp = Math.max(t.dead ? 0 : 1, Math.round(st.hp * frac));
       t.px = t.x;
       t.pz = t.z;
@@ -5985,9 +6064,12 @@ export class World {
   }
 
   /** Call the night: a Tide, three waves of the Unmade for the keep's buildings. Its heroes fight; its god works miracles. */
-  keepTideStart() {
+  keepTideStart(level) {
     const k = this.player.keep;
     if (!this.inKeep() || (this.tide && this.tide.state === 'on') || this.player.dead) return;
+    // (0.82) at a Night level: up to one past the highest held
+    const L = Math.max(1, Math.min(NIGHT.max, k.nightMax + 1, Math.floor(Number(level)) || k.night || 1));
+    k.night = L;
     if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: Math.ceil(buildMax('hearth', k) / KEEP.repairPer), have: k.stone });
     const T = KEEP.tide;
     this.keepTroopsUp();
@@ -5995,11 +6077,12 @@ export class World {
     const rec = this.keepRecord();
     this.tide = {
       state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
-      night: T.night(k.tier, k.tides), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
+      night: NIGHT.power(L), level: L, bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
       mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0,
     };
     k.blessings = []; // (they are for this night)
-    this.emit('tideStart', { waves: T.waves, heroes: this.troops.length, bless: this.tide.bless });
+    for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor); // (0.82) Unbroken: once a night
+    this.emit('tideStart', { waves: T.waves, heroes: this.troops.length, bless: this.tide.bless, level: L });
   }
 
   stepTide(dt) {
@@ -6030,7 +6113,7 @@ export class World {
     t.wave++;
     t.next = T.gap;
     const rng = this.streamRng('tide', t.seed * 13 + t.wave);
-    const n = T.perWave(k.tier) + (t.wave === T.waves ? 2 : 0);
+    const n = T.perWave(k.tier) + (t.wave === T.waves ? 2 : 0) + NIGHT.extra(t.level || 1); // (0.82) more on deeper nights
     const gates = this.map.gates || [{ x: this.radius - 4, z: 0 }];
     for (let i = 0; i < n; i++) {
       const g = gates[i % gates.length];
@@ -6043,6 +6126,7 @@ export class World {
       e.noLoot = true; // (the night pays in Faith and Wishstone when it is held, not in loot: no farming the dark)
       e.maxHp = e.hp = Math.round(F.hp * t.night);
       e.tdmg = F.dmg * t.night;
+      e.tbdmg = F.dmg * NIGHT.siege(t.level || 1); // (0.82) what a building takes (stone outlasts flesh)
       e.tAtk = 0.6 + rng() * 0.6;
       e.tTarget = null;
       e.tRe = 0;
@@ -6067,14 +6151,34 @@ export class World {
       tr.hp = tr.maxHp;
     }
     const wrecked = (this.keepBuilds || []).filter((b) => b.hp <= 0).map((b) => (b.id === 'hearth' ? 'the Hearth' : HALLS[b.id].name));
-    if (!won) return this.emit('tideEnd', { won: false, wrecked });
+    const L = t.level || 1;
+    if (!won) return this.emit('tideEnd', { won: false, wrecked, level: L });
     k.tides++;
-    const faith = Math.round((40 + 10 * k.tier) * this.keepMult());
-    const stone = 6 + 2 * k.tier;
+    const R = NIGHT.reward(L);
+    const faith = Math.round((40 + 10 * k.tier) * this.keepMult() * R);
+    const stone = Math.round((6 + 2 * k.tier) * R);
     k.faith += faith;
     k.stone += stone;
+    // (0.82) Ascension Sigils and Hero gear, more and rarer the deeper the night
+    const sigils = NIGHT.sigils(L);
+    k.sigils += sigils;
+    const first = L > k.nightMax;
+    if (first) k.nightMax = L;
+    const rng = this.streamRng('herogear', t.seed * 7 + L);
+    const got = [];
+    let salvaged = 0;
+    for (let i = 0; i < NIGHT.pieces(L); i++) {
+      const g = rollHeroGear(rng, L, 'g' + ++k.gearN);
+      if (k.armory.length >= ARMORY_MAX) {
+        salvaged += HERO_GEAR.salvage(g); // (a full Armory: broken down for Wishstone at once)
+        continue;
+      }
+      k.armory.push(g);
+      got.push({ r: g.r, slot: g.slot, name: g.name });
+    }
+    k.stone += salvaged;
     this.keepEvent('tide');
-    this.emit('tideEnd', { won: true, faith, stone, wrecked });
+    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, first });
   }
 
   /** Damage to a building (a ward stops it). */
@@ -6140,12 +6244,18 @@ export class World {
     e.tAtk = F.cd;
     e.state = 'chase';
     this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
-    if (isB) this.hurtBuild(tg, e.tdmg * (F.siege || 1), e);
+    if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1), e); // (0.82) buildings feel deep nights less than heroes do
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
-      tg.hp -= e.tdmg * stone;
+      tg.hp -= e.tdmg * stone * (1 - (tg.guard || 0)); // (0.82) Hero gear: Damage taken
       tg.hurtT = 0.25;
+      if (tg.hp <= 0 && tg.unbroken) {
+        // (0.82) Unbroken (an Immortal armour): once a night
+        tg.unbroken = false;
+        tg.hp = tg.maxHp * 0.3;
+        this.emit('troopUnbroken', { id: tg.id, x: tg.x, z: tg.z });
+      }
       if (tg.hp <= 0) {
         tg.hp = 0;
         tg.dead = true;
@@ -6158,8 +6268,29 @@ export class World {
   stepTroops(dt) {
     const t = this.tide;
     const swift = t.bless.includes('swift') ? 1.3 : 1;
-    const fury = (t.bless.includes('fury') ? 1.3 : 1) * t.echo;
+    let fury = (t.bless.includes('fury') ? 1.3 : 1) * t.echo;
+    // (0.82) an Immortal hero lifts them all
+    const imm = this.troops.filter((tr) => !tr.dead && tr.rar >= HERO_RAR_MAX).length;
+    fury *= 1 + HERO_RARITY.aura * Math.min(3, imm);
     const foes = this.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn');
+    // (0.82) Smarter heroes: how much each of the Unmade threatens the keep. One at a building (worse at
+    // the Hearth, or at one already hurt) or a wrecker comes first; heroes spread over the threats rather
+    // than all chasing the nearest, and archers and mages do not chase far from what they guard.
+    const isB = (x) => x && x.max != null && x.r != null && !x.cls && x !== this.player;
+    const threat = new Map();
+    for (const e of foes) {
+      const tg = e.tTarget;
+      let th = 0;
+      if (isB(tg)) {
+        th += dist(e.x, e.z, tg.x, tg.z) - tg.r < 4 ? 14 : 6;
+        if (tg.id === 'hearth') th += 6;
+        if (tg.hp < tg.max * 0.5) th += 4;
+      }
+      const F = FOES[e.type];
+      if (F && F.siege) th += 3 * F.siege;
+      threat.set(e, th);
+    }
+    const claims = new Map();
     for (const tr of this.troops) {
       tr.px = tr.x;
       tr.pz = tr.z;
@@ -6168,12 +6299,27 @@ export class World {
       if (tr.dead) continue;
       tr.atkT -= dt * swift;
       tr.skillT -= dt;
-      if (tr.skill && tr.skillT <= 0 && foes.length && this.troopSkill(tr, foes, fury)) tr.skillT = SKILLS[tr.skill].cd;
-      let best = null, bd = 1e9;
-      for (const e of foes) {
-        const d = dist(e.x, e.z, tr.x, tr.z);
-        if (d < bd) [best, bd] = [e, d];
+      if (tr.skill && tr.skillT <= 0 && foes.length && this.troopSkill(tr, foes, fury)) tr.skillT = SKILLS[tr.skill].cd * (1 - (tr.focus || 0));
+      tr.reT = (tr.reT || 0) - dt;
+      let best = tr.targetId != null ? foes.find((e) => e.id === tr.targetId) || null : null;
+      if (!best || tr.reT <= 0) {
+        tr.reT = 0.35;
+        const was = best;
+        let bs = 1e9;
+        best = null;
+        const many = foes.length > this.troops.length;
+        for (const e of foes) {
+          const d = dist(e.x, e.z, tr.x, tr.z);
+          const th = threat.get(e) || 0;
+          const crowd = (claims.get(e) || 0) * (many ? 5 : 2);
+          const oath = tr.fx && tr.fx.charm && th >= 6 ? 8 : 0; // Warden's Oath: they run to a building
+          const leash = tr.range > 3 && d > 14 && !(e.tTarget && e.tTarget.id === 'hearth') ? (d - 14) * 2 : 0; // (never kept from the Hearth)
+          const score = d - th - oath + crowd + leash + (e === was ? -2 : 0);
+          if (score < bs) [best, bs] = [e, score];
+        }
+        tr.targetId = best ? best.id : null;
       }
+      if (best) claims.set(best, (claims.get(best) || 0) + 1);
       const goal = best || tr.post;
       const reach = best ? tr.range + best.radius : 0.3;
       const dx = goal.x - tr.x, dz = goal.z - tr.z;
@@ -6190,11 +6336,20 @@ export class World {
       if (!best || tr.atkT > 0) continue;
       tr.atkT = tr.cd;
       let dmg = tr.dmg * fury;
+      const atB = (threat.get(best) || 0) >= 6;
+      if (atB || (FOES[best.type] && FOES[best.type].siege)) dmg *= 1 + (tr.siege || 0); // Hero gear: wreckers and foes at a building
+      if (atB && tr.fx && tr.fx.charm) dmg *= 1.4; // Warden's Oath
       const crit = tr.crit && this.rng() < tr.crit;
       if (crit) dmg *= 2;
       this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: best.x, tz: best.z, dir: tr.facing, ranged: tr.range > 3 });
       this.troopStrike(best, dmg, crit);
+      if (tr.leech > 0) tr.hp = Math.min(tr.maxHp, tr.hp + dmg * tr.leech);
       if (tr.splash) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= tr.splash) this.troopStrike(o, dmg * 0.5, false);
+      if (tr.fx && tr.fx.weapon && (tr.strikes = (tr.strikes || 0) + 1) % 4 === 0) {
+        // Hearthflame (an Immortal weapon): every fourth strike bursts
+        for (const o of foes) if (!o.dead && dist(o.x, o.z, best.x, best.z) <= 3 + o.radius) this.troopStrike(o, dmg * 1.5, false);
+        this.emit('burst', { x: best.x, z: best.z, radius: 3, color: 0xff7a2a });
+      }
     }
   }
 

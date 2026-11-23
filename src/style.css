@@ -1314,3 +1314,39 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 /* (0.81.7) the Echo Ring's starting waves: as many rows as it takes, never off the edge */
 .segmented.wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); max-height: 220px; overflow-y: auto; }
 .segmented.wrap button { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 7px 4px; font-size: 15px; }
+
+/* (0.82) the Armory and the heroes' rarity */
+.hg-tab { border-color: #c89a4a !important; }
+.arm-page { padding: 4px 2px 20px; }
+.arm-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.arm-head b { color: #ffd27a; font-size: 17px; }
+.arm-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.arm-heroes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.arm-hero { border: 1px solid #2c3346; border-left: 3px solid var(--rc); border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.02); cursor: pointer; }
+.arm-hero.on { background: rgba(255, 210, 122, 0.08); border-color: #ffd27a; border-left-color: var(--rc); }
+.arm-hero-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: 14px; }
+.arm-hero-h small { opacity: 0.8; }
+.arm-stats { flex-basis: 100%; font-size: 12px; opacity: 0.75; }
+.arm-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 5px; }
+.arm-slot { display: flex; align-items: center; gap: 4px; padding: 4px 5px; font-size: 12px; border: 1px solid #3a4258; border-radius: 4px; background: #121622; color: var(--bone); text-align: left; min-height: 30px; overflow: hidden; }
+.arm-slot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arm-slot.empty { opacity: 0.55; border-style: dashed; }
+.arm-filter { margin: 4px 0 8px; }
+.arm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
+.arm-piece { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px; border: 1px solid var(--rc); border-radius: 5px; background: color-mix(in srgb, var(--rc) 10%, #121622); color: var(--bone); font-size: 12px; text-align: left; min-height: 52px; }
+.arm-piece i { font-style: normal; color: var(--rc); font-size: 15px; }
+.arm-piece.on { box-shadow: 0 0 0 2px #ffd27a; }
+.arm-piece.worn { opacity: 0.8; }
+.arm-who { position: absolute; right: 4px; top: 3px; font-size: 10px; padding: 0 4px; border-radius: 3px; background: rgba(0, 0, 0, 0.5); }
+.arm-lock { position: absolute; right: 4px; bottom: 3px; font-size: 10px; }
+.arm-imm { position: absolute; left: 22px; top: 4px; color: #ffd24a; }
+.arm-detail { margin-top: 10px; padding: 8px 10px; border: 1px solid; border-radius: 6px; background: #121622; font-size: 14px; }
+.hg-main { margin-top: 4px; font-weight: 600; }
+.hg-line { font-size: 13px; opacity: 0.9; }
+.hg-fx { margin-top: 4px; font-size: 13px; color: #ffd24a; }
+.hg-pips { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 4px; }
+.hg-pip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
+.hg-pip.empty { border: 1px dashed #556; }
+.night-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0; }
+.night-pick select { background: #141824; color: var(--bone); border: 1px solid #c89a4a; border-radius: 4px; padding: 3px 6px; font-size: 14px; }
+.night-pick .setting-desc { flex: 1 1 280px; margin: 0; }

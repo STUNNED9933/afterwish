@@ -160,6 +160,23 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Heroes worth the name (0.82)
+
+The keep's heroes can now hold the night on their own.
+
+- **Hero rarity.** Every hero has a rarity, Common to Immortal, in gear's colours: on their name, their plate and (from Epic) a ring at their feet. Ascend a hero one step at a time at the Hearth, with Faith and **Ascension Sigils**.
+  - Each step multiplies health and damage: ×9 at Immortal against Common.
+  - From Epic, their skill comes round sooner. An Immortal hero's skill comes twice as often, and every hero deals 10% more while they stand (up to three Immortals).
+- **Night levels.** Call the night at a level from 1 to one past the highest you've held (up to 30). Each level makes the Unmade 27% stronger, with more of them from Night 5. A held night pays more Faith and Wishstone, Sigils, and Hero gear.
+- **Hero gear and the Armory.** Gear for the keep's heroes only, in a new ⚔ Heroes tab of the gear window (also opened from the Hearth and the Bastion), kept apart from your own bag. Up to 80 pieces.
+  - Three slots a hero: Weapon (damage), Armour (health) and Charm (either).
+  - Bonus lines by rarity: critical chance, attack speed, less damage taken, lifesteal, skill cooldown, and more damage to wreckers and to the Unmade at a building.
+  - Immortal pieces add an effect: Hearthflame (every fourth strike bursts), Unbroken (once a night a fatal blow leaves them at 30%) or Warden's Oath (they run to defend buildings and hit what's attacking them 40% harder).
+  - Each held night gives 1 to 4 pieces, rarer the deeper it is (Immortal from Night 10). The Night it was won on makes a piece stronger.
+  - "Equip the best on everyone", lock, and break down for Wishstone.
+- **Smarter heroes.** Each of the Unmade is weighed by how much it threatens the keep: one at a building (worse at the Hearth or at one already hurt) and the wreckers (Ashwalkers, Rootbound) come first. Heroes spread over the threats instead of all chasing the nearest. They stand guard between the Hearth and the halls, not in a huddle at the middle, and archers and mages don't chase far, except to save the Hearth.
+- Buildings feel deep nights less than heroes do (about the 0.6 power of the night's strength). Building tiers in 0.82.1 will make them sturdier still.
+
 ### The Echo Ring, all the way down (0.81.7)
 
 - **Start from:** past wave 55, the starting waves ran off the side of the window and couldn't be picked. They now wrap into rows (scrolling if there are very many), so every checkpoint you've reached is in reach.

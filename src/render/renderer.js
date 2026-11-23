@@ -3017,11 +3017,11 @@ export class Renderer {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
-    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, troop: t.id });
+    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, troop: t.id, rar: t.rar || 0 });
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      const look = a.troop ? 'keep' : heroLook(a.cls, a.spec, !!a.eform);
+      const look = a.troop ? 'keep' + (a.rar || 0) : heroLook(a.cls, a.spec, !!a.eform);
       if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);
@@ -3030,6 +3030,13 @@ export class Renderer {
       if (!v && a.troop) {
         // (0.81.1) the keep's heroes are its own sworn, not copies of a player's hero
         const model = buildKeepHero(a.cls, a.troop);
+        if (a.rar >= 3) {
+          // (0.82) Epic and rarer: a ring of their rarity's colour at their feet
+          const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: RARITIES[a.rar].color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+          ring.position.y = 0.05;
+          ring.scale.setScalar(a.rar >= 6 ? 1.1 : 0.85);
+          model.group.add(ring);
+        }
         this.scene.add(model.group);
         v = { model, cls: a.cls, look, walk: 0 };
         this.allyViews.set(a.pid, v);

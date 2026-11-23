@@ -112,11 +112,148 @@ export const FOES = {
   rootbound: { hp: 240, dmg: 14, speed: 2.4, range: 1.9, cd: 1.6, siege: 1.5 },
 };
 
-/** A hero's health and damage, with their level and gear. */
-export function troopStats(t) {
+// ------------------------------------------------------------------------------------------------ (0.82)
+/**
+ * (0.82) A hero's rarity, Common (0) to Immortal (6), in gear's colours: each one multiplies their health
+ * and damage, and the rarer ones bring their skill round sooner. Raised one step at a time ("ascending",
+ * at the Hearth) with Faith and Ascension Sigils, which the night gives.
+ */
+export const HERO_RARITY = {
+  names: ['Common', 'Uncommon', 'Rare', 'Epic', 'Mythic', 'Ancient', 'Immortal'],
+  mult: [1, 1.45, 2.1, 3, 4.3, 6.2, 9],
+  skillCdr: [0, 0, 0, 0.2, 0.3, 0.4, 0.5], // their skill comes round this much sooner
+  aura: 0.1, // an Immortal hero lifts every hero's damage this much (up to three of them)
+  ascend: (to) => ({ faith: [0, 150, 350, 700, 1300, 2400, 4200][to], sigils: [0, 2, 5, 10, 18, 30, 50][to] }),
+  perk: [null, null, null, 'Epic: their skill comes round 20% sooner.', 'Mythic: their skill comes round 30% sooner.', 'Ancient: their skill comes round 40% sooner.', 'Immortal: their skill comes round twice as often, and every hero of the keep deals 10% more while they stand.'],
+};
+export const HERO_RAR_MAX = 6;
+
+/**
+ * (0.82) Night levels. Called at a level from 1 to one past the highest held (NIGHT.max at most): each is
+ * stronger (power), pays more, and gives rarer Hero gear and more Sigils.
+ */
+export const NIGHT = {
+  max: 30,
+  power: (L) => {
+    let x = 0.55; // the Unmade's health and damage: 0.55, then 27% more each level (whole powers: the same in every browser)
+    for (let i = 1; i < L; i++) x *= 1.27;
+    return x;
+  },
+  siege: (L) => {
+    let x = 0.7; // what the buildings feel of it: about power^0.6 (stone outlasts flesh)
+    for (let i = 1; i < L; i++) x *= 1.154;
+    return x;
+  },
+  extra: (L) => Math.floor((L - 1) / 4), // more of them in each wave
+  reward: (L) => 1 + 0.3 * (L - 1), // Faith and Wishstone
+  sigils: (L) => 1 + Math.floor(L / 2),
+  pieces: (L) => Math.min(4, 1 + Math.floor(L / 5)), // Hero gear held nights give
+};
+
+/**
+ * (0.82) Hero gear: for the keep's heroes only, kept in the Armory (keep.armory), three slots a hero. Each
+ * piece has a main line (damage on weapons, health on armour, either on a charm, as a share), bonus lines
+ * by rarity, and at Immortal an effect of its own. Its strength comes from its rarity and the Night level
+ * it was won on.
+ */
+export const HERO_SLOTS = ['weapon', 'armor', 'charm'];
+export const HERO_SLOT_NAMES = { weapon: 'Weapon', armor: 'Armour', charm: 'Charm' };
+export const ARMORY_MAX = 80;
+export const HERO_GEAR = {
+  main: [0.1, 0.15, 0.22, 0.32, 0.45, 0.62, 0.85], // the main line's share, by rarity (before the night's level)
+  perNight: 0.04, // and 4% more for each Night level it was won on past the first
+  lines: [0, 1, 1, 2, 2, 3, 3], // bonus lines, by rarity
+  // bonus lines: the most each can roll at Immortal (rarer pieces roll nearer it)
+  bonus: {
+    crit: { name: 'Critical chance', max: 0.25 },
+    haste: { name: 'Attack speed', max: 0.35 },
+    guard: { name: 'Damage taken', max: 0.3, less: true },
+    leech: { name: 'Lifesteal', max: 0.12 },
+    focus: { name: 'Skill cooldown', max: 0.3, less: true },
+    siege: { name: 'Damage to wreckers and to foes at a building', max: 0.6 },
+  },
+  // Immortal effects, one a slot
+  effects: {
+    weapon: { name: 'Hearthflame', desc: 'Every fourth strike bursts over 3 m for one and a half times the blow.' },
+    armor: { name: 'Unbroken', desc: 'Once a night, a blow that would fell them leaves them at 30% instead.' },
+    charm: { name: "Warden's Oath", desc: 'Unmade at a building take 40% more from them, and they run to defend it.' },
+  },
+  names: {
+    weapon: ['Hearth-forged Blade', 'Ember Spear', 'Watch Bow', 'Lantern Staff', 'Hook Knife'],
+    armor: ['Keep Mail', 'Ward Coat', 'Rime Cloak', 'Hearthguard Plate', 'Pilgrim Leathers'],
+    charm: ['Ember Charm', 'Star-glass Bead', 'Wish Token', 'Hearthstone', 'Bell of Morning'],
+  },
+  salvage: (g) => Math.round((1 + g.r) * (1 + g.r) * (1 + (g.L - 1) / 10)), // Wishstone back
+};
+export const HERO_BONUS_IDS = Object.keys(HERO_GEAR.bonus);
+
+/** (0.82) A new piece of Hero gear for a night held at level L (rng: the sim's stream, so every browser agrees). */
+export function rollHeroGear(rng, L, id, slot = null) {
+  const r = heroGearRarity(rng, L);
+  slot = slot || HERO_SLOTS[Math.floor(rng() * HERO_SLOTS.length)];
+  const names = HERO_GEAR.names[slot];
+  const main = slot === 'weapon' ? 'dmg' : slot === 'armor' ? 'hp' : rng() < 0.5 ? 'dmg' : 'hp';
+  const q = 0.8 + 0.4 * rng();
+  const g = { id, slot, r, L, name: names[Math.floor(rng() * names.length)], main: { k: main, v: Math.round(HERO_GEAR.main[r] * (1 + HERO_GEAR.perNight * (L - 1)) * q * 1000) / 1000 }, lines: [], hero: null, locked: false };
+  const pool = HERO_BONUS_IDS.slice();
+  for (let i = 0; i < HERO_GEAR.lines[r] && pool.length; i++) {
+    const k = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+    const top = HERO_GEAR.bonus[k].max * (0.35 + 0.65 * (r / HERO_RAR_MAX));
+    g.lines.push({ k, v: Math.round(top * (0.6 + 0.4 * rng()) * 1000) / 1000 });
+  }
+  return g;
+}
+/** (0.82) The rarity of a piece the night gives: rarer the higher the level; Immortal from level 10. */
+export function heroGearRarity(rng, L) {
+  const imm = L >= 10 ? Math.min(0.15, 0.012 * (L - 9)) : 0;
+  if (rng() < imm) return 6;
+  const base = [50, 28, 14, 5.5, 1.8, 0.5];
+  const floor = Math.min(4, Math.floor((L - 1) / 6)); // nothing below this from deep nights
+  const g = Math.sqrt(1 + 0.18 * L); // (sqrt is exact in every browser)
+  const w = base.map((b, i) => {
+    if (i < floor) return 0;
+    let x = b;
+    for (let j = 0; j < i; j++) x *= g;
+    return x;
+  });
+  let x = rng() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < w.length; i++) if ((x -= w[i]) < 0) return i;
+  return 5;
+}
+/** (0.82) How good a piece is, to sort and to pick the best for a hero. */
+export function heroGearScore(g) {
+  let s = g.main.v * 100;
+  for (const l of g.lines) s += (l.v / HERO_GEAR.bonus[l.k].max) * 18;
+  return s + (g.r >= 6 ? 30 : 0);
+}
+
+/** A hero's numbers: class, level, the Bastion's arming, their rarity, and the Hero gear they wear. */
+export function troopStats(t, armory = null) {
   const T = TROOPS[t.cls] || TROOPS.warrior;
-  const m = (1 + KEEP.perLvl * ((t.lvl || 1) - 1)) * (1 + KEEP.perGear * (t.gear || 0));
-  return { ...T, hp: Math.round(T.hp * m), dmg: Math.round(T.dmg * m * 10) / 10 };
+  const rar = Math.max(0, Math.min(HERO_RAR_MAX, t.rar || 0));
+  const m = (1 + KEEP.perLvl * ((t.lvl || 1) - 1)) * (1 + KEEP.perGear * (t.gear || 0)) * HERO_RARITY.mult[rar];
+  const out = { ...T, rar, crit: T.crit || 0, haste: 0, guard: 0, leech: 0, focus: HERO_RARITY.skillCdr[rar], siege: 0, fx: {} };
+  let dmgP = 0, hpP = 0;
+  for (const g of armory || []) {
+    if (!g || g.hero !== t.id) continue;
+    if (g.main.k === 'dmg') dmgP += g.main.v;
+    else hpP += g.main.v;
+    for (const l of g.lines) out[l.k] = (out[l.k] || 0) + l.v;
+    if (g.r >= 6) out.fx[g.slot] = true;
+  }
+  out.guard = Math.min(0.6, out.guard);
+  out.focus = Math.min(0.75, out.focus);
+  out.crit = Math.min(0.75, out.crit);
+  out.hp = Math.round(T.hp * m * (1 + hpP));
+  out.dmg = Math.round(T.dmg * m * (1 + dmgP) * 10) / 10;
+  out.cd = T.cd / (1 + out.haste);
+  return out;
+}
+/** (0.82) What a hero wears, slot by slot. */
+export function heroWorn(t, armory) {
+  const out = {};
+  for (const g of armory || []) if (g && g.hero === t.id) out[g.slot] = g;
+  return out;
 }
 
 /** A building's full health (the Bastion makes them all sturdier). */
@@ -269,12 +406,38 @@ export function cleanKeep(raw) {
     builds: {}, // (0.81) each building's health (missing: whole)
     blessings: Array.isArray(raw.blessings) ? raw.blessings.filter((b) => BLESSING_IDS.includes(b)).slice(0, 3) : [],
     last: int(raw.last), // (0.81) when Faith last came in (ms)
+    sigils: int(raw.sigils), // (0.82) Ascension Sigils, from the night
+    nightMax: int(raw.nightMax, 0, 0, NIGHT.max), // (0.82) the highest Night level held
+    night: int(raw.night, 1, 1, NIGHT.max), // (0.82) the level last chosen
+    armory: [], // (0.82) Hero gear
+    gearN: int(raw.gearN),
   };
+  if (Array.isArray(raw.armory)) {
+    for (const g of raw.armory.slice(0, ARMORY_MAX)) {
+      if (!g || !HERO_SLOTS.includes(g.slot) || !g.main || !['dmg', 'hp'].includes(g.main.k)) continue;
+      const r = int(g.r, 0, 0, HERO_RAR_MAX);
+      k.armory.push({
+        id: String(g.id || '').slice(0, 16), slot: g.slot, r, L: int(g.L, 1, 1, NIGHT.max), name: String(g.name || 'Hero gear').slice(0, 32),
+        main: { k: g.main.k, v: Math.max(0, Math.min(5, Number(g.main.v) || 0)) },
+        lines: (Array.isArray(g.lines) ? g.lines : []).filter((l) => l && HERO_GEAR.bonus[l.k]).slice(0, 3).map((l) => ({ k: l.k, v: Math.max(0, Math.min(HERO_GEAR.bonus[l.k].max, Number(l.v) || 0)) })),
+        hero: g.hero == null ? null : int(g.hero, 0, 0, 1e6), locked: !!g.locked,
+      });
+    }
+  }
   if (Array.isArray(raw.troops)) {
     for (const t of raw.troops.slice(0, 8)) {
       if (!t || !TROOPS[t.cls]) continue;
-      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 10), gear: int(t.gear, 0, 0, 9), skill: SKILLS[t.skill] ? t.skill : null });
+      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 10), gear: int(t.gear, 0, 0, 9), skill: SKILLS[t.skill] ? t.skill : null, rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
     }
+  }
+  // (0.82) gear on a hero who has gone home goes back to the Armory; one piece a slot a hero
+  const ids = new Set(k.troops.map((t) => t.id));
+  const worn = new Set();
+  for (const g of k.armory) {
+    if (g.hero == null) continue;
+    const key = g.hero + ':' + g.slot;
+    if (!ids.has(g.hero) || worn.has(key)) g.hero = null;
+    else worn.add(key);
   }
   for (const b of BUILD_IDS) if (raw.builds && raw.builds[b] != null) k.builds[b] = int(raw.builds[b], 0, 0, 1e5);
   for (const h of HALL_IDS) k.halls[h] = int(raw.halls && raw.halls[h], 0, 0, KEEP.hallMax);

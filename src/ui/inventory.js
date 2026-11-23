@@ -10,6 +10,7 @@ import { svg, gearIcon, gearClassNow, gearSpecNow } from './hud.js';
 import { steadyRatings, ratingsWith, signed } from '../power.js';
 import { itemLore } from './lore.js';
 import { emberOf, DEEP, DEPTH_IDS } from '../sim/endgame.js';
+import { renderArmory } from './armory.js'; // (0.82)
 import { ETERNAL, ETERNAL_PASSIVES, passiveText, slotsOpen, xpToMax, feedValue, nextSlotAt, feed as feedPreview } from '../sim/eternal.js';
 
 // Set while the gear drawer is open: Combat Power if an item were worn (for its tooltip).
@@ -213,7 +214,8 @@ export class Inventory {
     });
     // (0.74.1) Eternal gear in a tab of its own
     this.tab = 'gear';
-    for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal']]) {
+    this.armoryUi = { hero: null, piece: null, slot: null }; // (0.82) the Armory's choices
+    for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal'], ['tab-heroes', 'heroes']]) {
       $(id).addEventListener('click', () => {
         this.tab = tab;
         if (this.world) this.render(this.world);
@@ -533,7 +535,13 @@ export class Inventory {
     // (0.74) shown from level 100 (when Caelum is in reach), so it can be found before the first piece;
     // (0.74.1) in its own tab
     const shown = !world.trial && (owned.length || p.eternalEssence > 0 || p.level >= 100);
-    if (!shown) this.tab = 'gear';
+    const heroesShown = !world.trial && !!p.keep; // (0.82) the Armory, once the keep is founded
+    if ((!shown && this.tab === 'eternal') || (!heroesShown && this.tab === 'heroes')) this.tab = 'gear';
+    $('tab-heroes').classList.toggle('hidden', !heroesShown);
+    $('inv-heroes-body').classList.toggle('hidden', this.tab !== 'heroes');
+    $('tab-heroes').classList.toggle('on', this.tab === 'heroes');
+    $('tab-heroes').setAttribute('aria-selected', this.tab === 'heroes' ? 'true' : 'false');
+    if (heroesShown && this.tab === 'heroes') renderArmory($('armory'), world, this.armoryUi, this.send, this.tooltip, () => this.render(world));
     $('tab-eternal').classList.toggle('hidden', !shown);
     $('tab-eternal').classList.toggle('glow', shown && (p.eternalEssence || 0) >= ETERNAL.forgeCost && owned.length < 5);
     for (const [id, tab] of [['tab-gear', 'gear'], ['tab-eternal', 'eternal']]) {

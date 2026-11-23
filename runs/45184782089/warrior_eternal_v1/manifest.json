@@ -1,0 +1,78 @@
+{
+  "id": "warrior_eternal_v1",
+  "prompt": "(re-rig of the Eternal warrior with the v1.0 rig, the same skeleton as the warrior's, so his moves carry over). stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-23T13:31:45.813Z",
+  "creditsBefore": 1555,
+  "steps": {
+    "model": {
+      "task": "c2afca58-854d-4b4e-855a-ffab5c71084d",
+      "result": {
+        "task_id": "c2afca58-854d-4b4e-855a-ffab5c71084d"
+      }
+    },
+    "check": {
+      "task": "a60448ec-cc3f-414a-ac77-2f004d6c8cb9",
+      "result": {
+        "task_id": "a60448ec-cc3f-414a-ac77-2f004d6c8cb9",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/warrior_eternal_v1/2-check/tripo-out/rig-check-a60448ec",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "104a64f6-3917-4762-a69f-bf3e3fd7acdb",
+      "rigType": "biped",
+      "result": {
+        "task_id": "104a64f6-3917-4762-a69f-bf3e3fd7acdb",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/warrior_eternal_v1/3-rig/tripo-out/rig-104a64f6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/warrior_eternal_v1/3-rig/tripo-out/rig-104a64f6/model.glb",
+        "preview": "out/models/warrior_eternal_v1/3-rig/tripo-out/rig-104a64f6/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "14b1bdaf-a5a8-4c24-8e77-985ddc822396",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:chop",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:run"
+        ],
+        "result": {
+          "task_id": "14b1bdaf-a5a8-4c24-8e77-985ddc822396",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/warrior_eternal_v1/4-anim-1/tripo-out/retarget-14b1bdaf",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/warrior_eternal_v1/4-anim-1/tripo-out/retarget-14b1bdaf/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1490,
+  "creditsUsed": 65,
+  "finished": "2026-11-23T13:32:07.106Z",
+  "files": [
+    "2-check/tripo-out/rig-check-a60448ec/task.json",
+    "3-rig/tripo-out/rig-104a64f6/model.glb",
+    "3-rig/tripo-out/rig-104a64f6/preview.png",
+    "3-rig/tripo-out/rig-104a64f6/rendered_image.webp",
+    "3-rig/tripo-out/rig-104a64f6/task.json",
+    "4-anim-1/tripo-out/retarget-14b1bdaf/model.glb",
+    "4-anim-1/tripo-out/retarget-14b1bdaf/task.json",
+    "manifest.json"
+  ]
+}

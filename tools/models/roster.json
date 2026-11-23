@@ -1033,6 +1033,18 @@
         "preset:biped:idle",
         "preset:biped:hit_to_body_01"
       ]
+    },
+    "warrior_eternal_v1": {
+      "fromTask": "c2afca58-854d-4b4e-855a-ffab5c71084d",
+      "rigModel": "v1.0",
+      "rigType": "biped",
+      "prompt": "(re-rig of the Eternal warrior with the v1.0 rig, the same skeleton as the warrior's, so his moves carry over)",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:run"
+      ]
     }
   }
 }

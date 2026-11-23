@@ -656,12 +656,21 @@ canvas.hover-talk { cursor: pointer; }
   position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 6; padding: 7px 16px; pointer-events: none;
   background: rgba(10, 13, 22, 0.88); border: 1px solid var(--gold); border-radius: 4px; font: 600 16px var(--body); color: var(--bone); white-space: nowrap;
 }
-#quest-track { position: fixed; right: 16px; top: 176px; width: 210px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; z-index: 4; }
+#quest-track { position: fixed; right: 16px; top: 176px; width: 210px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; z-index: 4; max-height: calc(100vh - 176px - 190px); overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent); } /* (0.80.1) never over the buttons below it */
 .qt { padding: 5px 9px; background: rgba(10, 13, 22, 0.72); border-left: 3px solid var(--gold); border-radius: 2px; }
 .qt b { display: block; font: 600 14px var(--body); color: var(--bone); }
 .qt span, .qt.more { font-size: 13px; color: var(--muted); }
 .qt.ready { border-left-color: #7fe0a0; }
 .qt.ready span { color: #7fe0a0; }
+/* (0.80.1) the tracker's groups: a heading you click to fold them */
+.qt-head { pointer-events: auto; cursor: pointer; display: flex; align-items: baseline; gap: 6px; margin-top: 4px; padding: 2px 4px 0; font: 600 11px var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); text-shadow: 0 1px 2px #000; user-select: none; }
+.qt-head:first-child { margin-top: 0; }
+.qt-head i { font-style: normal; text-transform: none; letter-spacing: 0; color: #7fe0a0; }
+.qt-head span { margin-left: auto; color: var(--muted); letter-spacing: 0; }
+.qt-head:hover { color: #fff; }
+.qt.bounty { border-left-color: #c8a060; }
+.qt.keep { border-left-color: #ff3d4f; }
+.qt.ready.bounty, .qt.ready.keep { border-left-color: #7fe0a0; }
 body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[data-mode="title"] #prompt, body:not([data-mode="play"]) #prompt { display: none; }
 #talk, #read, #journal, #talents { align-items: flex-start; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.8); }
 .story-card { width: min(600px, 100%); margin: auto; gap: 12px; padding: 22px 26px; }

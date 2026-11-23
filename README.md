@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The tracker follows the board and the keep (0.80.1)
+
+- **The quest tracker** (under the minimap) now has three groups: your **Quests**, the **Bounty Board**'s
+  jobs (progress, and "done: claim it in Haven"), and the **Wishkeep**'s wishes (pilgrimage counts, what an
+  offering still needs, where a Tide or a story waits, and which are answered). It keeps up as you play.
+- **Click a group's heading to fold it** (it then shows how many are in it, and how many are done); the
+  choice is kept in this browser. The tracker never runs down over the buttons below it.
+- The prompt over the Wishkeep's things names them: Read the Wishes, Tend the Hearth, Visit the Bastion.
+- The board never asks for the same offering twice at once.
+
 ### The Wishkeep (0.80)
 
 A new kind of play for heroes who have reached the end of their growth: a sanctuary for the people the

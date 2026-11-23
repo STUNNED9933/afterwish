@@ -17,6 +17,18 @@ import { ENEMIES } from '../sim/defs.js';
 import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
+import { SETTLERS, HALLS, wishGoal } from '../sim/wishkeep.js';
+
+const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+/** (0.80.1) Which groups of the tracker are folded, kept in this browser. */
+const TRACK_KEY = 'stunned-track-folded';
+const trackFolded = (() => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(TRACK_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+})();
 
 /** A quest's goal in a few words: "Defeat 12 Husks on the Greenwood Trail". */
 export function goalText(q, tier = 0) {
@@ -872,7 +884,12 @@ export class Hud {
       }
       this.drawQuestTracker(world);
     }
-    if (!id && this.trackOn) this.drawQuestTracker(world);
+    // (0.80.1) bounty jobs and wishes change without a quest changing: look again a few times a second
+    const now = performance.now();
+    if ((!id && this.trackOn) || (id && now - (this.trackAt || 0) > 400)) {
+      this.trackAt = now;
+      this.drawQuestTracker(world);
+    }
     this.updatePrompt(world);
     for (const l of this.portalLabels || []) {
       const s = renderer.project(l.gate.x, l.story ? 2.5 : l.gate === world.map.waygate || l.stone ? 2.8 : 4.4, l.gate.z);
@@ -888,26 +905,75 @@ export class Hud {
     this.promptKey = key;
     const el = $('prompt');
     el.classList.toggle('hidden', !near);
-    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? 'Read the Bounty Board' : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Touch the glimmer: ' + near.name}`;
+    if (near) el.innerHTML = `<kbd>G</kbd> ${near.kind === 'npc' ? 'Talk to ' + near.name : near.kind === 'merchant' ? 'Trade with the ' + near.name : near.kind === 'board' ? (near.id === 'wishes' ? 'Read the Wishes' : 'Read the Bounty Board') : near.kind === 'keepaltar' ? 'Tend the Hearth' : near.kind === 'hall' ? 'Visit ' + ((HALLS[near.cls] && HALLS[near.cls].name) || 'the hall') : near.kind === 'altar' ? 'Approach ' + near.name : near.kind === 'delve' ? 'Go down ' + near.name : 'Touch the glimmer: ' + near.name}`;
   }
 
-  /** The list of quests you are on, under the minimap. */
+  /**
+   * The list of what you are on, under the minimap: quests, then (0.80.1) the Bounty Board's jobs and the
+   * Wishkeep's wishes. Each group can be folded by clicking its heading (kept in this browser).
+   */
   drawQuestTracker(world) {
     const el = $('quest-track');
-    const rows = [];
-    if (world.mode === 'explore') {
-      for (const id in world.player.quests) {
-        const st = world.player.quests[id];
+    const groups = [];
+    const p = world.player;
+    if (world.mode === 'explore' && !world.trial) {
+      const quests = [];
+      for (const id in p.quests) {
+        const st = p.quests[id];
         const q = QUESTS[id];
         if (!q || st.s === 'done') continue;
-        rows.push(st.s === 'ready'
+        quests.push(st.s === 'ready'
           ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name} in Haven</span></div>`
           : `<div class="qt"><b>${q.name}</b><span>${goalText(q, st.tier)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
       }
+      if (quests.length) groups.push({ id: 'quests', name: 'Quests', rows: quests, ready: quests.filter((r) => r.includes('qt ready')).length });
+      const jobs = (p.bounties || []).filter(Boolean).map((b) => b.done
+        ? `<div class="qt ready bounty"><b>${escT(b.text)}</b><span>Done · claim it at the Bounty Board in Haven</span></div>`
+        : `<div class="qt bounty"><b>${escT(b.text)}</b><span>${b.need > 1 ? `${b.n}/${b.need}` : 'Not yet'}</span></div>`);
+      if (jobs.length) groups.push({ id: 'bounties', name: 'Bounty Board', rows: jobs, ready: (p.bounties || []).filter((b) => b && b.done).length });
+      const k = p.keep;
+      if (k && k.wishes.length) {
+        const wishes = k.wishes.map((w) => {
+          const who = SETTLERS[w.who] ? SETTLERS[w.who].name : '';
+          if (w.done) return `<div class="qt ready keep"><b>${escT(who)}'s wish</b><span>Answered · tell the Wishes board in the Wishkeep</span></div>`;
+          let how = '';
+          if (w.kind === 'kill') how = `${w.n}/${w.need}`;
+          else if (w.kind === 'offer') {
+            const have = w.what === 'fragment' ? (p.misc && p.misc.fragment) || 0 : p[w.what] || 0;
+            how = have >= w.need ? 'You have it: give it at the board' : `you have ${have.toLocaleString()}`;
+          } else if (w.kind === 'tide') how = 'Call the night at the Hearth';
+          else if (w.kind === 'tell') how = 'at the Wishes board';
+          return `<div class="qt keep"><b>${escT(wishGoal(w))}</b><span>${escT(who)}${how ? ` · ${escT(how)}` : ''}</span></div>`;
+        });
+        groups.push({ id: 'keep', name: 'The Wishkeep', rows: wishes, ready: k.wishes.filter((w) => w.done).length });
+      }
     }
-    this.trackOn = rows.length > 0;
-    el.classList.toggle('hidden', !rows.length);
-    el.innerHTML = rows.slice(0, 5).join('') + (rows.length > 5 ? `<div class="qt more">and ${rows.length - 5} more · <kbd>J</kbd></div>` : '');
+    const html = groups.map((g) => {
+      const folded = trackFolded.has(g.id);
+      const head = `<div class="qt-head${folded ? ' folded' : ''}" data-group="${g.id}" title="${folded ? 'Show' : 'Hide'} these">${g.name}${g.ready ? ` <i>${g.ready} done</i>` : ''}<span>${folded ? g.rows.length : '−'}</span></div>`;
+      if (folded) return head;
+      return head + g.rows.slice(0, 5).join('') + (g.rows.length > 5 ? `<div class="qt more">and ${g.rows.length - 5} more · <kbd>J</kbd></div>` : '');
+    }).join('');
+    this.trackOn = groups.length > 0;
+    if (html === this.trackHtml) return; // (0.80.1) only when something changed: it runs every frame while there is anything to show
+    this.trackHtml = html;
+    el.classList.toggle('hidden', !groups.length);
+    el.innerHTML = html;
+    if (!el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('click', (e) => {
+        const h = e.target.closest('.qt-head');
+        if (!h) return;
+        const g = h.dataset.group;
+        if (trackFolded.has(g)) trackFolded.delete(g);
+        else trackFolded.add(g);
+        try {
+          localStorage.setItem(TRACK_KEY, JSON.stringify([...trackFolded]));
+        } catch {}
+        this.trackHtml = null;
+        this.drawQuestTracker(world);
+      });
+    }
   }
 
   /** Text that pops up at a world position and drifts upward. */

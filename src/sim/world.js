@@ -5371,8 +5371,8 @@ export class World {
       w.boss = bosses[Math.floor(rng() * bosses.length)];
       w.bossName = ENEMIES[w.boss].name;
     } else if (kind === 'offer') {
-      const whats = Object.keys(KEEP.offers);
-      w.what = whats[Math.floor(rng() * whats.length)];
+      const whats = Object.keys(KEEP.offers).filter((x) => !on.some((o) => o.kind === 'offer' && o.what === x)); // (0.80.1) never the same offering twice
+      w.what = (whats.length ? whats : Object.keys(KEEP.offers))[Math.floor(rng() * (whats.length || Object.keys(KEEP.offers).length))];
       w.need = Math.max(1, Math.round(KEEP.offers[w.what] * (1 - 0.15 * (k.halls.rogue || 0))));
     } else if (kind === 'tell') w.ch = chapter.id;
     const base = KEEP.reward[kind];

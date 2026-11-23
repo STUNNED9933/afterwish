@@ -1004,8 +1004,7 @@
         "preset:idle",
         "preset:run",
         "preset:slash",
-        "preset:hurt",
-        "preset:fall"
+        "preset:hurt"
       ]
     },
     "archer_eternal": {
@@ -1014,12 +1013,7 @@
       "rigModel": "v1.0",
       "animations": [
         "preset:biped:idle",
-        "preset:biped:run",
-        "preset:biped:shoot",
-        "preset:biped:fire",
-        "preset:biped:dive",
-        "preset:biped:hit_to_body_02",
-        "preset:biped:fall"
+        "preset:biped:hit_to_body_02"
       ]
     },
     "mage_eternal": {
@@ -1028,7 +1022,6 @@
       "rigModel": "v1.0",
       "animations": [
         "preset:biped:idle",
-        "preset:biped:run",
         "preset:biped:hit_to_body_02"
       ]
     },
@@ -1038,7 +1031,6 @@
       "rigModel": "v1.0",
       "animations": [
         "preset:biped:idle",
-        "preset:biped:run",
         "preset:biped:hit_to_body_01"
       ]
     }

@@ -438,5 +438,37 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('Server (0.73.1): an Eternal found is announced to everyone (a banner for others, a chat line for the finder)', box.get(b).some((m) => m.t === 'announce' && /Finder has found The Last Ring/.test(m.text)) && box.get(a).some((m) => m.t === 'chat' && /The Last Ring/.test(m.text)) && !box.get(a).some((m) => m.t === 'announce'));
 }
 
+
+// (0.80) the Wishkeep: the account's, always a copy of your own, its state carried and saved like the wallet
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), passcode: 'stun', name: 'Keep World', seed: 9 });
+  const cn = (n) => { const c = { n }; box.set(c, []); return c; };
+  const lives = { archer: { prim: [6, 7, 8, 9, 10], et: ['ring'], gr: [], wish: 50 } };
+  const mk = (name, cls, keep) => ({ t: 'hello', v: NET_VERSION, pass: 'stun', name, cls, save: Object.assign(geared(cls, 100, 6), { acctLives: lives }), gold: 100, tickets: 3, keep });
+  const a = cn('a'), b = cn('b');
+  sv.message(a, mk('Keeper', 'warrior', { tier: 2, faith: 77, stone: 5, halls: { archer: 1 } }));
+  sv.message(b, mk('Friend', 'mage', null));
+  const A = box.get(a).find((m) => m.t === 'welcome').pid, B = box.get(b).find((m) => m.t === 'welcome').pid;
+  sv.partyInvite(sv.players.get(A), B);
+  sv.partyAccept(sv.players.get(B), A);
+  const heroOf = (pid) => { const w = sv.players.get(pid).copy.world; const h = w.heroByPid(pid); return w.as(h, (p) => p); };
+  check('Server (0.80): a hero arrives with the account\'s keep (from the browser here)', heroOf(A).keep && heroOf(A).keep.faith === 77 && heroOf(A).keep.tier === 2 && heroOf(B).keep === null);
+  sv.command(sv.players.get(A), { type: 'travel', to: 'wishkeep' });
+  sv.command(sv.players.get(B), { type: 'travel', to: 'wishkeep' });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const ka = sv.players.get(A).copy, kb = sv.players.get(B).copy;
+  check('...the Wishkeep is a copy of your own, even in a party', ka.world.map.id === 'wishkeep' && kb.world.map.id === 'wishkeep' && ka !== kb && ka.key === `wishkeep:${A}`, `${ka.key} ${kb.key}`);
+  check('...the friend\'s own keep is founded there (theirs, not the keeper\'s)', heroOf(B).keep && heroOf(B).keep.tier === 1 && heroOf(A).keep.faith === 77);
+  sv.command(sv.players.get(A), { type: 'keepTier' });
+  for (let i = 0; i < 4; i++) sv.tick();
+  sv.sendSave(sv.players.get(A), true);
+  const saved = [...box.get(a)].reverse().find((m) => m.t === 'save');
+  check('...and its changes go home with the save, like the wallet', saved && saved.keep && saved.keep.faith === 77 && !('keep' in saved.save), JSON.stringify(saved && saved.keep && { t: saved.keep.tier, f: saved.keep.faith }));
+  sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('...and it comes along to Haven', sv.players.get(A).copy.world.map.id === 'town' && heroOf(A).keep && heroOf(A).keep.tier === 2);
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

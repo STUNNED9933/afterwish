@@ -226,7 +226,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const seen = new Set(['town']); const queue = ['town'];
   while (queue.length) for (const g of buildMap(queue.shift()).portals) if (!seen.has(g.to)) { seen.add(g.to); queue.push(g.to); }
   // (The Wilds is reached by the Waygate only, from world tier II: its one portal leads home.)
-  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum);
+  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep); // (0.80: the Wishkeep is by the Waygate only)
   check('maps: every map on the road can be reached from town', road.every((id) => seen.has(id)), [...seen].join(' > '));
   check('maps: every portal on the road has a way back', road.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
   check('maps: the Waygate-only maps lead home', MAP_IDS.filter((id) => MAPS[id].fromTier).every((id) => buildMap(id).portals.every((g) => g.to === 'town')));
@@ -243,7 +243,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const chain = ['town'];
     for (;;) { const next = MAPS[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => !chain.includes(to)); if (!next) break; chain.push(next); }
     const fields = chain.slice(1).map((id) => MAPS[id]);
-    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum).length, chain.join(' > '));
+    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep).length, chain.join(' > '));
     check('maps: each map picks up where the last one ended, up to level 100', fields.every((m, i) => m.level === (i === 0 ? 1 : fields[i - 1].level + fields[i - 1].levelSpan + 1)) && buildMap(chain[chain.length - 1]).spawns.some((sp) => sp.level === 100));
     check('maps: three bosses, each in its own map', ['keep', 'hollow', 'sanctum'].map((id) => buildMap(id).spawns.find((sp) => DEFS.ENEMIES[sp.type].boss).type).join() === 'boss,boss2,boss3');
     check('maps: enemies get tougher the deeper in you go', (() => { const m = buildMap('frost'); const near = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) < 30); const far = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) > 60); const av = (l) => l.reduce((a, sp) => a + sp.level, 0) / l.length; return near.length && far.length && av(far) > av(near) + 2; })());
@@ -766,7 +766,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('story: every quest has a giver, a goal that exists and a reward', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; return NPCS[q.giver] && q.offer && q.done && q.reward && (!q.after || QUESTS[q.after]) && (!g.enemy || DEFS.ENEMIES[g.enemy] || g.enemy === 'edric') && (!g.boss || DEFS.ENEMIES[g.boss].boss) && (!g.map || MAPS[g.map]) && (!g.reach || MAPS[g.reach]) && (!g.sign || SIGNS[g.sign]) && (!g.signs || g.signs.every((sid) => SIGNS[sid])) && (g.kill || g.reach || g.read || g.wave || g.sign || g.signs || g.ending || g.choose || g.meet || g.stories); }), QUEST_IDS.length + ' quests');
   check('story: a kill quest for a map names an enemy that lives there', QUEST_IDS.every((id) => { const g = QUESTS[id].goal; return !(g.enemy && g.map) || MAPS[g.map].roster[g.enemy] || (g.enemy === 'edric' && MAPS[g.map].roster.knight); }));
   check('story: every enemy a quest asks for lives on a map near the quest\'s level', QUEST_IDS.every((id) => { const q = QUESTS[id]; const g = q.goal; if (!g.enemy || g.enemy === 'edric') return true; return Object.values(MAPS).some((m) => m.roster[g.enemy] && Math.abs(m.level - q.level) <= 12); }));
-  check('story: every sign is placed, at least two on every map (three in Haven), each somewhere you can stand', MAP_IDS.every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === SIGN_IDS.filter((sid) => SIGNS[sid].map === id).length && signs.length >= (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
+  check('story: every sign is placed, at least two on every map (three in Haven), each somewhere you can stand', MAP_IDS.filter((id) => !MAPS[id].wishkeep).every((id) => { const m = buildMap(id); const signs = m.obstacles.filter((o) => o.kind === 'sign'); return signs.length === SIGN_IDS.filter((sid) => SIGNS[sid].map === id).length && signs.length >= (id === 'town' ? 3 : 2) && signs.every((sg) => SIGNS[sg.id].map === id && Math.hypot(sg.x, sg.z) < m.radius - 2 && m.obstacles.every((o) => o === sg || Math.hypot(o.x - sg.x, o.z - sg.z) > o.r + sg.r + 0.5)); }), SIGN_IDS.length + ' signs');
   check('story: four people live in Haven (and Tomas, once, after the Unwish)', buildMap('town').obstacles.filter((o) => o.kind === 'npc').length === 6 && new World({ seed: 1, mode: 'explore' }).obstacles.filter((o) => o.kind === 'npc').length === 4);
 
   const w = new World({ seed: 12, mode: 'explore' }); const p = w.player;
@@ -5239,5 +5239,89 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...or shown again', eternalForm(p) && w.toSave().eformOff === false);
   const { RIGGED, heroLook } = await import('../src/render/rigged.js').catch(() => ({}));
   if (heroLook) check('...the renderer picks the ascended model for it (the Shadowdancer too)', heroLook('rogue', 'shadowdancer', true) === 'rogue_eternal' && heroLook('rogue', 'shadowdancer', false) === 'ninja' && RIGGED.hero_warrior_eternal.url === 'models/warrior_eternal.glb');
+}
+
+// --- 0.80: the Wishkeep -------------------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const { rollEternal } = await import('../src/sim/eternal.js');
+  const I = await import('../src/sim/items.js');
+  const evs = (w) => { const out = w.events.map((e) => e.type); w.events = []; return out; };
+  const w = new World({ seed: 31, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands();
+  check('Wishkeep (0.80): shut until a class on the account has beaten the Quiet', w.map.id === 'town' && evs(w).includes('keepLocked') && !p.keep);
+  p.lives = { archer: { prim: [6, 7, 8, 9, 10], et: ['ring', 'boots'], gr: ['ianitor'], wish: 900 }, mage: { prim: [10], et: ['ring'], gr: [], wish: 100 } };
+  const rec = w.keepRecord();
+  check('...its record is the account\'s: halls from classes mastered, relics from Eternal slots, echoes from the Granted, Wishborne levels', rec.halls.join() === 'archer,mage' && rec.relics.join() === 'boots,ring' && rec.echoes.join() === 'ianitor' && rec.wish === 1000 + (p.wish || 0), JSON.stringify(rec));
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands();
+  const got = evs(w);
+  check('...opened: founded on the first visit, with Faith from the Wishborne levels the faithful bring', w.map.id === 'wishkeep' && got.includes('keepFounded') && p.keep && p.keep.tier === 1 && p.keep.faith === Math.min(400, Math.round(6 * Math.sqrt(rec.wish))), JSON.stringify(p.keep && { f: p.keep.faith }));
+  check('...three settlers at tier I, three wishes on the board, only those settlers standing in the keep', Object.keys(p.keep.settlers).join() === 'ysolde,maren,bastian' && p.keep.wishes.length === 3 && w.obstacles.filter((o) => o.kind === 'npc').map((o) => o.id).join() === 'ysolde,maren,bastian');
+  check('...nothing of it in the hero\'s own save (it is the account\'s)', !('keep' in w.toSave()));
+  // answering: a story, an offering, a pilgrimage
+  const k = p.keep;
+  k.wishes = [
+    { id: 'a', kind: 'tell', who: 'ysolde', line: 0, n: 0, need: 1, done: false, ch: 'road', reward: { faith: 20, stone: 1 } },
+    { id: 'b', kind: 'offer', who: 'maren', line: 0, n: 0, need: 400, done: false, what: 'scrap', reward: { faith: 25, stone: 2 } },
+    { id: 'c', kind: 'kill', who: 'bastian', line: 0, n: 0, need: 3, done: false, map: 'fen', mapName: 'Spitter Fen', reward: { faith: 30, stone: 4 } },
+  ];
+  const f0 = k.faith;
+  w.command({ type: 'keepAnswer', i: 0 }); w.runCommands();
+  check('...a story is heard at the board: the chapter is told, and Faith comes in (times the keep\'s bonuses)', k.told.includes('road') && evs(w).includes('keepStory') && k.faith === f0 + Math.round(20 * w.keepMult()) && k.wishes.length === 3);
+  p.scrap = 100;
+  const oi = k.wishes.findIndex((x) => x.kind === 'offer');
+  w.command({ type: 'keepAnswer', i: oi }); w.runCommands();
+  check('...an offering needs what it asks', k.wishes[oi].kind === 'offer' && !k.wishes[oi].done && p.scrap === 100 && evs(w).includes('keepShort'));
+  p.scrap = 1000;
+  w.command({ type: 'keepAnswer', i: oi }); w.runCommands();
+  check('...and takes it', p.scrap === 600 && !k.wishes.some((x) => x.id === 'b') && k.settlers.maren.bond === 1);
+  for (let i = 0; i < 3; i++) w.keepEvent('kill', { map: 'fen' });
+  const ci = k.wishes.findIndex((x) => x.id === 'c');
+  check('...a pilgrimage is done out in the world (kills on its map)', ci >= 0 && k.wishes[ci].done && k.wishes[ci].n === 3);
+  // tiers and halls
+  k.faith = 5000; k.stone = 500;
+  w.command({ type: 'keepTier' }); w.runCommands();
+  check('...raised a tier at the Hearth: two more settlers, a bigger board', k.tier === 2 && k.faith === 4700 && k.stone === 470 && Object.keys(k.settlers).length === 5 && k.wishes.length === 4);
+  w.command({ type: 'keepHall', cls: 'warrior' }); w.runCommands();
+  check('...a hall stays shut until its class is mastered', k.halls.warrior === 0 && evs(w).includes('keepHallShut'));
+  w.command({ type: 'keepHall', cls: 'archer' }); w.runCommands();
+  check('...and opens (and rises) once it is', k.halls.archer === 1 && k.faith === 4550);
+  w.command({ type: 'keepTier' }); w.runCommands();
+  check('...tier III: all six settlers, a weapon glow of its own', k.tier === 3 && Object.keys(k.settlers).length === 6 && p.glows.includes('wishkeep'));
+  // the Tide
+  w.command({ type: 'keepTide' }); w.runCommands();
+  let foes = 0, bites = 0, end = null;
+  for (let i = 0; i < 60 * 90 && !end; i++) {
+    w.step(CONFIG.TICK);
+    foes = Math.max(foes, w.enemies.filter((e) => e.tide).length);
+    for (const e of w.events) { if (e.type === 'hearthBite') bites++; if (e.type === 'tideEnd') end = e; }
+    w.events = [];
+  }
+  check('...a Tide left alone: they come from four ways in, go for the fires, and the fires go out (no reward, nobody lost)', foes === 6 + 3 * 3 && bites > 0 && end && end.won === false && !w.enemies.some((e) => e.tide), `${foes} foes, ${bites} bites`);
+  // an Eternal hero who goes where they are holds it
+  const w2 = new World({ seed: 32, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const q = w2.player;
+  q.lives = p.lives;
+  for (const sl of I.SLOTS) q.equipped[sl] = rollEternal(() => 0.5, 100, sl, 'warrior');
+  w2.recalcStats();
+  w2.command({ type: 'travel', to: 'wishkeep' }); w2.runCommands();
+  q.keep.wishes = [{ id: 't', kind: 'tide', who: 'maren', line: 0, n: 0, need: 1, done: false, reward: { faith: 50, stone: 8 } }];
+  w2.command({ type: 'keepTide' }); w2.runCommands();
+  end = null;
+  for (let i = 0; i < 60 * 200 && !end; i++) {
+    if (i % 6 === 0) {
+      const f = w2.enemies.filter((e) => e.tide && !e.dead && e.state !== 'spawn').sort((a, b) => Math.hypot(a.x - a.tideAt.x, a.z - a.tideAt.z) - Math.hypot(b.x - b.tideAt.x, b.z - b.tideAt.z));
+      if (f.length) w2.command({ type: 'attack', id: f[0].id });
+    }
+    w2.step(CONFIG.TICK);
+    for (const e of w2.events) if (e.type === 'tideEnd') end = e;
+    w2.events = [];
+  }
+  check('...a full-Eternal hero who goes where they are holds it: Faith, Wishstone, and the Tide wish done', end && end.won && end.faith > 0 && q.keep.tides === 1 && q.keep.wishes.find((x) => x.id === 't').done, JSON.stringify(end));
+  // the keep's numbers stay sane through a save
+  const back = K.cleanKeep(JSON.parse(JSON.stringify(k)));
+  check('...a keep survives being saved and loaded, every field checked', JSON.stringify(back) === JSON.stringify(K.cleanKeep(back)) && back.tier === 3 && back.halls.archer === 1 && back.told.includes('road') && K.cleanKeep({ tier: 99, faith: -5, halls: { warrior: 9 } }).tier === 3 && K.cleanKeep({ faith: -5 }).faith === 0 && K.cleanKeep(null) === null);
 }
 process.exit(failed ? 1 : 0);

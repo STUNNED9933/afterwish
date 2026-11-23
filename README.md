@@ -160,6 +160,35 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Wishkeep (0.80)
+
+A new kind of play for heroes who have reached the end of their growth: a sanctuary for the people the
+Unmade took from, one for the whole account. Nothing in it makes a hero stronger; it grows, and gives back
+story, looks and ease. (Design: the "Afterwish: the next mode" doc.)
+
+- **Opening it:** once any class on the account has beaten the Quiet, the Waygate shows **the Wishkeep**.
+  It is always a copy of your own (on the server too, even in a party), with a Waygate of its own home.
+- **Built on what you did:** the Altar shows your record across every class. Each class mastered opens its
+  hall (the Bastion, the Lodge, the Observatory, the Market), each Eternal slot filled lights a relic (+5%
+  Faith), each Granted beaten sends an echo to guard the fires in a Tide, and Wishborne levels and rebirths
+  set the Faith the faithful bring on the first day.
+- **The Wishes board:** 3 to 5 wishes at a time, each from a named settler: pilgrimages (defeat enemies on
+  a map you know), a boss brought down, offerings (scrap, Wishdust, gold, wish fragments), a Tide, and the
+  story. Answered wishes bring **Faith** and **Wishstone**, and bring that settler closer (their level
+  raises Faith a little). A wish can be swapped for 10 Faith.
+- **The story, told by the keep:** Old Ysolde tells how the one they keep came to be, six chapters that
+  open with your record (the road, the star, the Quiet, more than one life, the Granted, the five things
+  that do not end). Hear them again from her.
+- **The Hearth:** raise the keep to tier II (A Village) and III (the Wishkeep): a bigger board, six
+  settlers in all (Ysolde, Maren, Bastian, Liesl, Corwin, Hesper), and at III a weapon glow, **Kept**. Raise
+  each opened hall (three levels): more warmth in Tides, shorter pilgrimages, more Faith, cheaper offerings.
+- **Tides:** call the night at the Hearth. Three waves of the Unmade come from four ways in, each going for
+  the keep's fire nearest it; every bite takes warmth. Damage is not the test, being where they are is.
+  Hold until morning for Faith and Wishstone; if the fires go out, nobody is lost and you can try again.
+- The keep is the account's, like gold: kept in this browser, and on the server for online characters.
+- Fixed on the server: a browser character's record of its other classes (Mastery, Animus) was lost when
+  it moved from one map copy to another.
+
 ### The Eternal forms (0.76)
 
 - **Wear all five Eternal pieces and your hero ascends:** a new model for each class, the same hero in

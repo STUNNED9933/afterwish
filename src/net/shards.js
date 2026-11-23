@@ -16,12 +16,22 @@ import { MAPS } from '../sim/maps.js';
 import { TITLES, bestTitle } from '../sim/trial.js';
 import { makeSnapshot, eventFor, compactEvents, NET_VERSION } from './sync.js';
 import { FRIEND_CMDS } from './cmds.js';
+import { cleanKeep, KEEP, lifeOfSave } from '../sim/wishkeep.js';
 
 // (0.55.2) on the server each hero is their own: they may also be reborn and Unwish, as in single player
 const SERVER_CMDS = new Set([...FRIEND_CMDS, 'setDepth', 'rebirth', 'unwish']);
 // players: on the whole server. perCopy: in one copy of a road map. haven: in one copy of Haven (a
 // full Haven opens another, so a crowd never costs anyone frames: each hero in view is ~15 draws).
 export const SERVER_LIMITS = { players: 24, perCopy: 8, haven: 16, chatLen: 140, chatGap: 0.6, partyMax: CONFIG.PARTY_MAX, msgBytes: 64 * 1024 };
+
+/** The same, checked, from a browser's description of its classes. */
+function keepLife(v) {
+  return {
+    et: (Array.isArray(v.et) ? v.et : []).filter((s) => ['weapon', 'helm', 'chest', 'boots', 'ring'].includes(s)).slice(0, 5),
+    gr: (Array.isArray(v.gr) ? v.gr : []).map(String).filter((t) => /^[a-z]{2,16}$/.test(t)).slice(0, 8),
+    wish: Math.max(0, Math.min(1e6, Math.floor(Number(v.wish) || 0))),
+  };
+}
 
 const clean = (text, n) => String(text || '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, n);
 
@@ -151,6 +161,7 @@ export class ServerWorld {
     this.send(conn, { t: 'welcome', pid, code: this.name, server: true, online: !!acct, alone: pl.alone });
     let save = hello.save && typeof hello.save === 'object' ? hello.save : null;
     let gold = hello.gold, tickets = hello.tickets;
+    let keep = cleanKeep(hello.keep); // (0.80) the account's Wishkeep, like the wallet
     pl.acctRebirths = Math.max(0, Math.floor(Number(hello.acctRebirths) || 0));
     if (acct) {
       // (0.57) an online character: everything from the account, nothing from the browser
@@ -158,11 +169,12 @@ export class ServerWorld {
       save = this.accounts.getChar(acct.id, cls);
       gold = acct.wallet.gold;
       tickets = acct.wallet.tickets;
+      keep = this.accounts.keepOf ? cleanKeep(this.accounts.keepOf(acct.id)) : null;
       pl.acctRebirths = acct.wallet.rebirths || 0;
       pl.title = bestTitle(this.accounts.weeklyOf(acct.id).titles); // (0.60) the Weekly Echo title it holds
     }
     const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
-    this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs });
+    this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs, keep });
     if (!pl.alone) this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }
@@ -192,16 +204,17 @@ export class ServerWorld {
     if (pl.accountId && this.accounts) {
       const chars = this.accounts.charsOf(pl.accountId) || {};
       const out = {};
-      for (const c in chars) if (chars[c] && chars[c].rebirth) out[c] = { prim: primordialsOf(chars[c].rebirth), ember: emberOf(chars[c].rebirth), open: !!(chars[c].rebirth.act3 && chars[c].rebirth.act3.lives), act3: !!(chars[c].endings && chars[c].endings.self > 0 && chars[c].rebirth.n >= 1) }; // (0.70.5) act3: Wren's Deep quests opened on this class
+      for (const c in chars) if (chars[c] && chars[c].rebirth) out[c] = { prim: primordialsOf(chars[c].rebirth), ember: emberOf(chars[c].rebirth), open: !!(chars[c].rebirth.act3 && chars[c].rebirth.act3.lives), act3: !!(chars[c].endings && chars[c].endings.self > 0 && chars[c].rebirth.n >= 1), ...keepLife(lifeOfSave(chars[c])) }; // (0.70.5) act3: Wren's Deep quests opened on this class
       return out;
     }
     const given = hello && hello.save && hello.save.acctLives;
-    if (!given || typeof given !== 'object') return null;
+    if (!given || typeof given !== 'object') return pl.livesGiven || null; // (0.80) moving between copies: what it brought when it joined
     const out = {};
     for (const c of ['warrior', 'archer', 'rogue', 'mage']) {
       const v = given[c];
-      if (v && typeof v === 'object') out[c] = { prim: (Array.isArray(v.prim) ? v.prim : []).map(Number).filter((d) => d >= 6 && d <= 10).slice(0, 5), ember: Math.max(0, Math.min(1000, Number(v.ember) || 0)), open: !!v.open, act3: !!v.act3 };
+      if (v && typeof v === 'object') out[c] = { prim: (Array.isArray(v.prim) ? v.prim : []).map(Number).filter((d) => d >= 6 && d <= 10).slice(0, 5), ember: Math.max(0, Math.min(1000, Number(v.ember) || 0)), open: !!v.open, act3: !!v.act3, ...keepLife(v) };
     }
+    pl.livesGiven = out;
     return out;
   }
 
@@ -274,6 +287,7 @@ export class ServerWorld {
 
   keyFor(pl, to, extra) {
     if (to === 'town') return this.havenKey(pl);
+    if (to === KEEP.map) return `${KEEP.map}:${pl.pid}`; // (0.80) the Wishkeep: always a copy of your own (it is your account's)
     if (extra && extra.ring) return `ring:${pl.pid}:${this.ticks}`; // (0.59) an Echo Ring run: always a copy of your own
     if (extra && extra.rift) return `rift:${this.partyKey(pl)}:${extra.rift.seed}`;
     if (extra && extra.delve) return `delve:${this.partyKey(pl)}:${extra.delve.seed}`;
@@ -286,7 +300,7 @@ export class ServerWorld {
     let key = this.keyFor(pl, to, extra);
     if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve' && to !== 'ring')) key = this.havenKey(pl);
     if (extra && extra.joinKey && this.copies.has(extra.joinKey)) key = extra.joinKey; // party members going into a rift or delve
-    else if (pl.party && key !== 'town' && !(extra && (extra.rift || extra.delve || extra.ring))) {
+    else if (pl.party && key !== 'town' && to !== KEEP.map && !(extra && (extra.rift || extra.delve || extra.ring))) {
       // a party member is already on that map: join their copy
       for (const pid of this.parties.get(pl.party).members) {
         const m = this.players.get(pid);
@@ -313,6 +327,7 @@ export class ServerWorld {
       p.tickets = Math.max(0, Number(hello.tickets) || 0);
       p.acctRebirths = pl.acctRebirths || 0;
       p.lives = this.livesOf(pl, hello); // (0.63) Mastery: the account's other classes
+      p.keep = cleanKeep(hello.keep); // (0.80)
       w.recalcStats();
       copy = { key, world: w, map: to };
       w.travelHook = (h, dest, src, ex) => this.moves.push({ pid: h.pid, copy, to: dest, from: src, extra: ex });
@@ -324,6 +339,7 @@ export class ServerWorld {
       const h = copy.world.addHero(pl.pid, hello);
       h.player.acctRebirths = pl.acctRebirths || 0;
       h.player.lives = this.livesOf(pl, hello); // (0.63)
+      h.player.keep = cleanKeep(hello.keep); // (0.80)
       copy.world.as(h, () => copy.world.recalcStats());
       copy.world.arriveHero(h, from);
     }
@@ -357,7 +373,7 @@ export class ServerWorld {
   carry(copy, pid) {
     const w = copy.world;
     const h = w.heroByPid(pid);
-    return w.as(h, (p) => ({ save: w.toSave(), name: h.name, cls: w.cls, parry: w.parryPreset, autoAttack: p.autoAttack !== false, gold: p.gold, tickets: p.tickets, hp: p.dead ? p.stats.maxHp : p.hp, potions: p.potions }));
+    return w.as(h, (p) => ({ save: w.toSave(), name: h.name, cls: w.cls, parry: w.parryPreset, autoAttack: p.autoAttack !== false, gold: p.gold, tickets: p.tickets, keep: p.keep, hp: p.dead ? p.stats.maxHp : p.hp, potions: p.potions }));
   }
 
   /** Move a hero (and, into a rift or delve, the party members with them) to another copy. */
@@ -529,7 +545,7 @@ export class ServerWorld {
       const w = r.copy.world;
       const h = w.heroByPid(r.pid);
       if (!h) continue;
-      const keep = w.as(h, (p) => ({ name: h.name, cls: w.cls, parry: w.parryPreset, autoAttack: p.autoAttack !== false, gold: p.gold, tickets: p.tickets }));
+      const keep = w.as(h, (p) => ({ name: h.name, cls: w.cls, parry: w.parryPreset, autoAttack: p.autoAttack !== false, gold: p.gold, tickets: p.tickets, keep: p.keep }));
       pl.acctRebirths = (pl.acctRebirths || 0) + 1; // every hero on that player's account grows from it, as in single player
       this.removeFrom(r.copy, r.pid);
       this.place(pl, 'town', null, null, { ...keep, save: Object.assign({}, r.save, { acctRebirths: pl.acctRebirths }) });
@@ -576,7 +592,7 @@ export class ServerWorld {
     const w = pl.copy.world;
     const h = w.heroByPid(pl.pid);
     if (!h) return;
-    const out = w.as(h, (p) => ({ save: w.toSave(), gold: p.gold, tickets: p.tickets }));
+    const out = w.as(h, (p) => ({ save: w.toSave(), gold: p.gold, tickets: p.tickets, keep: p.keep || null }));
     const key = JSON.stringify(out);
     if (!force && key === pl.savedKey) return;
     pl.savedKey = key;
@@ -584,6 +600,7 @@ export class ServerWorld {
       // (0.57) kept on the server: this is the copy that counts
       this.accounts.putChar(pl.accountId, out.save.cls, out.save);
       this.accounts.setWallet(pl.accountId, { gold: out.gold, tickets: out.tickets, rebirths: pl.acctRebirths });
+      if (out.keep && this.accounts.setKeep) this.accounts.setKeep(pl.accountId, out.keep); // (0.80)
     }
     this.send(pl.conn, { t: 'save', ...out, online: !!pl.accountId });
   }

@@ -323,6 +323,7 @@ export class Renderer {
    * map.obstacles, the same list the simulation uses to stop you walking through it.
    */
   setMap(map) {
+    this.keepFlames = []; // (0.80)
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
@@ -540,6 +541,41 @@ export class Renderer {
         ring.position.set(o.x, 0, o.z);
         g.add(ring);
         this.ringViews.push({ swirlA, swirlB, column, glow, shards });
+      } else if (o.kind === 'keepaltar') {
+        // (0.80) the Wishkeep's Hearth: a white-and-crimson altar with a fire that never goes out
+        const altar = buildAltar(0xf2ece4);
+        altar.position.set(o.x, 0, o.z);
+        altar.scale.setScalar(1.25);
+        const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshBasicMaterial({ color: 0xff5a4a }));
+        flame.position.set(o.x, 2.9, o.z);
+        flame.scale.y = 1.6;
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.3), new THREE.MeshBasicMaterial({ color: 0xfff2e0 }));
+        core.position.set(o.x, 2.9, o.z);
+        core.scale.y = 1.5;
+        const light = new THREE.PointLight(0xff7a5a, 150, 22, 1.8);
+        light.position.set(o.x, 3.4, o.z);
+        const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xff3d4f, transparent: true, opacity: 0.6, depthWrite: false }));
+        ring.scale.setScalar(2.6);
+        ring.position.set(o.x, 0.06, o.z);
+        g.add(altar, flame, core, light, ring);
+        (this.keepFlames = this.keepFlames || []).push(flame, core);
+      } else if (o.kind === 'hall') {
+        // (0.80) a class's hall in the Wishkeep: a banner in its colour before the door
+        const color = { warrior: 0xc8463a, archer: 0x4a9a4a, mage: 0x4a6ad8, rogue: 0x8a4ac8 }[o.cls] || 0xd8c070;
+        const wood = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.9 });
+        const d = new THREE.Group();
+        d.position.set(o.x, 0, o.z);
+        d.rotation.y = Math.atan2(-o.x, -o.z);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.8, 6), wood);
+        pole.position.y = 1.9;
+        const cloth = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.8), new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, roughness: 0.8 }));
+        cloth.position.set(0, 2.6, 0.1);
+        const trim = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.14), new THREE.MeshStandardMaterial({ color: 0xf2ece4, side: THREE.DoubleSide }));
+        trim.position.set(0, 1.72, 0.11);
+        const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xff3d4f }));
+        cap.position.y = 3.9;
+        d.add(pole, cloth, trim, cap);
+        g.add(d);
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);

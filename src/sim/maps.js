@@ -15,6 +15,7 @@
 // Everything solid is in `obstacles`. The simulation stops heroes and enemies
 // walking through them, and the renderer draws them, from this one list.
 import { NPCS, SIGNS } from './story.js';
+import { SETTLERS, SETTLER_SPOTS } from './wishkeep.js';
 import { makeRng } from './rng.js';
 import { dAtan2, dCos, dHypot, dSin } from './dmath.js';
 
@@ -158,6 +159,15 @@ export const MAPS = {
     roster: { answered: 2, cantor: 2, thurifer: 1, colossus: 2, veiled: 2 }, spawns: 0, trees: 40, rocks: 140, boss: 'fiat',
     portals: [{ to: 'wants', angle: Math.PI }],
   },
+  // The Wishkeep (0.80, sim/wishkeep.js): the account's sanctuary. Haven's look, its own layout (buildMap):
+  // the Hearth and Altar in the middle, the wishes board, four halls, the settlers, a Waygate home.
+  // By the Waygate only, once any class has beaten the Quiet; always a copy of your own.
+  wishkeep: {
+    name: 'The Wishkeep', theme: 'town', safe: true, wishkeep: true, radius: 32, level: 100, levelSpan: 0,
+    blurb: 'The people the Unmade took from, and the fire they keep for you',
+    roster: {}, spawns: 0, trees: 26, rocks: 6, houses: 0,
+    portals: [{ to: 'town', angle: Math.PI }],
+  },
   deep10: {
     name: 'The Quiet', theme: 'quiet', radius: 42, level: 100, levelSpan: 0, deep: 10, song: 'starwell',
     blurb: 'Nothing, and room for it',
@@ -204,7 +214,8 @@ export function buildMap(id, custom = null) {
       keepClear.push({ x, z, r: 4.5 });
     }
   }
-  if (def.theme === 'town') {
+  if (def.wishkeep) layKeep(R, obstacles, keepClear);
+  if (def.theme === 'town' && !def.wishkeep) {
     keepClear.push({ x: 0, z: 0, r: 9 });
     for (let i = 0; i < def.houses; i++) {
       const a = (i / def.houses) * Math.PI * 2 + 0.52;
@@ -238,7 +249,7 @@ export function buildMap(id, custom = null) {
       keepClear.push({ x, z, r: 4.5 });
     }
   }
-  if (def.theme === 'town') {
+  if (def.theme === 'town' && !def.wishkeep) {
     // (0.58.1) Someone who is here for some heroes and not others (by their own story) never blocks the
     // way, so a shared Haven on the server moves everyone the same way whatever each of them sees.
     for (const nid in NPCS) if (NPCS[nid].at) obstacles.push({ kind: 'npc', shape: 'circle', id: nid, name: NPCS[nid].name, x: NPCS[nid].at[0], z: NPCS[nid].at[1], r: 0.55, ...(NPCS[nid].onlyAfter || NPCS[nid].onlyFlag || nid === 'odile' ? { soft: true } : {}) });
@@ -272,7 +283,7 @@ export function buildMap(id, custom = null) {
     keepClear.push({ x, z, r: 3 });
   }
   // The Waygate: fast travel to maps you have discovered. Stand on it like a portal.
-  const waygate = def.theme === 'town' ? { x: 0, z: 5.5, r: 1.8 } : null;
+  const waygate = def.wishkeep ? { x: 0, z: 9, r: 1.8 } : def.theme === 'town' ? { x: 0, z: 5.5, r: 1.8 } : null;
 
   // Waystones (out in the world): one by the entrance, where fallen teammates wake up, and one
   // on the far side. Stand on one to jump to the other (just you), or travel on like the Waygate.
@@ -350,9 +361,38 @@ export function buildMap(id, custom = null) {
   return {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan, deep: def.deep || 0,
-    portals, obstacles, spawns, waygate, waystones,
+    portals, obstacles, spawns, waygate, waystones, ...(def.wishkeep ? { gates: [0, 1.571, 2.75, 4.712].map((a) => ({ x: dCos(a) * (R - 4), z: dSin(a) * (R - 4) })) } : {}),
     ...(road ? { road: road.line, sidePaths: road.sidePaths, chestSpots: road.shrines.map((sh) => ({ x: sh.x - sh.nx * 1.5, z: sh.z - sh.nz * 1.5 })), arena: road.arena } : {}),
   };
+}
+
+/**
+ * (0.80) The Wishkeep's ground: the Hearth's Altar in the middle, the wishes board, four braziers, the four
+ * class halls round the plaza (a hall, and a banner in front of it you speak to), and a spot for each settler
+ * (world.js leaves out those who have not come yet).
+ */
+function layKeep(R, obstacles, keepClear) {
+  keepClear.push({ x: 0, z: 0, r: 11 }, { x: 0, z: 9, r: 3 });
+  obstacles.push({ kind: 'keepaltar', shape: 'circle', id: 'keepaltar', name: 'The Hearth', x: 0, z: 0, r: 1.6, pickR: 2.4 });
+  obstacles.push({ kind: 'board', shape: 'circle', id: 'wishes', name: 'The Wishes', x: 4.6, z: 1.6, r: 0.6, pickR: 1.3 });
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    obstacles.push({ kind: 'brazier', shape: 'circle', x: dCos(a) * 8.6, z: dSin(a) * 8.6, r: 0.5, lit: true });
+  }
+  const halls = [['warrior', -2.36], ['archer', -0.79], ['mage', 0.79], ['rogue', 2.36]];
+  for (const [cls, a] of halls) {
+    const x = dCos(a) * 17, z = dSin(a) * 17;
+    obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 3.4, hd: 2.8, rot: a + Math.PI / 2, height: 4.6, r: 4.4, hall: cls });
+    keepClear.push({ x, z, r: 6 });
+    const bx = dCos(a) * 12.4, bz = dSin(a) * 12.4;
+    obstacles.push({ kind: 'hall', shape: 'circle', id: 'hall_' + cls, cls, name: 'hall', x: bx, z: bz, r: 0.5, soft: true, pickR: 1.4 });
+    keepClear.push({ x: bx, z: bz, r: 2 });
+  }
+  for (const id in SETTLER_SPOTS) {
+    const [x, z] = SETTLER_SPOTS[id];
+    obstacles.push({ kind: 'npc', shape: 'circle', id, name: SETTLERS[id].name, x, z, r: 0.55, soft: true });
+  }
+  keepClear.push({ x: -R + 4.5, z: 0, r: 8 }); // the road home
 }
 
 /**

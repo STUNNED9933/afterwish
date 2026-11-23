@@ -141,6 +141,21 @@ export class AccountStore {
     this.touch('accounts');
   }
 
+  // --------------------------------------------------------------- the Wishkeep (0.80)
+  /** The account's Wishkeep (one for all its characters), or null before it is founded. */
+  keepOf(accountId) {
+    const a = this.accounts[accountId];
+    return (a && a.keep) || null;
+  }
+  setKeep(accountId, keep) {
+    const a = this.accounts[accountId];
+    if (!a || !keep || typeof keep !== 'object') return;
+    const text = JSON.stringify(keep);
+    if (text.length > 32 * 1024 || text === JSON.stringify(a.keep || null)) return;
+    a.keep = JSON.parse(text);
+    this.touch('accounts');
+  }
+
   // --------------------------------------------------------------- the Weekly Echo (0.60)
   /** Link a Weekly Echo board name to this account. Refused if another account has it already. */
   linkBoard(accountId, boardId) {

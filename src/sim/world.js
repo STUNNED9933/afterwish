@@ -13,7 +13,7 @@ const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring']);
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar']); // (0.80: the Wishkeep's halls and Hearth)
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
@@ -95,8 +95,10 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const TRIAL_LOCKED = new Set([ETERNAL_FORGE, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
+const KEEP_CMDS = ['keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide']; // (0.80)
+const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -528,6 +530,7 @@ export class World {
       eternalFirsts: Array.isArray(save?.eternalFirsts) ? save.eternalFirsts.filter((t) => typeof t === 'string').slice(0, 16) : [], // (0.73) the Granted this hero has beaten once
       eternalAuto: AUTO_FEED.includes(save?.eternalAuto) ? save.eternalAuto : null, // (0.75) off unless the player turns it on
       eformOff: save?.eformOff === true, // (0.76)
+      keep: null, // (0.80) the account's Wishkeep, set like gold from outside (main.js, the server): never in this hero's save
       autoScrapAt: Number.isInteger(save?.autoScrapAt) && save.autoScrapAt >= 0 && save.autoScrapAt < IMMORTAL ? save.autoScrapAt : null, // (0.75.3)
       eternalVet: save?.eternalVet === true, // (0.74) the once-only thanks for those who beat the Granted at their hardest
       borrowed: { d: (save?.borrowed && typeof save.borrowed.d === 'string' && save.borrowed.d) || null, f: (save?.borrowed && typeof save.borrowed.f === 'string' && save.borrowed.f) || null }, // (0.70) borrowed skills on D and F
@@ -853,6 +856,11 @@ export class World {
       else if (c.type === 'buyMerchant') this.buyMerchant(c.i);
       else if (c.type === 'wishReset') this.wishReset();
       else if (c.type === 'claimBounty') this.claimBounty(c.i);
+      else if (c.type === 'keepAnswer') this.keepAnswer(c.i); // (0.80) the Wishkeep
+      else if (c.type === 'keepSkip') this.keepSkip(c.i);
+      else if (c.type === 'keepTier') this.keepTier();
+      else if (c.type === 'keepHall') this.keepHall(c.cls);
+      else if (c.type === 'keepTide') this.keepTideStart();
       else if (c.type === 'swapBounty') this.swapBounty(c.i);
       else if (c.type === 'craftImmortal') this.craftImmortal(c.slot);
       else if (c.type === 'summonRemnant') this.summonRemnant();
@@ -965,6 +973,11 @@ export class World {
             const lead = this.travelHook ? p : this.heroes[0].player; // (0.55) on the server, each hero for themselves
             if (this.depthOpen(lead, MAPS[c.to].deep)) this.goMap(c.to, MAPS[c.to].portals[0].to);
             else this.emit('depthLocked', { depth: MAPS[c.to].deep, name: MAPS[c.to].name });
+          } else if (this.mode === 'explore' && c.to === KEEP.map) {
+            // (0.80) the Wishkeep: once any class has beaten the Quiet; on the server a copy of your own, offline alone
+            if (!this.keepOpen()) this.emit('keepLocked', {});
+            else if (this.heroes.length > 1 && !this.travelHook) this.emit('keepAlone', {});
+            else this.goMap(KEEP.map, 'town');
           } else if (this.mode === 'explore' && CAELUM.maps[c.to]) {
             // Caelum (0.64): open from taking The Sky Road; past the first map, once you have walked there.
             // Short of a map's Animus you may still go (with a warning on arrival, see caelumWarn).
@@ -4221,6 +4234,12 @@ export class World {
    */
   npcMarker(npcId) {
     let mark = '';
+    if (SETTLERS[npcId]) {
+      // (0.80) a settler: a book when one of their wishes is answered and waiting, '!' while one is on the board
+      const k = this.player.keep;
+      const mine = k ? k.wishes.filter((w) => w.who === npcId) : [];
+      return mine.some((w) => w.done) ? 'ready' : mine.length ? 'progress' : '';
+    }
     if (npcId === 'odile' && this.questState('tobin') === 'done') return ''; // (0.54.6) she is in the garden; Lark keeps her quests
     const as = (NPCS[npcId] && NPCS[npcId].as) || npcId;
     for (const id of QUEST_IDS) {
@@ -5261,6 +5280,281 @@ export class World {
       const key = kind === 'kill' ? `kill@${ctx.map}` : kind;
       p.bank.b[key] = (p.bank.b[key] || 0) + 1;
     }
+  }
+
+  // =========================================================================
+  // The Wishkeep (0.80, the rules and numbers are in sim/wishkeep.js)
+  // =========================================================================
+  /** What the account has done that the keep is built on: the classes mastered, the Eternal slots filled, the Granted beaten, Wishborne levels and rebirths. */
+  keepRecord() {
+    const p = this.player;
+    const halls = masteryFor(p.lives, this.cls, p.rebirth).mastered.slice();
+    const relics = new Set(), echoes = new Set();
+    let wish = p.wish || 0;
+    for (const s of SLOTS) if ((p.equipped[s] && p.equipped[s].eternal) || (p.eternals && p.eternals[s])) relics.add(s);
+    for (const t of p.eternalFirsts || []) echoes.add(t);
+    for (const c in p.lives || {}) {
+      if (c === this.cls || !p.lives[c]) continue;
+      const L = p.lives[c];
+      for (const s of Array.isArray(L.et) ? L.et : []) if (SLOTS.includes(s)) relics.add(s);
+      for (const t of Array.isArray(L.gr) ? L.gr : []) echoes.add(String(t));
+      wish += Math.max(0, Math.floor(Number(L.wish) || 0));
+    }
+    return { halls, relics: SLOTS.filter((s) => relics.has(s)), echoes: [...echoes].sort(), wish, rebirths: p.acctRebirths || 0 };
+  }
+
+  /** The keep opens once any class on the account has beaten the Quiet. */
+  keepOpen() {
+    const p = this.player;
+    return !this.trial && masteryFor(p.lives, this.cls, p.rebirth).mastered.length >= 1;
+  }
+
+  /** On arriving: found the keep the first time, bring in whoever has come, fill the board. */
+  keepStart() {
+    const p = this.player;
+    if (!this.keepOpen()) return;
+    if (!p.keep) {
+      const r = this.keepRecord(), S = KEEP.start;
+      p.keep = cleanKeep({ tier: 1, faith: Math.min(S.wishMax, Math.round(S.perWish * Math.sqrt(r.wish))) + Math.min(S.rebirthMax, S.perRebirth * r.rebirths) });
+      // the first wish is always the start of the story
+      p.keep.wishN = 1;
+      p.keep.wishes.push({ id: 'k1', kind: 'tell', who: 'ysolde', line: 0, n: 0, need: 1, done: false, ch: CHAPTERS[0].id, reward: { faith: KEEP.reward.tell[0], stone: KEEP.reward.tell[1] } });
+      this.emit('keepFounded', { faith: p.keep.faith });
+    }
+    for (const id of settlersAt(p.keep.tier)) if (!p.keep.settlers[id]) p.keep.settlers[id] = { bond: 0 };
+    this.keepFill();
+    if (p.keep.tier >= 3 && !p.glows.includes('wishkeep')) this.unlockGlow('wishkeep');
+  }
+
+  /** Faith answered wishes bring, times this: the Observatory, the Altar's relics and the settlers' levels. */
+  keepMult() {
+    const k = this.player.keep;
+    if (!k) return 1;
+    let lv = 0;
+    for (const id in k.settlers) lv += settlerLevel(k.settlers[id]);
+    return 1 + 0.1 * (k.halls.mage || 0) + KEEP.faithPerRelic * this.keepRecord().relics.length + KEEP.faithPerSettlerLvl * lv;
+  }
+
+  keepFill() {
+    const k = this.player.keep;
+    if (!k) return;
+    const size = KEEP.tiers[k.tier].board;
+    while (k.wishes.length < size) k.wishes.push(this.keepWish());
+  }
+
+  /** A new wish from one of the settlers. */
+  keepWish() {
+    const p = this.player, k = p.keep;
+    k.wishN = (k.wishN || 0) + 1;
+    const rng = this.streamRng('keepwish', k.wishN * 7919 + k.answered * 31 + k.tier);
+    const on = k.wishes;
+    const has = (kind) => on.some((w) => w.kind === kind);
+    const rec = this.keepRecord();
+    const chapter = CHAPTERS.find((c) => !k.told.includes(c.id) && c.need(rec) && !on.some((w) => w.ch === c.id));
+    const BOSSES = ['boss', 'boss2', 'boss3', 'herald', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness'];
+    const bosses = BOSSES.filter((t) => p.bossKills[t] > 0 && !on.some((w) => w.boss === t));
+    const maps = MAP_IDS.filter((id) => !MAPS[id].safe && !MAPS[id].bossOnly && !MAPS[id].caelum && p.visited.includes(id) && !on.some((w) => w.map === id));
+    const kinds = ['offer', 'offer'];
+    if (chapter && !has('tell')) kinds.push('tell', 'tell', 'tell');
+    if (!has('tide')) kinds.push('tide', 'tide');
+    if (maps.length) kinds.push('kill', 'kill', 'kill');
+    if (bosses.length && !has('boss')) kinds.push('boss');
+    const kind = kinds[Math.floor(rng() * kinds.length)];
+    const here = settlersAt(k.tier);
+    const w = { id: 'k' + k.wishN, kind, who: kind === 'tell' ? 'ysolde' : here[Math.floor(rng() * here.length)], line: Math.floor(rng() * 9), n: 0, need: 1, done: false };
+    if (kind === 'kill') {
+      w.map = maps[Math.floor(rng() * maps.length)];
+      w.mapName = MAPS[w.map].name;
+      const [lo, hi] = KEEP.killNeed;
+      w.need = Math.max(5, Math.round((lo + Math.floor(rng() * (hi - lo + 1))) * (1 - 0.15 * (k.halls.archer || 0))));
+    } else if (kind === 'boss') {
+      w.boss = bosses[Math.floor(rng() * bosses.length)];
+      w.bossName = ENEMIES[w.boss].name;
+    } else if (kind === 'offer') {
+      const whats = Object.keys(KEEP.offers);
+      w.what = whats[Math.floor(rng() * whats.length)];
+      w.need = Math.max(1, Math.round(KEEP.offers[w.what] * (1 - 0.15 * (k.halls.rogue || 0))));
+    } else if (kind === 'tell') w.ch = chapter.id;
+    const base = KEEP.reward[kind];
+    w.reward = { faith: Math.round(base[0] * (0.85 + rng() * 0.3)), stone: base[1] };
+    return w;
+  }
+
+  /** Something a wish might be waiting for happened. */
+  keepEvent(kind, ctx = {}) {
+    const k = this.player.keep;
+    if (!k || this.trial) return;
+    for (const w of k.wishes) {
+      if (w.done) continue;
+      if (kind === 'kill' && w.kind === 'kill' && w.map === ctx.map) w.n++;
+      else if (kind === 'boss' && w.kind === 'boss' && w.boss === ctx.type) w.n++;
+      else if (kind === 'tide' && w.kind === 'tide') w.n++;
+      else continue;
+      if (w.n >= w.need) {
+        w.n = w.need;
+        w.done = true;
+        this.emit('keepWishDone', { who: SETTLERS[w.who].name, kind: w.kind });
+      }
+    }
+  }
+
+  /** Answer a wish at the board: an offering is paid and a story heard here; the rest once they are done. */
+  keepAnswer(i) {
+    const p = this.player, k = p.keep;
+    const w = k && k.wishes[i];
+    if (!w || !this.map || this.map.id !== KEEP.map) return;
+    if (w.kind === 'offer' && !w.done) {
+      const have = w.what === 'fragment' ? p.misc.fragment || 0 : p[w.what] || 0;
+      if (have < w.need) return this.emit('keepShort', { what: w.what, need: w.need, have });
+      if (w.what === 'fragment') p.misc.fragment = have - w.need;
+      else p[w.what] = have - w.need;
+      w.done = true;
+    }
+    if (w.kind === 'tell' && !w.done) {
+      w.done = true;
+      if (!k.told.includes(w.ch)) k.told.push(w.ch);
+      this.emit('keepStory', { ch: w.ch });
+    }
+    if (!w.done) return;
+    const faith = Math.round(w.reward.faith * this.keepMult());
+    k.faith += faith;
+    k.stone += w.reward.stone;
+    k.answered++;
+    const s = k.settlers[w.who] || (k.settlers[w.who] = { bond: 0 });
+    const before = settlerLevel(s);
+    s.bond++;
+    const after = settlerLevel(s);
+    k.wishes.splice(i, 1);
+    this.keepFill();
+    this.emit('keepAnswered', { who: SETTLERS[w.who].name, faith, stone: w.reward.stone, level: after > before ? after : 0 });
+  }
+
+  /** Swap a wish for another (a little Faith). */
+  keepSkip(i) {
+    const k = this.player.keep;
+    if (!k || !k.wishes[i] || k.wishes[i].done || !this.map || this.map.id !== KEEP.map) return;
+    if (k.faith < KEEP.skip) return this.emit('keepShort', { what: 'faith', need: KEEP.skip, have: k.faith });
+    k.faith -= KEEP.skip;
+    k.wishes.splice(i, 1);
+    this.keepFill();
+  }
+
+  /** Raise the keep a tier, at the Hearth: more people, a bigger board. */
+  keepTier() {
+    const k = this.player.keep;
+    const next = k && KEEP.tiers[k.tier + 1];
+    if (!next || !this.map || this.map.id !== KEEP.map) return;
+    if (k.faith < next.cost.faith || k.stone < next.cost.stone) return this.emit('keepShort', { what: 'tier', need: next.cost.faith, have: k.faith });
+    k.faith -= next.cost.faith;
+    k.stone -= next.cost.stone;
+    const had = new Set(settlersAt(k.tier));
+    k.tier++;
+    const came = settlersAt(k.tier).filter((id) => !had.has(id));
+    for (const id of came) k.settlers[id] = k.settlers[id] || { bond: 0 };
+    this.keepFill();
+    if (k.tier >= 3) this.unlockGlow('wishkeep');
+    this.emit('keepTier', { tier: k.tier, numeral: next.numeral, name: next.name, came: came.map((id) => SETTLERS[id].name) });
+  }
+
+  /** Raise a class's hall a level (open once that class is mastered). */
+  keepHall(cls) {
+    const k = this.player.keep;
+    if (!k || !HALLS[cls] || !this.map || this.map.id !== KEEP.map) return;
+    if (!this.keepRecord().halls.includes(cls)) return this.emit('keepHallShut', { name: HALLS[cls].name, cls });
+    const lvl = k.halls[cls] || 0;
+    if (lvl >= KEEP.hallMax) return;
+    const cost = KEEP.hallCost(lvl + 1);
+    if (k.faith < cost.faith || k.stone < cost.stone) return this.emit('keepShort', { what: 'hall', need: cost.faith, have: k.faith });
+    k.faith -= cost.faith;
+    k.stone -= cost.stone;
+    k.halls[cls] = lvl + 1;
+    this.emit('keepHallUp', { name: HALLS[cls].name, level: lvl + 1 });
+  }
+
+  /** Call the night: a Tide, three waves of the Unmade for the Hearth. */
+  keepTideStart() {
+    const k = this.player.keep;
+    if (!k || !this.map || this.map.id !== KEEP.map || (this.tide && this.tide.state === 'on') || this.player.dead) return;
+    const T = KEEP.tide;
+    const warmthMax = T.warmth + T.perBastion * (k.halls.warrior || 0) + T.perEcho * this.keepRecord().echoes.length;
+    this.tide = { state: 'on', wave: 0, next: 2.5, warmth: warmthMax, warmthMax, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973) };
+    this.emit('tideStart', { waves: T.waves, warmth: warmthMax });
+  }
+
+  stepTide(dt) {
+    const t = this.tide;
+    if (t.state !== 'on') {
+      t.after = (t.after || 0) + dt;
+      if (t.after > 10) this.tide = null;
+      return;
+    }
+    if (t.warmth <= 0) return this.tideEnd(false);
+    if (this.enemies.some((e) => e.tide && !e.dead)) return;
+    if (t.wave >= KEEP.tide.waves) return this.tideEnd(true);
+    t.next -= dt;
+    if (t.next <= 0) this.tideWave();
+  }
+
+  tideWave() {
+    const t = this.tide, k = this.player.keep, T = KEEP.tide;
+    t.wave++;
+    t.next = T.gap;
+    const rng = this.streamRng('tide', t.seed * 13 + t.wave);
+    const n = T.perWave(k.tier);
+    const gates = this.map.gates || [{ x: this.radius - 4, z: 0 }];
+    // each gate's enemies go for the keep's fire nearest it (a brazier round the plaza): four places to be at once
+    const halls = this.obstacles.filter((o) => o.kind === 'brazier');
+    const near = (g) => halls.reduce((b, h) => (!b || dist(h.x, h.z, g.x, g.z) < dist(b.x, b.z, g.x, g.z) ? h : b), null) || { x: 0, z: 0 };
+    for (let i = 0; i < n; i++) {
+      const g = gates[i % gates.length];
+      const e = this.spawnEnemy(T.roster[Math.floor(rng() * T.roster.length)], { x: g.x, z: g.z, level: T.level });
+      const at = near(g);
+      e.home = null;
+      e.aggro = true;
+      e.tide = true;
+      e.tideAt = { x: at.x, z: at.z };
+    }
+    this.emit('tideWave', { wave: t.wave, of: T.waves, n });
+  }
+
+  tideEnd(won) {
+    const t = this.tide, k = this.player.keep;
+    t.state = won ? 'won' : 'lost';
+    t.after = 0;
+    this.enemies = this.enemies.filter((e) => !e.tide || e.dead); // (on a loss, the rest melt back into the dark)
+    if (!won) return this.emit('tideEnd', { won: false });
+    k.tides++;
+    const faith = Math.round((40 + 10 * k.tier) * this.keepMult());
+    const stone = 6 + 2 * k.tier;
+    k.faith += faith;
+    k.stone += stone;
+    this.keepEvent('tide');
+    this.emit('tideEnd', { won: true, faith, stone, warmth: Math.ceil(t.warmth), of: t.warmthMax });
+  }
+
+  /** A Tide's enemy, when no hero is near it: it goes for the Hearth, and takes its warmth. True if it was moved here. */
+  stepTideFoe(e, dt) {
+    if (e.state !== 'chase' || !this.tide || this.tide.state !== 'on') return false;
+    const T = KEEP.tide;
+    if (e.hitAt != null && this.time - e.hitAt < T.aggro) return false; // struck by a hero: it turns on them for a while
+    const at = e.tideAt || { x: 0, z: 0 };
+    const dx = at.x - e.x, dz = at.z - e.z;
+    const d = dHypot(dx, dz) || 0.001;
+    if (d > T.reach + e.radius) {
+      const sp = e.def.speed * (e.slowT > 0 ? 1 - e.slow : 1);
+      e.x += (dx / d) * sp * dt;
+      e.z += (dz / d) * sp * dt;
+      e.moving = true;
+      e.facing = turnToward(e.facing, dAtan2(dz, dx), 7 * dt);
+    } else {
+      e.biteT = (e.biteT ?? 0.4) - dt;
+      if (e.biteT <= 0) {
+        e.biteT = T.every;
+        this.tide.warmth = Math.max(0, this.tide.warmth - 1);
+        this.emit('hearthBite', { x: e.x, z: e.z, warmth: this.tide.warmth, of: this.tide.warmthMax });
+      }
+    }
+    return true;
   }
 
   /** Hand in a finished job at the board (in Haven): its rewards, and a new job in its place. */
@@ -7644,6 +7938,7 @@ export class World {
     if (this.mode === 'explore' && !this.trial && !e.def.summon) {
       // Bounties and fragments (0.33)
       if (!e.def.thief && !e.def.boss) this.bountyEvent('kill', { map: this.map.id });
+      if (!e.tide) this.keepEvent(e.def.boss ? 'boss' : 'kill', { map: this.map.id, type: e.type }); // (0.80) the Wishkeep's pilgrimages
       if (e.elite && !e.rare && !e.def.boss) this.bountyEvent('elite');
       if (e.rare) {
         this.bountyEvent('storied');
@@ -7846,6 +8141,7 @@ export class World {
         this.stepStill(e, dt);
         continue;
       }
+      if (e.tide && this.stepTideFoe(e, dt)) continue; // (0.80) for the Hearth, unless a hero is close
       const dx = p.x - e.x;
       const dz = p.z - e.z;
       const d = dHypot(dx, dz) || 0.001;
@@ -8313,6 +8609,11 @@ inTown() {
       const sub = r.state === 'done' ? (r.won ? 'cleared · H or the portal to go home' : 'finished · H or the portal to go home') : r.state === 'guardian' ? `the guardian has come · ${clock}` : r.state === 'late' ? 'out of time · you can still finish it' : `${Math.min(100, Math.floor((100 * r.progress) / r.need))}% · ${clock}`;
       return { name: `Echo Rift · Tier ${r.tier}`, sub };
     }
+    if (m.id === KEEP.map && this.tide) {
+      const t = this.tide; // (0.80)
+      return { name: m.name, sub: t.state === 'won' ? 'morning · the fires held' : t.state === 'lost' ? 'morning · the fires went out' : `Tide · wave ${t.wave} of ${KEEP.tide.waves} · warmth ${Math.ceil(t.warmth)} of ${t.warmthMax}` };
+    }
+    if (m.id === KEEP.map && this.player.keep) return { name: m.name, sub: `Tier ${KEEP.tiers[this.player.keep.tier].numeral} · ${this.player.keep.faith.toLocaleString('en-US')} Faith · ${this.player.keep.stone} Wishstone` };
     const dn = this.depthNow();
     if (dn) return { name: m.name, sub: `Depth ${DEEP.depths[dn].numeral} · Ember ${this.ember()} of ${DEEP.depths[dn].ember}` }; // (0.54)
     const tier = this.worldTier();
@@ -8340,6 +8641,13 @@ inTown() {
     const p = this.player;
     this.radius = map.radius;
     if (id === 'town' && !this.travelHook) map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || this.npcHere(o.id)); // (0.45) Tomas, after; (0.58.1) on the server, each player's game shows its own
+    if (id === KEEP.map) {
+      // (0.80) the Wishkeep: begun on the first visit; only the settlers who have come so far
+      this.keepStart();
+      const here = new Set(settlersAt(this.player.keep ? this.player.keep.tier : 1));
+      map.obstacles = map.obstacles.filter((o) => o.kind !== 'npc' || here.has(o.id));
+    }
+    this.tide = null; // (0.80) a Tide ends when you leave
     if (this.mode === 'explore' && !this.trial) this.sideStoryProps(map);
     this.edricHere = false;
     this.obstacles = map.obstacles;
@@ -8675,6 +8983,7 @@ inTown() {
   }
 
   stepExplore(dt) {
+    if (this.tide) this.stepTide(dt); // (0.80)
     const p = this.player;
     if (p.dead) {
       this.respawnT -= dt;

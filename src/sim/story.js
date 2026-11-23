@@ -32,6 +32,8 @@
 // apprentice, is the one who knows what the stones are.
 
 /** People in Haven. `at` is where they stand; `look` is how they are drawn. */
+import { SETTLERS } from './wishkeep.js';
+
 export const NPCS = {
   wren: {
     name: 'Elder Wren', role: 'Elder of Haven', at: [-3.4, -2.0],
@@ -86,6 +88,9 @@ export const NPCS = {
     idle: 'I will just sit with him a while.',
   },
 };
+// (0.80) The Wishkeep's settlers (sim/wishkeep.js) talk like anyone else; they are not in Haven (no `at`).
+for (const id in SETTLERS) NPCS[id] = { name: SETTLERS[id].name, role: SETTLERS[id].role, look: SETTLERS[id].look, greet: SETTLERS[id].greet, idle: SETTLERS[id].greet, keep: true };
+
 
 /**
  * Things you can read. Two per map; `spot` says where the map builder puts it:

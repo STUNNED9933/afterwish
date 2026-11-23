@@ -1249,3 +1249,11 @@ button.cell:active { transform: scale(0.96); }
 @keyframes cm-in { from { transform: scale(0.94); opacity: 0; } }
 .wish-all { margin-left: 4px; }
 .rb-players { cursor: pointer; text-decoration: underline dotted; }
+
+/* (0.80) the Wishkeep */
+.keep-altar .relics { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.keep-altar .relic { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.keep-altar .relic.lit { color: #fff; border-color: #ff3d4f; background: linear-gradient(180deg, rgba(255, 61, 79, 0.28), rgba(255, 61, 79, 0.08)); box-shadow: 0 0 10px rgba(255, 61, 79, 0.45); }
+.keep-have { white-space: nowrap; color: #ffd8a8; }
+.keep-chapter p { margin: 0 0 10px; line-height: 1.55; font-size: 15.5px; }
+.keep-row b { color: #ffd8dc; }

@@ -5575,4 +5575,11 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const broke = w.events.find((e) => e.type === 'autoRolled');
   check('...and when the gold runs out', broke.rolls <= 2 && (broke.why === 'funds' || broke.why === 'done') && p.gold >= 0, JSON.stringify(broke && { r: broke.rolls, why: broke.why }));
 }
+
+// --- 0.81.7: the Echo Ring's table follows the start wave -------------------------------------------------
+{
+  const { ringTable } = await import('../src/sim/ring.js');
+  const late = ringTable(100, 56);
+  check('Echo Ring (0.81.7): starting deep (wave 56), What the Stones Remember still has its rows, from that wave on', late.length === 10 && late[0].wave === 56 && late.every((r, i) => i === 0 || r.wave > late[i - 1].wave) && late[late.length - 1].total.fragment > late[0].fragment, late.map((r) => r.wave).join());
+}
 process.exit(failed ? 1 : 0);

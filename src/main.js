@@ -1718,12 +1718,12 @@ function start(hot = {}) {
     const f = ringFocus();
     const box = document.createElement('div');
     box.className = 'quest ring-pick';
-    const row = (label, items, on) => {
+    const row = (label, items, on, wrap = false) => {
       const h = document.createElement('div');
       h.className = 'gate-focus-h';
       h.textContent = label;
       const seg = document.createElement('div');
-      seg.className = 'segmented';
+      seg.className = wrap ? 'segmented wrap' : 'segmented'; // (0.81.7) many checkpoints: rows of them, all in reach
       for (const [id, text, pressed] of items) {
         const b = document.createElement('button');
         b.type = 'button';
@@ -1751,7 +1751,7 @@ function start(hot = {}) {
     row('Start from', waves, (wv) => {
       ringStart = wv;
       renderTalk();
-    });
+    }, waves.length > 6);
     const go = document.createElement('button');
     go.type = 'button';
     go.className = 'primary';

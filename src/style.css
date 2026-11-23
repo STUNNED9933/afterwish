@@ -1310,3 +1310,7 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 .auto-roll-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
 .auto-roll-foot input { width: 64px; background: #141824; color: var(--bone); border: 1px solid #3a4258; border-radius: 4px; padding: 2px 4px; }
 .auto-roll .locked-note { margin: 0; opacity: 0.8; }
+
+/* (0.81.7) the Echo Ring's starting waves: as many rows as it takes, never off the edge */
+.segmented.wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); max-height: 220px; overflow-y: auto; }
+.segmented.wrap button { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 7px 4px; font-size: 15px; }

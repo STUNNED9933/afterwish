@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Echo Ring, all the way down (0.81.7)
+
+- **Start from:** past wave 55, the starting waves ran off the side of the window and couldn't be picked. They now wrap into rows (scrolling if there are very many), so every checkpoint you've reached is in reach.
+- **What the Stones Remember:** its table only listed waves 1 to 50, so a run starting deeper showed nothing. The rows now follow where you start: that wave, then the boss waves after it (every 5 for the first 20, then every 10), with each wave's worth and the run's total.
+
 ### The auto-roller (0.81.6)
 
 - **Auto-roll**, in every equipped piece's Reroll panel. It opens once any class on the account has beaten the Quiet, like the world tiers do.

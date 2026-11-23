@@ -93,7 +93,17 @@ export function ringText(ring, amount) {
  * (waves that are multiples of 5 are boss waves) and what a run from `from` up to and including it adds
  * up to, with the gear's rarity and Immortal chance there.
  */
-export function ringTable(level, from = 1, waves = [1, 5, 10, 15, 20, 25, 30, 35, 40, 50]) {
+export function ringTable(level, from = 1, waves = null) {
+  if (!waves) {
+    // (0.81.7) the rows follow where the run starts: that wave, then the boss waves after it (every 5 for
+    // the first 20, then every 10). From wave 56 they used to be all behind it, and the table came out empty.
+    waves = [from];
+    let k = Math.ceil((from + 1) / 5) * 5;
+    while (waves.length < 10) {
+      waves.push(k);
+      k += k < from + 20 ? 5 : 10;
+    }
+  }
   const rows = [];
   for (const n of waves) {
     if (n < from) continue;

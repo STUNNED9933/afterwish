@@ -1455,6 +1455,11 @@ export class Renderer {
         this.burst(ev.x, 1, ev.z, { count: 40, color: 0xc8f0ff, speed: 11, up: 6, size: 1.4, life: 0.6 });
         this.shake = Math.max(this.shake, 0.35);
         break;
+      case 'cloneStrike':
+        // (0.81.3) an Ember Clone's blow
+        this.flash(this.discGeo(), { x: ev.tx, z: ev.tz, color: 0xff8a2a, from: 0.3, to: ev.last ? 2.6 : 1.3, dur: 0.25, opacity: 0.6 });
+        this.burst(ev.tx, 1, ev.tz, { count: ev.last ? 26 : 10, color: 0xffa040, speed: ev.last ? 7 : 4, up: 4, life: 0.45 });
+        break;
       case 'iceGuard':
         // (0.72) Glacier Spin: a shell of ice snaps up round you
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.6, color: 0xdff6ff, from: 0.8, to: ev.radius, dur: 0.3, opacity: 1 });
@@ -2529,6 +2534,7 @@ export class Renderer {
     this.updateKeep(world, dt); // (0.81)
     this.syncExtras(world, dt);
     this.syncShadows(world, dt);
+    this.syncShades(world, alpha, dt); // (0.81.3) Umbra Gemina, Ember Clones, Rime Halo
     this.syncWalls(world);
     this.syncEnemies(world, alpha, dt);
     this.syncPeople(world, dt);
@@ -2702,6 +2708,161 @@ export class Renderer {
       this.disposeGroup(v.group);
       this.wallViews.delete(id);
     }
+  }
+
+  /**
+   * (0.81.3) A see-through copy of a hero in one material: the hand-built figure at once, then their own
+   * rigged model (whatever look they wear: Eternal forms and the ninja too) once it has loaded.
+   */
+  makeGhost(cls, look, mat) {
+    const group = new THREE.Group();
+    const stand = buildHero(cls);
+    stand.group.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = false; } });
+    group.add(stand.group);
+    const v = { group, rig: null, mat, alive: true };
+    const id = 'hero_' + look;
+    if (RIGGED[id]) {
+      Promise.all([loadRigged(id), loadWeapon(cls, RIGGED[id].weaponScale || 1)]).then(([tpl, made]) => {
+        if (!tpl || !v.alive) return;
+        const rig = instantiate(tpl);
+        if (tpl.spec.bow) rig.holdBow(mat, mat);
+        else if (made) {
+          const wpn = new THREE.Group();
+          wpn.add(made.clone());
+          rig.holdWeapon(wpn);
+          if (tpl.spec.offhand) rig.holdOffhand(wpn.clone(), tpl.spec.offhand);
+        }
+        rig.group.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = false; } });
+        stand.group.visible = false;
+        group.add(rig.group);
+        rig.baseTurn = rig.group.rotation.y;
+        v.rig = rig;
+      });
+    }
+    this.scene.add(group);
+    return v;
+  }
+  dropGhost(v) {
+    v.alive = false;
+    this.disposeGroup(v.group);
+  }
+
+  /** (0.81.3) Umbra Gemina's twin shadow at a hero's shoulder, Ember Clones in flight, and Rime Halo's rings. */
+  syncShades(world, alpha, dt) {
+    if (!this.shadeViews) this.shadeViews = new Map();
+    if (!this.rimeViews) this.rimeViews = [];
+    const p = world.player;
+    const me = world.cur ? world.cur.pid : 0;
+    const who = [];
+    if (p && !p.dead) who.push({ pid: me, cls: world.cls, look: this.heroLook || world.cls, shade: p.shadeAt, clones: p.fireClones, rime: p.rimeT > 0 ? p.rimeR : 0, x: p.x, z: p.z });
+    for (const a of world.mode === 'explore' && world.allies ? world.allies() : []) {
+      if (a.dead) continue;
+      who.push({ pid: a.pid, cls: a.cls, look: heroLook(a.cls, a.spec, !!a.eform), shade: a.shade, clones: a.clones, rime: a.rime || 0, x: a.x, z: a.z });
+    }
+    const seen = new Set();
+    const rings = [];
+    for (const h of who) {
+      // the twin shadow
+      if (h.shade) {
+        const key = `shade:${h.pid}`;
+        seen.add(key);
+        let v = this.shadeViews.get(key);
+        if (v && v.look !== h.look) {
+          this.dropGhost(v);
+          v = null;
+        }
+        if (!v) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0x3a2470, transparent: true, opacity: 0.5, depthWrite: false });
+          v = this.makeGhost(h.cls, h.look, mat);
+          v.look = h.look;
+          v.atk = h.shade.atk || 0;
+          v.group.position.set(h.shade.x, 0, h.shade.z);
+          this.burst(h.shade.x, 1, h.shade.z, { count: 16, color: 0x7a3cff, speed: 3, up: 3, life: 0.5 });
+          this.shadeViews.set(key, v);
+        }
+        const g = v.group;
+        const k = 1 - Math.exp(-14 * dt); // (smoothed: it trails you like a shadow)
+        g.position.x += (h.shade.x - g.position.x) * k;
+        g.position.z += (h.shade.z - g.position.z) * k;
+        g.rotation.y = Math.PI / 2 - (h.shade.facing || 0);
+        const attackStart = (h.shade.atk || 0) !== v.atk;
+        v.atk = h.shade.atk || 0;
+        if (v.rig) v.rig.update(dt, { moving: !!h.shade.moving, attackStart, attackDur: 0.25 });
+        v.mat.opacity = 0.42 + 0.1 * Math.sin(this.time * 4 + h.pid);
+        if (Math.random() < 0.15) this.burst(g.position.x, 0.3 + Math.random() * 1.5, g.position.z, { count: 1, color: 0x5a2aa0, speed: 0.4, up: 1, gravity: 0, life: 0.6 });
+      }
+      // the clones of fire
+      for (const c of h.clones || []) {
+        const key = `clone:${c.id}`;
+        seen.add(key);
+        let v = this.shadeViews.get(key);
+        if (!v) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+          v = this.makeGhost(h.cls, h.look, mat);
+          v.clone = true;
+          v.hit = 0;
+          v.group.scale.setScalar(0.85);
+          this.burst(c.x, 1, c.z, { count: 12, color: 0xffb060, speed: 4, up: 3, life: 0.4 });
+          this.shadeViews.set(key, v);
+        }
+        const g = v.group;
+        g.position.set(lerp(c.px ?? c.x, c.x, alpha), 0.25, lerp(c.pz ?? c.z, c.z, alpha));
+        g.rotation.y = Math.PI / 2 - c.facing;
+        const striking = c.hitT > 0.2;
+        if (v.rig) v.rig.update(dt, { moving: !striking, attackStart: striking && !v.wasHit, attackDur: 0.22 });
+        v.wasHit = striking;
+        v.mat.opacity = 0.65 + 0.2 * Math.sin(this.time * 20 + c.id);
+        if (Math.random() < 0.6) this.burst(g.position.x, 0.5 + Math.random() * 1.4, g.position.z, { count: 1, color: Math.random() < 0.5 ? 0xff6a1a : 0xffc060, speed: 0.6, up: 2.2, gravity: 0, life: 0.45 });
+      }
+      // the rime rings: round the hero and their Shadows
+      if (h.rime > 0) {
+        rings.push({ x: h.pid === me ? this.hero.group.position.x : h.x, z: h.pid === me ? this.hero.group.position.z : h.z, r: h.rime });
+        for (const sh of world.shadows || []) if (sh.pid === h.pid) rings.push({ x: sh.x, z: sh.z, r: h.rime });
+      }
+    }
+    for (const [key, v] of this.shadeViews) {
+      if (seen.has(key)) continue;
+      const pos = v.group.position;
+      this.burst(pos.x, 1, pos.z, { count: 14, color: v.clone ? 0xff8a3a : 0x7a3cff, speed: 3, up: 3, life: 0.45 });
+      this.dropGhost(v);
+      this.shadeViews.delete(key);
+    }
+    // rings, reused from a small pool
+    while (this.rimeViews.length < rings.length) {
+      const grp = new THREE.Group();
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 64), ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      const discMat = new THREE.MeshBasicMaterial({ color: 0x6ac8ff, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 48), discMat);
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.y = -0.01;
+      grp.add(ring, disc);
+      const shards = new THREE.Group();
+      const shardMat = new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.85, depthWrite: false });
+      for (let i = 0; i < 12; i++) {
+        const sh = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), shardMat);
+        const a = (i / 12) * Math.PI * 2;
+        sh.position.set(Math.cos(a), 0.25 + (i % 2) * 0.25, Math.sin(a));
+        sh.scale.set(0.7, 2.6, 0.7);
+        shards.add(sh);
+      }
+      grp.add(shards);
+      grp.userData = { ringMat, discMat, shards };
+      this.scene.add(grp);
+      this.rimeViews.push(grp);
+    }
+    this.rimeViews.forEach((grp, i) => {
+      const r = rings[i];
+      grp.visible = !!r;
+      if (!r) return;
+      if (grp.parent !== this.scene) this.scene.add(grp);
+      grp.position.set(r.x, 0.06, r.z);
+      grp.scale.set(r.r, 1, r.r);
+      grp.userData.shards.rotation.y = this.time * 0.8;
+      grp.userData.shards.children.forEach((c) => c.scale.set(0.7 / r.r, 2.6, 0.7)); // (the group is stretched flat; the shards are not)
+      grp.userData.ringMat.opacity = 0.55 + 0.25 * Math.sin(this.time * 6 + i);
+    });
   }
 
   /** Shadowdancer Shadows: dark, see-through copies of the hero that fade as they run out. (0.42:

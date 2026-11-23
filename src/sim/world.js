@@ -399,7 +399,8 @@ export class World {
       const p = h.player;
       out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null, eform: eternalForm(p), // (0.76) their Eternal form
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
-        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0 });
+        dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0,
+        shade: p.shadeAt || null, clones: p.fireClones && p.fireClones.length ? p.fireClones : null, rime: p.rimeT > 0 ? p.rimeR : 0 }); // (0.81.3)
     }
     return out;
   }
@@ -1572,6 +1573,113 @@ export class World {
     this.shadows = this.shadows.filter((s) => s.t > 0);
   }
 
+  /**
+   * (0.81.3) Umbra Gemina (and the shades of Echo Caster and Mirror Blade): a twin shadow walks at your
+   * shoulder for as long as the borrowing is slotted, so you can see where its copies come from.
+   */
+  stepShade(dt) {
+    const p = this.player, m = this.mods;
+    if (!(m.shadeEcho > 0 || m.echoQ > 0)) {
+      if (p.shadeAt) p.shadeAt = null;
+      return;
+    }
+    const a = p.facing + Math.PI * 0.72; // behind you, to one side
+    const tx = p.x + dCos(a) * 1.5, tz = p.z + dSin(a) * 1.5;
+    if (!p.shadeAt || dist(p.shadeAt.x, p.shadeAt.z, p.x, p.z) > 8) p.shadeAt = { x: tx, z: tz, facing: p.facing, atk: 0, moving: false };
+    const s = p.shadeAt;
+    const k = Math.min(1, dt * 8);
+    const nx = s.x + (tx - s.x) * k, nz = s.z + (tz - s.z) * k;
+    s.moving = dist(nx, nz, s.x, s.z) > 0.6 * dt;
+    s.x = Math.round(nx * 1000) / 1000;
+    s.z = Math.round(nz * 1000) / 1000;
+    if (this.ticks - (s.atk || 0) > 20) s.facing = p.facing;
+  }
+
+  /** (0.81.3) Ember Clones in flight: to their target, a strike and a burn, then on to the next. */
+  stepFireClones(dt) {
+    const p = this.player;
+    if (!p.fireClones || !p.fireClones.length) return;
+    for (const c of p.fireClones) {
+      c.px = c.x;
+      c.pz = c.z;
+      c.life -= dt;
+      if (c.hitT > 0) c.hitT -= dt;
+      if (c.wait > 0) {
+        c.wait -= dt;
+        continue;
+      }
+      let t = c.targetId != null ? this.enemyById(c.targetId) : null;
+      if (!t || t.dead) {
+        t = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, c.x, c.z) <= c.seek + e.radius && e.id !== c.last).sort((u, v) => dist(u.x, u.z, c.x, c.z) - dist(v.x, v.z, c.x, c.z))[0]
+          || this.enemies.find((e) => !e.dead && e.state !== 'spawn' && e.id === c.last && dist(e.x, e.z, c.x, c.z) <= c.seek + e.radius) || null;
+        c.targetId = t ? t.id : null;
+      }
+      if (!t) {
+        // nothing left to strike: back to you, and out
+        if (dist(c.x, c.z, p.x, p.z) < 1 || c.strikes <= 0) c.life = 0;
+        else this.cloneFly(c, p.x, p.z, dt);
+        continue;
+      }
+      const reach = t.radius + 0.9;
+      if (dist(c.x, c.z, t.x, t.z) > reach) {
+        this.cloneFly(c, t.x, t.z, dt);
+        continue;
+      }
+      // a strike
+      c.facing = dAtan2(t.z - c.z, t.x - c.x);
+      c.hitT = 0.25;
+      c.strikes--;
+      this.hitEnemy(t, c.dmg, { source: c.slot });
+      if (!t.dead) this.addBurn(t, c.burn);
+      this.emit('cloneStrike', { id: c.id, x: c.x, z: c.z, tx: t.x, tz: t.z, last: c.strikes <= 0 });
+      if (c.strikes <= 0) {
+        for (const o of this.enemies) {
+          if (o.dead || o.state === 'spawn' || dist(o.x, o.z, t.x, t.z) > c.burst + o.radius) continue;
+          this.hitEnemy(o, c.dmg, { source: c.slot });
+          if (!o.dead) this.addBurn(o, c.burn);
+        }
+        this.emit('burst', { x: t.x, z: t.z, radius: c.burst, color: 0xff7a2a });
+        c.life = 0;
+        continue;
+      }
+      c.last = t.id;
+      c.targetId = null; // on to the next
+      c.wait = 0.1;
+    }
+    p.fireClones = p.fireClones.filter((c) => c.life > 0);
+  }
+  cloneFly(c, x, z, dt) {
+    const a = dAtan2(z - c.z, x - c.x);
+    const d = dist(c.x, c.z, x, z);
+    const step = Math.min(d, c.speed * dt);
+    c.x += dCos(a) * step;
+    c.z += dSin(a) * step;
+    c.facing = a;
+  }
+
+  /** (0.81.3) Where the Rime Halo stands: round you, and round each of your Shadows. */
+  rimeCenters(h = this.cur) {
+    const p = h.player;
+    return [{ x: p.x, z: p.z }].concat(this.shadows.filter((s) => s.pid === h.pid).map((s) => ({ x: s.x, z: s.z })));
+  }
+  stepRime(dt) {
+    const p = this.player;
+    if (!(p.rimeT > 0)) return;
+    p.rimeT -= dt;
+    p.rimeAcc = (p.rimeAcc || 0) + dt;
+    if (p.rimeAcc < p.rimeTick || p.dead) return;
+    p.rimeAcc -= p.rimeTick;
+    const hit = new Set();
+    for (const c of this.rimeCenters()) {
+      for (const e of this.enemies) {
+        if (e.dead || e.state === 'spawn' || hit.has(e) || dist(e.x, e.z, c.x, c.z) > p.rimeR + e.radius) continue;
+        hit.add(e);
+        this.hitEnemy(e, p.rimeDmg, { source: p.rimeSlot || 'd' });
+        if (!e.dead) this.addFrost(e, p.rimeFrost || 1);
+      }
+    }
+  }
+
   /** Starglass Kunai: flies straight and stops in the first enemy; a second kunai of the same throw deals less. */
   stepKunai(pr, dt) {
     pr.px = pr.x;
@@ -1843,9 +1951,13 @@ export class World {
       // (0.70) borrowed passives on the basic attack
       const m2 = this.mods;
       if (m2.shadeEcho > 0) {
-        // Shade Partner: a shade at your shoulder looses the same attack, weaker
+        // Umbra Gemina (was Shade Partner): the twin shadow at your shoulder looses the same attack, weaker
         const sa = dAtan2(target.z - p.z, target.x - p.x) + Math.PI / 2;
-        const sx = p.x + dCos(sa) * 1.1, sz = p.z + dSin(sa) * 1.1;
+        const sx = p.shadeAt ? p.shadeAt.x : p.x + dCos(sa) * 1.1, sz = p.shadeAt ? p.shadeAt.z : p.z + dSin(sa) * 1.1;
+        if (p.shadeAt) {
+          p.shadeAt.atk = this.ticks; // (0.81.3) its model swings with you
+          p.shadeAt.facing = dAtan2(target.z - sz, target.x - sx);
+        }
         if (b.shot) {
           const a3 = dAtan2(target.z - sz, target.x - sx);
           this.projectiles.push({ id: this.nextId++, owner: 'player', kind: b.shot, basic: true, noTail: true, targetId: target.id, critBonus: 0, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(a3) * b.speed, vz: dSin(a3) * b.speed, speed: b.speed, radius: 0.3, dmg: dmg * m2.shadeEcho, parryable: false, reflected: false, life: 1.2, dead: false });
@@ -1962,6 +2074,10 @@ export class World {
         this.emit('noTarget', { slot, x: p.x, z: p.z });
         return;
       }
+    }
+    if (def.type === 'fireclones' && !this.enemyNear(p.x, p.z, def.seek || 11, def.seek || 11)) {
+      this.emit('noTarget', { slot, x: p.x, z: p.z }); // (0.81.3) the clones need someone to fly at
+      return;
     }
 
     p.cd[slot] = this.abilityCooldown(slot);
@@ -2367,6 +2483,44 @@ export class World {
         this.emit('buff', { name: 'Hurricane', x: p.x, z: p.z });
         break;
       }
+      case 'fireclones': {
+        // (0.81.3) Ember Clones: copies of you in fire fly out at the nearest enemies, strike, and leap on
+        p.facing = a;
+        p.castLock = 0.18;
+        const clones = p.fireClones || (p.fireClones = []);
+        const n = def.count || 3;
+        const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= (def.seek || 11) + e.radius).sort((u, v) => dist(u.x, u.z, p.x, p.z) - dist(v.x, v.z, p.x, p.z));
+        for (let i = 0; i < n; i++) {
+          const fa = a + (i - (n - 1) / 2) * 0.7;
+          const t = near.length ? near[i % near.length] : null;
+          clones.push({ id: this.nextId++, x: p.x + dCos(fa) * 0.8, z: p.z + dSin(fa) * 0.8, px: p.x, pz: p.z, facing: fa, targetId: t ? t.id : null, strikes: def.strikes || 4, life: def.life || 4.5, wait: 0.12 * i, hitT: 0, dmg, burn: def.burn || 2, burst: def.burst || 2.6, speed: def.speed || 20, seek: def.seek || 11, slot, last: null });
+        }
+        this.emit('cast', { slot, fx: 'fireclones', x: p.x, z: p.z, n });
+        break;
+      }
+      case 'rimehalo': {
+        // (0.81.3) Rime Halo: a ring of rime round you and each of your Shadows; shots that cross it fly back
+        p.castLock = 0.15;
+        p.rimeT = def.duration || 6;
+        p.rimeR = def.radius || 4.5;
+        p.rimeTick = def.tick || 0.5;
+        p.rimeDmg = dmg;
+        p.rimeFrost = def.tickFrost || 1;
+        p.rimeSlot = slot;
+        const centers = this.rimeCenters();
+        const hit = new Set();
+        for (const c of centers) {
+          for (const e of this.enemies) {
+            if (e.dead || e.state === 'spawn' || hit.has(e) || dist(e.x, e.z, c.x, c.z) > p.rimeR + e.radius) continue;
+            hit.add(e);
+            this.hitEnemy(e, dmg * (def.burst || 2.4), { source: slot });
+            if (!e.dead) this.addFrost(e, def.frost || 2);
+          }
+          this.emit('iceGuard', { x: c.x, z: c.z, radius: p.rimeR, halo: true });
+        }
+        this.emit('cast', { slot, fx: 'rimehalo', x: p.x, z: p.z, radius: p.rimeR });
+        break;
+      }
       case 'deadeye': {
         // Deadeye (Sharpshooter, 0.42; 0.51: drawn for a second, slowed, then loosed, and it pierces)
         p.facing = a;
@@ -2614,7 +2768,11 @@ export class World {
       }
     });
     const last = struck.length ? struck[struck.length - 1] : null;
-    this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: last ? Math.max(1, last.along) : range, width, last: true, hit: !!last, tx: last ? last.e.x : null, tz: last ? last.e.z : null, pierced: Math.max(0, struck.length - 1), noMove: true });
+    this.emit('cast', { slot, fx: 'deadeye', x: p.x, z: p.z, dir: a, range: last ? Math.max(1, last.along) : range, width, last: true, hit: !!last, tx: last ? last.e.x : null, tz: last ? last.e.z : null, pierced: Math.max(0, struck.length - 1), noMove: true, echo: this.shadeFiring || undefined });
+    if (slot === 'r' && this.mods.shadeEye > 0 && p.shadeAt && !this.shadeFiring && !def.lance) {
+      // (0.81.3) Umbra Gemina: the shadow draws with you, and looses a breath later
+      this.delayed.push({ t: 0.22, kind: 'shadeEye', a, range, width, dmg: dmg * this.mods.shadeEye, slot });
+    }
   }
 
   stepZones(dt) {
@@ -2668,10 +2826,38 @@ export class World {
         p.castLock = 0;
         p.empowerT = 0;
         this.recasting = d.mult;
-        try { this.castAbility(d.slot, d.x, d.z); } finally { this.recasting = null; }
+        // (0.81.3) from where the shade stands, if one walks with you
+        const home = p.shadeAt ? { x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing } : null;
+        if (home) {
+          p.x = p.px = p.shadeAt.x;
+          p.z = p.pz = p.shadeAt.z;
+          p.shadeAt.atk = this.ticks;
+        }
+        try { this.castAbility(d.slot, d.x, d.z); } finally {
+          this.recasting = null;
+          if (home) {
+            if (p.shadeAt) p.shadeAt.facing = p.facing;
+            Object.assign(p, home);
+          }
+        }
         Object.assign(p, { castLock: keep.lock, empowerT: keep.emp });
         p.cd[d.slot] = keep.cd;
-        this.emit('shadowSlash', { x: p.x, z: p.z, tx: d.x, tz: d.z, veil: false });
+        this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
+        continue;
+      }
+      if (d.kind === 'shadeEye') {
+        // (0.81.3) Umbra Gemina: the Sharpshooter's shadow looses its own Deadeye, from where it stands
+        if (!p.shadeAt || p.dead) continue;
+        const home = { x: p.x, z: p.z };
+        p.x = p.shadeAt.x;
+        p.z = p.shadeAt.z;
+        p.shadeAt.atk = this.ticks;
+        p.shadeAt.facing = d.a;
+        this.shadeFiring = true;
+        try { this.fireDeadeye(d.a, d.range, d.width, d.dmg, d.slot); } finally {
+          this.shadeFiring = false;
+          Object.assign(p, home);
+        }
         continue;
       }
       if (d.kind === 'trap') {
@@ -2767,6 +2953,9 @@ export class World {
     const p = this.player;
     p.px = p.x;
     p.pz = p.z;
+    this.stepShade(dt); // (0.81.3)
+    this.stepFireClones(dt);
+    this.stepRime(dt);
     if (p.dead) return;
     p.moving = false;
 
@@ -8882,10 +9071,17 @@ export class World {
       }
       if (pr.owner === 'enemy') {
         // (0.71.4) Glacier Spin: a Warrior spinning in ice sends shots back, outward, as their own
-        const sh = this.heroes.find((x) => x.player.frostSpinT > 0 && !x.player.dead && dist(pr.x, pr.z, x.player.x, x.player.z) <= (x.player.frostSpinR || 3.5) + pr.radius);
+        let ring = null; // (0.81.3) and the Rime Halo, round a Rogue and each of their Shadows
+        const sh = this.heroes.find((x) => {
+          const q = x.player;
+          if (q.dead) return false;
+          if (q.frostSpinT > 0 && dist(pr.x, pr.z, q.x, q.z) <= (q.frostSpinR || 3.5) + pr.radius) return (ring = { x: q.x, z: q.z });
+          if (q.rimeT > 0) return (ring = this.rimeCenters(x).find((c) => dist(pr.x, pr.z, c.x, c.z) <= q.rimeR + pr.radius) || null);
+          return false;
+        });
         if (sh) {
           const hp = sh.player;
-          const oa = dAtan2(pr.z - hp.z, pr.x - hp.x);
+          const oa = dAtan2(pr.z - ring.z, pr.x - ring.x);
           const sp = Math.max(pr.speed || 12, dHypot(pr.vx, pr.vz)) * 1.5;
           pr.vx = dCos(oa) * sp;
           pr.vz = dSin(oa) * sp;

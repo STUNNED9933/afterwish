@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Umbra Gemina, Ember Clones and Rime Halo (0.81.3)
+
+- **Umbra Gemina** (Latin for "the twin shadow"; the Archer's Shadowdancer borrowing, formerly Shade Partner). A see-through twin of your hero walks at your shoulder for as long as the skill is slotted. It wears whatever model you wear, Eternal forms included. Its copies of your basic attacks and Q now come from where it stands. A Sharpshooter's twin also looses its own Deadeye a moment after yours, from its position, for 60%. The Mage's Echo Caster and the Warrior's Mirror Blade shades walk with you too, and cast from where they stand.
+- **Ember Clones** (the Rogue's Pyromancer borrowing, formerly Fire Bomb). Three fire copies of you fly out at the nearest enemies. Each strikes four times, leaping to a new enemy after every blow and setting 2 burns each time, and its last blow bursts. It hits about half as hard again as Fire Bomb on a single target.
+- **Rime Halo** (the Rogue's Frostbinder borrowing, formerly Glass Ward). A 4.5 m ring of rime surrounds you and each of your Shadows for 6 seconds. You walk through it freely, but enemy shots that cross it fly back, faster, as yours. It bursts when it forms (2 Hoarfrost) and cuts everything inside twice a second (1 Hoarfrost each time).
+- Both Rogue borrowings keep their passives while slotted: your blows set burns and give Hoarfrost.
+
 ### Wishes say where to go (0.81.2)
 
 - Every wish that sends you somewhere names the place. Boss wishes say where the boss lives, for example "The Drowned Court · Depth VII" for the Undertow. Pilgrimages in the Deep give their Depth too.

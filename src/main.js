@@ -4447,7 +4447,7 @@ function start(hot = {}) {
       case 'cast':
         if (ev.fx === 'deadeye') {
           sfx.sniper();
-          hud.screenFlash(0.25);
+          if (!ev.echo) hud.screenFlash(0.25); // (0.81.3) the twin shadow's copy is quieter
         } else if (ev.fx === 'focus') sfx.breath();
         else if (ev.fire) sfx.fireBreath(); // (0.72)
         else if (ev.pull) sfx.pullIn();
@@ -4456,6 +4456,9 @@ function start(hot = {}) {
         else if (ev.slot === 'd' || ev.slot === 'f') sfx.cast(ev.fx === 'wall' || ev.fx === 'zone' ? 'w' : 'q'); // a borrowed skill
         else sfx.cast(ev.slot);
         if (!ev.echo) hud.flashSlot(ev.slot);
+        break;
+      case 'cloneStrike':
+        if (ev.last) sfx.impact(); else sfx.hit(); // (0.81.3) Ember Clones
         break;
       case 'mirrorCrack':
         sfx.mirrorCrack();

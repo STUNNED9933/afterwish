@@ -4724,8 +4724,8 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const { BORROWED } = await import('../src/sim/borrowed.js');
   const { SPECS } = await import('../src/sim/talents.js');
   const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
-  check('Borrowed (0.70.5): every Frostbinder borrowing reflects (a wall; a Warrior\'s spin, 0.71.4)', ['archer', 'rogue'].every((c) => BORROWED[c].frostbinder.type === 'wall') && BORROWED.warrior.frostbinder.name === 'Glacier Spin');
-  check('...the Fire Bomb bursts wider than Cinderfall and leaves the ground burning', BORROWED.rogue.pyromancer.radius > SPECS.pyromancer.kit.r.radius && BORROWED.rogue.pyromancer.burnZone);
+  check('Borrowed (0.70.5): every Frostbinder borrowing reflects (an Archer\'s wall; a Warrior\'s spin, 0.71.4; a Rogue\'s halo, 0.81.3)', BORROWED.archer.frostbinder.type === 'wall' && BORROWED.rogue.frostbinder.type === 'rimehalo' && BORROWED.warrior.frostbinder.name === 'Glacier Spin');
+  check('...(0.81.3) the Rogue\'s fire is Ember Clones: three of them, four strikes each, burning', BORROWED.rogue.pyromancer.type === 'fireclones' && BORROWED.rogue.pyromancer.count === 3 && BORROWED.rogue.pyromancer.strikes === 4 && BORROWED.rogue.pyromancer.burn > 0);
   const w = new World({ seed: 97, mode: 'explore', cls: 'rogue', save: Object.assign(geared('rogue', 100, 5), { acctLives: all, borrowed: { d: 'pyromancer' } }) });
   const d1 = w.abilityDamage('d');
   w.player.ranks.q = 5;
@@ -4736,14 +4736,22 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   e.hp = e.maxHp = 1e8;
   w.player.x = w.player.px = e.x + 6; w.player.z = w.player.pz = e.z;
   w.player.cd.d = 0;
+  w.events = [];
   w.command({ type: 'cast', slot: 'd', x: e.x, z: e.z });
-  for (let i = 0; i < 60; i++) { w.player.hp = w.player.stats.maxHp; w.step(CONFIG.TICK); }
-  check('...it lands (with Cinderfall\'s blast) and burns', w.events.some((v) => v.type === 'impact' && v.kind === 'cinderfall') && w.zones.some((z) => z.fire) && e.burnStacks > 0);
-  // a wall from Glass Ward sends a shot back
+  let strikes = 0;
+  for (let i = 0; i < 60 * 5; i++) { w.player.hp = w.player.stats.maxHp; w.step(CONFIG.TICK); strikes += w.events.filter((v) => v.type === 'cloneStrike').length; w.events = []; }
+  check('...the clones fly out, strike (every strike leaps on, or back to the one there is) and burn, then go', strikes >= 6 && e.burnStacks > 0 && e.hp < e.maxHp && !(w.player.fireClones || []).length, `${strikes} strikes`);
+  // (0.81.3) Rime Halo: round you, cutting and freezing, and an enemy shot that crosses it flies back
   w.player.borrowed = { d: 'frostbinder' }; w.recalcStats(); w.player.cd.d = 0;
-  w.command({ type: 'cast', slot: 'd', x: w.player.x - 6, z: w.player.z }); w.step(CONFIG.TICK);
-  const wl = w.walls[w.walls.length - 1];
-  check('...Glass Ward stands as a wall of ice', wl && wl.slot === 'd' && w.obstacles.includes(wl.ob));
+  const hp0 = e.hp;
+  e.x = w.player.x + 2; e.z = w.player.z;
+  w.command({ type: 'cast', slot: 'd', x: w.player.x, z: w.player.z }); w.runCommands();
+  for (let i = 0; i < 70; i++) { w.player.hp = w.player.stats.maxHp; e.x = w.player.x + 2; e.z = w.player.z; w.step(CONFIG.TICK); }
+  check('...Rime Halo: a ring round you that cuts and gives Hoarfrost to what is inside it', w.player.rimeT > 0 && e.hp < hp0 && (e.frostStacks > 0 || e.frozenT > 0 || e.state === 'stunned'), `${hp0 - e.hp} ${e.frostStacks}`);
+  const shot = { id: w.nextId++, owner: 'enemy', x: w.player.x - 8, z: w.player.z, px: w.player.x - 8, pz: w.player.z, vx: 14, vz: 0, speed: 14, radius: 0.3, dmg: 50, parryable: true, reflected: false, life: 3, dead: false };
+  w.projectiles.push(shot);
+  for (let i = 0; i < 40 && shot.owner === 'enemy' && !shot.dead; i++) { w.player.hp = w.player.stats.maxHp; w.step(CONFIG.TICK); }
+  check('...and walking through it is free, but an enemy shot that crosses it flies back as yours', shot.owner === 'player' && shot.reflected && !w.obstacles.some((o) => o.rime), JSON.stringify({ o: shot.owner, x: shot.x }));
   // Act III: any class's Unwish and rebirth open it for the account
   const fresh = (lives) => new World({ seed: 98, mode: 'explore', cls: 'mage', save: Object.assign(geared('mage', 100, 5), { acctLives: lives }) });
   check('Act III (0.70.5): Wren\'s Deep quests open on a class with no Unwish or rebirth, once another class has both', fresh({ archer: { prim: [], act3: true } }).questOpen('deep1') && !fresh({ archer: { prim: [] } }).questOpen('deep1'));
@@ -5418,5 +5426,37 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const bosses = ['boss', 'boss2', 'boss3', 'herald', 'cinder', 'undertow', 'rootmother', 'choir', 'stillness'];
   const all = bosses.every((b) => wishWhere({ kind: 'boss', boss: b }));
   check('Wishkeep (0.81.2): every boss a wish can ask for, and every pilgrimage, names its place (the Deep with its Depth)', all && wishWhere({ kind: 'boss', boss: 'undertow' }) === 'The Drowned Court (Depth VII, by the Waygate)' && wishWhere({ kind: 'kill', map: 'fen' }) === 'Spitter Fen' && wishWhere({ kind: 'tide' }) === '');
+}
+
+// --- 0.81.3: Umbra Gemina walks with you, and a Sharpshooter's draws Deadeye --------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED } = await import('../src/sim/borrowed.js');
+  const all = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+  const make = (cls, spec, borrowed) => {
+    const w = new World({ seed: 181, mode: 'explore', cls, save: Object.assign(geared(cls, 100, 5), { acctLives: all, spec, borrowed }) });
+    w.loadMap('greenwood', 'town');
+    for (let i = 0; i < 150; i++) w.step(CONFIG.TICK);
+    return w;
+  };
+  const w = make('archer', 'sharpshooter', { d: 'shadowdancer' });
+  const p = w.player;
+  check('Umbra Gemina (0.81.3): the Archer\'s shade has a name of its own now, and walks at your shoulder while slotted', BORROWED.archer.shadowdancer.name === 'Umbra Gemina' && p.shadeAt && dist(p.shadeAt.x, p.shadeAt.z, p.x, p.z) < 2.5);
+  p.x += 6; for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
+  check('...and keeps up when you move', dist(p.shadeAt.x, p.shadeAt.z, p.x, p.z) < 2.5);
+  const e = w.enemies.find((o) => !o.dead && !o.def.boss && o.state !== 'spawn');
+  e.hp = e.maxHp = 1e8;
+  p.x = p.px = e.x + 10; p.z = p.pz = e.z;
+  for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+  p.cd.r = 0; w.events = [];
+  w.command({ type: 'cast', slot: 'r', x: e.x, z: e.z });
+  const eyes = [];
+  for (let i = 0; i < 90; i++) { p.hp = p.stats.maxHp; w.step(CONFIG.TICK); for (const v of w.events) if (v.type === 'cast' && v.fx === 'deadeye') eyes.push(v); w.events = []; }
+  check('...a Sharpshooter\'s shadow looses its own Deadeye a breath after yours, from where it stands', w.kit.r.type === 'deadeye' && eyes.length === 2 && !eyes[0].echo && eyes[1].echo && (eyes[0].x !== eyes[1].x || eyes[0].z !== eyes[1].z), JSON.stringify(eyes.map((v) => [v.x, v.z, v.echo])));
+  const w2 = make('archer', 'sharpshooter', {});
+  check('...no shade without it', !w2.player.shadeAt);
+  const w3 = make('mage', null, { d: 'shadowdancer' });
+  check('...Echo Caster\'s shade walks with you too (it casts from there)', !!w3.player.shadeAt);
 }
 process.exit(failed ? 1 : 0);

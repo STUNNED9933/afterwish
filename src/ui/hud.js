@@ -1111,7 +1111,10 @@ export class Hud {
         t.el.classList.toggle('down', a.dead);
       }
       t.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, a.hp / a.maxHp))})`;
-      const s = renderer.project(a.x, a.y || 2.9, a.z);
+      // (0.82.6) over the model as it is drawn (it glides between updates), not where it is headed
+      const v = !a.build && renderer.allyViews && renderer.allyViews.get(a.pid);
+      const at = v && v.model.group.visible ? v.model.group.position : a;
+      const s = renderer.project(at.x, a.y || 2.9, at.z);
       t.el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
     }
     for (const [pid, t] of this.allyTags) {

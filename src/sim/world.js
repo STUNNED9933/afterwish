@@ -8788,12 +8788,9 @@ export class World {
         this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: back, reflected: true });
       }
     }
-    if (e.tide) {
-      // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate, and as a mortal's.
-      // (0.82.4) A visiting friend's blows never land: it is the keeper's night.
-      if (!this.tide || !(this.tide.inc > 0) || !this.keepOwns()) return;
-      dmg = Math.min(dmg, Math.max(1, Math.round(e.maxHp * (opts.dot ? INCARNATE.dotCap : INCARNATE.hitCap))));
-    }
+    // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate (0.82.6: at full
+    // strength). (0.82.4) A visiting friend's blows never land: it is the keeper's night.
+    if (e.tide && (!this.tide || !(this.tide.inc > 0) || !this.keepOwns())) return;
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;

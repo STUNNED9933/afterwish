@@ -514,7 +514,7 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const walls0 = w.walls.length, zones0 = w.zones.length;
   for (const slot of ['q', 'w', 'e', 'r']) w.as(hb, (p) => { p.cd[slot] = 0; w.castAbility(slot, foe ? foe.x : 0, foe ? foe.z : 0); });
   check('...and casts nothing there (no walls, freezes or pulls in the keeper\'s night)', w.as(hb, (p) => Object.values(p.cd).every((v) => v === 0)) && w.walls.length === walls0 && w.zones.length === zones0, cd0);
-  check('...in the keeper\'s night a visitor\'s blows do not land; the incarnate keeper\'s do (a fifth at most)', foe && visitorMissed && foe.hp < h0 && h0 - foe.hp <= Math.round(foe.maxHp * 0.2) + 1, foe ? `${h0} -> ${foe.hp}` : 'no foe');
+  check('...in the keeper\'s night a visitor\'s blows do not land; the incarnate keeper\'s do, in full', foe && visitorMissed && foe.hp < h0, foe ? `${h0} -> ${foe.hp}` : 'no foe');
   sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
   for (let i = 0; i < 6; i++) sv.tick();
   check('...when the keeper leaves, the visitor walks back to Haven', sv.players.get(B).copy.world.map.id === 'town');

@@ -241,7 +241,7 @@ export function makeSnapshot(world, pid, memo) {
       // (0.81) the Wishkeep: its night, its heroes and its buildings
       keep: world.map && world.map.id === 'wishkeep' ? {
         tide: world.tide ? { state: world.tide.state, wave: world.tide.wave, level: world.tide.level || 1, mcd: world.tide.mcd, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
-        troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), px: r2(t.px), pz: r2(t.pz), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0 })),
+        troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0 })),
         builds: (world.keepBuilds || []).map((b) => ({ id: b.id, x: b.x, z: b.z, r: b.r, hp: Math.round(b.hp), max: b.max, wardT: b.wardT > 0 ? r2(b.wardT) : undefined })),
       } : undefined,
       delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,
@@ -277,7 +277,6 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.tide = snap.keep ? snap.keep.tide : null; // (0.81)
   world.keepVisit = !!(snap.keepMap && snap.keepMap.visit); // (0.82.2) in a friend's keep
   world.keepVisitOf = snap.keepMap && snap.keepMap.visit ? snap.keepMap.owner : null;
-  world.troops = snap.keep ? snap.keep.troops : [];
   world.keepBuilds = snap.keep ? snap.keep.builds : [];
   world.syncTier = snap.tier || 1;
   world.syncDepth = snap.depth || 0;
@@ -359,6 +358,14 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.alliesList = snap.allies.map((a) => {
     const o = oldAllies.get(a.pid);
     return { ...a, px: o && !mapChanged ? at(o, 'x') : a.x, pz: o && !mapChanged ? at(o, 'z') : a.z };
+  });
+  // (0.82.6) The keep's heroes glide between updates like everyone else (they used to stand still and
+  // then jump, a step behind their name plates). A hero back from the dead appears where they stand.
+  const oldTroops = new Map((world.troops || []).map((t) => [t.id, t]));
+  world.troops = (snap.keep ? snap.keep.troops : []).map((t) => {
+    const o = oldTroops.get(t.id);
+    const glide = o && !mapChanged && !!o.dead === !!t.dead && Math.abs(o.x - t.x) + Math.abs(o.z - t.z) < 8;
+    return { ...t, px: glide ? at(o, 'x') : t.x, pz: glide ? at(o, 'z') : t.z };
   });
   const oldEnemies = new Map(world.enemies.map((e) => [e.id, e]));
   world.enemies = snap.enemies.filter((arr) => cache.fixed.has(arr[0])).map((arr) => {

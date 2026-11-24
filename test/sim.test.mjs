@@ -5366,7 +5366,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   check('...a Tide comes in waves, and the hero (a god now) cannot strike it', foes >= K.KEEP.tide.perWave(1) && !hurt, `${foes} foes`);
   check('...the god works miracles instead: Smite costs Faith, hurts the Tide, and has a cooldown', mir && mir.paid === K.MIRACLES.smite.faith && mir.again === 0 && mir.dmg, JSON.stringify(mir));
-  // (0.81.1) Incarnate: R takes the field for a while, for Faith; blows are capped; the Tide can strike back
+  // (0.81.1) Incarnate: R takes the field for a while, for Faith; blows land in full; the Tide can strike back
   const liveFoe = () => w3.enemies.find((e) => e.tide && !e.dead && e.state !== 'spawn');
   let incOk = null;
   for (let i = 0; i < 60 * 60 && !incOk && !end; i++) {
@@ -5384,13 +5384,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
         for (const e of w3.events) if (e.type === 'damage' && e.who === 'enemy' && e.id === f.id) maxHit = Math.max(maxHit, e.amount);
         w3.events = [];
       }
-      incOk = { paid, on, hurt: f.dead || f.hp < hp0, maxHit, cap: Math.round(f.maxHp * K.INCARNATE.hitCap) };
+      incOk = { paid, on, hurt: f.dead || f.hp < hp0, maxHit };
     }
     w3.step(CONFIG.TICK);
     for (const e of w3.events) if (e.type === 'tideEnd') end = e;
     w3.events = [];
   }
-  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith, and then their blows land, a fifth of a foe at most', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt && incOk.maxHit <= incOk.cap + 1, JSON.stringify(incOk));
+  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith, and then their blows land, uncapped', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt, JSON.stringify(incOk));
   if (w3.tide && w3.tide.inc > 0) {
     for (let i = 0; i < 60 * (K.INCARNATE.dur + 1) && w3.tide && w3.tide.inc > 0; i++) { w3.step(CONFIG.TICK); for (const e of w3.events) if (e.type === 'tideEnd') end = e; w3.events = []; }
   }

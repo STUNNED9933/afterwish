@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Incarnate at full strength; smooth heroes online (0.82.6)
+
+- **Incarnate** no longer caps your blows: a Sharpshooter's Deadeye lands in full on a Tide foe. Visitors still can't touch the night.
+- **The keep's heroes glide** between server updates like every other player and foe. They used to stand still, then jump, with their name plates running a step ahead. Name plates now sit over the model as it is drawn, for party members too.
+
 ### Breaking down Hero gear; guests cast nothing (0.82.5)
 
 - **Break down Hero gear like your own gear.** In the Armory:

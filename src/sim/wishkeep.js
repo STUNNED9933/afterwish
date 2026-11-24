@@ -97,12 +97,11 @@ export const MIRACLES = {
 export const MIRACLE_IDS = Object.keys(MIRACLES);
 /**
  * (0.81.1) Incarnate: the god walks among the heroes for a while (R in a Tide) and fights with their own
- * kit. A god is too strong for a mortal fight, so no single blow takes more than hitCap of a Tide foe's
- * health (dotCap for burns and bleeds); while incarnate Q, W and E are the hero's own again, and the Tide
- * can strike back. Falling to it only ends the incarnation. (0.82.4) Only the keeper: a visiting friend's
- * blows never land on the night.
+ * kit: while incarnate Q, W and E are the hero's own again, at full strength (0.82.6: the cap on each blow
+ * is gone), and the Tide can strike back. Falling to it only ends the incarnation. (0.82.4) Only the keeper:
+ * a visiting friend's blows never land on the night.
  */
-export const INCARNATE = { key: 'r', name: 'Incarnate', faith: 30, dur: 20, cd: 45, hitCap: 0.2, dotCap: 0.06, body: 600, desc: 'Walk among your heroes for 20 seconds and fight with your own skills (each blow takes at most a fifth of an Unmade\'s health). The Tide can strike you back; falling only ends it.' };
+export const INCARNATE = { key: 'r', name: 'Incarnate', faith: 30, dur: 20, cd: 45, body: 600, desc: 'Walk among your heroes for 20 seconds and fight with your own skills at full strength. The Tide can strike you back; falling only ends it.' };
 
 /** (0.81) The Unmade in a Tide: their own numbers. siege: how much harder they hit buildings. */
 export const FOES = {

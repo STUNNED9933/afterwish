@@ -1,0 +1,32 @@
+{
+  "task_id": "fe26dc17-fe3d-48d1-b4e2-6aba48527fe2",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a wiry young man, a warden archer of a small mountain keep: short sandy hair, light stubble, a deep crimson hood down on his shoulders with a short crimson cape, a fitted olive-green leather jerkin with a bone-white trim and a small gold diamond emblem on the chest, leather bracers, a quiver of crimson-fletched arrows on his back, brown trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 9000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-24T12:09:44.595425Z",
+  "completed_at": "2026-11-24T12:13:42.705882Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

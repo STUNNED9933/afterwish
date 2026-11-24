@@ -1,0 +1,93 @@
+{
+  "id": "keep_archer_m",
+  "prompt": "a wiry young man, a warden archer of a small mountain keep: short sandy hair, light stubble, a deep crimson hood down on his shoulders with a short crimson cape, a fitted olive-green leather jerkin with a bone-white trim and a small gold diamond emblem on the chest, leather bracers, a quiver of crimson-fletched arrows on his back, brown trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-24T12:09:42.673Z",
+  "creditsBefore": 2205,
+  "steps": {
+    "model": {
+      "task": "fe26dc17-fe3d-48d1-b4e2-6aba48527fe2",
+      "result": {
+        "task_id": "fe26dc17-fe3d-48d1-b4e2-6aba48527fe2",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/keep_archer_m/1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_archer_m/1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/model.glb",
+        "preview": "out/models/keep_archer_m/1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/preview.png"
+      }
+    },
+    "check": {
+      "task": "570efa35-335c-4a8c-b1fe-70eaeff8995e",
+      "result": {
+        "task_id": "570efa35-335c-4a8c-b1fe-70eaeff8995e",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/keep_archer_m/2-check/tripo-out/rig-check-2-570efa35",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "5fe1cdc1-1f0d-47e0-b30c-fc0383816792",
+      "rigType": "biped",
+      "result": {
+        "task_id": "5fe1cdc1-1f0d-47e0-b30c-fc0383816792",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/keep_archer_m/3-rig/tripo-out/rig-2-5fe1cdc1",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_archer_m/3-rig/tripo-out/rig-2-5fe1cdc1/model.glb",
+        "preview": "out/models/keep_archer_m/3-rig/tripo-out/rig-2-5fe1cdc1/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "7ded4536-51c3-4e21-8bd2-e2bc410c9422",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "7ded4536-51c3-4e21-8bd2-e2bc410c9422",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/keep_archer_m/4-anim-1/tripo-out/retarget-2-7ded4536",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/keep_archer_m/4-anim-1/tripo-out/retarget-2-7ded4536/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1935,
+  "creditsUsed": 270,
+  "finished": "2026-11-24T12:14:12.624Z",
+  "files": [
+    "1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/generated_image.jpeg",
+    "1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/model.glb",
+    "1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/preview.png",
+    "1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/rendered_image.webp",
+    "1-model/tripo-out/a-wiry-young-man-a-warden-archer-fe26dc17/task.json",
+    "2-check/tripo-out/rig-check-2-570efa35/task.json",
+    "3-rig/tripo-out/rig-2-5fe1cdc1/model.glb",
+    "3-rig/tripo-out/rig-2-5fe1cdc1/preview.png",
+    "3-rig/tripo-out/rig-2-5fe1cdc1/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-5fe1cdc1/task.json",
+    "4-anim-1/tripo-out/retarget-2-7ded4536/model.glb",
+    "4-anim-1/tripo-out/retarget-2-7ded4536/task.json",
+    "manifest.json"
+  ]
+}

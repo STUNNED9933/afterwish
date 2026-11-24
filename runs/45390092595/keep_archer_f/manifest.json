@@ -1,0 +1,93 @@
+{
+  "id": "keep_archer_f",
+  "prompt": "a lithe young woman, a warden archer of a small mountain keep: auburn hair in a short braid, a deep crimson hood down on her shoulders with a short crimson cape, a fitted olive-green leather jerkin with a bone-white trim and a small gold diamond emblem on the chest, leather bracers, a quiver of crimson-fletched arrows on her back, brown trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-24T12:05:08.285Z",
+  "creditsBefore": 2460,
+  "steps": {
+    "model": {
+      "task": "3e8e76e3-7fbd-4c25-b953-d6cf44bbfc73",
+      "result": {
+        "task_id": "3e8e76e3-7fbd-4c25-b953-d6cf44bbfc73",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/keep_archer_f/1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_archer_f/1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/model.glb",
+        "preview": "out/models/keep_archer_f/1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/preview.png"
+      }
+    },
+    "check": {
+      "task": "d0d64a80-bf40-4bde-a3e9-fd44644f0c2e",
+      "result": {
+        "task_id": "d0d64a80-bf40-4bde-a3e9-fd44644f0c2e",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/keep_archer_f/2-check/tripo-out/rig-check-d0d64a80",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "2a8a1c0b-d1d0-451a-b42d-094977a405ee",
+      "rigType": "biped",
+      "result": {
+        "task_id": "2a8a1c0b-d1d0-451a-b42d-094977a405ee",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/keep_archer_f/3-rig/tripo-out/rig-2a8a1c0b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_archer_f/3-rig/tripo-out/rig-2a8a1c0b/model.glb",
+        "preview": "out/models/keep_archer_f/3-rig/tripo-out/rig-2a8a1c0b/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "feaea39b-ddbf-4a38-b1ff-d52237687b4d",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "feaea39b-ddbf-4a38-b1ff-d52237687b4d",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/keep_archer_f/4-anim-1/tripo-out/retarget-feaea39b",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/keep_archer_f/4-anim-1/tripo-out/retarget-feaea39b/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2205,
+  "creditsUsed": 255,
+  "finished": "2026-11-24T12:09:42.671Z",
+  "files": [
+    "1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/generated_image.jpeg",
+    "1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/model.glb",
+    "1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/preview.png",
+    "1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/rendered_image.webp",
+    "1-model/tripo-out/a-lithe-young-woman-a-warden-arc-3e8e76e3/task.json",
+    "2-check/tripo-out/rig-check-d0d64a80/task.json",
+    "3-rig/tripo-out/rig-2a8a1c0b/model.glb",
+    "3-rig/tripo-out/rig-2a8a1c0b/preview.png",
+    "3-rig/tripo-out/rig-2a8a1c0b/rendered_image.webp",
+    "3-rig/tripo-out/rig-2a8a1c0b/task.json",
+    "4-anim-1/tripo-out/retarget-feaea39b/model.glb",
+    "4-anim-1/tripo-out/retarget-feaea39b/task.json",
+    "manifest.json"
+  ]
+}

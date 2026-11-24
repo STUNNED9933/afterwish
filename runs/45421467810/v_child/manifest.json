@@ -1,0 +1,93 @@
+{
+  "id": "v_child",
+  "prompt": "a village child of about ten, short scruffy blond hair, freckles, an oversized mustard yellow tunic with a brown belt, short grey trousers, bare knees, small leather shoes, cheerful. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+  "started": "2026-11-24T15:10:48.784Z",
+  "creditsBefore": 890,
+  "steps": {
+    "model": {
+      "task": "a80d68b5-13f5-4365-989b-d9be755dbe55",
+      "result": {
+        "task_id": "a80d68b5-13f5-4365-989b-d9be755dbe55",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/v_child/1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_child/1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/model.glb",
+        "preview": "out/models/v_child/1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/preview.png"
+      }
+    },
+    "check": {
+      "task": "93d83d94-4727-4ca2-b02e-8e5b5b1fd7a2",
+      "result": {
+        "task_id": "93d83d94-4727-4ca2-b02e-8e5b5b1fd7a2",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/v_child/2-check/tripo-out/rig-check-2-93d83d94",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "40fbf77f-4f9b-4db9-bfde-fc1388e2dec9",
+      "rigType": "biped",
+      "result": {
+        "task_id": "40fbf77f-4f9b-4db9-bfde-fc1388e2dec9",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/v_child/3-rig/tripo-out/rig-2-40fbf77f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_child/3-rig/tripo-out/rig-2-40fbf77f/model.glb",
+        "preview": "out/models/v_child/3-rig/tripo-out/rig-2-40fbf77f/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "5527c5ce-f04d-48fe-b37d-b18d5535dafd",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk"
+        ],
+        "result": {
+          "task_id": "5527c5ce-f04d-48fe-b37d-b18d5535dafd",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/v_child/4-anim-1/tripo-out/retarget-2-5527c5ce",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/v_child/4-anim-1/tripo-out/retarget-2-5527c5ce/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 695,
+  "creditsUsed": 195,
+  "finished": "2026-11-24T15:16:02.445Z",
+  "files": [
+    "1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/generated_image.jpeg",
+    "1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/model.glb",
+    "1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/preview.png",
+    "1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/rendered_image.webp",
+    "1-model/tripo-out/a-village-child-of-about-ten-sho-a80d68b5/task.json",
+    "2-check/tripo-out/rig-check-2-93d83d94/task.json",
+    "3-rig/tripo-out/rig-2-40fbf77f/model.glb",
+    "3-rig/tripo-out/rig-2-40fbf77f/preview.png",
+    "3-rig/tripo-out/rig-2-40fbf77f/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-40fbf77f/task.json",
+    "4-anim-1/tripo-out/retarget-2-5527c5ce/model.glb",
+    "4-anim-1/tripo-out/retarget-2-5527c5ce/task.json",
+    "manifest.json"
+  ]
+}

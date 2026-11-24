@@ -1,0 +1,93 @@
+{
+  "id": "v_elder_f",
+  "prompt": "an old village woman, grey hair in a bun, a plum purple dress with a knitted grey shawl over her shoulders, a small embroidered apron, soft black shoes. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+  "started": "2026-11-24T15:10:53.060Z",
+  "creditsBefore": 860,
+  "steps": {
+    "model": {
+      "task": "f0cd0a15-28f6-4335-adec-6fcbc1b62f84",
+      "result": {
+        "task_id": "f0cd0a15-28f6-4335-adec-6fcbc1b62f84",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/v_elder_f/1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_elder_f/1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/model.glb",
+        "preview": "out/models/v_elder_f/1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/preview.png"
+      }
+    },
+    "check": {
+      "task": "1e36fcdd-0872-434a-843e-623167c64a9c",
+      "result": {
+        "task_id": "1e36fcdd-0872-434a-843e-623167c64a9c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/v_elder_f/2-check/tripo-out/rig-check-2-1e36fcdd",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "ebf208b4-3e0b-4d8b-a50c-418de342afde",
+      "rigType": "biped",
+      "result": {
+        "task_id": "ebf208b4-3e0b-4d8b-a50c-418de342afde",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/v_elder_f/3-rig/tripo-out/rig-2-ebf208b4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_elder_f/3-rig/tripo-out/rig-2-ebf208b4/model.glb",
+        "preview": "out/models/v_elder_f/3-rig/tripo-out/rig-2-ebf208b4/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "493fa01e-ce71-45b4-9aaf-ed2ea4fa0bb8",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk"
+        ],
+        "result": {
+          "task_id": "493fa01e-ce71-45b4-9aaf-ed2ea4fa0bb8",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/v_elder_f/4-anim-1/tripo-out/retarget-2-493fa01e",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/v_elder_f/4-anim-1/tripo-out/retarget-2-493fa01e/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 695,
+  "creditsUsed": 165,
+  "finished": "2026-11-24T15:16:15.067Z",
+  "files": [
+    "1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/generated_image.jpeg",
+    "1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/model.glb",
+    "1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/preview.png",
+    "1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/rendered_image.webp",
+    "1-model/tripo-out/an-old-village-woman-grey-hair-i-f0cd0a15/task.json",
+    "2-check/tripo-out/rig-check-2-1e36fcdd/task.json",
+    "3-rig/tripo-out/rig-2-ebf208b4/model.glb",
+    "3-rig/tripo-out/rig-2-ebf208b4/preview.png",
+    "3-rig/tripo-out/rig-2-ebf208b4/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-ebf208b4/task.json",
+    "4-anim-1/tripo-out/retarget-2-493fa01e/model.glb",
+    "4-anim-1/tripo-out/retarget-2-493fa01e/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "id": "v_elder_m",
+  "prompt": "an old village man, white hair and a long white beard, slightly stooped, a long faded blue wool coat over a grey tunic, a knitted brown scarf, soft felt boots. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+  "started": "2026-11-24T15:05:50.317Z",
+  "creditsBefore": 1085,
+  "steps": {
+    "model": {
+      "task": "509bca84-15cf-4720-bdb3-1b5fd8b9c9a5",
+      "result": {
+        "task_id": "509bca84-15cf-4720-bdb3-1b5fd8b9c9a5",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/v_elder_m/1-model/tripo-out/an-old-village-man-white-hair-an-509bca84",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_elder_m/1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/model.glb",
+        "preview": "out/models/v_elder_m/1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/preview.png"
+      }
+    },
+    "check": {
+      "task": "6ad7edbd-1bc5-47ae-ad1d-91f626fc5134",
+      "result": {
+        "task_id": "6ad7edbd-1bc5-47ae-ad1d-91f626fc5134",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/v_elder_m/2-check/tripo-out/rig-check-6ad7edbd",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "118a7411-d395-4237-9a00-1f5acaf57840",
+      "rigType": "biped",
+      "result": {
+        "task_id": "118a7411-d395-4237-9a00-1f5acaf57840",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/v_elder_m/3-rig/tripo-out/rig-118a7411",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_elder_m/3-rig/tripo-out/rig-118a7411/model.glb",
+        "preview": "out/models/v_elder_m/3-rig/tripo-out/rig-118a7411/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "9c2ddcea-48c1-4a4a-982c-5de0ebfdeada",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk"
+        ],
+        "result": {
+          "task_id": "9c2ddcea-48c1-4a4a-982c-5de0ebfdeada",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/v_elder_m/4-anim-1/tripo-out/retarget-9c2ddcea",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/v_elder_m/4-anim-1/tripo-out/retarget-9c2ddcea/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 860,
+  "creditsUsed": 225,
+  "finished": "2026-11-24T15:10:53.059Z",
+  "files": [
+    "1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/generated_image.jpeg",
+    "1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/model.glb",
+    "1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/preview.png",
+    "1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/rendered_image.webp",
+    "1-model/tripo-out/an-old-village-man-white-hair-an-509bca84/task.json",
+    "2-check/tripo-out/rig-check-6ad7edbd/task.json",
+    "3-rig/tripo-out/rig-118a7411/model.glb",
+    "3-rig/tripo-out/rig-118a7411/preview.png",
+    "3-rig/tripo-out/rig-118a7411/rendered_image.webp",
+    "3-rig/tripo-out/rig-118a7411/task.json",
+    "4-anim-1/tripo-out/retarget-9c2ddcea/model.glb",
+    "4-anim-1/tripo-out/retarget-9c2ddcea/task.json",
+    "manifest.json"
+  ]
+}

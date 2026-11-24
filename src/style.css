@@ -1387,3 +1387,12 @@ body.shoulder-on #abilities kbd[data-sh] { font-size: 0; }
 body.shoulder-on #abilities kbd[data-sh]::after { content: attr(data-sh); font-size: 11px; }
 body.shoulder-on .ally-tag.build { display: none; }
 body.shoulder-on #prompt { display: none; }
+
+/* (0.89) the soft lock's frame, the crosshair when locked, and a word over the shoulder */
+#shoulder-ui .sh-target, #shoulder-ui .sh-tip { display: none; }
+#shoulder-ui.on.locked .sh-target { display: block; position: absolute; left: 50%; top: 102px; transform: translateX(-50%); width: 260px; text-align: center; color: #ffe8c0; text-shadow: 0 1px 3px #000; font-size: 14px; }
+#shoulder-ui .sh-target i { display: block; height: 7px; margin-top: 4px; border-radius: 3px; background: rgba(0, 0, 0, 0.55); overflow: hidden; border: 1px solid rgba(255, 210, 122, 0.5); }
+#shoulder-ui .sh-target u { display: block; height: 100%; background: linear-gradient(90deg, #c8463a, #ff7a5a); }
+#shoulder-ui.on.locked .xhair { border-color: #ffd27a; box-shadow: 0 0 10px rgba(255, 210, 122, 0.9); transform: scale(1.15); }
+#shoulder-ui.on .sh-tip { display: block; position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 14px; border-radius: 6px; background: rgba(10, 12, 20, 0.85); color: #ffe8c0; font-size: 15px; opacity: 0; transition: opacity 0.25s; }
+#shoulder-ui.on .sh-tip.show { opacity: 1; }

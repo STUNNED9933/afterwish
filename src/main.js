@@ -1453,7 +1453,7 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk, the mouse looks, your skills on <kbd>Q</kbd> <kbd>F</kbd> <kbd>E</kbd> <kbd>R</kbd>). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike it, your skills on <kbd>Q</kbd> <kbd>F</kbd> <kbd>E</kbd> <kbd>R</kbd>). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
@@ -1894,6 +1894,7 @@ function start(hot = {}) {
    * keys, and the channel's bar before it. The mouse is let go when it ends.
    */
   let shoulderUi = null;
+  let shoulderTipT = 0;
   function shoulderFrame() {
     const t = world && world.tide;
     const mine = !!(t && t.state === 'on' && !world.keepVisit);
@@ -1903,13 +1904,20 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk · mouse looks · <b>click</b> strikes · <kbd>Q</kbd><kbd>F</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Z</kbd><kbd>X</kbd> borrowed · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes what is locked · <kbd>Q</kbd><kbd>F</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
       document.body.appendChild(shoulderUi);
     }
     document.body.classList.toggle('shoulder-on', on);
     shoulderUi.classList.toggle('on', on);
     shoulderUi.classList.toggle('chan', chan);
     shoulderUi.classList.toggle('free', on && !input.locked());
+    // (0.89) the soft lock: its frame at the top, and the crosshair turns gold
+    const lockOn = on && input.softId != null ? world.enemies.find((e) => e.id === input.softId && !e.dead) : null;
+    shoulderUi.classList.toggle('locked', !!lockOn);
+    if (lockOn) {
+      shoulderUi.querySelector('.sh-target b').textContent = (lockOn.def && lockOn.def.name) || 'The Unmade';
+      shoulderUi.querySelector('.sh-target u').style.width = `${Math.max(0, Math.round((lockOn.hp / lockOn.maxHp) * 100))}%`;
+    }
     if (chan) {
       const a = Math.min(1, t.chan / INCARNATE.chan);
       shoulderUi.querySelector('.sh-pct').textContent = ` ${Math.round(a * 100)}%`;
@@ -3879,6 +3887,14 @@ function start(hot = {}) {
     },
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     heldAim: () => settings.heldAim !== false, // (0.61.2) Deadeye aims while R is held
+    shoulderTip: (text) => { // (0.89) a word over the shoulder (right-click does not walk)
+      if (!shoulderUi) return;
+      const tip = shoulderUi.querySelector('.sh-tip');
+      tip.textContent = text;
+      tip.classList.add('show');
+      clearTimeout(shoulderTipT);
+      shoulderTipT = setTimeout(() => tip.classList.remove('show'), 2200);
+    },
     nextWaveKey: () => nextWaveKey(), // (0.62) the Ring's next-wave key, chosen in the menu
     /** Keys that belong to an open menu. Returns true if the key was used. */
     menuKey(key) {
@@ -4326,6 +4342,16 @@ function start(hot = {}) {
   });
   hud.nextWaveLabel = nextWaveLabel();
   hud.nextWaveKeyName = (nextWaveKey() || 'Enter').toUpperCase();
+  // (0.89) how fast the view turns over the shoulder
+  input.sens = Number(settings.lookSens) || 1;
+  $('look-sens').value = String(input.sens);
+  $('look-sens-val').textContent = `${input.sens.toFixed(1)}×`;
+  $('look-sens').addEventListener('input', (e) => {
+    input.sens = Number(e.target.value) || 1;
+    settings.lookSens = input.sens;
+    $('look-sens-val').textContent = `${input.sens.toFixed(1)}×`;
+    storeSettings(settings);
+  });
   $('held-aim').checked = settings.heldAim !== false; // (0.61.2)
   $('held-aim').addEventListener('change', (e) => {
     settings.heldAim = e.target.checked;
@@ -5941,6 +5967,9 @@ function start(hot = {}) {
   window.game = {
     get world() {
       return world;
+    },
+    get input() {
+      return input;
     },
     get net() {
       return net;

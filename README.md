@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Incarnate fights like an action game (0.89)
+
+- **Soft lock**: over your shoulder, the enemy before you nearest your crosshair is locked on its own (the crosshair turns gold, the enemy is highlighted, and its name and health show at the top).
+- **Hold the left button to strike it.** Let go to stop. While you hold the strike on a foe you stand and fight; with nothing locked you keep moving. When one falls, the next is locked for you.
+- **Skills fly at the locked enemy**, or where you look if nothing is locked.
+- **Right-click no longer walks** while Incarnate; it reminds you to move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.
+- Standing still, your hero turns to face where you look. A **Look sensitivity** slider is in the settings, and big mouse jumps are smoothed out.
+
 ### A growing village (0.88)
 
 - **More works as the keep grows**: each growth stage opens another site out past the halls, each built and raised on its own: The East Fields (A Few Roofs), The Deep Seam (A Hamlet), The Orchard (A Village), The Star Quarry (A Market Town), The Pilgrim Farms (The Wishkeep Entire). Later sites cost more. The keep's growth card lists them all, and each works panel says what opens next.

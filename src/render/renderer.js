@@ -2037,6 +2037,14 @@ export class Renderer {
     if (p.leap) y = Math.sin(Math.PI * Math.min(1, p.leap.t / p.leap.dur)) * 5.5;
     g.position.set(x, y, z);
     g.rotation.y = Math.PI / 2 - (pr ? pr.facing : p.facing);
+    // (0.89) over the shoulder, standing still and not fighting: turn to where you look
+    if (this.shoulder.on && !p.moving && p.targetId == null) {
+      this.shoulderFace = this.shoulderFace == null ? p.facing : this.shoulderFace;
+      let da = this.shoulder.yaw - this.shoulderFace;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      this.shoulderFace += da * (1 - Math.exp(-10 * dt));
+      g.rotation.y = Math.PI / 2 - this.shoulderFace;
+    } else this.shoulderFace = null;
     this.syncAuras(p, x, z, dt); // (0.72)
     const walking = p.moving || !!(pr && Math.hypot(pr.dx, pr.dz) > 0.05);
 

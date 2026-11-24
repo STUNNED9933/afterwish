@@ -1,0 +1,115 @@
+{
+  "id": "t_tidecaller",
+  "prompt": "the Tidecaller, a towering king of the Unmade night, a gaunt regal figure whose body is made of dark deep-blue water and drifting stars, a tall crown of drowned black iron lanterns with violet flames, a long tattered royal cloak dripping black water, holding a long staff topped with a cage of stars. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:54:17.754Z",
+  "creditsBefore": 1515,
+  "steps": {
+    "model": {
+      "task": "52a2065a-6758-4680-8874-ff8ec547df33",
+      "result": {
+        "task_id": "52a2065a-6758-4680-8874-ff8ec547df33",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_tidecaller/1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_tidecaller/1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/model.glb",
+        "preview": "out/models/t_tidecaller/1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/preview.png"
+      }
+    },
+    "check": {
+      "task": "7365c4bc-3c42-4c8e-9022-bcd712ad3971",
+      "result": {
+        "task_id": "7365c4bc-3c42-4c8e-9022-bcd712ad3971",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_tidecaller/2-check/tripo-out/rig-check-2-7365c4bc",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "809de636-edab-45e0-9187-7bf1f5ae9286",
+      "rigType": "biped",
+      "result": {
+        "task_id": "809de636-edab-45e0-9187-7bf1f5ae9286",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_tidecaller/3-rig/tripo-out/rig-2-809de636",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_tidecaller/3-rig/tripo-out/rig-2-809de636/model.glb",
+        "preview": "out/models/t_tidecaller/3-rig/tripo-out/rig-2-809de636/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "de8802d3-4316-4553-814a-5f7879e8958e",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "de8802d3-4316-4553-814a-5f7879e8958e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_tidecaller/4-anim-1/tripo-out/retarget-2-de8802d3",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_tidecaller/4-anim-1/tripo-out/retarget-2-de8802d3/model.glb"
+        }
+      },
+      {
+        "task": "7aa627cf-a647-43b7-a935-daffb3204088",
+        "presets": [
+          "preset:biped:cast_a_spell"
+        ],
+        "result": {
+          "task_id": "7aa627cf-a647-43b7-a935-daffb3204088",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/t_tidecaller/4-anim-2/tripo-out/retarget-3-7aa627cf",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_tidecaller/4-anim-2/tripo-out/retarget-3-7aa627cf/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1250,
+  "creditsUsed": 265,
+  "finished": "2026-11-24T13:01:56.137Z",
+  "files": [
+    "1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/generated_image.jpeg",
+    "1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/model.glb",
+    "1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/preview.png",
+    "1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/rendered_image.webp",
+    "1-model/tripo-out/the-tidecaller-a-towering-king-o-52a2065a/task.json",
+    "2-check/tripo-out/rig-check-2-7365c4bc/task.json",
+    "3-rig/tripo-out/rig-2-809de636/model.glb",
+    "3-rig/tripo-out/rig-2-809de636/preview.png",
+    "3-rig/tripo-out/rig-2-809de636/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-809de636/task.json",
+    "4-anim-1/tripo-out/retarget-2-de8802d3/model.glb",
+    "4-anim-1/tripo-out/retarget-2-de8802d3/task.json",
+    "4-anim-2/tripo-out/retarget-3-7aa627cf/model.glb",
+    "4-anim-2/tripo-out/retarget-3-7aa627cf/task.json",
+    "manifest.json"
+  ]
+}

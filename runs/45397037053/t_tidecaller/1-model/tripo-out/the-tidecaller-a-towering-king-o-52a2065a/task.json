@@ -1,0 +1,32 @@
+{
+  "task_id": "52a2065a-6758-4680-8874-ff8ec547df33",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "the Tidecaller, a towering king of the Unmade night, a gaunt regal figure whose body is made of dark deep-blue water and drifting stars, a tall crown of drowned black iron lanterns with violet flames, a long tattered royal cloak dripping black water, holding a long staff topped with a cage of stars. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 12000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-24T12:54:18.619964Z",
+  "completed_at": "2026-11-24T12:59:40.841628Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

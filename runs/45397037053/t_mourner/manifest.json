@@ -1,0 +1,96 @@
+{
+  "id": "t_mourner",
+  "prompt": "a Mourner, the ghost of a grieving widow, tall and slender in a long black lace mourning gown and a long black veil over her face, pale grey translucent skin, long white hair, holding a dim violet candle, weeping violet light running down from under the veil, hem dissolving into mist. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:48:20.514Z",
+  "creditsBefore": 1830,
+  "steps": {
+    "model": {
+      "task": "c5fb7947-36ec-4a3c-99e9-b1eed8ddd1e9",
+      "result": {
+        "task_id": "c5fb7947-36ec-4a3c-99e9-b1eed8ddd1e9",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_mourner/1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_mourner/1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/model.glb",
+        "preview": "out/models/t_mourner/1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/preview.png"
+      }
+    },
+    "check": {
+      "task": "f48025ee-ac58-4bca-abcd-1ce6d853949a",
+      "result": {
+        "task_id": "f48025ee-ac58-4bca-abcd-1ce6d853949a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_mourner/2-check/tripo-out/rig-check-f48025ee",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "182c9057-7f16-4bfd-af1a-0241dda77bc8",
+      "rigType": "biped",
+      "result": {
+        "task_id": "182c9057-7f16-4bfd-af1a-0241dda77bc8",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_mourner/3-rig/tripo-out/rig-182c9057",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_mourner/3-rig/tripo-out/rig-182c9057/model.glb",
+        "preview": "out/models/t_mourner/3-rig/tripo-out/rig-182c9057/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "d66cd6a4-97c4-47a1-90df-33a3cc52a3f2",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "d66cd6a4-97c4-47a1-90df-33a3cc52a3f2",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_mourner/4-anim-1/tripo-out/retarget-d66cd6a4",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_mourner/4-anim-1/tripo-out/retarget-d66cd6a4/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1515,
+  "creditsUsed": 315,
+  "finished": "2026-11-24T12:54:17.752Z",
+  "files": [
+    "1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/generated_image.jpeg",
+    "1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/model.glb",
+    "1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/preview.png",
+    "1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/rendered_image.webp",
+    "1-model/tripo-out/a-mourner-the-ghost-of-a-grievin-c5fb7947/task.json",
+    "2-check/tripo-out/rig-check-f48025ee/task.json",
+    "3-rig/tripo-out/rig-182c9057/model.glb",
+    "3-rig/tripo-out/rig-182c9057/preview.png",
+    "3-rig/tripo-out/rig-182c9057/rendered_image.webp",
+    "3-rig/tripo-out/rig-182c9057/task.json",
+    "4-anim-1/tripo-out/retarget-d66cd6a4/model.glb",
+    "4-anim-1/tripo-out/retarget-d66cd6a4/task.json",
+    "manifest.json"
+  ]
+}

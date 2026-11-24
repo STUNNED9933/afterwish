@@ -1125,6 +1125,91 @@
         "preset:biped:hit_to_body_01"
       ],
       "faceLimit": 9000
+    },
+    "t_thief": {
+      "prompt": "an Ember Thief of the Unmade night, a small hunched grey-skinned creature in a ragged hooded charcoal cloak, long thin arms, glowing ember-orange eyes under the hood, clutching a small stolen brass lantern with a warm flame inside, bare clawed feet, sack of stolen candles on its back",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000
+    },
+    "t_cinderling": {
+      "prompt": "a Cinderling, a tiny child-sized creature of cracked black charcoal with bright molten orange light glowing through the cracks, a round body and stubby limbs, a flickering flame for hair, big hollow glowing eyes, mischievous and fragile",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 6000
+    },
+    "t_veilbearer": {
+      "prompt": "a Veilbearer of the Unmade, a tall thin faceless figure in long layered black funeral robes, a pale porcelain mask with no features, holding a tall crooked staff from which hangs a long translucent black veil banner, faint violet mist at the hem",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000
+    },
+    "t_gatebreaker": {
+      "prompt": "a Gatebreaker, a hulking giant of the Unmade made of cracked dark grey stone and old rusted iron bands, enormous shoulders, one arm ending in a huge iron-capped battering ram fist, a small sunken head with glowing violet eyes, broken chains hanging from its waist",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:chop",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 11000
+    },
+    "t_mourner": {
+      "prompt": "a Mourner, the ghost of a grieving widow, tall and slender in a long black lace mourning gown and a long black veil over her face, pale grey translucent skin, long white hair, holding a dim violet candle, weeping violet light running down from under the veil, hem dissolving into mist",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000
+    },
+    "t_tidecaller": {
+      "prompt": "the Tidecaller, a towering king of the Unmade night, a gaunt regal figure whose body is made of dark deep-blue water and drifting stars, a tall crown of drowned black iron lanterns with violet flames, a long tattered royal cloak dripping black water, holding a long staff topped with a cage of stars",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall",
+        "preset:biped:cast_a_spell"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 12000
     }
   }
 }

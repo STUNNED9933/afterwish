@@ -1,0 +1,23 @@
+{
+  "task_id": "8ca128f0-2b2e-4e86-91f4-70f93bfb988a",
+  "type": "animate_retarget",
+  "status": "success",
+  "input": {
+    "animations": [
+      "preset:biped:idle",
+      "preset:biped:hit_to_body_01"
+    ],
+    "out_format": "glb",
+    "animate_in_place": true,
+    "original_model_id": "f412e9fb-b467-4f17-a7a7-7fd70456b4a4"
+  },
+  "output_fields": [
+    "model_url"
+  ],
+  "credits_consumed": 20,
+  "created_at": "2026-11-24T12:15:23.536156Z",
+  "completed_at": "2026-11-24T12:15:29.010843Z",
+  "files": [
+    "model.glb"
+  ]
+}

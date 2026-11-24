@@ -40,7 +40,14 @@ export class Input {
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
     window.addEventListener('mouseup', (e) => {
       if (e.button === 2) this.mouse.right = false;
-      if (e.button === 0) this.lmb = false; // (0.89)
+      if (e.button === 0) {
+        // (0.89) (0.90) let go, and over the shoulder the strikes stop, as in action games
+        if (this.lmb && this.shoulderOn() && this.isPlaying()) {
+          const world = this.getWorld();
+          if (world.player && world.player.targetId != null) world.command({ type: 'stop' });
+        }
+        this.lmb = false;
+      }
     });
     window.addEventListener('mousemove', (e) => {
       // (0.85) over the shoulder, with the mouse caught: it turns the view instead of moving a cursor
@@ -127,8 +134,9 @@ export class Input {
         this.lmb = true;
         const under = this.renderer.pickEnemy(window.innerWidth / 2, window.innerHeight / 2, world);
         if (under && !under.dead) this.forceId = this.softId = under.id; // (0.89) clicked on: this one
-        this.strike(world, performance.now(), true);
-      } else if (e.button === 2 && this.actions.shoulderTip) this.actions.shoulderTip('Move with W A S D. Hold the left button to strike.');
+        if (this.softId != null) this.strike(world, performance.now(), true);
+        else this.freeStrike(world, performance.now()); // (0.90) nothing locked: strike where you aim
+      } else if (e.button === 2 && this.actions.shoulderTip) this.actions.shoulderTip('Move with W A S D. Hold the left button to strike; Shift dashes.');
       return;
     }
     this.mouse.x = e.clientX;
@@ -270,29 +278,40 @@ export class Input {
   }
 
   /**
-   * (0.85) Keys over the shoulder: W A S D walk; (0.85.1) the skills stay under the left hand beside them:
-   * Q, E and R as ever, and the W skill on F; the borrowed ones on Z and X; 1 a potion and Space a parry as
-   * ever. True if the key was taken.
+   * (0.85) Keys over the shoulder: W A S D walk (twice quickly: a roll that way); (0.90) Q and R as ever, the
+   * W skill on E, the class's dash (its E) on Shift; the borrowed ones on Z and X; 1 a potion and Space a
+   * parry as ever. True if the key was taken.
    */
   shoulderKey(e, key, world) {
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
       e.preventDefault();
+      if (!e.repeat) {
+        // (0.90) a direction tapped twice quickly: the roll, that way
+        const now = performance.now();
+        if (this.lastTap && this.lastTap.key === key && now - this.lastTap.at < 260) {
+          const S = this.renderer.shoulder, fx = Math.cos(S.yaw), fz = Math.sin(S.yaw);
+          const [ux, uz] = { w: [fx, fz], arrowup: [fx, fz], s: [-fx, -fz], arrowdown: [-fx, -fz], d: [-fz, fx], arrowright: [-fz, fx], a: [fz, -fx], arrowleft: [fz, -fx] }[key];
+          const p = world.player;
+          world.command({ type: 'dodge', x: p.x + ux * 3, z: p.z + uz * 3 });
+          this.lastTap = null;
+        } else this.lastTap = { key, at: now };
+      }
       this.keys.add(key);
       return true;
     }
     if (key === 'shift') {
-      // (0.89) a roll the way you are moving (back, away from what you face, if you are not)
+      // (0.90) the class's dash (its E): the way you are moving, or the way you look if you are not
       e.preventDefault();
       if (e.repeat) return true;
       const [dx, dz] = this.moveDir();
       const S = this.renderer.shoulder;
       const n = Math.hypot(dx, dz);
-      const [ux, uz] = n > 0.01 ? [dx / n, dz / n] : [-Math.cos(S.yaw), -Math.sin(S.yaw)];
+      const [ux, uz] = n > 0.01 ? [dx / n, dz / n] : [Math.cos(S.yaw), Math.sin(S.yaw)];
       const p = world.player;
-      world.command({ type: 'dodge', x: p.x + ux * 3, z: p.z + uz * 3 });
+      world.command({ type: 'cast', slot: 'e', x: p.x + ux * 8, z: p.z + uz * 8 });
       return true;
     }
-    const slot = { q: 'q', f: 'w', e: 'e', r: 'r', z: 'd', x: 'f' }[key];
+    const slot = { q: 'q', e: 'w', r: 'r', z: 'd', x: 'f' }[key];
     if (slot) {
       e.preventDefault();
       if (e.repeat) return true;
@@ -387,6 +406,17 @@ export class Input {
     this.tabSeen.add(this.forceId);
   }
 
+  /** (0.90) With nothing locked, strike at the air where you aim (the game paces it to your attack speed). */
+  freeStrike(world, now) {
+    if (now - (this.lastSwing || 0) < 100) return;
+    this.lastSwing = now;
+    const g = this.ground();
+    const p = world.player;
+    const S = this.renderer.shoulder;
+    const at = g && Math.hypot(g.x - p.x, g.z - p.z) > 0.5 ? g : { x: p.x + Math.cos(S.yaw) * 4, z: p.z + Math.sin(S.yaw) * 4 };
+    world.command({ type: 'swing', x: at.x, z: at.z });
+  }
+
   /** (0.89) Strike the locked enemy (again, if the last one fell or the lock moved on). */
   strike(world, now, fresh) {
     if (this.softId == null) return;
@@ -410,7 +440,10 @@ export class Input {
       // (0.89) the soft lock: the enemy in front of you nearest your crosshair, highlighted
       this.softId = this.softLock(world);
       this.renderer.hoverId = this.softId;
-      if (this.lmb) this.strike(world, now, false);
+      if (this.lmb) {
+        if (this.softId != null) this.strike(world, now, false);
+        else this.freeStrike(world, now);
+      }
       // (0.85) walking over the shoulder: W A S D against the way you face, a step ahead at a time;
       // (0.89) but while you hold the strike on a foe, you stand and fight
       const [dx, dz] = this.moveDir();

@@ -6089,4 +6089,45 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.incarnateHurt(50);
   check('...and after the grace, blows land again', p.hp < hp0);
 }
+// --- 0.90: a free strike while Incarnate; 20 seconds on the field ---------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  check('Incarnate (0.90): 20 seconds on the field', K.INCARNATE.dur === 20);
+  const make = (cls) => {
+    const w = new World({ seed: 801, mode: 'explore', cls, save: geared(cls, 100, 6) });
+    const p = w.player;
+    p.lives = { warrior: { prim: [10] }, archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+    w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+    p.keep.tier = 3; p.keep.nightMax = 30;
+    w.command({ type: 'keepTide', level: 3 }); w.runCommands();
+    w.tide.next = 999;
+    return { w, p };
+  };
+  {
+    const { w, p } = make('warrior');
+    w.command({ type: 'swing', x: p.x + 3, z: p.z }); w.runCommands();
+    check('...not before you are Incarnate', !p.freeSwing);
+    w.tide.inc = 10;
+    const e = w.spawnTideFoe('rootbound', p, () => 0.5), behind = w.spawnTideFoe('rootbound', p, () => 0.5);
+    e.state = behind.state = 'chase';
+    [e.x, e.z, behind.x, behind.z] = [p.x + 1.6, p.z, p.x - 1.8, p.z];
+    e.stunT = behind.stunT = 99;
+    const h0 = e.hp, b0 = behind.hp;
+    w.command({ type: 'swing', x: p.x + 3, z: p.z }); w.runCommands();
+    const paced = p.attackCd > 0 && !!p.freeSwing;
+    for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+    check('...then a blade swung at the air cuts what stands in its arc, not what is behind', e.hp < h0 && behind.hp === b0 && !p.targetId, `${h0} -> ${e.hp}; behind ${b0} -> ${behind.hp}; target ${p.targetId}`);
+    check('...at the pace of your attacks', paced);
+  }
+  {
+    const { w, p } = make('archer');
+    w.tide.inc = 10;
+    const n0 = w.projectiles.length;
+    w.command({ type: 'swing', x: p.x, z: p.z - 5 }); w.runCommands();
+    for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+    const shot = w.projectiles.find((pr) => pr.owner === 'player' && pr.basic && pr.targetId == null);
+    check('...and a bow looses a shot that flies straight where you aim', w.projectiles.length > n0 && shot && shot.vz < 0 && Math.abs(shot.vx) < 1e-6);
+  }
+}
 process.exit(failed ? 1 : 0);

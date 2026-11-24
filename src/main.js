@@ -1453,7 +1453,7 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike it, <kbd>Tab</kbd> for the next target, <kbd>Shift</kbd> to roll, your skills on <kbd>Q</kbd> <kbd>F</kbd> <kbd>E</kbd> <kbd>R</kbd>). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike (it, or the air where you aim), <kbd>Tab</kbd> for the next target, your skills on <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> and your dash on <kbd>Shift</kbd>, a direction tapped twice to roll). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
@@ -1904,7 +1904,7 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes what is locked · <kbd>Tab</kbd> next target · <kbd>Shift</kbd> <span class="sh-dodge">dodge</span> · <kbd>Q</kbd><kbd>F</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
       document.body.appendChild(shoulderUi);
     }
     document.body.classList.toggle('shoulder-on', on);
@@ -1917,7 +1917,7 @@ function start(hot = {}) {
     if (on) {
       const dc = world.player.dodgeCd || 0; // (0.89) the roll's cooldown
       const dEl = shoulderUi.querySelector('.sh-dodge');
-      dEl.textContent = dc > 0 ? `dodge ${dc.toFixed(1)}s` : 'dodge';
+      dEl.textContent = dc > 0 ? `roll ${dc.toFixed(1)}s` : 'roll';
       dEl.classList.toggle('cool', dc > 0);
     }
     if (lockOn) {

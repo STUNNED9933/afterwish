@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Incarnate: freer strikes, longer stays, and the dash on Shift (0.90)
+
+- **Left click strikes even with nothing locked**: a blade cuts whatever is in its arc where you aim (the nearest in full, the rest by half); a bow's or a staff's shot flies straight where you aim. All at the pace of your attacks.
+- While Incarnate your hero only strikes when you say so: no more turning on an enemy by itself, and letting go of the button stops the strikes.
+- **Incarnate lasts 20 seconds** (up from 12).
+- **New keys over the shoulder**: <kbd>Q</kbd> and <kbd>R</kbd> as ever, your W skill on <kbd>E</kbd>, your class's dash (its E: Breakthrough, Evasive Roll, Nightstep, Starwake, Ambush) on <kbd>Shift</kbd>, the way you are moving (or looking). The skill bar shows them while you are Incarnate.
+- **The roll moved to a double-tap**: tap a direction twice quickly to roll that way (blows pass through you for a moment; every 2.5 seconds).
+
 ### Incarnate fights like an action game (0.89)
 
 - **Soft lock**: over your shoulder, the enemy before you nearest your crosshair is locked on its own (the crosshair turns gold, the enemy is highlighted, and its name and health show at the top).

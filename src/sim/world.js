@@ -964,6 +964,9 @@ export class World {
         case 'dodge':
           this.dodge(c.x, c.z); // (0.89)
           break;
+        case 'swing':
+          this.freeSwing(c.x, c.z); // (0.90)
+          break;
         case 'parry':
           this.tryParry(c.seen);
           break;
@@ -3343,7 +3346,8 @@ export class World {
       }
     }
     // Auto-attack (can be switched off in the pause menu): an idle hero picks the nearest enemy.
-    if (!target && !p.moveTarget && p.autoAcquire && p.autoAttack !== false && p.parryT <= 0) {
+    const handsOn = this.tide && this.tide.inc > 0 && this.keepOwns(); // (0.90) Incarnate: you choose every strike
+    if (!target && !p.moveTarget && p.autoAcquire && p.autoAttack !== false && p.parryT <= 0 && !handsOn) {
       let best = null;
       let bestD = Math.max(CONFIG.ACQUIRE_RANGE, this.basicRange());
       for (const e of this.enemies) {
@@ -6296,6 +6300,11 @@ export class World {
     const me = this.player;
     if (me.dodgeCd > 0) me.dodgeCd = Math.max(0, me.dodgeCd - dt); // (0.89)
     if (me.dodgeT > 0) me.dodgeT -= dt;
+    if (me.freeSwing && (me.freeSwing.t -= dt) <= 0) {
+      const fs = me.freeSwing;
+      me.freeSwing = null;
+      if (t.inc > 0 && !me.dead) this.landFreeSwing(fs); // (0.90)
+    }
     if (t.inc > 0) {
       t.inc -= dt;
       if (t.inc <= 0) this.incarnateEnd(false);
@@ -7189,6 +7198,51 @@ export class World {
     p.moveTarget = null;
     p.facing = a;
     this.emit('cast', { slot: 'dodge', fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
+  }
+
+  /**
+   * (0.90) Incarnate: a strike at nothing in particular, where you aim, at your own pace: a blade cuts what is
+   * in its arc (the nearest in full, the rest by half), a bow or a staff looses a shot that flies straight.
+   */
+  freeSwing(x, z) {
+    const t = this.tide, p = this.player;
+    if (!t || !(t.inc > 0) || !this.keepOwns() || p.dead || p.dash || p.channel || p.freeSwing) return;
+    if (p.attackCd > 0 || p.atkWind > 0) return;
+    const a = Number.isFinite(x) && Number.isFinite(z) && dist(x, z, p.x, p.z) > 0.05 ? dAtan2(z - p.z, x - p.x) : p.facing;
+    const period = 1 / p.stats.as;
+    p.facing = a;
+    p.targetId = null;
+    p.attackMove = null;
+    p.attackCd = period;
+    p.freeSwing = { t: period * 0.3, a };
+    this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: period * 0.3 });
+  }
+  /** (0.90) A free strike lands. */
+  landFreeSwing(fs) {
+    const p = this.player, b = this.basic;
+    const dmg = p.stats.ad * b.mult;
+    const a = fs.a;
+    p.swingCount++;
+    if (b.shot) {
+      this.projectiles.push({
+        id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: null, critBonus: 0, pierce: null,
+        x: p.x + dCos(a) * 0.7, z: p.z + dSin(a) * 0.7, px: p.x, pz: p.z,
+        vx: dCos(a) * b.speed, vz: dSin(a) * b.speed, speed: b.speed, radius: 0.35, dmg, parryable: false, reflected: false, life: 1.2, dead: false,
+      });
+      return;
+    }
+    const reach = b.range * (1 + (this.mods.rangePct || 0)) + 0.6;
+    const hit = [];
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      const d = dist(e.x, e.z, p.x, p.z) - e.radius;
+      if (d > reach) continue;
+      let da = dAtan2(e.z - p.z, e.x - p.x) - a;
+      da = Math.abs(dAtan2(dSin(da), dCos(da)));
+      if (da <= 0.95 || d < 0.4) hit.push([e, d]);
+    }
+    hit.sort((u, v) => u[1] - v[1]);
+    hit.forEach(([e], i) => this.hitEnemy(e, i === 0 ? dmg : dmg * 0.5, { basic: i === 0, source: 'basic' }));
   }
 
   /** (0.85) The channel at work: aura gathers; full, the god lands. */

@@ -147,9 +147,9 @@ export const MIRACLE_IDS = Object.keys(MIRACLES);
 /** (0.89) The incarnate god's dodge roll (Shift): how far, how quick, how long blows pass through, how often. */
 export const DODGE = { dist: 4.5, dur: 0.3, grace: 0.4, cd: 2.5 };
 export const INCARNATE = {
-  key: 'r', name: 'Incarnate', faith: 40, chan: 5, chanMin: 1.5, dur: 12, cd: 60, body: 600, atk: 35,
+  key: 'r', name: 'Incarnate', faith: 40, chan: 5, chanMin: 1.5, dur: 20, cd: 60, body: 600, atk: 35,
   land: { r: 7, heal: 0.45, shield: 0.3, shieldDur: 6, raise: 0.4, stun: 1.6, hit: 0.15 },
-  desc: 'Channel where you aim for up to 5 seconds, gathering aura (R again to land early). You land in a blast that mends, shields and raises your heroes nearby and staggers the Unmade, then fight beside them for 12 seconds, seen from over your shoulder.',
+  desc: 'Channel where you aim for up to 5 seconds, gathering aura (R again to land early). You land in a blast that mends, shields and raises your heroes nearby and staggers the Unmade, then fight beside them for 20 seconds, seen from over your shoulder.',
 };
 
 /** (0.81) The Unmade in a Tide: their own numbers. siege: how much harder they hit buildings. */

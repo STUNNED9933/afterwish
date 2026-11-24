@@ -1,0 +1,93 @@
+{
+  "id": "keep_mage_f",
+  "prompt": "a young woman, a lanternkeeper mage of a small mountain keep: long black hair, a deep purple floor-length robe with a crimson stole hanging down the front edged in bone white with a small gold diamond emblem, a deep purple cowl down on her shoulders, a gold sash belt with a small leather book at the hip, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-24T12:05:13.609Z",
+  "creditsBefore": 2430,
+  "steps": {
+    "model": {
+      "task": "5976fb46-c987-4b4a-8019-f6df07cdadb7",
+      "result": {
+        "task_id": "5976fb46-c987-4b4a-8019-f6df07cdadb7",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/keep_mage_f/1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_mage_f/1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/model.glb",
+        "preview": "out/models/keep_mage_f/1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/preview.png"
+      }
+    },
+    "check": {
+      "task": "19957e70-bfd7-4ab3-8a51-1356f9e7a7d9",
+      "result": {
+        "task_id": "19957e70-bfd7-4ab3-8a51-1356f9e7a7d9",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/keep_mage_f/2-check/tripo-out/rig-check-19957e70",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "df3d9975-a6b0-4fb7-a37f-3c4b67d352df",
+      "rigType": "biped",
+      "result": {
+        "task_id": "df3d9975-a6b0-4fb7-a37f-3c4b67d352df",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/keep_mage_f/3-rig/tripo-out/rig-df3d9975",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_mage_f/3-rig/tripo-out/rig-df3d9975/model.glb",
+        "preview": "out/models/keep_mage_f/3-rig/tripo-out/rig-df3d9975/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "1ea9a449-dc41-473c-b84b-2eae147c49fb",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "1ea9a449-dc41-473c-b84b-2eae147c49fb",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/keep_mage_f/4-anim-1/tripo-out/retarget-1ea9a449",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/keep_mage_f/4-anim-1/tripo-out/retarget-1ea9a449/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2175,
+  "creditsUsed": 255,
+  "finished": "2026-11-24T12:09:48.841Z",
+  "files": [
+    "1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/generated_image.jpeg",
+    "1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/model.glb",
+    "1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/preview.png",
+    "1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/rendered_image.webp",
+    "1-model/tripo-out/a-young-woman-a-lanternkeeper-ma-5976fb46/task.json",
+    "2-check/tripo-out/rig-check-19957e70/task.json",
+    "3-rig/tripo-out/rig-df3d9975/model.glb",
+    "3-rig/tripo-out/rig-df3d9975/preview.png",
+    "3-rig/tripo-out/rig-df3d9975/rendered_image.webp",
+    "3-rig/tripo-out/rig-df3d9975/task.json",
+    "4-anim-1/tripo-out/retarget-1ea9a449/model.glb",
+    "4-anim-1/tripo-out/retarget-1ea9a449/task.json",
+    "manifest.json"
+  ]
+}

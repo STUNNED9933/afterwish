@@ -43,7 +43,7 @@ export function eventFor(ev, pid) {
 const r2 = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : n);
 // What an enemy is (sent once, and again only if it changes) and what it is doing (sent every update).
 const ENEMY_FIXED = ['type', 'elite', 'maxShield', 'riftGuardian', 'maxHp', 'level', 'radius', 'rare', 'remnant'];
-const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'mirrorT', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT', 'oldCls', 'ember', 'burnCap'];
+const ENEMY_KEYS = ['id', 'phase', 'shield', 'x', 'z', 'facing', 'state', 't', 'dur', 'moving', 'hitFlash', 'vulnT', 'slowT', 'bleedT', 'markT', 'burnT', 'burnStacks', 'smoulderT', 'frostStacks', 'frostT', 'frostLock', 'mirrorT', 'brittle', 'bleedFire', 'patience', 'returning', 'enraged', 'cue', 'atkName', 'hp', 'aggro', 'dead', 'exposedT', 'oldCls', 'ember', 'burnCap', 'loot', 'enraged'];
 const PROJ_KEYS = ['id', 'owner', 'kind', 'x', 'z', 'px', 'pz', 'parryable', 'reflected', 'radius', 'pid', 'ice', 'fx', 'volley']; // (0.81.5) volley: arrows folded into this one, rained down where it lands
 const TELE_KEYS = ['id', 'kind', 'x', 'z', 'dir', 'radius', 'range', 'angle', 'length', 'width', 't', 'dur', 'parryable', 'friendly', 'cue', 'doom', 'pool', 'inner', 'poolKind', 'dominion', 'will']; // (0.68) dominion: amber online too (it was missing)
 const pack = (o, keys) => {
@@ -240,7 +240,7 @@ export function makeSnapshot(world, pid, memo) {
       merchant: world.merchant ? { id: world.merchant.id, x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: merchantStock(world.merchant, pid, memo) } : null, // (0.66) what this player has bought, only when it changes
       // (0.81) the Wishkeep: its night, its heroes and its buildings
       keep: world.map && world.map.id === 'wishkeep' ? {
-        tide: world.tide ? { state: world.tide.state, wave: world.tide.wave, level: world.tide.level || 1, mcd: world.tide.mcd, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
+        tide: world.tide ? { state: world.tide.state, wave: world.tide.wave, waves: world.tide.waves, omen: world.tide.omen || undefined, level: world.tide.level || 1, mcd: world.tide.mcd, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
         troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0, shield: t.shield > 0 ? 1 : undefined, gender: t.gender })),
         builds: (world.keepBuilds || []).map((b) => ({ id: b.id, x: b.x, z: b.z, r: b.r, hp: Math.round(b.hp), max: b.max, wardT: b.wardT > 0 ? r2(b.wardT) : undefined })),
       } : undefined,

@@ -1360,3 +1360,9 @@ body.god #abilities > * { opacity: 0.35; filter: grayscale(0.7); }
 .arm-auto { background: #141824; color: var(--bone); border: 1px solid #3a4258; border-radius: 4px; padding: 2px 4px; font-size: 13px; }
 .arm-up { position: absolute; right: 4px; bottom: 2px; color: #7fe0a0; font-size: 12px; }
 body.keep-guest #abilities > * { opacity: 0.35; filter: grayscale(0.8); }
+
+/* (0.84) the Night's omen, its stranger children and its stars */
+.night-brief p { margin: 6px 0; font-size: 13.5px; line-height: 1.45; }
+.night-brief .omen { color: #c8a0ff; }
+.night-star { color: #8a8a96; margin-right: 10px; white-space: nowrap; }
+.night-star.got { color: #ffd76a; }

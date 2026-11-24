@@ -495,6 +495,13 @@ Object.assign(ENEMIES, {
   rootbound: { ...ENEMIES.knight, name: 'Rootbound', look: { scale: 0.66, colors: [0x3a3020, 0x9ad06a, 0x14100c] }, hp: 190, exp: 50, drop: 0.45 },
   echo: { ...ENEMIES.knight, name: 'Echo', look: { scale: 0.6, colors: [0xd8e8f0, 0xc8e8ff, 0x1c2430] }, hp: 130, speed: 4.4, exp: 50, drop: 0.45 },
   hush: { ...ENEMIES.wraith, name: 'Hush', look: { scale: 1.3, colors: [0x2a2834, 0x0c0a14] }, hp: 80, exp: 45, drop: 0.35 },
+  // (0.84) the Tide's stranger children (they only come to the Wishkeep: their numbers are its FOES)
+  thief: { ...ENEMIES.wishthief, name: 'Ember Thief', look: { scale: 0.75, colors: [0x2a2420, 0xff9a3a, 0x0c0806] }, exp: 0, drop: 0, tideOnly: true, thief: false },
+  cinderling: { ...ENEMIES.imp, name: 'Cinderling', look: { scale: 0.55, colors: [0x1a1410, 0xff7a2a, 0xffc070] }, exp: 0, drop: 0, tideOnly: true },
+  veilbearer: { ...ENEMIES.shaman, name: 'Veilbearer', look: { scale: 1.15, colors: [0x14101c, 0x8a6aff] }, exp: 0, drop: 0, tideOnly: true },
+  gatebreaker: { ...ENEMIES.golem, name: 'Gatebreaker', look: { scale: 1.45, colors: [0x3a3a40, 0x8a6aff] }, exp: 0, drop: 0, tideOnly: true },
+  mourner: { ...ENEMIES.wraith, name: 'Mourner', look: { scale: 1.15, colors: [0x18141c, 0xb08aff] }, exp: 0, drop: 0, tideOnly: true },
+  tidecaller: { ...ENEMIES.boss3, name: 'The Tidecaller', look: { scale: 1.3, colors: [0x0c1a2e, 0x8a6aff, 0x04080c] }, exp: 0, drop: 0, tideOnly: true, boss: false },
 });
 // The Cinder: the ash-fever was its breath. It does not hate you. It is only very late.
 ENEMIES.cinder.attacks = [

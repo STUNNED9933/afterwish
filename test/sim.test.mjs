@@ -617,7 +617,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('ranks: abilities go to rank ' + CONFIG.MAX_RANK, (() => { p.skillPoints = 99; for (let i = 0; i < 30; i++) w.command({ type: 'rankUp', slot: 'q' }); w.step(CONFIG.TICK); return p.ranks.q === CONFIG.MAX_RANK; })());
 
   // Every enemy type can fight: put one next to the hero and let it attack for a while.
-  for (const type of Object.keys(ENEMIES).filter((t) => !ENEMIES[t].thief && !ENEMIES[t].still)) { // (the Wishthief runs; wish-stars just wait)
+  for (const type of Object.keys(ENEMIES).filter((t) => !ENEMIES[t].thief && !ENEMIES[t].still && !ENEMIES[t].tideOnly)) { // (the Wishthief runs; wish-stars just wait; the Tide's own fight only in the keep)
     const a = new World({ seed: 5, save: { v: 2, level: 30 } }); a.wave.phase = 'explore';
     const e = a.spawnEnemy(type); e.state = 'chase'; e.x = 5; e.z = 0; a.player.x = 0; a.player.z = 0;
     let windups = 0, bad = false;
@@ -5608,7 +5608,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Night levels: you can call one past the highest held, no further (Night 1 the first time)', w.tide && w.tide.level === 1 && w.tide.night === K.NIGHT.power(1));
   let end = null;
   for (let i = 0; i < 60 * 300 && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) if (e.type === 'tideEnd') end = e; w.events = []; }
-  check('...a night held opens the next, and pays Sigils and Hero gear into the Armory', end && end.won && k.nightMax === 1 && end.sigils === K.NIGHT.sigils(1) && k.armory.length === K.NIGHT.pieces(1) && end.first, JSON.stringify(end));
+  check('...a night held opens the next, and pays Sigils and Hero gear into the Armory', end && end.won && k.nightMax === 1 && end.sigils === K.NIGHT.sigils(1) + end.newStars * K.NIGHT.starSigils(1) && k.armory.length === K.NIGHT.pieces(1) + (end.stars === 7 ? 1 : 0) && end.first, JSON.stringify(end));
   for (let i = 0; i < 60 * 11; i++) w.step(CONFIG.TICK);
   // the Armory
   let gid = 0;
@@ -5801,5 +5801,91 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...a Shield Bash or a Lunge stuns', stunned > 0);
   check('...the healer mends more than they strike', heals > 0 && heals >= healerHits, `${heals} heals, ${healerHits} strikes`);
   check('...and the night ends', end, JSON.stringify(end && { won: end.won, wrecked: end.wrecked }));
+}
+// --- 0.84: harder nights that pay more: omens, stars, and the night's stranger children ------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  check('Nights (0.84): more waves the deeper the night, and an omen from Night 6, the same each time', K.NIGHT.waves(1) === 3 && K.NIGHT.waves(10) === 4 && K.NIGHT.waves(20) === 5 && !K.nightOmen(5) && K.nightOmen(6) && K.nightOmen(13) === K.nightOmen(13));
+  const sp3 = K.tideSpecials(3, 1, 3), sp15 = K.tideSpecials(15, 4, 4);
+  check('...the stranger children come by Night: a thief from 3; the Tidecaller on the last wave of every fifth', sp3.thief === 1 && !sp3.cinderling && sp15.tidecaller === 1 && sp15.gatebreaker >= 1 && sp15.mourner >= 1 && sp15.veilbearer >= 1 && !K.tideSpecials(14, 4, 4).tidecaller);
+  const keepWorld = (seed, L, team) => {
+    const w = new World({ seed, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+    const p = w.player;
+    p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+    w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+    const k = p.keep;
+    k.faith = 1e6; k.stone = 1e5; k.tier = 3; k.nightMax = 30;
+    k.troops = team.map(([cls, skills], i) => ({ id: 50 + i, cls, name: 'h' + i, lvl: 12, gear: 12, rar: 5, skills }));
+    w.keepTroopsUp(); w.keepBuildsUp();
+    w.command({ type: 'keepTide', level: L }); w.runCommands();
+    return { w, k };
+  };
+  // a thief, left alone, steals and gets away
+  {
+    const { w } = keepWorld(301, 3, []);
+    const evs = [];
+    for (let i = 0; i < 60 * 90 && !evs.includes('thiefEscaped'); i++) { w.step(CONFIG.TICK); for (const e of w.events) evs.push(e.type); w.events = []; }
+    check('...an Ember Thief, unopposed, takes Faith from a building and gets away into the dark', evs.includes('thiefStole') && evs.includes('thiefEscaped') && w.tide && w.tide.stolen >= 1 && !w.enemies.some((e) => e.type === 'thief' && e.gone));
+  }
+  // a Veilbearer shrouds those near it
+  {
+    const { w } = keepWorld(302, 6, []);
+    const t = w.tide;
+    const rng = () => 0.5;
+    const v = w.spawnTideFoe('veilbearer', { x: 0, z: 20 }, rng), f = w.spawnTideFoe('hush', { x: 1, z: 20 }, rng), far = w.spawnTideFoe('hush', { x: 0, z: -20 }, rng);
+    for (const e of [v, f, far]) e.state = 'chase';
+    [v.x, v.z, f.x, f.z, far.x, far.z] = [0, 20, 1.5, 20, 0, -20];
+    w.stepTideOmen(CONFIG.TICK);
+    const h0 = f.hp, g0 = far.hp;
+    w.troopStrike(f, 40, false); w.troopStrike(far, 40, false);
+    check('...a Veilbearer: the Unmade near it take half damage', f.veiled && !far.veiled && h0 - f.hp === 20 && g0 - far.hp === 40 && t);
+  }
+  // a Mourner raises the fallen
+  {
+    const { w } = keepWorld(303, 11, []);
+    const rng = () => 0.5;
+    const m = w.spawnTideFoe('mourner', { x: 0, z: 20 }, rng), f = w.spawnTideFoe('hush', { x: 2, z: 20 }, rng);
+    m.state = f.state = 'chase';
+    w.killEnemy(f, 'troop');
+    m.raiseT = 0;
+    const before = w.enemies.filter((e) => e.tide && !e.dead).length;
+    w.mournerTurn(m, K.FOES.mourner, CONFIG.TICK);
+    check('...a Mourner raises an Unmade who fell near her', w.enemies.filter((e) => e.tide && !e.dead).length === before + 1 && w.enemies.some((e) => e.raised && !e.dead));
+  }
+  // Cinderlings burst
+  {
+    const { w } = keepWorld(304, 4, [['warrior', []]]);
+    const tr = w.troops[0];
+    const c = w.spawnTideFoe('cinderling', { x: tr.x + 1, z: tr.z }, () => 0.5);
+    c.state = 'chase';
+    [c.x, c.z] = [tr.x + 1, tr.z];
+    const hp0 = tr.hp;
+    w.events = [];
+    w.killEnemy(c, 'troop');
+    check('...a Cinderling bursts when it dies, burning heroes close by', tr.hp < hp0 || w.events.some((e) => e.type === 'troopDodge'), `${hp0} -> ${tr.hp}`);
+  }
+  // the Tidecaller's slam (warned first) and its call
+  {
+    const { w } = keepWorld(306, 5, [['warrior', []]]);
+    const tr = w.troops[0];
+    const b = w.spawnTideFoe('tidecaller', tr, () => 0.5);
+    b.state = 'chase';
+    [b.x, b.z, b.slamT, b.callT] = [tr.x + 2, tr.z, 0, 0];
+    const seen = [];
+    const hp0 = tr.hp;
+    for (let i = 0; i < 60 * 2; i++) { tr.hp = Math.max(tr.hp, 1); w.step(CONFIG.TICK); for (const e of w.events) seen.push(e.type); w.events = []; }
+    check('...the Tidecaller warns, then slams those near it, and calls the Hush to its side', seen.indexOf('tideSlamWarn') >= 0 && seen.indexOf('tideSlam') > seen.indexOf('tideSlamWarn') && seen.includes('tideCall') && tr.hp < hp0, seen.filter((x) => /tide/.test(x)).join(','));
+  }
+  // Night 5: the Tidecaller, felled by a strong keep, pays its own piece; stars are kept
+  {
+    const team = [['warrior', ['cleave', 'taunt', 'frostnova', 'barrier']], ['warrior', ['bash', 'warcry', 'fireball', null]], ['archer', ['pierce', 'volley', 'chain', 'meteor']], ['archer', ['pierce', 'volley', 'chain', null]], ['mage', ['warcry', null, 'mend', 'radiance']], ['mage', [null, null, 'fireball', 'meteor']], ['rogue', ['lunge', 'whirlwind', 'meteor', null]], ['rogue', ['lunge', 'cleave', 'frostnova', null]]];
+    const { w, k } = keepWorld(305, 5, team);
+    let end = null; const seen = new Set();
+    for (let i = 0; i < 60 * 400 && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) { seen.add(e.type); if (e.type === 'tideEnd') end = e; } w.events = []; }
+    check('...on Night 5 the Tidecaller comes with the last wave', seen.has('tideBoss') && seen.has('tideBossDown'), [...seen].filter((x) => /tide|thief|cinder/.test(x)).join(','));
+    check('...felled, it leaves a piece of Epic Hero gear or better, and the stars won are kept', end && end.won && end.boss === 1 && end.gear.some((g) => g.r >= 3) && (k.stars[5] & 1) && k.bosses === 1, JSON.stringify(end && { won: end.won, boss: end.boss, gear: end.gear, stars: end.stars }));
+    check('...and kept through a save', JSON.stringify(K.cleanKeep(JSON.parse(JSON.stringify(k))).stars) === JSON.stringify(k.stars));
+  }
 }
 process.exit(failed ? 1 : 0);

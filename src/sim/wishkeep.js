@@ -136,8 +136,43 @@ export const FOES = {
   echo: { hp: 55, dmg: 9, speed: 3.6, range: 6, cd: 1.4, ranged: true },
   unnamed: { hp: 170, dmg: 12, speed: 2.8, range: 1.8, cd: 1.3 },
   ashwalker: { hp: 110, dmg: 9, speed: 3.2, range: 1.7, cd: 1.1, siege: 2.5 },
-  rootbound: { hp: 240, dmg: 14, speed: 2.4, range: 1.9, cd: 1.6, siege: 1.5 },
+  rootbound: { hp: 240, dmg: 14, speed: 2.4, range: 1.9, cd: 1.3, siege: 1.5 },
+  // (0.84) the night's stranger children, each with a way of its own (from: the first Night they come)
+  thief: { name: 'Ember Thief', hp: 60, dmg: 0, speed: 6.0, range: 1.6, cd: 1.0, role: 'thief', from: 3, desc: 'Ignores your heroes: takes Faith from a building and runs for the dark. Catch it and the Faith comes back, with interest.' },
+  cinderling: { name: 'Cinderlings', hp: 26, dmg: 5, speed: 5.6, range: 1.3, cd: 0.8, role: 'swarm', from: 4, pack: 5, burst: { r: 2.4, x: 2.5 }, desc: 'Come in packs and burst when they die, burning heroes close by.' },
+  veilbearer: { name: 'Veilbearer', hp: 160, dmg: 6, speed: 3.0, range: 7, cd: 1.6, ranged: true, role: 'veil', from: 6, veil: { r: 5.5, cut: 0.5 }, desc: 'The Unmade near it take half damage. Break through to it first.' },
+  gatebreaker: { name: 'Gatebreaker', hp: 950, dmg: 30, speed: 1.9, range: 2.6, cd: 2.4, siege: 4, role: 'breaker', from: 8, big: true, desc: 'A siege giant: walks straight for the halls, never turns on a hero, and shrugs off half a stun.' },
+  mourner: { name: 'Mourner', hp: 190, dmg: 8, speed: 2.8, range: 8, cd: 1.8, ranged: true, role: 'mourn', from: 11, raise: { cd: 7, r: 12, hp: 0.6 }, desc: 'Hangs back and raises the Unmade who fell near her.' },
+  tidecaller: { name: 'The Tidecaller', hp: 4200, dmg: 40, speed: 2.6, range: 3, cd: 2.0, siege: 3, role: 'boss', big: true, slam: { cd: 6, r: 4.5, x: 1.6, wind: 0.8 }, call: { cd: 12, n: 3 }, desc: 'The night\'s king, on the last wave of every fifth Night: slams those near, calls the Hush, and rages when hurt.' },
 };
+export const FOE_SPECIALS = ['thief', 'cinderling', 'veilbearer', 'gatebreaker', 'mourner'];
+/**
+ * (0.84) How many of each special foe a wave brings on a Night: wave w (1-based) of W.
+ */
+export function tideSpecials(L, w, W) {
+  const out = {};
+  if (L >= 3) out.thief = 1 + (L >= 12) + (L >= 22);
+  if (L >= 4 && w >= 2) out.cinderling = 1 + (L >= 15) + (L >= 25); // packs
+  if (L >= 6 && w >= 2) out.veilbearer = 1 + (L >= 18);
+  if (L >= 8 && (w === W || (L >= 16 && w === 2))) out.gatebreaker = 1 + (L >= 24 && w === W);
+  if (L >= 11 && w >= 2) out.mourner = 1 + (L >= 21);
+  if (L % 5 === 0 && w === W) out.tidecaller = 1;
+  return out;
+}
+/**
+ * (0.84) Omens: from Night 6 each Night level has its own, the same every time (so a keeper can plan a
+ * night's skills and come back better ready). Each makes the night harder and pays more.
+ */
+export const OMENS = {
+  bloodmoon: { name: 'Blood Moon', pay: 0.25, desc: 'The Unmade move and strike a quarter faster.' },
+  fog: { name: 'Fog', pay: 0.2, desc: 'Archers and mages reach a third less far.' },
+  hunger: { name: 'Hunger', pay: 0.2, desc: 'The Unmade heal by a third of what they deal to heroes.' },
+  starfall: { name: 'Starfall', pay: 0.25, desc: 'Stars fall where the fighting is, every few seconds, on heroes and Unmade alike.' },
+  legion: { name: 'Legion', pay: 0.3, desc: 'A third more Unmade in every wave.' },
+  ironhide: { name: 'Iron Hide', pay: 0.25, desc: 'The Unmade have a quarter more health.' },
+};
+export const OMEN_IDS = Object.keys(OMENS);
+export const nightOmen = (L) => (L >= 6 ? OMEN_IDS[(L * 7 + 3) % OMEN_IDS.length] : null);
 
 // ---------------------------------------------------------------------------------------------- (0.82.1)
 /**
@@ -225,8 +260,8 @@ export const HERO_RAR_MAX = 6;
 export const NIGHT = {
   max: 30,
   power: (L) => {
-    let x = 0.55; // the Unmade's health and damage: 0.55, then 27% more each level (whole powers: the same in every browser)
-    for (let i = 1; i < L; i++) x *= 1.27;
+    let x = 0.6; // the Unmade's health and damage: 0.6, then 28% more each level (0.84: up from 0.55 and 27%,
+    for (let i = 1; i < L; i++) x *= 1.28; // for heroes who know four skills; whole powers: the same in every browser)
     return x;
   },
   siege: (L) => {
@@ -235,9 +270,12 @@ export const NIGHT = {
     return x;
   },
   extra: (L) => Math.floor((L - 1) / 4), // more of them in each wave
-  reward: (L) => 1 + 0.3 * (L - 1), // Faith and Wishstone
+  waves: (L) => 3 + (L >= 10) + (L >= 20), // (0.84) a fourth wave from Night 10, a fifth from 20
+  reward: (L) => 1 + 0.4 * (L - 1), // Faith and Wishstone (0.84: steeper, from 0.3)
   sigils: (L) => 1 + Math.floor(L / 2),
   pieces: (L) => Math.min(4, 1 + Math.floor(L / 5)), // Hero gear held nights give
+  // (0.84) stars: held; no hall wrecked; no hero fell. Each star won for the first time on a Night pays
+  starSigils: (L) => 2 + Math.floor(L / 3),
 };
 
 /**
@@ -527,6 +565,9 @@ export function cleanKeep(raw) {
     sigils: int(raw.sigils), // (0.82) Ascension Sigils, from the night
     nightMax: int(raw.nightMax, 0, 0, NIGHT.max), // (0.82) the highest Night level held
     night: int(raw.night, 1, 1, NIGHT.max), // (0.82) the level last chosen
+    // (0.84) stars won on each Night level: bit 1 held, 2 no hall wrecked, 4 no hero fell
+    stars: Object.fromEntries(Object.entries(raw.stars && typeof raw.stars === 'object' ? raw.stars : {}).filter(([L]) => int(L, 0, 0, NIGHT.max) >= 1).map(([L, v]) => [int(L, 1, 1, NIGHT.max), int(v, 0, 0, 7)])),
+    bosses: int(raw.bosses), // (0.84) Tidecallers felled
     armory: [], // (0.82) Hero gear
     gearN: int(raw.gearN),
     autoSalvageAt: raw.autoSalvageAt == null ? null : int(raw.autoSalvageAt, 0, 0, 5), // (0.82.5) Hero gear broken down as it comes, up to this rarity

@@ -160,6 +160,22 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Harder nights that pay more (0.84)
+
+- **New enemies of the Tide**, each with its own Tripo model and its own way of fighting:
+  - **Ember Thief** (Night 3): ignores your heroes, takes Faith from a building and runs for the dark. Catch it and the Faith comes back with interest.
+  - **Cinderlings** (Night 4): come in packs and burst when they die, burning heroes nearby.
+  - **Veilbearer** (Night 6): the Unmade near it take half damage.
+  - **Gatebreaker** (Night 8): a siege giant that walks straight for the halls, can't be Challenged, and shrugs off half a stun.
+  - **Mourner** (Night 11): hangs back and raises the Unmade who fell near her.
+  - **The Tidecaller** (Nights 5, 10, 15…): a boss on the last wave. It slams (with a warning ring), calls the Hush and rages at half health. Felling it pays its own Epic-or-better piece of Hero gear.
+- Your heroes go for the dangerous ones first: a thief with Faith, Veilbearers, Mourners.
+- **Omens** from Night 6, the same for each Night level every time, so you can plan your heroes' skills: Blood Moon, Fog, Hunger, Starfall, Legion, Iron Hide. Each makes the night harder and pays 20–30% more.
+- **More waves**: four from Night 10, five from Night 20. The Unmade grow a little faster per Night.
+- **Stars**: hold the keep, no hall wrecked, no hero falls. Each star won for the first time on a Night pays Sigils, and all three in one night add a piece of Hero gear. The Night picker shows your stars, the omen and which foes come.
+- Rewards climb faster with each Night (40% per level, up from 30%).
+- The Tide's foes now swing when they strike.
+
 ### The keep's heroes, remade (0.83)
 
 - **Four skills to a hero**: two physical (the Lodge) and two magic (the Observatory); the second of each opens at level 6. Old saves keep their one skill.

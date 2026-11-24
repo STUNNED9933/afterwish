@@ -82,6 +82,8 @@ function makeSeeded(seed) {
 }
 
 /** (0.83) How often each of the keep's heroes strikes (their basic swing is timed to it). */
+/** (0.84) Which clip each of the Tide's own plays when it strikes. */
+const TIDE_KIND = { veilbearer: 'cast', mourner: 'cast', gatebreaker: 'chop', echo: 'fire', tidecaller: 'slash' };
 const TROOP_AS = { warrior: 1, archer: 1 / 0.9, mage: 1 / 1.3, rogue: 1 / 0.55 };
 
 export class Renderer {
@@ -2090,18 +2092,33 @@ export class Renderer {
           v.model.group.add(aura);
           v.aura = aura;
         }
+        if (e.type === 'veilbearer') {
+          // (0.84) its shroud: the Unmade inside take half damage
+          v.veil = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0x8a6aff, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }));
+          v.veil.scale.setScalar(5.5);
+          v.veil.position.y = 0.06;
+          v.model.group.add(v.veil);
+        }
+        if (e.type === 'thief') {
+          // (0.84) the Faith it carries off, glowing over its head
+          v.loot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffc060, transparent: true, opacity: 0.95 }));
+          v.loot.position.y = 2.0;
+          v.loot.visible = false;
+          v.model.group.add(v.loot);
+        }
         this.scene.add(v.model.group);
         this.views.set(e.id, v);
         this.upgradeCreature(v, creatureSpec(e.type, e));
       }
       const { group, parts, mats } = v.model;
+      if (v.tSwing > 0) v.tSwing -= dt;
       if (v.rig) {
         // a rigged body (0.44): its own clips for the wind-up, the walk, the stagger
         v.rig.update(dt, {
           moving: e.moving || e.state === 'charge',
           speed: e.def.speed * (e.state === 'charge' ? 2.5 : 1),
           stunned: e.state === 'stunned',
-          windup: e.state === 'windup' && e.atk ? { kind: attackKind(e.type, e.atk), k: e.t / Math.max(0.01, e.dur) } : null,
+          windup: e.state === 'windup' && e.atk ? { kind: attackKind(e.type, e.atk), k: e.t / Math.max(0.01, e.dur) } : v.tSwing > 0 ? { kind: v.tKind, k: 1 - v.tSwing / v.tDur } : null, // (0.84) a Tide foe's blow, from its hit
         });
       }
       group.position.set(lerp(e.px, e.x, alpha), 0, lerp(e.pz, e.z, alpha));
@@ -2110,6 +2127,11 @@ export class Renderer {
       // Spawn-in
       const s = (e.state === 'spawn' ? Math.max(0.01, easeOut(1 - e.t / 0.9)) : 1) * (v.size || 1);
       group.scale.setScalar(s);
+      if (v.veil) v.veil.rotation.y -= dt * 0.6;
+      if (v.loot) {
+        v.loot.visible = !!e.loot;
+        v.loot.position.y = 2.0 + Math.sin(this.time * 6) * 0.12;
+      }
       if (v.aura) {
         v.aura.rotation.y += dt * 1.5;
         // a Reflective elite with its mirror shattered: the ring goes dim and cracked (0.42)
@@ -2292,11 +2314,12 @@ export class Renderer {
   upgradeCreature(v, spec) {
     if (!spec) return;
     // (0.56.2) its hand-built body stays hidden while the model loads (the aura and marks stay)
-    hideWhileLoading(v.model.group.children.filter((ch) => ch !== v.aura && ch !== v.markRing), loadCreature(spec), () => !!v.model.group.parent && !v.rig);
+    const keep = (ch) => ch === v.aura || ch === v.markRing || ch === v.veil || ch === v.loot; // (0.84) the shroud and the stolen Faith stay too
+    hideWhileLoading(v.model.group.children.filter((ch) => !keep(ch)), loadCreature(spec), () => !!v.model.group.parent && !v.rig);
     loadCreature(spec).then((tpl) => {
       if (!tpl || v.deathT !== undefined || !v.model.group.parent) return;
       const rig = makeCreature(tpl, spec);
-      for (const ch of v.model.group.children) if (ch !== v.aura && ch !== v.markRing) ch.visible = false;
+      for (const ch of v.model.group.children) if (!keep(ch)) ch.visible = false;
       v.model.group.add(rig.group);
       v.rig = rig;
       v.model.mats = rig.mats;
@@ -3177,6 +3200,13 @@ export class Renderer {
     }
   }
 
+  /** (0.84) A Tide foe's swing, played from the moment it hits (its wind-up runs this long). */
+  tideSwing(id, kind, dur) {
+    const v = this.views.get(id);
+    if (!v) return;
+    [v.tSwing, v.tDur, v.tKind] = [dur, dur, kind];
+  }
+
   /** (0.81) The Wishkeep's events: its heroes' blows and skills, the Tide's blows, wards and wrecks, the god's miracles. */
   keepFx(ev) {
     const streak = (x, z, tx, tz, color, w = 0.12, dur = 0.18) => {
@@ -3244,7 +3274,33 @@ export class Renderer {
       this.burst(ev.x, 1, ev.z, { count: 20, color: 0xfff2a0, speed: 2, up: 6, life: 0.9 });
     } else if (ev.type === 'troopDodge') {
       this.burst(ev.x, 1.2, ev.z, { count: 3, color: 0xdddddd, speed: 3, up: 1, life: 0.25 });
+    } else if (ev.type === 'tideSlamWarn' || ev.type === 'starWarn') {
+      if (ev.id != null) this.tideSwing(ev.id, 'chop', ev.t);
+      // (0.84) a ring that tightens until it lands
+      const c = ev.type === 'starWarn' ? 0xffe08a : 0x8a6aff;
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: c, from: ev.r * 1.5, to: ev.r, dur: ev.t || 0.8, opacity: 0.9 });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: c, from: ev.r, to: ev.r, dur: ev.t || 0.8, opacity: 0.18 });
+    } else if (ev.type === 'tideSlam' || ev.type === 'starFall') {
+      const c = ev.type === 'starFall' ? 0xffd070 : 0x8a6aff;
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: c, from: 0.5, to: ev.r, dur: 0.4, opacity: 0.6 });
+      this.burst(ev.x, 1.2, ev.z, { count: 26, color: c, speed: 7, up: 6, life: 0.7 });
+      this.shake = Math.max(this.shake, ev.type === 'tideSlam' ? 0.45 : 0.2);
+    } else if (ev.type === 'cinderBurst') {
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff7a2a, from: 0.3, to: ev.r, dur: 0.3, opacity: 0.55 });
+      this.burst(ev.x, 0.8, ev.z, { count: 16, color: 0xffa040, speed: 6, up: 4, life: 0.5 });
+    } else if (ev.type === 'mournerRaise') {
+      this.tideSwing(ev.id, 'cast', 0.5);
+      streak(ev.x, ev.z, ev.tx, ev.tz, 0xb08aff, 0.12, 0.5);
+      this.burst(ev.tx, 0.5, ev.tz, { count: 18, color: 0xb08aff, speed: 2, up: 5, life: 0.9 });
+    } else if (ev.type === 'tideCall') {
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0x8a6aff, from: 0.5, to: 3.5, dur: 0.6, opacity: 0.8 });
+    } else if (ev.type === 'tideBossRage' || ev.type === 'tideBossDown') {
+      this.burst(ev.x, 2.5, ev.z, { count: 40, color: ev.type === 'tideBossDown' ? 0xfff2a0 : 0xff3d6a, speed: 6, up: 8, life: 1.1 });
+      this.shake = Math.max(this.shake, 0.5);
+    } else if (ev.type === 'thiefStole' || ev.type === 'thiefCaught' || ev.type === 'thiefEscaped') {
+      this.burst(ev.x, 1.2, ev.z, { count: ev.type === 'thiefCaught' ? 22 : 10, color: ev.type === 'thiefEscaped' ? 0x5a4a6a : 0xffc060, speed: 3, up: 4, life: 0.7 });
     } else if (ev.type === 'foeHit') {
+      this.tideSwing(ev.id, TIDE_KIND[(this.views.get(ev.id) || {}).type] || (ev.ranged ? 'fire' : 'slash'), 0.2);
       if (ev.ranged) streak(ev.x, ev.z, ev.tx, ev.tz, 0x9a6aff, 0.1, 0.2);
       this.burst(ev.tx, 1, ev.tz, { count: 3, color: 0x9a6aff, speed: 2, up: 2, life: 0.3 });
     } else if (ev.type === 'buildHit') {

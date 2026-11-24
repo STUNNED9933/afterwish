@@ -99,7 +99,7 @@ const KEEP_CMDS = ['keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend',
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -6171,10 +6171,13 @@ export class World {
       state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
       night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
       mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0,
+      // (0.84) waves by Night, its omen, and what the stars are measured on
+      waves: NIGHT.waves(L), omen: nightOmen(L), fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
     };
+    if (this.tide.omen === 'fog') for (const tr of this.troops) if (tr.range > 3) tr.range *= 0.65; // (until the morning's keepTroopsUp)
     k.blessings = []; // (they are for this night)
     for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor); // (0.82) Unbroken: once a night
-    this.emit('tideStart', { waves: T.waves, heroes: this.troops.length, bless: this.tide.bless, level: L });
+    this.emit('tideStart', { waves: this.tide.waves, heroes: this.troops.length, bless: this.tide.bless, level: L, omen: this.tide.omen });
   }
 
   stepTide(dt) {
@@ -6191,39 +6194,112 @@ export class World {
       if (t.inc <= 0) this.incarnateEnd(false);
     }
     for (const b of this.keepBuilds || []) if (b.wardT > 0) b.wardT -= dt;
+    this.stepTideOmen(dt);
     this.stepTroops(dt);
     const hearth = (this.keepBuilds || []).find((b) => b.id === 'hearth');
     if (hearth && hearth.hp <= 0) return this.tideEnd(false);
     if (this.enemies.some((e) => e.tide && !e.dead)) return;
-    if (t.wave >= KEEP.tide.waves) return this.tideEnd(true);
+    if (t.wave >= (t.waves || KEEP.tide.waves)) return this.tideEnd(true);
     t.next -= dt;
     if (t.next <= 0) this.tideWave();
   }
 
   tideWave() {
     const t = this.tide, k = this.player.keep, T = KEEP.tide;
+    const W = t.waves || T.waves, L = t.level || 1;
     t.wave++;
     t.next = T.gap;
     const rng = this.streamRng('tide', t.seed * 13 + t.wave);
-    const n = T.perWave(k.tier) + (t.wave === T.waves ? 2 : 0) + NIGHT.extra(t.level || 1); // (0.82) more on deeper nights
+    let n = T.perWave(k.tier) + (t.wave === W ? 2 : 0) + NIGHT.extra(L); // (0.82) more on deeper nights
+    if (t.omen === 'legion') n = Math.round(n * 4 / 3); // (0.84)
     const gates = this.map.gates || [{ x: this.radius - 4, z: 0 }];
-    for (let i = 0; i < n; i++) {
-      const g = gates[i % gates.length];
-      const type = T.roster[Math.floor(rng() * T.roster.length)];
-      const F = FOES[type];
-      const e = this.spawnEnemy(type, { x: g.x, z: g.z, level: T.level });
-      e.home = null;
-      e.aggro = true;
-      e.tide = true;
-      e.noLoot = true; // (the night pays in Faith and Wishstone when it is held, not in loot: no farming the dark)
-      e.maxHp = e.hp = Math.round(F.hp * t.night);
-      e.tdmg = F.dmg * t.night;
-      e.tbdmg = F.dmg * NIGHT.siege(t.level || 1); // (0.82) what a building takes (stone outlasts flesh)
-      e.tAtk = 0.6 + rng() * 0.6;
-      e.tTarget = null;
-      e.tRe = 0;
+    let gi = 0;
+    const gate = () => gates[gi++ % gates.length];
+    for (let i = 0; i < n; i++) this.spawnTideFoe(T.roster[Math.floor(rng() * T.roster.length)], gate(), rng);
+    // (0.84) the night's stranger children
+    const sp = tideSpecials(L, t.wave, W);
+    let specials = 0;
+    for (const type of Object.keys(sp)) {
+      for (let j = 0; j < sp[type]; j++) {
+        const g = gate();
+        const pack = FOES[type].pack || 1;
+        for (let m = 0; m < pack; m++) this.spawnTideFoe(type, { x: g.x + (m % 3 - 1) * 1.2, z: g.z + Math.floor(m / 3) * 1.2 }, rng);
+        specials += pack;
+      }
     }
-    this.emit('tideWave', { wave: t.wave, of: T.waves, n });
+    if (sp.tidecaller) this.emit('tideBoss', { name: FOES.tidecaller.name });
+    this.emit('tideWave', { wave: t.wave, of: W, n: n + specials, specials: Object.keys(sp) });
+  }
+
+  /** (0.84) One of the Tide's enemies, at a gate, with the night's numbers. */
+  spawnTideFoe(type, g, rng) {
+    const t = this.tide, F = FOES[type];
+    const e = this.spawnEnemy(type, { x: g.x, z: g.z, level: KEEP.tide.level });
+    e.home = null;
+    e.aggro = true;
+    e.tide = true;
+    e.noLoot = true; // (the night pays in Faith and Wishstone when it is held, not in loot: no farming the dark)
+    e.maxHp = e.hp = Math.round(F.hp * t.night * (t.omen === 'ironhide' ? 1.25 : 1));
+    e.tdmg = F.dmg * t.night;
+    e.tbdmg = F.dmg * NIGHT.siege(t.level || 1); // (0.82) what a building takes (stone outlasts flesh)
+    e.tAtk = 0.6 + rng() * 0.6;
+    e.tTarget = null;
+    e.tRe = 0;
+    if (F.role === 'boss') [e.slamT, e.callT] = [3, F.call.cd * 0.5];
+    if (F.role === 'mourn') e.raiseT = F.raise.cd * 0.6;
+    return e;
+  }
+
+  /** (0.84) The night's omen at work, and the Veilbearers' shroud and the Mourners' dead kept up to date. */
+  stepTideOmen(dt) {
+    const t = this.tide;
+    if (this.enemies.some((e) => e.gone)) this.enemies = this.enemies.filter((e) => !e.gone); // (thieves into the dark)
+    const foes = this.enemies.filter((e) => e.tide && !e.dead);
+    const veils = foes.filter((e) => FOES[e.type] && FOES[e.type].veil && e.state !== 'spawn');
+    for (const e of foes) e.veiled = veils.some((v) => v !== e && dist(v.x, v.z, e.x, e.z) <= FOES.veilbearer.veil.r);
+    t.corpses = t.corpses.filter((c) => this.time - c.at < 20);
+    // Starfall: where the fighting is
+    if (t.omen === 'starfall') {
+      for (const st of t.stars) st.t -= dt;
+      for (const st of t.stars.filter((x) => x.t <= 0)) {
+        for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, st.x, st.z) <= st.r) this.troopHurt(tr, st.dmg);
+        for (const e of foes) if (dist(e.x, e.z, st.x, st.z) <= st.r + e.radius) this.troopStrike(e, e.maxHp * 0.12, false);
+        this.emit('starFall', { x: st.x, z: st.z, r: st.r });
+      }
+      t.stars = t.stars.filter((x) => x.t > 0);
+      t.starT -= dt;
+      const live = this.troops.filter((tr) => !tr.dead);
+      if (t.starT <= 0 && live.length && foes.length) {
+        t.starT = 3.5;
+        const rng = this.streamRng('star', t.seed + this.ticks);
+        const tr = live[Math.floor(rng() * live.length)];
+        const a = rng() * Math.PI * 2, d = rng() * 3;
+        const st = { x: tr.x + dCos(a) * d, z: tr.z + dSin(a) * d, r: 2.6, t: 1.2, dmg: FOES.unnamed.dmg * t.night * 1.5 };
+        t.stars.push(st);
+        this.emit('starWarn', { x: st.x, z: st.z, r: st.r, t: st.t });
+      }
+    }
+  }
+
+  /** (0.84) One of the Tide's enemies falls: what it leaves behind. */
+  tideFoeDown(e) {
+    const t = this.tide, F = FOES[e.type];
+    if (!F) return;
+    if (F.role === 'thief' && e.loot) {
+      t.caught++;
+      this.emit('thiefCaught', { x: e.x, z: e.z });
+    }
+    if (F.burst) {
+      // a Cinderling bursts
+      for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, e.x, e.z) <= F.burst.r) this.troopHurt(tr, e.tdmg * F.burst.x);
+      if (t.inc > 0 && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.burst.r) this.incarnateHurt(e.tdmg * F.burst.x);
+      this.emit('cinderBurst', { x: e.x, z: e.z, r: F.burst.r });
+    }
+    if (F.role === 'boss') {
+      t.boss++;
+      this.emit('tideBossDown', { name: F.name, x: e.x, z: e.z });
+    }
+    if (!F.big && F.role !== 'mourn' && !e.raised) t.corpses.push({ type: e.type, x: e.x, z: e.z, at: this.time });
   }
 
   tideEnd(won) {
@@ -6254,13 +6330,24 @@ export class World {
     }
     this.keepBuildsUp();
     k.tides++;
-    const R = NIGHT.reward(L);
+    // (0.84) stars: held (always, here); no hall wrecked; no hero fell. The first time each is won on a Night pays Sigils.
+    const stars = 1 | (wrecked.length ? 0 : 2) | (t.fell ? 0 : 4);
+    const had = k.stars[L] || 0;
+    const fresh = stars & ~had;
+    k.stars[L] = had | stars;
+    const newStars = ((fresh & 1) ? 1 : 0) + ((fresh & 2) ? 1 : 0) + ((fresh & 4) ? 1 : 0);
+    const starCount = ((stars & 1) ? 1 : 0) + ((stars & 2) ? 1 : 0) + ((stars & 4) ? 1 : 0);
+    // (0.84) the omen pays; a thief who got away costs a tenth (half at most), one caught gives a twentieth back
+    const omenPay = t.omen ? OMENS[t.omen].pay : 0;
+    const thieves = 0.05 * t.caught - Math.min(0.5, 0.1 * Math.max(0, t.stolen - t.caught));
+    if (t.boss) k.bosses += t.boss;
+    const R = NIGHT.reward(L) * (1 + omenPay + thieves + 0.5 * (t.boss ? 1 : 0));
     const faith = Math.round((40 + 10 * k.tier) * this.keepMult() * R);
     const stone = Math.round((6 + 2 * k.tier) * R);
     k.faith += faith;
     k.stone += stone;
     // (0.82) Ascension Sigils and Hero gear, more and rarer the deeper the night
-    const sigils = NIGHT.sigils(L);
+    const sigils = NIGHT.sigils(L) + newStars * NIGHT.starSigils(L) + (t.boss ? 3 : 0);
     k.sigils += sigils;
     const first = L > k.nightMax;
     if (first) k.nightMax = L;
@@ -6268,8 +6355,15 @@ export class World {
     const got = [];
     let salvaged = 0;
     let auto = 0;
-    for (let i = 0; i < NIGHT.pieces(L); i++) {
-      const g = rollHeroGear(rng, L, 'g' + ++k.gearN);
+    const pieces = NIGHT.pieces(L) + (starCount === 3 ? 1 : 0) + (t.boss ? 1 : 0); // (0.84) a flawless night, a felled Tidecaller
+    for (let i = 0; i < pieces; i++) {
+      let g = rollHeroGear(rng, L, 'g' + ++k.gearN);
+      if (t.boss && i === pieces - 1) {
+        // the Tidecaller's own: Epic at least (Mythic from Night 10, Ancient from 20)
+        const floor = L >= 20 ? 5 : L >= 10 ? 4 : 3;
+        for (let j = 0; j < 200 && g.r < floor; j++) g = rollHeroGear(rng, Math.min(NIGHT.max, L + 4 + j), 'g' + k.gearN);
+        if (g.r < floor) g.r = floor;
+      }
       if (k.autoSalvageAt != null && g.r <= k.autoSalvageAt && !heroGearUpgrade(g, k)) {
         salvaged += HERO_GEAR.salvage(g); // (0.82.5) auto-salvage: broken down as it comes (never a hero's upgrade)
         auto++;
@@ -6284,7 +6378,7 @@ export class World {
     }
     k.stone += salvaged;
     this.keepEvent('tide');
-    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, auto, first });
+    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, auto, first, stars, newStars, omen: t.omen, stolen: t.stolen - t.caught, caught: t.caught, boss: t.boss });
   }
 
   /** Damage to a building (a ward stops it). */
@@ -6308,15 +6402,21 @@ export class World {
     // (0.83) slows wear off; a stunned foe stands; one Challenged fights its challenger
     if (e.slowT > 0) e.slowT -= dt;
     if (e.stunT > 0) {
-      e.stunT -= dt;
+      e.stunT -= dt * (F.big ? 2 : 1); // (0.84) the big ones shrug off half
       return;
     }
+    if (F.role === 'breaker' || F.role === 'thief' || F.role === 'boss') e.tTauntT = 0; // (0.84) not to be Challenged
+    // (0.84) each of the stranger children has its own way
+    if (F.role === 'boss' && this.tideBossTurn(e, F, dt)) return;
+    if (F.role === 'mourn') this.mournerTurn(e, F, dt);
+    if (F.role === 'thief') return this.thiefTurn(e, F, dt);
+    if (F.role === 'breaker' && (!e.tTarget || !(e.tTarget.max != null && e.tTarget.r != null) || e.tTarget.hp <= 0)) e.tTarget = this.nearestBuild(e);
     if (e.tTauntT > 0) {
       e.tTauntT -= dt;
       if (e.tTauntBy && !e.tTauntBy.dead) e.tTarget = e.tTauntBy;
     }
     e.tRe -= dt;
-    if (!(e.tTauntT > 0) && (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead)) {
+    if (F.role !== 'breaker' && !(e.tTauntT > 0) && (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead)) {
       e.tRe = 0.5;
       let best = null, bd = T.engage;
       for (const tr of this.troops) {
@@ -6347,8 +6447,9 @@ export class World {
     const dx = tg.x - e.x, dz = tg.z - e.z;
     const d = dHypot(dx, dz) || 0.001;
     e.facing = turnToward(e.facing, dAtan2(dz, dx), 8 * dt);
+    const fast = (this.tide.omen === 'bloodmoon' ? 1.25 : 1) * (e.enraged ? 1.3 : 1); // (0.84)
     if (d > reach) {
-      const sp = F.speed * (e.slowT > 0 ? 1 - e.slow : 1);
+      const sp = F.speed * fast * (e.slowT > 0 ? 1 - e.slow : 1);
       e.px = e.x;
       e.pz = e.z;
       this.navStep(e, tg.x, tg.z, sp, dt, e.radius); // (0.82.1) round what is in the way
@@ -6357,15 +6458,124 @@ export class World {
     }
     e.tAtk -= dt;
     if (e.tAtk > 0) return;
-    e.tAtk = F.cd;
+    e.tAtk = F.cd / fast;
     e.state = 'chase';
     this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
     if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1), e); // (0.82) buildings feel deep nights less than heroes do
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 1 - Math.min(0.6, 0.3 * (this.tide.blessPow || 1)) : 1;
+      const hp0 = tg.hp;
       this.troopHurt(tg, e.tdmg * stone);
+      if (this.tide.omen === 'hunger' && tg.hp < hp0) e.hp = Math.min(e.maxHp, e.hp + (hp0 - tg.hp) / 3); // (0.84) Hunger
     }
+  }
+
+  /** (0.84) The nearest standing building. */
+  nearestBuild(e) {
+    let best = null, bd = 1e9;
+    for (const b of this.keepBuilds || []) {
+      if (b.hp <= 0) continue;
+      const d = dist(b.x, b.z, e.x, e.z) - b.r;
+      if (d < bd) [best, bd] = [b, d];
+    }
+    return best;
+  }
+
+  /** (0.84) An Ember Thief: to a building, take its Faith, and run for the dark. */
+  thiefTurn(e, F, dt) {
+    const t = this.tide;
+    if (!e.loot && (!e.tTarget || e.tTarget.hp <= 0)) e.tTarget = this.nearestBuild(e);
+    if (e.loot && !e.tTarget) {
+      let g = null, gd = 1e9;
+      for (const o of this.map.gates || [{ x: this.radius - 4, z: 0 }]) {
+        const d = dist(o.x, o.z, e.x, e.z);
+        if (d < gd) [g, gd] = [o, d];
+      }
+      e.tTarget = { x: g.x, z: g.z, gate: true };
+    }
+    const tg = e.tTarget;
+    if (!tg) return;
+    const reach = tg.gate ? 1.2 : F.range + e.radius + tg.r;
+    const d = dist(tg.x, tg.z, e.x, e.z);
+    e.facing = turnToward(e.facing, dAtan2(tg.z - e.z, tg.x - e.x), 8 * dt);
+    if (d > reach) {
+      e.px = e.x;
+      e.pz = e.z;
+      const sp = F.speed * (e.loot ? 1.1 : 1) * (this.tide.omen === 'bloodmoon' ? 1.25 : 1) * (e.slowT > 0 ? 1 - e.slow : 1);
+      this.navStep(e, tg.x, tg.z, sp, dt, e.radius);
+      e.moving = true;
+      return;
+    }
+    if (!e.loot) {
+      e.loot = true;
+      e.tTarget = null;
+      t.stolen++;
+      this.emit('thiefStole', { x: e.x, z: e.z, from: tg.id === 'hearth' ? 'the Hearth' : (HALLS[tg.id] && HALLS[tg.id].name) || 'a building' });
+      return;
+    }
+    // into the dark, with it
+    e.dead = true;
+    e.gone = true;
+    e.hp = 0;
+    this.emit('thiefEscaped', { x: e.x, z: e.z });
+  }
+
+  /** (0.84) A Mourner raises one who fell near her, now and then. */
+  mournerTurn(e, F, dt) {
+    const t = this.tide;
+    e.raiseT -= dt;
+    if (e.raiseT > 0) return;
+    const c = t.corpses.find((o) => dist(o.x, o.z, e.x, e.z) <= F.raise.r);
+    if (!c) {
+      e.raiseT = 1;
+      return;
+    }
+    e.raiseT = F.raise.cd;
+    t.corpses.splice(t.corpses.indexOf(c), 1);
+    const o = this.spawnTideFoe(c.type, c, this.streamRng('mourn', t.seed + this.ticks));
+    o.hp = Math.round(o.maxHp * F.raise.hp);
+    o.raised = true;
+    o.state = 'chase';
+    this.emit('mournerRaise', { id: e.id, x: e.x, z: e.z, tx: c.x, tz: c.z });
+  }
+
+  /** (0.84) The Tidecaller: slams, calls the Hush, rages when hurt. True while it is busy (the slam's wind-up). */
+  tideBossTurn(e, F, dt) {
+    if (!e.enraged && e.hp < e.maxHp * 0.5) {
+      e.enraged = true;
+      this.emit('tideBossRage', { x: e.x, z: e.z });
+    }
+    const pace = e.enraged ? 1.3 : 1;
+    e.callT -= dt * pace;
+    if (e.callT <= 0) {
+      e.callT = F.call.cd;
+      const rng = this.streamRng('call', this.tide.seed + this.ticks);
+      for (let i = 0; i < F.call.n; i++) {
+        const a = (i / F.call.n) * Math.PI * 2;
+        const o = this.spawnTideFoe('hush', { x: e.x + dCos(a) * 2.5, z: e.z + dSin(a) * 2.5 }, rng);
+        o.state = 'chase';
+        o.raised = true;
+      }
+      this.emit('tideCall', { x: e.x, z: e.z, n: F.call.n });
+    }
+    if (e.slamWind > 0) {
+      e.slamWind -= dt;
+      if (e.slamWind <= 0) {
+        for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, e.x, e.z) <= F.slam.r) this.troopHurt(tr, e.tdmg * F.slam.x);
+        if (this.tide.inc > 0 && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.slam.r) this.incarnateHurt(e.tdmg * F.slam.x);
+        this.emit('tideSlam', { x: e.x, z: e.z, r: F.slam.r });
+      }
+      return true;
+    }
+    e.slamT -= dt * pace;
+    if (e.slamT <= 0 && this.troops.some((tr) => !tr.dead && dist(tr.x, tr.z, e.x, e.z) <= F.slam.r)) {
+      e.slamT = F.slam.cd;
+      e.slamWind = F.slam.wind;
+      this.emit('tideSlamWarn', { id: e.id, x: e.x, z: e.z, r: F.slam.r, t: F.slam.wind });
+      return true;
+    }
+    return false;
   }
 
   /** (0.83) One of the keep's heroes is struck: a rogue may slip it, guard and a Barrier soak it. */
@@ -6390,6 +6600,7 @@ export class World {
     if (tg.hp <= 0) {
       tg.hp = 0;
       tg.dead = true;
+      if (this.tide) this.tide.fell++; // (0.84) a star lost
       this.emit('troopFall', { id: tg.id, name: tg.name, x: tg.x, z: tg.z });
     }
   }
@@ -6419,6 +6630,7 @@ export class World {
       }
       const F = FOES[e.type];
       if (F && F.siege) th += 3 * F.siege;
+      if (F && F.role) th += { thief: e.loot ? 16 : 8, veil: 9, mourn: 9, boss: 5, breaker: 4 }[F.role] || 0; // (0.84) the ones that matter most
       threat.set(e, th);
     }
     const claims = new Map();
@@ -6507,6 +6719,7 @@ export class World {
   /** One of the keep's heroes hits an enemy of the Tide (its own numbers). */
   troopStrike(e, dmg, crit) {
     if (e.dead) return;
+    if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84) shrouded by a Veilbearer
     dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -9017,6 +9230,7 @@ export class World {
     // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate (0.82.6: at full
     // strength). (0.82.4) A visiting friend's blows never land: it is the keeper's night.
     if (e.tide && (!this.tide || !(this.tide.inc > 0) || !this.keepOwns())) return;
+    if (e.tide && e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84)
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -9111,6 +9325,7 @@ export class World {
       }
     }
     this.removeTelegraph(e);
+    if (e.tide && this.tide && this.tide.state === 'on') this.tideFoeDown(e); // (0.84)
     this.stats.kills++;
     if (this.mode === 'explore') {
       for (const camp of this.camps) {
@@ -9907,7 +10122,7 @@ inTown() {
       const t = this.tide; // (0.80)
       const h = (this.keepBuilds || []).find((b) => b.id === 'hearth');
       const up = (this.troops || []).filter((tr) => !tr.dead).length;
-      return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `Tide · wave ${t.wave} of ${KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
+      return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `Tide${t.level ? ` · Night ${t.level}` : ''}${t.omen ? ` · ${OMENS[t.omen].name}` : ''} · wave ${t.wave} of ${t.waves || KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
     }
     if (m.id === KEEP.map && this.player.keep) return { name: m.name, sub: `Tier ${KEEP.tiers[this.player.keep.tier].numeral} · ${this.player.keep.faith.toLocaleString('en-US')} Faith · ${this.player.keep.stone} Wishstone` };
     const dn = this.depthNow();

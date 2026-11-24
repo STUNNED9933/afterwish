@@ -57,6 +57,13 @@ export const CREATURES = {
   rootbound: { model: 'e_rootbound', height: 2.3 },
   echo: { model: 'e_echo', height: 1.9 },
   hush: { model: 'e_hush', height: 2.2 },
+  // the Tide's stranger children (0.84)
+  thief: { model: 't_thief', height: 1.35 },
+  cinderling: { model: 't_cinderling', height: 0.95, glow: [0.35, 0.14, 0.02] },
+  veilbearer: { model: 't_veilbearer', height: 2.6 },
+  gatebreaker: { model: 't_gatebreaker', height: 3.7, kinds: { attack: 'chop' } },
+  mourner: { model: 't_mourner', height: 2.3 },
+  tidecaller: { model: 't_tidecaller', height: 4.4, glow: [0.1, 0.1, 0.3] },
   // the Granted (0.64)
   answered: { model: 'e_answered', height: 2.4 },
   cantor: { model: 'e_cantor', height: 2.2 },
@@ -83,7 +90,7 @@ export const PEOPLE = {
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush', 'e_answered', 'e_cantor', 'e_thurifer', 'e_colossus', 'e_veiled', 'p_wishmote', 'b_ianitor', 'b_arbiter', 'b_desiderium', 'b_fiat']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush', 'e_answered', 'e_cantor', 'e_thurifer', 'e_colossus', 'e_veiled', 'p_wishmote', 'b_ianitor', 'b_arbiter', 'b_desiderium', 'b_fiat', 't_thief', 't_cinderling', 't_veilbearer', 't_gatebreaker', 't_tidecaller', 't_mourner']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));

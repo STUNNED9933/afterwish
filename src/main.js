@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, tideSpecials, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1453,11 +1453,15 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Three waves of the Unmade come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you fight beside them with your own skills. Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you fight beside them with your own skills. Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
     for (let L = 1; L <= top; L++) lvSel.innerHTML += `<option value="${L}"${L === lvl ? ' selected' : ''}>Night ${L}${L > (k.nightMax || 0) ? ' (new)' : ''}</option>`;
+    for (const o of lvSel.options) {
+      const os = (k.stars || {})[o.value] || 0;
+      if (os) o.textContent += ` ${'★'.repeat(((os & 1) ? 1 : 0) + ((os & 2) ? 1 : 0) + ((os & 4) ? 1 : 0))}`;
+    }
     lvSel.addEventListener('change', () => {
       keepNight = Number(lvSel.value);
       renderTalk();
@@ -1468,6 +1472,17 @@ function start(hot = {}) {
     info.innerHTML = `The Unmade ×${pw < 10 ? pw.toFixed(1) : Math.round(pw)} · ${KEEP.tide.perWave(k.tier) + NIGHT.extra(lvl)} a wave · held: ${Math.round((40 + 10 * k.tier) * world.keepMult() * R).toLocaleString()} Faith, ${Math.round((6 + 2 * k.tier) * R)} Wishstone, ${NIGHT.sigils(lvl)} Sigil${NIGHT.sigils(lvl) > 1 ? 's' : ''}, ${NIGHT.pieces(lvl)} piece${NIGHT.pieces(lvl) > 1 ? 's' : ''} of Hero gear`;
     pick.append(lvSel, info);
     night.appendChild(pick);
+    // (0.84) what this Night brings: its omen, its stranger children, and its stars
+    const om = nightOmen(lvl);
+    const W = NIGHT.waves(lvl);
+    const kinds = new Set();
+    for (let w = 1; w <= W; w++) for (const f of Object.keys(tideSpecials(lvl, w, W))) kinds.add(f);
+    const nst = (k.stars || {})[lvl] || 0;
+    const star = (bit, what) => `<span class="night-star${nst & bit ? ' got' : ''}">${nst & bit ? '★' : '☆'} ${what}</span>`;
+    const brief = document.createElement('div');
+    brief.className = 'night-brief';
+    brief.innerHTML = `${om ? `<p><b class="omen">Omen: ${OMENS[om].name}</b> (+${Math.round(OMENS[om].pay * 100)}% pay). ${OMENS[om].desc}</p>` : ''}${kinds.size ? `<p>${[...kinds].map((f) => `<b>${FOES[f].name}</b>: ${FOES[f].desc}`).join('<br>')}</p>` : ''}<p>${star(1, 'Hold the keep')} ${star(2, 'No hall wrecked')} ${star(4, 'No hero falls')}<br><small>Each star won for the first time pays ${NIGHT.starSigils(lvl)} Sigils; all three in one night, an extra piece of Hero gear.</small></p>`;
+    night.appendChild(brief);
     night.appendChild(keepBtn(on ? 'The Tide is coming' : world.wrecked('hearth') ? 'Mend the Hearth first' : `Call Night ${lvl} (${k.troops.length} hero${k.troops.length === 1 ? '' : 'es'})`, () => {
       applyNow({ type: 'keepTide', level: lvl });
       setMode('play');
@@ -5182,7 +5197,7 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         sfx.levelUp();
-        hud.banner('The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and fight beside them.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
+        hud.banner(ev.omen ? `The night is coming · ${OMENS[ev.omen].name}` : 'The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and fight beside them.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
         break;
       case 'keepAscended':
         sfx.levelUp();
@@ -5216,13 +5231,50 @@ function start(hot = {}) {
         renderer.keepFx(ev);
         break;
       case 'tideWave':
-        hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them, from four ways in.`);
+        hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them, from four ways in.${(ev.specials || []).filter((f) => f !== 'tidecaller').length ? ` Among them: ${ev.specials.filter((f) => f !== 'tidecaller').map((f) => FOES[f].name).join(', ')}.` : ''}`);
+        break;
+      // (0.84) the night's stranger children
+      case 'tideBoss':
+        sfx.denied();
+        hud.banner(ev.name, 'The night\'s king comes with the last wave. Keep your heroes out of its slam.');
+        break;
+      case 'tideBossRage':
+        hud.feedText('The Tidecaller rages: faster, and calling more often.');
+        renderer.keepFx(ev);
+        break;
+      case 'tideBossDown':
+        sfx.levelUp();
+        hud.banner('The Tidecaller falls', 'Its own Hero gear waits for you at morning.');
+        renderer.keepFx(ev);
+        break;
+      case 'thiefStole':
+        hud.feedText(`An Ember Thief took Faith from ${ev.from}: catch it before it reaches the dark!`);
+        renderer.keepFx(ev);
+        break;
+      case 'thiefEscaped':
+        sfx.denied();
+        hud.feedText('A thief got away with the Faith: this night pays less.');
+        renderer.keepFx(ev);
+        break;
+      case 'thiefCaught':
+        hud.feedText('Thief caught: the Faith comes back, and more.');
+        renderer.keepFx(ev);
+        break;
+      case 'mournerRaise':
+      case 'cinderBurst':
+      case 'tideCall':
+      case 'tideSlamWarn':
+      case 'tideSlam':
+      case 'starWarn':
+      case 'starFall':
+        renderer.keepFx(ev);
         break;
       case 'tideEnd':
         if (ev.won) {
           sfx.levelUp();
           const gear = (ev.gear || []).map((g) => `<span style="color:${RARITIES[g.r].color}">${RARITIES[g.r].name} ${esc(g.name)}</span>`).join(', ');
-          hud.banner(ev.first ? `Night ${ev.level} held` : 'Morning', `The keep held. +${ev.faith.toLocaleString()} Faith, +${ev.stone} Wishstone, +${ev.sigils} Sigil${ev.sigils > 1 ? 's' : ''}.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend at the Hearth).` : ''}${ev.first && ev.level < NIGHT.max ? ` Night ${ev.level + 1} is open.` : ''}`);
+          const stars = ev.stars ? ' ' + '★'.repeat(((ev.stars & 1) ? 1 : 0) + ((ev.stars & 2) ? 1 : 0) + ((ev.stars & 4) ? 1 : 0)) : '';
+          hud.banner((ev.first ? `Night ${ev.level} held` : 'Morning') + stars, `The keep held.${ev.newStars ? ` ${ev.newStars} new star${ev.newStars > 1 ? 's' : ''}!` : ''}${ev.boss ? ' The Tidecaller fell.' : ''}${ev.stolen ? ` ${ev.stolen} thie${ev.stolen > 1 ? 'ves' : 'f'} got away.` : ''} +${ev.faith.toLocaleString()} Faith, +${ev.stone} Wishstone, +${ev.sigils} Sigil${ev.sigils > 1 ? 's' : ''}.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend at the Hearth).` : ''}${ev.first && ev.level < NIGHT.max ? ` Night ${ev.level + 1} is open.` : ''}`);
           if (gear || ev.salvaged) gearToast(`${gear ? `Hero gear for the Armory: ${gear}` : 'No Hero gear kept'}${ev.salvaged ? ` (${ev.auto ? `${ev.auto} broken down as you chose` : 'the Armory was full'}: +${ev.salvaged} Wishstone)` : ''}`);
           if ((ev.gear || []).some((g) => g.r >= 6)) sfx.eternal();
         } else {

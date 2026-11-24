@@ -15,7 +15,7 @@
 // Everything solid is in `obstacles`. The simulation stops heroes and enemies
 // walking through them, and the renderer draws them, from this one list.
 import { NPCS, SIGNS } from './story.js';
-import { SETTLERS, SETTLER_SPOTS, GROWTH } from './wishkeep.js';
+import { SETTLERS, SETTLER_SPOTS, GROWTH, WORKS, WORK_IDS } from './wishkeep.js';
 import { makeRng } from './rng.js';
 import { dAtan2, dCos, dHypot, dSin } from './dmath.js';
 
@@ -382,14 +382,18 @@ export function buildKeepMap(stage = 0) {
  */
 function layKeep(R, obstacles, keepClear, stage = 0) {
   keepClear.push({ x: 0, z: 0, r: 11 }, { x: 0, z: 9, r: 3 });
-  // (0.82.1) the works, out past the halls: the Mine (a mouth in the rock) and the Fields (rows of grain)
-  for (const [id, a] of [['mine', 1.18], ['fields', -1.18]]) {
-    const x = dCos(a) * 23, z = dSin(a) * 23;
-    obstacles.push({ kind: 'works', shape: 'circle', id, name: id === 'mine' ? 'The Mine' : 'The Fields', x, z, r: 1, soft: true, pickR: 2.2, reach: 2.6 });
-    keepClear.push({ x, z, r: id === 'mine' ? 5 : 6 });
+  // (0.82.1) the works, out past the halls: mines (a mouth in the rock) and fields (rows of grain);
+  // (0.88) more of them as the keep grows
+  const shut = [0, 1.571, 2.75, 4.712, Math.PI]; // gates, the road home
+  for (const id of WORK_IDS) {
+    const W = WORKS[id];
+    if (W.stage > stage) continue;
+    const x = dCos(W.a) * W.r, z = dSin(W.a) * W.r;
+    obstacles.push({ kind: 'works', shape: 'circle', id, work: W.kind, name: W.name, x, z, r: 1, soft: true, pickR: 2.2, reach: 2.6 });
+    keepClear.push({ x, z, r: W.kind === 'mine' ? 5 : 6 });
+    shut.push(W.a);
   }
   // (0.82.1) cottages, more as the keep grows, round the edge (never on a gate, the road home or the works)
-  const shut = [0, 1.571, 2.75, 4.712, Math.PI, 1.18, -1.18 + Math.PI * 2]; // gates, the road home, the works
   let placed = 0;
   for (let i = 0; i < 40 && placed < 2 * stage; i++) {
     const a = ((i * 0.618034) % 1) * Math.PI * 2;

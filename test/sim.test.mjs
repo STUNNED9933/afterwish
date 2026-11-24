@@ -6045,4 +6045,19 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const open = bh1 - hall.hp;
   check('...Hallowed Ground: blows on a building there do far less', zone && sheltered > 0 && open > 0 && sheltered < open * 0.4, `${sheltered} vs ${open}`);
 }
+// --- 0.88: more mines and fields as the keep grows ------------------------------------------------------------
+{
+  const K = await import('../src/sim/wishkeep.js');
+  const M = await import('../src/sim/maps.js');
+  const ids = K.WORK_IDS;
+  check('Works (0.88): each growth stage opens another site, fields and mines in turn', ids.length === 7 && [0, 1, 2, 3, 4, 5].every((st) => ids.some((w) => K.WORKS[w].stage === st)) && ids.filter((w) => K.WORKS[w].kind === 'mine').length >= 3 && ids.filter((w) => K.WORKS[w].kind === 'fields').length >= 3);
+  const m5 = M.buildKeepMap(5), m0 = M.buildKeepMap(0);
+  const sites5 = m5.obstacles.filter((o) => o.kind === 'works'), sites0 = m0.obstacles.filter((o) => o.kind === 'works');
+  const crowded = sites5.filter((st) => m5.obstacles.some((o) => o.kind === 'house' && Math.hypot(o.x - st.x, o.z - st.z) < 6));
+  check('...on the map only once the keep has grown to it, and never under a house or hall', sites0.length === 2 && sites5.length === 7 && !crowded.length, crowded.map((c) => c.id).join(','));
+  const keep = K.cleanKeep({ tier: 3, works: { mine: 3, mine2: 2, fields: 4, fields3: 1 } });
+  const r = K.keepRates(keep), one = K.keepRates(K.cleanKeep({ tier: 3, works: { mine: 3, fields: 4 } }));
+  check('...each built site pays on its own, and they are kept through a save', r.stone > one.stone && r.faith > one.faith && keep.works.mine2 === 2 && keep.works.fields3 === 1);
+  check('...the later sites cost more to build', K.WORKS.fields4.cost(1).faith > K.WORKS.fields2.cost(1).faith && K.WORKS.fields2.cost(1).faith > K.WORKS.fields.cost(1).faith);
+}
 process.exit(failed ? 1 : 0);

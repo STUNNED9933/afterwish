@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A growing village (0.88)
+
+- **More works as the keep grows**: each growth stage opens another site out past the halls, each built and raised on its own: The East Fields (A Few Roofs), The Deep Seam (A Hamlet), The Orchard (A Village), The Star Quarry (A Market Town), The Pilgrim Farms (The Wishkeep Entire). Later sites cost more. The keep's growth card lists them all, and each works panel says what opens next.
+- **The keep's villagers have models of their own** (six, made with Tripo): a farmer, a farm woman, an old man, an old woman, a miner and a child. Each is drawn a little taller or shorter, with their clothes tinted a little differently, so a crowd doesn't look cloned.
+
 ### The god's miracles, remade (0.87)
 
 The miracles now lead your heroes rather than fight for them. Hover a card for what it does.

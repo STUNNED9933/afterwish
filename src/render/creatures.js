@@ -78,6 +78,13 @@ export const CREATURES = {
 };
 /** Haven's people. */
 export const PEOPLE = {
+  // (0.88) the Wishkeep's villagers (each one drawn a little differently: height, and a tint to their clothes)
+  v_farmer_m: { model: 'v_farmer_m', height: 1.82 },
+  v_farmer_f: { model: 'v_farmer_f', height: 1.7 },
+  v_elder_m: { model: 'v_elder_m', height: 1.72 },
+  v_elder_f: { model: 'v_elder_f', height: 1.62 },
+  v_miner_m: { model: 'v_miner_m', height: 1.8 },
+  v_child: { model: 'v_child', height: 1.25, quick: true },
   wren: { model: 'n_wren', height: 1.7 },
   bram: { model: 'n_bram', height: 1.95 },
   odile: { model: 'n_odile', height: 1.75 },
@@ -90,8 +97,10 @@ export const PEOPLE = {
 
 // The models that ship (assets/models/<id>.glb). A type whose model is not here yet keeps its
 // hand-built body, without asking the server for a file that is not there.
-export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush', 'e_answered', 'e_cantor', 'e_thurifer', 'e_colossus', 'e_veiled', 'p_wishmote', 'b_ianitor', 'b_arbiter', 'b_desiderium', 'b_fiat', 't_thief', 't_cinderling', 't_veilbearer', 't_gatebreaker', 't_tidecaller', 't_mourner']);
+export const SHIPPED = new Set(['b_warden', 'b_mycelord', 'b_unmade', 'b_herald', 'b_asker', 'n_wren', 'n_bram', 'n_odile', 'n_pip', 'e_husk', 'e_knight', 'e_wraith', 'e_golem', 'e_imp', 'e_shaman', 'e_sporecap', 'e_crusher', 'e_spitter', 'e_courtguard', 'e_glassbound', 'e_wolf', 'e_stalker', 'e_scarab', 'e_wishthief', 'e_oathshade', 'e_heraldguard', 'e_edric', 'p_wishling', 'p_wishstar', 'n_lark', 'n_tomas', 'n_merchant', 'b_cinder', 'b_undertow', 'b_rootmother', 'b_choir', 'b_stillness', 'e_ashwalker', 'e_unnamed', 'e_rootbound', 'e_echo', 'e_hush', 'e_answered', 'e_cantor', 'e_thurifer', 'e_colossus', 'e_veiled', 'p_wishmote', 'b_ianitor', 'b_arbiter', 'b_desiderium', 'b_fiat', 't_thief', 't_cinderling', 't_veilbearer', 't_gatebreaker', 't_tidecaller', 't_mourner', 'v_farmer_m', 'v_farmer_f', 'v_elder_m', 'v_elder_f', 'v_miner_m', 'v_child']);
 for (const t of [CREATURES, PEOPLE]) for (const k in t) if (!SHIPPED.has(t[k].model)) delete t[k];
+/** (0.88) The villagers' models (the keep's walkers). */
+export const VILLAGER_PEOPLE = Object.keys(PEOPLE).filter((k) => k.startsWith('v_'));
 // Every model is a RIGGED entry (rigged.js loads and caches it); clips are matched by name below.
 const ALL_MODELS = new Set([...Object.values(CREATURES), ...Object.values(PEOPLE)].map((c) => c.model));
 for (const id of ALL_MODELS) {
@@ -181,6 +190,7 @@ export function makeCreature(tpl, spec) {
     o.material = addRim(o.material.clone(), spec.tint || 0x9fb8ff, spec.tint ? 0.6 : 0.3);
     if (spec.tint) o.material.color.lerp(new THREE.Color(spec.tint), 0.45);
     if (spec.dark) o.material.color.multiplyScalar(spec.dark); // (0.54) darkened in the Deep
+    if (spec.vary) o.material.color.lerp(new THREE.Color(spec.vary), spec.varyK || 0.15); // (0.88) a villager's own colours
     if (spec.glow) o.material.userData.glow = spec.glow; // a light of its own (the Asker)
     o.material.userData.cue = 0.4; // flashes and warnings, softer on a painted body than on a flat one
     mats.push(o.material);

@@ -216,9 +216,24 @@ export const nightOmen = (L) => (L >= 6 ? OMEN_IDS[(L * 7 + 3) % OMEN_IDS.length
  * worked by its heroes (more by rarer ones) and settlers between nights. They pay while you are there and
  * while you are away (banked up to KEEP.produce.capHours).
  */
+const WORK_KINDS = {
+  mine: { what: 'Wishstone', max: 5, cost: (lvl) => ({ faith: 120 * lvl * lvl, stone: 6 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (1.5 + 0.35 * hands) },
+  fields: { what: 'Faith', max: 5, cost: (lvl) => ({ faith: 100 * lvl * lvl, stone: 5 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (8 + 2 * hands) },
+};
+/**
+ * (0.88) The works grow with the keep: each growth stage opens another site out past the halls, a field or
+ * a mine in turn. Each is built and raised on its own; the later ones cost more (`mult`). `a`, `r`: where
+ * it lies (an angle from the Hearth, and how far).
+ */
+const site = (kind, name, stage, a, r, mult, desc) => ({ kind, name, stage, a, r, mult, desc, what: WORK_KINDS[kind].what, max: WORK_KINDS[kind].max, cost: (lvl) => { const c = WORK_KINDS[kind].cost(lvl); return { faith: Math.round(c.faith * mult), stone: Math.round(c.stone * mult) }; }, rate: WORK_KINDS[kind].rate });
 export const WORKS = {
-  mine: { name: 'The Mine', what: 'Wishstone', max: 5, cost: (lvl) => ({ faith: 120 * lvl * lvl, stone: 6 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (1.5 + 0.35 * hands), desc: 'Star-glass in the rock under the keep. Wishstone, every hour.' },
-  fields: { name: 'The Fields', what: 'Faith', max: 5, cost: (lvl) => ({ faith: 100 * lvl * lvl, stone: 5 * lvl * (lvl - 1) }), rate: (lvl, hands) => lvl * (8 + 2 * hands), desc: "Bread for the keep's table, and what is left is offered at the Hearth. Faith, every hour." },
+  mine: site('mine', 'The Mine', 0, 1.18, 23, 1, 'Star-glass in the rock under the keep. Wishstone, every hour.'),
+  fields: site('fields', 'The Fields', 0, -1.18, 23, 1, "Bread for the keep's table, and what is left is offered at the Hearth. Faith, every hour."),
+  fields2: site('fields', 'The East Fields', 1, -0.42, 25, 1.8, 'More rows of grain for a keep with more mouths. Faith, every hour.'),
+  mine2: site('mine', 'The Deep Seam', 2, 1.95, 25, 1.8, 'A second shaft, down to where the star-glass runs thick. Wishstone, every hour.'),
+  fields3: site('fields', 'The Orchard', 3, -1.95, 25, 3, 'Apple trees and beehives: the village offers its sweetness at the Hearth. Faith, every hour.'),
+  mine3: site('mine', 'The Star Quarry', 4, 0.42, 25, 3, 'An open pit where a fallen star broke the hill. Wishstone, every hour.'),
+  fields4: site('fields', 'The Pilgrim Farms', 5, -2.75, 26, 4.5, 'Farms worked by pilgrims who came to see the Wishkeep. Faith, every hour.'),
 };
 export const WORK_IDS = Object.keys(WORKS);
 /** Hands at the works: each hero (1, and a quarter more for each step of rarity) and each settler (a half). */
@@ -228,15 +243,20 @@ export function workHands(keep) {
   for (const t of keep.troops || []) h += 1 + 0.25 * (t.rar || 0);
   return h + 0.5 * Object.keys(keep.settlers || {}).length;
 }
-/** What the keep makes an hour: Faith (the base, the Market, the Fields) and Wishstone (the Mine). */
+/** What the keep makes an hour: Faith (the base, the Market, the fields) and Wishstone (the mines). */
 export function keepRates(keep, marketWorks = false) {
   if (!keep) return { faith: 0, stone: 0 };
   const P = KEEP.produce, hands = workHands(keep), w = keep.works || {};
   const market = marketWorks ? P.perMarket * (keep.halls.rogue || 0) * (1 + 0.25 * ((keep.btier && keep.btier.rogue) || 0)) : 0;
-  return {
-    faith: P.base + market + (w.fields ? WORKS.fields.rate(w.fields, hands) : 0),
-    stone: w.mine ? WORKS.mine.rate(w.mine, hands) : 0,
-  };
+  // (0.88) every site the keep has built, each worked by all its hands
+  let fields = 0, stone = 0;
+  for (const id of WORK_IDS) {
+    if (!w[id]) continue;
+    const r = WORKS[id].rate(w[id], hands);
+    if (WORKS[id].kind === 'fields') fields += r;
+    else stone += r;
+  }
+  return { faith: P.base + market + fields, stone };
 }
 
 /**

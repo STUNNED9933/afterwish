@@ -6,7 +6,7 @@ import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildVillager, VILLAGER_KINDS } from './keepmodels.js'; // (0.81.1)
 import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, buildAltar } from './models.js';
-import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
+import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor, VILLAGER_PEOPLE } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
 import { ENEMIES } from '../sim/defs.js';
 import { AFFIXES, CAELUM, animusShort } from '../sim/endgame.js';
@@ -351,7 +351,23 @@ export class Renderer {
         const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 6;
         g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
         this.scene.add(g);
-        this.walkers.push({ g, m, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier + 2 * stage });
+        const w = { g, m, tx: g.position.x, tz: g.position.z, wait: Math.random() * 2, reach: 9 + 2 * tier + 2 * stage, rig: null };
+        this.walkers.push(w);
+        // (0.88) a villager of their own (Tripo): one of the six, a little taller or shorter, their clothes a
+        // little bluer or redder; the hand-built one only until it has loaded
+        if (VILLAGER_PEOPLE.length) {
+          const base = PEOPLE[VILLAGER_PEOPLE[i % VILLAGER_PEOPLE.length]];
+          const tints = [0xc86a4a, 0x4a7ac8, 0x6aa84a, 0xc8a84a, 0x8a5ab8, 0x4ab8a8, 0xd8d0c0, 0x6a4a3a];
+          const spec = { ...base, height: base.height * (0.92 + Math.random() * 0.14), vary: tints[(i * 5 + 3) % tints.length], varyK: 0.08 + Math.random() * 0.14 };
+          w.speed = base.quick ? 1.35 : 0.85 + Math.random() * 0.3;
+          hideWhileLoading([...g.children], loadCreature(spec), () => !!g.parent && !w.rig);
+          loadCreature(spec).then((tpl) => {
+            if (!tpl || !g.parent) return;
+            for (const ch of g.children) ch.visible = false;
+            w.rig = makeCreature(tpl, spec);
+            g.add(w.rig.group);
+          });
+        }
       }
     }
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
@@ -597,7 +613,7 @@ export class Renderer {
         d.position.set(o.x, 0, o.z);
         d.rotation.y = Math.atan2(-o.x, -o.z); // facing the Hearth
         const lit = [];
-        if (o.id === 'mine') {
+        if ((o.work || o.id) === 'mine') {
           const rock = new THREE.MeshStandardMaterial({ color: 0x6a6270, roughness: 0.95, flatShading: true });
           const mound = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2, 0), rock);
           mound.scale.set(1.3, 0.75, 1);
@@ -630,13 +646,41 @@ export class Renderer {
           soil.position.set(0, 0.06, -1.5);
           soil.receiveShadow = true;
           d.add(soil);
-          const grain = new THREE.MeshStandardMaterial({ color: 0xd8b05a, roughness: 0.8 });
-          for (let r = 0; r < 5; r++) {
-            const row = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 0.45), grain);
-            row.position.set(0, 0.45, -3.4 + r * 0.95);
-            row.castShadow = true;
-            d.add(row);
-            lit.push(row);
+          const grain = new THREE.MeshStandardMaterial({ color: { fields2: 0xb8c05a, fields4: 0xe0c070 }[o.id] || 0xd8b05a, roughness: 0.8 });
+          if (o.id === 'fields3') {
+            // (0.88) the Orchard: apple trees in rows, and beehives
+            const bark = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.9 });
+            const leaf = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.8, flatShading: true });
+            const apple = new THREE.MeshStandardMaterial({ color: 0xd84a3a, roughness: 0.5 });
+            for (let i = 0; i < 6; i++) {
+              const tx = -2.4 + (i % 3) * 2.4, tz = -3 + Math.floor(i / 3) * 2.4;
+              const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 1.2, 6), bark);
+              trunk.position.set(tx, 0.6, tz);
+              const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), leaf);
+              crown.position.set(tx, 1.7, tz);
+              crown.castShadow = true;
+              d.add(trunk, crown);
+              lit.push(crown);
+              for (let j = 0; j < 3; j++) {
+                const ap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), apple);
+                ap.position.set(Math.cos(j * 2.1 + i) * 0.8, -0.2 + (j % 2) * 0.4, Math.sin(j * 2.1 + i) * 0.8); // (on its tree: they come with it)
+                crown.add(ap);
+              }
+            }
+            const hiveMat = new THREE.MeshStandardMaterial({ color: 0xd8a84a, roughness: 0.8 });
+            for (let i = 0; i < 2; i++) {
+              const hive = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.7, 8), hiveMat);
+              hive.position.set(-1 + i * 2, 0.35, 0.9);
+              d.add(hive);
+            }
+          } else {
+            for (let r = 0; r < 5; r++) {
+              const row = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 0.45), grain);
+              row.position.set(0, 0.45, -3.4 + r * 0.95);
+              row.castShadow = true;
+              d.add(row);
+              lit.push(row);
+            }
           }
           const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 5), new THREE.MeshStandardMaterial({ color: 0x6b4a2e }));
           pole.position.set(2.9, 1.1, 0.9);
@@ -3570,7 +3614,8 @@ export class Renderer {
       const d = Math.hypot(dx, dz);
       if (w.wait > 0) {
         w.wait -= dt;
-        w.m.anim(dt, { moving: false, swing: 1 });
+        if (w.rig) w.rig.update(dt, { moving: false });
+        else w.m.anim(dt, { moving: false, swing: 1 });
         continue;
       }
       if (d < 0.2) {
@@ -3580,8 +3625,9 @@ export class Renderer {
         w.wait = Math.random() < 0.5 ? 1 + Math.random() * 3 : 0;
         continue;
       }
-      const step = Math.min(d, 1.4 * (w.m.speed || 1) * dt);
-      w.m.anim(dt, { moving: true, swing: 1 });
+      const step = Math.min(d, 1.4 * (w.speed || w.m.speed || 1) * dt);
+      if (w.rig) w.rig.update(dt, { moving: true, speed: 1.4 * (w.speed || 1) });
+      else w.m.anim(dt, { moving: true, swing: 1 });
       w.g.position.x += (dx / d) * step;
       w.g.position.z += (dz / d) * step;
       for (const o of world.obstacles || []) {

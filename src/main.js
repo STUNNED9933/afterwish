@@ -1388,7 +1388,7 @@ function start(hot = {}) {
   /** (0.82.1) The Mine or the Fields: what it makes, who works it, and raising it. */
   function renderKeepWorks(id) {
     const k = world.player.keep, W = WORKS[id];
-    $('talk-role').textContent = id === 'mine' ? 'Under the keep' : 'Beyond the halls';
+    $('talk-role').textContent = W.kind === 'mine' ? 'Under the keep' : 'Beyond the halls';
     $('talk-name').textContent = W.name;
     $('talk-keys').classList.add('hidden');
     const list = $('talk-quests');
@@ -1405,7 +1405,7 @@ function start(hot = {}) {
     }
     list.appendChild(card);
     const r = keepRates(k, world.hallWorks('rogue'));
-    list.appendChild(keepCard('All the keep makes', 'an hour', `<p>${Math.round(r.faith * 10) / 10} Faith (the Hearth's faithful ${KEEP.produce.base}, the Market, the Fields) and ${Math.round(r.stone * 10) / 10} Wishstone (the Mine). The road pays a tithe too: a little Faith for every kill, and Faith and Wishstone for every boss.</p>`));
+    list.appendChild(keepCard('All the keep makes', 'an hour', `<p>${Math.round(r.faith * 10) / 10} Faith (the Hearth's faithful ${KEEP.produce.base}, the Market, the fields) and ${Math.round(r.stone * 10) / 10} Wishstone (the mines). ${(() => { const st = keepStage(k); const next = WORK_IDS.find((w) => WORKS[w].stage > st); return next ? `As the keep grows to ${GROWTH.names[WORKS[next].stage]}, ${WORKS[next].name} opens.` : 'Every site the keep can hold is open.'; })()} The road pays a tithe too: a little Faith for every kill, and Faith and Wishstone for every boss.</p>`));
   }
   /** (0.82.1) A building's tier card: Common to Immortal once its hall is at its last level. */
   function tierCard(id, list) {
@@ -1537,7 +1537,7 @@ function start(hot = {}) {
     // (0.82.1) the Hearth's own tier, and how far the keep has grown
     tierCard('hearth', list);
     const st = keepStage(k), nextAt = GROWTH.at[st + 1];
-    list.appendChild(keepCard(`The keep: ${esc(GROWTH.names[st])}`, `stage ${st + 1} of ${GROWTH.at.length}`, `<p class="setting-desc">The keep grows with what you spend on it (Faith, and Wishstone counted ten times): a wider ground, more cottages, more people. ${nextAt ? `${(k.spent || 0).toLocaleString()} of ${nextAt.toLocaleString()} spent toward ${esc(GROWTH.names[st + 1])}.` : 'It has grown as far as it can.'} The works (the Mine and the Fields, out past the halls) make Faith and Wishstone for you.</p>`));
+    list.appendChild(keepCard(`The keep: ${esc(GROWTH.names[st])}`, `stage ${st + 1} of ${GROWTH.at.length}`, `<p class="setting-desc">The keep grows with what you spend on it (Faith, and Wishstone counted ten times): a wider ground, more cottages, more people. ${nextAt ? `${(k.spent || 0).toLocaleString()} of ${nextAt.toLocaleString()} spent toward ${esc(GROWTH.names[st + 1])}.` : 'It has grown as far as it can.'} The works out past the halls make Faith and Wishstone for you, and each stage opens another: ${WORK_IDS.map((w) => `<span${WORKS[w].stage > st ? ' style="opacity:0.55"' : ''}>${esc(WORKS[w].name)}${WORKS[w].stage > st ? ` (${esc(GROWTH.names[WORKS[w].stage])})` : (k.works[w] ? ` (level ${k.works[w]})` : ' (to build)')}</span>`).join(', ')}.</p>`));
     // the Altar: what the account has done
     const relic = (sl) => `<span class="relic${rec.relics.includes(sl) ? ' lit' : ''}" title="${rec.relics.includes(sl) ? `An Eternal ${SLOT_NAMES[sl].toLowerCase()}: ${RELIC_NAMES[sl]}` : `No Eternal ${SLOT_NAMES[sl].toLowerCase()} yet`}">${esc(RELIC_NAMES[sl].replace(/^the /, ''))}</span>`;
     const alt = keepCard('The Altar', 'what you have done, on every class', `<div class="relics">${SLOTS.map(relic).join('')}</div>
@@ -5411,7 +5411,7 @@ function start(hot = {}) {
         break;
       case 'keepMaxed':
         sfx.denied();
-        talkNote = ev.what === 'rank' ? `${ev.name} needs ${ev.hall} at level ${ev.rank}.` : `${ev.name} is as far as this hall can take them: raise the hall.`;
+        talkNote = ev.what === 'rank' ? `${ev.name} needs ${ev.hall} at level ${ev.rank}.` : ev.what === 'stage' ? `${ev.name} opens when the keep grows to ${GROWTH.names[ev.stage]}.` : ev.what === 'level' ? `${ev.name} is as high as it goes.` : `${ev.name} is as far as this hall can take them: raise the hall.`;
         if (mode === 'talk') renderTalk();
         break;
       case 'keepProduced':

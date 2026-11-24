@@ -5847,10 +5847,11 @@ export class World {
     const after = keepStage(k);
     if (after > before) this.emit('keepGrew', { stage: after, name: GROWTH.names[after] });
   }
-  /** (0.82.1) Build or raise one of the works (the Mine, the Fields). */
+  /** (0.82.1) Build or raise one of the works (a mine, a field). (0.88) Once the keep has grown enough for it. */
   keepWork(id) {
     const k = this.player.keep, W = WORKS[id];
     if (!this.inKeep() || !W) return;
+    if (W.stage > keepStage(k)) return this.emit('keepMaxed', { name: W.name, what: 'stage', stage: W.stage });
     const lvl = (k.works[id] || 0) + 1;
     if (lvl > W.max) return this.emit('keepMaxed', { name: W.name, what: 'level' });
     this.keepClock(this.keepNow || 0); // (bank what came in at the old rate first)

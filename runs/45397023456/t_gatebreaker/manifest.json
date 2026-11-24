@@ -1,0 +1,96 @@
+{
+  "id": "t_gatebreaker",
+  "prompt": "a Gatebreaker, a hulking giant of the Unmade made of cracked dark grey stone and old rusted iron bands, enormous shoulders, one arm ending in a huge iron-capped battering ram fist, a small sunken head with glowing violet eyes, broken chains hanging from its waist. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:53:50.705Z",
+  "creditsBefore": 1620,
+  "steps": {
+    "model": {
+      "task": "891b2bac-44fb-4ab7-89e2-37a6620bb636",
+      "result": {
+        "task_id": "891b2bac-44fb-4ab7-89e2-37a6620bb636",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_gatebreaker/1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_gatebreaker/1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/model.glb",
+        "preview": "out/models/t_gatebreaker/1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/preview.png"
+      }
+    },
+    "check": {
+      "task": "153766dd-0074-4d8f-8a4b-b0941fb2d9af",
+      "result": {
+        "task_id": "153766dd-0074-4d8f-8a4b-b0941fb2d9af",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_gatebreaker/2-check/tripo-out/rig-check-2-153766dd",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "a9771e0a-3a11-4465-bc78-c94b08d26e0b",
+      "rigType": "biped",
+      "result": {
+        "task_id": "a9771e0a-3a11-4465-bc78-c94b08d26e0b",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_gatebreaker/3-rig/tripo-out/rig-2-a9771e0a",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_gatebreaker/3-rig/tripo-out/rig-2-a9771e0a/model.glb",
+        "preview": "out/models/t_gatebreaker/3-rig/tripo-out/rig-2-a9771e0a/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "a25e5fd4-e01d-421a-81f3-a70f7a254840",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:chop",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "a25e5fd4-e01d-421a-81f3-a70f7a254840",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_gatebreaker/4-anim-1/tripo-out/retarget-2-a25e5fd4",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_gatebreaker/4-anim-1/tripo-out/retarget-2-a25e5fd4/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1250,
+  "creditsUsed": 370,
+  "finished": "2026-11-24T13:01:59.803Z",
+  "files": [
+    "1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/generated_image.jpeg",
+    "1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/model.glb",
+    "1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/preview.png",
+    "1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/rendered_image.webp",
+    "1-model/tripo-out/a-gatebreaker-a-hulking-giant-of-891b2bac/task.json",
+    "2-check/tripo-out/rig-check-2-153766dd/task.json",
+    "3-rig/tripo-out/rig-2-a9771e0a/model.glb",
+    "3-rig/tripo-out/rig-2-a9771e0a/preview.png",
+    "3-rig/tripo-out/rig-2-a9771e0a/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-a9771e0a/task.json",
+    "4-anim-1/tripo-out/retarget-2-a25e5fd4/model.glb",
+    "4-anim-1/tripo-out/retarget-2-a25e5fd4/task.json",
+    "manifest.json"
+  ]
+}

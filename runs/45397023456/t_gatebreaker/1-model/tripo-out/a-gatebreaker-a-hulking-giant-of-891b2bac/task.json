@@ -1,0 +1,32 @@
+{
+  "task_id": "891b2bac-44fb-4ab7-89e2-37a6620bb636",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a Gatebreaker, a hulking giant of the Unmade made of cracked dark grey stone and old rusted iron bands, enormous shoulders, one arm ending in a huge iron-capped battering ram fist, a small sunken head with glowing violet eyes, broken chains hanging from its waist. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 11000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-24T12:53:52.442901Z",
+  "completed_at": "2026-11-24T12:59:36.222632Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

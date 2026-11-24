@@ -1,0 +1,96 @@
+{
+  "id": "t_veilbearer",
+  "prompt": "a Veilbearer of the Unmade, a tall thin faceless figure in long layered black funeral robes, a pale porcelain mask with no features, holding a tall crooked staff from which hangs a long translucent black veil banner, faint violet mist at the hem. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:48:14.683Z",
+  "creditsBefore": 1860,
+  "steps": {
+    "model": {
+      "task": "ee3e6110-accf-4856-9b62-1135c4655c1c",
+      "result": {
+        "task_id": "ee3e6110-accf-4856-9b62-1135c4655c1c",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_veilbearer/1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_veilbearer/1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/model.glb",
+        "preview": "out/models/t_veilbearer/1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/preview.png"
+      }
+    },
+    "check": {
+      "task": "f5a644b7-3d16-4d83-845e-0a2a902951d8",
+      "result": {
+        "task_id": "f5a644b7-3d16-4d83-845e-0a2a902951d8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_veilbearer/2-check/tripo-out/rig-check-f5a644b7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "56b08a55-3fd9-4a2d-a591-e8788ce4caf1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "56b08a55-3fd9-4a2d-a591-e8788ce4caf1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_veilbearer/3-rig/tripo-out/rig-56b08a55",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_veilbearer/3-rig/tripo-out/rig-56b08a55/model.glb",
+        "preview": "out/models/t_veilbearer/3-rig/tripo-out/rig-56b08a55/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "96d4a0e2-3785-44f7-9895-d417464d663f",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "96d4a0e2-3785-44f7-9895-d417464d663f",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_veilbearer/4-anim-1/tripo-out/retarget-96d4a0e2",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_veilbearer/4-anim-1/tripo-out/retarget-96d4a0e2/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1620,
+  "creditsUsed": 240,
+  "finished": "2026-11-24T12:53:50.703Z",
+  "files": [
+    "1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/generated_image.jpeg",
+    "1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/model.glb",
+    "1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/preview.png",
+    "1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/rendered_image.webp",
+    "1-model/tripo-out/a-veilbearer-of-the-unmade-a-tal-ee3e6110/task.json",
+    "2-check/tripo-out/rig-check-f5a644b7/task.json",
+    "3-rig/tripo-out/rig-56b08a55/model.glb",
+    "3-rig/tripo-out/rig-56b08a55/preview.png",
+    "3-rig/tripo-out/rig-56b08a55/rendered_image.webp",
+    "3-rig/tripo-out/rig-56b08a55/task.json",
+    "4-anim-1/tripo-out/retarget-96d4a0e2/model.glb",
+    "4-anim-1/tripo-out/retarget-96d4a0e2/task.json",
+    "manifest.json"
+  ]
+}

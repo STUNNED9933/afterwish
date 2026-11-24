@@ -1210,6 +1210,72 @@
       ],
       "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
       "faceLimit": 12000
+    },
+    "v_farmer_m": {
+      "prompt": "a village farmer, a broad weathered man in his thirties with a short brown beard, a wide straw hat, an undyed linen shirt with rolled sleeves, a brown leather jerkin, patched tan trousers tied at the knee, worn leather boots",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
+    },
+    "v_farmer_f": {
+      "prompt": "a village farm woman in her twenties, red-brown hair in a loose bun under a pale headscarf, a moss green dress with a cream apron, sleeves rolled to the elbow, sturdy brown shoes",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
+    },
+    "v_elder_m": {
+      "prompt": "an old village man, white hair and a long white beard, slightly stooped, a long faded blue wool coat over a grey tunic, a knitted brown scarf, soft felt boots",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
+    },
+    "v_elder_f": {
+      "prompt": "an old village woman, grey hair in a bun, a plum purple dress with a knitted grey shawl over her shoulders, a small embroidered apron, soft black shoes",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
+    },
+    "v_miner_m": {
+      "prompt": "a village miner, a stocky young man with soot on his face and forearms, a leather cap, a dark grey work shirt, a thick leather apron with pockets, heavy trousers and boots, a coil of rope at his belt",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
+    },
+    "v_child": {
+      "prompt": "a village child of about ten, short scruffy blond hair, freckles, an oversized mustard yellow tunic with a brown belt, short grey trousers, bare knees, small leather shoes, cheerful",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk"
+      ],
+      "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+      "faceLimit": 7000
     }
   }
 }

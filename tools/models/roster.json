@@ -1045,6 +1045,86 @@
         "preset:biped:hit_to_body_01",
         "preset:biped:run"
       ]
+    },
+    "keep_warrior_m": {
+      "prompt": "a sturdy young man, a shieldbearer sworn to a small mountain keep: short dark beard, a round steel kettle helm with a brim, a knee-length mail shirt under a deep crimson tabard with a bone-white border and a small gold diamond emblem on the chest, steel pauldrons, brown leather gauntlets and tall boots, broad shoulders, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_warrior_f": {
+      "prompt": "a strong young woman, a shieldbearer sworn to a small mountain keep: a thick blonde braid over one shoulder, a round steel kettle helm with a brim, a knee-length mail shirt under a deep crimson tabard with a bone-white border and a small gold diamond emblem on the chest, steel pauldrons, brown leather gauntlets and tall boots, broad shoulders, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_archer_f": {
+      "prompt": "a lithe young woman, a warden archer of a small mountain keep: auburn hair in a short braid, a deep crimson hood down on her shoulders with a short crimson cape, a fitted olive-green leather jerkin with a bone-white trim and a small gold diamond emblem on the chest, leather bracers, a quiver of crimson-fletched arrows on her back, brown trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_archer_m": {
+      "prompt": "a wiry young man, a warden archer of a small mountain keep: short sandy hair, light stubble, a deep crimson hood down on his shoulders with a short crimson cape, a fitted olive-green leather jerkin with a bone-white trim and a small gold diamond emblem on the chest, leather bracers, a quiver of crimson-fletched arrows on his back, brown trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_mage_f": {
+      "prompt": "a young woman, a lanternkeeper mage of a small mountain keep: long black hair, a deep purple floor-length robe with a crimson stole hanging down the front edged in bone white with a small gold diamond emblem, a deep purple cowl down on her shoulders, a gold sash belt with a small leather book at the hip, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_mage_m": {
+      "prompt": "a middle-aged man, a lanternkeeper mage of a small mountain keep: grey-streaked short hair and a neat grey beard, a deep purple floor-length robe with a crimson stole hanging down the front edged in bone white with a small gold diamond emblem, a deep purple cowl down on his shoulders, a gold sash belt with a small leather book at the hip, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_rogue_m": {
+      "prompt": "a lean young man, a nightwatch scout of a small mountain keep: a charcoal hood up, a deep crimson scarf mask over his nose and mouth showing only the eyes, a short charcoal cloak, a fitted dark leather vest with a crimson panel and a small gold diamond emblem, a bone-white bandolier across the chest, leather pouches at the belt, dark trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
+    },
+    "keep_rogue_f": {
+      "prompt": "a lean young woman, a nightwatch scout of a small mountain keep: a charcoal hood up with a dark ponytail falling out of it, a deep crimson scarf mask over her nose and mouth showing only the eyes, a short charcoal cloak, a fitted dark leather vest with a crimson panel and a small gold diamond emblem, a bone-white bandolier across the chest, leather pouches at the belt, dark trousers and soft boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:hit_to_body_01"
+      ],
+      "faceLimit": 9000
     }
   }
 }

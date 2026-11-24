@@ -281,7 +281,7 @@ export class Hud {
     const add = (key, cls, label, icon, tipHtml) => {
       const el = document.createElement('div');
       el.className = 'slot ' + cls;
-      const sh = { Q: '1', W: '2', E: '3', R: '4', D: 'Z', 1: '5' }[label]; // (0.85) the keys over the shoulder
+      const sh = { W: 'F', D: 'Z', F: 'X' }[label]; // (0.85.1) the keys over the shoulder (Q, E, R, Space and 1 stay)
       el.innerHTML = `${svg(icon)}<div class="cd"></div><div class="num"></div><div class="lock"></div><kbd${sh ? ` data-sh="${sh}"` : ''}>${label}</kbd>`;
       el.addEventListener('mouseenter', () => this.tooltip.show(tipHtml, el)); // (0.52: a function, so Shift can rebuild it)
       el.addEventListener('mouseleave', () => this.tooltip.hide());

@@ -255,8 +255,9 @@ export class Input {
   }
 
   /**
-   * (0.85) Keys over the shoulder: W A S D walk, 1 2 3 4 (and Q E R) are the skills, F and Z the borrowed
-   * ones, 5 a potion, Space still parries. True if the key was taken.
+   * (0.85) Keys over the shoulder: W A S D walk; (0.85.1) the skills stay under the left hand beside them:
+   * Q, E and R as ever, and the W skill on F; the borrowed ones on Z and X; 1 a potion and Space a parry as
+   * ever. True if the key was taken.
    */
   shoulderKey(e, key, world) {
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
@@ -264,17 +265,13 @@ export class Input {
       this.keys.add(key);
       return true;
     }
-    const slot = { 1: 'q', 2: 'w', 3: 'e', 4: 'r', q: 'q', e: 'e', r: 'r', f: 'f', z: 'd' }[key];
+    const slot = { q: 'q', f: 'w', e: 'e', r: 'r', z: 'd', x: 'f' }[key];
     if (slot) {
       e.preventDefault();
       if (e.repeat) return true;
       if ((slot === 'd' || slot === 'f') && !borrowedActive(world, slot)) return true;
       const g = this.ground() || { x: world.player.x, z: world.player.z };
       world.command({ type: 'cast', slot, x: g.x, z: g.z });
-      return true;
-    }
-    if (key === '5') {
-      if (!e.repeat) world.command({ type: 'potion' });
       return true;
     }
     return false;

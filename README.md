@@ -173,7 +173,7 @@ also keeps its own beat instead of the frame that noticed it.
 - **The landing saves your heroes**: within 7 m it mends them, shields them and raises the fallen, then staggers the Unmade and throws them back. All of it is stronger the more aura you gathered.
 - **Then 12 seconds on the field, seen from over your shoulder**:
   - <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk; the mouse turns the view (click to take hold of it).
-  - Click strikes what is under the crosshair; <kbd>1</kbd>–<kbd>4</kbd> are your skills (Q E R still work), <kbd>Z</kbd>/<kbd>F</kbd> the borrowed ones, <kbd>5</kbd> a potion, <kbd>Space</kbd> parries.
+  - Click strikes what is under the crosshair. Your skills stay by your left hand: <kbd>Q</kbd>, <kbd>E</kbd> and <kbd>R</kbd> as ever, the W skill on <kbd>F</kbd> (0.85.1); the borrowed ones on <kbd>Z</kbd> and <kbd>X</kbd>; <kbd>1</kbd> a potion and <kbd>Space</kbd> a parry as ever. The skill bar shows the keys while you are incarnate.
   - Skills land where you look. The view swoops back above when it ends.
 - **A rescue, not a sweep**: 40 Faith, once a minute. While incarnate your blows count as a mortal's, the same share of the night whatever your gear, just as your health already did. The Unmade can still be cut down; the god can't sweep a wave alone.
 - In the night the keep's people shelter indoors.

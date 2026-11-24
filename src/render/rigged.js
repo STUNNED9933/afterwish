@@ -124,6 +124,9 @@ export const RIGGED = {
   // (0.76) The Eternal forms: each hero ascended, in white and crimson, worn with a full set of Eternal
   // gear. Their own Tripo idle and flinch (and the Warrior's swing and run); every other move is the
   // hero's own, copied onto the new rig by tools/models/copy-clips.mjs.
+  // (0.83) The Wishkeep's own heroes, a man and a woman of each class in the keep's crimson, white and gold
+  // (Tripo, tools/models/roster.json keep_*): their own idle and flinch, every other move their class's.
+  // (defined below, after RIGGED)
   get hero_warrior_eternal() {
     return { ...RIGGED.hero_warrior, url: 'models/warrior_eternal.glb' };
   },
@@ -909,6 +912,12 @@ function warp(keys, t) {
  * is hidden and its weapon moves into the rigged model's hand.
  */
 /** Which model a hero wears (0.42): a rogue with a subclass becomes the ninja. */
+for (const c of ['warrior', 'archer', 'mage', 'rogue']) {
+  for (const g of ['m', 'f']) {
+    Object.defineProperty(RIGGED, `hero_keep_${c}_${g}`, { get: () => ({ ...RIGGED[`hero_${c}`], url: `models/keep_${c}_${g}.glb` }), enumerable: true, configurable: true });
+  }
+}
+
 export function heroLook(cls, spec, eternal = false) {
   if (eternal && RIGGED[`hero_${cls}_eternal`]) return `${cls}_eternal`; // (0.76) the Eternal form comes first
   return cls === 'rogue' && spec ? 'ninja' : cls;

@@ -99,7 +99,7 @@ const KEEP_CMDS = ['keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend',
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -878,7 +878,7 @@ export class World {
       else if (c.type === 'keepRecruit') this.keepRecruit(c.cls); // (0.81) the keep's heroes and halls
       else if (c.type === 'keepTrain') this.keepTrain(c.id);
       else if (c.type === 'keepArm') this.keepArm(c.id);
-      else if (c.type === 'keepLearn') this.keepLearn(c.id, c.skill);
+      else if (c.type === 'keepLearn') this.keepLearn(c.id, c.skill, c.slot);
       else if (c.type === 'keepDismiss') this.keepDismiss(c.id);
       else if (c.type === 'keepBless') this.keepBless(c.id);
       else if (c.type === 'keepTrade') this.keepTrade(c.dir);
@@ -6011,17 +6011,28 @@ export class World {
     this.emit('keepGeared', { all: true });
   }
 
-  /** Teach a hero a skill: physical at the Lodge, magic at the Observatory, up to the hall's rank. */
-  keepLearn(id, skill) {
+  /**
+   * Teach a hero a skill: physical at the Lodge, magic at the Observatory, up to the hall's rank. (0.83) Into
+   * one of four slots (0 and 1 physical, 2 and 3 magic; the second of each from level 6), replacing what is there.
+   */
+  keepLearn(id, skill, slot) {
     const k = this.player.keep, t = this.keepTroop(id), S = SKILLS[skill];
-    if (!this.inKeep() || !t || !S || t.skill === skill) return;
+    if (!this.inKeep() || !t || !S) return;
+    const sk = t.skills || (t.skills = [null, null, null, null]);
+    let i = Number.isInteger(slot) && slot >= 0 && slot < 4 ? slot : -1;
+    if (i < 0) {
+      // (no slot named: the school's first empty open slot, else its first)
+      const own = [0, 1, 2, 3].filter((j) => skillSlotSchool(j) === S.school && skillSlotOpen(t, j));
+      i = own.find((j) => !sk[j]) ?? own[0];
+    }
+    if (skillSlotSchool(i) !== S.school || !skillSlotOpen(t, i) || sk.includes(skill)) return;
     const hall = S.school === 'phys' ? 'archer' : 'mage';
     if (!this.hallWorks(hall)) return this.emit('keepHallShut', { name: HALLS[hall].name, cls: hall, down: this.wrecked(hall) });
     if ((k.halls[hall] || 0) < S.rank) return this.emit('keepMaxed', { name: S.name, what: 'rank', rank: S.rank, hall: HALLS[hall].name });
     if (!this.keepPay(KEEP.learn)) return;
-    t.skill = skill;
+    sk[i] = skill;
     this.keepTroopsUp();
-    this.emit('keepLearned', { name: t.name, skill: S.name });
+    this.emit('keepLearned', { name: t.name, skill: S.name, slot: i });
   }
   /** A blessing for the next Tide, at the Observatory. */
   keepBless(id) {
@@ -6128,9 +6139,15 @@ export class World {
       const pr = halls.length ? 10.5 - (i >= halls.length ? 3 : 0) : 5.2;
       const post = { x: dCos(a) * pr, z: dSin(a) * pr };
       const o = old.get(src.id);
-      const t = o || { id: src.id, x: post.x, z: post.z, facing: a + Math.PI, hp: st.hp, atkT: 0.5, skillT: 2, dead: false, swing: 0 };
+      const t = o || { id: src.id, x: post.x, z: post.z, facing: a + Math.PI, hp: st.hp, atkT: 0.5, scd: {}, dead: false, swing: 0 };
       const frac = o ? o.hp / o.maxHp : 1;
-      Object.assign(t, { cls: src.cls, name: src.name, lvl: src.lvl, gear: src.gear, skill: src.skill, rar: st.rar, post, maxHp: st.hp, dmg: st.dmg, cd: st.cd, range: st.range, speed: st.speed, splash: st.splash || 0, crit: st.crit || 0, guard: st.guard, leech: st.leech, focus: st.focus, siege: st.siege, fx: st.fx });
+      const skills = troopSkills(src);
+      Object.assign(t, { cls: src.cls, name: src.name, gender: troopGender(src), lvl: src.lvl, gear: src.gear, skills, support: troopSupport(src), rar: st.rar, post, maxHp: st.hp, dmg: st.dmg, cd: st.cd, range: st.range, speed: st.speed, splash: st.splash || 0, crit: st.crit || 0, critX: st.critX || 2, dodge: st.dodge || 0, arc: st.arc || 0, bulwark: st.bulwark || 0, guard: st.guard, leech: st.leech, focus: st.focus, siege: st.siege, fx: st.fx });
+      // (0.83) each skill its own cooldown, the first ones staggered so a hero does not open with all four
+      t.scd = t.scd || {};
+      skills.forEach((sk, j) => {
+        if (t.scd[sk] == null) t.scd[sk] = 1.5 + j * 1.2;
+      });
       t.hp = Math.max(t.dead ? 0 : 1, Math.round(st.hp * frac));
       t.px = t.x;
       t.pz = t.z;
@@ -6288,13 +6305,23 @@ export class World {
     if (!this.tide || this.tide.state !== 'on') return;
     const F = FOES[e.type] || FOES.hush;
     const T = KEEP.tide;
+    // (0.83) slows wear off; a stunned foe stands; one Challenged fights its challenger
+    if (e.slowT > 0) e.slowT -= dt;
+    if (e.stunT > 0) {
+      e.stunT -= dt;
+      return;
+    }
+    if (e.tTauntT > 0) {
+      e.tTauntT -= dt;
+      if (e.tTauntBy && !e.tTauntBy.dead) e.tTarget = e.tTauntBy;
+    }
     e.tRe -= dt;
-    if (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead) {
+    if (!(e.tTauntT > 0) && (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead)) {
       e.tRe = 0.5;
       let best = null, bd = T.engage;
       for (const tr of this.troops) {
         if (tr.dead) continue;
-        const d = dist(tr.x, tr.z, e.x, e.z);
+        const d = dist(tr.x, tr.z, e.x, e.z) - (tr.bulwark || 0); // (0.83) the Unmade would rather fight a warrior
         if (d < bd) [best, bd] = [tr, d];
       }
       const me = this.player;
@@ -6337,19 +6364,33 @@ export class World {
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 1 - Math.min(0.6, 0.3 * (this.tide.blessPow || 1)) : 1;
-      tg.hp -= e.tdmg * stone * (1 - (tg.guard || 0)); // (0.82) Hero gear: Damage taken
-      tg.hurtT = 0.25;
-      if (tg.hp <= 0 && tg.unbroken) {
-        // (0.82) Unbroken (an Immortal armour): once a night
-        tg.unbroken = false;
-        tg.hp = tg.maxHp * 0.3;
-        this.emit('troopUnbroken', { id: tg.id, x: tg.x, z: tg.z });
-      }
-      if (tg.hp <= 0) {
-        tg.hp = 0;
-        tg.dead = true;
-        this.emit('troopFall', { id: tg.id, name: tg.name, x: tg.x, z: tg.z });
-      }
+      this.troopHurt(tg, e.tdmg * stone);
+    }
+  }
+
+  /** (0.83) One of the keep's heroes is struck: a rogue may slip it, guard and a Barrier soak it. */
+  troopHurt(tg, dmg) {
+    if (tg.dead) return;
+    if (tg.dodge && this.rng() < tg.dodge) return this.emit('troopDodge', { id: tg.id, x: tg.x, z: tg.z });
+    dmg *= 1 - Math.min(0.75, (tg.guard || 0) + (tg.guardT > 0 ? tg.guardB || 0 : 0)); // (0.82) Hero gear: Damage taken
+    if (tg.shield > 0) {
+      const soak = Math.min(tg.shield, dmg);
+      tg.shield -= soak;
+      dmg -= soak;
+    }
+    if (dmg <= 0) return;
+    tg.hp -= dmg;
+    tg.hurtT = 0.25;
+    if (tg.hp <= 0 && tg.unbroken) {
+      // (0.82) Unbroken (an Immortal armour): once a night
+      tg.unbroken = false;
+      tg.hp = tg.maxHp * 0.3;
+      this.emit('troopUnbroken', { id: tg.id, x: tg.x, z: tg.z });
+    }
+    if (tg.hp <= 0) {
+      tg.hp = 0;
+      tg.dead = true;
+      this.emit('troopFall', { id: tg.id, name: tg.name, x: tg.x, z: tg.z });
     }
   }
 
@@ -6381,15 +6422,33 @@ export class World {
       threat.set(e, th);
     }
     const claims = new Map();
+    this.stepTroopFalls(dt, foes, fury);
     for (const tr of this.troops) {
       tr.px = tr.x;
       tr.pz = tr.z;
       tr.moving = false;
       if (tr.hurtT > 0) tr.hurtT -= dt;
+      if (tr.guardT > 0) tr.guardT -= dt;
+      if (tr.cryT > 0) tr.cryT -= dt;
+      if (tr.shieldT > 0 && (tr.shieldT -= dt) <= 0) tr.shield = 0;
       if (tr.dead) continue;
-      tr.atkT -= dt * swift;
-      tr.skillT -= dt;
-      if (tr.skill && tr.skillT <= 0 && foes.length && this.troopSkill(tr, foes, fury)) tr.skillT = SKILLS[tr.skill].cd * (1 - (tr.focus || 0));
+      // (0.83) a War Cry: harder and faster for a while
+      const cry = tr.cryT > 0 ? 1 + (tr.cryPow || 0) : 1;
+      const myFury = fury * cry;
+      tr.atkT -= dt * swift * cry;
+      // (0.83) up to four skills, each on its own cooldown; one a moment, the first that has a reason
+      const scd = tr.scd || (tr.scd = {});
+      for (const sk of tr.skills || []) if (scd[sk] > 0) scd[sk] -= dt;
+      for (const sk of tr.skills || []) {
+        if (scd[sk] > 0) continue;
+        if (this.troopSkill(tr, sk, foes, myFury)) {
+          scd[sk] = SKILLS[sk].cd * (1 - (tr.focus || 0));
+          break;
+        }
+      }
+      // (0.83) A healer (one who knows Mend, Barrier or Radiance) keeps the others standing: to whoever is
+      // hurt worst, and their own strikes mend instead of wound while anyone needs it.
+      if (tr.support && this.troopTend(tr, dt, swift, myFury)) continue;
       tr.reT = (tr.reT || 0) - dt;
       let best = tr.targetId != null ? foes.find((e) => e.id === tr.targetId) || null : null;
       if (!best || tr.reT <= 0) {
@@ -6426,14 +6485,15 @@ export class World {
       }
       if (!best || tr.atkT > 0) continue;
       tr.atkT = tr.cd;
-      let dmg = tr.dmg * fury;
+      let dmg = tr.dmg * myFury;
       const atB = (threat.get(best) || 0) >= 6;
       if (atB || (FOES[best.type] && FOES[best.type].siege)) dmg *= 1 + (tr.siege || 0); // Hero gear: wreckers and foes at a building
       if (atB && tr.fx && tr.fx.charm) dmg *= 1.4; // Warden's Oath
       const crit = tr.crit && this.rng() < tr.crit;
-      if (crit) dmg *= 2;
+      if (crit) dmg *= tr.critX || 2; // (0.83) a rogue's cut deeper
       this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: best.x, tz: best.z, dir: tr.facing, ranged: tr.range > 3 });
       this.troopStrike(best, dmg, crit);
+      if (tr.arc) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= 1.6 + o.radius) this.troopStrike(o, dmg * tr.arc, false); // (0.83) a warrior's swing carries
       if (tr.leech > 0) tr.hp = Math.min(tr.maxHp, tr.hp + dmg * tr.leech);
       if (tr.splash) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= tr.splash) this.troopStrike(o, dmg * 0.5, false);
       if (tr.fx && tr.fx.weapon && (tr.strikes = (tr.strikes || 0) + 1) % 4 === 0) {
@@ -6454,68 +6514,234 @@ export class World {
     if (e.hp <= 0) this.killEnemy(e, 'troop');
   }
 
-  /** A hero's skill, if there is a reason to use it now. True if used. */
-  troopSkill(tr, foes, fury) {
-    const S = SKILLS[tr.skill];
-    const near = (r, x = tr.x, z = tr.z) => foes.filter((e) => !e.dead && dist(e.x, e.z, x, z) <= r + e.radius);
-    let used = false;
-    if (tr.skill === 'cleave') {
-      const hit = near(2.8);
-      if (hit.length) for (const e of hit) this.troopStrike(e, tr.dmg * 2 * fury, false), (used = true);
-    } else if (tr.skill === 'volley') {
-      const hit = foes.filter((e) => !e.dead).sort((a, b) => dist(a.x, a.z, tr.x, tr.z) - dist(b.x, b.z, tr.x, tr.z)).slice(0, 3).filter((e) => dist(e.x, e.z, tr.x, tr.z) <= 11);
-      for (const e of hit) {
-        this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: e.x, tz: e.z, dir: tr.facing, ranged: true, skill: 'volley' });
-        this.troopStrike(e, tr.dmg * 1.6 * fury, false);
-        used = true;
+  /**
+   * (0.83) A healer's turn, while someone is hurt: near them, and mending. Heroes first; when none needs it,
+   * a hurt hall or the Hearth (not a wrecked one: that is mended at the Hearth by day). True if it took the turn.
+   */
+  troopTend(tr, dt, swift, fury) {
+    let hurt = null, worst = 0.95;
+    for (const o of this.troops) {
+      if (o.dead) continue;
+      const f = o.hp / o.maxHp;
+      if (f < worst) [hurt, worst] = [o, f];
+    }
+    let build = false;
+    if (!hurt) {
+      worst = 0.97;
+      for (const b of this.keepBuilds || []) {
+        if (b.hp <= 0 || dist(b.x, b.z, tr.x, tr.z) > 30) continue;
+        const f = b.hp / b.max;
+        if (f < worst) [hurt, worst, build] = [b, f, true];
       }
-    } else if (tr.skill === 'lunge') {
+    }
+    if (!hurt) return false;
+    const reach = Math.max(6, tr.range) + (build ? hurt.r : 0);
+    const d = dist(hurt.x, hurt.z, tr.x, tr.z);
+    if (d > 0.05) tr.facing = turnToward(tr.facing, dAtan2(hurt.z - tr.z, hurt.x - tr.x), 9 * dt);
+    if (d > reach) {
+      const fa = this.navStep(tr, hurt.x, hurt.z, Math.min((d - reach + 0.01) / dt, tr.speed * swift), dt, 0.5);
+      tr.facing = turnToward(tr.facing, fa, 9 * dt);
+      tr.moving = true;
+      return true;
+    }
+    if (tr.atkT > 0) return true;
+    tr.atkT = tr.cd;
+    const top = build ? hurt.max : hurt.maxHp;
+    const heal = Math.min(top - hurt.hp, tr.dmg * fury * (build ? 3 : 1.5));
+    hurt.hp += heal;
+    this.emit('troopHeal', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: hurt.x, tz: hurt.z, to: build ? 'b:' + hurt.id : hurt.id, amount: Math.round(heal) });
+    return true;
+  }
+
+  /** (0.83) Meteors on their way down. */
+  stepTroopFalls(dt, foes, fury) {
+    const falls = this.tide.falls;
+    if (!falls || !falls.length) return;
+    for (const f of falls) {
+      f.t -= dt;
+      if (f.t > 0) continue;
+      for (const e of foes) if (!e.dead && dist(e.x, e.z, f.x, f.z) <= f.r + e.radius) this.troopStrike(e, f.dmg, false);
+      this.emit('troopMeteor', { x: f.x, z: f.z, r: f.r });
+    }
+    this.tide.falls = falls.filter((f) => f.t > 0);
+  }
+
+  /** A hero's skill, if there is a reason to use it now. True if used. (0.83: sixteen of them, four to a hero.) */
+  troopSkill(tr, sk, foes, fury) {
+    const S = SKILLS[sk];
+    if (!S) return false;
+    const live = foes.filter((e) => !e.dead);
+    const near = (r, x = tr.x, z = tr.z) => live.filter((e) => dist(e.x, e.z, x, z) <= r + e.radius);
+    const nearest = (range) => {
+      let best = null, bd = range;
+      for (const e of live) {
+        const d = dist(e.x, e.z, tr.x, tr.z) - e.radius;
+        if (d < bd) [best, bd] = [e, d];
+      }
+      return best;
+    };
+    // where the enemies are thickest, within range of the hero
+    const thickest = (range, r) => {
+      let best = null, bn = 0;
+      for (const e of live) {
+        if (dist(e.x, e.z, tr.x, tr.z) > range) continue;
+        const n = near(r, e.x, e.z).length;
+        if (n > bn) [best, bn] = [e, n];
+      }
+      return best;
+    };
+    const allies = (r) => this.troops.filter((o) => !o.dead && dist(o.x, o.z, tr.x, tr.z) <= r);
+    const fx = (tx, tz, extra) => this.emit('troopSkill', { id: tr.id, skill: sk, x: tr.x, z: tr.z, tx, tz, ...extra });
+    const hit = (e, x, crit = false) => this.troopStrike(e, tr.dmg * x * fury, crit);
+    if (sk === 'cleave' || sk === 'whirlwind') {
+      const got = near(S.r);
+      if (!got.length) return false;
+      for (const e of got) hit(e, S.x);
+      if (S.guard) [tr.guardT, tr.guardB] = [S.dur, S.guard];
+      fx(tr.x, tr.z, { r: S.r });
+      return true;
+    }
+    if (sk === 'bash') {
+      const e = nearest(Math.max(3, tr.range + 1));
+      if (!e) return false;
+      hit(e, S.x);
+      e.stunT = Math.max(e.stunT || 0, S.stun);
+      fx(e.x, e.z);
+      return true;
+    }
+    if (sk === 'pierce') {
+      const e = nearest(S.len - 2);
+      if (!e) return false;
+      const a = dAtan2(e.z - tr.z, e.x - tr.x), ux = dCos(a), uz = dSin(a);
+      for (const o of live) {
+        const along = (o.x - tr.x) * ux + (o.z - tr.z) * uz;
+        const off = Math.abs((o.x - tr.x) * uz - (o.z - tr.z) * ux);
+        if (along > -0.5 && along <= S.len && off <= 0.9 + o.radius) hit(o, S.x);
+      }
+      fx(tr.x + ux * S.len, tr.z + uz * S.len);
+      return true;
+    }
+    if (sk === 'volley') {
+      const got = live.filter((e) => dist(e.x, e.z, tr.x, tr.z) <= 11).sort((a, b) => dist(a.x, a.z, tr.x, tr.z) - dist(b.x, b.z, tr.x, tr.z)).slice(0, S.n);
+      if (!got.length) return false;
+      for (const e of got) {
+        this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: e.x, tz: e.z, dir: tr.facing, ranged: true, skill: 'volley' });
+        hit(e, S.x);
+      }
+      return true;
+    }
+    if (sk === 'warcry') {
+      if (!near(10).length) return false;
+      for (const o of allies(S.r)) [o.cryT, o.cryPow] = [S.dur, S.pow];
+      fx(tr.x, tr.z, { r: S.r });
+      return true;
+    }
+    if (sk === 'taunt') {
+      const got = near(S.r);
+      if (!got.some((e) => e.tTarget !== tr)) return false;
+      for (const e of got) [e.tTauntT, e.tTauntBy, e.tTarget] = [S.dur, tr, tr];
+      [tr.guardT, tr.guardB] = [S.dur, S.guard];
+      fx(tr.x, tr.z, { r: S.r });
+      return true;
+    }
+    if (sk === 'lunge') {
       let best = null, bd = 1e9;
-      for (const e of foes) {
-        if (e.dead || !e.tTarget || e.tTarget.cls) continue; // (one going for a building)
+      for (const e of live) {
+        if (!e.tTarget || e.tTarget.cls) continue; // (one going for a building)
         const d = dist(e.x, e.z, tr.x, tr.z);
         if (d < bd && d < 16) [best, bd] = [e, d];
       }
-      if (best) {
-        const a = dAtan2(tr.z - best.z, tr.x - best.x);
-        tr.x = best.x + dCos(a) * (best.radius + 0.9);
-        tr.z = best.z + dSin(a) * (best.radius + 0.9);
-        this.pushOut(tr, 0.5);
-        this.troopStrike(best, tr.dmg * 4 * fury, true);
-        used = true;
-      }
-    } else if (tr.skill === 'fireball') {
-      let best = null, bn = 0;
-      for (const e of foes) {
-        if (e.dead || dist(e.x, e.z, tr.x, tr.z) > 11) continue;
-        const n = near(2.5, e.x, e.z).length;
-        if (n > bn) [best, bn] = [e, n];
-      }
-      if (best) {
-        for (const e of near(2.5, best.x, best.z)) this.troopStrike(e, tr.dmg * 2.5 * fury, false);
-        used = true;
-        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: best.x, tz: best.z });
-        return true;
-      }
-    } else if (tr.skill === 'mend') {
-      const hurt = this.troops.filter((o) => !o.dead && o.hp < o.maxHp * 0.75 && dist(o.x, o.z, tr.x, tr.z) <= 10).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
-      if (hurt) {
-        hurt.hp = Math.min(hurt.maxHp, hurt.hp + hurt.maxHp * 0.4);
-        used = true;
-        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: hurt.x, tz: hurt.z });
-        return true;
-      }
-    } else if (tr.skill === 'ward') {
-      const b = (this.keepBuilds || []).filter((o) => o.hp > 0 && o.hp < o.max && !(o.wardT > 0)).sort((a, b2) => a.hp / a.max - b2.hp / b2.max)[0];
-      if (b) {
-        b.wardT = 5;
-        used = true;
-        this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: b.x, tz: b.z });
-        return true;
-      }
+      if (!best) return false;
+      const a = dAtan2(tr.z - best.z, tr.x - best.x);
+      tr.x = best.x + dCos(a) * (best.radius + 0.9);
+      tr.z = best.z + dSin(a) * (best.radius + 0.9);
+      this.pushOut(tr, 0.5);
+      hit(best, S.x, true);
+      best.stunT = Math.max(best.stunT || 0, S.stun);
+      fx(best.x, best.z);
+      return true;
     }
-    if (used) this.emit('troopSkill', { id: tr.id, skill: tr.skill, x: tr.x, z: tr.z, tx: tr.x, tz: tr.z });
-    return used;
+    if (sk === 'fireball' || sk === 'frostnova') {
+      const e = thickest(11, S.r);
+      if (!e) return false;
+      for (const o of near(S.r, e.x, e.z)) {
+        hit(o, S.x);
+        if (S.slow) [o.slowT, o.slow] = [S.dur, S.slow];
+      }
+      fx(e.x, e.z, { r: S.r });
+      return true;
+    }
+    if (sk === 'chain') {
+      let e = nearest(11);
+      if (!e) return false;
+      const pts = [[tr.x, tr.z]];
+      const done = new Set();
+      for (let i = 0; i < S.n && e; i++) {
+        hit(e, S.x * (1 - 0.15 * i));
+        done.add(e);
+        pts.push([e.x, e.z]);
+        let nx = null, nd = 5;
+        for (const o of live) {
+          if (done.has(o)) continue;
+          const d = dist(o.x, o.z, e.x, e.z);
+          if (d < nd) [nx, nd] = [o, d];
+        }
+        e = nx;
+      }
+      fx(pts[1][0], pts[1][1], { pts });
+      return true;
+    }
+    if (sk === 'meteor') {
+      const e = thickest(13, S.r);
+      if (!e) return false;
+      (this.tide.falls = this.tide.falls || []).push({ x: e.x, z: e.z, t: S.delay, r: S.r, dmg: tr.dmg * S.x * fury });
+      fx(e.x, e.z, { r: S.r, delay: S.delay });
+      return true;
+    }
+    if (sk === 'mend') {
+      const hurt = allies(12).filter((o) => o.hp < o.maxHp * (tr.support ? 0.8 : 0.7)).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (!hurt) return false;
+      hurt.hp = Math.min(hurt.maxHp, hurt.hp + hurt.maxHp * S.heal);
+      fx(hurt.x, hurt.z);
+      return true;
+    }
+    if (sk === 'barrier') {
+      // the one in most danger: the most hunted, then the most hurt
+      const hunted = new Map();
+      for (const e of live) if (e.tTarget && e.tTarget.cls && !e.tTarget.dead) hunted.set(e.tTarget, (hunted.get(e.tTarget) || 0) + 1);
+      let best = null, bs = 0;
+      for (const o of allies(12)) {
+        if (o.shield > 0) continue;
+        const sc = (hunted.get(o) || 0) + (1 - o.hp / o.maxHp) * 3;
+        if (sc > bs) [best, bs] = [o, sc];
+      }
+      if (!best || bs < 1) return false;
+      [best.shield, best.shieldT] = [best.maxHp * S.shield, S.dur];
+      fx(best.x, best.z);
+      return true;
+    }
+    if (sk === 'radiance') {
+      const round = allies(S.r);
+      const fallen = this.troops.find((o) => o.dead && dist(o.x, o.z, tr.x, tr.z) <= S.r);
+      const need = round.reduce((n, o) => n + (o.hp < o.maxHp * 0.7 ? 1 : 0), 0);
+      if (!fallen && need < 2) return false;
+      for (const o of round) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * S.heal);
+      if (fallen) {
+        fallen.dead = false;
+        fallen.hp = Math.round(fallen.maxHp / 3);
+        this.emit('troopRaised', { id: fallen.id, name: fallen.name, x: fallen.x, z: fallen.z });
+      }
+      fx(tr.x, tr.z, { r: S.r });
+      return true;
+    }
+    if (sk === 'ward') {
+      const b = (this.keepBuilds || []).filter((o) => o.hp > 0 && o.hp < o.max && !(o.wardT > 0)).sort((a, b2) => a.hp / a.max - b2.hp / b2.max)[0];
+      if (!b) return false;
+      b.wardT = 5;
+      fx(b.x, b.z);
+      return true;
+    }
+    return false;
   }
 
   /** The god's miracles (the hero's Q, W and E in a Tide), paid in Faith. */

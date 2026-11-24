@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1375,7 +1375,7 @@ function start(hot = {}) {
     const R = RARITIES[t.rar || 0];
     const worn = heroWorn(t, k && k.armory);
     const pips = HERO_SLOTS.map((sl) => (worn[sl] ? `<i class="hg-pip" style="background:${RARITIES[worn[sl].r].color}" title="${HERO_SLOT_NAMES[sl]}: ${esc(worn[sl].name)}"></i>` : `<i class="hg-pip empty" title="${HERO_SLOT_NAMES[sl]}: empty"></i>`)).join('');
-    return `<b style="color:${R.color}">${esc(t.name)}</b> <small style="color:${R.color}">${HERO_RARITY.names[t.rar || 0]}</small> · ${CLASSES[t.cls].name} · level ${t.lvl} · arms ${t.gear} · ${st.hp.toLocaleString()} health, ${st.dmg.toLocaleString()} damage${t.skill ? ` · ${esc(SKILLS[t.skill].name)}` : ''} <span class="hg-pips">${pips}</span>`;
+    return `<b style="color:${R.color}">${esc(t.name)}</b> <small style="color:${R.color}">${HERO_RARITY.names[t.rar || 0]}</small> · ${CLASSES[t.cls].name} · level ${t.lvl} · arms ${t.gear} · ${st.hp.toLocaleString()} health, ${st.dmg.toLocaleString()} damage${(t.skills || []).some(Boolean) ? ` · ${(t.skills || []).filter(Boolean).map((sk) => esc(SKILLS[sk].name)).join(', ')}` : ''}${troopSupport(t) ? ' <small class="hg-heal">healer</small>' : ''} <span class="hg-pips">${pips}</span>`;
   };
   const hallNote = (cls) => {
     const k = world.player.keep;
@@ -1580,12 +1580,29 @@ function start(hot = {}) {
         list.appendChild(card);
       }
       const skills = SKILL_IDS.filter((sk) => SKILLS[sk].school === school);
-      const card = keepCard(school === 'phys' ? 'Physical skills' : 'Magic', `rank ${lvl} of 3 taught here`, `<p class="setting-desc">${skills.map((sk) => `<b>${SKILLS[sk].name}</b> (rank ${SKILLS[sk].rank}): ${esc(SKILLS[sk].desc)}`).join('<br>')}<br>A hero knows one skill at a time; teaching another replaces it (${keepCost(KEEP.learn)}).</p>`);
+      // (0.83) four skills to a hero: two physical (taught at the Lodge), two magic (the Observatory)
+      const slots = [0, 1, 2, 3].filter((i) => skillSlotSchool(i) === school);
+      const card = keepCard(school === 'phys' ? 'Physical skills' : 'Magic', `rank ${lvl} of 3 taught here`, `<p class="setting-desc">${skills.map((sk) => `<b>${SKILLS[sk].name}</b> (rank ${SKILLS[sk].rank}${SKILLS[sk].support ? ', a healer\'s' : ''}): ${esc(SKILLS[sk].desc)}`).join('<br>')}<br>Each hero knows two ${school === 'phys' ? 'physical skills' : 'magic skills'} (the second from level ${SKILL_SLOT2}); teaching one into a slot replaces what was there (${keepCost(KEEP.learn)}).${school === 'magic' ? ' A hero who knows Mend, Barrier or Radiance fights as a healer: they stay by whoever is hurt worst, and their own strikes mend.' : ''}</p>`);
       for (const t of k.troops) {
         const row = document.createElement('div');
         row.className = 'keep-troop';
         row.innerHTML = `<span>${troopLine(t)}</span>`;
-        for (const sk of skills) row.appendChild(keepBtn(SKILLS[sk].name, () => applyNow({ type: 'keepLearn', id: t.id, skill: sk }), { disabled: t.skill === sk || lvl < SKILLS[sk].rank || k.faith < KEEP.learn.faith, title: lvl < SKILLS[sk].rank ? `Needs ${H.name} at level ${SKILLS[sk].rank}` : SKILLS[sk].desc }));
+        const pick = document.createElement('div');
+        pick.className = 'keep-skills';
+        row.appendChild(pick);
+        for (const i of slots) {
+          const sel = document.createElement('select');
+          sel.className = 'keep-skill';
+          const open = skillSlotOpen(t, i);
+          const cur = (t.skills || [])[i];
+          sel.innerHTML = `<option value="">${open ? (cur ? '' : 'Teach a skill…') : `Opens at level ${SKILL_SLOT2}`}</option>` + skills.map((sk) => `<option value="${sk}"${sk === cur ? ' selected' : ''}${lvl < SKILLS[sk].rank || (sk !== cur && (t.skills || []).includes(sk)) ? ' disabled' : ''}>${esc(SKILLS[sk].name)}${lvl < SKILLS[sk].rank ? ` (needs ${H.name} ${SKILLS[sk].rank})` : ''}</option>`).join('');
+          sel.disabled = !open || k.faith < KEEP.learn.faith;
+          sel.title = cur ? SKILLS[cur].desc : open ? `Teach a skill here (${KEEP.learn.faith} Faith)` : `A second ${school === 'phys' ? 'physical' : 'magic'} skill from level ${SKILL_SLOT2}`;
+          sel.onchange = () => {
+            if (sel.value && sel.value !== cur) applyNow({ type: 'keepLearn', id: t.id, skill: sel.value, slot: i });
+          };
+          pick.appendChild(sel);
+        }
         card.appendChild(row);
       }
       list.appendChild(card);
@@ -5217,6 +5234,9 @@ function start(hot = {}) {
       // (0.81) the keep's heroes, halls and miracles
       case 'troopHit':
       case 'troopSkill':
+      case 'troopHeal':
+      case 'troopMeteor':
+      case 'troopDodge':
       case 'foeHit':
       case 'buildHit':
       case 'miracle':
@@ -5225,6 +5245,10 @@ function start(hot = {}) {
         break;
       case 'troopFall':
         hud.feedText(`${ev.name} has fallen. Mend (W) where they lie raises them.`);
+        renderer.keepFx(ev);
+        break;
+      case 'troopRaised':
+        hud.feedText(`${ev.name} rises again.`);
         renderer.keepFx(ev);
         break;
       case 'buildWrecked':

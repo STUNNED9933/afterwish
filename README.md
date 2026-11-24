@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The keep's heroes, remade (0.83)
+
+- **Four skills to a hero**: two physical (the Lodge) and two magic (the Observatory); the second of each opens at level 6. Old saves keep their one skill.
+- **Sixteen skills.** Physical: Cleave, Shield Bash (stuns), Piercing Shot (a line), Volley, War Cry (the heroes around hit harder and faster), Challenge (enemies turn on this hero), Lunge, Whirlwind. Magic: Fireball, Frost Nova (slows), Mend, Chain Lightning, Barrier (a shield on the hero in most danger), Meteor, Ward, Radiance (heals everyone near and raises one who fell).
+- **Healers**: a hero who knows Mend, Barrier or Radiance fights as one. They go to whoever is hurt worst and their strikes mend; when every hero is whole they mend hurt halls.
+- **Each class has its job.** Warriors hold the line: the Unmade would rather fight them, they take a fifth less damage, and their swings carry into whatever stands beside. Rogues duel: they slip a quarter of blows, crit for 2.5 times, and drink a little of what they deal. Archers and mages are a little sturdier.
+- **Their own models**: a man and a woman of each class in the keep's crimson, white and gold (Tripo), animated with their class's moves. A hero's model follows their name. Skills play their class's moves too.
+
 ### Incarnate at full strength; smooth heroes online (0.82.6)
 
 - **Incarnate** no longer caps your blows: a Sharpshooter's Deadeye lands in full on a Tide foe. Visitors still can't touch the night.

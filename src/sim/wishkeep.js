@@ -57,10 +57,14 @@ export const KEEP = {
 
 /** (0.81) The keep's heroes, by class: their own small numbers (tide units, as FOES). */
 export const TROOPS = {
-  warrior: { hp: 300, dmg: 20, cd: 1.0, range: 2.0, speed: 4.4 },
-  archer: { hp: 170, dmg: 17, cd: 0.9, range: 9, speed: 4.6 },
-  mage: { hp: 150, dmg: 18, cd: 1.3, range: 8, speed: 4.2, splash: 1.8 },
-  rogue: { hp: 210, dmg: 13, cd: 0.55, range: 1.8, speed: 5.2, crit: 0.3 },
+  // (0.83) Each class has its job. The warrior holds the line: the Unmade would rather fight him (bulwark), he
+  // takes a fifth less, and his swings carry into whatever stands beside his mark (arc). The rogue duels: he
+  // slips a quarter of blows, his crits cut deeper, and he drinks a little of what he deals. Archers and
+  // mages keep their reach, a little sturdier.
+  warrior: { hp: 420, dmg: 30, cd: 1.0, range: 2.0, speed: 4.6, guard: 0.2, arc: 0.6, bulwark: 4 },
+  archer: { hp: 190, dmg: 18, cd: 0.9, range: 9, speed: 4.6 },
+  mage: { hp: 175, dmg: 20, cd: 1.3, range: 8, speed: 4.2, splash: 1.8 },
+  rogue: { hp: 270, dmg: 17, cd: 0.55, range: 1.8, speed: 5.4, crit: 0.3, critX: 2.5, dodge: 0.25, leech: 0.06 },
 };
 export const TROOP_NAMES = {
   warrior: ['Bram the Younger', 'Ida', 'Tobin', 'Greta', 'Osric', 'Halla', 'Wendel', 'Runa'],
@@ -68,16 +72,39 @@ export const TROOP_NAMES = {
   mage: ['Elowen', 'Cassius', 'Nim', 'Orla', 'Peregrin', 'Vesna', 'Aurel', 'Quill'],
   rogue: ['Jory', 'Vix', 'Moth', 'Dace', 'Sly', 'Wren the Less', 'Penn', 'Ash'],
 };
+/** (0.83) Who is a man and who a woman (their models follow it). */
+export const TROOP_WOMEN = new Set(['Ida', 'Greta', 'Halla', 'Runa', 'Fenna', 'Sable', 'Lark', 'Tamsin', 'Elowen', 'Nim', 'Orla', 'Vesna', 'Vix', 'Moth', 'Wren the Less', 'Ash']);
+export const troopGender = (t) => (TROOP_WOMEN.has(t.name) ? 'f' : TROOP_NAMES[t.cls] && TROOP_NAMES[t.cls].includes(t.name) ? 'm' : t.id % 2 ? 'm' : 'f');
 
-/** (0.81) Skills a hero can learn: physical at the Lodge, magic at the Observatory (the hall's level is the rank it teaches). */
+/**
+ * (0.81) Skills a hero can learn: physical at the Lodge, magic at the Observatory (the hall's level is the rank
+ * it teaches). (0.83) Four to a hero: two physical and two magic, the second of each from level SKILL_SLOT2.
+ * x: times the hero's damage. support: a healer's skill (a hero who knows one fights as a healer).
+ */
 export const SKILLS = {
-  cleave: { name: 'Cleave', school: 'phys', rank: 1, cd: 6, desc: 'Strikes every enemy within 2.8 m for twice their damage.' },
-  volley: { name: 'Volley', school: 'phys', rank: 2, cd: 7, desc: 'Three shots at the three nearest enemies, each for 1.6 times their damage.' },
-  lunge: { name: 'Lunge', school: 'phys', rank: 3, cd: 8, desc: 'Leaps onto the enemy nearest a building and strikes for four times their damage.' },
-  fireball: { name: 'Fireball', school: 'magic', rank: 1, cd: 7, desc: 'A blast where the enemies are thickest: 2.5 times their damage to all within 2.5 m.' },
-  mend: { name: 'Mend', school: 'magic', rank: 2, cd: 9, desc: 'Heals the most hurt hero nearby for 40% of their health.' },
+  cleave: { name: 'Cleave', school: 'phys', rank: 1, cd: 6, x: 2.2, r: 2.8, desc: 'Strikes every enemy within 2.8 m for 2.2 times their damage.' },
+  bash: { name: 'Shield Bash', school: 'phys', rank: 1, cd: 7, x: 2.5, stun: 1.5, desc: 'Slams the nearest enemy for 2.5 times their damage and stuns it for 1.5 seconds.' },
+  pierce: { name: 'Piercing Shot', school: 'phys', rank: 1, cd: 7, x: 2.6, len: 14, desc: 'A shot that goes through every enemy in a line, 2.6 times their damage to each.' },
+  volley: { name: 'Volley', school: 'phys', rank: 2, cd: 7, x: 1.8, n: 4, desc: 'Four shots at the four nearest enemies, each for 1.8 times their damage.' },
+  warcry: { name: 'War Cry', school: 'phys', rank: 2, cd: 14, dur: 6, pow: 0.25, r: 8, desc: 'Heroes within 8 m deal 25% more damage and strike 25% faster for 6 seconds.' },
+  taunt: { name: 'Challenge', school: 'phys', rank: 2, cd: 10, dur: 4, r: 7, guard: 0.4, desc: 'Every enemy within 7 m turns on this hero for 4 seconds, and they take 40% less damage meanwhile.' },
+  lunge: { name: 'Lunge', school: 'phys', rank: 3, cd: 8, x: 4, stun: 0.6, desc: 'Leaps onto the enemy nearest a building and strikes for four times their damage.' },
+  whirlwind: { name: 'Whirlwind', school: 'phys', rank: 3, cd: 9, x: 3.5, r: 3.5, dur: 3, guard: 0.3, desc: 'Spins through everything within 3.5 m for 3.5 times their damage, then takes 30% less damage for 3 seconds.' },
+  fireball: { name: 'Fireball', school: 'magic', rank: 1, cd: 7, x: 2.5, r: 2.5, desc: 'A blast where the enemies are thickest: 2.5 times their damage to all within 2.5 m.' },
+  frostnova: { name: 'Frost Nova', school: 'magic', rank: 1, cd: 8, x: 1.8, r: 3, slow: 0.5, dur: 3, desc: 'Ice bursts where the enemies are thickest: 1.8 times their damage to all within 3 m, slowed by half for 3 seconds.' },
+  mend: { name: 'Mend', school: 'magic', rank: 1, cd: 8, heal: 0.4, support: true, desc: 'Heals the most hurt hero nearby for 40% of their health.' },
+  chain: { name: 'Chain Lightning', school: 'magic', rank: 2, cd: 8, x: 2.4, n: 5, desc: 'Lightning leaps through up to five enemies, 2.4 times their damage to the first and a little less to each after.' },
+  barrier: { name: 'Barrier', school: 'magic', rank: 2, cd: 10, shield: 0.35, dur: 6, support: true, desc: 'The hero in most danger is shielded from 35% of their health in damage for 6 seconds.' },
+  meteor: { name: 'Meteor', school: 'magic', rank: 3, cd: 12, x: 5, r: 3.2, delay: 0.8, desc: 'Calls a star down where the enemies are thickest: five times their damage to all within 3.2 m.' },
   ward: { name: 'Ward', school: 'magic', rank: 3, cd: 12, desc: 'The building in most danger takes no damage for 5 seconds.' },
+  radiance: { name: 'Radiance', school: 'magic', rank: 3, cd: 15, heal: 0.25, r: 9, support: true, desc: 'Every hero within 9 m heals a quarter of their health, and one fallen there rises with a third.' },
 };
+export const SKILL_SLOT2 = 6;
+/** (0.83) A hero's four skill slots: 0 and 1 physical, 2 and 3 magic. */
+export const skillSlotSchool = (i) => (i < 2 ? 'phys' : 'magic');
+export const skillSlotOpen = (t, i) => i === 0 || i === 2 || (t.lvl || 1) >= SKILL_SLOT2;
+export const troopSkills = (t) => (t.skills || []).filter((s) => SKILLS[s]);
+export const troopSupport = (t) => troopSkills(t).some((s) => SKILLS[s].support);
 export const SKILL_IDS = Object.keys(SKILLS);
 
 /** (0.81) Blessings, from the Observatory: bought for the next Tide only. */
@@ -291,11 +318,21 @@ export function heroGearScore(g) {
 }
 
 /** A hero's numbers: class, level, the Bastion's arming, their rarity, and the Hero gear they wear. */
+/** (0.83) Four skill slots, from the saved four (or one skill from before 0.83, in its school's first slot). */
+function cleanSkills(t) {
+  const out = [null, null, null, null];
+  const raw = Array.isArray(t.skills) ? t.skills.slice(0, 4) : [];
+  if (!raw.length && SKILLS[t.skill]) raw[SKILLS[t.skill].school === 'phys' ? 0 : 2] = t.skill;
+  raw.forEach((s, i) => {
+    if (SKILLS[s] && SKILLS[s].school === skillSlotSchool(i) && !out.includes(s)) out[i] = s;
+  });
+  return out;
+}
 export function troopStats(t, armory = null) {
   const T = TROOPS[t.cls] || TROOPS.warrior;
   const rar = Math.max(0, Math.min(HERO_RAR_MAX, t.rar || 0));
   const m = (1 + KEEP.perLvl * ((t.lvl || 1) - 1)) * (1 + KEEP.perGear * (t.gear || 0)) * HERO_RARITY.mult[rar];
-  const out = { ...T, rar, crit: T.crit || 0, haste: 0, guard: 0, leech: 0, focus: HERO_RARITY.skillCdr[rar], siege: 0, fx: {} };
+  const out = { ...T, rar, crit: T.crit || 0, haste: 0, guard: T.guard || 0, leech: T.leech || 0, focus: HERO_RARITY.skillCdr[rar], siege: 0, fx: {} };
   let dmgP = 0, hpP = 0;
   for (const g of armory || []) {
     if (!g || g.hero !== t.id) continue;
@@ -515,7 +552,7 @@ export function cleanKeep(raw) {
   if (Array.isArray(raw.troops)) {
     for (const t of raw.troops.slice(0, 8)) {
       if (!t || !TROOPS[t.cls]) continue;
-      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 16), gear: int(t.gear, 0, 0, 15), skill: SKILLS[t.skill] ? t.skill : null, rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
+      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 16), gear: int(t.gear, 0, 0, 15), skills: cleanSkills(t), rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
     }
   }
   // (0.82) gear on a hero who has gone home goes back to the Armory; one piece a slot a hero

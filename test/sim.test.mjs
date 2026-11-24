@@ -5321,12 +5321,12 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'keepLearn', id: t1.id, skill: 'volley' }); w.runCommands();
   const lv = evs(w);
   w.command({ type: 'keepLearn', id: t1.id, skill: 'cleave' }); w.runCommands();
-  check('...the Lodge teaches physical skills up to its level', lv.includes('keepMaxed') && t1.skill === 'cleave');
+  check('...the Lodge teaches physical skills up to its level', lv.includes('keepMaxed') && t1.skills[0] === 'cleave');
   w.command({ type: 'keepLearn', id: k.troops[1].id, skill: 'fireball' }); w.runCommands();
   const fb = evs(w);
   w.command({ type: 'keepHall', cls: 'mage' }); w.runCommands();
   w.command({ type: 'keepLearn', id: k.troops[1].id, skill: 'fireball' }); w.runCommands();
-  check('...the Observatory teaches magic once it is raised', fb.includes('keepHallShut') && k.troops[1].skill === 'fireball');
+  check('...the Observatory teaches magic once it is raised', fb.includes('keepHallShut') && k.troops[1].skills[2] === 'fireball');
   w.command({ type: 'keepBless', id: 'stoneskin' }); w.runCommands();
   w.command({ type: 'keepBless', id: 'fury' }); w.runCommands();
   check('...and blesses the next night, up to its level', k.blessings.join() === 'fury' && evs(w).includes('keepMaxed'));
@@ -5751,5 +5751,55 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 60 * 300 && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) if (e.type === 'tideEnd') end = e; w.events = []; }
   check('...and a night\'s pieces at or below the rarity chosen are broken down for Wishstone as they come', end && end.won && end.auto >= 1 && end.salvaged > 0 && k.armory.length === before, JSON.stringify(end && { auto: end.auto, s: end.salvaged, gear: end.gear }));
   check('...kept through a save', K.cleanKeep(JSON.parse(JSON.stringify(k))).autoSalvageAt === 5 && K.cleanKeep({ tier: 1 }).autoSalvageAt === null);
+}
+// --- 0.83: four skills to a hero, sixteen to learn, healers, and each class its job --------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 207, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5; k.tier = 3; k.halls.archer = 3; k.halls.mage = 3;
+  w.command({ type: 'keepRecruit', cls: 'mage' }); w.runCommands();
+  const h = k.troops[0];
+  const learn = (skill, slot) => { w.events = []; w.command({ type: 'keepLearn', id: h.id, skill, slot }); w.runCommands(); };
+  learn('fireball', 2); learn('meteor', 3);
+  check('Heroes (0.83): a level 1 hero knows one skill of each school; the second slot opens at level 6', h.skills[2] === 'fireball' && !h.skills[3], JSON.stringify(h.skills));
+  h.lvl = K.SKILL_SLOT2;
+  learn('meteor', 3); learn('fireball', 0); learn('meteor', 2);
+  check('...then a second, but only of the slot\'s own school, and never the same skill twice', h.skills[3] === 'meteor' && !h.skills[0] && h.skills[2] === 'fireball', JSON.stringify(h.skills));
+  learn('cleave'); learn('taunt');
+  check('...with no slot named, a skill goes to its school\'s first empty slot', h.skills[0] === 'cleave' && h.skills[1] === 'taunt', JSON.stringify(h.skills));
+  check('...a save from before 0.83 keeps its one skill, in its school\'s slot', JSON.stringify(K.cleanKeep({ troops: [{ id: 3, cls: 'rogue', name: 'Vix', skill: 'mend' }] }).troops[0].skills) === JSON.stringify([null, null, 'mend', null]));
+  check('...and a hero\'s gender follows their name', K.troopGender({ id: 1, cls: 'mage', name: 'Elowen' }) === 'f' && K.troopGender({ id: 2, cls: 'mage', name: 'Cassius' }) === 'm');
+  const W = K.troopStats({ cls: 'warrior', lvl: 1 }), R = K.troopStats({ cls: 'rogue', lvl: 1 });
+  check('...a warrior holds the line (guard, a carrying swing, the Unmade drawn to him); a rogue duels (dodge, deeper crits, leech)', W.guard >= 0.2 && W.arc > 0 && W.bulwark > 0 && R.dodge > 0 && R.critX > 2 && R.leech > 0);
+  // a night with four-skill heroes and a healer
+  k.troops = [];
+  const team = [['warrior', ['cleave', 'taunt', 'frostnova', null]], ['warrior', ['bash', 'warcry', null, 'barrier']], ['archer', ['pierce', 'volley', 'chain', null]], ['mage', [null, null, 'mend', 'radiance']], ['rogue', ['lunge', 'whirlwind', 'meteor', null]]];
+  team.forEach(([cls, skills], i) => k.troops.push({ id: 100 + i, cls, name: 'h' + i, lvl: 9, gear: 6, rar: 3, skills }));
+  w.keepTroopsUp(); w.keepBuildsUp();
+  const healer = w.troops.find((t) => t.cls === 'mage');
+  check('...one who knows Mend, Barrier or Radiance fights as a healer', healer.support && !w.troops.find((t) => t.cls === 'archer').support);
+  k.nightMax = 30;
+  w.command({ type: 'keepTide', level: 13 }); w.runCommands();
+  const used = new Set(); let heals = 0, healerHits = 0, end = null, stunned = 0;
+  for (let i = 0; i < 60 * 300 && !end; i++) {
+    w.step(CONFIG.TICK);
+    for (const e of w.enemies) if (e.tide && e.stunT > 0) stunned++;
+    for (const e of w.events) {
+      if (e.type === 'troopSkill') used.add(e.skill);
+      if (e.type === 'troopHeal' && e.id === healer.id) heals++;
+      if (e.type === 'troopHit' && e.id === healer.id) healerHits++;
+      if (e.type === 'tideEnd') end = e;
+    }
+    w.events = [];
+  }
+  check('...in a night the heroes use many skills, not one', used.size >= 7, [...used].join(','));
+  check('...a Shield Bash or a Lunge stuns', stunned > 0);
+  check('...the healer mends more than they strike', heals > 0 && heals >= healerHits, `${heals} heals, ${healerHits} strikes`);
+  check('...and the night ends', end, JSON.stringify(end && { won: end.won, wrecked: end.wrecked }));
 }
 process.exit(failed ? 1 : 0);

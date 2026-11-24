@@ -241,7 +241,7 @@ export function makeSnapshot(world, pid, memo) {
       // (0.81) the Wishkeep: its night, its heroes and its buildings
       keep: world.map && world.map.id === 'wishkeep' ? {
         tide: world.tide ? { state: world.tide.state, wave: world.tide.wave, level: world.tide.level || 1, mcd: world.tide.mcd, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
-        troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0 })),
+        troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0, shield: t.shield > 0 ? 1 : undefined, gender: t.gender })),
         builds: (world.keepBuilds || []).map((b) => ({ id: b.id, x: b.x, z: b.z, r: b.r, hp: Math.round(b.hp), max: b.max, wardT: b.wardT > 0 ? r2(b.wardT) : undefined })),
       } : undefined,
       delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,

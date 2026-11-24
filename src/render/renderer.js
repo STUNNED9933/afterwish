@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
-import { buildKeepHero, buildVillager, VILLAGER_KINDS } from './keepmodels.js'; // (0.81.1)
+import { buildVillager, VILLAGER_KINDS } from './keepmodels.js'; // (0.81.1)
 import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, buildAltar } from './models.js';
 import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
@@ -80,6 +80,9 @@ function makeSeeded(seed) {
   let s = seed % 2147483647 || 1;
   return () => ((s = (s * 16807) % 2147483647) / 2147483647);
 }
+
+/** (0.83) How often each of the keep's heroes strikes (their basic swing is timed to it). */
+const TROOP_AS = { warrior: 1, archer: 1 / 0.9, mage: 1 / 1.3, rogue: 1 / 0.55 };
 
 export class Renderer {
   constructor(canvas) {
@@ -3083,19 +3086,21 @@ export class Renderer {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
-    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: 1, troop: t.id, rar: t.rar || 0 });
+    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: TROOP_AS[t.cls] || 1, troop: t.id, rar: t.rar || 0, shield: t.shield > 0, gender: t.gender || 'm' });
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      const look = a.troop ? 'keep' + (a.rar || 0) : heroLook(a.cls, a.spec, !!a.eform);
+      const look = a.troop ? `keep_${a.cls}_${a.gender}:${a.rar || 0}` : heroLook(a.cls, a.spec, !!a.eform);
       if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);
         v = null;
       }
       if (!v && a.troop) {
-        // (0.81.1) the keep's heroes are its own sworn, not copies of a player's hero
-        const model = buildKeepHero(a.cls, a.troop);
+        // (0.81.1) the keep's heroes are its own sworn, not copies of a player's hero; (0.83) a man or a woman
+        // of their class in the keep's colours, animated like the party (the hand-built one only until it loads)
+        const model = buildHero(a.cls);
+        upgradeHero(model, a.cls, `keep_${a.cls}_${a.gender}`);
         if (a.rar >= 3) {
           // (0.82) Epic and rarer: a ring of their rarity's colour at their feet
           const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: RARITIES[a.rar].color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
@@ -3127,6 +3132,15 @@ export class Renderer {
       const attackStart = an.swing === 0;
       if (an.swing < 1) an.swing = Math.min(1, an.swing + dt / an.swingDur);
       if (an.spin > 0) an.spin = Math.max(0, an.spin - dt / 0.32);
+      if (a.troop) {
+        // (0.83) a Barrier: a pale bubble while it holds
+        if (a.shield && !a.dead && !v.bubble) {
+          v.bubble = new THREE.Mesh(new THREE.SphereGeometry(1.15, 18, 12), new THREE.MeshBasicMaterial({ color: 0x8ac8ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }));
+          v.bubble.position.y = 1.0;
+          g.add(v.bubble);
+        }
+        if (v.bubble) v.bubble.visible = !!a.shield && !a.dead;
+      }
       if (v.model.keep) {
         g.position.set(x, 0, z);
         v.model.anim(dt, { moving: a.moving, dead: a.dead, swing: an.swing });
@@ -3177,16 +3191,59 @@ export class Renderer {
       if (ev.ranged) streak(ev.x, ev.z, ev.tx, ev.tz, ev.cls === 'mage' ? 0xb48cff : 0xfff0c0);
       else this.flash(this.sectorGeo(2.2, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xffd8dc, from: 2.0, to: 2.6, dur: 0.18, opacity: 0.45 });
     } else if (ev.type === 'troopSkill') {
+      // (0.83) sixteen skills, each with its own mark, and a move of the hero's own where their class has one
       const an = this.allyAnim('troop:' + ev.id);
       an.swing = 0;
       an.swingDur = 0.3;
-      const color = { cleave: 0xffd8a0, volley: 0xfff0c0, lunge: 0xff9a7a, fireball: 0xff6a2a, mend: 0x7fe0a0, ward: 0x8ac8ff }[ev.skill] || 0xffffff;
-      if (ev.skill === 'cleave') this.flash(this.discGeo(), { x: ev.x, z: ev.z, color, from: 0.5, to: 2.8, dur: 0.3, opacity: 0.5 });
-      else {
+      const MOVE = { cleave: 'cone', bash: 'strike', pierce: 'line', volley: 'barrage', lunge: 'dash', fireball: 'bolt', frostnova: 'orb', chain: 'bolt', meteor: 'meteor' };
+      if (ev.skill === 'whirlwind') an.spin = 1;
+      else if (MOVE[ev.skill]) an.move = MOVE[ev.skill];
+      const C = { cleave: 0xffd8a0, bash: 0xffe6b0, pierce: 0xfff0c0, volley: 0xfff0c0, warcry: 0xff9a3a, taunt: 0xff5a4a, lunge: 0xff9a7a, whirlwind: 0xffd8a0, fireball: 0xff6a2a, frostnova: 0x9ae0ff, mend: 0x7fe0a0, chain: 0xb8a8ff, barrier: 0x8ac8ff, meteor: 0xff7a2a, ward: 0x8ac8ff, radiance: 0xfff2a0 };
+      const color = C[ev.skill] || 0xffffff;
+      const ring = (x, z, from, to, dur = 0.4, opacity = 0.8) => this.flash(this.ringGeo(), { x, z, color, from, to, dur, opacity });
+      const disc = (x, z, to, dur = 0.3, opacity = 0.5) => this.flash(this.discGeo(), { x, z, color, from: 0.5, to, dur, opacity });
+      const sk = ev.skill;
+      if (sk === 'cleave' || sk === 'whirlwind') {
+        disc(ev.x, ev.z, ev.r || 2.8);
+        if (sk === 'whirlwind') ring(ev.x, ev.z, 1, ev.r || 3.5, 0.5);
+      } else if (sk === 'warcry' || sk === 'taunt' || sk === 'radiance') {
+        ring(ev.x, ev.z, 0.6, ev.r || 7, 0.6, 0.7);
+        disc(ev.x, ev.z, 2, 0.4, 0.35);
+        if (sk === 'radiance') this.burst(ev.x, 1.5, ev.z, { count: 24, color, speed: 4, up: 5, life: 0.8 });
+        if (sk === 'taunt') this.shake = Math.max(this.shake, 0.15);
+      } else if (sk === 'chain' && ev.pts) {
+        for (let i = 1; i < ev.pts.length; i++) {
+          streak(ev.pts[i - 1][0], ev.pts[i - 1][1], ev.pts[i][0], ev.pts[i][1], color, 0.18, 0.28);
+          this.burst(ev.pts[i][0], 1, ev.pts[i][1], { count: 6, color, speed: 3, up: 3, life: 0.3 });
+        }
+      } else if (sk === 'meteor') {
+        // the warning: a ring that tightens until it lands
+        this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, color: 0xff5a2a, from: ev.r * 1.6, to: ev.r, dur: ev.delay || 0.8, opacity: 0.9 });
+      } else if (sk === 'pierce') {
+        streak(ev.x, ev.z, ev.tx, ev.tz, color, 0.3, 0.3);
+      } else if (sk === 'bash') {
+        ring(ev.tx, ev.tz, 0.3, 1.4, 0.3);
+        this.burst(ev.tx, 1.4, ev.tz, { count: 10, color, speed: 4, up: 3, life: 0.4 });
+      } else {
         streak(ev.x, ev.z, ev.tx, ev.tz, color, 0.25, 0.3);
-        this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, color, from: 0.4, to: ev.skill === 'fireball' ? 2.5 : 1.6, dur: 0.4, opacity: 0.8 });
+        ring(ev.tx, ev.tz, 0.4, ev.r || 1.6);
         this.burst(ev.tx, 1, ev.tz, { count: 14, color, speed: 5, up: 4, life: 0.5 });
       }
+    } else if (ev.type === 'troopHeal') {
+      // (0.83) a healer's strike: a thread of green light
+      const an = this.allyAnim('troop:' + ev.id);
+      an.swing = 0;
+      an.swingDur = 0.25;
+      streak(ev.x, ev.z, ev.tx, ev.tz, 0x7fe0a0, 0.1, 0.25);
+      this.burst(ev.tx, 1.2, ev.tz, { count: 5, color: 0x9affb8, speed: 1.5, up: 3, life: 0.5 });
+    } else if (ev.type === 'troopMeteor') {
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff7a2a, from: 0.5, to: ev.r, dur: 0.45, opacity: 0.7 });
+      this.burst(ev.x, 1.5, ev.z, { count: 30, color: 0xff8a3a, speed: 7, up: 7, life: 0.8 });
+      this.shake = Math.max(this.shake, 0.3);
+    } else if (ev.type === 'troopRaised') {
+      this.burst(ev.x, 1, ev.z, { count: 20, color: 0xfff2a0, speed: 2, up: 6, life: 0.9 });
+    } else if (ev.type === 'troopDodge') {
+      this.burst(ev.x, 1.2, ev.z, { count: 3, color: 0xdddddd, speed: 3, up: 1, life: 0.25 });
     } else if (ev.type === 'foeHit') {
       if (ev.ranged) streak(ev.x, ev.z, ev.tx, ev.tz, 0x9a6aff, 0.1, 0.2);
       this.burst(ev.tx, 1, ev.tz, { count: 3, color: 0x9a6aff, speed: 2, up: 2, life: 0.3 });

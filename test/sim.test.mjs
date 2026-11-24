@@ -5949,4 +5949,52 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const weak = hitWith(geared('archer', 100, 2)), strong = hitWith(geared('archer', 100, 6));
   check('...and while incarnate your blows count as a mortal\'s: the same share of the night whatever your gear', weak > 0 && Math.abs(weak - strong) <= 1, `${weak} vs ${strong}`);
 }
+// --- 0.86: raids, in the keep and while you are away --------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const make = (seed, nightMax = 8) => {
+    const w = new World({ seed, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+    const p = w.player;
+    p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+    w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+    const k = p.keep;
+    k.faith = 5000; k.stone = 500; k.tier = 3; k.nightMax = nightMax;
+    k.troops = [['warrior', ['cleave', 'taunt', null, null]], ['warrior', ['bash', null, null, null]], ['archer', ['pierce', 'volley', 'chain', null]], ['mage', [null, null, 'mend', 'radiance']], ['rogue', ['lunge', 'whirlwind', null, null]]].map(([cls, skills], i) => ({ id: 90 + i, cls, name: 'h' + i, lvl: 12, gear: 12, rar: 5, skills }));
+    w.keepTroopsUp(); w.keepBuildsUp();
+    return { w, p, k };
+  };
+  {
+    const { w, k } = make(501);
+    const seen = [];
+    let end = null;
+    for (let i = 0; i < 60 * (K.RAID.every[1] + 120) && !end; i++) { w.step(CONFIG.TICK); for (const e of w.events) { seen.push(e.type); if (e.type === 'raidEnd') end = e; } w.events = []; }
+    check('Raids (0.86): in your keep, now and then, the horns, then a raid of one wave a little below your best Night', seen.includes('raidWarn') && end && end.level === K.raidLevel(k) && !seen.includes('tideStart'), JSON.stringify(end));
+    check('...held, it pays a share of a night (no stars, no new Night)', end.won && end.faith > 0 && k.raids === 1 && k.nightMax === 8 && !Object.keys(k.stars).length);
+  }
+  {
+    const { w, k } = make(502);
+    w.command({ type: 'keepRaids', on: false }); w.runCommands();
+    let warned = false;
+    for (let i = 0; i < 60 * (K.RAID.every[1] + 30); i++) { w.step(CONFIG.TICK); if (w.events.some((e) => e.type === 'raidWarn')) warned = true; w.events = []; }
+    check('...the keeper may turn them off at the Hearth', !warned && k.raidsOn === false && K.cleanKeep(JSON.parse(JSON.stringify(k))).raidsOn === false);
+  }
+  {
+    const { w } = make(503, 0);
+    let warned = false;
+    for (let i = 0; i < 60 * (K.RAID.every[1] + 30); i++) { w.step(CONFIG.TICK); if (w.events.some((e) => e.type === 'raidWarn')) warned = true; w.events = []; }
+    check('...and none come before the keep has held its first night', !warned);
+  }
+  {
+    const { w, p, k } = make(504);
+    const xp0 = p.exp, kills0 = w.stats.kills, f0 = k.faith;
+    k.last = 1e12;
+    w.events = [];
+    w.command({ type: 'keepClock', now: 1e12 + 7.5 * 3.6e6 }); w.runCommands();
+    const rep = w.events.find((e) => e.type === 'keepRaidsAway');
+    check('...away seven and a half hours, the heroes met two raids alone, fought out when you come (and told)', rep && rep.raids === 2 && k.raidsDue === 0 && Math.abs(k.raidAcc - 1.5) < 1e-6, JSON.stringify(rep));
+    check('...what they held pays; their kills are not yours; the night is quiet again after', rep.held >= 1 && k.faith > f0 && p.exp === xp0 && w.stats.kills === kills0 && !w.tide && !w.enemies.some((e) => e.tide));
+    check('...and a gap of a few minutes is not "away"', (() => { const r0 = k.raidAcc; w.command({ type: 'keepClock', now: 1e12 + 7.5 * 3.6e6 + 5 * 60e3 }); w.runCommands(); return k.raidAcc === r0; })());
+  }
+}
 process.exit(failed ? 1 : 0);

@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Raids (0.86)
+
+- **Surprise raids in your keep**: every 6–10 minutes between nights, horns sound and a raid comes 8 seconds later. It's one wave of the Unmade, two Night levels below your best, with the night's stranger children but never the Tidecaller. Your heroes meet it; miracles and Incarnate work as in a night.
+- **Raids while you're away**: every 3 hours away (3 at most), your heroes meet a raid alone. It's really fought out, with your heroes and halls as they are, when you next come to the keep, and you get a report: held or lost, Faith and Wishstone won, Hero gear, halls wrecked.
+- A raid held pays about a third of a night and sometimes a piece of Hero gear; no stars and no new Night. A raid that breaks through leaves its damage until you mend it.
+- Raids start only once you have held your first night, and **Raids on/off** at the Hearth turns them off (in the keep and away).
+
 ### Incarnate: a rescue, over your shoulder (0.85)
 
 - **R in a Tide now begins a channel** where you aim. For up to 5 seconds you gather aura: you rise in a swirl of light while a pillar grows where you will land. R again lands early, with less aura.

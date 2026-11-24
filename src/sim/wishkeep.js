@@ -179,6 +179,22 @@ export const OMENS = {
   ironhide: { name: 'Iron Hide', pay: 0.25, desc: 'The Unmade have a quarter more health.' },
 };
 export const OMEN_IDS = Object.keys(OMENS);
+/**
+ * (0.86) Raids: smaller than a night, unasked. While you are in your keep one comes every so often (a horn,
+ * then a single wave, a little below your best Night); while you are away the heroes meet one every
+ * `awayEvery` hours on their own (up to `awayMax`), fought out when you next come to the keep.
+ */
+export const RAID = {
+  every: [360, 600], // seconds in the keep between raids (from, to)
+  warn: 8, // seconds of horns before it arrives
+  below: 2, // Night levels under your best
+  pay: 0.35, // of a held night's Faith and Wishstone
+  gear: 0.35, // chance of a piece of Hero gear
+  awayEvery: 3, // hours away, a raid
+  awayMax: 3,
+  awayFrom: 10 / 60, // hours: a gap shorter than this is not "away"
+};
+export const raidLevel = (keep) => Math.max(1, (keep.nightMax || 0) - RAID.below);
 export const nightOmen = (L) => (L >= 6 ? OMEN_IDS[(L * 7 + 3) % OMEN_IDS.length] : null);
 
 // ---------------------------------------------------------------------------------------------- (0.82.1)
@@ -575,6 +591,10 @@ export function cleanKeep(raw) {
     // (0.84) stars won on each Night level: bit 1 held, 2 no hall wrecked, 4 no hero fell
     stars: Object.fromEntries(Object.entries(raw.stars && typeof raw.stars === 'object' ? raw.stars : {}).filter(([L]) => int(L, 0, 0, NIGHT.max) >= 1).map(([L, v]) => [int(L, 1, 1, NIGHT.max), int(v, 0, 0, 7)])),
     bosses: int(raw.bosses), // (0.84) Tidecallers felled
+    raidsOn: raw.raidsOn !== false, // (0.86) surprise raids in the keep (the keeper may turn them off)
+    raids: int(raw.raids), // (0.86) raids held
+    raidAcc: Math.max(0, Math.min(24, Number(raw.raidAcc) || 0)), // (0.86) hours away not yet met by a raid
+    raidsDue: int(raw.raidsDue, 0, 0, 3), // (0.86) raids the heroes met while you were away, fought when you come
     armory: [], // (0.82) Hero gear
     gearN: int(raw.gearN),
     autoSalvageAt: raw.autoSalvageAt == null ? null : int(raw.autoSalvageAt, 0, 0, 5), // (0.82.5) Hero gear broken down as it comes, up to this rarity

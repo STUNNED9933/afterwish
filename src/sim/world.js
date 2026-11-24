@@ -95,11 +95,11 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -879,6 +879,7 @@ export class World {
       else if (c.type === 'keepTrain') this.keepTrain(c.id);
       else if (c.type === 'keepArm') this.keepArm(c.id);
       else if (c.type === 'keepLearn') this.keepLearn(c.id, c.skill, c.slot);
+      else if (c.type === 'keepRaids') this.keepRaidsSet(c.on); // (0.86)
       else if (c.type === 'keepDismiss') this.keepDismiss(c.id);
       else if (c.type === 'keepBless') this.keepBless(c.id);
       else if (c.type === 'keepTrade') this.keepTrade(c.dir);
@@ -6115,8 +6116,100 @@ export class World {
       k.faith += faith;
       k.stone += stone;
       if ((faith || stone) && hours >= 0.25) this.emit('keepProduced', { faith, stone, hours: Math.round(hours * 10) / 10, rate: r.faith, srate: Math.round(r.stone * 10) / 10 });
+      // (0.86) while you were away, every few hours the Unmade came; the heroes met them alone
+      if (hours >= RAID.awayFrom && this.raidsCan()) {
+        k.raidAcc = Math.min(24, (k.raidAcc || 0) + hours);
+        const n = Math.floor(k.raidAcc / RAID.awayEvery);
+        if (n > 0) {
+          k.raidAcc -= n * RAID.awayEvery;
+          k.raidsDue = Math.min(RAID.awayMax, (k.raidsDue || 0) + n);
+        }
+      }
     }
     k.last = now;
+    if (k.raidsDue > 0 && this.inKeep() && !this.tide) this.keepRaidsAway();
+  }
+
+  /** (0.86) The keeper turns surprise raids on or off (at the Hearth). */
+  keepRaidsSet(on) {
+    const k = this.player.keep;
+    if (!k || !this.inKeep()) return;
+    k.raidsOn = !!on;
+    this.raidT = null;
+    this.emit('keepRaidsSet', { on: k.raidsOn });
+  }
+  /** (0.86) Can raids come: a keep with heroes that has held a night, raids not turned off. */
+  raidsCan() {
+    const k = this.player.keep;
+    return !!(k && k.raidsOn !== false && k.troops.length && (k.nightMax || 0) >= 1);
+  }
+  /** (0.86) In your keep, between nights: now and then, a raid. */
+  stepRaidClock(dt) {
+    if (!this.inKeep() || !this.keepOwns() || !this.raidsCan()) return;
+    if (this.raidT == null) {
+      const rng = this.streamRng('raid', this.player.keep.raids * 31 + this.player.keep.tides * 7 + 1);
+      this.raidT = RAID.every[0] + rng() * (RAID.every[1] - RAID.every[0]);
+    }
+    this.raidT -= dt;
+    if (this.raidT <= 0) {
+      this.raidT = null;
+      this.keepRaidStart(false);
+    }
+  }
+  /** (0.86) A raid: one wave, a little below your best Night, after a few seconds of horns (none when away). */
+  keepRaidStart(away) {
+    const k = this.player.keep;
+    if (!this.inKeep() || (this.tide && this.tide.state === 'on')) return;
+    const L = raidLevel(k);
+    this.keepTroopsUp();
+    this.keepBuildsUp();
+    this.tide = {
+      state: 'on', raid: true, away: !!away, wave: 0, waves: 1, next: away ? 0 : RAID.warn, seed: k.raids * 211 + k.tides * 13 + (this.ticks % 9973),
+      night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: [], echo: 1,
+      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0, omen: null, fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
+    };
+    for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor);
+    if (!away) this.emit('raidWarn', { in: RAID.warn, level: L });
+  }
+  /** (0.86) The raids the heroes met while you were away, fought out now (quickly, unseen), and a word on how they went. */
+  keepRaidsAway() {
+    const k = this.player.keep;
+    const n = k.raidsDue || 0;
+    k.raidsDue = 0;
+    if (!n || !this.raidsCan()) return;
+    const outer = this.events;
+    const dt = 0.05;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      this.events = [];
+      this.quietKills = true;
+      this.keepRaidStart(true);
+      for (let j = 0; j < 90 / dt && this.tide && this.tide.state === 'on'; j++) {
+        this.stepTide(dt);
+        if (!this.tide || this.tide.state !== 'on') break;
+        for (const e of this.enemies) {
+          if (!e.tide || e.dead) continue;
+          [e.px, e.pz, e.moving] = [e.x, e.z, false];
+          if (e.hitFlash > 0) e.hitFlash -= dt;
+          this.stepTideFoe(e, dt);
+        }
+        this.enemies = this.enemies.filter((e) => !(e.tide && e.dead));
+      }
+      if (this.tide && this.tide.state === 'on') this.tideEnd(false); // (it ran long: the dark had its way)
+      const end = this.events.find((e) => e.type === 'raidEnd');
+      if (end) out.push(end);
+      this.quietKills = false;
+      this.tide = null;
+      this.enemies = this.enemies.filter((e) => !e.tide);
+    }
+    this.events = outer;
+    this.keepTroopsUp();
+    this.keepBuildsUp();
+    this.emit('keepRaidsAway', {
+      raids: out.length, held: out.filter((r) => r.won).length,
+      faith: out.reduce((a, r) => a + (r.faith || 0), 0), stone: out.reduce((a, r) => a + (r.stone || 0), 0),
+      gear: out.flatMap((r) => r.gear || []), wrecked: [...new Set(out.flatMap((r) => r.wrecked || []))],
+    });
   }
 
   /** The keep's buildings as the world uses them (where, how big, how hurt). */
@@ -6167,6 +6260,7 @@ export class World {
     // (0.82) at a Night level: up to one past the highest held
     const L = Math.max(1, Math.min(NIGHT.max, k.nightMax + 1, Math.floor(Number(level)) || k.night || 1));
     k.night = L;
+    this.raidT = null; // (0.86) a night called resets the raid clock
     if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: Math.ceil(buildMax('hearth', k) / KEEP.repairPer), have: k.stone });
     const T = KEEP.tide;
     this.keepTroopsUp();
@@ -6223,7 +6317,7 @@ export class World {
     const gate = () => gates[gi++ % gates.length];
     for (let i = 0; i < n; i++) this.spawnTideFoe(T.roster[Math.floor(rng() * T.roster.length)], gate(), rng);
     // (0.84) the night's stranger children
-    const sp = tideSpecials(L, t.wave, W);
+    const sp = t.raid ? tideSpecials(L, 2, 3) : tideSpecials(L, t.wave, W); // (0.86) a raid: a night's middle, never its king
     let specials = 0;
     for (const type of Object.keys(sp)) {
       for (let j = 0; j < sp[type]; j++) {
@@ -6235,6 +6329,30 @@ export class World {
     }
     if (sp.tidecaller) this.emit('tideBoss', { name: FOES.tidecaller.name });
     this.emit('tideWave', { wave: t.wave, of: W, n: n + specials, specials: Object.keys(sp) });
+  }
+
+  /** (0.86) A raid's end: a share of a night's pay, maybe a piece of Hero gear; no stars, no new Night. */
+  raidEnd(won, wrecked, L) {
+    const t = this.tide, k = this.player.keep;
+    if (!won) return this.emit('raidEnd', { won: false, wrecked, level: L, away: t.away });
+    k.raids++;
+    const thieves = 0.05 * t.caught - Math.min(0.5, 0.1 * Math.max(0, t.stolen - t.caught));
+    const R = NIGHT.reward(L) * RAID.pay * (1 + thieves);
+    const faith = Math.round((40 + 10 * k.tier) * this.keepMult() * R);
+    const stone = Math.round((6 + 2 * k.tier) * R);
+    k.faith += faith;
+    k.stone += stone;
+    const rng = this.streamRng('raidgear', t.seed * 5 + L);
+    const gear = [];
+    if (rng() < RAID.gear) {
+      const g = rollHeroGear(rng, L, 'g' + ++k.gearN);
+      if ((k.autoSalvageAt != null && g.r <= k.autoSalvageAt && !heroGearUpgrade(g, k)) || k.armory.length >= ARMORY_MAX) k.stone += HERO_GEAR.salvage(g);
+      else {
+        k.armory.push(g);
+        gear.push({ r: g.r, slot: g.slot, name: g.name });
+      }
+    }
+    this.emit('raidEnd', { won: true, faith, stone, gear, wrecked, level: L, away: t.away, stolen: t.stolen - t.caught });
   }
 
   /** (0.84) One of the Tide's enemies, at a gate, with the night's numbers. */
@@ -6327,6 +6445,7 @@ export class World {
     }
     const wrecked = (this.keepBuilds || []).filter((b) => b.hp <= 0).map((b) => (b.id === 'hearth' ? 'the Hearth' : HALLS[b.id].name));
     const L = t.level || 1;
+    if (t.raid) return this.raidEnd(won, wrecked, L);
     if (!won) return this.emit('tideEnd', { won: false, wrecked, level: L });
     // (0.82.1) a held night: the keep's people mend a quarter of every building by morning, free
     for (const b of BUILD_IDS) {
@@ -9393,6 +9512,7 @@ export class World {
     }
     this.removeTelegraph(e);
     if (e.tide && this.tide && this.tide.state === 'on') this.tideFoeDown(e); // (0.84)
+    if (this.quietKills && e.tide) return; // (0.86) a raid fought while you were away: no kills of yours
     this.stats.kills++;
     if (this.mode === 'explore') {
       for (const camp of this.camps) {
@@ -10189,7 +10309,7 @@ inTown() {
       const t = this.tide; // (0.80)
       const h = (this.keepBuilds || []).find((b) => b.id === 'hearth');
       const up = (this.troops || []).filter((tr) => !tr.dead).length;
-      return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `Tide${t.level ? ` · Night ${t.level}` : ''}${t.omen ? ` · ${OMENS[t.omen].name}` : ''} · wave ${t.wave} of ${t.waves || KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
+      return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `${t.raid ? 'Raid' : 'Tide'}${t.level ? ` · Night ${t.level}` : ''}${t.omen ? ` · ${OMENS[t.omen].name}` : ''} · wave ${t.wave} of ${t.waves || KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
     }
     if (m.id === KEEP.map && this.player.keep) return { name: m.name, sub: `Tier ${KEEP.tiers[this.player.keep.tier].numeral} · ${this.player.keep.faith.toLocaleString('en-US')} Faith · ${this.player.keep.stone} Wishstone` };
     const dn = this.depthNow();
@@ -10726,6 +10846,7 @@ inTown() {
 
   stepExplore(dt) {
     if (this.tide) this.stepTide(dt); // (0.80)
+    else this.stepRaidClock(dt); // (0.86)
     const p = this.player;
     if (p.dead) {
       this.respawnT -= dt;
@@ -10949,7 +11070,7 @@ inTown() {
       // (0.82.2) a night in a keep with visitors: it is the owner's
       const owner = (this.keepOwner != null && this.heroByPid(this.keepOwner)) || lead;
       this.as(owner, () => this.stepTide(dt));
-    }
+    } else if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => this.stepRaidClock(dt)); // (0.86)
     // Enemies come back a while after they are killed, but not right on top of anyone; (0.61) faster
     // the more heroes share the map (not the bosses), so each can hold a stretch of it.
     const faster = 1 + CONFIG.PARTY_RESPAWN * (this.heroes.length - 1);

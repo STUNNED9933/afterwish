@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, tideSpecials, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1481,6 +1481,12 @@ function start(hot = {}) {
     const star = (bit, what) => `<span class="night-star${nst & bit ? ' got' : ''}">${nst & bit ? '★' : '☆'} ${what}</span>`;
     const brief = document.createElement('div');
     brief.className = 'night-brief';
+    // (0.86) raids
+    const raidRow = document.createElement('div');
+    raidRow.className = 'keep-troop';
+    raidRow.innerHTML = `<span><b>Raids</b>: ${k.nightMax ? `smaller than a night (Night ${raidLevel(k)}, one wave), they come every ${RAID.every[0] / 60}–${RAID.every[1] / 60} minutes while you are here, and every ${RAID.awayEvery} hours you are away your heroes meet one alone. Each held pays about a third of a night, and sometimes Hero gear.` : 'once you have held a night, the Unmade will raid the keep now and then.'}${k.raids ? ` Held so far: ${k.raids}.` : ''}</span>`;
+    raidRow.appendChild(keepBtn(k.raidsOn !== false ? 'Raids on' : 'Raids off', () => applyNow({ type: 'keepRaids', on: k.raidsOn === false }), { primary: k.raidsOn !== false, title: k.raidsOn !== false ? 'Turn raids off (in the keep and while away)' : 'Turn raids on' }));
+    night.appendChild(raidRow);
     brief.innerHTML = `${om ? `<p><b class="omen">Omen: ${OMENS[om].name}</b> (+${Math.round(OMENS[om].pay * 100)}% pay). ${OMENS[om].desc}</p>` : ''}${kinds.size ? `<p>${[...kinds].map((f) => `<b>${FOES[f].name}</b>: ${FOES[f].desc}`).join('<br>')}</p>` : ''}<p>${star(1, 'Hold the keep')} ${star(2, 'No hall wrecked')} ${star(4, 'No hero falls')}<br><small>Each star won for the first time pays ${NIGHT.starSigils(lvl)} Sigils; all three in one night, an extra piece of Hero gear.</small></p>`;
     night.appendChild(brief);
     night.appendChild(keepBtn(on ? 'The Tide is coming' : world.wrecked('hearth') ? 'Mend the Hearth first' : `Call Night ${lvl} (${k.troops.length} hero${k.troops.length === 1 ? '' : 'es'})`, () => {
@@ -5270,6 +5276,36 @@ function start(hot = {}) {
         hud.feedText(`Wave ${ev.wave} of ${ev.of}: ${ev.n} of them, from four ways in.${(ev.specials || []).filter((f) => f !== 'tidecaller').length ? ` Among them: ${ev.specials.filter((f) => f !== 'tidecaller').map((f) => FOES[f].name).join(', ')}.` : ''}`);
         break;
       // (0.84) the night's stranger children
+      // (0.86) raids
+      case 'raidWarn':
+        sfx.denied();
+        hud.banner('Horns at the gates', `A raid, in ${ev.in} seconds: one wave of the Unmade (Night ${ev.level}). Your heroes will meet it; R to Incarnate if they need you.`);
+        break;
+      case 'raidEnd':
+        if (ev.away) break;
+        if (ev.won) {
+          sfx.levelUp();
+          const gear = (ev.gear || []).map((g) => `<span style="color:${RARITIES[g.r].color}">${RARITIES[g.r].name} ${esc(g.name)}</span>`).join(', ');
+          hud.banner('The raid is beaten', `+${ev.faith.toLocaleString()} Faith, +${ev.stone} Wishstone.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')}.` : ''}`);
+          if (gear) gearToast(`Hero gear for the Armory: ${gear}`);
+        } else {
+          sfx.denied();
+          hud.banner('The raid broke through', `The Hearth went dark.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')}.` : ''} Mend the keep at the Hearth (Wishstone).`);
+        }
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepRaidsAway': {
+        const lost = ev.raids - ev.held;
+        const gear = (ev.gear || []).map((g) => `<span style="color:${RARITIES[g.r].color}">${RARITIES[g.r].name} ${esc(g.name)}</span>`).join(', ');
+        hud.banner('While you were away', `The Unmade raided ${ev.raids} time${ev.raids > 1 ? 's' : ''}. Your heroes held ${ev.held}${lost ? `, and ${lost} broke through` : ''}. +${ev.faith.toLocaleString()} Faith, +${ev.stone} Wishstone.${ev.wrecked.length ? ` Wrecked: ${ev.wrecked.join(', ')} (mend them at the Hearth).` : ''}`);
+        if (gear) gearToast(`Your heroes won Hero gear: ${gear}`);
+        if (mode === 'talk') renderTalk();
+        break;
+      }
+      case 'keepRaidsSet':
+        hud.feedText(ev.on ? 'Raids on: the Unmade will come now and then.' : 'Raids off.');
+        if (mode === 'talk') renderTalk();
+        break;
       case 'tideBoss':
         sfx.denied();
         hud.banner(ev.name, 'The night\'s king comes with the last wave. Keep your heroes out of its slam.');

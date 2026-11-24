@@ -167,6 +167,8 @@ also keeps its own beat instead of the frame that noticed it.
 - **Skills fly at the locked enemy**, or where you look if nothing is locked.
 - **Right-click no longer walks** while Incarnate; it reminds you to move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>.
 - Standing still, your hero turns to face where you look. A **Look sensitivity** slider is in the settings, and big mouse jumps are smoothed out.
+- (0.89.1) **Tab picks the next enemy** before you, nearest first, each once before going round again (the bag is still on I and C). It stays your target until it falls or you leave it far behind; clicking straight on an enemy picks it too.
+- (0.89.1) **Shift rolls**: 4.5 m the way you are moving (backward if you are standing still), and blows pass through you for 0.4 seconds. Once every 2.5 seconds; the key hint shows the cooldown.
 
 ### A growing village (0.88)
 

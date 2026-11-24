@@ -99,7 +99,7 @@ const KEEP_CMDS = ['keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -960,6 +960,9 @@ export class World {
           break;
         case 'cast':
           this.castAbility(c.slot, c.x, c.z);
+          break;
+        case 'dodge':
+          this.dodge(c.x, c.z); // (0.89)
           break;
         case 'parry':
           this.tryParry(c.seen);
@@ -3247,7 +3250,7 @@ export class World {
       }
       if (k >= 1) {
         p.dash = null;
-        const over = this.overflowMult(ds.slot); // (0.50) haste past the 1 s floor makes the buff stronger
+        const over = ds.slot === 'dodge' ? 1 : this.overflowMult(ds.slot); // (0.50) haste past the 1 s floor makes the buff stronger
         if (ds.rush) {
           p.rushT = ds.rush.time + (this.mods.eRushTime || 0);
           p.rushAs = (ds.rush.as + (this.mods.eRush || 0)) * over;
@@ -6290,6 +6293,9 @@ export class World {
     for (const c in t.mcd) if (t.mcd[c] > 0) t.mcd[c] = Math.max(0, t.mcd[c] - dt);
     if (t.icd > 0) t.icd = Math.max(0, t.icd - dt);
     if (t.chan != null) this.stepIncarnateChannel(dt); // (0.85)
+    const me = this.player;
+    if (me.dodgeCd > 0) me.dodgeCd = Math.max(0, me.dodgeCd - dt); // (0.89)
+    if (me.dodgeT > 0) me.dodgeT -= dt;
     if (t.inc > 0) {
       t.inc -= dt;
       if (t.inc <= 0) this.incarnateEnd(false);
@@ -7170,6 +7176,21 @@ export class World {
     p.attackMove = null;
     this.emit('incarnateChannel', { x: at.x, z: at.z, px: p.x, pz: p.z, t: INCARNATE.chan });
   }
+  /** (0.89) Incarnate: a quick roll toward (x, z); blows pass through you for a moment. */
+  dodge(x, z) {
+    const t = this.tide, p = this.player;
+    if (!t || !(t.inc > 0) || !this.keepOwns() || p.dead || p.dash || p.dodgeCd > 0) return;
+    if (!Number.isFinite(x) || !Number.isFinite(z) || dist(x, z, p.x, p.z) < 0.01) return;
+    const a = dAtan2(z - p.z, x - p.x);
+    const end = this.clampToArena(p.x + dCos(a) * DODGE.dist, p.z + dSin(a) * DODGE.dist, p.radius);
+    p.dash = { t: 0, dur: DODGE.dur, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg: 0, refunded: true, slot: 'dodge', width: 0 };
+    p.dodgeCd = DODGE.cd;
+    p.dodgeT = DODGE.grace;
+    p.moveTarget = null;
+    p.facing = a;
+    this.emit('cast', { slot: 'dodge', fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
+  }
+
   /** (0.85) The channel at work: aura gathers; full, the god lands. */
   stepIncarnateChannel(dt) {
     const t = this.tide;
@@ -7229,6 +7250,7 @@ export class World {
   /** A Tide foe's blow on the incarnate god: a fall ends the incarnation, never the hero. */
   incarnateHurt(dmg) {
     const p = this.player;
+    if (p.dodgeT > 0) return this.emit('dodged', { x: p.x, z: p.z }); // (0.89) rolled through it
     const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
     // (as a mortal: health counted as if it were INCARNATE.body, so any hero's gear makes the same fight)
     const n = Math.max(1, Math.round((p.stats.maxHp * dmg * stone) / INCARNATE.body));

@@ -32,6 +32,7 @@ export class Input {
     // (0.89) action combat over the shoulder: the enemy soft-locked in front of you, the left button held
     this.softId = null;
     this.lmb = false;
+    this.forceId = null; // (0.89) the target picked with Tab
     this.lastAtk = 0;
     this.sens = 1; // look sensitivity (a setting)
 
@@ -124,6 +125,8 @@ export class Input {
       if (!this.locked()) return this.lock();
       if (e.button === 0) {
         this.lmb = true;
+        const under = this.renderer.pickEnemy(window.innerWidth / 2, window.innerHeight / 2, world);
+        if (under && !under.dead) this.forceId = this.softId = under.id; // (0.89) clicked on: this one
         this.strike(world, performance.now(), true);
       } else if (e.button === 2 && this.actions.shoulderTip) this.actions.shoulderTip('Move with W A S D. Hold the left button to strike.');
       return;
@@ -186,6 +189,12 @@ export class Input {
     const key = (e.key || '').toLowerCase();
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
 
+    // (0.89) over the shoulder, Tab picks the next enemy (the bag is still on I and C)
+    if (key === 'tab' && this.shoulderOn() && this.isPlaying() && !typing) {
+      e.preventDefault();
+      if (!e.repeat) this.cycleTarget(this.getWorld());
+      return;
+    }
     // Menu keys work whether or not the fight is running.
     if (key === 'tab' || key === 'i' || key === 'c') {
       e.preventDefault();
@@ -271,6 +280,18 @@ export class Input {
       this.keys.add(key);
       return true;
     }
+    if (key === 'shift') {
+      // (0.89) a roll the way you are moving (back, away from what you face, if you are not)
+      e.preventDefault();
+      if (e.repeat) return true;
+      const [dx, dz] = this.moveDir();
+      const S = this.renderer.shoulder;
+      const n = Math.hypot(dx, dz);
+      const [ux, uz] = n > 0.01 ? [dx / n, dz / n] : [-Math.cos(S.yaw), -Math.sin(S.yaw)];
+      const p = world.player;
+      world.command({ type: 'dodge', x: p.x + ux * 3, z: p.z + uz * 3 });
+      return true;
+    }
     const slot = { q: 'q', f: 'w', e: 'e', r: 'r', z: 'd', x: 'f' }[key];
     if (slot) {
       e.preventDefault();
@@ -293,6 +314,12 @@ export class Input {
   softLock(world) {
     const p = world.player;
     if (!p || p.dead) return null;
+    if (this.forceId != null) {
+      // (0.89) the one picked with Tab (or clicked on) holds until it falls or is left far behind
+      const f = world.enemies.find((o) => o.id === this.forceId && !o.dead);
+      if (f && Math.hypot(f.x - p.x, f.z - p.z) < 22) return f.id;
+      this.forceId = null;
+    }
     const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
     const under = this.renderer.pickEnemy(cx, cy, world);
     if (under && !under.dead) return under.id;
@@ -313,6 +340,53 @@ export class Input {
     }
     return best ? best.id : null;
   }
+  /** (0.85) Which way W A S D point, against the way you face (not normalised). */
+  moveDir() {
+    const S = this.renderer.shoulder;
+    const fx = Math.cos(S.yaw), fz = Math.sin(S.yaw);
+    let dx = 0, dz = 0;
+    const k = this.keys;
+    if (k.has('w') || k.has('arrowup')) [dx, dz] = [dx + fx, dz + fz];
+    if (k.has('s') || k.has('arrowdown')) [dx, dz] = [dx - fx, dz - fz];
+    if (k.has('d') || k.has('arrowright')) [dx, dz] = [dx - fz, dz + fx];
+    if (k.has('a') || k.has('arrowleft')) [dx, dz] = [dx + fz, dz - fx];
+    return [dx, dz];
+  }
+  /**
+   * (0.89) Tab: the next enemy before you, nearest first and each once before starting round again (it
+   * stays your target until it falls or is left far behind).
+   */
+  cycleTarget(world) {
+    const p = world.player;
+    if (!p) return;
+    const S = this.renderer.shoulder;
+    const reach = (world.basic && world.basic.range) || 2;
+    const list = [];
+    for (const e of world.enemies) {
+      if (e.dead || e.state === 'spawn') continue;
+      const d = Math.hypot(e.x - p.x, e.z - p.z);
+      if (d > Math.max(14, reach + 6)) continue;
+      let da = Math.atan2(e.z - p.z, e.x - p.x) - S.yaw;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) > 1.4) continue;
+      list.push({ id: e.id, da, d });
+    }
+    if (!list.length) return (this.forceId = null);
+    // nearest first, each one once, then round again (the order does not shuffle as they move)
+    this.tabSeen = this.tabSeen || new Set();
+    if (this.softId != null) this.tabSeen.add(this.softId);
+    let fresh = list.filter((o) => !this.tabSeen.has(o.id));
+    if (!fresh.length) {
+      this.tabSeen = new Set(this.softId != null ? [this.softId] : []);
+      fresh = list.filter((o) => !this.tabSeen.has(o.id));
+      if (!fresh.length) fresh = list;
+    }
+    fresh.sort((a, b) => a.d - b.d);
+    this.forceId = fresh[0].id;
+    this.softId = this.forceId;
+    this.tabSeen.add(this.forceId);
+  }
+
   /** (0.89) Strike the locked enemy (again, if the last one fell or the lock moved on). */
   strike(world, now, fresh) {
     if (this.softId == null) return;
@@ -339,14 +413,7 @@ export class Input {
       if (this.lmb) this.strike(world, now, false);
       // (0.85) walking over the shoulder: W A S D against the way you face, a step ahead at a time;
       // (0.89) but while you hold the strike on a foe, you stand and fight
-      const S = this.renderer.shoulder;
-      const fx = Math.cos(S.yaw), fz = Math.sin(S.yaw);
-      let dx = 0, dz = 0;
-      const k = this.keys;
-      if (k.has('w') || k.has('arrowup')) [dx, dz] = [dx + fx, dz + fz];
-      if (k.has('s') || k.has('arrowdown')) [dx, dz] = [dx - fx, dz - fz];
-      if (k.has('d') || k.has('arrowright')) [dx, dz] = [dx - fz, dz + fx];
-      if (k.has('a') || k.has('arrowleft')) [dx, dz] = [dx + fz, dz - fx];
+      const [dx, dz] = this.moveDir();
       let n = Math.hypot(dx, dz);
       if (this.lmb && this.softId != null) n = 0;
       if (n > 0.01 && now - this.lastMoveSent > 80) {
@@ -362,6 +429,7 @@ export class Input {
       return;
     }
     this.softId = null;
+    this.forceId = null;
     this.lmb = false;
     if (this.walking) {
       this.walking = false;

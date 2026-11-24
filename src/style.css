@@ -1396,3 +1396,4 @@ body.shoulder-on #prompt { display: none; }
 #shoulder-ui.on.locked .xhair { border-color: #ffd27a; box-shadow: 0 0 10px rgba(255, 210, 122, 0.9); transform: scale(1.15); }
 #shoulder-ui.on .sh-tip { display: block; position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 14px; border-radius: 6px; background: rgba(10, 12, 20, 0.85); color: #ffe8c0; font-size: 15px; opacity: 0; transition: opacity 0.25s; }
 #shoulder-ui.on .sh-tip.show { opacity: 1; }
+#shoulder-ui .sh-dodge.cool { color: #8a8a96; }

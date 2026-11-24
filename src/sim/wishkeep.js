@@ -144,6 +144,8 @@ export const MIRACLE_IDS = Object.keys(MIRACLES);
  * Your blows count as a mortal's, like your health: a hit worth N times your attack deals N times `atk`
  * of the night's strength, whatever your gear. Once or twice a night (`cd`).
  */
+/** (0.89) The incarnate god's dodge roll (Shift): how far, how quick, how long blows pass through, how often. */
+export const DODGE = { dist: 4.5, dur: 0.3, grace: 0.4, cd: 2.5 };
 export const INCARNATE = {
   key: 'r', name: 'Incarnate', faith: 40, chan: 5, chanMin: 1.5, dur: 12, cd: 60, body: 600, atk: 35,
   land: { r: 7, heal: 0.45, shield: 0.3, shieldDur: 6, raise: 0.4, stun: 1.6, hit: 0.15 },

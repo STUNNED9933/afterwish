@@ -6060,4 +6060,33 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...each built site pays on its own, and they are kept through a save', r.stone > one.stone && r.faith > one.faith && keep.works.mine2 === 2 && keep.works.fields3 === 1);
   check('...the later sites cost more to build', K.WORKS.fields4.cost(1).faith > K.WORKS.fields2.cost(1).faith && K.WORKS.fields2.cost(1).faith > K.WORKS.fields.cost(1).faith);
 }
+// --- 0.89: the incarnate god's dodge roll ---------------------------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 701, mode: 'explore', cls: 'archer', save: geared('archer', 100, 6) });
+  const p = w.player;
+  p.lives = { warrior: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e5; k.tier = 3; k.nightMax = 30;
+  w.command({ type: 'keepTide', level: 3 }); w.runCommands();
+  const x0 = p.x, z0 = p.z;
+  w.command({ type: 'dodge', x: p.x + 3, z: p.z }); w.runCommands();
+  check('Dodge (0.89): only while Incarnate', !p.dash && p.x === x0);
+  w.tide.inc = 8;
+  w.command({ type: 'dodge', x: p.x + 3, z: p.z }); w.runCommands();
+  const rolling = !!p.dash;
+  const hp0 = p.hp;
+  w.incarnateHurt(50);
+  const graced = p.hp === hp0;
+  for (let i = 0; i < 60 * (K.DODGE.dur + 0.1); i++) w.step(CONFIG.TICK);
+  const moved = Math.hypot(p.x - x0, p.z - z0);
+  w.command({ type: 'dodge', x: p.x + 3, z: p.z }); w.runCommands();
+  check('...a quick roll the way you ask, blows passing through you for a moment', rolling && graced && moved > K.DODGE.dist * 0.8 && moved < K.DODGE.dist * 1.1, `moved ${moved.toFixed(2)}`);
+  check('...then a cooldown before the next', !p.dash && p.dodgeCd > 0);
+  for (let i = 0; i < 60 * (K.DODGE.cd + 0.1); i++) w.step(CONFIG.TICK);
+  w.incarnateHurt(50);
+  check('...and after the grace, blows land again', p.hp < hp0);
+}
 process.exit(failed ? 1 : 0);

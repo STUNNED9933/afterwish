@@ -1183,7 +1183,7 @@
       "faceLimit": 11000
     },
     "t_mourner": {
-      "prompt": "a Mourner, the ghost of a grieving widow, tall and slender in a long black lace mourning gown and a long black veil over her face, pale grey translucent skin, long white hair, holding a dim violet candle, weeping violet light running down from under the veil, hem dissolving into mist",
+      "prompt": "ONE single figure alone, nobody else in the scene: a Mourner, the ghost of one grieving widow, tall and slender in a long black lace mourning gown and a long black veil over her face, pale grey translucent skin, long white hair, holding one dim violet candle in her right hand, weeping violet light under the veil, the hem of the gown dissolving into mist",
       "rigType": "biped",
       "rigModel": "v1.0",
       "animations": [

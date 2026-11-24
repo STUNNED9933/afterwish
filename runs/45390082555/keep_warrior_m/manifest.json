@@ -1,0 +1,93 @@
+{
+  "id": "keep_warrior_m",
+  "prompt": "a sturdy young man, a shieldbearer sworn to a small mountain keep: short dark beard, a round steel kettle helm with a brim, a knee-length mail shirt under a deep crimson tabard with a bone-white border and a small gold diamond emblem on the chest, steel pauldrons, brown leather gauntlets and tall boots, broad shoulders, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-24T12:05:04.071Z",
+  "creditsBefore": 2490,
+  "steps": {
+    "model": {
+      "task": "063042de-f2f2-47ba-aace-f6b6d43796ee",
+      "result": {
+        "task_id": "063042de-f2f2-47ba-aace-f6b6d43796ee",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/keep_warrior_m/1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_warrior_m/1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/model.glb",
+        "preview": "out/models/keep_warrior_m/1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/preview.png"
+      }
+    },
+    "check": {
+      "task": "f4e9a0a8-e4aa-4b8a-94ef-624797cb974e",
+      "result": {
+        "task_id": "f4e9a0a8-e4aa-4b8a-94ef-624797cb974e",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/keep_warrior_m/2-check/tripo-out/rig-check-f4e9a0a8",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "6da9215d-1afd-45a2-a33e-d2d7711d573a",
+      "rigType": "biped",
+      "result": {
+        "task_id": "6da9215d-1afd-45a2-a33e-d2d7711d573a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/keep_warrior_m/3-rig/tripo-out/rig-6da9215d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_warrior_m/3-rig/tripo-out/rig-6da9215d/model.glb",
+        "preview": "out/models/keep_warrior_m/3-rig/tripo-out/rig-6da9215d/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "0e762a9b-c8f5-4285-a323-3fa0a8731384",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "0e762a9b-c8f5-4285-a323-3fa0a8731384",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/keep_warrior_m/4-anim-1/tripo-out/retarget-0e762a9b",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/keep_warrior_m/4-anim-1/tripo-out/retarget-0e762a9b/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2300,
+  "creditsUsed": 190,
+  "finished": "2026-11-24T12:09:27.950Z",
+  "files": [
+    "1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/generated_image.jpeg",
+    "1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/model.glb",
+    "1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/preview.png",
+    "1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/rendered_image.webp",
+    "1-model/tripo-out/a-sturdy-young-man-a-shieldbeare-063042de/task.json",
+    "2-check/tripo-out/rig-check-f4e9a0a8/task.json",
+    "3-rig/tripo-out/rig-6da9215d/model.glb",
+    "3-rig/tripo-out/rig-6da9215d/preview.png",
+    "3-rig/tripo-out/rig-6da9215d/rendered_image.webp",
+    "3-rig/tripo-out/rig-6da9215d/task.json",
+    "4-anim-1/tripo-out/retarget-0e762a9b/model.glb",
+    "4-anim-1/tripo-out/retarget-0e762a9b/task.json",
+    "manifest.json"
+  ]
+}

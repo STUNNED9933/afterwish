@@ -1,0 +1,93 @@
+{
+  "id": "keep_warrior_f",
+  "prompt": "a strong young woman, a shieldbearer sworn to a small mountain keep: a thick blonde braid over one shoulder, a round steel kettle helm with a brim, a knee-length mail shirt under a deep crimson tabard with a bone-white border and a small gold diamond emblem on the chest, steel pauldrons, brown leather gauntlets and tall boots, broad shoulders, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no shield, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-24T12:09:27.951Z",
+  "creditsBefore": 2300,
+  "steps": {
+    "model": {
+      "task": "5b6b3050-399d-4024-81ab-194a32a7829f",
+      "result": {
+        "task_id": "5b6b3050-399d-4024-81ab-194a32a7829f",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/keep_warrior_f/1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_warrior_f/1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/model.glb",
+        "preview": "out/models/keep_warrior_f/1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/preview.png"
+      }
+    },
+    "check": {
+      "task": "e693cab2-0929-44a7-b9fb-1aaa611a47ad",
+      "result": {
+        "task_id": "e693cab2-0929-44a7-b9fb-1aaa611a47ad",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/keep_warrior_f/2-check/tripo-out/rig-check-2-e693cab2",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "bb56c0c9-8336-4e6c-87e9-343551de6fd5",
+      "rigType": "biped",
+      "result": {
+        "task_id": "bb56c0c9-8336-4e6c-87e9-343551de6fd5",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/keep_warrior_f/3-rig/tripo-out/rig-2-bb56c0c9",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/keep_warrior_f/3-rig/tripo-out/rig-2-bb56c0c9/model.glb",
+        "preview": "out/models/keep_warrior_f/3-rig/tripo-out/rig-2-bb56c0c9/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "efe8598f-1c22-4f65-a7ed-74239ebfa499",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:hit_to_body_01"
+        ],
+        "result": {
+          "task_id": "efe8598f-1c22-4f65-a7ed-74239ebfa499",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/keep_warrior_f/4-anim-1/tripo-out/retarget-2-efe8598f",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/keep_warrior_f/4-anim-1/tripo-out/retarget-2-efe8598f/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2025,
+  "creditsUsed": 275,
+  "finished": "2026-11-24T12:13:58.300Z",
+  "files": [
+    "1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/generated_image.jpeg",
+    "1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/model.glb",
+    "1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/preview.png",
+    "1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/rendered_image.webp",
+    "1-model/tripo-out/a-strong-young-woman-a-shieldbea-5b6b3050/task.json",
+    "2-check/tripo-out/rig-check-2-e693cab2/task.json",
+    "3-rig/tripo-out/rig-2-bb56c0c9/model.glb",
+    "3-rig/tripo-out/rig-2-bb56c0c9/preview.png",
+    "3-rig/tripo-out/rig-2-bb56c0c9/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-bb56c0c9/task.json",
+    "4-anim-1/tripo-out/retarget-2-efe8598f/model.glb",
+    "4-anim-1/tripo-out/retarget-2-efe8598f/task.json",
+    "manifest.json"
+  ]
+}

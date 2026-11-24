@@ -5373,8 +5373,10 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const f = liveFoe();
     if (f && w3.tide && w3.tide.state === 'on' && !(w3.tide.mcd.smite > 0)) {
       const f0 = k3.faith;
-      w3.command({ type: 'cast', slot: 'r' }); w3.runCommands();
-      const paid = f0 - k3.faith, on = w3.tide.inc > 0;
+      w3.command({ type: 'cast', slot: 'r', x: f.x, z: f.z }); w3.runCommands();
+      const paid = f0 - k3.faith;
+      for (let j = 0; j < 60 * (K.INCARNATE.chan + 0.2) && !(w3.tide.inc > 0); j++) { w3.step(CONFIG.TICK); w3.events = []; } // (0.85) the channel
+      const on = w3.tide.inc > 0;
       p3.x = f.x + 1.2; p3.z = f.z;
       const hp0 = f.hp;
       let maxHit = 0;
@@ -5390,7 +5392,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     for (const e of w3.events) if (e.type === 'tideEnd') end = e;
     w3.events = [];
   }
-  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith, and then their blows land, uncapped', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt, JSON.stringify(incOk));
+  check('Wishkeep (0.81.1): R in a Tide incarnates the god for Faith (0.85: after a channel), and then their blows land', incOk && incOk.paid === K.INCARNATE.faith && incOk.on && incOk.hurt, JSON.stringify(incOk));
   if (w3.tide && w3.tide.inc > 0) {
     for (let i = 0; i < 60 * (K.INCARNATE.dur + 1) && w3.tide && w3.tide.inc > 0; i++) { w3.step(CONFIG.TICK); for (const e of w3.events) if (e.type === 'tideEnd') end = e; w3.events = []; }
   }
@@ -5887,5 +5889,64 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...felled, it leaves a piece of Epic Hero gear or better, and the stars won are kept', end && end.won && end.boss === 1 && end.gear.some((g) => g.r >= 3) && (k.stars[5] & 1) && k.bosses === 1, JSON.stringify(end && { won: end.won, boss: end.boss, gear: end.gear, stars: end.stars }));
     check('...and kept through a save', JSON.stringify(K.cleanKeep(JSON.parse(JSON.stringify(k))).stars) === JSON.stringify(k.stars));
   }
+}
+// --- 0.85: Incarnate is a rescue: a channel gathering aura, a landing that saves the heroes -----------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const I = K.INCARNATE;
+  const make = (seed, save) => {
+    const w = new World({ seed, mode: 'explore', cls: 'archer', save });
+    const p = w.player;
+    p.lives = { warrior: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+    w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+    const k = p.keep;
+    k.faith = 1e6; k.tier = 3; k.nightMax = 30;
+    k.troops = [['warrior', []], ['archer', []], ['mage', []]].map(([cls, skills], i) => ({ id: 70 + i, cls, name: 'h' + i, lvl: 9, gear: 6, rar: 3, skills }));
+    w.keepTroopsUp(); w.keepBuildsUp();
+    w.command({ type: 'keepTide', level: 6 }); w.runCommands();
+    return { w, p, k };
+  };
+  const { w, p, k } = make(401, geared('archer', 100, 6));
+  const tr = w.troops;
+  const at = { x: tr[0].x, z: tr[0].z };
+  tr[0].hp = 1; tr[1].dead = true; tr[1].hp = 0;
+  tr[1].x = at.x + 1; tr[1].z = at.z; tr[2].x = at.x - 1; tr[2].z = at.z;
+  const f0 = k.faith;
+  w.command({ type: 'cast', slot: 'r', x: at.x, z: at.z }); w.runCommands();
+  check('Incarnate (0.85): R pays its Faith and begins a channel where you aim; not on the field yet', f0 - k.faith === I.faith && w.tide.chan === 0 && !(w.tide.inc > 0));
+  const mf = k.faith;
+  w.command({ type: 'cast', slot: 'q', x: at.x, z: at.z }); w.runCommands();
+  w.command({ type: 'move', x: p.x + 5, z: p.z }); w.runCommands();
+  check('...while channelling, no miracles and no walking', k.faith === mf && !p.moveTarget);
+  let landed = null;
+  for (let i = 0; i < 60 * (I.chan + 0.5) && !landed; i++) { w.step(CONFIG.TICK); for (const e of w.events) if (e.type === 'incarnate') landed = e; w.events = []; }
+  check('...after the full channel the god lands where they aimed, with all the aura', landed && landed.aura === 1 && Math.abs(p.x - w.tide.chanAt?.x || 0) >= 0 && Math.hypot(p.x - at.x, p.z - at.z) < 2 && w.tide.inc > 0, JSON.stringify(landed));
+  check('...and the landing saves the heroes near: mends, shields, raises the fallen', landed.saved >= 1 && landed.raised === 1 && !tr[1].dead && tr[1].hp > 0 && tr.some((o) => o.shield > 0));
+  // landing early: less aura, less mending
+  const b = make(402, geared('archer', 100, 6));
+  const t0 = b.w.troops[0];
+  t0.hp = 1;
+  b.w.command({ type: 'cast', slot: 'r', x: t0.x, z: t0.z }); b.w.runCommands();
+  for (let i = 0; i < 60 * 0.5; i++) b.w.step(CONFIG.TICK);
+  b.w.command({ type: 'cast', slot: 'r', x: 0, z: 0 }); b.w.runCommands();
+  const tooSoon = b.w.tide.chan != null;
+  for (let i = 0; i < 60 * 1.2; i++) b.w.step(CONFIG.TICK);
+  b.w.events = [];
+  b.w.command({ type: 'cast', slot: 'r', x: 0, z: 0 }); b.w.runCommands();
+  const early = b.w.events.find((e) => e.type === 'incarnate');
+  check('...R again lands early (not before a moment has passed), with less aura and a weaker landing', tooSoon && early && early.aura < 0.5 && t0.hp < tr[0].hp && b.w.tide.inc > 0, JSON.stringify(early));
+  // a mortal's blows: the same whatever the gear
+  const hitWith = (save) => {
+    const m = make(403, save);
+    m.w.tide.inc = 5;
+    const e = m.w.spawnTideFoe('gatebreaker', { x: 0, z: 15 }, () => 0.5);
+    e.state = 'chase';
+    const h0 = e.hp;
+    m.w.hitEnemy(e, m.p.stats.ad * 2, { source: 'basic', basic: true, canCrit: false });
+    return h0 - e.hp;
+  };
+  const weak = hitWith(geared('archer', 100, 2)), strong = hitWith(geared('archer', 100, 6));
+  check('...and while incarnate your blows count as a mortal\'s: the same share of the night whatever your gear', weak > 0 && Math.abs(weak - strong) <= 1, `${weak} vs ${strong}`);
 }
 process.exit(failed ? 1 : 0);

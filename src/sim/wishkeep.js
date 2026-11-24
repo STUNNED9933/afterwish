@@ -124,11 +124,18 @@ export const MIRACLES = {
 export const MIRACLE_IDS = Object.keys(MIRACLES);
 /**
  * (0.81.1) Incarnate: the god walks among the heroes for a while (R in a Tide) and fights with their own
- * kit: while incarnate Q, W and E are the hero's own again, at full strength (0.82.6: the cap on each blow
- * is gone), and the Tide can strike back. Falling to it only ends the incarnation. (0.82.4) Only the keeper:
- * a visiting friend's blows never land on the night.
+ * kit; the Tide can strike back, and falling to it only ends the incarnation. (0.82.4) Only the keeper.
+ * (0.85) A rescue, not a sweep: R begins a channel where you aim, gathering aura for up to `chan` seconds
+ * (R again lands early, after `chanMin`, with less); you land in a blast that mends, shields and raises the
+ * heroes near and staggers the Unmade, all scaled by the aura gathered; then `dur` seconds on the field.
+ * Your blows count as a mortal's, like your health: a hit worth N times your attack deals N times `atk`
+ * of the night's strength, whatever your gear. Once or twice a night (`cd`).
  */
-export const INCARNATE = { key: 'r', name: 'Incarnate', faith: 30, dur: 20, cd: 45, body: 600, desc: 'Walk among your heroes for 20 seconds and fight with your own skills at full strength. The Tide can strike you back; falling only ends it.' };
+export const INCARNATE = {
+  key: 'r', name: 'Incarnate', faith: 40, chan: 5, chanMin: 1.5, dur: 12, cd: 60, body: 600, atk: 35,
+  land: { r: 7, heal: 0.45, shield: 0.3, shieldDur: 6, raise: 0.4, stun: 1.6, hit: 0.15 },
+  desc: 'Channel where you aim for up to 5 seconds, gathering aura (R again to land early). You land in a blast that mends, shields and raises your heroes nearby and staggers the Unmade, then fight beside them for 12 seconds, seen from over your shoulder.',
+};
 
 /** (0.81) The Unmade in a Tide: their own numbers. siege: how much harder they hit buildings. */
 export const FOES = {

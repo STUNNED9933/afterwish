@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Incarnate: a rescue, over your shoulder (0.85)
+
+- **R in a Tide now begins a channel** where you aim. For up to 5 seconds you gather aura: you rise in a swirl of light while a pillar grows where you will land. R again lands early, with less aura.
+- **The landing saves your heroes**: within 7 m it mends them, shields them and raises the fallen, then staggers the Unmade and throws them back. All of it is stronger the more aura you gathered.
+- **Then 12 seconds on the field, seen from over your shoulder**:
+  - <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk; the mouse turns the view (click to take hold of it).
+  - Click strikes what is under the crosshair; <kbd>1</kbd>–<kbd>4</kbd> are your skills (Q E R still work), <kbd>Z</kbd>/<kbd>F</kbd> the borrowed ones, <kbd>5</kbd> a potion, <kbd>Space</kbd> parries.
+  - Skills land where you look. The view swoops back above when it ends.
+- **A rescue, not a sweep**: 40 Faith, once a minute. While incarnate your blows count as a mortal's, the same share of the night whatever your gear, just as your health already did. The Unmade can still be cut down; the god can't sweep a wave alone.
+- In the night the keep's people shelter indoors.
+
 ### Harder nights that pay more (0.84)
 
 - **New enemies of the Tide**, each with its own Tripo model and its own way of fighting:

@@ -281,7 +281,8 @@ export class Hud {
     const add = (key, cls, label, icon, tipHtml) => {
       const el = document.createElement('div');
       el.className = 'slot ' + cls;
-      el.innerHTML = `${svg(icon)}<div class="cd"></div><div class="num"></div><div class="lock"></div><kbd>${label}</kbd>`;
+      const sh = { Q: '1', W: '2', E: '3', R: '4', D: 'Z', 1: '5' }[label]; // (0.85) the keys over the shoulder
+      el.innerHTML = `${svg(icon)}<div class="cd"></div><div class="num"></div><div class="lock"></div><kbd${sh ? ` data-sh="${sh}"` : ''}>${label}</kbd>`;
       el.addEventListener('mouseenter', () => this.tooltip.show(tipHtml, el)); // (0.52: a function, so Shift can rebuild it)
       el.addEventListener('mouseleave', () => this.tooltip.hide());
       root.appendChild(el);
@@ -627,6 +628,7 @@ export class Hud {
       }
       const pos = view.model.group.position;
       const s = renderer.project(pos.x, e.def.height + 0.55, pos.z);
+      bar.el.style.visibility = s.visible ? '' : 'hidden'; // (0.85)
       bar.el.style.transform = `translate(${Math.round(s.x - bar.width / 2)}px, ${Math.round(s.y)}px)`;
       if (bar.hp !== e.hp) {
         bar.hp = e.hp;
@@ -893,8 +895,11 @@ export class Hud {
       this.drawQuestTracker(world);
     }
     this.updatePrompt(world);
+    const night = !!(world.tide && world.tide.state === 'on');
     for (const l of this.portalLabels || []) {
       const s = renderer.project(l.gate.x, l.story ? 2.5 : l.gate === world.map.waygate || l.stone ? 2.8 : 4.4, l.gate.z);
+      // (0.85) not behind the camera; and in the keep's night its people are indoors, their marks with them
+      l.el.style.visibility = s.visible && !(night && l.el.classList.contains('npc')) ? '' : 'hidden';
       l.el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -50%)`;
     }
   }
@@ -1001,6 +1006,7 @@ export class Hud {
   float(renderer, x, y, z, text, cls = '') {
     if (this.floatCount > 40) return;
     const s = renderer.project(x, y, z);
+    if (!s.visible) return; // (0.85) behind the camera, over the shoulder
     const el = document.createElement('div');
     el.className = 'float ' + cls;
     // (0.72.1) the text in its own span: a crit's pop scales the span, never the placed box (scaling the
@@ -1115,6 +1121,7 @@ export class Hud {
       const v = !a.build && renderer.allyViews && renderer.allyViews.get(a.pid);
       const at = v && v.model.group.visible ? v.model.group.position : a;
       const s = renderer.project(at.x, a.y || 2.9, at.z);
+      t.el.style.visibility = s.visible ? '' : 'hidden'; // (0.85) nothing behind the camera, over the shoulder
       t.el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
     }
     for (const [pid, t] of this.allyTags) {

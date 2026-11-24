@@ -27,6 +27,8 @@ export class Input {
     this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, right: false };
     this.lastMoveSent = 0;
     this.held = null; // (0.61.2) a skill shot being aimed: { slot } while its key is down
+    this.keys = new Set(); // (0.85) movement keys held, over the shoulder
+    this.walking = false;
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -34,6 +36,13 @@ export class Input {
       if (e.button === 2) this.mouse.right = false;
     });
     window.addEventListener('mousemove', (e) => {
+      // (0.85) over the shoulder, with the mouse caught: it turns the view instead of moving a cursor
+      if (this.locked()) {
+        const S = this.renderer.shoulder;
+        S.yaw += (e.movementX || 0) * 0.0026;
+        S.pitch = Math.max(0.04, Math.min(0.95, S.pitch + (e.movementY || 0) * 0.0021));
+        return;
+      }
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
     });
@@ -47,17 +56,42 @@ export class Input {
     );
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => {
+      this.keys.delete((e.key || '').toLowerCase());
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
       if (this.held && (e.key || '').toLowerCase() === this.held.slot) this.release(true);
     });
     window.addEventListener('blur', () => {
+      this.keys.clear();
       this.mouse.right = false;
       this.release(false); // tabbing away puts the bow down
     });
   }
 
   ground() {
+    if (this.shoulderOn()) return this.renderer.screenToGround(window.innerWidth / 2, window.innerHeight / 2); // (0.85) the crosshair
     return this.renderer.screenToGround(this.mouse.x, this.mouse.y);
+  }
+
+  /** (0.85) Over the shoulder (incarnate in your keep's night)? */
+  shoulderOn() {
+    return !!(this.renderer.shoulder && this.renderer.shoulder.on);
+  }
+  /** (0.85) Is the mouse caught (pointer lock) for looking around? */
+  locked() {
+    return typeof document !== 'undefined' && document.pointerLockElement === this.canvas;
+  }
+  /** (0.85) Catch the mouse for looking around (needs a key press or click to be allowed). */
+  lock() {
+    if (this.locked() || !this.canvas.requestPointerLock) return;
+    try {
+      const r = this.canvas.requestPointerLock();
+      if (r && r.catch) r.catch(() => {});
+    } catch {
+      /* not allowed now: a click will ask again */
+    }
+  }
+  unlock() {
+    if (this.locked() && document.exitPointerLock) document.exitPointerLock();
   }
 
   /** Let go of a held skill shot: loose it at the cursor (fire), or put it down (not fire). */
@@ -74,6 +108,20 @@ export class Input {
   onMouseDown(e) {
     if (!this.isPlaying()) return;
     const world = this.getWorld();
+    if (this.shoulderOn()) {
+      // (0.85) over the shoulder: click to catch the mouse, then left attacks what is under the crosshair
+      // (or attack-moves there), right attack-moves there
+      e.preventDefault();
+      if (!this.locked()) return this.lock();
+      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+      const enemy = e.button === 0 ? this.renderer.pickEnemy(cx, cy, world) : null;
+      if (enemy) world.command({ type: 'attack', id: enemy.id });
+      else {
+        const g = this.ground();
+        if (g) world.command({ type: 'attackMove', x: g.x, z: g.z, near: 'cursor' });
+      }
+      return;
+    }
     this.mouse.x = e.clientX;
     this.mouse.y = e.clientY;
     if (this.held) {
@@ -176,6 +224,7 @@ export class Input {
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const world = this.getWorld();
+    if (this.shoulderOn() && this.shoulderKey(e, key, world)) return;
 
     if (key === ' ') {
       e.preventDefault();
@@ -191,6 +240,9 @@ export class Input {
       }
       const g = this.ground() || { x: world.player.x, z: world.player.z };
       world.command({ type: 'cast', slot: key, x: g.x, z: g.z });
+      // (0.85) R in your keep's night begins the channel: catch the mouse now (a key press allows it), so
+      // the view can turn as soon as you land
+      if (key === 'r' && world.tide && world.tide.state === 'on' && !(world.tide.inc > 0) && world.keepOwns && world.keepOwns()) this.lock();
     } else if (key === '1') {
       if (!e.repeat) world.command({ type: 'potion' });
     } else if (key === 'a') {
@@ -202,6 +254,32 @@ export class Input {
     }
   }
 
+  /**
+   * (0.85) Keys over the shoulder: W A S D walk, 1 2 3 4 (and Q E R) are the skills, F and Z the borrowed
+   * ones, 5 a potion, Space still parries. True if the key was taken.
+   */
+  shoulderKey(e, key, world) {
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+      e.preventDefault();
+      this.keys.add(key);
+      return true;
+    }
+    const slot = { 1: 'q', 2: 'w', 3: 'e', 4: 'r', q: 'q', e: 'e', r: 'r', f: 'f', z: 'd' }[key];
+    if (slot) {
+      e.preventDefault();
+      if (e.repeat) return true;
+      if ((slot === 'd' || slot === 'f') && !borrowedActive(world, slot)) return true;
+      const g = this.ground() || { x: world.player.x, z: world.player.z };
+      world.command({ type: 'cast', slot, x: g.x, z: g.z });
+      return true;
+    }
+    if (key === '5') {
+      if (!e.repeat) world.command({ type: 'potion' });
+      return true;
+    }
+    return false;
+  }
+
   /** Called every frame: hover highlight, and hold-right-click to keep moving. */
   update(now) {
     const world = this.getWorld();
@@ -210,6 +288,35 @@ export class Input {
       this.renderer.hoverId = null;
       this.canvas.style.cursor = 'default';
       return;
+    }
+    if (this.shoulderOn()) {
+      // (0.85) walking over the shoulder: W A S D against the way you face, a step ahead at a time
+      const S = this.renderer.shoulder;
+      const fx = Math.cos(S.yaw), fz = Math.sin(S.yaw);
+      let dx = 0, dz = 0;
+      const k = this.keys;
+      if (k.has('w') || k.has('arrowup')) [dx, dz] = [dx + fx, dz + fz];
+      if (k.has('s') || k.has('arrowdown')) [dx, dz] = [dx - fx, dz - fz];
+      if (k.has('d') || k.has('arrowright')) [dx, dz] = [dx - fz, dz + fx];
+      if (k.has('a') || k.has('arrowleft')) [dx, dz] = [dx + fz, dz - fx];
+      const n = Math.hypot(dx, dz);
+      if (n > 0.01 && now - this.lastMoveSent > 80) {
+        const p = world.player;
+        world.command({ type: 'move', x: p.x + (dx / n) * 2.5, z: p.z + (dz / n) * 2.5 });
+        this.lastMoveSent = now;
+        this.walking = true;
+      } else if (n <= 0.01 && this.walking) {
+        world.command({ type: 'stop' });
+        this.walking = false;
+      }
+      const enemy = this.renderer.pickEnemy(window.innerWidth / 2, window.innerHeight / 2, world);
+      this.renderer.hoverId = enemy ? enemy.id : null;
+      this.canvas.style.cursor = this.locked() ? 'none' : 'crosshair';
+      return;
+    }
+    if (this.walking) {
+      this.walking = false;
+      this.keys.clear();
     }
     const enemy = this.renderer.pickEnemy(this.mouse.x, this.mouse.y, world);
     this.renderer.hoverId = enemy ? enemy.id : null;

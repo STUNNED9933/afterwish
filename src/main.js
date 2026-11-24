@@ -1453,7 +1453,7 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith): for ${INCARNATE.dur} seconds you fight beside them with your own skills. Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, mouse, <kbd>1</kbd>–<kbd>4</kbd>). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
@@ -1883,6 +1883,35 @@ function start(hot = {}) {
   }
   let ringStart = 0;
   let keepNight = 0; // (0.82) the Night level picked at the Hearth
+  /**
+   * (0.85) Over the shoulder while you are incarnate in your own keep's night: the view, the crosshair, the
+   * keys, and the channel's bar before it. The mouse is let go when it ends.
+   */
+  let shoulderUi = null;
+  function shoulderFrame() {
+    const t = world && world.tide;
+    const mine = !!(t && t.state === 'on' && !world.keepVisit);
+    const on = mine && t.inc > 0 && mode === 'play';
+    const chan = mine && t.chan != null;
+    renderer.shoulder.on = on;
+    if (!shoulderUi) {
+      shoulderUi = document.createElement('div');
+      shoulderUi.id = 'shoulder-ui';
+      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk · mouse looks · <b>click</b> strikes · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> skills · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      document.body.appendChild(shoulderUi);
+    }
+    document.body.classList.toggle('shoulder-on', on);
+    shoulderUi.classList.toggle('on', on);
+    shoulderUi.classList.toggle('chan', chan);
+    shoulderUi.classList.toggle('free', on && !input.locked());
+    if (chan) {
+      const a = Math.min(1, t.chan / INCARNATE.chan);
+      shoulderUi.querySelector('.sh-pct').textContent = ` ${Math.round(a * 100)}%`;
+      shoulderUi.querySelector('.sh-chan u').style.width = `${Math.round(a * 100)}%`;
+      shoulderUi.querySelector('.sh-chan small').style.visibility = t.chan >= INCARNATE.chanMin ? 'visible' : 'hidden';
+    }
+    if (!on && !chan && input.locked()) input.unlock();
+  }
   let keepClockAt = 0; // (0.82.1)
   /** (0.82) The Armory: the gear window, on its Heroes tab. */
   function openArmory() {
@@ -5220,9 +5249,16 @@ function start(hot = {}) {
         hud.feedText('Unbroken: a hero refuses to fall.');
         renderer.keepFx({ type: 'troopFall', x: ev.x, z: ev.z });
         break;
+      case 'incarnateChannel':
+        sfx.ui();
+        renderer.shoulder.yaw = -Math.PI / 2; // (0.85) facing up the screen, as the view from above did
+        renderer.shoulder.pitch = 0.45;
+        hud.feedText('Gathering aura where you will land…');
+        renderer.keepFx(ev);
+        break;
       case 'incarnate':
         sfx.levelUp();
-        hud.banner('Incarnate', `For ${ev.dur} seconds you fight beside your heroes with your own skills. The Unmade can strike you back.`);
+        hud.banner('Incarnate', `${ev.saved || ev.raised ? `Your landing ${ev.raised ? `raised ${ev.raised} and ` : ''}shielded ${ev.saved} hero${ev.saved === 1 ? '' : 'es'}. ` : ''}${ev.dur} seconds on the field, over your shoulder.`);
         renderer.keepFx(ev);
         break;
       case 'incarnateEnd':
@@ -5850,6 +5886,7 @@ function start(hot = {}) {
         applyNow({ type: 'nextWave' });
       }
     }
+    shoulderFrame();
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
     if (world && world.map && world.map.id === KEEP.map && now >= keepClockAt) {

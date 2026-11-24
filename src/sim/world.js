@@ -902,6 +902,7 @@ export class World {
         if (c.type === 'parry') this.breakLock(c.seen); // (0.64) the only way out of a Mind-Lock
         continue;
       }
+      if (this.tide && this.tide.chan != null && ['move', 'attack', 'attackMove', 'potion', 'parry'].includes(c.type)) continue; // (0.85) channelling: still, gathering aura
       switch (c.type) {
         case 'move': {
           const r = dHypot(c.x, c.z);
@@ -2073,7 +2074,11 @@ export class World {
    */
   castAbility(slot, x, z) {
     if (this.map && this.map.id === KEEP.map && !this.keepOwns()) return; // (0.82.5) a visitor casts nothing in a friend's keep (no walls, freezes or pulls in their night)
-    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) return slot === INCARNATE.key ? this.incarnate() : this.miracle(slot, x, z); // (0.81; 0.81.1; 0.82.2 a visitor fights)
+    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) {
+      // (0.81; 0.81.1; 0.82.2 a visitor fights) (0.85) R channels where you aim, R again lands early; no miracles meanwhile
+      if (slot === INCARNATE.key) return this.tide.chan != null ? this.incarnateLand() : this.incarnate(x, z);
+      return this.tide.chan != null ? undefined : this.miracle(slot, x, z);
+    }
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
@@ -6189,6 +6194,7 @@ export class World {
     }
     for (const c in t.mcd) if (t.mcd[c] > 0) t.mcd[c] = Math.max(0, t.mcd[c] - dt);
     if (t.icd > 0) t.icd = Math.max(0, t.icd - dt);
+    if (t.chan != null) this.stepIncarnateChannel(dt); // (0.85)
     if (t.inc > 0) {
       t.inc -= dt;
       if (t.inc <= 0) this.incarnateEnd(false);
@@ -6307,6 +6313,7 @@ export class World {
     t.state = won ? 'won' : 'lost';
     t.after = 0;
     t.inc = 0; // (0.81.1)
+    t.chan = null; // (0.85)
     this.enemies = this.enemies.filter((e) => !e.tide || e.dead); // (on a loss, the rest melt back into the dark)
     // what the buildings took stays until it is mended (at the Hearth, with Wishstone)
     for (const b of this.keepBuilds || []) {
@@ -6992,17 +6999,73 @@ export class World {
   }
 
   /** (0.81.1) R in a Tide: the god takes the field with the heroes for a while (Faith). */
-  incarnate() {
+  /** (0.85) R in a Tide: pay, and begin the channel where you aim (in the keep, clear of its buildings). */
+  incarnate(x, z) {
     const t = this.tide, k = this.player.keep, p = this.player;
-    if (!t || t.state !== 'on' || !k || p.dead || t.inc > 0 || t.icd > 0) return;
+    if (!t || t.state !== 'on' || !k || p.dead || t.inc > 0 || t.icd > 0 || t.chan != null) return;
     if (k.faith < INCARNATE.faith) return this.emit('keepShort', { what: 'faith', need: INCARNATE.faith, have: k.faith });
     k.faith -= INCARNATE.faith;
     this.keepSpend({ faith: INCARNATE.faith });
-    t.inc = INCARNATE.dur;
+    x = Number.isFinite(x) ? x : p.x;
+    z = Number.isFinite(z) ? z : p.z;
+    const r = dHypot(x, z), max = this.radius - 3;
+    if (r > max) [x, z] = [(x * max) / r, (z * max) / r];
+    const at = { x, z, radius: 0.6 };
+    this.pushOut(at, 0.6);
+    t.chan = 0;
+    t.chanAt = { x: at.x, z: at.z };
     t.icd = INCARNATE.cd;
+    p.moveTarget = null;
+    p.targetId = null;
+    p.attackMove = null;
+    this.emit('incarnateChannel', { x: at.x, z: at.z, px: p.x, pz: p.z, t: INCARNATE.chan });
+  }
+  /** (0.85) The channel at work: aura gathers; full, the god lands. */
+  stepIncarnateChannel(dt) {
+    const t = this.tide;
+    t.chan += dt;
+    if (t.chan >= INCARNATE.chan) this.incarnateLand();
+  }
+  /** (0.85) Landing: the blast that saves the heroes (stronger the more aura was gathered), then the fight. */
+  incarnateLand() {
+    const t = this.tide, p = this.player;
+    if (!t || t.chan == null || t.chan < INCARNATE.chanMin) return;
+    const aura = Math.min(1, t.chan / INCARNATE.chan);
+    const s = 0.4 + 0.6 * aura;
+    const L = INCARNATE.land;
+    const { x, z } = t.chanAt;
+    t.chan = null;
+    t.chanAt = null;
+    p.x = p.px = x;
+    p.z = p.pz = z;
+    p.moveTarget = null;
+    t.inc = INCARNATE.dur;
     for (const c of ['q', 'w', 'e', 'r']) if (p.cd[c] > 0) p.cd[c] = 0; // (a fresh start for the hero's own kit)
     p.hp = p.stats.maxHp;
-    this.emit('incarnate', { x: p.x, z: p.z, dur: INCARNATE.dur });
+    let saved = 0, raised = 0;
+    for (const tr of this.troops) {
+      if (dist(tr.x, tr.z, x, z) > L.r) continue;
+      if (tr.dead) {
+        tr.dead = false;
+        tr.hp = Math.round(tr.maxHp * L.raise * s);
+        raised++;
+        this.emit('troopRaised', { id: tr.id, name: tr.name, x: tr.x, z: tr.z });
+      } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * L.heal * s);
+      [tr.shield, tr.shieldT] = [tr.maxHp * L.shield * s, L.shieldDur];
+      saved++;
+    }
+    for (const e of this.enemies) {
+      if (!e.tide || e.dead || e.state === 'spawn' || dist(e.x, e.z, x, z) > L.r + e.radius) continue;
+      e.stunT = Math.max(e.stunT || 0, L.stun * s);
+      // thrown back from where the god lands
+      const a = dAtan2(e.z - z, e.x - x), d = dist(e.x, e.z, x, z);
+      const push = Math.max(0, (L.r - d) * 0.5);
+      e.x += dCos(a) * push;
+      e.z += dSin(a) * push;
+      this.pushOut(e, e.radius);
+      this.troopStrike(e, e.maxHp * L.hit * s, false);
+    }
+    this.emit('incarnate', { x, z, dur: INCARNATE.dur, aura, r: L.r, saved, raised });
   }
   incarnateEnd(fell) {
     const t = this.tide, p = this.player;
@@ -9230,7 +9293,11 @@ export class World {
     // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate (0.82.6: at full
     // strength). (0.82.4) A visiting friend's blows never land: it is the keeper's night.
     if (e.tide && (!this.tide || !(this.tide.inc > 0) || !this.keepOwns())) return;
-    if (e.tide && e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84)
+    if (e.tide) {
+      // (0.85) as a mortal: N times your attack lands as N times INCARNATE.atk of the night's strength
+      dmg = (dmg / Math.max(1, this.player.stats.ad)) * INCARNATE.atk * (this.tide.night || 1);
+      if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84)
+    }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
     e.hp -= dmg;
     e.hitFlash = 0.12;

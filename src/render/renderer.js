@@ -82,6 +82,7 @@ function makeSeeded(seed) {
 }
 
 /** (0.83) How often each of the keep's heroes strikes (their basic swing is timed to it). */
+const dCosR = Math.cos, dSinR = Math.sin; // (0.85) (rendering only: Math is fine outside the sim)
 /** (0.84) Which clip each of the Tide's own plays when it strikes. */
 const TIDE_KIND = { veilbearer: 'cast', mourner: 'cast', gatebreaker: 'chop', echo: 'fire', tidecaller: 'slash' };
 const TROOP_AS = { warrior: 1, archer: 1 / 0.9, mage: 1 / 1.3, rogue: 1 / 0.55 };
@@ -105,6 +106,9 @@ export class Renderer {
     this.camTarget = new THREE.Vector3();
     this.zoom = 1;
     this.shake = 0;
+    // (0.85) over the shoulder, while incarnate: on (wanted), k (0..1, eased), yaw (the way you face, as the
+    // game's angles: 0 is +x, toward +z), pitch (0 looks far ahead, 1 at your feet)
+    this.shoulder = { on: false, k: 0, yaw: -Math.PI / 2, pitch: 0.45 };
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -353,6 +357,7 @@ export class Renderer {
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
+    this.mapNpcs = []; // (0.85) the map's people, as drawn (the keep's go indoors for the night)
     this.glimmers = []; // (0.56.4) and its glimmers
     this.preloadMap(map);
     const g = (this.exploreGroup = new THREE.Group());
@@ -461,6 +466,7 @@ export class Renderer {
         }
       } else if (o.kind === 'npc') {
         const npc = buildNpc(NPCS[o.id].look);
+        (this.mapNpcs = this.mapNpcs || []).push(npc);
         npc.position.set(o.x, 0, o.z);
         npc.rotation.y = Math.atan2(-o.x, -o.z); // face the middle of the plaza
         g.add(npc);
@@ -2705,6 +2711,7 @@ export class Renderer {
     this.syncTelegraphs(world);
     this.syncMarkers(world);
     this.syncAim(world, heroPos);
+    this.syncIncarnate(world, dt, heroPos); // (0.85) the channel's light, the god rising
     this.updateParticles(dt);
     this.updateFlashes(dt);
     if (this.portalViews && this.exploreGroup && this.exploreGroup.visible) {
@@ -2764,8 +2771,53 @@ export class Renderer {
     const sh = this.shake * this.shake * 0.9;
     const ox = (Math.random() - 0.5) * sh;
     const oz = (Math.random() - 0.5) * sh;
-    this.camera.position.set(this.camTarget.x + ox, this.camOffset.y * this.zoom, this.camTarget.z + this.camOffset.z * this.zoom + oz);
-    this.camera.lookAt(this.camTarget.x + ox, 0.8, this.camTarget.z + oz);
+    // (0.85) the channel draws the eye to where the god will land
+    const ch = world.tide && world.tide.chan != null && world.tide.chanAt;
+    this.chanLook = lerp(this.chanLook || 0, ch ? 1 : 0, 1 - Math.exp(-3 * dt));
+    if (ch) this.chanAtSeen = world.tide.chanAt;
+    const tx = this.chanAtSeen ? lerp(this.camTarget.x, this.chanAtSeen.x, this.chanLook * 0.75) : this.camTarget.x;
+    const tz = this.chanAtSeen ? lerp(this.camTarget.z, this.chanAtSeen.z, this.chanLook * 0.75) : this.camTarget.z;
+    const zoom = this.zoom * (1 - 0.18 * this.chanLook);
+    const top = { x: tx + ox, y: this.camOffset.y * zoom, z: tz + this.camOffset.z * zoom + oz, lx: tx + ox, ly: 0.8, lz: tz + oz };
+    // (0.85) over the shoulder: eased in and out, blended with the view from above
+    const S = this.shoulder;
+    S.k += ((S.on ? 1 : 0) - S.k) * (1 - Math.exp(-4.5 * dt));
+    if (S.k < 0.002) S.k = 0;
+    if (S.k > 0) {
+      const hp = this.hero && this.hero.group ? this.hero.group.position : heroPos;
+      const fx = dCosR(S.yaw), fz = dSinR(S.yaw);
+      const rx = -fz, rz = fx; // to the right
+      const back = 5.2, up = 2.3 + 1.6 * S.pitch, side = 0.75;
+      const ahead = 3 + 15 * (1 - S.pitch); // where the crosshair falls
+      const sh = {
+        x: hp.x - fx * back + rx * side + ox * 0.3, y: up, z: hp.z - fz * back + rz * side + oz * 0.3,
+        lx: hp.x + fx * ahead + rx * side * 0.6, ly: 0.6 + 0.7 * (1 - S.pitch), lz: hp.z + fz * ahead + rz * side * 0.6,
+      };
+      const e = S.k * S.k * (3 - 2 * S.k); // smoothstep
+      // the swoop arcs over the hero rather than cutting through them
+      const arc = Math.sin(Math.PI * e) * 4;
+      this.camera.position.set(lerp(top.x, sh.x, e), lerp(top.y, sh.y, e) + arc, lerp(top.z, sh.z, e));
+      this.camera.lookAt(lerp(top.lx, sh.lx, e), lerp(top.ly, sh.ly, e), lerp(top.lz, sh.lz, e));
+      this.camera.fov = 40 + 22 * e;
+      this.camera.updateProjectionMatrix();
+      if (this.scene.fog) {
+        if (this.fogTop == null) this.fogTop = { near: this.scene.fog.near, far: this.scene.fog.far };
+        this.scene.fog.near = lerp(this.fogTop.near, 22, e);
+        this.scene.fog.far = lerp(this.fogTop.far, 70, e);
+      }
+    } else {
+      this.camera.position.set(top.x, top.y, top.z);
+      this.camera.lookAt(top.lx, top.ly, top.lz);
+      if (this.camera.fov !== 40) {
+        this.camera.fov = 40;
+        this.camera.updateProjectionMatrix();
+      }
+      if (this.fogTop && this.scene.fog) {
+        this.scene.fog.near = this.fogTop.near;
+        this.scene.fog.far = this.fogTop.far;
+        this.fogTop = null;
+      }
+    }
     this.camera.updateMatrixWorld();
 
     this.sun.position.set(this.camTarget.x + 14, 30, this.camTarget.z + 9);
@@ -3200,6 +3252,57 @@ export class Renderer {
     }
   }
 
+  /**
+   * (0.85) The channel: a pillar of light where the god will land, growing as the aura gathers, a ring that
+   * tightens toward it, and the god rising in a swirl of light.
+   */
+  syncIncarnate(world, dt, heroPos) {
+    const t = world.tide;
+    const on = !!(t && t.chan != null && t.chanAt);
+    if (!this.incFx) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.4, 1, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+      const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+      ring.position.y = 0.08;
+      const halo = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+      this.incFx = { pillar, ring, halo, puff: 0, lift: 0 };
+      for (const m of [pillar, ring, halo]) {
+        m.visible = false;
+        this.scene.add(m);
+      }
+    }
+    const F = this.incFx;
+    const aura = on ? Math.min(1, t.chan / 5) : 0;
+    F.lift = lerp(F.lift, on ? 0.6 + 1.6 * aura : 0, 1 - Math.exp(-4 * dt));
+    for (const m of [F.pillar, F.ring, F.halo]) m.visible = on || F.lift > 0.05;
+    if (on) {
+      const { x, z } = t.chanAt;
+      F.pillar.position.set(x, 6, z);
+      F.pillar.scale.set(0.5 + 0.9 * aura, 12, 0.5 + 0.9 * aura);
+      F.pillar.material.opacity = 0.12 + 0.35 * aura + Math.sin(this.time * 9) * 0.04;
+      F.ring.position.set(x, 0.08, z);
+      F.ring.scale.setScalar(7 * (1.6 - 0.6 * aura));
+      F.ring.material.opacity = 0.35 + 0.5 * aura;
+      F.ring.rotation.y += dt * (1 + 3 * aura);
+      // the god rises where they stand, in a swirl of light
+      const hp = this.hero && this.hero.group ? this.hero.group.position : heroPos;
+      F.halo.position.set(hp.x, 0.1 + F.lift * 0.5, hp.z);
+      F.halo.scale.setScalar(1.2 + aura * 1.4 + Math.sin(this.time * 6) * 0.1);
+      F.halo.material.opacity = 0.4 + 0.5 * aura;
+      F.puff -= dt;
+      if (F.puff <= 0) {
+        F.puff = 0.12 - 0.07 * aura;
+        const a = this.time * 7;
+        this.burst(hp.x + Math.cos(a) * 0.9, 0.4 + F.lift, hp.z + Math.sin(a) * 0.9, { count: 2 + Math.round(4 * aura), color: aura >= 1 ? 0xffffff : 0xffe08a, speed: 1.2, up: 3 + 3 * aura, life: 0.7 });
+        this.burst(x + (Math.random() - 0.5) * 3, 0.2, z + (Math.random() - 0.5) * 3, { count: 1 + Math.round(3 * aura), color: 0xfff0b0, speed: 0.5, up: 6, life: 0.9 });
+      }
+    } else {
+      F.pillar.material.opacity *= Math.exp(-6 * dt);
+      F.ring.material.opacity *= Math.exp(-6 * dt);
+      F.halo.material.opacity *= Math.exp(-6 * dt);
+    }
+    if (this.hero && this.hero.group && F.lift > 0.01) this.hero.group.position.y += F.lift;
+  }
+
   /** (0.84) A Tide foe's swing, played from the moment it hits (its wind-up runs this long). */
   tideSwing(id, kind, dur) {
     const v = this.views.get(id);
@@ -3316,6 +3419,16 @@ export class Renderer {
       for (let i = 0; i < 5; i++) this.later(i * 0.06, () => this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1 + i * 0.6, color: 0xffd27a, from: 2.6 - i * 0.3, to: 0.6, dur: 0.5, opacity: 0.9 }));
       this.burst(ev.x, 2, ev.z, { count: 60, color: 0xfff2c8, speed: 6, up: 10, life: 0.9 });
       this.shake = Math.max(this.shake, 0.4);
+      if (ev.r) {
+        // (0.85) the landing's blast, as wide as it reaches, brighter the more aura was gathered
+        const a = ev.aura == null ? 1 : ev.aura;
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xfff2c8, from: 0.5, to: ev.r, dur: 0.45, opacity: 0.45 + 0.4 * a });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffd27a, from: 1, to: ev.r * 1.1, dur: 0.6, opacity: 0.95 });
+        this.burst(ev.x, 0.5, ev.z, { count: Math.round(30 + 60 * a), color: 0xffe9a8, speed: 9, up: 4, life: 0.8 });
+        this.shake = Math.max(this.shake, 0.4 + 0.5 * a);
+      }
+    } else if (ev.type === 'incarnateChannel') {
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffe08a, from: 9, to: 6, dur: 0.6, opacity: 0.8 });
     } else if (ev.type === 'incarnateEnd') {
       this.burst(ev.x, 1.5, ev.z, { count: 30, color: ev.fell ? 0xff3d4f : 0xffd27a, speed: 4, up: 6, life: 0.8 });
     } else if (ev.type === 'miracle') {
@@ -3393,7 +3506,12 @@ export class Renderer {
         }
       }
     }
+    // (0.85) in the night the keep's people shelter indoors (and keep out of the god's view, over the shoulder)
+    const night = !!(world.tide && world.tide.state === 'on');
+    for (const n of this.mapNpcs || []) n.visible = !night;
     for (const w of this.walkers || []) {
+      w.g.visible = !night;
+      if (night) continue;
       // the keep's people, wandering the plaza (only drawn, never part of the game)
       const dx = w.tx - w.g.position.x, dz = w.tz - w.g.position.z;
       const d = Math.hypot(dx, dz);

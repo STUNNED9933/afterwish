@@ -1,0 +1,93 @@
+{
+  "id": "v_farmer_m",
+  "prompt": "a village farmer, a broad weathered man in his thirties with a short brown beard, a wide straw hat, an undyed linen shirt with rolled sleeves, a brown leather jerkin, patched tan trousers tied at the knee, worn leather boots. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+  "started": "2026-11-24T15:05:41.606Z",
+  "creditsBefore": 1145,
+  "steps": {
+    "model": {
+      "task": "3482bb19-597a-4ff7-85e6-b5f36a35fd31",
+      "result": {
+        "task_id": "3482bb19-597a-4ff7-85e6-b5f36a35fd31",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/v_farmer_m/1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_farmer_m/1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/model.glb",
+        "preview": "out/models/v_farmer_m/1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/preview.png"
+      }
+    },
+    "check": {
+      "task": "14d48477-bf84-469c-a470-5b1507340275",
+      "result": {
+        "task_id": "14d48477-bf84-469c-a470-5b1507340275",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/v_farmer_m/2-check/tripo-out/rig-check-14d48477",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "e3e4f133-c25f-4eba-a995-58f5298fc750",
+      "rigType": "biped",
+      "result": {
+        "task_id": "e3e4f133-c25f-4eba-a995-58f5298fc750",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/v_farmer_m/3-rig/tripo-out/rig-e3e4f133",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_farmer_m/3-rig/tripo-out/rig-e3e4f133/model.glb",
+        "preview": "out/models/v_farmer_m/3-rig/tripo-out/rig-e3e4f133/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "c43cbdb7-803e-44a0-9a09-850a554a5826",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk"
+        ],
+        "result": {
+          "task_id": "c43cbdb7-803e-44a0-9a09-850a554a5826",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/v_farmer_m/4-anim-1/tripo-out/retarget-c43cbdb7",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/v_farmer_m/4-anim-1/tripo-out/retarget-c43cbdb7/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1010,
+  "creditsUsed": 135,
+  "finished": "2026-11-24T15:10:16.470Z",
+  "files": [
+    "1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/generated_image.jpeg",
+    "1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/model.glb",
+    "1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/preview.png",
+    "1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/rendered_image.webp",
+    "1-model/tripo-out/a-village-farmer-a-broad-weather-3482bb19/task.json",
+    "2-check/tripo-out/rig-check-14d48477/task.json",
+    "3-rig/tripo-out/rig-e3e4f133/model.glb",
+    "3-rig/tripo-out/rig-e3e4f133/preview.png",
+    "3-rig/tripo-out/rig-e3e4f133/rendered_image.webp",
+    "3-rig/tripo-out/rig-e3e4f133/task.json",
+    "4-anim-1/tripo-out/retarget-c43cbdb7/model.glb",
+    "4-anim-1/tripo-out/retarget-c43cbdb7/task.json",
+    "manifest.json"
+  ]
+}

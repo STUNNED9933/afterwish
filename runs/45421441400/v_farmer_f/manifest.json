@@ -1,0 +1,93 @@
+{
+  "id": "v_farmer_f",
+  "prompt": "a village farm woman in her twenties, red-brown hair in a loose bun under a pale headscarf, a moss green dress with a cream apron, sleeves rolled to the elbow, sturdy brown shoes. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, empty hands, clean readable silhouette, hand-painted PBR-style textures, warm and grounded, simple village clothes",
+  "started": "2026-11-24T15:10:16.471Z",
+  "creditsBefore": 1010,
+  "steps": {
+    "model": {
+      "task": "e25fb4c5-e01a-442b-b0cf-2fb8ccfcc85a",
+      "result": {
+        "task_id": "e25fb4c5-e01a-442b-b0cf-2fb8ccfcc85a",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/v_farmer_f/1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_farmer_f/1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/model.glb",
+        "preview": "out/models/v_farmer_f/1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/preview.png"
+      }
+    },
+    "check": {
+      "task": "a434c16c-2c33-4d98-b691-9e721c45d6ce",
+      "result": {
+        "task_id": "a434c16c-2c33-4d98-b691-9e721c45d6ce",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/v_farmer_f/2-check/tripo-out/rig-check-2-a434c16c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "2fa4eb86-e738-4ce0-9ddc-8cffbebdaa43",
+      "rigType": "biped",
+      "result": {
+        "task_id": "2fa4eb86-e738-4ce0-9ddc-8cffbebdaa43",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/v_farmer_f/3-rig/tripo-out/rig-2-2fa4eb86",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/v_farmer_f/3-rig/tripo-out/rig-2-2fa4eb86/model.glb",
+        "preview": "out/models/v_farmer_f/3-rig/tripo-out/rig-2-2fa4eb86/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "7089ced8-b85a-470c-9eb3-75cb8ef9407e",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk"
+        ],
+        "result": {
+          "task_id": "7089ced8-b85a-470c-9eb3-75cb8ef9407e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 20,
+          "output_dir": "out/models/v_farmer_f/4-anim-1/tripo-out/retarget-2-7089ced8",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/v_farmer_f/4-anim-1/tripo-out/retarget-2-7089ced8/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 760,
+  "creditsUsed": 250,
+  "finished": "2026-11-24T15:15:06.636Z",
+  "files": [
+    "1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/generated_image.jpeg",
+    "1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/model.glb",
+    "1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/preview.png",
+    "1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/rendered_image.webp",
+    "1-model/tripo-out/a-village-farm-woman-in-her-twen-e25fb4c5/task.json",
+    "2-check/tripo-out/rig-check-2-a434c16c/task.json",
+    "3-rig/tripo-out/rig-2-2fa4eb86/model.glb",
+    "3-rig/tripo-out/rig-2-2fa4eb86/preview.png",
+    "3-rig/tripo-out/rig-2-2fa4eb86/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-2fa4eb86/task.json",
+    "4-anim-1/tripo-out/retarget-2-7089ced8/model.glb",
+    "4-anim-1/tripo-out/retarget-2-7089ced8/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "t_thief",
+  "prompt": "an Ember Thief of the Unmade night, a small hunched grey-skinned creature in a ragged hooded charcoal cloak, long thin arms, glowing ember-orange eyes under the hood, clutching a small stolen brass lantern with a warm flame inside, bare clawed feet, sack of stolen candles on its back. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:48:10.798Z",
+  "creditsBefore": 1890,
+  "steps": {
+    "model": {
+      "task": "859ecf0e-20ba-4d0a-b310-0da1f26ad343",
+      "result": {
+        "task_id": "859ecf0e-20ba-4d0a-b310-0da1f26ad343",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_thief/1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_thief/1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/model.glb",
+        "preview": "out/models/t_thief/1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/preview.png"
+      }
+    },
+    "check": {
+      "task": "42f24565-e03c-4b99-a588-281d4186cef8",
+      "result": {
+        "task_id": "42f24565-e03c-4b99-a588-281d4186cef8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_thief/2-check/tripo-out/rig-check-42f24565",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "a2faee9b-c905-4886-ae78-07d38fec197f",
+      "rigType": "biped",
+      "result": {
+        "task_id": "a2faee9b-c905-4886-ae78-07d38fec197f",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_thief/3-rig/tripo-out/rig-a2faee9b",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_thief/3-rig/tripo-out/rig-a2faee9b/model.glb",
+        "preview": "out/models/t_thief/3-rig/tripo-out/rig-a2faee9b/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "4dcfb4b6-741e-49f3-a73e-458a3e5e187b",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "4dcfb4b6-741e-49f3-a73e-458a3e5e187b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_thief/4-anim-1/tripo-out/retarget-4dcfb4b6",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_thief/4-anim-1/tripo-out/retarget-4dcfb4b6/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1650,
+  "creditsUsed": 240,
+  "finished": "2026-11-24T12:53:39.850Z",
+  "files": [
+    "1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/generated_image.jpeg",
+    "1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/model.glb",
+    "1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/preview.png",
+    "1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/rendered_image.webp",
+    "1-model/tripo-out/an-ember-thief-of-the-unmade-nig-859ecf0e/task.json",
+    "2-check/tripo-out/rig-check-42f24565/task.json",
+    "3-rig/tripo-out/rig-a2faee9b/model.glb",
+    "3-rig/tripo-out/rig-a2faee9b/preview.png",
+    "3-rig/tripo-out/rig-a2faee9b/rendered_image.webp",
+    "3-rig/tripo-out/rig-a2faee9b/task.json",
+    "4-anim-1/tripo-out/retarget-4dcfb4b6/model.glb",
+    "4-anim-1/tripo-out/retarget-4dcfb4b6/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "t_cinderling",
+  "prompt": "a Cinderling, a tiny child-sized creature of cracked black charcoal with bright molten orange light glowing through the cracks, a round body and stubby limbs, a flickering flame for hair, big hollow glowing eyes, mischievous and fragile. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-24T12:53:39.852Z",
+  "creditsBefore": 1650,
+  "steps": {
+    "model": {
+      "task": "bb3c41c0-ec04-4d15-975d-43586b210258",
+      "result": {
+        "task_id": "bb3c41c0-ec04-4d15-975d-43586b210258",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_cinderling/1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_cinderling/1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/model.glb",
+        "preview": "out/models/t_cinderling/1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/preview.png"
+      }
+    },
+    "check": {
+      "task": "80675916-b477-439a-9bb4-fba075497a2d",
+      "result": {
+        "task_id": "80675916-b477-439a-9bb4-fba075497a2d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_cinderling/2-check/tripo-out/rig-check-2-80675916",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "a1afa7ce-4a28-4457-9f67-a999025bb69c",
+      "rigType": "biped",
+      "result": {
+        "task_id": "a1afa7ce-4a28-4457-9f67-a999025bb69c",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_cinderling/3-rig/tripo-out/rig-2-a1afa7ce",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_cinderling/3-rig/tripo-out/rig-2-a1afa7ce/model.glb",
+        "preview": "out/models/t_cinderling/3-rig/tripo-out/rig-2-a1afa7ce/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "385c100f-e1e8-41d9-9bdf-f987210c131e",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:slash",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "385c100f-e1e8-41d9-9bdf-f987210c131e",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_cinderling/4-anim-1/tripo-out/retarget-2-385c100f",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_cinderling/4-anim-1/tripo-out/retarget-2-385c100f/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1410,
+  "creditsUsed": 240,
+  "finished": "2026-11-24T12:57:46.310Z",
+  "files": [
+    "1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/generated_image.jpeg",
+    "1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/model.glb",
+    "1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/preview.png",
+    "1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/rendered_image.webp",
+    "1-model/tripo-out/a-cinderling-a-tiny-child-sized-bb3c41c0/task.json",
+    "2-check/tripo-out/rig-check-2-80675916/task.json",
+    "3-rig/tripo-out/rig-2-a1afa7ce/model.glb",
+    "3-rig/tripo-out/rig-2-a1afa7ce/preview.png",
+    "3-rig/tripo-out/rig-2-a1afa7ce/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-a1afa7ce/task.json",
+    "4-anim-1/tripo-out/retarget-2-385c100f/model.glb",
+    "4-anim-1/tripo-out/retarget-2-385c100f/task.json",
+    "manifest.json"
+  ]
+}

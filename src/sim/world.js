@@ -6166,7 +6166,7 @@ export class World {
     this.tide = {
       state: 'on', raid: true, away: !!away, wave: 0, waves: 1, next: away ? 0 : RAID.warn, seed: k.raids * 211 + k.tides * 13 + (this.ticks % 9973),
       night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: [], echo: 1,
-      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0, omen: null, fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
+      mcd: { judge: 0, bless: 0, hallow: 0 }, zones: [], lost: 0, inc: 0, icd: 0, omen: null, fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
     };
     for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor);
     if (!away) this.emit('raidWarn', { in: RAID.warn, level: L });
@@ -6269,7 +6269,7 @@ export class World {
     this.tide = {
       state: 'on', wave: 0, next: 3, seed: k.tides * 101 + k.answered * 7 + (this.ticks % 9973),
       night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
-      mcd: { smite: 0, mend: 0, ward: 0 }, lost: 0, inc: 0, icd: 0,
+      mcd: { judge: 0, bless: 0, hallow: 0 }, zones: [], lost: 0, inc: 0, icd: 0,
       // (0.84) waves by Night, its omen, and what the stars are measured on
       waves: NIGHT.waves(L), omen: nightOmen(L), fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
     };
@@ -6294,6 +6294,12 @@ export class World {
       if (t.inc <= 0) this.incarnateEnd(false);
     }
     for (const b of this.keepBuilds || []) if (b.wardT > 0) b.wardT -= dt;
+    if (t.zones && t.zones.length) {
+      // (0.87) Hallowed Ground: it fades; heroes on it heal
+      for (const zo of t.zones) zo.t -= dt;
+      t.zones = t.zones.filter((zo) => zo.t > 0);
+      for (const tr of this.troops) if (!tr.dead && tr.hp < tr.maxHp && this.hallowed(tr.x, tr.z)) tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * MIRACLES.hallow.regen * dt);
+    }
     this.stepTideOmen(dt);
     this.stepTroops(dt);
     const hearth = (this.keepBuilds || []).find((b) => b.id === 'hearth');
@@ -6527,6 +6533,8 @@ export class World {
     const T = KEEP.tide;
     // (0.83) slows wear off; a stunned foe stands; one Challenged fights its challenger
     if (e.slowT > 0) e.slowT -= dt;
+    if (e.judgedT > 0) e.judgedT -= dt; // (0.87)
+    const holy = this.hallowed(e.x, e.z, e.radius); // (0.87) Hallowed Ground slows them, and shelters the buildings
     if (e.stunT > 0) {
       e.stunT -= dt * (F.big ? 2 : 1); // (0.84) the big ones shrug off half
       return;
@@ -6575,7 +6583,7 @@ export class World {
     e.facing = turnToward(e.facing, dAtan2(dz, dx), 8 * dt);
     const fast = (this.tide.omen === 'bloodmoon' ? 1.25 : 1) * (e.enraged ? 1.3 : 1); // (0.84)
     if (d > reach) {
-      const sp = F.speed * fast * (e.slowT > 0 ? 1 - e.slow : 1);
+      const sp = F.speed * fast * (e.slowT > 0 ? 1 - e.slow : 1) * (holy ? 1 - MIRACLES.hallow.slow : 1);
       e.px = e.x;
       e.pz = e.z;
       this.navStep(e, tg.x, tg.z, sp, dt, e.radius); // (0.82.1) round what is in the way
@@ -6587,7 +6595,7 @@ export class World {
     e.tAtk = F.cd / fast;
     e.state = 'chase';
     this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
-    if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1), e); // (0.82) buildings feel deep nights less than heroes do
+    if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1) * (holy || this.hallowed(tg.x, tg.z, tg.r) ? 1 - MIRACLES.hallow.shelter : 1), e); // (0.82) buildings feel deep nights less than heroes do; (0.87) Hallowed Ground shelters them
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 1 - Math.min(0.6, 0.3 * (this.tide.blessPow || 1)) : 1;
@@ -6757,6 +6765,7 @@ export class World {
       const F = FOES[e.type];
       if (F && F.siege) th += 3 * F.siege;
       if (F && F.role) th += { thief: e.loot ? 16 : 8, veil: 9, mourn: 9, boss: 5, breaker: 4 }[F.role] || 0; // (0.84) the ones that matter most
+      if (e.judgedT > 0) th += 12; // (0.87) Judged: the god has said
       threat.set(e, th);
     }
     const claims = new Map();
@@ -6768,12 +6777,14 @@ export class World {
       if (tr.hurtT > 0) tr.hurtT -= dt;
       if (tr.guardT > 0) tr.guardT -= dt;
       if (tr.cryT > 0) tr.cryT -= dt;
+      if (tr.benT > 0) tr.benT -= dt; // (0.87) Benediction
       if (tr.shieldT > 0 && (tr.shieldT -= dt) <= 0) tr.shield = 0;
       if (tr.dead) continue;
       // (0.83) a War Cry: harder and faster for a while
       const cry = tr.cryT > 0 ? 1 + (tr.cryPow || 0) : 1;
+      const ben = tr.benT > 0 ? 1 + (tr.benPow || 0) : 1; // (0.87) Blessed: faster to strike and to move
       const myFury = fury * cry;
-      tr.atkT -= dt * swift * cry;
+      tr.atkT -= dt * swift * cry * ben;
       // (0.83) up to four skills, each on its own cooldown; one a moment, the first that has a reason
       const scd = tr.scd || (tr.scd = {});
       for (const sk of tr.skills || []) if (scd[sk] > 0) scd[sk] -= dt;
@@ -6809,14 +6820,16 @@ export class World {
         tr.targetId = best ? best.id : null;
       }
       if (best) claims.set(best, (claims.get(best) || 0) + 1);
-      const goal = best || tr.post;
+      // (0.87) with nothing to fight, to Hallowed Ground if there is some
+      const zone = !best && this.tide.zones && this.tide.zones.length ? this.tide.zones[this.tide.zones.length - 1] : null;
+      const goal = best || (zone ? { x: zone.x + dCos(tr.id) * zone.r * 0.5, z: zone.z + dSin(tr.id) * zone.r * 0.5 } : tr.post);
       const reach = best ? tr.range + best.radius : 0.3;
       const dx = goal.x - tr.x, dz = goal.z - tr.z;
       const d = dHypot(dx, dz) || 0.001;
       if (d > 0.05) tr.facing = turnToward(tr.facing, dAtan2(dz, dx), 9 * dt);
       if (d > reach) {
         // (0.82.1) round the halls and the trees, not into them
-        const fa = this.navStep(tr, goal.x, goal.z, Math.min((d - reach + 0.01) / dt, tr.speed * swift), dt, 0.5);
+        const fa = this.navStep(tr, goal.x, goal.z, Math.min((d - reach + 0.01) / dt, tr.speed * swift * ben), dt, 0.5);
         tr.facing = turnToward(tr.facing, fa, 9 * dt);
         tr.moving = true;
         continue;
@@ -6845,7 +6858,8 @@ export class World {
   /** One of the keep's heroes hits an enemy of the Tide (its own numbers). */
   troopStrike(e, dmg, crit) {
     if (e.dead) return;
-    if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84) shrouded by a Veilbearer
+    if (e.judgedT > 0) dmg *= 1 + MIRACLES.judge.mark; // (0.87) Judged: no Veil hides it, and it takes more
+    else if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84) shrouded by a Veilbearer
     dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -7093,28 +7107,44 @@ export class World {
     if (k.faith < M.faith) return this.emit('keepShort', { what: 'faith', need: M.faith, have: k.faith });
     x = Number.isFinite(x) ? x : this.player.x;
     z = Number.isFinite(z) ? z : this.player.z;
-    if (id === 'ward') {
-      const b = (this.keepBuilds || []).filter((o) => o.hp > 0 && dist(o.x, o.z, x, z) <= M.radius + o.r).sort((a, b2) => dist(a.x, a.z, x, z) - dist(b2.x, b2.z, x, z))[0];
-      if (!b) return this.emit('miracleMiss', { id });
-      b.wardT = M.dur;
-      x = b.x;
-      z = b.z;
-    }
     k.faith -= M.faith;
     this.keepSpend({ faith: M.faith });
     t.mcd[id] = M.cd;
-    if (id === 'smite') {
-      for (const e of this.enemies) if (e.tide && !e.dead && e.state !== 'spawn' && dist(e.x, e.z, x, z) <= M.radius + e.radius) this.troopStrike(e, M.dmg * (1 + 0.25 * (k.tier - 1)), false);
-    } else if (id === 'mend') {
+    let n = 0;
+    if (id === 'judge') {
+      // (0.87) Judgement: what the heroes strike
+      for (const e of this.enemies) {
+        if (!e.tide || e.dead || e.state === 'spawn' || dist(e.x, e.z, x, z) > M.radius + e.radius) continue;
+        e.judgedT = M.dur;
+        this.troopStrike(e, e.maxHp * M.hit, false);
+        n++;
+      }
+    } else if (id === 'bless') {
+      // (0.87) Benediction: mend, raise, and quicken
       for (const tr of this.troops) {
         if (dist(tr.x, tr.z, x, z) > M.radius) continue;
         if (tr.dead) {
           tr.dead = false;
-          tr.hp = tr.maxHp * 0.5;
-        } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * 0.5);
+          tr.hp = tr.maxHp * M.raise;
+          this.emit('troopRaised', { id: tr.id, name: tr.name, x: tr.x, z: tr.z });
+        } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * M.heal);
+        [tr.benT, tr.benPow] = [M.dur, M.pow];
+        n++;
       }
+    } else if (id === 'hallow') {
+      // (0.87) Hallowed Ground: where they hold
+      const r = dHypot(x, z), max = this.radius - 2;
+      if (r > max) [x, z] = [(x * max) / r, (z * max) / r];
+      (t.zones = t.zones || []).push({ x, z, r: M.radius, t: M.dur });
     }
-    this.emit('miracle', { id, x, z, r: M.radius });
+    this.emit('miracle', { id, x, z, r: M.radius, n, dur: M.dur });
+  }
+  /** (0.87) Is this point on Hallowed Ground? */
+  hallowed(x, z, pad = 0) {
+    const zs = this.tide && this.tide.zones;
+    if (!zs || !zs.length) return null;
+    for (const zo of zs) if (dist(zo.x, zo.z, x, z) <= zo.r + pad) return zo;
+    return null;
   }
 
   /** (0.81.1) R in a Tide: the god takes the field with the heroes for a while (Faith). */

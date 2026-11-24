@@ -1282,7 +1282,7 @@ button.cell:active { transform: scale(0.96); }
 .hg-heal { color: #7fe0a0; }
 #miracles { position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 6; pointer-events: none; }
 #miracles.hidden { display: none; }
-#miracles .mir { min-width: 118px; padding: 6px 10px; background: rgba(20, 8, 12, 0.88); border: 1px solid #ff3d4f; border-radius: 6px; text-align: center; font-size: 13px; color: #ffe0e4; position: relative; overflow: hidden; }
+#miracles .mir { pointer-events: auto; cursor: help; min-width: 118px; padding: 6px 10px; background: rgba(20, 8, 12, 0.88); border: 1px solid #ff3d4f; border-radius: 6px; text-align: center; font-size: 13px; color: #ffe0e4; position: relative; overflow: hidden; }
 #miracles .mir b { display: block; font-size: 15px; color: #fff; }
 #miracles .mir i { position: absolute; left: 0; bottom: 0; height: 3px; background: #ff3d4f; }
 #miracles .mir.cool { opacity: 0.55; }

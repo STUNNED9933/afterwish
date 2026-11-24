@@ -2320,7 +2320,7 @@ export class Renderer {
   upgradeCreature(v, spec) {
     if (!spec) return;
     // (0.56.2) its hand-built body stays hidden while the model loads (the aura and marks stay)
-    const keep = (ch) => ch === v.aura || ch === v.markRing || ch === v.veil || ch === v.loot; // (0.84) the shroud and the stolen Faith stay too
+    const keep = (ch) => ch === v.aura || ch === v.markRing || ch === v.veil || ch === v.loot || ch === v.judge; // (0.84) the shroud and the stolen Faith stay too
     hideWhileLoading(v.model.group.children.filter((ch) => !keep(ch)), loadCreature(spec), () => !!v.model.group.parent && !v.rig);
     loadCreature(spec).then((tpl) => {
       if (!tpl || v.deathT !== undefined || !v.model.group.parent) return;
@@ -2712,6 +2712,7 @@ export class Renderer {
     this.syncMarkers(world);
     this.syncAim(world, heroPos);
     this.syncIncarnate(world, dt, heroPos); // (0.85) the channel's light, the god rising
+    this.syncMiracles(world, dt); // (0.87)
     this.updateParticles(dt);
     this.updateFlashes(dt);
     if (this.portalViews && this.exploreGroup && this.exploreGroup.visible) {
@@ -3432,17 +3433,69 @@ export class Renderer {
     } else if (ev.type === 'incarnateEnd') {
       this.burst(ev.x, 1.5, ev.z, { count: 30, color: ev.fell ? 0xff3d4f : 0xffd27a, speed: 4, up: 6, life: 0.8 });
     } else if (ev.type === 'miracle') {
-      if (ev.id === 'smite') {
+      // (0.87) Judgement, Benediction, Hallowed Ground
+      if (ev.id === 'judge') {
         for (let i = 0; i < 3; i++) streak(ev.x + (i - 1) * 0.4, ev.z - 0.01, ev.x, ev.z, 0xffffff, 0.3, 0.3);
-        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xfff2c8, from: 0.4, to: ev.r, dur: 0.45, opacity: 0.85 });
-        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xff3d4f, from: ev.r * 0.6, to: ev.r * 1.15, dur: 0.5, opacity: 0.9 });
-        this.burst(ev.x, 1.5, ev.z, { count: 50, color: 0xfff2c8, speed: 9, up: 8, life: 0.7 });
-        this.shake = Math.max(this.shake, 0.6);
-      } else if (ev.id === 'mend') {
+        this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffe08a, from: 0.4, to: ev.r, dur: 0.45, opacity: 0.8 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xffc040, from: ev.r * 0.6, to: ev.r * 1.15, dur: 0.5, opacity: 0.9 });
+        this.burst(ev.x, 1.5, ev.z, { count: 40, color: 0xfff2c8, speed: 8, up: 8, life: 0.7 });
+        this.shake = Math.max(this.shake, 0.35);
+      } else if (ev.id === 'bless') {
         this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x7fe0a0, from: 0.5, to: ev.r, dur: 0.6, opacity: 0.45 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xb8ffd0, from: ev.r * 0.4, to: ev.r, dur: 0.7, opacity: 0.8 });
         this.burst(ev.x, 1, ev.z, { count: 40, color: 0xb8ffd0, speed: 4, up: 6, life: 1 });
       } else {
-        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0x8ac8ff, from: 1, to: 5, dur: 0.6, opacity: 0.9 });
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, color: 0xfff2c8, from: 0.5, to: ev.r, dur: 0.5, opacity: 0.9 });
+        this.burst(ev.x, 0.3, ev.z, { count: 30, color: 0xfff2c8, speed: 5, up: 3, life: 0.7 });
+      }
+    }
+  }
+
+  /** (0.87) While they last: Hallowed Ground on the ground, and a mark of light over the Judged. */
+  syncMiracles(world, dt) {
+    const zones = (world.tide && world.tide.state === 'on' && world.tide.zones) || [];
+    this.zoneViews = this.zoneViews || [];
+    while (this.zoneViews.length < zones.length) {
+      const g = new THREE.Group();
+      const disc = new THREE.Mesh(this.discGeo(), new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.16, depthWrite: false }));
+      const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+      const inner = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }));
+      disc.position.y = 0.04;
+      ring.position.y = inner.position.y = 0.06;
+      g.add(disc, ring, inner);
+      this.scene.add(g);
+      this.zoneViews.push({ g, disc, ring, inner });
+    }
+    this.zoneViews.forEach((v, i) => {
+      const zo = zones[i];
+      v.g.visible = !!zo;
+      if (!zo) return;
+      const fade = Math.min(1, zo.t / 1.2);
+      v.g.position.set(zo.x, 0, zo.z);
+      v.disc.scale.setScalar(zo.r);
+      v.ring.scale.setScalar(zo.r);
+      v.inner.scale.setScalar(zo.r * (0.55 + 0.1 * Math.sin(this.time * 2)));
+      v.ring.rotation.y += dt * 0.6;
+      v.disc.material.opacity = 0.16 * fade;
+      v.ring.material.opacity = 0.8 * fade;
+      v.inner.material.opacity = 0.4 * fade;
+      if (Math.random() < dt * 8) this.burst(zo.x + (Math.random() - 0.5) * zo.r * 1.6, 0.1, zo.z + (Math.random() - 0.5) * zo.r * 1.6, { count: 1, color: 0xfff2c8, speed: 0.3, up: 2.5, life: 1, gravity: -1 });
+    });
+    for (const e of world.enemies) {
+      const v = this.views.get(e.id);
+      if (!v) continue;
+      const on = e.judgedT > 0 && !e.dead;
+      if (on && !v.judge) {
+        v.judge = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide }));
+        v.judge.position.y = 0.07;
+        v.model.group.add(v.judge);
+      }
+      if (v.judge) {
+        v.judge.visible = on;
+        if (on) {
+          v.judge.scale.setScalar((e.def.radius || 0.8) * 1.5 + Math.sin(this.time * 6) * 0.08);
+          v.judge.rotation.y -= dt * 2;
+        }
       }
     }
   }

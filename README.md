@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The god's miracles, remade (0.87)
+
+The miracles now lead your heroes rather than fight for them. Hover a card for what it does.
+
+- **Q · Judgement** (20 Faith, 7 s): a blow of light where you aim (8% of each one's health), then the Unmade there are Judged for 8 seconds. Your heroes deal 40% more to them and go for them first, and no Veil hides them.
+- **W · Benediction** (25 Faith, 12 s): your heroes where you aim heal 40%, the fallen there rise, and all are Blessed for 6 seconds (30% faster to strike and to move).
+- **E · Hallowed Ground** (30 Faith, 15 s): a 6 m circle for 8 seconds. The Unmade in it are slowed by 40% and their blows on buildings do 70% less. Your heroes in it heal 3% a second, and those with nothing to fight gather there.
+
 ### Raids (0.86)
 
 - **Surprise raids in your keep**: every 6–10 minutes between nights, horns sound and a raid comes 8 seconds later. It's one wave of the Unmade, two Night levels below your best, with the night's stranger children but never the Tidecaller. Your heroes meet it; miracles and Incarnate work as in a night.

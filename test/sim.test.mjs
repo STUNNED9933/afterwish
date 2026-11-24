@@ -5365,13 +5365,13 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     w3.events = [];
   }
   check('...a Tide comes in waves, and the hero (a god now) cannot strike it', foes >= K.KEEP.tide.perWave(1) && !hurt, `${foes} foes`);
-  check('...the god works miracles instead: Smite costs Faith, hurts the Tide, and has a cooldown', mir && mir.paid === K.MIRACLES.smite.faith && mir.again === 0 && mir.dmg, JSON.stringify(mir));
+  check('...the god works miracles instead: Judgement costs Faith, hurts the Tide, and has a cooldown', mir && mir.paid === K.MIRACLES.judge.faith && mir.again === 0 && mir.dmg, JSON.stringify(mir));
   // (0.81.1) Incarnate: R takes the field for a while, for Faith; blows land in full; the Tide can strike back
   const liveFoe = () => w3.enemies.find((e) => e.tide && !e.dead && e.state !== 'spawn');
   let incOk = null;
   for (let i = 0; i < 60 * 60 && !incOk && !end; i++) {
     const f = liveFoe();
-    if (f && w3.tide && w3.tide.state === 'on' && !(w3.tide.mcd.smite > 0)) {
+    if (f && w3.tide && w3.tide.state === 'on' && !(w3.tide.mcd.judge > 0)) {
       const f0 = k3.faith;
       w3.command({ type: 'cast', slot: 'r', x: f.x, z: f.z }); w3.runCommands();
       const paid = f0 - k3.faith;
@@ -5996,5 +5996,53 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...what they held pays; their kills are not yours; the night is quiet again after', rep.held >= 1 && k.faith > f0 && p.exp === xp0 && w.stats.kills === kills0 && !w.tide && !w.enemies.some((e) => e.tide));
     check('...and a gap of a few minutes is not "away"', (() => { const r0 = k.raidAcc; w.command({ type: 'keepClock', now: 1e12 + 7.5 * 3.6e6 + 5 * 60e3 }); w.runCommands(); return k.raidAcc === r0; })());
   }
+}
+// --- 0.87: the god's miracles lead the heroes: Judgement, Benediction, Hallowed Ground ------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 601, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e5; k.tier = 3; k.nightMax = 30;
+  k.troops = [['archer', []], ['warrior', []]].map(([cls, skills], i) => ({ id: 120 + i, cls, name: 'h' + i, lvl: 9, gear: 6, rar: 3, skills }));
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 6 }); w.runCommands();
+  const rng = () => 0.5;
+  const a = w.spawnTideFoe('hush', { x: 0, z: 0 }, rng), b = w.spawnTideFoe('hush', { x: 0, z: 0 }, rng), v = w.spawnTideFoe('veilbearer', { x: 0, z: 0 }, rng);
+  for (const e of [a, b, v]) e.state = 'chase';
+  [a.x, a.z, b.x, b.z, v.x, v.z] = [10, 10, -10, -10, 11, 10];
+  w.stepTideOmen(CONFIG.TICK);
+  const f0 = k.faith, h0 = a.hp;
+  w.command({ type: 'cast', slot: 'q', x: 10, z: 10 }); w.runCommands();
+  check('Miracles (0.87): Judgement costs Faith, strikes a little, and Judges the Unmade where it falls', f0 - k.faith === K.MIRACLES.judge.faith && a.hp < h0 && a.judgedT > 0 && !(b.judgedT > 0));
+  a.hp = a.maxHp = b.hp = b.maxHp = 1e4;
+  const ha = a.hp, hb = b.hp;
+  w.troopStrike(a, 100, false); w.troopStrike(b, 100, false);
+  check('...the Judged take more from the heroes, and no Veil hides them', a.veiled && ha - a.hp === Math.round(100 * (1 + K.MIRACLES.judge.mark)) && hb - b.hp === 100, `${ha - a.hp} vs ${hb - b.hp}`);
+  // Benediction
+  const [t0, t1] = w.troops;
+  [t0.x, t0.z, t1.x, t1.z] = [-5, -5, -6, -5];
+  t0.hp = t0.maxHp * 0.2; t1.dead = true; t1.hp = 0;
+  w.command({ type: 'cast', slot: 'w', x: -5, z: -5 }); w.runCommands();
+  check('...Benediction heals, raises the fallen, and Blesses them (faster)', t0.hp > t0.maxHp * 0.5 && !t1.dead && t1.hp > 0 && t0.benT > 0 && t1.benT > 0);
+  // Hallowed Ground
+  const hall = w.keepBuilds.find((x) => x.id !== 'hearth');
+  w.command({ type: 'cast', slot: 'e', x: hall.x, z: hall.z }); w.runCommands();
+  const zone = w.tide.zones[0];
+  const br = w.spawnTideFoe('gatebreaker', { x: 0, z: 0 }, rng);
+  br.state = 'chase';
+  [br.x, br.z, br.tTarget, br.tAtk] = [hall.x + hall.r + 1.5, hall.z, hall, 0];
+  const bh0 = hall.hp;
+  w.stepTideFoe(br, CONFIG.TICK);
+  const sheltered = bh0 - hall.hp;
+  zone.t = 0; w.tide.zones = [];
+  br.tAtk = 0;
+  const bh1 = hall.hp;
+  w.stepTideFoe(br, CONFIG.TICK);
+  const open = bh1 - hall.hp;
+  check('...Hallowed Ground: blows on a building there do far less', zone && sheltered > 0 && open > 0 && sheltered < open * 0.4, `${sheltered} vs ${open}`);
 }
 process.exit(failed ? 1 : 0);

@@ -21,6 +21,12 @@ import { wishWhere } from '../sim/wishwhere.js'; // (0.81.2)
 import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+/** (0.87) What each of the god's cards does, for its tooltip. */
+const MIRACLE_TIPS = {
+  ...Object.fromEntries(Object.entries(MIRACLES).map(([id, M]) => [id, `<div class="tt-name">${M.name}</div><div class="tt-meta">${M.key.toUpperCase()} · ${M.faith} Faith · ${M.cd}s cooldown · aimed, ${M.radius} m</div><div>${M.desc}</div><div class="tt-desc">${{ judge: 'Use it to say what matters: a Veilbearer, a thief with Faith, the Tidecaller.', bless: 'Use it where the fighting is thickest, or where a hero has fallen.', hallow: 'Lay it on the hall the Unmade are battering, or where you want your heroes to hold.' }[id] || ''}</div>`])),
+  incarnate: `<div class="tt-name">Incarnate</div><div class="tt-meta">R · ${INCARNATE.faith} Faith · ${INCARNATE.cd}s cooldown</div><div>${INCARNATE.desc}</div><div class="tt-desc">A rescue, not a sweep: the landing is what saves your heroes. Gather all the aura you can before you land.</div>`,
+};
+
 /** (0.80.1) Which groups of the tracker are folded, kept in this browser. */
 const TRACK_KEY = 'stunned-track-folded';
 const trackFolded = (() => {
@@ -1145,9 +1151,21 @@ export class Hud {
     const key = (inc ? `inc${Math.ceil(t.inc)}` : MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}`).join('|') + `|${Math.ceil(t.icd || 0)}`) + '|' + faith;
     if (key === this.mirKey) return;
     this.mirKey = key;
-    const card = (k, name, cost, cd, max, desc, extra = '') => `<div class="mir${cd > 0 ? ' cool' : ''}${faith < cost ? ' poor' : ''}${extra}" title="${desc}"><kbd>${k.toUpperCase()}</kbd> <b>${name}</b>${cost} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / max) * 100) : 100}%"></i></div>`;
+    if (!el.dataset.tips) {
+      // (0.87) hover a card: what it does, as the skill bar's tooltips do
+      el.dataset.tips = '1';
+      el.addEventListener('mouseover', (ev) => {
+        const c = ev.target.closest && ev.target.closest('.mir');
+        if (c && c.dataset.tip) this.tooltip.show(() => MIRACLE_TIPS[c.dataset.tip] || '', c);
+      });
+      el.addEventListener('mouseout', (ev) => {
+        if (!ev.relatedTarget || !el.contains(ev.relatedTarget)) this.tooltip.hide();
+      });
+    }
+    const tipId = (k) => (k === INCARNATE.key ? 'incarnate' : MIRACLE_IDS.find((m) => MIRACLES[m].key === k));
+    const card = (k, name, cost, cd, max, desc, extra = '') => `<div class="mir${cd > 0 ? ' cool' : ''}${faith < cost ? ' poor' : ''}${extra}" data-tip="${tipId(k)}"><kbd>${k.toUpperCase()}</kbd> <b>${name}</b>${cost} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / max) * 100) : 100}%"></i></div>`;
     el.innerHTML = inc
-      ? `<div class="mir incarnate" title="${INCARNATE.desc}"><b>Incarnate</b>your own skills · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
+      ? `<div class="mir incarnate" data-tip="incarnate"><b>Incarnate</b>your own skills · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
       : MIRACLE_IDS.map((m) => card(MIRACLES[m].key, MIRACLES[m].name, MIRACLES[m].faith, (t.mcd && t.mcd[m]) || 0, MIRACLES[m].cd, MIRACLES[m].desc)).join('') + card(INCARNATE.key, 'Incarnate', INCARNATE.faith, t.icd || 0, INCARNATE.cd, INCARNATE.desc, ' inc');
   }
 

@@ -115,11 +115,24 @@ export const BLESSINGS = {
 };
 export const BLESSING_IDS = Object.keys(BLESSINGS);
 
-/** (0.81) The god's miracles in a Tide (the hero keys Q, W and E), paid in Faith. */
+/**
+ * (0.81) The god's miracles in a Tide (the hero keys Q, W and E), paid in Faith. (0.87) Remade so the god
+ * leads the heroes rather than fighting for them: Judgement says what they strike, Benediction keeps them
+ * fighting, Hallowed Ground says where they hold.
+ */
 export const MIRACLES = {
-  smite: { key: 'q', name: 'Smite', faith: 20, cd: 3, radius: 3.2, dmg: 140, desc: 'Fire from above: 140 to every enemy where you aim.' },
-  mend: { key: 'w', name: 'Mend', faith: 25, cd: 8, radius: 5, desc: 'Heals your heroes where you aim by half their health, and raises the fallen.' },
-  ward: { key: 'e', name: 'Ward', faith: 20, cd: 12, radius: 7, dur: 6, desc: 'The building nearest where you aim takes no damage for 6 seconds.' },
+  judge: {
+    key: 'q', name: 'Judgement', faith: 20, cd: 7, radius: 3.5, hit: 0.08, dur: 8, mark: 0.4,
+    desc: 'Judge the Unmade where you aim: a blow of light (8% of their health), then for 8 seconds your heroes deal 40% more to them, go for them first, and no Veil hides them.',
+  },
+  bless: {
+    key: 'w', name: 'Benediction', faith: 25, cd: 12, radius: 6, heal: 0.4, raise: 0.4, dur: 6, pow: 0.3,
+    desc: 'Your heroes where you aim heal 40% of their health and the fallen there rise; all of them are Blessed for 6 seconds: 30% faster to strike and to move.',
+  },
+  hallow: {
+    key: 'e', name: 'Hallowed Ground', faith: 30, cd: 15, radius: 6, dur: 8, slow: 0.4, shelter: 0.7, regen: 0.03,
+    desc: 'Consecrate a circle where you aim for 8 seconds: the Unmade in it are slowed by 40% and their blows on buildings do 70% less; your heroes in it heal 3% a second, and those with nothing to fight gather there.',
+  },
 };
 export const MIRACLE_IDS = Object.keys(MIRACLES);
 /**

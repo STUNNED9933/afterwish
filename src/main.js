@@ -5232,7 +5232,7 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         sfx.levelUp();
-        hud.banner(ev.omen ? `The night is coming · ${OMENS[ev.omen].name}` : 'The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Smite, W Mend, E Ward, R to Incarnate and fight beside them.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
+        hud.banner(ev.omen ? `The night is coming · ${OMENS[ev.omen].name}` : 'The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Judgement (what they strike), W Benediction (keep them fighting), E Hallowed Ground (where they hold), R to Incarnate. Hover a card to see what it does.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
         break;
       case 'keepAscended':
         sfx.levelUp();

@@ -86,7 +86,10 @@ export class Input {
     });
     window.addEventListener('mousemove', (e) => {
       // (0.85) over the shoulder, with the mouse caught: it turns the view instead of moving a cursor
-      if (this.locked()) {
+      // (0.95) and if the browser let go of it (Esc does, always), it still turns the view while it is over
+      // the game, until any key or click catches it again: only Alt frees the mouse for the screen
+      const looseLook = !this.locked() && !this.altFree && this.shoulderOn() && this.isPlaying() && e.target === this.canvas;
+      if (this.locked() || looseLook) {
         const S = this.renderer.shoulder;
         // (0.89) clamped (a browser can report a huge jump when the mouse is caught), scaled by the setting
         const mx = Math.max(-120, Math.min(120, e.movementX || 0)), my = Math.max(-120, Math.min(120, e.movementY || 0));
@@ -125,6 +128,11 @@ export class Input {
         }
       }
       if (kk === 'n') this.nightHold = null; // (0.94) let go before it filled: no night
+      if (kk === 'capslock' && /Mac/.test((typeof navigator !== 'undefined' && navigator.platform) || '') && this.shoulderOn() && this.isPlaying()) {
+        // (0.95) a Mac sends Caps Lock's keydown only as it turns on, its keyup only as it turns off: each press is one
+        const w = this.getWorld();
+        w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
+      }
       // (0.91.1) letting go of the skill's key, or of every modifier, ends a held rank-up
       if (this.rankHold && (e.code === this.rankHold.code || (!e.ctrlKey && !e.altKey && !e.shiftKey))) this.rankHold = null;
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
@@ -204,7 +212,10 @@ export class Input {
       // (0.89) over the shoulder, as action games do: click to catch the mouse; then hold the left button to
       // strike the enemy locked in front of you. The right button does not walk (W A S D do).
       e.preventDefault();
-      if (!this.locked()) return this.altFree ? undefined : this.lock(); // (0.94) Alt held: the mouse is free for the screen
+      if (!this.locked()) {
+        if (this.altFree) return; // (0.94) Alt held: the mouse is free for the screen
+        this.lock(); // (0.95) caught again, and the click still counts (a strike), not a wasted one
+      }
       if (e.button === 0) {
         this.lmb = true;
         const under = this.renderer.pickEnemy(window.innerWidth / 2, window.innerHeight / 2, world);
@@ -273,6 +284,15 @@ export class Input {
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
     if (this.ctrlTap && key !== 'control') this.ctrlTap.clean = false; // (0.94) Ctrl with another key is not a tap
     if (this.shoulderOn() && this.isPlaying() && !typing) {
+      // (0.95) the mouse was let go (Esc): any key catches it again
+      if (!this.locked() && !this.altFree && key !== 'alt' && key !== 'escape') this.lock();
+      // (0.95) Caps Lock: walk or run, like a Ctrl tap (it never closes a tab, whatever is held with it)
+      if (key === 'capslock' && !e.repeat) {
+        e.preventDefault();
+        const w = this.getWorld();
+        w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
+        return;
+      }
       // (0.94) over the shoulder: hold Alt to see and use the mouse (as action MMOs do); tap Ctrl to walk or run
       if (key === 'alt') {
         e.preventDefault();

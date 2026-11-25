@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### No more "click to take hold", Caps Lock walks, the Seraph's light (0.94.1)
+
+**Over the shoulder, the view is never lost.** The browser always lets go of the mouse on Esc. Now the view keeps following the mouse anyway, with no cursor showing. The next key or click captures it again, and a click that re-captures still strikes. The "click to take hold of the view" step is gone. Only **holding Alt** frees the mouse for the screen.
+
+**Caps Lock** switches between walking and running, like a Ctrl tap. On a Mac, every press counts. The hint bar at the top lists both keys.
+
+**The Seraph's shots and eyes.**
+- Dawnlance flies as a spear of light: a white core in a gold sheath, a point, and a turning halo, with a gold wake.
+- Choir of Eyes now looses shards of light in their own glow. The eyes stay in the crown that opens over her head and no longer fly.
+- Every eye is redrawn: an amber iris with fine streaks, a deep pupil with two points of light, the lid's shadow, a white rim and a soft gold glow. Eyes open with a small spring, breathe while they hold, and blink shut.
+
 ### The Seraph's choices, easier controls, Treasure Sense (0.94)
 
 **Fixed: stuck in the Seraph.** Online and in rooms, leaving the Wishkeep as the Seraph and coming back could leave your screen stuck in it, with Y doing nothing and your class's skills on the bar. A hero now always carries the Seraph state, so every screen clears it when you change maps. Leaving the keep by any route ends possession.

@@ -1967,7 +1967,7 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> <span class="sh-pace">walk</span> · hold <kbd>Alt</kbd> for the mouse<span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-posin"> · <kbd>Y</kbd> take up the Seraph</span><span class="sh-nightk"> · hold <kbd>N</kbd> to call the night</span><span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-click"> · click to take hold of the view</span><span class="sh-altk"> · the mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps Lock</kbd> <span class="sh-pace">walk</span> · hold <kbd>Alt</kbd> for the mouse<span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-posin"> · <kbd>Y</kbd> take up the Seraph</span><span class="sh-nightk"> · hold <kbd>N</kbd> to call the night</span><span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-altk"> · the mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
       document.body.appendChild(shoulderUi);
       shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
       shoulderUi.querySelector('.sh-pos').addEventListener('click', () => input.togglePossess()); // (0.92)
@@ -2007,6 +2007,7 @@ function start(hot = {}) {
     shoulderWas = on;
     if (!on && !chan && input.locked() && performance.now() - (input.lockAt || 0) > 500) input.unlock();
     shoulderUi.classList.toggle('alt', on && !!input.altFree);
+    document.body.classList.toggle('sh-alt', on && !!input.altFree);
     const kp = world.player && world.player.keep;
     shoulderUi.classList.toggle('has-seraph', inKeep && !world.keepVisit && !!(kp && kp.statue) && !pos);
     shoulderUi.classList.toggle('can-night', inKeep && !world.keepVisit && !!kp && !(t && t.state === 'on'));
@@ -5437,7 +5438,7 @@ function start(hot = {}) {
         break;
       }
       case 'walkPace':
-        hud.feedText(ev.on ? 'Walking at an even pace. Tap Ctrl to run again.' : 'Running. Tap Ctrl to walk.'); // (0.94)
+        hud.feedText(ev.on ? 'Walking at an even pace. Ctrl or Caps Lock to run again.' : 'Running. Ctrl or Caps Lock to walk.'); // (0.94)
         break;
       case 'statueSkill':
         sfx.ui();

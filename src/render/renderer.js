@@ -1303,44 +1303,147 @@ export class Renderer {
     if (moving && Math.random() < dt * 10) this.burst(model.group.position.x, 0.35, model.group.position.z, { count: 1, color: 0xffe9b0, speed: 0.6, up: 0.4, size: 0.5, life: 0.7, gravity: -0.5 });
     return model.seraLift + 0.1 * Math.sin(model.seraT * 1.7);
   }
-  /** (0.93) An eye of the kind in the sky over the Seraph: white, ringed, staring (drawn once). */
+  /**
+   * (0.93) An eye of the kind in the sky over the Seraph. (0.95) Drawn with more care: a soft gold glow round
+   * it, a white rim (as if cut from the sky), a pearl-white eye, an amber iris with streaks, a deep pupil and two
+   * points of light.
+   */
   eyeTex() {
     if (this._eyeTex) return this._eyeTex;
+    const W = 512, H = 256;
     const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 128;
+    c.width = W;
+    c.height = H;
     const g = c.getContext('2d');
-    const almond = () => {
+    const cx = W / 2, cy = H / 2;
+    const almond = (k = 1) => {
       g.beginPath();
-      g.moveTo(14, 64);
-      g.quadraticCurveTo(128, -30, 242, 64);
-      g.quadraticCurveTo(128, 158, 14, 64);
+      g.moveTo(cx - 210 * k, cy);
+      g.bezierCurveTo(cx - 120 * k, cy - 112 * k, cx + 120 * k, cy - 112 * k, cx + 210 * k, cy);
+      g.bezierCurveTo(cx + 120 * k, cy + 104 * k, cx - 120 * k, cy + 104 * k, cx - 210 * k, cy);
       g.closePath();
     };
-    almond();
-    g.lineWidth = 22;
-    g.strokeStyle = '#ffffff';
-    g.stroke();
-    g.fillStyle = '#f4f1ea';
+    // the glow, and the white rim
+    g.save();
+    g.shadowColor = 'rgba(255, 214, 120, 0.95)';
+    g.shadowBlur = 34;
+    almond(1.06);
+    g.fillStyle = '#fffaf0';
     g.fill();
-    g.lineWidth = 7;
-    g.strokeStyle = '#121212';
-    g.stroke();
+    g.restore();
+    // the white of the eye
+    almond();
+    const sc = g.createRadialGradient(cx, cy, 20, cx, cy, 220);
+    sc.addColorStop(0, '#ffffff');
+    sc.addColorStop(0.7, '#f6efe0');
+    sc.addColorStop(1, '#d9c79c');
+    g.fillStyle = sc;
+    g.fill();
     g.save();
     almond();
     g.clip();
-    g.fillStyle = '#161616';
+    // the iris: amber to deep gold, with fine streaks
+    const R = 66;
+    const ir = g.createRadialGradient(cx, cy, 8, cx, cy, R);
+    ir.addColorStop(0, '#fff2b0');
+    ir.addColorStop(0.35, '#f3b83c');
+    ir.addColorStop(0.8, '#a8640c');
+    ir.addColorStop(1, '#3a2204');
+    g.fillStyle = ir;
     g.beginPath();
-    g.arc(128, 64, 34, 0, Math.PI * 2);
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(255, 236, 170, 0.35)';
+    g.lineWidth = 2;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a) * 24, cy + Math.sin(a) * 24);
+      g.lineTo(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6));
+      g.stroke();
+    }
+    // the pupil, and the lights in it
+    g.fillStyle = '#0c0804';
+    g.beginPath();
+    g.arc(cx, cy, 25, 0, Math.PI * 2);
     g.fill();
     g.fillStyle = '#ffffff';
     g.beginPath();
-    g.arc(128, 64, 8, 0, Math.PI * 2);
+    g.arc(cx - 20, cy - 22, 11, 0, Math.PI * 2);
     g.fill();
+    g.beginPath();
+    g.arc(cx + 14, cy + 16, 5, 0, Math.PI * 2);
+    g.fill();
+    // the lid's shadow along the top
+    const lid = g.createLinearGradient(0, cy - 100, 0, cy - 30);
+    lid.addColorStop(0, 'rgba(60, 40, 10, 0.55)');
+    lid.addColorStop(1, 'rgba(60, 40, 10, 0)');
+    g.fillStyle = lid;
+    g.fillRect(0, 0, W, cy);
     g.restore();
+    // the line of the lids: heavier above
+    almond();
+    g.lineWidth = 7;
+    g.strokeStyle = '#2a1c08';
+    g.stroke();
+    g.beginPath();
+    g.moveTo(cx - 210, cy);
+    g.bezierCurveTo(cx - 120, cy - 112, cx + 120, cy - 112, cx + 210, cy);
+    g.lineWidth = 12;
+    g.stroke();
     this._eyeTex = new THREE.CanvasTexture(c);
     this._eyeTex.colorSpace = THREE.SRGBColorSpace;
     return this._eyeTex;
+  }
+  /** (0.95) A soft round glow (for the Seraph's shots and its light). */
+  glowTex() {
+    if (this._glowTex) return this._glowTex;
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    r.addColorStop(0.25, 'rgba(255, 236, 180, 0.85)');
+    r.addColorStop(0.6, 'rgba(255, 200, 110, 0.25)');
+    r.addColorStop(1, 'rgba(255, 190, 90, 0)');
+    g.fillStyle = r;
+    g.fillRect(0, 0, 128, 128);
+    this._glowTex = new THREE.CanvasTexture(c);
+    return this._glowTex;
+  }
+  /**
+   * (0.95) The Seraph's shots, made properly: Dawnlance a spear of light (a white core in a gold sheath, a
+   * point, a halo turning round it); a Choir's shot a shard of light in its own glow.
+   */
+  seraphShot(m, kind) {
+    m.material.visible = false;
+    const add = (o) => (m.add(o), o);
+    const glow = new THREE.SpriteMaterial({ map: this.glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffe2a0 });
+    const bright = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending });
+    const body = new THREE.Group();
+    add(body);
+    if (kind === 'lance') {
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.4, 8).rotateX(Math.PI / 2), bright(0xffffff));
+      const sheath = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.08, 3.6, 12).rotateX(Math.PI / 2), bright(0xffc860, 0.55));
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 12).rotateX(Math.PI / 2), bright(0xfff4d8));
+      tip.position.z = 2.2;
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 24), bright(0xffe9b0, 0.8));
+      halo.position.z = 1.3;
+      body.add(core, sheath, tip, halo);
+      const sp = new THREE.Sprite(glow);
+      sp.scale.set(2.2, 2.2, 1);
+      sp.position.z = 1.6;
+      body.add(sp);
+      m.userData.halo = halo;
+    } else {
+      const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), bright(0xffffff));
+      shard.scale.set(0.8, 0.8, 2.2);
+      const sp = new THREE.Sprite(glow);
+      sp.scale.set(1.5, 1.5, 1);
+      body.add(shard, sp);
+      m.userData.halo = shard;
+    }
+    m.userData.body = body;
   }
   /** (0.93) A thing that plays out over `dur` seconds: up(k, dt) each frame, then it is taken away. */
   fxBit(obj, dur, up) {
@@ -1350,15 +1453,25 @@ export class Renderer {
   }
   /** (0.93) An eye that opens (a blink in reverse), stares, and closes: at (x, y, z), `size` wide. */
   skyEye(x, y, z, size, dur, delay = 0) {
+    // (0.95) it opens wide with a little spring, a glow swells behind it, it holds with a slow breath of light,
+    // and closes quickly (a blink), the glow lingering a moment after
+    const g = new THREE.Group();
     const mat = new THREE.SpriteMaterial({ map: this.eyeTex(), transparent: true, depthWrite: false, opacity: 0 });
     const s = new THREE.Sprite(mat);
-    s.position.set(x, y, z);
+    const gm = new THREE.SpriteMaterial({ map: this.glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffd98a, opacity: 0 });
+    const glow = new THREE.Sprite(gm);
+    glow.scale.set(size * 1.6, size * 1.1, 1);
+    g.add(glow, s);
+    g.position.set(x, y, z);
     s.scale.set(size, 0.01, 1);
-    return this.fxBit(s, dur + delay, (k, t) => {
+    const back = (u) => 1 + 2.4 * Math.pow(u - 1, 3) + 1.4 * Math.pow(u - 1, 2); // ease out, overshooting
+    return this.fxBit(g, dur + delay + 0.2, (k, t) => {
       const u = Math.max(0, t - delay) / dur;
-      const open = u <= 0 ? 0 : u < 0.2 ? u / 0.2 : u > 0.85 ? (1 - u) / 0.15 : 1;
-      s.scale.set(size, Math.max(0.01, size * 0.5 * open), 1);
-      mat.opacity = Math.min(1, open * 1.5);
+      const open = u <= 0 ? 0 : u < 0.22 ? back(u / 0.22) : u > 0.9 ? Math.max(0, (1 - u) / 0.1) : 1;
+      const breath = 1 + 0.04 * Math.sin(t * 6);
+      s.scale.set(size * (0.85 + 0.15 * Math.min(1, open)) * breath, Math.max(0.01, size * 0.5 * open), 1);
+      mat.opacity = Math.min(1, open * 1.6);
+      gm.opacity = u <= 0 ? 0 : u < 1 ? 0.55 * Math.min(1, u * 4) * breath : Math.max(0, 0.55 * (1 - (t - delay - dur) / 0.2));
     });
   }
   /** (0.93) A cloud: a cluster of soft white puffs that swells in and thins away. */
@@ -2767,25 +2880,16 @@ export class Renderer {
         m.position.set(m.position.x - Math.cos(a) * w * 0.7, 1.0, m.position.z - Math.sin(a) * w * 0.7);
         if (Math.random() < 0.8) this.burst(m.position.x + Math.cos(a) * w * 0.7, 1.0, m.position.z + Math.sin(a) * w * 0.7, { count: 1, color: 0xff5050, speed: 0.6, up: 0.3, gravity: 0, life: 0.3, size: 1.1 });
       }
-      if (pr.kind === 'lance') {
-        // (0.94) Dawnlance: a long spear of light, pointing where it flies, a gold wake behind it
-        m.scale.set(0.7, 0.7, 4.2);
+      if (pr.kind === 'lance' || pr.kind === 'eye') {
+        // (0.95) the Seraph's shots: a spear of light (Dawnlance) or a shard of light (Choir of Eyes), pointing
+        // where they fly, a halo turning, a wake of gold
+        if (!m.userData.body) this.seraphShot(m, pr.kind);
+        m.scale.setScalar(1);
         if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, Math.atan2(pr.x - pr.px, pr.z - pr.pz), 0);
-        m.position.y = 1.8;
-        this.burst(m.position.x, 1.8, m.position.z, { count: 2, color: 0xffe2a0, speed: 0.8, up: 0.3, gravity: 0, life: 0.5, size: 0.8 });
-      }
-      if (pr.kind === 'eye') {
-        // (0.94) Choir of Eyes: an eye that flies, staring
-        if (!m.userData.eye) {
-          const sm = new THREE.SpriteMaterial({ map: this.eyeTex(), transparent: true, depthWrite: false });
-          const sp = new THREE.Sprite(sm);
-          sp.scale.set(2.2, 1.1, 1);
-          m.add(sp);
-          m.userData.eye = sp;
-          m.material.visible = false;
-        }
-        m.position.y = 1.9;
-        if (Math.random() < 0.5) this.burst(m.position.x, 1.9, m.position.z, { count: 1, color: 0xfff6e0, speed: 0.4, up: 0.2, gravity: 0, life: 0.4, size: 0.7 });
+        m.position.y = pr.kind === 'lance' ? 1.8 : 1.9;
+        if (m.userData.halo) m.userData.halo.rotation.z += 0.25;
+        const big = pr.kind === 'lance';
+        if (Math.random() < (big ? 0.9 : 0.5)) this.burst(m.position.x, m.position.y, m.position.z, { count: big ? 2 : 1, color: big ? 0xffe2a0 : 0xfff6e0, speed: big ? 0.8 : 0.4, up: 0.15, gravity: 0, life: big ? 0.5 : 0.3, size: big ? 0.45 : 0.35 });
       }
       if (pr.kind === 'kunai') {
         // A thin blade pointing where it flies.

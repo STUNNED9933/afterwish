@@ -163,7 +163,7 @@ also keeps its own beat instead of the frame that noticed it.
 ### The mage holds her staff her own way (0.97.2)
 
 - **Standing:** she holds the staff upright at her right side, its foot on the ground by her foot and her left hand on her hip. It no longer sticks out from her hand.
-- **Running:** the staff trails low behind her, held near its foot.
+- **Running:** she carries the staff out ahead of her, its head high and forward and its foot slanting back past her legs (0.97.3).
 - **Casting:** still swings the staff as before.
 
 ### Sheathing (0.97.1)

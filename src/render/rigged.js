@@ -191,11 +191,11 @@ export const RIGGED = {
     staff: true,
     weaponScale: 0.82,
     // (0.97.2) Standing, she holds the staff upright at her side, its foot on the ground by her right foot, her
-    // left hand on her hip; running, it trails low behind her, held near its foot. at: where her right hand is
+    // left hand on her hip; running, she carries it out ahead of her, head high, held above its middle. at: where her right hand is
     // (metres from the bone, bind pose, model space +X forward +Y up +Z her right); dir: the staff, foot to head.
     staffPose: {
       idle: { bone: 'Pelvis', at: [0.15, 0.06, 0.3], dir: [0.08, 1, -0.03], hang: true, ground: true },
-      run: { bone: 'Pelvis', at: [-0.3, -0.2, 0.27], dir: [-0.93, -0.3, 0.2], hang: true, hold: 0.1 },
+      run: { bone: 'Pelvis', at: [0.44, 0.26, 0.3], dir: [0.55, 0.83, -0.06], hang: true, hold: 0.56 }, // (0.97.3) carried ahead of her, head high and forward, its foot back past her legs
       hip: { bone: 'Pelvis', at: [0.03, 0.06, -0.2], hang: true, hand: 'L_Hand', pole: [-0.35, -0.25, -1] },
     },
     // (0.97) walking, the staff is slung across her back, its head over her right shoulder

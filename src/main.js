@@ -1898,17 +1898,23 @@ function start(hot = {}) {
   function shoulderFrame() {
     const t = world && world.tide;
     const mine = !!(t && t.state === 'on' && !world.keepVisit);
-    const on = mine && t.inc > 0 && mode === 'play';
+    const inKeep = !!(world && world.map && world.map.id === 'wishkeep');
+    const walk = inKeep && !!(world.player && world.player.keepWalk) && !(t && t.state === 'on'); // (0.91) walking the keep (V)
+    const on = ((mine && t.inc > 0) || walk) && mode === 'play';
     const chan = mine && t.chan != null;
     renderer.shoulder.on = on;
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry<span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry<span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
       document.body.appendChild(shoulderUi);
+      shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
     }
     document.body.classList.toggle('shoulder-on', on);
     shoulderUi.classList.toggle('on', on);
+    shoulderUi.classList.toggle('walk', walk);
+    // (0.91) between nights in a keep: the offer to walk it over your shoulder
+    shoulderUi.classList.toggle('can-walk', inKeep && !walk && !(t && t.state === 'on') && mode === 'play');
     shoulderUi.classList.toggle('chan', chan);
     shoulderUi.classList.toggle('free', on && !input.locked());
     // (0.89) the soft lock: its frame at the top, and the crosshair turns gold
@@ -5290,6 +5296,13 @@ function start(hot = {}) {
       case 'troopUnbroken':
         hud.feedText('Unbroken: a hero refuses to fall.');
         renderer.keepFx({ type: 'troopFall', x: ev.x, z: ev.z });
+        break;
+      case 'keepWalk':
+        if (ev.on) {
+          renderer.shoulder.yaw = -Math.PI / 2;
+          renderer.shoulder.pitch = 0.45;
+          hud.feedText('Walking your keep over your shoulder: W A S D to move, the mouse to look. V to go back above.');
+        }
         break;
       case 'incarnateChannel':
         sfx.ui();

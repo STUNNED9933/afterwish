@@ -1398,3 +1398,11 @@ body.shoulder-on #prompt { display: none; }
 #shoulder-ui.on .sh-tip { display: block; position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 14px; border-radius: 6px; background: rgba(10, 12, 20, 0.85); color: #ffe8c0; font-size: 15px; opacity: 0; transition: opacity 0.25s; }
 #shoulder-ui.on .sh-tip.show { opacity: 1; }
 #shoulder-ui .sh-dodge.cool { color: #8a8a96; }
+
+/* (0.91) walking the keep: the offer, and the way back */
+#shoulder-ui .sh-walk { display: none; }
+#shoulder-ui.can-walk .sh-walk { display: block; position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); pointer-events: auto; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255, 210, 122, 0.55); background: rgba(14, 16, 26, 0.82); color: #ffe8c0; font: inherit; font-size: 14px; cursor: pointer; }
+#shoulder-ui.can-walk .sh-walk:hover { background: rgba(40, 34, 20, 0.9); }
+#shoulder-ui .sh-walk kbd { padding: 0 5px; margin-left: 4px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font-size: 12px; }
+#shoulder-ui .sh-stop { display: none; }
+#shoulder-ui.walk .sh-stop { display: inline; }

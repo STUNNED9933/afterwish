@@ -6130,4 +6130,30 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     check('...and a bow looses a shot that flies straight where you aim', w.projectiles.length > n0 && shot && shot.vz < 0 && Math.abs(shot.vx) < 1e-6);
   }
 }
+// --- 0.91: walking the keep over your shoulder between nights ----------------------------------------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 901, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] } };
+  w.command({ type: 'keepWalk', on: true }); w.runCommands();
+  check('Walk the keep (0.91): not outside a keep', !p.keepWalk);
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  p.keep.tier = 3; p.keep.nightMax = 5;
+  w.command({ type: 'keepWalk', on: true }); w.runCommands();
+  const x0 = p.x;
+  w.command({ type: 'swing', x: p.x + 3, z: p.z }); w.runCommands();
+  const swung = !!p.freeSwing;
+  for (let i = 0; i < 40; i++) w.step(CONFIG.TICK);
+  w.command({ type: 'dodge', x: p.x + 3, z: p.z }); w.runCommands();
+  for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+  check('...in your keep between nights: free strikes and the roll, as when Incarnate', p.keepWalk && swung && p.x > x0 + 3, `${x0} -> ${p.x}`);
+  w.command({ type: 'keepTide', level: 1 }); w.runCommands();
+  check('...and a night (or a raid) called sends you back above', !p.keepWalk);
+  w.tide = null;
+  w.command({ type: 'keepWalk', on: true }); w.runCommands();
+  const was = p.keepWalk;
+  w.loadMap('haven');
+  check('...as does leaving through the Waygate', was && !p.keepWalk);
+}
 process.exit(failed ? 1 : 0);

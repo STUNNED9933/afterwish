@@ -160,6 +160,19 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A living keep, and walking it (0.91)
+
+- **The villagers have their days**, with animations of their own (Quaternius' Universal Animation Library, CC0, moved onto their rigs):
+  - Farmers harvest, sow and water in the fields, then carry the harvest to the plaza.
+  - The miner swings at the rock and kneels to fix things.
+  - The old folk sit on the new benches round the plaza and talk, or stand with their arms folded.
+  - The children play tag, dance, and crouch to look at things in the grass.
+- **Everyone walks real paths** round the halls, houses and works instead of through them.
+- **The keep's heroes, between nights**, stroll about their halls and now and then practise a few swings.
+- **The settlers** (Ysolde, Maren, Bastian, Liesl, Corwin, Hesper) have proper bodies too, each tinted for their trade.
+- **Walk the keep (V)**: between nights, walk your keep (or a friend's) over your shoulder with the Incarnate controls: W A S D, mouse look, free strikes, Shift to dash, double-tap to roll. V (or the button) takes you back above; a night or a raid does too.
+- Over your shoulder, the camera now comes in front of a wall or a pillar instead of sitting inside it.
+
 ### Incarnate: freer strikes, longer stays, and the dash on Shift (0.90)
 
 - **Left click strikes even with nothing locked**: a blade cuts whatever is in its arc where you aim (the nearest in full, the rest by half); a bow's or a staff's shot flies straight where you aim. All at the pace of your attacks.

@@ -85,6 +85,13 @@ export const PEOPLE = {
   v_elder_f: { model: 'v_elder_f', height: 1.62 },
   v_miner_m: { model: 'v_miner_m', height: 1.8 },
   v_child: { model: 'v_child', height: 1.25, quick: true },
+  // (0.91) the keep's settlers, in the villagers' bodies, each tinted for their trade
+  ysolde: { model: 'v_elder_f', height: 1.58, vary: 0x5a4a6a, varyK: 0.25 },
+  maren: { model: 'v_farmer_f', height: 1.7, vary: 0xd08a3a, varyK: 0.3 },
+  bastian: { model: 'v_farmer_m', height: 1.84, vary: 0x5a6a7a, varyK: 0.35 },
+  liesl: { model: 'v_farmer_f', height: 1.66, vary: 0x5a9a4a, varyK: 0.3 },
+  corwin: { model: 'v_child', height: 1.45, vary: 0x4a6ac8, varyK: 0.25 },
+  hesper: { model: 'v_farmer_f', height: 1.72, vary: 0x2a2434, varyK: 0.45 },
   wren: { model: 'n_wren', height: 1.7 },
   bram: { model: 'n_bram', height: 1.95 },
   odile: { model: 'n_odile', height: 1.75 },
@@ -317,13 +324,13 @@ export function makeCreature(tpl, spec) {
           h.timeScale = 0.35;
         }
       } else if (s.moving) {
-        const w = action('walk');
+        const w = action(s.walkKind || 'walk') || action('walk'); // (0.91) a jog, or a walk with a load
         if (w) {
           fadeTo(w, 0.2);
           w.timeScale = Math.max(0.6, Math.min(2.2, (s.speed || 3) / (spec.beast ? 4 : 2.6)));
         }
       } else {
-        const idle = action(s.idleKind || 'idle');
+        const idle = (s.idleKind && action(s.idleKind)) || action('idle'); // (0.91) a villager's work, a seat, a chat
         if (idle) fadeTo(idle, 0.25);
         else if (current) current.timeScale = 0.12; // a beast with only a walk: nearly still, breathing
       }

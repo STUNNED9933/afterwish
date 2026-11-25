@@ -89,6 +89,14 @@ export class Input {
     return this.renderer.screenToGround(this.mouse.x, this.mouse.y);
   }
 
+  /** (0.91) Walk the keep over your shoulder, or go back above. */
+  toggleWalk() {
+    const w = this.getWorld();
+    const on = !(w.player && w.player.keepWalk);
+    w.command({ type: 'keepWalk', on });
+    if (on) this.lock(); // (a key press or a click allows it now)
+    else this.unlock();
+  }
   /** (0.85) Over the shoulder (incarnate in your keep's night)? */
   shoulderOn() {
     return !!(this.renderer.shoulder && this.renderer.shoulder.on);
@@ -197,6 +205,15 @@ export class Input {
     const key = (e.key || '').toLowerCase();
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
 
+    // (0.91) V: walk a keep over your shoulder between nights (and back above)
+    if (key === 'v' && !typing && this.isPlaying() && !e.repeat) {
+      const w = this.getWorld();
+      if (w.map && w.map.id === 'wishkeep' && !(w.tide && w.tide.state === 'on')) {
+        e.preventDefault();
+        this.toggleWalk();
+        return;
+      }
+    }
     // (0.89) over the shoulder, Tab picks the next enemy (the bag is still on I and C)
     if (key === 'tab' && this.shoulderOn() && this.isPlaying() && !typing) {
       e.preventDefault();

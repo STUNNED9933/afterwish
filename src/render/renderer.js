@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { RARITIES } from '../sim/items.js';
 import { buildVillager, VILLAGER_KINDS } from './keepmodels.js'; // (0.81.1)
+import { benchSpots, villagerRole, stepVillager, heroDay } from './village.js'; // (0.91)
 import { buildHero, buildEnemy, buildNpc, buildSign, buildGlimmer, buildBoard, buildAltar } from './models.js';
 import { creatureSpec, loadCreature, makeCreature, attackKind, PEOPLE, modelsFor, VILLAGER_PEOPLE } from './creatures.js';
 import { MAPS } from '../sim/maps.js';
@@ -333,6 +334,10 @@ export class Renderer {
    * map.obstacles, the same list the simulation uses to stop you walking through it.
    */
   setMap(map) {
+    this.villageCtx = null; // (0.91) the day's life of the keep (benches, who is where)
+    this.heroLife = new Map();
+    for (const b of this.benchViews || []) this.disposeGroup(b);
+    this.benchViews = [];
     this.keepFlames = []; // (0.80)
     this.worksViews = []; // (0.82.1)
     this.tierViews = [];
@@ -357,6 +362,7 @@ export class Renderer {
         // little bluer or redder; the hand-built one only until it has loaded
         if (VILLAGER_PEOPLE.length) {
           const base = PEOPLE[VILLAGER_PEOPLE[i % VILLAGER_PEOPLE.length]];
+          w.role = villagerRole(base.model); // (0.91) farmer, miner, elder, child
           const tints = [0xc86a4a, 0x4a7ac8, 0x6aa84a, 0xc8a84a, 0x8a5ab8, 0x4ab8a8, 0xd8d0c0, 0x6a4a3a];
           const spec = { ...base, height: base.height * (0.92 + Math.random() * 0.14), vary: tints[(i * 5 + 3) % tints.length], varyK: 0.08 + Math.random() * 0.14 };
           w.speed = base.quick ? 1.35 : 0.85 + Math.random() * 0.3;
@@ -2840,7 +2846,19 @@ export class Renderer {
       const hp = this.hero && this.hero.group ? this.hero.group.position : heroPos;
       const fx = dCosR(S.yaw), fz = dSinR(S.yaw);
       const rx = -fz, rz = fx; // to the right
-      const back = 5.2, up = 2.3 + 1.6 * S.pitch, side = 0.75;
+      let back = 5.2;
+      const up = 2.3 + 1.6 * S.pitch, side = 0.75;
+      // (0.91) a wall, a pillar or a house between you and the camera: the camera comes in front of it
+      if (world.navFree && world.map) {
+        for (let d = 0.6; d <= back; d += 0.3) {
+          if (!world.navFree(hp.x - fx * d + rx * side * (d / back), hp.z - fz * d + rz * side * (d / back))) {
+            back = Math.max(1.6, d - 0.5);
+            break;
+          }
+        }
+      }
+      this.camBack = this.camBack == null ? back : lerp(this.camBack, back, 1 - Math.exp(-(back < this.camBack ? 14 : 3) * dt));
+      back = this.camBack;
       const ahead = 3 + 15 * (1 - S.pitch); // where the crosshair falls
       const sh = {
         x: hp.x - fx * back + rx * side + ox * 0.3, y: up, z: hp.z - fz * back + rz * side + oz * 0.3,
@@ -3214,7 +3232,22 @@ export class Renderer {
     if (!this.allyViews) this.allyViews = new Map();
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
-    for (const t of world.troops || []) list.push({ pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: TROOP_AS[t.cls] || 1, troop: t.id, rar: t.rar || 0, shield: t.shield > 0, gender: t.gender || 'm' });
+    const day = !(world.tide && world.tide.state === 'on');
+    if (!day && this.heroLife && this.heroLife.size) this.heroLife.clear(); // (the night: to their posts, as the game has them)
+    for (const t of world.troops || []) {
+      const it = { pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: TROOP_AS[t.cls] || 1, troop: t.id, rar: t.rar || 0, shield: t.shield > 0, gender: t.gender || 'm' };
+      if (day && !t.dead && world.map && world.map.id === 'wishkeep') {
+        // (0.91) between nights: about their hall, and practising now and then (only drawn)
+        const L = heroDay((this.heroLife = this.heroLife || new Map()), t, world, dt);
+        [it.x, it.z, it.px, it.pz, it.facing, it.moving] = [L.x, L.z, L.x, L.z, L.facing, L.moving];
+        if (L.swing) {
+          const an = this.allyAnim(it.pid);
+          an.swing = 0;
+          an.swingDur = 0.35;
+        }
+      }
+      list.push(it);
+    }
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
@@ -3354,6 +3387,34 @@ export class Renderer {
       F.halo.material.opacity *= Math.exp(-6 * dt);
     }
     if (this.hero && this.hero.group && F.lift > 0.01) this.hero.group.position.y += F.lift;
+  }
+
+  /** (0.91) Benches round the keep's plaza, for the old folk to sit and talk (only drawn). */
+  buildBenches(world) {
+    const spots = benchSpots(world);
+    const wood = new THREE.MeshStandardMaterial({ color: 0x7a5434, roughness: 0.9 });
+    for (const b of spots) {
+      const g = new THREE.Group();
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.45), wood);
+      seat.position.y = 0.46;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 0.08), wood);
+      back.position.set(0, 0.78, -0.22);
+      g.add(seat, back);
+      for (const sx of [-0.65, 0.65]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.46, 0.4), wood);
+        leg.position.set(sx, 0.23, 0);
+        g.add(leg);
+      }
+      for (const m of g.children) {
+        m.castShadow = true;
+        m.receiveShadow = true;
+      }
+      g.position.set(b.x, 0, b.z);
+      g.rotation.y = Math.PI / 2 - b.face;
+      this.scene.add(g);
+      this.benchViews.push(g);
+    }
+    return spots;
   }
 
   /** (0.84) A Tide foe's swing, played from the moment it hits (its wind-up runs this long). */
@@ -3617,36 +3678,13 @@ export class Renderer {
     for (const w of this.walkers || []) {
       w.g.visible = !night;
       if (night) continue;
-      // the keep's people, wandering the plaza (only drawn, never part of the game)
-      const dx = w.tx - w.g.position.x, dz = w.tz - w.g.position.z;
-      const d = Math.hypot(dx, dz);
-      if (w.wait > 0) {
-        w.wait -= dt;
-        if (w.rig) w.rig.update(dt, { moving: false });
-        else w.m.anim(dt, { moving: false, swing: 1 });
-        continue;
-      }
-      if (d < 0.2) {
-        const a = Math.random() * Math.PI * 2, r = 3.5 + Math.random() * (w.reach - 3.5);
-        w.tx = Math.cos(a) * r;
-        w.tz = Math.sin(a) * r;
-        w.wait = Math.random() < 0.5 ? 1 + Math.random() * 3 : 0;
-        continue;
-      }
-      const step = Math.min(d, 1.4 * (w.speed || w.m.speed || 1) * dt);
-      if (w.rig) w.rig.update(dt, { moving: true, speed: 1.4 * (w.speed || 1) });
-      else w.m.anim(dt, { moving: true, swing: 1 });
-      w.g.position.x += (dx / d) * step;
-      w.g.position.z += (dz / d) * step;
-      for (const o of world.obstacles || []) {
-        // step around the settlers, the Hearth's candles and the braziers rather than through them
-        const ox = w.g.position.x - o.x, oz = w.g.position.z - o.z, od = Math.hypot(ox, oz), need = (o.r || 0.5) + 0.45;
-        if (od < need && od > 1e-3) {
-          w.g.position.x = o.x + (ox / od) * need;
-          w.g.position.z = o.z + (oz / od) * need;
-        }
-      }
-      w.g.rotation.y = Math.atan2(dx, dz);
+      // (0.91) the keep's people at their day's work, walking paths round the buildings (only drawn, never
+      // part of the game): see village.js
+      if (!this.villageCtx) this.villageCtx = { benches: this.buildBenches(world), walkers: this.walkers };
+      w.speed = w.speed || 1;
+      const s = stepVillager(w, world, this.villageCtx, dt);
+      if (w.rig) w.rig.update(dt, s);
+      else w.m.anim(dt, { moving: s.moving, swing: 1 });
     }
   }
 

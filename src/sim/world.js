@@ -967,6 +967,9 @@ export class World {
         case 'swing':
           this.freeSwing(c.x, c.z); // (0.90)
           break;
+        case 'keepWalk':
+          this.keepWalkSet(c.on); // (0.91)
+          break;
         case 'parry':
           this.tryParry(c.seen);
           break;
@@ -3025,6 +3028,17 @@ export class World {
   }
 
   stepPlayer(dt) {
+    {
+      // (0.89; 0.91) over the shoulder: the roll's cooldown and grace, a free strike landing
+      const me = this.player;
+      if (me.dodgeCd > 0) me.dodgeCd = Math.max(0, me.dodgeCd - dt);
+      if (me.dodgeT > 0) me.dodgeT -= dt;
+      if (me.freeSwing && (me.freeSwing.t -= dt) <= 0) {
+        const fs = me.freeSwing;
+        me.freeSwing = null;
+        if (this.handsOn() && !me.dead) this.landFreeSwing(fs); // (0.90)
+      }
+    }
     const p = this.player;
     p.px = p.x;
     p.pz = p.z;
@@ -3346,7 +3360,7 @@ export class World {
       }
     }
     // Auto-attack (can be switched off in the pause menu): an idle hero picks the nearest enemy.
-    const handsOn = this.tide && this.tide.inc > 0 && this.keepOwns(); // (0.90) Incarnate: you choose every strike
+    const handsOn = this.handsOn(); // (0.90) Incarnate (0.91: or walking the keep): you choose every strike
     if (!target && !p.moveTarget && p.autoAcquire && p.autoAttack !== false && p.parryT <= 0 && !handsOn) {
       let best = null;
       let bestD = Math.max(CONFIG.ACQUIRE_RANGE, this.basicRange());
@@ -6178,6 +6192,7 @@ export class World {
     };
     for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor);
     if (!away) this.emit('raidWarn', { in: RAID.warn, level: L });
+    if (this.player.keepWalk) this.keepWalkSet(false); // (0.91) the god is wanted above
   }
   /** (0.86) The raids the heroes met while you were away, fought out now (quickly, unseen), and a word on how they went. */
   keepRaidsAway() {
@@ -6269,6 +6284,7 @@ export class World {
     const L = Math.max(1, Math.min(NIGHT.max, k.nightMax + 1, Math.floor(Number(level)) || k.night || 1));
     k.night = L;
     this.raidT = null; // (0.86) a night called resets the raid clock
+    if (this.player.keepWalk) this.keepWalkSet(false); // (0.91) the god is wanted above
     if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: Math.ceil(buildMax('hearth', k) / KEEP.repairPer), have: k.stone });
     const T = KEEP.tide;
     this.keepTroopsUp();
@@ -6297,14 +6313,7 @@ export class World {
     for (const c in t.mcd) if (t.mcd[c] > 0) t.mcd[c] = Math.max(0, t.mcd[c] - dt);
     if (t.icd > 0) t.icd = Math.max(0, t.icd - dt);
     if (t.chan != null) this.stepIncarnateChannel(dt); // (0.85)
-    const me = this.player;
-    if (me.dodgeCd > 0) me.dodgeCd = Math.max(0, me.dodgeCd - dt); // (0.89)
-    if (me.dodgeT > 0) me.dodgeT -= dt;
-    if (me.freeSwing && (me.freeSwing.t -= dt) <= 0) {
-      const fs = me.freeSwing;
-      me.freeSwing = null;
-      if (t.inc > 0 && !me.dead) this.landFreeSwing(fs); // (0.90)
-    }
+
     if (t.inc > 0) {
       t.inc -= dt;
       if (t.inc <= 0) this.incarnateEnd(false);
@@ -7188,7 +7197,7 @@ export class World {
   /** (0.89) Incarnate: a quick roll toward (x, z); blows pass through you for a moment. */
   dodge(x, z) {
     const t = this.tide, p = this.player;
-    if (!t || !(t.inc > 0) || !this.keepOwns() || p.dead || p.dash || p.dodgeCd > 0) return;
+    if (!this.handsOn() || p.dead || p.dash || p.dodgeCd > 0) return;
     if (!Number.isFinite(x) || !Number.isFinite(z) || dist(x, z, p.x, p.z) < 0.01) return;
     const a = dAtan2(z - p.z, x - p.x);
     const end = this.clampToArena(p.x + dCos(a) * DODGE.dist, p.z + dSin(a) * DODGE.dist, p.radius);
@@ -7206,7 +7215,7 @@ export class World {
    */
   freeSwing(x, z) {
     const t = this.tide, p = this.player;
-    if (!t || !(t.inc > 0) || !this.keepOwns() || p.dead || p.dash || p.channel || p.freeSwing) return;
+    if (!this.handsOn() || p.dead || p.dash || p.channel || p.freeSwing) return;
     if (p.attackCd > 0 || p.atkWind > 0) return;
     const a = Number.isFinite(x) && Number.isFinite(z) && dist(x, z, p.x, p.z) > 0.05 ? dAtan2(z - p.z, x - p.x) : p.facing;
     const period = 1 / p.stats.as;
@@ -7243,6 +7252,24 @@ export class World {
     }
     hit.sort((u, v) => u[1] - v[1]);
     hit.forEach(([e], i) => this.hitEnemy(e, i === 0 ? dmg : dmg * 0.5, { basic: i === 0, source: 'basic' }));
+  }
+
+  /**
+   * (0.91) Over the shoulder, in your hands: Incarnate in your keep's night, or walking a keep between
+   * nights (V).
+   */
+  handsOn() {
+    const t = this.tide, p = this.player;
+    if (t && t.state === 'on') return t.inc > 0 && this.keepOwns();
+    return !!p.keepWalk && !!this.map && this.map.id === KEEP.map;
+  }
+  /** (0.91) Walk a keep over your shoulder between nights (on or off). */
+  keepWalkSet(on) {
+    const p = this.player;
+    if (on && (!this.map || this.map.id !== KEEP.map || (this.tide && this.tide.state === 'on') || p.dead)) return;
+    p.keepWalk = !!on;
+    if (!on) p.freeSwing = null;
+    this.emit('keepWalk', { on: p.keepWalk });
   }
 
   /** (0.85) The channel at work: aura gathers; full, the god lands. */
@@ -10433,6 +10460,7 @@ inTown() {
    * arrive at the portal that leads back to it (or in the middle if there is none).
    */
   loadMap(id, from = null) {
+    this.player.keepWalk = false; // (0.91) walking over the shoulder ends at the Waygate
     this.clearWishes(); // the Asker's wishes stay in the Starwell (0.40)
     if (this.map && this.mode === 'explore' && !this.trial && !this.instanced()) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     if (id !== 'rift' && this.rift) {

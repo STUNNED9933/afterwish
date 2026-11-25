@@ -16,7 +16,7 @@ import { addRim } from './environment.js';
  * attack: the part of a clip that is the swing itself (seconds), played fast for each attack.
  */
 // (0.97.4) the mage running: tuned against her run, frame by frame, so the staff clears her legs and body
-const RUN_AT = [0.42, 0.24, 0.38], RUN_DIR = [0.5, 0.84, 0.05], RUN_HOLD = 0.56, RUN_SWING = { fwd: 0.07, bob: 0.025, tilt: 6, phase: 0 };
+const RUN_AT = [0.42, 0.24, 0.38], RUN_DIR = [0.5, 0.84, 0.05], RUN_HOLD = 0.56, RUN_SWING = { fwd: 0.15, bob: 0.05, tilt: 14, phase: 0 };
 export const RIGGED = {
   hero_warrior: {
     url: 'models/warrior.glb',

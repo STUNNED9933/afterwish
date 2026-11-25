@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Weapons clear of the body when walking (0.96.2)
+
+- The walk's arm swing no longer sweeps weapons through the body. Arm and hand motion are unchanged; only how the weapon sits in the hand has changed.
+  - **Warrior:** carries his sword forward and low, the way he holds it standing, so it no longer cuts through his legs.
+  - **Rogue:** holds both daggers reversed along his forearms.
+  - Both weapons still sway a little with the hand.
+- I checked this against the walk frame by frame in game. Each weapon now stays as far from the body as the hand holding it does.
+
 ### A natural walk for every hero (0.96.1)
 
 - **New walk, made for each model.** The old walk came from an animation library and was transferred onto heroes whose rest poses didn't match it, so elbows bent up and knees lifted like a march. The new walk is built directly on each hero's skeleton:

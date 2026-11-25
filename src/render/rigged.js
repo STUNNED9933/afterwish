@@ -27,6 +27,11 @@ export const RIGGED = {
     // (the pumping arm would flip it up and down). trail: blade direction in model space.
     gripTilt: -Math.PI / 4,
     trail: [-0.55, -0.83, 0.1],
+    // (0.96.2) Walking, the swinging arm would sweep the blade through his legs: it is carried forward and
+    // low instead, as he holds it standing, and still sways a little with the hand (w: how firmly it is held
+    // so). Worked out against the walk, frame by frame (tools/gait/README.md): it clears the body by as much
+    // as the hand itself does.
+    walkCarry: { main: [0.8, -0.6, 0.05], w: 0.8 },
     idle: 'idle',
     run: 'run',
     death: 'ual_Death',
@@ -96,6 +101,7 @@ export const RIGGED = {
     hand: 'R_Hand',
     offhand: 'L_Hand',
     weaponScale: 0.82,
+    walkCarry: { main: [-0.61, -0.61, 0.51], off: [-0.61, -0.61, -0.51], w: 0.7 }, // (0.96.2) walking, both daggers held reversed along the forearms, clear of the body
     idle: 'idle',
     run: 'rog_run',
     runRef: 6.0,
@@ -621,6 +627,8 @@ export function instantiate(tpl) {
   const libraryGrip = spec.hand && root.getObjectByName(spec.hand) ? forwardGrip(root.getObjectByName(spec.hand)) : new THREE.Quaternion();
   const gripQ = new THREE.Quaternion();
   const trailQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(spec.trail || [0, -1, 0])).normalize());
+  const carry = (v) => (v ? new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...v).normalize()) : null);
+  const walkMainQ = spec.walkCarry ? carry(spec.walkCarry.main) : null, walkOffQ = spec.walkCarry ? carry(spec.walkCarry.off) : null;
   // Cross-fade to an action (restart: play it again from the start if it is already on).
   const fadeTo = (a, fade = 0.15, restart = false) => {
     if (!a) return;
@@ -789,6 +797,8 @@ export function instantiate(tpl) {
         for (const a of aiming) if (a.isRunning() || a === current) aimW += a.getEffectiveWeight();
         bow.update(s.dead ? 0 : Math.min(1, aimW));
       }
+      // (0.96.2) how much the walk is playing (and nothing else is moving the arms): weapons are carried clear of the legs
+      const walkW = actions.walk && (actions.walk.isRunning() || actions.walk === current) && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.walk.getEffectiveWeight() : 0;
       if (weapon) {
         // In the hand, at the grip angle, blending to the trailing pose while the run plays.
         root.updateMatrixWorld(true);
@@ -803,6 +813,7 @@ export function instantiate(tpl) {
         weapon.quaternion.copy(tmpQ).multiply(gripQ);
         const runW = actions.run && actions.run.isRunning() && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.run.getEffectiveWeight() : 0;
         if (spec.trail && runW > 0.01) weapon.quaternion.slerp(trailQ, runW);
+        if (walkMainQ && walkW > 0.01) weapon.quaternion.slerp(walkMainQ, walkW * spec.walkCarry.w);
       }
       if (held.length) {
         root.updateMatrixWorld(true);
@@ -813,6 +824,7 @@ export function instantiate(tpl) {
             hm.decompose(tmpP, tmpQ, tmpS);
             h.obj.position.copy(h.palm).applyMatrix4(hm);
             h.obj.quaternion.copy(tmpQ).multiply(h.grip);
+            if (walkOffQ && walkW > 0.01 && h.hand.name === spec.offhand) h.obj.quaternion.slerp(walkOffQ, walkW * spec.walkCarry.w);
           } else {
             // a staff stays upright, leaning the way the forearm points (forward when casting)
             const fore = h.hand.parent;

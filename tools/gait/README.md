@@ -15,3 +15,5 @@ To rebuild every model:
 2. Serve it with `gait.html`.
 3. Run `python3 gait.py "$(cat jobs.json)"`. This writes one JSON per model.
 4. For each model, run `node swap-walk.mjs in.glb clip.json out.glb`. This replaces the walk with `gait_Walk`.
+
+Weapons (0.96.2): `spec.walkCarry` in `src/render/rigged.js` sets a carry direction for each weapon. While walking, the weapon blends toward that direction by weight `w`. The directions were chosen by sampling the weapon and the body bones in game, every frame of the walk, and keeping the blade outside capsules around the torso and legs.

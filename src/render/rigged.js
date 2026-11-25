@@ -15,6 +15,8 @@ import { addRim } from './environment.js';
  * hand: the bone a weapon is held by (the blade along the bone's +Z);
  * attack: the part of a clip that is the swing itself (seconds), played fast for each attack.
  */
+// (0.97.4) the mage running: tuned against her run, frame by frame, so the staff clears her legs and body
+const RUN_AT = [0.42, 0.24, 0.38], RUN_DIR = [0.5, 0.84, 0.05], RUN_HOLD = 0.56, RUN_SWING = { fwd: 0.07, bob: 0.025, tilt: 6, phase: 0 };
 export const RIGGED = {
   hero_warrior: {
     url: 'models/warrior.glb',
@@ -195,7 +197,7 @@ export const RIGGED = {
     // (metres from the bone, bind pose, model space +X forward +Y up +Z her right); dir: the staff, foot to head.
     staffPose: {
       idle: { bone: 'Pelvis', at: [0.15, 0.06, 0.3], dir: [0.08, 1, -0.03], hang: true, ground: true },
-      run: { bone: 'Pelvis', at: [0.44, 0.26, 0.3], dir: [0.55, 0.83, -0.06], hang: true, hold: 0.56 }, // (0.97.3) carried ahead of her, head high and forward, its foot back past her legs
+      run: { bone: 'Pelvis', at: RUN_AT, dir: RUN_DIR, hang: true, hold: RUN_HOLD, swing: RUN_SWING }, // (0.97.3) carried ahead of her, head high and forward, its foot back past her legs
       hip: { bone: 'Pelvis', at: [0.03, 0.06, -0.2], hang: true, hand: 'L_Hand', pole: [-0.35, -0.25, -1] },
     },
     // (0.97) walking, the staff is slung across her back, its head over her right shoulder
@@ -774,13 +776,24 @@ export function instantiate(tpl) {
     anchors[k] = { def, bone, hand: handBone, palm: gripAt(handBone), bqi: bq.clone().invert(), atM: new THREE.Vector3(...def.at).multiplyScalar(1 / tpl.scale), dirM: def.dir ? new THREE.Vector3(...def.dir).normalize() : null, poleM: def.pole ? new THREE.Vector3(...def.pole).normalize() : null, pos: new THREE.Vector3(), dir: new THREE.Vector3(), yaw: new THREE.Quaternion(), w: 0 };
   }
   const groundY = new THREE.Box3().setFromObject(root).min.y; // the floor, in the model's own space
-  const placeAnchors = (inv) => {
+  const SIDE_AXIS = new THREE.Vector3(0, 0, 1);
+  const placeAnchors = (inv, phase = null) => {
     for (const an of Object.values(anchors)) {
       stowM.multiplyMatrices(inv, an.bone.matrixWorld).decompose(stowP, stowQ, stowS);
       stowF.set(1, 0, 0).applyQuaternion(stowQ.multiply(an.bqi));
       an.yaw.setFromAxisAngle(Y_AXIS, Math.atan2(-stowF.z, stowF.x));
-      an.pos.copy(an.atM).applyQuaternion(an.yaw).add(stowP);
-      if (an.dirM) an.dir.copy(an.dirM).applyQuaternion(an.yaw);
+      an.pos.copy(an.atM);
+      if (an.dirM) an.dir.copy(an.dirM);
+      const sw = an.def.swing;
+      if (sw && phase != null) {
+        // (0.97.4) the arm keeps time with the run: a little forward and back with each stride, a bob with each step
+        const c = Math.sin(2 * Math.PI * (phase + (sw.phase || 0))), b = Math.cos(4 * Math.PI * (phase + (sw.phase || 0)));
+        an.pos.x += (sw.fwd * c) / tpl.scale;
+        an.pos.y += (sw.bob * b) / tpl.scale;
+        if (an.dirM) an.dir.applyAxisAngle(SIDE_AXIS, (sw.tilt * c * Math.PI) / 180);
+      }
+      an.pos.applyQuaternion(an.yaw).add(stowP);
+      if (an.dirM) an.dir.applyQuaternion(an.yaw);
     }
   };
   let staffSpan = null; // the staff's own ends (its local z), measured once
@@ -985,7 +998,7 @@ export function instantiate(tpl) {
         const idleW = wOf(actions.idle), runW = wOf(actions.run);
         root.updateMatrixWorld(true);
         const inv = tmpM.copy(root.matrixWorld).invert();
-        placeAnchors(inv);
+        placeAnchors(inv, actions.run && runW > 0.01 ? actions.run.time / actions.run.getClip().duration : null);
         if (anchors.idle) anchors.idle.w = idleW;
         if (anchors.run) anchors.run.w = runW;
         if (anchors.hip) anchors.hip.w = idleW;

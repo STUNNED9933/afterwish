@@ -160,6 +160,19 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The game's people speak (0.99)
+
+- **Voiced NPCs.** About 150 short lines, each character with their own voice, shown in a speech bubble over them as they speak.
+  - Haven's townsfolk (Elder Wren, Bram, Sister Odile, Pip, Lark, and Tomas both on the road and at home) and the keep's settlers (Old Ysolde, Maren, Bastian, Liesl, Corwin, Hesper) greet you when you talk to them.
+  - They now and then say something as you walk past, and they thank you when you hand in their quest.
+  - During **Call the Night**, the settlers call out from the halls: when a wave comes, a hero falls, the Hearth is hit, the night's king falls, and when the night is held or lost. The Seraph rising gets a line too.
+  - The keep's heroes shout as each wave comes, cry out when badly hurt, warn of the Tidecaller, and cheer at dawn.
+  - The lines were voiced with Kokoro, an open text-to-speech model that is fine for commercial use. They come to about 2 MB of small MP3 files, loaded only when spoken.
+  - There is a new **Voice volume** setting, and mute (M) silences voices too.
+- **Names:** Choir of Eyes is now **Choir of Veritas**, Rain of Eyes is now **Lux Aeterna**, the Eternal trial's boss is **Omnividens, the All-Seeing Truth**, and its minions are **Vigils**.
+- **Controls over the shoulder:** the full list of keys no longer runs across the top of the screen. It shows in a panel at the top left for a few seconds after you enter the view (and after you take up or leave the Seraph), then folds into a small "Hold H for controls" tag. Hold H to see it again. The compass moves up into the space this frees.
+- **Your heroes:** each hero's direction is now an arrow inside a small dial, pointing the way to them from where you are looking. Hovering over it says "ahead", "to your left", "to your right" or "behind you".
+
 ### The Seraph rises: a flashier kit, rarities, the Eternal trial, a compass (0.98)
 
 - **Strike:** the Seraph's left click is now a ranged attack. It brings its hands together in prayer and releases a bolt of holy light that homes in on the foe you aim at (22 m), with a small splash.
@@ -167,7 +180,7 @@ also keeps its own beat instead of the frame that noticed it.
 - **The base kit is stronger and flashier:**
   - **Dawnlance (Q)** fires a laser that bounces from the foe you aim at to four more.
   - **Wingbeat (E)** first blinks the Seraph beside the foe or hero nearest your aim (16 m), then bursts there. Halo of Mercy blinks the same way.
-  - **Descent and Hand of Heaven (R)** track the foe you aim at while they gather, so they no longer miss a moving target. The fist follows its foe all the way down. Rain of Eyes is bigger.
+  - **Descent and Hand of Heaven (R)** track the foe you aim at while they gather, so they no longer miss a moving target. The fist follows its foe all the way down. Lux Aeterna (renamed from Rain of Eyes) is bigger.
   - Every skill hits harder, and its kills give half again as much experience.
 - **Rarity:** at its plinth, the Seraph can be raised from Common up to Immortal. Each step opens at a level (8, 15, 22, 30, 38, 46) and costs an offering of Faith, Wishstone and Sigils. Each step multiplies its damage and toughness (up to 2.4× at Immortal) and opens a new, more offensive skill:
   - Uncommon: **Radiant Wake** (a glide that leaves a burning trail of light).
@@ -176,11 +189,11 @@ also keeps its own beat instead of the frame that noticed it.
   - Mythic: **Sunfall** (a sunbeam that hunts its foe for three seconds).
   - Ancient: **Prism Lance** (a beam through a whole line that splits into bouncing rays).
   - Immortal: **Judgement of the Choir** (thirty stunning rays).
-- **The Eternal trial:** an Immortal Seraph at level 50 can face **the Unblinking**, alone. It is a great eye in a crown of gold blades, ringed by wheels of lesser eyes, and it fights from range:
+- **The Eternal trial:** an Immortal Seraph at level 50 can face **Omnividens, the All-Seeing Truth**, alone. It is a great eye in a crown of gold blades, ringed by wheels of lesser eyes, and it fights from range:
   - Its stares land where you stand and where you are heading.
   - Its gaze burns a straight line along the ground.
   - Its lid slams down around it when you get close.
-  - Its Eyelets swoop in; each one you destroy restores 5% of your health.
+  - Its Vigils swoop in; each one you destroy restores 5% of your health.
   - Winning makes the Seraph **Eternal** (3× power) and unlocks **Ascension**: for 10 seconds the Seraph blazes with light, fires three bolts per strike, recovers its skills twice as fast, and hits 40% harder.
 - **No healing mid-fight:** during a Night or the trial, the Seraph no longer regenerates or heals from resting by the Hearth.
 - **Wings:** they no longer stretch when the Seraph raises its arms. They are now attached to its shoulders.

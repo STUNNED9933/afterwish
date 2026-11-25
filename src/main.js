@@ -17,6 +17,7 @@ import { Inventory, itemCell } from './ui/inventory.js';
 import { Town } from './ui/town.js';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
+import { Voice } from './voice.js'; // (0.99)
 import { Music } from './music/player.js';
 import { MAP_SONG, BOSS_SONG, MAP_ID_SONG, fightSong } from './music/songs.js';
 import { MAPS, MAP_IDS } from './sim/maps.js';
@@ -27,7 +28,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, STATUE_KIT, STATUE_SKILLS, statueKit, statueCap, STATUE_TIERS, statueSkillOpen, TRIAL, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, nightOmens, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, STATUE_KIT, STATUE_SKILLS, statueKit, statueCap, STATUE_TIERS, statueSkillOpen, TRIAL, troopGender, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, nightOmens, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -125,6 +126,9 @@ function start(hot = {}) {
   settings.parryPreset = CONFIG.DEFAULT_PARRY_PRESET; // (0.61) Standard for everyone
   sfx.setVolume(settings.volume);
   sfx.setMuted(settings.muted);
+  const voice = new Voice(); // (0.99) the game's people, out loud
+  voice.volume = settings.voiceVolume ?? 0.8;
+  voice.muted = !!settings.muted;
   // Background music: one original theme per map, plus the arena's battle theme.
   const music = new Music();
   music.setVolume(settings.musicVolume ?? 0.25);
@@ -1430,9 +1434,9 @@ function start(hot = {}) {
         tc.appendChild(keepBtn(s.lvl < N.lvl ? `${N.name} opens at level ${N.lvl}` : `Raise it to ${N.name} · ${c.faith.toLocaleString()} Faith, ${c.stone.toLocaleString()} Wishstone, ${c.sigils} Sigils`, () => applyNow({ type: 'keepStatueTier' }), { primary: s.lvl >= N.lvl, disabled: !ok }));
       } else if (N && N.trial) {
         const open = s.lvl >= TRIAL.lvl;
-        tc.insertAdjacentHTML('beforeend', `<p class="setting-desc"><b>The Eternal trial.</b> The Seraph alone, against <b>the Unblinking</b>: a great eye from the far sky in a wheel of lesser eyes. Its stares fall where you stand and where you are going, its gaze burns a line along the ground, its lid comes down round it when you are close, and its Eyelets swoop at you (each one you put out mends 5% of your stone). It mends nothing else. Win, and the Seraph is <b style="color:${RARITIES[7].color}">Eternal</b> (<b>${N.mult}×</b>), and learns <b>Ascension</b>.</p>`);
+        tc.insertAdjacentHTML('beforeend', `<p class="setting-desc"><b>The Eternal trial.</b> The Seraph alone, against <b>Omnividens, the All-Seeing Truth</b>: a great eye from the far sky in a wheel of lesser ones. Its stares fall where you stand and where you are going, its gaze burns a line along the ground, it closes round itself in a burst when you are close, and its Vigils swoop at you (each one you put out mends 5% of your stone). It mends nothing else. Win, and the Seraph is <b style="color:${RARITIES[7].color}">Eternal</b> (<b>${N.mult}×</b>), and learns <b>Ascension</b>.</p>`);
         const busy = world.tide && world.tide.state === 'on';
-        tc.appendChild(keepBtn(world.trial ? 'The trial is on' : !open ? `Opens at level ${TRIAL.lvl}` : busy ? 'Not during a night' : 'Face the Eternal trial', () => { setMode('play'); applyNow({ type: 'keepTrial' }); }, { primary: open, disabled: !open || busy || !!world.trial || s.rest > 0 }));
+        tc.appendChild(keepBtn(world.eternalTrial ? 'The trial is on' : !open ? `Opens at level ${TRIAL.lvl}` : busy ? 'Not during a night' : 'Face the Eternal trial', () => { setMode('play'); applyNow({ type: 'keepTrial' }); }, { primary: open, disabled: !open || busy || !!world.eternalTrial || s.rest > 0 }));
       }
       list.appendChild(tc);
     }
@@ -1998,6 +2002,128 @@ function start(hot = {}) {
   let rankSfxAt = 0; // (0.91.1)
   let shoulderPos = false; // (0.92)
   let shoulderWas = false; // (0.94)
+  let shoulderSince = 0, helpHeld = false, helpPos = false; // (0.99) hold H for the controls, over the shoulder
+  addEventListener('keydown', (e) => { if ((e.key === 'h' || e.key === 'H') && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) helpHeld = true; });
+  addEventListener('keyup', (e) => { if (e.key === 'h' || e.key === 'H') helpHeld = false; });
+  addEventListener('blur', () => (helpHeld = false));
+  const DIR_SVG = '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9"/><path d="M10 3.2l4.6 7.2h-3v6.2h-3.2v-6.2h-3z"/></svg>';
+  // ---------------------------------------------------------------------------------------------------------
+  // (0.99) Voices: the people of Haven and the keep greet you, chat as you pass, and call out in the night.
+  // ---------------------------------------------------------------------------------------------------------
+  const npcSpot = (id) => {
+    const ob = world && world.map && world.map.obstacles && world.map.obstacles.find((o) => o.kind === 'npc' && o.id === id);
+    if (!ob) return null;
+    const look = (NPCS[id] && NPCS[id].look) || {};
+    return { x: ob.x, y: 2.45 * (look.scale || 1) + 0.2, z: ob.z };
+  };
+  const speakerName = (who) => (NPCS[who] && NPCS[who].name) || who;
+  /** Someone says a line of theirs: out loud, with a bubble over them (or, out of sight, in the feed). */
+  function speak(who, moment, pri = 0, at = null, name = null) {
+    if (!voice.has(who, moment)) return null;
+    const line = voice.say(who, moment, pri);
+    if (!line) return null;
+    const spot = at || npcSpot(who);
+    if (spot) hud.say(renderer, spot, name || speakerName(who), line.t, line.d);
+    else hud.feedText(`${name || speakerName(who)}: "${line.t}"`);
+    return line;
+  }
+  /** One of the keep's own (a settler living there), at random. */
+  const settlerHere = () => {
+    const ids = ((world.map && world.map.obstacles) || []).filter((o) => o.kind === 'npc' && SETTLERS[o.id]).map((o) => o.id);
+    return ids.length ? ids[Math.floor(Math.random() * ids.length)] : null;
+  };
+  /** One of the keep's heroes standing in the night, and their voice. */
+  const heroHere = () => {
+    const live = (world.troops || []).filter((t) => !t.dead);
+    if (!live.length) return null;
+    const t = live[Math.floor(Math.random() * live.length)];
+    return { t, who: troopGender(t) === 'f' ? 'hero_f' : 'hero_m' };
+  };
+  function heroSays(moment, pri = 1, pick = null) {
+    const h = pick || heroHere();
+    if (!h) return null;
+    const id = h.t.id;
+    return speak(h.who, moment, pri, () => { const tr = (world.troops || []).find((o) => o.id === id); return tr && !tr.dead ? { x: tr.x, y: 2.7, z: tr.z } : null; }, h.t.name);
+  }
+  const later = (ms, fn) => setTimeout(fn, ms);
+  let hearthSaidAt = 0, fellSaidAt = 0;
+  const hurtSaid = new Set();
+  function voiceEvent(ev) {
+    if (ev.ally || !world) return;
+    const inKeep = world.map && world.map.id === KEEP.map;
+    switch (ev.type) {
+      case 'quest':
+        if (ev.what === 'claimed' && talkTo && voice.has(talkTo, 'questDone')) { const who = talkTo; later(500, () => speak(who, 'questDone', 2)); }
+        break;
+      case 'tideStart':
+        hurtSaid.clear();
+        break;
+      case 'tideWave': {
+        const s = settlerHere();
+        if (s) speak(s, 'night', 1);
+        later(2600, () => heroSays('wave'));
+        break;
+      }
+      case 'tideBoss':
+        later(1200, () => heroSays('boss', 2));
+        break;
+      case 'troopFall':
+        if (performance.now() - fellSaidAt > 8000) {
+          fellSaidAt = performance.now();
+          const s = settlerHere();
+          if (s) speak(s, 'heroDown', 1);
+        }
+        break;
+      case 'buildHit':
+        if (ev.id === 'hearth' && performance.now() - hearthSaidAt > 25000) {
+          hearthSaidAt = performance.now();
+          const s = settlerHere();
+          if (s) speak(s, 'hearthHit', 1);
+        }
+        break;
+      case 'tideBossDown': {
+        const s = settlerHere();
+        if (s) speak(s, 'bossDown', 2);
+        break;
+      }
+      case 'tideEnd': {
+        const s = settlerHere();
+        const l = s ? speak(s, ev.won ? 'nightHeld' : 'nightLost', 2) : null;
+        if (ev.won) later(((l ? l.d : 0) + 0.6) * 1000, () => heroSays('cheer', 2));
+        break;
+      }
+      case 'statueRaised':
+      case 'statueTier':
+      case 'trialEnd':
+        if (inKeep && (ev.type !== 'trialEnd' || ev.won)) later(1800, () => { const s = settlerHere(); if (s) speak(s, 'seraph', 2); });
+        break;
+    }
+  }
+  let voiceCheckAt = 0;
+  function voiceFrame(now) {
+    if (now < voiceCheckAt || !world || world.mode !== 'explore' || mode !== 'play') return;
+    voiceCheckAt = now + 500;
+    const p = world.player, t = world.tide;
+    if (t && t.state === 'on') {
+      // a hero badly hurt calls for help, once a night each
+      for (const tr of world.troops || []) {
+        if (tr.dead || hurtSaid.has(tr.id) || tr.hp > tr.maxHp * 0.3) continue;
+        hurtSaid.add(tr.id);
+        heroSays('hurt', 1, { t: tr, who: troopGender(tr) === 'f' ? 'hero_f' : 'hero_m' });
+        break;
+      }
+      return;
+    }
+    // walking past someone: now and then they say something
+    let best = null, bd = 3.8;
+    for (const o of (world.map && world.map.obstacles) || []) {
+      if (o.kind !== 'npc' || !voice.has(o.id, 'near')) continue;
+      const d = Math.hypot(o.x - p.x, o.z - p.z);
+      if (d < bd) [best, bd] = [o, d];
+    }
+    if (best && voice.mayChat(best.id, 45000)) speak(best.id, 'near', 0);
+  }
+
   /**
    * (0.98) Over the shoulder: a compass along the top (north is up on the map) with your heroes, the night's
    * king and the Hearth on it, and a list of your heroes down the side: their health, how far, and which way.
@@ -2057,7 +2183,7 @@ function start(hot = {}) {
         const f = Math.max(0, Math.min(1, h.hp / Math.max(1, h.max)));
         const d = Math.hypot(h.x - p.x, h.z - p.z);
         const rel = wrapA(Math.atan2(h.z - p.z, h.x - p.x) - yaw); // 0: ahead, +: to the right
-        lh += `<div class="shh${h.dead ? ' down' : f < 0.35 ? ' low' : ''}"><span class="shh-dir" style="transform:rotate(${Math.round((rel * 180) / Math.PI)}deg)">▲</span><span class="shh-name" style="color:${h.color}">${esc(h.name)}</span><span class="shh-d">${h.dead ? 'down' : `${Math.round(d)} m`}</span><i><u style="width:${Math.round(f * 100)}%"></u></i></div>`;
+        lh += `<div class="shh${h.dead ? ' down' : f < 0.35 ? ' low' : ''}"><span class="shh-dir" title="${rel > 2.4 || rel < -2.4 ? 'behind you' : Math.abs(rel) < 0.7 ? 'ahead' : rel > 0 ? 'to your right' : 'to your left'}" style="transform:rotate(${Math.round((rel * 180) / Math.PI)}deg)">${DIR_SVG}</span><span class="shh-name" style="color:${h.color}">${esc(h.name)}</span><span class="shh-d">${h.dead ? 'down' : `${Math.round(d)} m`}</span><i><u style="width:${Math.round(f * 100)}%"></u></i></div>`;
       }
       list.innerHTML = lh;
     }
@@ -2079,7 +2205,7 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps Lock</kbd> <span class="sh-pace">walk</span> · hold <kbd>Alt</kbd> for the mouse<span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-posin"> · <kbd>Y</kbd> take up the Seraph</span><span class="sh-nightk"> · hold <kbd>N</kbd> to call the night</span><span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-altk"> · the mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div><div class="sh-compass"><div class="sh-cstrip"></div><div class="sh-cmark"></div></div><div class="sh-heroes"></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-pill"><span class="sh-pillk">Hold <kbd>H</kbd> for controls</span><span class="sh-altk">The mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div><div class="sh-keys"><h5>Controls <small>(hold <kbd>H</kbd>)</small></h5><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks</div><div><b>Hold left click</b> strike · <kbd>Tab</kbd> next target</div><div><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Shift</kbd> dash</div><div>Double-tap a direction: <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps</kbd> <span class="sh-pace">walk</span></div><div>Hold <kbd>Alt</kbd> for the mouse</div><div class="sh-posk"><kbd>Y</kbd> leave the Seraph</div><div class="sh-posin"><kbd>Y</kbd> take up the Seraph</div><div class="sh-nightk">Hold <kbd>N</kbd> to call the night</div><div class="sh-stop"><kbd>V</kbd> back above</div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div><div class="sh-compass"><div class="sh-cstrip"></div><div class="sh-cmark"></div></div><div class="sh-heroes"></div>';
       document.body.appendChild(shoulderUi);
       shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
       shoulderUi.querySelector('.sh-pos').addEventListener('click', () => input.togglePossess()); // (0.92)
@@ -2117,6 +2243,9 @@ function start(hot = {}) {
     // (0.94) over the shoulder the mouse is caught at once (no click needed), and let go when it ends (not in
     // the moment between a key and the world answering it)
     if (on && !shoulderWas && !input.locked() && !input.altFree) input.lock();
+    if (on && (!shoulderWas || pos !== helpPos)) shoulderSince = performance.now(); // (0.99) the controls show a moment (again on taking up the Seraph or leaving it), then fold away
+    helpPos = pos;
+    shoulderUi.classList.toggle('help', on && (helpHeld || performance.now() - shoulderSince < 7000));
     shoulderWas = on;
     if (!on && !chan && input.locked() && performance.now() - (input.lockAt || 0) > 500) input.unlock();
     shoulderUi.classList.toggle('alt', on && !!input.altFree);
@@ -4048,6 +4177,7 @@ function start(hot = {}) {
         talkTo = near.id;
         talkNote = '';
         setMode('talk');
+        if (near.kind === 'npc') speak(near.id, 'greet', 1); // (0.99) they greet you out loud
       }
     },
     toggleJournal() {
@@ -4095,6 +4225,7 @@ function start(hot = {}) {
       settings.muted = !settings.muted;
       sfx.setMuted(settings.muted);
       music.setMuted(settings.muted);
+      voice.muted = !!settings.muted;
       storeSettings(settings);
       hud.feedText(settings.muted ? 'Sound off' : 'Sound on');
     },
@@ -4489,6 +4620,13 @@ function start(hot = {}) {
     storeSettings(settings);
   });
   $('volume').addEventListener('change', () => sfx.parry(false));
+  $('voice-volume').value = Math.round((settings.voiceVolume ?? 0.8) * 100); // (0.99)
+  $('voice-volume').addEventListener('input', (e) => {
+    settings.voiceVolume = e.target.value / 100;
+    voice.volume = settings.voiceVolume;
+    storeSettings(settings);
+  });
+  $('voice-volume').addEventListener('change', () => voice.say(['wren', 'bram', 'pip', 'bastian'][Math.floor(Math.random() * 4)], 'greet', 2));
   $('music-volume').value = Math.round((settings.musicVolume ?? 0.25) * 100);
   $('music-volume').addEventListener('input', (e) => {
     settings.musicVolume = e.target.value / 100;
@@ -4671,6 +4809,7 @@ function start(hot = {}) {
 
   function handleEvent(ev) {
     renderer.onEvent(ev, world);
+    voiceEvent(ev); // (0.99)
     const p = world.player;
     switch (ev.type) {
       case 'waveStart':
@@ -5577,7 +5716,7 @@ function start(hot = {}) {
         if (ev.won) {
           sfx.eternal();
           hud.screenFlash(0.4);
-          hud.banner('The Seraph is Eternal', `The Unblinking closes its eyes (${ev.t} seconds). White and crimson light: the Seraph has learnt Ascension.`);
+          hud.banner('The Seraph is Eternal', `Omnividens closes its eyes (${ev.t} seconds). White and crimson light: the Seraph has learnt Ascension.`);
         } else {
           sfx.denied();
           hud.banner('The trial is lost', 'The eyes close and the sky shuts. Mend the Seraph and try again, from its plinth.');
@@ -6289,6 +6428,7 @@ function start(hot = {}) {
     shoulderFrame();
     renderer.render(world, alpha, dt);
     hud.update(world, renderer, dt);
+    voiceFrame(now); // (0.99) chatter as you pass, a hurt hero's cry
     if (world && world.map && world.map.id === KEEP.map && now >= keepClockAt) {
       keepClockAt = now + 60000; // (0.82.1) the works pay while you are in the keep too, a minute at a time
       applyNow({ type: 'keepClock', now: Date.now() });

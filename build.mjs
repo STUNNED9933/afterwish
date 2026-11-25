@@ -17,6 +17,12 @@ function copyModels() {
   for (const f of readdirSync('assets/models')) if (f.endsWith('.glb')) copyFileSync(`assets/models/${f}`, `dist/models/${f}`);
 }
 
+/** (0.99) The game's people, out loud: assets/voice/*.mp3, served at voice/ (tools/voice/make.py). */
+function copyVoice() {
+  if (!existsSync('assets/voice')) return;
+  mkdirSync('dist/voice', { recursive: true });
+  for (const f of readdirSync('assets/voice')) if (f.endsWith('.mp3')) copyFileSync(`assets/voice/${f}`, `dist/voice/${f}`);
+}
 /** The game's icon (0.61.6): assets/icon/* sit next to index.html (tab icon, home screen, link previews). */
 function copyIcons() {
   if (!existsSync('assets/icon')) return;
@@ -61,6 +67,7 @@ const options = {
 writeHtml();
 copyModels();
 copyIcons();
+copyVoice();
 if (watching) {
   const ctx = await context(options);
   await ctx.watch();

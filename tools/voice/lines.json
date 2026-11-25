@@ -1,0 +1,129 @@
+{
+  "_about": "NPC voice lines (0.99). Each character: a Kokoro voice (open model, Apache-2.0), speed, and a pitch factor (ffmpeg); then their lines by moment. tools/voice/make.py voices them into assets/voice/<id>_<moment>_<n>.mp3 and writes src/voicelines.js.",
+  "wren": {
+    "voice": "bf_emma", "speed": 0.88, "pitch": 0.93,
+    "greet": ["Come in, child. Mind the step. It remembers your feet better than you do.", "There you are. I had the kettle on before you reached the gate.", "Sit a moment. The mountain will still be there when you have rested."],
+    "near": ["Back again. Good. I count you, every time.", "Don't stand in the doorway like that, child. You'll let the warm out.", "Haven is small. But it is ours."],
+    "questDone": ["Well done. I knew you would. I always know, and I always worry anyway.", "That's done, then. Rest a little, before the next thing finds you."]
+  },
+  "bram": {
+    "voice": "bm_george", "speed": 0.92, "pitch": 0.9,
+    "greet": ["Forge is hot. Put it on the anvil and stand back.", "Bring me iron, not stories. Well. Stories too, if they're short.", "Steel's honest. Tell it what you want. It'll argue, but it'll listen."],
+    "near": ["Mind the sparks.", "That edge of yours wants work. Come by when you're ready.", "Heard you went up the ridge again. Keep your head down up there."],
+    "questDone": ["Good work. Doesn't need saying. But there. I said it.", "Done, is it? Edric would have liked you."]
+  },
+  "odile": {
+    "voice": "af_heart", "speed": 0.94, "pitch": 1.0,
+    "greet": ["Come in out of the wind. Tell me where it hurts. Then tell me the truth.", "I have something for most things. Not for everything. I stopped pretending.", "Sit down. You look like someone carrying more than their pack."],
+    "near": ["The thyme is doing well this year. Small mercies.", "Drink something warm before you go back up. Physician's orders. Former physician.", "Careful on the fen road. The water remembers the fever."],
+    "questDone": ["Thank you. Truly. Few people come back to tell me how it ended.", "There. One less thing for the mountain to keep."]
+  },
+  "pip": {
+    "voice": "af_nova", "speed": 1.06, "pitch": 1.22,
+    "greet": ["You came back! I knew you would. I was watching the gate.", "Did you see the road? Is it still there? Did anybody walk on it?", "I'm not scared of the mountain. I'm just watching it, that's all."],
+    "near": ["Somebody should watch the gate. So I do.", "Are you going out again? Come back, all right?", "Wren says I'll grow into the scarf. I'm trying."],
+    "questDone": ["You really did it? Really, really? I'm telling everybody.", "Thank you. I'll keep it safe. I promise."]
+  },
+  "tomashusk": {
+    "voice": "bm_fable", "speed": 0.8, "pitch": 0.88, "fx": "husk",
+    "greet": ["Pip. Pip. Home before dark.", "The door. I know the door.", "Pip."],
+    "near": ["Home before dark. Home before dark.", "Pip?", "Almost home."]
+  },
+  "tomas": {
+    "voice": "bm_fable", "speed": 0.9, "pitch": 0.97,
+    "greet": ["I'm home. It took me nineteen years to remember how to say it.", "Sit with us a while. He's asleep. But he'll know you were here."],
+    "near": ["I can hear him breathing. That's enough. That's everything.", "Thank you for bringing me home."]
+  },
+  "lark": {
+    "voice": "af_kore", "speed": 1.08, "pitch": 1.04,
+    "greet": ["Welcome to the stall! Sister Odile's notes say to be polite. I'm being polite.", "What will it be? I know where everything is now. Mostly.", "Don't touch the thyme. That's the one rule. She wrote it in capitals."],
+    "near": ["Lovely day for picking herbs. Or for getting chased by things. Your choice.", "Sister Odile would tell you to drink some water. So drink some water.", "I talk to the herbs. They're very good listeners."],
+    "questDone": ["You did it! She'd be so proud. She'd never say so. But she would."]
+  },
+  "ysolde": {
+    "voice": "bf_isabella", "speed": 0.88, "pitch": 0.9,
+    "greet": ["Sit by the fire. I'll tell it again. It changes a little every time. That's how you know it's true.", "Ah. The one the story is about. Don't let it go to your head.", "Come, come. The fire is warm, and my memory is long."],
+    "near": ["Every night you hold, the story gets a new ending. I like that.", "Once upon a time, there was a keep. You're standing in it.", "I'm not old, dear. I'm well told."],
+    "night": ["Here they come. Hold, and I'll make you a song of it.", "The dark is knocking. Answer it properly."],
+    "heroDown": ["One has fallen. Remember their name. I will."],
+    "hearthHit": ["The Hearth! Keep them from the fire, or there's no story left to tell!"],
+    "nightHeld": ["Morning. And what a tale it will make. Sit, sit. Let me get it right."],
+    "nightLost": ["Not every story ends well the first time. We'll tell it again tomorrow."],
+    "bossDown": ["The night's king, fallen! I've waited my whole life to tell that part."],
+    "seraph": ["The angel wakes. I've told of it so long, I'd half forgotten it was real."]
+  },
+  "maren": {
+    "voice": "af_aoede", "speed": 1.0, "pitch": 0.98,
+    "greet": ["Mind the lamps. I made every one of them by hand. The slow way.", "Need light? I've got light. Real light, the kind you have to tend.", "The Unmade took my wish for light. So I just made more."],
+    "near": ["A lamp is only a little fire that has agreed to behave.", "I'll keep the lamps lit tonight. You keep the dark outside them.", "Funny. I never notice the light until it's gone."],
+    "night": ["Lamps lit! Let them see what's waiting for them!", "Here's the dark. Show it what we made."],
+    "heroDown": ["A hero's down! Get a light over there!"],
+    "hearthHit": ["They're at the Hearth! Don't let them put it out!"],
+    "nightHeld": ["Dawn. I'll trim the wicks. You've earned the quiet."],
+    "nightLost": ["The lamps went out. We'll light them again. We always do."],
+    "bossDown": ["Ha! See how it hates the light? Good riddance!"],
+    "seraph": ["Look at her shine. I couldn't make a lamp like that in a hundred years."]
+  },
+  "bastian": {
+    "voice": "am_michael", "speed": 0.92, "pitch": 0.93,
+    "greet": ["Twenty years at a gate, and nobody came. Now look at us.", "Report's simple. Walls standing, gate shut, kettle on.", "Good to see you, commander. Not that you asked for the title."],
+    "near": ["I check the gate twice a night. Old habit. Good habit.", "Quiet out there. Too quiet is never really quiet.", "Stand straight. Somebody's always watching a gate."],
+    "night": ["On the walls! They're coming through the trees!", "Gates hold! Steady now. Steady!"],
+    "heroDown": ["Hero down! Cover them! Cover them!"],
+    "hearthHit": ["The Hearth is under attack! Fall back to the fire!"],
+    "nightHeld": ["The gate held. All night. Never thought I'd be proud of a gate."],
+    "nightLost": ["We fell back. No shame in it. We stand again tonight."],
+    "bossDown": ["Their king is down! That's the night won!"],
+    "seraph": ["An angel at our gate. Twenty years I'd have given for that."]
+  },
+  "liesl": {
+    "voice": "af_sarah", "speed": 0.97, "pitch": 1.02,
+    "greet": ["Wipe your boots. No, don't. The soil likes it.", "Things are growing. Properly, slowly. Come and see.", "I planted beans where the Unmade walked last night. They're doing very well."],
+    "near": ["Everything here grows, and then it ends. It's beautiful, really.", "Don't step on the seedlings. They've had a hard enough week.", "The bees came back today. I nearly cried."],
+    "night": ["Not the garden! Please, not the garden!", "They're trampling everything! Push them back!"],
+    "heroDown": ["Someone's hurt! Get them out of the mud!"],
+    "hearthHit": ["The Hearth's burning wrong! Help it!"],
+    "nightHeld": ["Morning. The dew is on everything. And we're still here."],
+    "nightLost": ["Well. Things grow back. That's the whole point of things."],
+    "bossDown": ["It fell! And the ground is going to make something good of it."],
+    "seraph": ["She's like a seed that waited a very long time to open."]
+  },
+  "corwin": {
+    "voice": "am_puck", "speed": 1.1, "pitch": 1.2,
+    "greet": ["Is it true? Did you really go all the way down? What was at the bottom?", "I can carry things! Heavy things. Medium things.", "Teach me something. Anything. Teach me how to stand like that."],
+    "near": ["When I'm big, I'm going to fight the night too.", "I practised your swing with a stick. I hit a fence.", "Everybody talks about you. I talk about you the most."],
+    "night": ["Get them! Get them! I'm hiding, but get them!", "Here they come! I'm not scared! A bit scared!"],
+    "heroDown": ["No! Get up! You can do it!"],
+    "hearthHit": ["The Hearth! They're hitting the Hearth!"],
+    "nightHeld": ["We won! Did you see? Did you see us win?"],
+    "nightLost": ["That's all right. Heroes lose sometimes. You told me that. I think."],
+    "bossDown": ["You beat the big one! That was the best thing I've ever seen!"],
+    "seraph": ["The statue moved! The statue moved, and it's you!"]
+  },
+  "hesper": {
+    "voice": "af_bella", "speed": 1.0, "pitch": 0.96,
+    "greet": ["Relax. I only take things I'm given now. Mostly.", "You caught me nine times. I let you catch me the tenth.", "Looking for something? I probably know where it's hidden."],
+    "near": ["Keep a hand on your purse. Not because of me. Habit.", "Nice boots. I'm not going to take them. I'm just saying they're nice.", "Wishes are lighter than you'd think. That's why they're so easy to steal."],
+    "night": ["Thieves among them. Watch the Faith. I know the tricks.", "Eyes open. They'll go for whatever shines."],
+    "heroDown": ["One down. Somebody grab them before the dark does."],
+    "hearthHit": ["They're after the Hearth. Clever. Stop them."],
+    "nightHeld": ["Not bad. I'd steal a morning like this, if I still stole things."],
+    "nightLost": ["They took more than I ever did. We'll get it back."],
+    "bossDown": ["The big one fell. I'd say I'm impressed. I am."],
+    "seraph": ["Now that is a treasure. And for once, nobody has to steal it."]
+  },
+  "hero_m": {
+    "voice": "am_fenrir", "speed": 1.05, "pitch": 0.97,
+    "wave": ["Here they come!", "Hold the line!", "Stay together!"],
+    "hurt": ["I'm hurt! I need help!", "I can't hold much longer!"],
+    "boss": ["The Tidecaller! Watch its slam!"],
+    "cheer": ["We held! The keep stands!", "Morning! We made it!"]
+  },
+  "hero_f": {
+    "voice": "af_alloy", "speed": 1.05, "pitch": 1.0,
+    "wave": ["Here they come!", "Hold the line!", "Stay close, all of you!"],
+    "hurt": ["I'm hurt! Somebody help me!", "I'm not going to last!"],
+    "boss": ["It's the Tidecaller! Spread out!"],
+    "cheer": ["We held! We actually held!", "The sun's up! We made it!"]
+  }
+}

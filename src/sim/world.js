@@ -7991,7 +7991,7 @@ export class World {
   /** (0.98) The Eternal trial: the Seraph alone against the Unblinking, in the keep. */
   statueTrial() {
     const p = this.player, k = p.keep, s = k && k.statue;
-    if (!this.inKeep() || !s || this.trial || (this.tide && this.tide.state === 'on')) return;
+    if (!this.inKeep() || !s || this.eternalTrial || (this.tide && this.tide.state === 'on')) return;
     if (!this.trialOpen()) return this.emit('keepMaxed', { name: STATUE.name, what: 'seraphTrialLocked', lvl: TRIAL.lvl });
     if (!p.possess) this.possessSet(true);
     if (!p.possess) return;
@@ -8001,15 +8001,15 @@ export class World {
     const e = this.spawnEnemy(TRIAL.boss, { x: at.x, z: at.z, level: KEEP.tide.level });
     Object.assign(e, { trial: true, home: null, aggro: true, noLoot: true, facing: a + Math.PI, stareT: 2.5, lidT: 6, gazeT: 4.5, callT: 8, tdmg: TRIAL.dmg * P });
     e.maxHp = e.hp = Math.round(TRIAL.hp * P);
-    this.trial = { id: e.id, t: 0, stars: [], hp0: p.hp };
+    this.eternalTrial = { id: e.id, t: 0, stars: [], hp0: p.hp };
     p.hp = p.stats.maxHp; // it comes to the trial whole
     this.emit('trialStart', { x: e.x, z: e.z, name: e.def.name });
   }
   /** (0.98) The trial's end: won, the Seraph is Eternal. */
   trialEnd(won) {
-    const T = this.trial;
+    const T = this.eternalTrial;
     if (!T) return;
-    this.trial = null;
+    this.eternalTrial = null;
     for (const st of T.stars) this.telegraphs = this.telegraphs.filter((t) => t !== st.tele);
     for (const e of this.enemies) if (e.trial) [e.dead, e.hp] = [true, 0];
     this.enemies = this.enemies.filter((e) => !e.trial);
@@ -8023,7 +8023,7 @@ export class World {
   }
   /** (0.98) The trial goes on: it fails if the Seraph is felled or leaves; the eyes' blows land. */
   stepTrial(dt) {
-    const T = this.trial;
+    const T = this.eternalTrial;
     if (!T) return;
     const p = this.player;
     if (!p.possess || p.dead || !(this.map && this.map.id === KEEP.map) || (this.tide && this.tide.state === 'on')) return this.trialEnd(false);
@@ -8060,11 +8060,11 @@ export class World {
       ? { id: this.nextId++, kind: 'rect', trial: true, friendly: false, parryable: false, x: o.x, z: o.z, dir: o.a, length: o.len, width: o.w, t: 0, dur: o.t }
       : { id: this.nextId++, kind: 'circle', trial: true, friendly: false, parryable: false, x: o.x, z: o.z, dir: 0, radius: o.r, t: 0, dur: o.t };
     this.telegraphs.push(tele);
-    this.trial.stars.push(Object.assign(o, { tele }));
+    this.eternalTrial.stars.push(Object.assign(o, { tele }));
   }
-  /** (0.98) The Unblinking and its Eyelets. */
+  /** (0.98) Omnividens and its Vigils. */
   stepTrialFoe(e, dt) {
-    const T = this.trial, p = this.player;
+    const T = this.eternalTrial, p = this.player;
     if (!T) return;
     if (e.state === 'spawn') {
       e.t -= dt;
@@ -8080,7 +8080,7 @@ export class World {
     const d = dist(p.x, p.z, e.x, e.z) || 0.001;
     e.facing = turnToward(e.facing, dAtan2(p.z - e.z, p.x - e.x), 6 * dt);
     if (e.type !== TRIAL.boss) {
-      // an Eyelet: swoops at the Seraph and pecks
+      // a Vigil: swoops at the Seraph and pecks
       const F = FOES.eyelet;
       if (d > F.range + e.radius + p.radius) {
         this.navStep(e, p.x, p.z, F.speed * slow, dt, e.radius);
@@ -8093,7 +8093,7 @@ export class World {
       this.incarnateHurt(F.dmg * NIGHT.power(TRIAL.lvl));
       return;
     }
-    // the Unblinking: hangs at a distance, circling, and looks
+    // Omnividens: hangs at a distance, circling, and looks
     if (!e.raged && e.hp < e.maxHp * TRIAL.rage) {
       e.raged = true;
       this.emit('tideBossRage', { x: e.x, z: e.z });
@@ -10044,7 +10044,7 @@ export class World {
     if (this.mode !== 'explore' || this.trial) return;
     const pct = this.doomPct();
     for (const e of this.enemies) {
-      if (!e.def.boss || e.dead || e.state === 'spawn' || !e.aggro || e.returning) continue;
+      if (!e.def.boss || e.dead || e.state === 'spawn' || !e.aggro || e.returning || e.trial) continue; // (0.98: the Eternal trial's foe has its own ways)
       const near = this.heroes.filter((h) => !h.player.dead && dist(h.player.x, h.player.z, e.x, e.z) <= DOOM.range);
       if (!near.length) continue;
       if (e.remnant) this.stepRemnant(e, near, dt); // each Remnant's own mechanic (0.31)
@@ -11388,7 +11388,7 @@ inTown() {
   }
   /** (0.98) The Seraph in a night or the trial: it mends nothing by itself (the keep's rest is not for it then). */
   seraphFighting(p = this.player) {
-    return !!p.possess && ((!!this.tide && this.tide.state === 'on') || !!this.trial);
+    return !!p.possess && ((!!this.tide && this.tide.state === 'on') || !!this.eternalTrial);
   }
 
   /** Where the hero is, for the HUD. */

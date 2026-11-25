@@ -377,6 +377,7 @@ export class Hud {
   /** Called every frame. */
   update(world, renderer, dt) {
     this.world = world;
+    this.updateBubbles(dt || 0.016); // (0.99)
     this.drawAimMarker(world, renderer);
     const p = world.player;
     gearSpec = world.trial ? null : p.spec || null;
@@ -1067,6 +1068,40 @@ export class Hud {
       el.remove();
       this.floatCount--;
     });
+  }
+
+  /**
+   * (0.99) A speech bubble over someone (who: their name; at: () => their spot, or a fixed { x, y, z }) for
+   * `dur` seconds, following them. Off screen, it waits at the edge it would be beyond.
+   */
+  say(renderer, at, who, text, dur = 3) {
+    if (!this.bubbles) this.bubbles = [];
+    for (const b of this.bubbles.filter((o) => o.who === who)) b.left = 0; // one at a time each
+    const el = document.createElement('div');
+    el.className = 'say-bubble';
+    el.innerHTML = '<b></b><span></span>';
+    el.firstChild.textContent = who;
+    el.lastChild.textContent = text;
+    this.worldUi.appendChild(el);
+    this.bubbles.push({ el, at, who, left: Math.max(2.2, dur + 0.8), renderer });
+  }
+  updateBubbles(dt) {
+    if (!this.bubbles || !this.bubbles.length) return;
+    for (const b of this.bubbles) {
+      b.left -= dt;
+      const p = typeof b.at === 'function' ? b.at() : b.at;
+      if (b.left <= 0 || !p) {
+        b.el.remove();
+        b.done = true;
+        continue;
+      }
+      const s = b.renderer.project(p.x, p.y || 2.6, p.z);
+      const W = window.innerWidth, H = window.innerHeight;
+      const x = Math.max(110, Math.min(W - 110, s.visible ? s.x : W / 2)), y = Math.max(70, Math.min(H - 160, s.visible ? s.y : 90));
+      b.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
+      b.el.style.opacity = b.left < 0.4 ? b.left / 0.4 : 1;
+    }
+    this.bubbles = this.bubbles.filter((b) => !b.done);
   }
 
   banner(title, sub = '') {

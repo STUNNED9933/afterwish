@@ -1372,7 +1372,16 @@ body.keep-guest #abilities > * { opacity: 0.35; filter: grayscale(0.8); }
 #shoulder-ui .xhair, #shoulder-ui .sh-keys { display: none; }
 #shoulder-ui.on .xhair { display: block; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 2px solid rgba(255, 240, 200, 0.85); border-radius: 50%; box-shadow: 0 0 6px rgba(0, 0, 0, 0.7); }
 #shoulder-ui.on .xhair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff0c8; }
-#shoulder-ui.on .sh-keys { display: block; position: absolute; left: 50%; top: 64px; transform: translateX(-50%); padding: 5px 12px; border-radius: 6px; background: rgba(10, 12, 20, 0.7); color: #e8e4d8; font-size: 13px; white-space: nowrap; }
+/* (0.99) the controls: a panel at the top left for a few seconds (and while H is held), else a small tag */
+#shoulder-ui.on.help .sh-keys { display: block; position: absolute; left: 14px; top: 64px; padding: 8px 12px 9px; border-radius: 8px; background: rgba(10, 12, 20, 0.78); color: #e8e4d8; font-size: 13px; white-space: nowrap; line-height: 1.55; }
+#shoulder-ui .sh-keys h5 { margin: 0 0 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27a; }
+#shoulder-ui .sh-keys h5 small { text-transform: none; letter-spacing: 0; color: #aab0c0; font-weight: 400; }
+#shoulder-ui .sh-pill { display: none; }
+#shoulder-ui.on .sh-pill { display: block; position: absolute; left: 14px; top: 64px; padding: 3px 10px; border-radius: 12px; background: rgba(10, 12, 20, 0.6); color: #d8dce8; font-size: 12px; }
+#shoulder-ui.on.help .sh-pill { display: none; }
+#shoulder-ui.on.alt .sh-pill { display: block; }
+#shoulder-ui.alt .sh-pillk { display: none; }
+#shoulder-ui .sh-pill kbd { padding: 0 4px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font: inherit; font-size: 11px; }
 #shoulder-ui .sh-keys kbd { padding: 0 5px; margin: 0 1px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font: inherit; font-size: 12px; }
 #shoulder-ui .sh-click { display: none; color: #ffd76a; }
 #shoulder-ui.free:not(.alt) .sh-click { display: inline; }
@@ -1382,6 +1391,8 @@ body.keep-guest #abilities > * { opacity: 0.35; filter: grayscale(0.8); }
 #shoulder-ui.has-seraph .sh-posin { display: inline; }
 #shoulder-ui.can-night .sh-nightk { display: inline; }
 #shoulder-ui.alt .sh-altk { display: inline; color: #ffd76a; }
+#shoulder-ui .sh-keys .sh-posk, #shoulder-ui .sh-keys .sh-posin, #shoulder-ui .sh-keys .sh-nightk, #shoulder-ui .sh-keys .sh-stop { display: none; }
+#shoulder-ui.pos .sh-keys .sh-posk, #shoulder-ui.has-seraph .sh-keys .sh-posin, #shoulder-ui.can-night .sh-keys .sh-nightk, #shoulder-ui.walk .sh-keys .sh-stop { display: block; }
 #shoulder-ui.alt .xhair { opacity: 0.25; }
 /* (0.95) over the shoulder the cursor never shows on the game (the view follows the mouse), unless Alt is held */
 body.shoulder-on:not(.sh-alt) canvas { cursor: none; }
@@ -1443,7 +1454,7 @@ body.seraph-xp #level-badge { color: #fff4d0; text-shadow: 0 0 6px rgba(255, 220
 
 /* (0.98) over the shoulder: the compass along the top, and your heroes down the side */
 #shoulder-ui .sh-compass, #shoulder-ui .sh-heroes { display: none; }
-#shoulder-ui.on .sh-compass { display: block; position: absolute; left: 50%; top: 118px; width: 560px; height: 30px; margin-left: -280px; overflow: hidden; border-radius: 6px; background: linear-gradient(90deg, rgba(10, 12, 20, 0), rgba(10, 12, 20, 0.72) 18%, rgba(10, 12, 20, 0.72) 82%, rgba(10, 12, 20, 0)); }
+#shoulder-ui.on .sh-compass { display: block; position: absolute; left: 50%; top: 62px; width: 560px; height: 30px; margin-left: -280px; overflow: hidden; border-radius: 6px; background: linear-gradient(90deg, rgba(10, 12, 20, 0), rgba(10, 12, 20, 0.72) 18%, rgba(10, 12, 20, 0.72) 82%, rgba(10, 12, 20, 0)); }
 #shoulder-ui .sh-compass::after { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 8px; margin-left: -1px; background: #ffd27a; }
 #shoulder-ui .sh-cstrip i { position: absolute; left: 0; top: 0; font-style: normal; text-align: center; width: 30px; margin-left: -15px; color: #c8ccd8; text-shadow: 0 1px 2px #000; }
 #shoulder-ui .sh-cstrip i.card { top: 6px; font-size: 15px; font-weight: 700; color: #fff0c8; }
@@ -1458,12 +1469,16 @@ body.seraph-xp #level-badge { color: #fff4d0; text-shadow: 0 0 6px rgba(255, 220
 #shoulder-ui .sh-cmark b.hearth { background: #ffd27a; border-radius: 50%; }
 #shoulder-ui .sh-cmark b.left::before, #shoulder-ui .sh-cmark b.right::before { content: ''; }
 @keyframes shPulse { 50% { opacity: 0.35; } }
-#shoulder-ui.on.locked .sh-target { top: 156px; }
-#shoulder-ui.on .sh-heroes { display: block; position: absolute; left: 14px; top: 34%; width: 210px; padding: 8px 10px; border-radius: 8px; background: rgba(10, 12, 20, 0.62); color: #e8ecf6; font-size: 12.5px; }
+#shoulder-ui.on.locked .sh-target { top: 100px; }
+#shoulder-ui.on .sh-heroes { display: block; position: absolute; left: 14px; top: 42%; width: 210px; padding: 8px 10px; border-radius: 8px; background: rgba(10, 12, 20, 0.62); color: #e8ecf6; font-size: 12.5px; }
 #shoulder-ui.on .sh-heroes.hidden { display: none; }
 #shoulder-ui .sh-heroes h5 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27a; }
-#shoulder-ui .shh { display: grid; grid-template-columns: 16px 1fr auto; align-items: center; column-gap: 6px; margin: 4px 0; }
-#shoulder-ui .shh-dir { display: inline-block; font-size: 10px; color: #ffe8c0; }
+#shoulder-ui .shh { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; column-gap: 6px; margin: 4px 0; }
+#shoulder-ui .shh-dir { display: inline-block; width: 18px; height: 18px; grid-row: span 2; }
+#shoulder-ui .shh-dir svg { width: 18px; height: 18px; display: block; }
+#shoulder-ui .shh-dir circle { fill: rgba(255, 232, 192, 0.12); stroke: rgba(255, 232, 192, 0.55); stroke-width: 1.2; }
+#shoulder-ui .shh-dir path { fill: #ffe8c0; }
+#shoulder-ui .shh.low .shh-dir path { fill: #ff7a5a; }
 #shoulder-ui .shh-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #shoulder-ui .shh-d { color: #aab0c0; font-size: 11.5px; }
 #shoulder-ui .shh i { grid-column: 2 / 4; display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
@@ -1474,5 +1489,10 @@ body.seraph-xp #level-badge { color: #fff4d0; text-shadow: 0 0 6px rgba(255, 220
 /* (0.98) the Seraph's skills, each with its own mark, at its plinth */
 .seraph-ico svg { width: 18px; height: 18px; vertical-align: -4px; margin-right: 5px; fill: none; stroke: #ffe2a0; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 /* (0.98) over the shoulder the boss's bar sits under the compass, clear of the keys */
-body.shoulder-on #boss-box { transform: translateY(96px); }
+body.shoulder-on #boss-box { transform: translateY(40px); }
 #shoulder-ui.on.locked.boss-lock .sh-target { display: none; } /* (its own bar says it all) */
+
+/* (0.99) what the game's people say out loud */
+.say-bubble { position: absolute; left: 0; top: 0; max-width: 280px; padding: 6px 11px 7px; border-radius: 10px; background: rgba(250, 244, 230, 0.95); color: #2a2018; font-size: 13.5px; line-height: 1.35; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); pointer-events: none; white-space: normal; z-index: 6; }
+.say-bubble b { display: block; font-size: 11px; letter-spacing: 0.04em; color: #8a5a1a; margin-bottom: 1px; }
+.say-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: rgba(250, 244, 230, 0.95); }

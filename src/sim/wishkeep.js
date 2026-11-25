@@ -182,7 +182,7 @@ export const STATUE_SKILLS = {
   // (0.98) the base kit made flashier and much stronger; a new skill opens with each rarity it rises to (tier)
   q: {
     dawnlance: { lvl: 1, name: 'Dawnlance', type: 'seraphLaser', icon: 'sLaser', cd: 4.5, wind: 0.25, range: 26, bounces: 4, bounceRange: 11, falloff: 0.85, dmg: (s) => 3.4 * s.ad, desc: 'A crown of eyes opens over it, and a ray of dawn leaps from its hands to the foe you aim at (26 m), then glances on to four more foes near each in turn.' },
-    choir: { lvl: 10, name: 'Choir of Eyes', type: 'seraphChoir', icon: 'sChoir', cd: 6, wind: 0.3, range: 24, count: 7, speed: 28, dmg: (s) => 1.5 * s.ad, desc: 'Seven eyes open round it and fly, each to its own foe near where you aim (24 m), seeking it.' },
+    choir: { lvl: 10, name: 'Choir of Veritas', type: 'seraphChoir', icon: 'sChoir', cd: 6, wind: 0.3, range: 24, count: 7, speed: 28, dmg: (s) => 1.5 * s.ad, desc: 'Seven eyes open round it and fly, each to its own foe near where you aim (24 m), seeking it.' },
     barrage: { lvl: 1, tier: 2, name: 'Seraphic Barrage', type: 'seraphChoir', icon: 'sBarrage', cd: 5, wind: 0.2, range: 26, count: 6, speed: 34, focus: true, dmg: (s) => 1.4 * s.ad, desc: 'Rare: six bolts of holy light, all at the one foe you aim at, curving in from every side.' },
     prism: { lvl: 1, tier: 5, name: 'Prism Lance', type: 'seraphLaser', icon: 'sPrism', cd: 6, wind: 0.3, range: 30, line: 1.8, bounces: 6, bounceRange: 12, falloff: 0.9, dmg: (s) => 4.6 * s.ad, desc: 'Ancient: a beam straight through everything in a line (30 m) that breaks into rays on the last thing it strikes, glancing on to six more foes.' },
   },
@@ -199,7 +199,7 @@ export const STATUE_SKILLS = {
   r: {
     descent: { lvl: 5, name: 'Descent', type: 'leap', icon: 'sDescent', cd: 18, wind: 0.8, track: true, range: 16, radius: 6, duration: 0.55, stun: 1.6, pull: 8, dmg: (s) => 8.5 * s.ad, desc: 'A cloud gathers over the foe nearest where you aim (16 m) and follows it while its eyes open; it rises and comes down on it as a pillar of light, drawing everything within 8 m in first, then striking and stunning it all.' },
     hand: { lvl: 15, name: 'Hand of Heaven', type: 'meteor', icon: 'sHand', cd: 17, wind: 0.6, track: true, range: 26, radius: 6.5, delay: 0.55, stun: 2, fist: true, dmg: (s) => 10 * s.ad, desc: 'It points at the foe nearest where you aim (26 m), and a fist of light comes down out of the clouds onto it, following it as it falls: everything under it is struck and stunned for 2 seconds.' },
-    rain: { lvl: 30, name: 'Rain of Eyes', type: 'seraphRain', icon: 'sRain', cd: 17, wind: 0.6, track: true, range: 24, radius: 11, rays: 14, gap: 0.1, dmg: (s) => 2.3 * s.ad, desc: 'Eyes open over every foe within 11 m of where you aim (24 m) and look down: fourteen rays of light fall on them, one after another, wherever they run.' },
+    rain: { lvl: 30, name: 'Lux Aeterna', type: 'seraphRain', icon: 'sRain', cd: 17, wind: 0.6, track: true, range: 24, radius: 11, rays: 14, gap: 0.1, dmg: (s) => 2.3 * s.ad, desc: 'Eyes open over every foe within 11 m of where you aim (24 m) and look down: fourteen rays of light fall on them, one after another, wherever they run.' },
     sunfall: { lvl: 1, tier: 4, name: 'Sunfall', type: 'seraphBeam', icon: 'sSun', cd: 18, wind: 0.4, range: 26, duration: 3.2, tick: 0.2, radius: 3.2, chase: 11, dmg: (s) => 1.1 * s.ad, desc: 'Mythic: a beam of sunlight falls from the sky on the foe nearest where you aim (26 m) and hunts it for three seconds, moving on to the next when it falls, burning everything it touches.' },
     judgement: { lvl: 1, tier: 6, name: 'Judgement of the Choir', type: 'seraphRain', icon: 'sJudge', cd: 20, wind: 0.6, track: true, range: 26, radius: 15, rays: 30, gap: 0.06, stun: 0.6, dmg: (s) => 2.6 * s.ad, desc: 'Immortal: the whole sky opens its eyes over where you aim (26 m): thirty rays fall on the Unmade within 15 m, each one stunning.' },
     ascension: { lvl: 1, tier: 7, name: 'Ascension', type: 'seraphAscend', icon: 'sAscend', cd: 30, wind: 0.5, duration: 10, dmg: (s) => 0, desc: 'Eternal: for 10 seconds it burns with its full light: its strikes loose three bolts at three foes, its skills come back twice as fast, and everything it does hits 40% harder.' },
@@ -240,7 +240,7 @@ export const STATUE_TIERS = [
 ];
 export const statueTierMult = (statue) => (STATUE_TIERS[(statue && statue.tier) || 0] || STATUE_TIERS[0]).mult;
 /**
- * (0.98) The Eternal trial: the Seraph alone against the Unblinking, a choir of eyes from the far sky, in the keep.
+ * (0.98) The Eternal trial: the Seraph alone against Omnividens, the All-Seeing Truth of the far sky, in the keep.
  * Opened by an Immortal Seraph at level 50. hp: times the Night-50 power; its blows are Night 50's.
  */
 export const TRIAL = {
@@ -285,7 +285,7 @@ export const FOES = {
   gloamwing: { name: 'Gloamwing', hp: 150, dmg: 16, speed: 6.4, range: 1.6, cd: 1.0, role: 'dive', from: 34, pack: 2, pounce: 2.5, desc: 'Fast, and goes over the front line for your archers and mages. Its first blow on each lands two and a half times as hard.' },
   rotmother: { name: 'Rotmother', hp: 1400, dmg: 20, speed: 2.0, range: 2.0, cd: 1.5, siege: 2, role: 'split', from: 38, big: true, split: { n: 3, into: 'rotling' }, rot: { r: 3.5, cut: 0.5 }, desc: 'Heroes near her heal half as much, and when she falls she breaks into three Rotlings.' },
   rotling: { name: 'Rotling', hp: 260, dmg: 10, speed: 3.8, range: 1.6, cd: 1.0, desc: 'What is left of a Rotmother.' },
-  eyelet: { name: 'Eyelet', hp: 320, dmg: 14, speed: 5.2, range: 1.6, cd: 1.0, desc: 'A lesser eye of the Unblinking: swoops and pecks.' },
+  eyelet: { name: 'Vigil', hp: 320, dmg: 14, speed: 5.2, range: 1.6, cd: 1.0, desc: 'A lesser watcher of Omnividens: swoops and pecks.' },
   tidecaller: { name: 'The Tidecaller', hp: 4200, dmg: 40, speed: 2.6, range: 3, cd: 2.0, siege: 3, role: 'boss', big: true, slam: { cd: 6, r: 4.5, x: 1.6, wind: 0.8 }, call: { cd: 12, n: 3 }, desc: 'The night\'s king, on the last wave of every fifth Night: slams those near, calls the Hush, and rages when hurt.' },
 };
 export const FOE_SPECIALS = ['thief', 'cinderling', 'veilbearer', 'gatebreaker', 'mourner', 'oathbreaker', 'gloamwing', 'rotmother'];

@@ -6338,7 +6338,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const x0 = p.x;
   w.command({ type: 'move', x: p.x + 30, z: p.z }); w.runCommands();
   for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
-  check('...Ctrl: over the shoulder it walks at an even pace, whatever it wears', Math.abs((p.x - x0) - 2.0) < 0.5);
+  check('...Ctrl: over the shoulder it walks at an even pace, whatever it wears', Math.abs((p.x - x0) - 1.8) < 0.4);
   w.loadMap('haven');
   check('...leaving the keep in it, by any road, leaves it home: yourself again, your own kit', !p.possess && w.kit.q.name !== 'Dawnlance' && !w.handsOn());
   check('Treasure Sense (0.94): a Rogue finds gear more often, and so does their party', w.treasureSense() > 1 && new World({ seed: 1, mode: 'explore', cls: 'mage' }).treasureSense() === 1);
@@ -6376,7 +6376,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'move', x: p.x - 30, z: p.z }); w.runCommands();
   for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
   const moved = Math.hypot(p.x - x0, p.z - z0);
-  check('Walking (0.95): Ctrl or Caps Lock walks at an even pace anywhere, not only over the shoulder', Math.abs(moved - 2.0) < 0.5, moved.toFixed(2));
+  check('Walking (0.95): Ctrl or Caps Lock walks at an even pace anywhere, not only over the shoulder', Math.abs(moved - 1.8) < 0.4, moved.toFixed(2));
 }
 // --- 0.96: bulk trades, the keep's people indoors at night, the shade's own dash, the wind's arrows fall --------------
 {

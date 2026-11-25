@@ -2546,7 +2546,7 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, walk: !!p.walkPace, speed: p.walkPace ? 2.0 : p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, walk: !!p.walkPace, speed: p.walkPace ? 1.8 : p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
       if (sera) {
         // (0.93) gliding: leaning into it, robes trailing (the idle plays on underneath)
@@ -3916,7 +3916,7 @@ export class Renderer {
         if (spinning) v.spinAngle = (v.spinAngle || 0) + dt * Math.PI * 2 * 2.4;
         else v.spinAngle = 0;
         v.model.rig.group.rotation.y = (v.model.rig.baseTurn || 0) + v.spinAngle;
-        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, walk: !!a.walk, speed: a.walk ? 2.0 : undefined, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, walk: !!a.walk, speed: a.walk ? 1.8 : undefined, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
       } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);

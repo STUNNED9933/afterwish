@@ -3187,7 +3187,7 @@ function start(hot = {}) {
   }
 
   /** Friend: how far ahead of the host's position to draw this player's own hero while it walks. */
-  const WALK_PACE = 2.0; // (0.96) as the sim's
+  const WALK_PACE = 1.8; // (0.96.1) as the sim's
   function predictedOffset(alpha) {
     const p = world.player;
     const it = net && net.intent;

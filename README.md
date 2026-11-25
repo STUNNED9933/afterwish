@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A natural walk for every hero (0.96.1)
+
+- **New walk, made for each model.** The old walk came from an animation library and was transferred onto heroes whose rest poses didn't match it, so elbows bent up and knees lifted like a march. The new walk is built directly on each hero's skeleton:
+  - Feet are planted with IK: heel strike, roll onto the ball, then toe-off. A planted foot stays put on the ground.
+  - The hips bob only as much as the stride needs.
+  - The arms hang the way they do in that hero's own idle, then swing against the legs.
+- **A man's walk and a woman's walk.**
+  - Men (warrior, rogue, ninja, male keep heroes): a wider stance, more shoulder and arm swing.
+  - Women (archer, mage, female keep heroes): feet close to one line, more hip turn and sway, arms closer in, a slightly quicker step.
+- **Walking pace is now 1.8 m/s** (was 2.0). That gives a natural stride and step rate for a two-metre hero, and the animation is timed to it so the feet don't slide.
+
 ### Falling arrows, a 1:1 shade, Eternal drops, bulk trades (0.96)
 
 - **Windrunner mastery** no longer fires homing shots. Every attack and skill now calls arrows of wind down onto nearby enemies (within 13 m). The damage is the same, and there is far less on screen to draw, so the lag is gone.

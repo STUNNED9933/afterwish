@@ -456,7 +456,7 @@ function prepare(spec, gltf) {
   for (const c of gltf.animations) clips[c.name] = c;
   const h = box.max.y - box.min.y;
   if (clips[spec.run]) stripDrift(clips[spec.run], spec.rootBones);
-  if (clips[spec.walk || 'ual_Walk']) stripDrift(clips[spec.walk || 'ual_Walk'], spec.rootBones); // (0.95) the walk stays where the body is
+  if (clips[spec.walk || 'gait_Walk']) stripDrift(clips[spec.walk || 'gait_Walk'], spec.rootBones); // (0.95) the walk stays where the body is
   if (spec.recentre === '*') {
     // (0.54.7) creatures: any clip that walks itself away (a Tripo walk with its travel left in) is put back
     // in place, so the body stays on its hitbox. A fall keeps its own stagger back.
@@ -577,7 +577,7 @@ export function instantiate(tpl) {
     }
     return a;
   };
-  const actions = { idle: act(spec.idle), run: act(spec.run), walk: act(spec.walk || 'ual_Walk'), attack: act('__attack', true), death: act(spec.death, true), hit: act(spec.hit, true) }; // (0.95) a walk of their own (UAL, CC0)
+  const actions = { idle: act(spec.idle), run: act(spec.run), walk: act(spec.walk || 'gait_Walk'), attack: act('__attack', true), death: act(spec.death, true), hit: act(spec.hit, true) }; // (0.96.1) a walk made for each model: feet planted by IK, arms from its own idle; a man's and a woman's gait (tools/gait)
   // alternating basic attacks (spec.attacks), in place of the single one
   const combo = (spec.attacks || []).map((_, i) => act(`__attack${i}`, true)).filter(Boolean);
   let comboAt = 0;
@@ -769,7 +769,7 @@ export function instantiate(tpl) {
           // let the flinch play out
         } else if (s.moving && actions.walk && (s.walk || (s.speed || 6) < (spec.walkBelow || 4.2))) {
           // (0.95) walking (Ctrl or Caps Lock, or simply slow): a walk, not a slowed run
-          actions.walk.timeScale = Math.max(0.7, Math.min(1.8, (s.speed || 2) / (spec.walkRef || 1.25))); // (0.96) the walk covers about 1.25 m a second at its own pace (measured): matched, so the feet hold the ground
+          actions.walk.timeScale = Math.max(0.7, Math.min(1.8, (s.speed || 1.8) / (spec.walkRef || 1.8))); // (0.96.1) the walk is made to cover 1.8 m a second at its own pace: matched, so the feet hold the ground
           fadeTo(actions.walk, endFade || 0.25);
         } else if (s.moving && actions.run) {
           actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / (spec.runRef || 6.5)));

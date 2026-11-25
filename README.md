@@ -160,6 +160,31 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### A celestial Seraph, louder skills, stronger masteries (0.93)
+
+**The Seraph floats.** She hovers above the ground and glides instead of running, leaning into the movement with a little light trailing behind. Her stone glows faintly gold from within.
+
+**Celestial skills with wind-ups.** Dawnlance, Wingbeat and Descent now gather light first. She is rooted while she gathers, then the skill lands much harder.
+- **Dawnlance** (0.45 s, 3.4× her strike, was 2.0×): a crown of eyes opens over her head, then a beam of dawn fires down the line with eyes blinking open along it.
+- **Wingbeat** (0.3 s, 2.4×, was 1.4×): clouds are drawn in around her, then thrown out in a ring with feathers. It still heals heroes in reach by 15%.
+- **Descent** (0.9 s, 6.5×, was 3.5×, wider, longer stun): a cloud gathers over the target and its eyes open on what is beneath. She rises and lands as a pillar of light with a ring of cloud.
+- **Glide** leaves a trail of cloud and hits harder (1.2×, was 0.8×).
+- **Basic strike:** slower but 1.6× as hard, with a wider sweep (others caught take 70%, not 50%). Each hit draws a crescent of light and an eye at the target.
+
+**Sounds.** Every kind of skill now has its own synthesised sound instead of four shared ones (blade sweeps, bursts, rushes of air, piercing shots, fire, frost, falling stars, volleys). Ultimates (R) add a deep boom and reverb. Deadeye, the Sharpshooter's ultimate, is much heavier: a supersonic crack, a falling sub-bass, torn air and a long echo. The Seraph has her own bells and choir, and Skyfall-style landings boom harder. A shade's copy of a skill plays quieter, with no ultimate boom.
+
+**Mastery skills.** Measured as single-target damage added by one borrowed skill, at level 100.
+- **The Shadowdancer's shade** copies everything you do: every basic attack and every skill. A skill that would move you (a dash, leap, blink or spin) hits where you aimed instead.
+  - Mirror Blade (Warrior): 50%. Echo Caster (Mage): 70%. Umbra Gemina (Archer): 60%, and still draws Deadeye.
+- **The Windrunner's wind** answers every attack and every skill with homing shots:
+  - Gale Steps (Warrior): +25% attack speed and the Whirlwind tornado as before, plus one wind blade per swing (80%) and five per skill (130% each). Was +4% damage, now +24%.
+  - Gale Motes (Mage): two motes per attack (90%) and six per skill (180% each). Was +4%, now +25%.
+  - Tailwind Daggers (Rogue): a dagger per attack, three more every second attack, six per skill. Was +5%, now +35%.
+- **Weak borrowings raised:**
+  - Archer's Shadow Shot, Mirror Ice, Anchor Shot and Dragon's Breath. These were −7% to +6% for the Archer; now +12% to +23%.
+  - Mage's Elemental Lance and Blink Strike.
+  - Warrior's Javelin and Ember Brand. Ember Brand now sets 4 burn stacks that burn harder, and Whirlwind deals double damage to burning enemies.
+
 ### Deep Nights and the Seraph (0.92)
 
 **Call the Night now goes to Night 50.** Past Night 30, each level is 8.5% stronger instead of 28%, but the deep Nights bring more than bigger numbers:

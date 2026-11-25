@@ -1623,7 +1623,7 @@ export class World {
    */
   stepShade(dt) {
     const p = this.player, m = this.mods;
-    if (!(m.shadeEcho > 0 || m.echoQ > 0)) {
+    if (!(m.shadeEcho > 0 || m.echoQ > 0 || m.shadeCast > 0)) {
       if (p.shadeAt) p.shadeAt = null;
       return;
     }
@@ -2015,6 +2015,7 @@ export class World {
         } else this.hitEnemy(target, dmg * m2.shadeEcho, { source: 'shade' });
         this.emit('shadowSlash', { x: sx, z: sz, tx: target.x, tz: target.z, veil: true });
       }
+      if (m2.galeAtk > 0) this.looseCastMotes(m2.galeAtk, m2.galeAtkDmg, target, true); // (0.93) the wind answers an attack
       if (m2.daggerEvery > 0 && p.swingCount % m2.daggerEvery === 0) {
         // Tailwind Daggers: two homing daggers at enemies near the target
         const near = this.enemies.filter((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, target.x, target.z) <= 7).sort((u, v) => dist(u.x, u.z, target.x, target.z) - dist(v.x, v.z, target.x, target.z));
@@ -2114,6 +2115,20 @@ export class World {
     const p = this.player;
     const m = this.mods;
     const def = this.kit[slot];
+    if (p.possess && def && def.wind > 0 && !this.seraphRelease) {
+      // (0.93) the Seraph gathers light first, rooted, then the skill lands (see stepPlayer)
+      if (!this.abilityUnlocked(slot) || p.cd[slot] > 0 || p.dash || p.leap || p.castLock > 0.05 || p.seraphWind) return;
+      const a = Number.isFinite(dAtan2(z - p.z, x - p.x)) && dist(x, z, p.x, p.z) > 0.05 ? dAtan2(z - p.z, x - p.x) : p.facing;
+      const len = Math.min(dist(x, z, p.x, p.z) || 0, def.range || 0);
+      const at = this.clampToArena(p.x + dCos(a) * len, p.z + dSin(a) * len, p.radius);
+      p.cd[slot] = this.abilityCooldown(slot);
+      p.castLock = def.wind;
+      p.facing = a;
+      p.moveTarget = null;
+      p.seraphWind = { slot, x: Number.isFinite(x) ? x : at.x, z: Number.isFinite(z) ? z : at.z, t: def.wind };
+      this.emit('cast', { slot, fx: 'wind_' + slot, seraph: 'wind', x: p.x, z: p.z, dir: a, tx: at.x, tz: at.z, dur: def.wind, range: def.range, radius: def.radius });
+      return;
+    }
     if (def && def.type === 'orb') {
       // Frozen Orb: casting again while it is out shatters it where it is.
       const mine = this.projectiles.find((pr) => pr.kind === 'orb' && !pr.dead && pr.pid === this.cur.pid);
@@ -2755,7 +2770,9 @@ export class World {
     if (!this.recasting) {
       // (0.70) borrowed passives that answer a cast
       if (m.echoQ > 0 && slot === 'q') this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult: m.echoQ }); // a shade casts it again
+      else if (m.shadeCast > 0 && ['q', 'w', 'e', 'r'].includes(slot)) this.shadeCopy(slot, def, x, z, dmg, m.shadeCast); // (0.93) every skill
       if (m.castMotes > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.castMotes);
+      if (m.galeCast > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.galeCast, m.galeCastDmg); // (0.93) the wind answers a skill
       const grav = slot === 'r' ? m.rGravity : slot === 'w' ? m.wGravity : 0;
       if (grav > 0) {
         const c = aimPoint();
@@ -2934,7 +2951,9 @@ export class World {
           p.z = p.pz = p.shadeAt.z;
           p.shadeAt.atk = this.ticks;
         }
+        const ev0 = this.events.length;
         try { this.castAbility(d.slot, d.x, d.z); } finally {
+          for (let i = ev0; i < this.events.length; i++) if (this.events[i].type === 'cast') this.events[i].echo = true; // (0.93) a shade's copy: quieter, no slot flash
           this.recasting = null;
           if (home) {
             if (p.shadeAt) p.shadeAt.facing = p.facing;
@@ -2944,6 +2963,15 @@ export class World {
         Object.assign(p, { castLock: keep.lock, empowerT: keep.emp });
         p.cd[d.slot] = keep.cd;
         this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
+        continue;
+      }
+      if (d.kind === 'shadeStrike') {
+        // (0.93) the shade strikes where you aimed a skill that moved you
+        if (p.dead) continue;
+        for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, d.x, d.z) <= d.r + o.radius) this.hitEnemy(o, d.dmg, { source: 'shade' });
+        if (p.shadeAt) [p.shadeAt.atk, p.shadeAt.facing] = [this.ticks, dAtan2(d.z - p.shadeAt.z, d.x - p.shadeAt.x)];
+        this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
+        this.emit('burst', { x: d.x, z: d.z, radius: d.r, color: 0x9a7aff });
         continue;
       }
       if (d.kind === 'shadeEye') {
@@ -3184,6 +3212,24 @@ export class World {
     p.parryCd = Math.max(0, p.parryCd - dt);
     p.potionCd = Math.max(0, p.potionCd - dt);
     p.castLock = Math.max(0, p.castLock - dt);
+    if (p.seraphWind && (p.seraphWind.t -= dt) <= 0) {
+      // (0.93) the Seraph's gathered light lands
+      const sw = p.seraphWind, keep = p.cd[sw.slot];
+      p.seraphWind = null;
+      if (p.possess && !p.dead) {
+        p.cd[sw.slot] = 0;
+        p.castLock = 0;
+        this.seraphRelease = true;
+        const ev0 = this.events.length;
+        try { this.castAbility(sw.slot, sw.x, sw.z); } finally {
+          this.seraphRelease = false;
+          for (let i = ev0; i < this.events.length; i++) if (this.events[i].type === 'cast') this.events[i].seraphRel = true; // (its own sound: seraphFx)
+        }
+        p.cd[sw.slot] = keep;
+        const def = this.kit[sw.slot];
+        this.emit('seraphFx', { kind: { q: 'lance', w: 'wings', r: 'descent' }[sw.slot] || 'strike', slot: sw.slot, x: p.x, z: p.z, dir: p.facing, tx: sw.x, tz: sw.z, range: def && def.range, width: def && def.width, radius: def && def.radius });
+      }
+    }
     p.hurtT = Math.max(0, p.hurtT - dt);
     p.empowerT = Math.max(0, p.empowerT - dt);
     if (p.quickT > 0) {
@@ -3351,7 +3397,7 @@ export class World {
           if (e.def.boss) this.addPosture(e, 1, false);
           else this.stun(e, lp.stun);
         }
-        this.emit('impact', { x: p.x, z: p.z, radius: lp.radius, kind: 'skyfall' });
+        this.emit('impact', { x: p.x, z: p.z, radius: lp.radius, kind: 'skyfall', seraph: p.possess ? true : undefined }); // (0.93) the Seraph's Descent lands as light
         if (this.mods.rAftershock > 0) {
           const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: p.x, z: p.z, dir: 0, radius: lp.radius, t: 0, dur: 1, parryable: false };
           this.telegraphs.push(tele);
@@ -3429,7 +3475,7 @@ export class World {
             const quick = p.quickShots > 0; // Skirmish Step: straight off the string
             p.atkWind = quick ? 0.05 : period * 0.3;
             p.attackCd = quick ? 0.16 : period;
-            this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: p.atkWind });
+            this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: p.atkWind, seraph: p.possess ? true : undefined });
           }
         }
       }
@@ -3902,17 +3948,33 @@ export class World {
     this.emit('cast', { slot, fx: 'nova', x, z, radius, pull: true });
   }
 
-  /** (0.70) Gale Motes: homing motes at enemies near you whenever a spell is cast. */
-  looseCastMotes(count) {
+  /** (0.70) Gale Motes: homing motes at enemies near you whenever a spell is cast. (0.93) Any share; first at `first`. */
+  looseCastMotes(count, share = null, first = null, quiet = false) {
     const p = this.player;
     const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 13 + e.radius).sort((a, b) => dist(a.x, a.z, p.x, p.z) - dist(b.x, b.z, p.x, p.z));
+    if (first && !first.dead) near.unshift(first);
     if (!near.length) return;
     for (let i = 0; i < count; i++) {
       const t = near[i % near.length];
       const a = dAtan2(t.z - p.z, t.x - p.x) + (i - (count - 1) / 2) * 0.7;
-      this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'gale', pid: this.cur.pid, targetId: t.id, x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z, vx: dCos(a) * 22, vz: dSin(a) * 22, speed: 22, radius: 0.4, dmg: p.stats.ad * (this.mods.castMotesDmg || 0.35), parryable: false, reflected: false, life: 1.6, dead: false });
+      this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'gale', pid: this.cur.pid, targetId: t.id, x: p.x + dCos(a) * 0.6, z: p.z + dSin(a) * 0.6, px: p.x, pz: p.z, vx: dCos(a) * 22, vz: dSin(a) * 22, speed: 22, radius: 0.4, dmg: p.stats.ad * (share ?? (this.mods.castMotesDmg || 0.35)), parryable: false, reflected: false, life: 1.6, dead: false });
     }
-    this.emit('motes', { x: p.x, z: p.z, count });
+    this.emit('motes', { x: p.x, z: p.z, count, quiet: quiet || undefined });
+  }
+
+  /**
+   * (0.93) The shade copies a skill: from where it stands, again, a moment later (a skill that does not move
+   * you); a skill that would move you (a dash, a leap, a blink, a spin, a channel), it strikes where you aimed.
+   */
+  shadeCopy(slot, def, x, z, dmg, mult) {
+    const p = this.player;
+    if (!def || def.passive || def.type === 'deadeye' || def.type === 'bloodoath') return; // (Deadeye: Umbra Gemina's own draw)
+    const SAFE = ['cone', 'nova', 'line', 'bolt', 'smoulder', 'meteor', 'zone', 'kunai', 'ricochet', 'breath', 'anchor'];
+    if (SAFE.includes(def.type) || (def.type === 'dash' && def.quick)) return void this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult });
+    if (!(dmg > 0)) return;
+    const a = dAtan2(z - p.z, x - p.x), d = Math.min(dist(x, z, p.x, p.z), def.range || 6);
+    const at = Number.isFinite(a) ? this.clampToArena(p.x + dCos(a) * d, p.z + dSin(a) * d, 0.5) : { x: p.x, z: p.z };
+    this.delayed.push({ t: 0.35, kind: 'shadeStrike', x: at.x, z: at.z, r: Math.max(3, (def.radius || 0) * 0.8), dmg: dmg * mult, slot });
   }
 
   /** (0.68) The Animus asked of this hero here: the most any enemy within reach asks (0 if none). */
@@ -7307,7 +7369,7 @@ export class World {
     p.attackMove = null;
     p.attackCd = period;
     p.freeSwing = { t: period * 0.3, a };
-    this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: period * 0.3 });
+    this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: period * 0.3, seraph: p.possess ? true : undefined });
   }
   /** (0.90) A free strike lands. */
   landFreeSwing(fs) {
@@ -7331,10 +7393,11 @@ export class World {
       if (d > reach) continue;
       let da = dAtan2(e.z - p.z, e.x - p.x) - a;
       da = Math.abs(dAtan2(dSin(da), dCos(da)));
-      if (da <= 0.95 || d < 0.4) hit.push([e, d]);
+      if (da <= (p.possess ? 1.3 : 0.95) || d < 0.4) hit.push([e, d]); // (0.93) the Seraph's sweep is wider
     }
     hit.sort((u, v) => u[1] - v[1]);
-    hit.forEach(([e], i) => this.hitEnemy(e, i === 0 ? dmg : dmg * 0.5, { basic: i === 0, source: 'basic' }));
+    hit.forEach(([e], i) => this.hitEnemy(e, i === 0 ? dmg : dmg * (p.possess ? 0.7 : 0.5), { basic: i === 0, source: 'basic' }));
+    if (p.possess && hit.length) this.emit('seraphFx', { kind: 'strike', x: p.x, z: p.z, dir: a, tx: hit[0][0].x, tz: hit[0][0].z }); // (0.93)
   }
 
   /**
@@ -7504,7 +7567,7 @@ export class World {
     const at = { x: STATUE.at.x + dCos(a) * 1.8, z: STATUE.at.z + dSin(a) * 1.8, radius: p.radius };
     this.pushOut(at, p.radius);
     [p.x, p.z, p.px, p.pz, p.facing] = [at.x, at.z, at.x, at.z, a];
-    [p.moveTarget, p.targetId, p.attackMove, p.dash, p.leap, p.channel, p.freeSwing, p.spin] = [null, null, null, null, null, null, null, null];
+    [p.moveTarget, p.targetId, p.attackMove, p.dash, p.leap, p.channel, p.freeSwing, p.spin, p.seraphWind] = [null, null, null, null, null, null, null, null, null];
     for (const c of ['q', 'w', 'e', 'r']) p.cd[c] = 0;
     this.recalcStats();
     p.hp = Math.max(1, Math.round(p.stats.maxHp * k.statue.hp));
@@ -7524,7 +7587,7 @@ export class World {
     }
     p.possess = null;
     p.ranks = P.ranks;
-    [p.dash, p.leap, p.channel, p.freeSwing, p.spin, p.targetId, p.attackMove, p.moveTarget] = [null, null, null, null, null, null, null, null];
+    [p.dash, p.leap, p.channel, p.freeSwing, p.spin, p.targetId, p.attackMove, p.moveTarget, p.seraphWind] = [null, null, null, null, null, null, null, null, null];
     this.recalcStats();
     p.hp = Math.max(1, Math.min(p.stats.maxHp, P.hp));
     [p.x, p.z, p.px, p.pz] = [P.x, P.z, P.x, P.z];

@@ -160,8 +160,13 @@ export const RIGGED = {
       line: { clip: 'cast_a_spell', keys: [[0, 2.1], [0.2, 2.6], [0.5, 3.4], [0.75, 4.3]], fade: 0.25 },
       nova: { clip: 'cast_a_spell', keys: [[0, 0.9], [0.15, 1.2], [0.45, 1.6], [0.7, 2.2]], fade: 0.25 },
       dash: { clip: 'slash', keys: [[0, 1.5], [0.15, 1.9], [0.3, 2.1], [0.55, 2.6]], land: 2, fade: 0.25 },
-      leap: { clip: 'slash', keys: [[0, 1.2], [0.4, 1.8], [0.55, 2.05], [0.95, 2.8]], land: 2, stop: [0.55, 0.08], fade: 0.3 },
+      leap: { clip: 'slash', keys: [[0, 1.6], [0.45, 1.85], [0.55, 2.05], [0.95, 2.8]], land: 2, stop: [0.55, 0.12], fade: 0.3 },
+      // (0.93) gathering light before a skill: arms drawn back and up, held
+      wind_q: { clip: 'cast_a_spell', keys: [[0, 1.3], [0.3, 2.0], [0.45, 2.2], [1.2, 2.25]], fade: 0.2 },
+      wind_w: { clip: 'cast_a_spell', keys: [[0, 0.5], [0.3, 0.9], [1.0, 0.95]], fade: 0.15 },
+      wind_r: { clip: 'slash', keys: [[0, 0.9], [0.7, 1.55], [0.9, 1.65], [1.6, 1.7]], fade: 0.2 },
     },
+    float: 0.45, // (0.93) it never touches the ground: it hovers, and glides rather than runs
     rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
   },
   hero_mage: {
@@ -956,7 +961,8 @@ export function upgradeHero(model, cls, look = cls) {
     const rig = instantiate(tpl);
     const arm = model.parts.arm;
     if (tpl.spec.noWeapon) {
-      // (0.92) the Seraph holds nothing
+      // (0.92) the Seraph holds nothing; (0.93) its stone glows a little from within, pale gold
+      if (tpl.spec.float) rig.group.traverse((o) => { if (o.isMesh && o.material && o.material.emissive) { o.material = o.material.clone(); o.material.emissive.set(0x6a6250); o.material.emissiveIntensity = 0.55; } });
       model.parts.body.visible = false;
       model.group.add(rig.group);
       model.mats.push(...rig.mats);

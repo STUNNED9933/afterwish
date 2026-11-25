@@ -4699,17 +4699,26 @@ function start(hot = {}) {
           sfx.cast('e'); // (0.89) the incarnate god's roll (no slot on the bar)
           break;
         }
-        if (ev.fx === 'deadeye') {
-          sfx.sniper();
+        if (ev.seraph) sfx.seraph(ev.seraph); // (0.93) the Seraph's own
+        else if (ev.seraphRel) {
+          /* (0.93) the gathered skill landing: seraphFx sounds it */
+        } else if (world.player && world.player.possess && !ev.echo && ev.slot === 'e' && ev.fx === 'dash') sfx.seraph('glide');
+        else if (ev.fx === 'deadeye') {
+          sfx.sniper(!!ev.echo); // (0.93: the shadow's copy quieter)
           if (!ev.echo) hud.screenFlash(0.25); // (0.81.3) the twin shadow's copy is quieter
         } else if (ev.fx === 'focus') sfx.breath();
         else if (ev.fire) sfx.fireBreath(); // (0.72)
         else if (ev.pull) sfx.pullIn();
         else if (ev.fx === 'frenzy') sfx.oathOn();
         else if ((ev.slot === 'd' || ev.slot === 'f') && ev.fx === 'meteor') sfx.lob();
-        else if (ev.slot === 'd' || ev.slot === 'f') sfx.cast(ev.fx === 'wall' || ev.fx === 'zone' ? 'w' : 'q'); // a borrowed skill
-        else sfx.cast(ev.slot);
+        else if (ev.echo || ev.shade) sfx.skill(ev.fx, 'q'); // (0.93) a shade's copy: never an ultimate's boom
+        else sfx.skill(ev.fx, ev.slot); // (0.93) each kind of skill its own sound, an ultimate heavier
         if (!ev.echo) hud.flashSlot(ev.slot);
+        break;
+      case 'seraphFx':
+        // (0.93) the Seraph's skills landing, and its strike
+        sfx.seraph(ev.kind === 'descent' ? 'rise' : ev.kind);
+        if (ev.kind === 'lance' || ev.kind === 'wings') hud.flashSlot(ev.slot);
         break;
       case 'cloneStrike':
         if (ev.last) sfx.impact(); else sfx.hit(); // (0.81.3) Ember Clones
@@ -4722,6 +4731,10 @@ function start(hot = {}) {
         hud.float(renderer, ev.x, 3, ev.z, 'Mirror shattered', 'word perfect');
         break;
       case 'impact':
+        if (ev.seraph) {
+          sfx.seraph('descent'); // (0.93) the Seraph's Descent lands
+          break;
+        }
         if (ev.kind === 'skyfall' || ev.kind === 'aftershock') sfx.impact();
         else sfx.slam();
         break;
@@ -6099,6 +6112,7 @@ function start(hot = {}) {
       return mode;
     },
     renderer,
+    sfx, // (0.93) for tests
     act: (c) => applyNow(c), // (0.61.1) a command as the game's own buttons send it (tests, the console)
     talk: (id) => { talkTo = id; talkNote = ''; setMode('talk'); }, // (0.62) open someone's panel (tests)
     panel: (m) => setMode(m), // (0.64) open a window by its mode (tests): 'travel', 'play', ...

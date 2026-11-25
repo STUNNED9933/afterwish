@@ -6251,4 +6251,58 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...and cannot be taken up again until it wakes', !p.possess);
   check('...the keep remembers it (cleanKeep)', K.cleanKeep(JSON.parse(JSON.stringify(k))).statue.lvl === 14);
 }
+// --- 0.93: the shade copies everything, the wind answers everything, the Seraph gathers light ---------------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED } = await import('../src/sim/borrowed.js');
+  const { MAPS } = await import('../src/sim/maps.js');
+  const mk = (cls, donor) => {
+    const w = new World({ seed: 930, mode: 'explore', cls, save: geared(cls, 100, 6) });
+    w.borrowable = () => Object.keys(BORROWED[cls]);
+    w.player.borrowed = { d: donor, f: null };
+    w.recalcStats();
+    w.loadMap('spire', MAPS.spire.portals[0].to);
+    for (const e of w.enemies) e.dead = true;
+    w.enemies = [];
+    const p = w.player;
+    const e = w.spawnEnemy('boss3', { x: p.x + 2.5, z: p.z, level: 100 });
+    e.hp = e.maxHp = 1e11; e.state = 'recover'; e.t = 1e9; e.atkCds = {};
+    return { w, p, e };
+  };
+  {
+    const { w, p, e } = mk('warrior', 'shadowdancer');
+    const src = [];
+    const orig = w.hitEnemy.bind(w);
+    w.hitEnemy = (en, d, o = {}) => { src.push(o.source); return orig(en, d, o); };
+    w.command({ type: 'cast', slot: 'w', x: e.x, z: e.z }); w.runCommands();
+    for (let i = 0; i < 40; i++) w.step(CONFIG.TICK);
+    const ws = src.filter((x) => x === 'w').length;
+    check('Mastery (0.93): Mirror Blade copies every skill, not only Cleave (Whirlwind lands twice)', ws >= 2);
+  }
+  {
+    const { w, p, e } = mk('warrior', 'windrunner');
+    w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z }); w.runCommands();
+    const motes = w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length;
+    check('...Gale Steps: every skill looses homing wind blades', motes === 5);
+    w.basicAttack(e);
+    check('...and every swing one more', w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length === 6);
+  }
+}
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 931, mode: 'explore', cls: 'mage', save: geared('mage', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5; k.sigils = 100; k.nightMax = 20;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  w.command({ type: 'keepPossess', on: true }); w.runCommands();
+  w.events = [];
+  w.command({ type: 'cast', slot: 'q', x: p.x + 8, z: p.z }); w.runCommands();
+  const wind = w.events.find((e) => e.type === 'cast' && e.seraph === 'wind');
+  check('Seraph (0.93): Dawnlance gathers light first (rooted), nothing lands yet', wind && p.seraphWind && p.castLock > 0 && p.cd.q > 0 && !w.events.some((e) => e.type === 'cast' && e.fx === 'line'));
+  for (let i = 0; i < 40; i++) w.step(CONFIG.TICK);
+  check('...then the lance lands', w.events.some((e) => e.type === 'seraphFx' && e.kind === 'lance') && !p.seraphWind);
+}
 process.exit(failed ? 1 : 0);

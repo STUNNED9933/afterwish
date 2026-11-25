@@ -1294,7 +1294,206 @@ export class Renderer {
     (this.laters = this.laters || []).push({ t, fn });
   }
 
+  /** (0.93) The Seraph's hover: a slow bob, higher and leaning forward while it glides. Returns the height. */
+  seraphHover(model, moving, dt) {
+    model.seraT = (model.seraT || 0) + dt;
+    const want = moving ? 0.22 : 0;
+    model.seraLean = (model.seraLean || 0) + (want - (model.seraLean || 0)) * Math.min(1, dt * 5);
+    model.seraLift = (model.seraLift || 0) + ((moving ? 0.75 : 0.45) - (model.seraLift || 0)) * Math.min(1, dt * 3);
+    if (moving && Math.random() < dt * 10) this.burst(model.group.position.x, 0.35, model.group.position.z, { count: 1, color: 0xffe9b0, speed: 0.6, up: 0.4, size: 0.5, life: 0.7, gravity: -0.5 });
+    return model.seraLift + 0.1 * Math.sin(model.seraT * 1.7);
+  }
+  /** (0.93) An eye of the kind in the sky over the Seraph: white, ringed, staring (drawn once). */
+  eyeTex() {
+    if (this._eyeTex) return this._eyeTex;
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 128;
+    const g = c.getContext('2d');
+    const almond = () => {
+      g.beginPath();
+      g.moveTo(14, 64);
+      g.quadraticCurveTo(128, -30, 242, 64);
+      g.quadraticCurveTo(128, 158, 14, 64);
+      g.closePath();
+    };
+    almond();
+    g.lineWidth = 22;
+    g.strokeStyle = '#ffffff';
+    g.stroke();
+    g.fillStyle = '#f4f1ea';
+    g.fill();
+    g.lineWidth = 7;
+    g.strokeStyle = '#121212';
+    g.stroke();
+    g.save();
+    almond();
+    g.clip();
+    g.fillStyle = '#161616';
+    g.beginPath();
+    g.arc(128, 64, 34, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#ffffff';
+    g.beginPath();
+    g.arc(128, 64, 8, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    this._eyeTex = new THREE.CanvasTexture(c);
+    this._eyeTex.colorSpace = THREE.SRGBColorSpace;
+    return this._eyeTex;
+  }
+  /** (0.93) A thing that plays out over `dur` seconds: up(k, dt) each frame, then it is taken away. */
+  fxBit(obj, dur, up) {
+    this.scene.add(obj);
+    (this.fxBits = this.fxBits || []).push({ obj, t: 0, dur, up });
+    return obj;
+  }
+  /** (0.93) An eye that opens (a blink in reverse), stares, and closes: at (x, y, z), `size` wide. */
+  skyEye(x, y, z, size, dur, delay = 0) {
+    const mat = new THREE.SpriteMaterial({ map: this.eyeTex(), transparent: true, depthWrite: false, opacity: 0 });
+    const s = new THREE.Sprite(mat);
+    s.position.set(x, y, z);
+    s.scale.set(size, 0.01, 1);
+    return this.fxBit(s, dur + delay, (k, t) => {
+      const u = Math.max(0, t - delay) / dur;
+      const open = u <= 0 ? 0 : u < 0.2 ? u / 0.2 : u > 0.85 ? (1 - u) / 0.15 : 1;
+      s.scale.set(size, Math.max(0.01, size * 0.5 * open), 1);
+      mat.opacity = Math.min(1, open * 1.5);
+    });
+  }
+  /** (0.93) A cloud: a cluster of soft white puffs that swells in and thins away. */
+  skyCloud(x, y, z, size, dur, { grow = 0.4, drift = 0 } = {}) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x9aa4b8, emissiveIntensity: 0.55, roughness: 1, transparent: true, opacity: 0, depthWrite: false });
+    const geo = this._puffGeo || (this._puffGeo = new THREE.IcosahedronGeometry(1, 2));
+    for (let i = 0; i < 9; i++) {
+      const m = new THREE.Mesh(geo, mat);
+      const a = (i / 9) * Math.PI * 2;
+      const r = i === 0 ? 0 : 0.55 + 0.25 * ((i * 7) % 3);
+      m.position.set(Math.cos(a) * r * size, (i % 3) * 0.12 * size, Math.sin(a) * r * 0.6 * size);
+      m.scale.setScalar(size * (i === 0 ? 0.6 : 0.36 + 0.08 * (i % 3)));
+      g.add(m);
+    }
+    g.position.set(x, y, z);
+    return this.fxBit(g, dur, (k) => {
+      const s = 1 - grow + grow * Math.min(1, k * 3);
+      g.scale.setScalar(s);
+      g.position.y = y + drift * k;
+      mat.opacity = Math.min(0.92, k * 6) * (k > 0.7 ? (1 - k) / 0.3 : 1);
+    });
+  }
+  /** (0.93) The Seraph gathering light before a skill: eyes, clouds, light where it will land. */
+  seraphWind(ev) {
+    const d = ev.dur || 0.5;
+    if (ev.slot === 'q') {
+      // a crown of eyes opens over its head, and one more where the lance will go
+      for (let i = 0; i < 5; i++) {
+        const a = ev.dir - 1.5 + (i / 4) * 3.0; // an arc ahead of it (none between it and the camera)
+        this.skyEye(ev.x + Math.cos(a) * 1.2, 3.5 + 0.35 * Math.cos((i - 2) * 0.8), ev.z + Math.sin(a) * 1.2, 0.5, d + 0.45, i * 0.04);
+      }
+      this.skyEye(ev.x + Math.cos(ev.dir) * 4, 2.6, ev.z + Math.sin(ev.dir) * 4, 0.9, d + 0.4, 0.1);
+      this.burst(ev.x + Math.cos(ev.dir) * 0.6, 1.7, ev.z + Math.sin(ev.dir) * 0.6, { count: 14, color: 0xfff0c0, speed: 1.2, up: 0.6, life: d, gravity: -1 });
+    } else if (ev.slot === 'w') {
+      // clouds drawn in round it
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const c = this.skyCloud(ev.x + Math.cos(a) * 3.2, 1.2, ev.z + Math.sin(a) * 3.2, 0.7, d + 0.1);
+        const sx = c.position.x, sz = c.position.z;
+        this.fxBits[this.fxBits.length - 1].up2 = (k) => c.position.set(sx + (ev.x - sx) * k * 0.6, 1.2, sz + (ev.z - sz) * k * 0.6);
+      }
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xfff4d8, from: ev.radius || 5, to: 1, dur: d, opacity: 0.6 });
+    } else if (ev.slot === 'r') {
+      // a cloud over where it will come down, its eyes opening on what is beneath (as in the old icons)
+      const x = ev.tx, z = ev.tz;
+      this.skyCloud(x, 6.6, z, 2.2, d + 0.9, { grow: 0.7 });
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        this.skyEye(x + Math.cos(a) * 3.0, 6.2 + (i % 2) * 0.9, z + Math.sin(a) * 3.0, 1.3, d + 0.6, 0.05 + i * 0.06);
+      }
+      this.flash(this.ringGeo(), { x, z, y: 0.12, color: 0xffe9b0, from: 0.5, to: ev.radius || 5, dur: d, opacity: 0.8 });
+      this.flash(this.discGeo(), { x, z, y: 0.1, color: 0xfff4d8, from: ev.radius || 5, to: ev.radius || 5, dur: d + 0.2, opacity: 0.18 });
+    }
+  }
+  /** (0.93) The Seraph's skills landing, and its strike: light, eyes, clouds, feathers. */
+  seraphFx(ev) {
+    if (ev.kind === 'lance') {
+      // a lance of dawn down the line, eyes blinking open along it
+      const len = ev.range || 16, w = ev.width || 1.8;
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(len, w * 0.5, w * 0.5), mat);
+      beam.position.set(ev.x + Math.cos(ev.dir) * len * 0.5, 1.6, ev.z + Math.sin(ev.dir) * len * 0.5);
+      beam.rotation.y = -ev.dir;
+      this.fxBit(beam, 0.5, (k) => {
+        beam.scale.set(1, Math.max(0.05, 1 - k), Math.max(0.05, 1 - k));
+        mat.opacity = 0.95 * (1 - k);
+      });
+      this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.1, dir: ev.dir, color: 0xffd98a, from: len, to: len, sz: (w * 1.6) / len, dur: 0.6, opacity: 0.6 });
+      for (let i = 1; i <= 4; i++) this.skyEye(ev.x + Math.cos(ev.dir) * (len * i) / 4.5, 2.8, ev.z + Math.sin(ev.dir) * (len * i) / 4.5, 1.0, 0.5, i * 0.05);
+      this.burst(ev.x + Math.cos(ev.dir) * len, 1.6, ev.z + Math.sin(ev.dir) * len, { count: 18, color: 0xfff0c0, speed: 6, up: 4, life: 0.6 });
+      this.shake = Math.max(this.shake, 0.3);
+    } else if (ev.kind === 'wings') {
+      // wings open: a ring of cloud thrown out, feathers, a ring of light
+      const R = ev.radius || 5;
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const c = this.skyCloud(ev.x, 0.9, ev.z, 0.75, 0.9, { grow: 0.2 });
+        this.fxBits[this.fxBits.length - 1].up2 = (k) => c.position.set(ev.x + Math.cos(a) * R * Math.min(1, k * 2.2), 0.9 + k * 0.6, ev.z + Math.sin(a) * R * Math.min(1, k * 2.2));
+      }
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xffffff, from: 0.6, to: R * 1.15, dur: 0.45, opacity: 1 });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: R * 0.3, to: R, dur: 0.5, opacity: 0.4 });
+      this.burst(ev.x, 2.2, ev.z, { count: 28, color: 0xfff6e0, speed: 8, up: 5, size: 0.55, life: 1.1, gravity: 2 }); // feathers
+      this.shake = Math.max(this.shake, 0.35);
+    } else if (ev.kind === 'descent') {
+      // it rises: light gathers at the cloud
+      this.burst(ev.x, 1.2, ev.z, { count: 24, color: 0xfff4d8, speed: 2, up: 12, size: 0.6, life: 0.6, gravity: 0 });
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffffff, from: 0.5, to: 3, dur: 0.4, opacity: 0.8 });
+    } else if (ev.kind === 'land') {
+      // a pillar of light from the cloud, and a ring of cloud along the ground
+      const R = ev.radius || 5;
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.5, 14, 24, 1, true), mat);
+      pillar.position.set(ev.x, 7.5, ev.z);
+      mat.opacity = 0.5;
+      this.fxBit(pillar, 0.7, (k) => {
+        pillar.scale.set(1 + 0.8 * k, 1, 1 + 0.8 * k);
+        mat.opacity = 0.5 * (1 - k);
+      });
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xffffff, from: 0.8, to: R * 1.4, dur: 0.6, opacity: 0.9 });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: R * 0.4, to: R, dur: 0.6, opacity: 0.35 });
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const c = this.skyCloud(ev.x, 0.6, ev.z, 0.9, 1.2, { grow: 0.3 });
+        this.fxBits[this.fxBits.length - 1].up2 = (k) => c.position.set(ev.x + Math.cos(a) * R * 1.25 * Math.min(1, k * 1.8), 0.6, ev.z + Math.sin(a) * R * 1.25 * Math.min(1, k * 1.8));
+      }
+      this.burst(ev.x, 1, ev.z, { count: 36, color: 0xfff0c0, speed: 12, up: 8, size: 0.6, life: 0.9 });
+      this.shake = Math.max(this.shake, 0.9);
+    } else if (ev.kind === 'strike') {
+      // a crescent of light, and for a moment an eye where it lands
+      this.flash(this.sectorGeo(2.8, 0.5), { x: ev.x, z: ev.z, y: 1.2, dir: ev.dir, color: 0xffe2a0, from: 2.6, to: 3.4, dur: 0.28, opacity: 0.75 });
+      this.skyEye(ev.tx, 2.6, ev.tz, 0.8, 0.35);
+      this.burst(ev.tx, 1.2, ev.tz, { count: 10, color: 0xfff4d8, speed: 5, up: 3, life: 0.4 });
+    } else if (ev.kind === 'glide') {
+      const n = 6;
+      for (let i = 0; i < n; i++) this.skyCloud(ev.x + (ev.ex - ev.x) * (i / n), 0.8, ev.z + (ev.ez - ev.z) * (i / n), 0.55, 0.9, { grow: 0.5, drift: 0.6 });
+    }
+  }
+
   updateFlashes(dt) {
+    if (this.fxBits && this.fxBits.length) {
+      // (0.93) the Seraph's eyes, clouds and light
+      for (const b of this.fxBits) {
+        b.t += dt;
+        const k = Math.min(1, b.t / b.dur);
+        b.up(k, b.t);
+        if (b.up2) b.up2(k);
+        if (k >= 1) {
+          this.scene.remove(b.obj);
+          b.obj.traverse((o) => { if (o.material && o.material.dispose) o.material.dispose(); if (o.geometry && o.geometry !== this._puffGeo && o.geometry.dispose) o.geometry.dispose(); });
+          b.done = true;
+        }
+      }
+      this.fxBits = this.fxBits.filter((b) => !b.done);
+    }
     if (this.laters && this.laters.length) {
       const due = [];
       this.laters = this.laters.filter((l) => ((l.t -= dt) > 0 ? true : (due.push(l), false)));
@@ -1336,11 +1535,22 @@ export class Renderer {
         an.swing = 0;
         an.swingDur = Math.max(0.12, ev.dur * 1.5);
         // the swipe only for melee swings (0.37: the Archer's draw showed a sword arc in front of her)
+        if (ev.seraph) break; // (0.93) the Seraph's strike draws its own crescent as it lands (seraphFx)
         if ((ev.ally ? an.cls : this.heroCls) !== 'archer' && (ev.ally ? an.cls : this.heroCls) !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
         break;
       }
+      case 'seraphFx':
+        this.seraphFx(ev); // (0.93)
+        break;
       case 'cast': {
         const an = ev.ally ? this.allyAnim(ev.hero) : this.heroAnim;
+        if (ev.seraph === 'wind') {
+          // (0.93) the Seraph gathers light: its own pose, and the sky answers
+          an.move = ev.fx;
+          this.seraphWind(ev);
+          break;
+        }
+        if (ev.fx === 'dash' && (ev.ally ? (this.allyViews.get(ev.hero) || {}).look === 'statue' : this.heroCls === 'statue')) this.seraphFx({ kind: 'glide', x: ev.x, z: ev.z, ex: ev.ex, ez: ev.ez });
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
         if (fx !== 'cone' && !ev.noMove) an.move = fx; // a skill with its own animation (rigged.js moves; noMove: the shot that ends a channel, already animated)
@@ -1670,6 +1880,10 @@ export class Renderer {
         }
         break;
       case 'impact': {
+        if (ev.seraph) {
+          this.seraphFx({ kind: 'land', x: ev.x, z: ev.z, radius: ev.radius }); // (0.93) Descent: a pillar of light
+          break;
+        }
         // Skyfall lands hard; its aftershock and the Retribution shockwave are lighter.
         const big = ev.kind === 'skyfall';
         const tint = ev.kind === 'retribution' ? COLORS.immortal : ev.kind === 'aftershock' ? 0xffe2a0 : ev.kind === 'starfall' ? 0xfff0a0 : ev.kind === 'cinderfall' ? 0xff7a2a : 0x7fd8ff;
@@ -2073,6 +2287,8 @@ export class Renderer {
     const z = lerp(p.pz, p.z, alpha) + (pr ? pr.dz : 0);
     let y = 0;
     if (p.leap) y = Math.sin(Math.PI * Math.min(1, p.leap.t / p.leap.dur)) * 5.5;
+    const sera = this.heroCls === 'statue';
+    if (sera) y += this.seraphHover(h, !!p.moving && !p.dash && !p.leap, dt); // (0.93) the Seraph hovers and glides
     g.position.set(x, y, z);
     g.rotation.y = Math.PI / 2 - (pr ? pr.facing : p.facing);
     // (0.89) over the shoulder, standing still and not fighting: turn to where you look
@@ -2148,8 +2364,13 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
+      if (sera) {
+        // (0.93) gliding: leaning into it, robes trailing (the idle plays on underneath)
+        g.rotation.order = 'YXZ';
+        g.rotation.x = h.seraLean || 0;
+      }
       // The blade's glowing trail.
       if (!this.heroTrail) {
         this.heroTrail = new SlashTrail(0x9fd8ff);
@@ -3340,8 +3561,11 @@ export class Renderer {
         g.position.set(x, 0, z);
         v.model.anim(dt, { moving: a.moving, dead: a.dead, swing: an.swing });
       } else if (v.model.rig) {
-        g.rotation.x = 0;
-        g.position.set(x, 0, z);
+        const sera = v.look === 'statue'; // (0.93) a friend in their Seraph hovers too
+        const hov = sera ? this.seraphHover(v.model, !!a.moving && !a.dash && !a.leap, dt) : 0;
+        g.rotation.order = 'YXZ';
+        g.rotation.x = sera ? v.model.seraLean || 0 : 0;
+        g.position.set(x, hov + (a.leap ? 0 : 0), z);
         // their attacks, skills, rolls and leaps, like this player's own (0.41.1)
         let move = an.move;
         let moveDur = 0;
@@ -3354,7 +3578,7 @@ export class Renderer {
         if (spinning) v.spinAngle = (v.spinAngle || 0) + dt * Math.PI * 2 * 2.4;
         else v.spinAngle = 0;
         v.model.rig.group.rotation.y = (v.model.rig.baseTurn || 0) + v.spinAngle;
-        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
       } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);

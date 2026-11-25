@@ -162,7 +162,7 @@ export const STATUE = {
   startBelow: 4, // it starts this many levels under the best Night held
   maxLvl: 50,
   atk: 30, body: 650,
-  as: 1.15, ms: 7.0, crit: 10,
+  as: 0.95, ms: 7.0, crit: 10, // (0.93: slower, heavier strikes)
   rest: 60, // seconds as stone, once felled
   need: (lvl) => Math.round(30 * (1 + 0.4 * (lvl - 1))), // xp from lvl to lvl + 1
   // xp for one of the Unmade it fells (by the Night's pay); a Night or raid it fights in and holds: `held` times that
@@ -172,14 +172,18 @@ export const STATUE = {
   offer: (lvl) => ({ faith: Math.round(40 * (1 + 0.4 * (lvl - 1))) }), // Faith for a quarter of a level
   offerShare: 0.25,
 };
-/** (0.92) The Seraph's own kit (the keys are the class kit's: Q, W, E (on Shift over the shoulder), R). */
+/**
+ * (0.92) The Seraph's own kit (the keys are the class kit's: Q, W, E (on Shift over the shoulder), R).
+ * (0.93) Celestial and heavy: Dawnlance, Wingbeat and Descent gather light first (`wind` seconds, rooted),
+ * then land far harder.
+ */
 export const STATUE_KIT = {
-  q: { key: 'Q', name: 'Dawnlance', type: 'line', icon: 'line', unlock: 1, cd: 5, range: 15, width: 1.6, dmg: (s) => 2.0 * s.ad, desc: 'A lance of light from its hand, through everything in a line.' },
-  w: { key: 'W', name: 'Wingbeat', type: 'nova', icon: 'w', unlock: 1, cd: 9, radius: 4.6, knockback: 8, mend: 0.15, dmg: (s) => 1.4 * s.ad, desc: 'Its wings open: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
-  e: { key: 'E', name: 'Glide', type: 'dash', icon: 'e', unlock: 1, cd: 6, range: 7, minRange: 3, duration: 0.3, width: 1.4, dmg: (s) => 0.8 * s.ad, desc: 'Glide toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
-  r: { key: 'R', name: 'Descent', type: 'leap', icon: 'r', unlock: 5, cd: 24, range: 10, radius: 5, duration: 0.55, stun: 1.2, dmg: (s) => 3.5 * s.ad, desc: 'Rise and come down where you aim, striking everything there and stunning it (from level 5).' },
+  q: { key: 'Q', name: 'Dawnlance', type: 'line', icon: 'line', unlock: 1, cd: 5, wind: 0.45, range: 16, width: 1.8, dmg: (s) => 3.4 * s.ad, desc: 'Eyes open in a ring of light behind it; a breath later, a lance of dawn through everything in a line.' },
+  w: { key: 'W', name: 'Wingbeat', type: 'nova', icon: 'w', unlock: 1, cd: 9, wind: 0.3, radius: 5, knockback: 9, mend: 0.15, dmg: (s) => 2.4 * s.ad, desc: 'Its wings draw in, then open in a burst of cloud: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
+  e: { key: 'E', name: 'Glide', type: 'dash', icon: 'e', unlock: 1, cd: 6, range: 7.5, minRange: 3, duration: 0.32, width: 1.6, dmg: (s) => 1.2 * s.ad, desc: 'Glide on a trail of cloud toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
+  r: { key: 'R', name: 'Descent', type: 'leap', icon: 'r', unlock: 5, cd: 24, wind: 0.9, range: 11, radius: 5.5, duration: 0.55, stun: 1.6, dmg: (s) => 6.5 * s.ad, desc: 'A cloud gathers over where you aim and its eyes open on what is beneath; then it rises and comes down there as a pillar of light, striking everything and stunning it (from level 5).' },
 };
-export const STATUE_BASIC = { range: 2.6, mult: 1 };
+export const STATUE_BASIC = { range: 2.8, mult: 1.6 }; // (0.93: slower, half again as hard)
 /** (0.92) The Night a Seraph of this level is a match for: how hard it hits and how much it takes. */
 export const statuePower = (lvl) => NIGHT.power(Math.max(1, Math.min(STATUE.maxLvl, lvl)));
 /** (0.92) The highest level the Seraph can reach now: the best Night held. */

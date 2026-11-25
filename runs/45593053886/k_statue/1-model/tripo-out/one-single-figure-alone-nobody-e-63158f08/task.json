@@ -1,0 +1,32 @@
+{
+  "task_id": "63158f08-c428-4061-8ab1-aac2f72c85e4",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "ONE single figure alone, nobody else in the scene: a living angel statue carved by village worshippers, a tall serene guardian of pale cream marble, long carved stone robes with thin gold-leaf trim, a plain carved stone circlet on smooth stone hair, a calm smooth stone face with closed eyes, two large feathered stone wings folded close against the back, thin cracks of warm golden light glowing through the stone, bare stone feet, open empty hands, no weapon, no sword, no plinth. stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-25T10:14:39.911203Z",
+  "completed_at": "2026-11-25T10:20:02.062698Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

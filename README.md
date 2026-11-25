@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The mage holds her staff her own way (0.97.2)
+
+- **Standing:** she holds the staff upright at her right side, its foot on the ground by her foot and her left hand on her hip. It no longer sticks out from her hand.
+- **Running:** the staff trails low behind her, held near its foot.
+- **Casting:** still swings the staff as before.
+
 ### Sheathing (0.97.1)
 
 - Heroes now put their weapon away with a motion instead of it jumping into place. This happens when you start walking, or when an attack or skill ends while you're walking.

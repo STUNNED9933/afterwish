@@ -190,6 +190,14 @@ export const RIGGED = {
     hand: 'R_Hand',
     staff: true,
     weaponScale: 0.82,
+    // (0.97.2) Standing, she holds the staff upright at her side, its foot on the ground by her right foot, her
+    // left hand on her hip; running, it trails low behind her, held near its foot. at: where her right hand is
+    // (metres from the bone, bind pose, model space +X forward +Y up +Z her right); dir: the staff, foot to head.
+    staffPose: {
+      idle: { bone: 'Pelvis', at: [0.15, 0.06, 0.3], dir: [0.08, 1, -0.03], hang: true, ground: true },
+      run: { bone: 'Pelvis', at: [-0.3, -0.2, 0.27], dir: [-0.93, -0.3, 0.2], hang: true, hold: 0.1 },
+      hip: { bone: 'Pelvis', at: [0.03, 0.06, -0.2], hang: true, hand: 'L_Hand', pole: [-0.35, -0.25, -1] },
+    },
     // (0.97) walking, the staff is slung across her back, its head over her right shoulder
     stow: { main: { bone: 'Spine02', at: [-0.24, -0.02, 0.02], dir: [-0.1, 0.84, 0.53], reach: { bone: 'R_Upperarm', at: [-0.16, 0.2, -0.06] } }, time: 0.75 },
     idle: 'idle',
@@ -733,7 +741,7 @@ export function instantiate(tpl) {
     bone.updateWorldMatrix(false, true);
   };
   // two-bone reach: the palm to targetW (world), the elbow staying on the side the walk had it
-  const reachArm = (st, targetW, w) => {
+  const reachArm = (st, targetW, w, poleW = null) => {
     const hand = st.hand, fore = hand && hand.parent, upper = fore && fore.parent;
     if (!upper || w <= 0.001) return;
     ikRest.push([upper, upper.quaternion.clone()], [fore, fore.quaternion.clone()]);
@@ -745,7 +753,7 @@ export function instantiate(tpl) {
     ikD.copy(ikT).sub(ikS);
     const d = Math.min(Math.max(ikD.length(), 1e-4), (a + b) * 0.999);
     ikD.normalize();
-    const pole = ikE.clone().sub(ikS);
+    const pole = poleW ? poleW.clone() : ikE.clone().sub(ikS);
     pole.addScaledVector(ikD, -pole.dot(ikD));
     if (pole.lengthSq() < 1e-8) pole.set(0, -1, 0);
     pole.normalize();
@@ -755,6 +763,27 @@ export function instantiate(tpl) {
     fore.getWorldPosition(ikE); hand.getWorldPosition(ikW);
     turnBone(fore, ikW.clone().sub(ikE), ikT.clone().sub(ikE), w);
   };
+  // (0.97.2) the mage's own ways of holding her staff (spec.staffPose), each an anchor riding the hips
+  const anchors = {};
+  for (const [k, def] of Object.entries(spec.staffPose || {})) {
+    const bone = root.getObjectByName(def.bone);
+    const handBone = root.getObjectByName(def.hand || spec.hand);
+    if (!bone || !handBone) continue;
+    const bp = new THREE.Vector3(), bq = new THREE.Quaternion();
+    new THREE.Matrix4().multiplyMatrices(rootInv0, bone.matrixWorld).decompose(bp, bq, new THREE.Vector3());
+    anchors[k] = { def, bone, hand: handBone, palm: gripAt(handBone), bqi: bq.clone().invert(), atM: new THREE.Vector3(...def.at).multiplyScalar(1 / tpl.scale), dirM: def.dir ? new THREE.Vector3(...def.dir).normalize() : null, poleM: def.pole ? new THREE.Vector3(...def.pole).normalize() : null, pos: new THREE.Vector3(), dir: new THREE.Vector3(), yaw: new THREE.Quaternion(), w: 0 };
+  }
+  const groundY = new THREE.Box3().setFromObject(root).min.y; // the floor, in the model's own space
+  const placeAnchors = (inv) => {
+    for (const an of Object.values(anchors)) {
+      stowM.multiplyMatrices(inv, an.bone.matrixWorld).decompose(stowP, stowQ, stowS);
+      stowF.set(1, 0, 0).applyQuaternion(stowQ.multiply(an.bqi));
+      an.yaw.setFromAxisAngle(Y_AXIS, Math.atan2(-stowF.z, stowF.x));
+      an.pos.copy(an.atM).applyQuaternion(an.yaw).add(stowP);
+      if (an.dirM) an.dir.copy(an.dirM).applyQuaternion(an.yaw);
+    }
+  };
+  let staffSpan = null; // the staff's own ends (its local z), measured once
   // where the weapon is while it is being sheathed (in hand at palmPos / inHandQ to begin with)
   const sheathPose = (k, pos, quat) => {
     const st = stows[k], f = sheathing[k] / ((spec.stow && spec.stow.time) || 0.7);
@@ -949,6 +978,24 @@ export function instantiate(tpl) {
         }
         if (Object.keys(sheathing).length) root.updateMatrixWorld(true);
       }
+      if (anchors.idle || anchors.run) {
+        // (0.97.2) how much she stands or runs (and nothing else moves her arms): the staff held her own way
+        const free = !s.dead && !s.spinning && !move && attackLeft <= 0 && !stowed;
+        const wOf = (a) => (free && a && (a.isRunning() || a === current) ? a.getEffectiveWeight() : 0);
+        const idleW = wOf(actions.idle), runW = wOf(actions.run);
+        root.updateMatrixWorld(true);
+        const inv = tmpM.copy(root.matrixWorld).invert();
+        placeAnchors(inv);
+        if (anchors.idle) anchors.idle.w = idleW;
+        if (anchors.run) anchors.run.w = runW;
+        if (anchors.hip) anchors.hip.w = idleW;
+        for (const an of Object.values(anchors)) {
+          if (an.w < 0.01) continue;
+          const pole = an.poleM ? an.poleM.clone().applyQuaternion(an.yaw).transformDirection(root.matrixWorld) : null;
+          reachArm(an, root.localToWorld(an.pos.clone()), an.w, pole);
+        }
+        root.updateMatrixWorld(true);
+      }
       if (bow) {
         let aimW = 0;
         for (const a of aiming) if (a.isRunning() || a === current) aimW += a.getEffectiveWeight();
@@ -1004,6 +1051,13 @@ export function instantiate(tpl) {
             h.hand.getWorldPosition(staffB);
             staffB.sub(staffA).transformDirection(inv);
             staffUp.set(0, 1, 0).addScaledVector(staffB, 0.35).normalize();
+            // (0.97.2) upright at her side standing, trailing behind her running
+            let slideW = 0, slideAn = null;
+            for (const an of [anchors.idle, anchors.run]) {
+              if (!an || an.w < 0.01) continue;
+              staffUp.lerp(an.dir, an.w).normalize();
+              if (an.w > slideW) { slideW = an.w; slideAn = an; }
+            }
             h.obj.quaternion.setFromUnitVectors(zAxis, staffUp);
             if (fistHole && !(stowed && stows.main)) {
               // bend the wrist so the fist closes round the staff, knuckles along it, as a hand holds a
@@ -1024,6 +1078,24 @@ export function instantiate(tpl) {
             }
             const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
             h.obj.position.copy(h.palm).applyMatrix4(hm);
+            if (slideAn) {
+              // slide it through her hand: its foot on the ground (standing), or held near its foot (running)
+              let firstMesh = null;
+              h.obj.traverse((o) => { if (!firstMesh && o.isMesh) firstMesh = o; });
+              if (!staffSpan || staffSpan.key !== (firstMesh && firstMesh.uuid)) {
+                const bb = new THREE.Box3();
+                h.obj.updateMatrixWorld(true);
+                const invO = new THREE.Matrix4().copy(h.obj.matrixWorld).invert();
+                h.obj.traverse((o) => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(invO, o.matrixWorld))); } });
+                staffSpan = [bb.min.z, bb.max.z];
+                staffSpan.key = firstMesh && firstMesh.uuid; // (a new look is measured again)
+              }
+              const sc = h.obj.scale.x, axis = staffUp;
+              let t;
+              if (slideAn.def.ground) t = axis.y > 0.2 ? (groundY + 0.01 - (h.obj.position.y + axis.y * staffSpan[0] * sc)) / axis.y : 0;
+              else t = -(staffSpan[0] + (slideAn.def.hold || 0.2) * (staffSpan[1] - staffSpan[0])) * sc;
+              h.obj.position.addScaledVector(axis, t * slideW);
+            }
             if (stowed && stows.main) {
               // (0.97) across her back
               if (sheathing.main != null) sheathPose('main', h.obj.position, h.obj.quaternion);

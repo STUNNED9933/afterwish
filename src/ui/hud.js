@@ -19,7 +19,7 @@ import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
 import { wishWhere } from '../sim/wishwhere.js'; // (0.81.2)
-import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE } from '../sim/wishkeep.js';
+import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, statueCap } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** (0.87) What each of the god's cards does, for its tooltip. */
@@ -383,9 +383,18 @@ export class Hud {
     const maxed = p.level >= CONFIG.MAX_LEVEL;
     // Past 100 the bar fills Wishborne levels instead (0.26).
     const wneed = maxed ? (world.wishNeedNow ? world.wishNeedNow(p) : wishNeed(p.wish || 0)) : 0;
-    $('xp-fill').style.transform = `scaleX(${maxed ? Math.min(1, (p.wishExp || 0) / wneed) : p.exp / need})`;
-    $('xp-text').textContent = maxed ? `Wishborne ${p.wish || 0} · ${p.wishExp || 0} / ${wneed}` : `${p.exp} / ${need} EXP`;
-    $('level-badge').textContent = p.level;
+    const st = p.possess && p.keep && p.keep.statue; // (0.94) in the Seraph: its own growth on the bar
+    document.body.classList.toggle('seraph-xp', !!st);
+    if (st) {
+      const sneed = STATUE.need(st.lvl), cap = statueCap(p.keep);
+      $('xp-fill').style.transform = `scaleX(${st.lvl >= cap ? 1 : Math.min(1, st.xp / sneed)})`;
+      $('xp-text').textContent = st.lvl >= cap ? `Seraph level ${st.lvl} · as high as your best Night` : `Seraph level ${st.lvl} · ${st.xp} / ${sneed}`;
+      $('level-badge').textContent = st.lvl;
+    } else {
+      $('xp-fill').style.transform = `scaleX(${maxed ? Math.min(1, (p.wishExp || 0) / wneed) : p.exp / need})`;
+      $('xp-text').textContent = maxed ? `Wishborne ${p.wish || 0} · ${p.wishExp || 0} / ${wneed}` : `${p.exp} / ${need} EXP`;
+      $('level-badge').textContent = p.level;
+    }
     if (p.gold !== this.lastGold || p.tickets !== this.lastTickets) {
       this.lastGold = p.gold;
       this.lastTickets = p.tickets;

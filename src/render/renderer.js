@@ -1414,10 +1414,59 @@ export class Renderer {
       this.flash(this.discGeo(), { x, z, y: 0.1, color: 0xfff4d8, from: ev.radius || 5, to: ev.radius || 5, dur: d + 0.2, opacity: 0.18 });
     }
   }
+  /** (0.94) Hand of Heaven: a fist of light comes down out of a cloud onto (x, z) in `delay` seconds. */
+  seraphFist(x, z, delay, radius) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xfff8ee, emissive: 0xffd98a, emissiveIntensity: 0.65, roughness: 0.6, transparent: true, opacity: 0.96 });
+    const box = (w, h, d, px, py, pz) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(px, py, pz);
+      g.add(m);
+      return m;
+    };
+    // knuckles down: the back of the hand on top, four curled fingers in a row beneath, the thumb across
+    box(1.7, 1.2, 1.5, 0, 0.6, 0);
+    for (let i = 0; i < 4; i++) box(0.4, 0.55, 0.62, -0.62 + i * 0.41, -0.15, 0.35).rotation.x = 0.3;
+    box(0.42, 0.42, 1.1, -0.95, 0.2, 0.1).rotation.y = 0.5;
+    box(1.3, 2.2, 1.2, 0, 2.2, 0); // the arm, up into the cloud
+    g.scale.setScalar(radius / 3);
+    const top = 7.5, bottom = 0.4; // out of the cloud its gathering made (seraphWind)
+    g.position.set(x, top, z);
+    this.flash(this.ringGeo(), { x, z, y: 0.12, color: 0xffe9b0, from: radius * 1.3, to: radius * 0.4, dur: delay, opacity: 0.8 });
+    this.fxBit(g, delay + 0.5, (k, t) => {
+      const u = Math.min(1, t / delay);
+      g.position.y = top + (bottom - top) * u * u; // gathering speed as it falls
+      mat.opacity = t > delay ? 0.96 * (1 - (t - delay) / 0.5) : 0.96;
+    });
+  }
   /** (0.93) The Seraph's skills landing, and its strike: light, eyes, clouds, feathers. */
   seraphFx(ev) {
-    if (ev.kind === 'lance') {
-      // a lance of dawn down the line, eyes blinking open along it
+    if (ev.kind === 'lance' || ev.kind === 'choir') {
+      // (0.94) loosed: light from its hand (the lance and the eyes fly as shots)
+      this.burst(ev.x + Math.cos(ev.dir) * 0.8, 1.8, ev.z + Math.sin(ev.dir) * 0.8, { count: 16, color: 0xfff0c0, speed: 4, up: 2, life: 0.4, size: 0.6 });
+      this.shake = Math.max(this.shake, 0.15);
+    } else if (ev.kind === 'halo') {
+      const R = ev.radius || 6;
+      this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xfff2c8, from: R, to: R, dur: 5, opacity: 0.7 });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: R, to: R, dur: 5, opacity: 0.18 });
+      for (let i = 0; i < 6; i++) this.skyEye(ev.x + Math.cos(i * 1.047) * R * 0.8, 2.4, ev.z + Math.sin(i * 1.047) * R * 0.8, 0.7, 4.6, i * 0.08);
+    } else if (ev.kind === 'rain') {
+      this.flash(this.ringGeo(), { x: ev.tx, z: ev.tz, y: 0.12, color: 0xffe9b0, from: 0.5, to: ev.radius || 10, dur: 0.5, opacity: 0.7 });
+    } else if (ev.kind === 'ray') {
+      // one ray of the Rain of Eyes: an eye opens above, and looks down
+      this.skyEye(ev.x, 6.4, ev.z, 1.2, 0.6);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 6, 10, 1, true), mat);
+      ray.position.set(ev.x, 3, ev.z);
+      this.fxBit(ray, 0.35, (k) => {
+        mat.opacity = 0.8 * (1 - k);
+      });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: 0.4, to: 1.6, dur: 0.3, opacity: 0.6 });
+      this.burst(ev.x, 0.6, ev.z, { count: 6, color: 0xfff4d8, speed: 4, up: 3, life: 0.35, size: 0.5 });
+    } else if (ev.kind === 'hand') {
+      // the pointing: light gathers at its raised hand
+      this.burst(ev.x, 2.6, ev.z, { count: 14, color: 0xfff4d8, speed: 2, up: 4, life: 0.5, size: 0.6 });
+    } else if (ev.kind === 'lance_old') {
       const len = ev.range || 16, w = ev.width || 1.8;
       const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
       const beam = new THREE.Mesh(new THREE.BoxGeometry(len, w * 0.5, w * 0.5), mat);
@@ -1551,6 +1600,14 @@ export class Renderer {
           break;
         }
         if (ev.fx === 'dash' && (ev.ally ? (this.allyViews.get(ev.hero) || {}).look === 'statue' : this.heroCls === 'statue')) this.seraphFx({ kind: 'glide', x: ev.x, z: ev.z, ex: ev.ex, ez: ev.ez });
+        if (ev.fist) {
+          this.seraphFist(ev.x, ev.z, ev.delay || 0.5, ev.radius || 6); // (0.94) Hand of Heaven
+          break;
+        }
+        if (ev.halo) {
+          this.seraphFx({ kind: 'halo', x: ev.x, z: ev.z, radius: ev.radius });
+          break;
+        }
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
         if (fx !== 'cone' && !ev.noMove) an.move = fx; // a skill with its own animation (rigged.js moves; noMove: the shot that ends a channel, already animated)
@@ -1880,6 +1937,10 @@ export class Renderer {
         }
         break;
       case 'impact': {
+        if (ev.kind === 'hand') {
+          this.seraphFx({ kind: 'land', x: ev.x, z: ev.z, radius: ev.radius, fist: true }); // (0.94) the fist lands
+          break;
+        }
         if (ev.seraph) {
           this.seraphFx({ kind: 'land', x: ev.x, z: ev.z, radius: ev.radius }); // (0.93) Descent: a pillar of light
           break;
@@ -2680,7 +2741,7 @@ export class Renderer {
       }
       if (pr.volley > 0) m.userData.volley = pr.volley; // (0.81.5) arrows folded into this one
       m.userData.kind = pr.kind;
-      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a }[pr.kind]; // the hero's own shots
+      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a, lance: 0xfff0c0, eye: 0xffffff }[pr.kind]; // the hero's own shots (0.94: the Seraph's lance and eyes)
       m.userData.color = own || 0xd78bff;
       m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
@@ -2705,6 +2766,26 @@ export class Renderer {
         if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, -a, 0);
         m.position.set(m.position.x - Math.cos(a) * w * 0.7, 1.0, m.position.z - Math.sin(a) * w * 0.7);
         if (Math.random() < 0.8) this.burst(m.position.x + Math.cos(a) * w * 0.7, 1.0, m.position.z + Math.sin(a) * w * 0.7, { count: 1, color: 0xff5050, speed: 0.6, up: 0.3, gravity: 0, life: 0.3, size: 1.1 });
+      }
+      if (pr.kind === 'lance') {
+        // (0.94) Dawnlance: a long spear of light, pointing where it flies, a gold wake behind it
+        m.scale.set(0.7, 0.7, 4.2);
+        if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, Math.atan2(pr.x - pr.px, pr.z - pr.pz), 0);
+        m.position.y = 1.8;
+        this.burst(m.position.x, 1.8, m.position.z, { count: 2, color: 0xffe2a0, speed: 0.8, up: 0.3, gravity: 0, life: 0.5, size: 0.8 });
+      }
+      if (pr.kind === 'eye') {
+        // (0.94) Choir of Eyes: an eye that flies, staring
+        if (!m.userData.eye) {
+          const sm = new THREE.SpriteMaterial({ map: this.eyeTex(), transparent: true, depthWrite: false });
+          const sp = new THREE.Sprite(sm);
+          sp.scale.set(2.2, 1.1, 1);
+          m.add(sp);
+          m.userData.eye = sp;
+          m.material.visible = false;
+        }
+        m.position.y = 1.9;
+        if (Math.random() < 0.5) this.burst(m.position.x, 1.9, m.position.z, { count: 1, color: 0xfff6e0, speed: 0.4, up: 0.2, gravity: 0, life: 0.4, size: 0.7 });
       }
       if (pr.kind === 'kunai') {
         // A thin blade pointing where it flies.

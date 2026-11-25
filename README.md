@@ -160,6 +160,33 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Seraph's choices, easier controls, Treasure Sense (0.94)
+
+**Fixed: stuck in the Seraph.** Online and in rooms, leaving the Wishkeep as the Seraph and coming back could leave your screen stuck in it, with Y doing nothing and your class's skills on the bar. A hero now always carries the Seraph state, so every screen clears it when you change maps. Leaving the keep by any route ends possession.
+
+**Skills that land.**
+- Dawnlance (Q) is now a lance of light that homes in on the enemy you aim at (26 m) and bursts on it. Its gather time is shorter (0.35 s).
+- Descent (R) now goes where you look, never sideways to a locked-on enemy, and reaches 14 m. It pulls everything within 8 m into its landing before it strikes, so it no longer misses.
+- Any skill that lands on the ground (leaps, blasts from the sky) aims where you look, not at your locked target.
+
+**Skill choices.** Choose the Seraph's skills at its plinth, one per key. New ones open as it levels:
+- **Choir of Eyes** (Q, level 10): six flying eyes, each homing in on its own enemy.
+- **Hand of Heaven** (R, level 15): a fist of light comes down out of the clouds where you aim (24 m), stunning everything under it. The Seraph stays where it is.
+- **Halo of Mercy** (E, level 20): a 5-second ring of light that slows and burns the Unmade and heals your heroes by 30%.
+- **Shower of Feathers** (Shift, level 25): a glide that ends in six homing feathers.
+- **Rain of Eyes** (R, level 30): ten rays of light fall on the enemies around where you aim.
+
+**The Seraph's growth on screen.** While you are in it, the experience bar shows its level and XP in pale gold. Every kill pops a "+XP" number and flashes the bar.
+
+**Over-the-shoulder controls.**
+- The mouse is captured as soon as you possess the Seraph or start walking, with no click needed.
+- **Hold Alt** to free the mouse for the screen; let go to look around again.
+- **Tap Ctrl** to switch between walking and running. Walking is a steady pace that gear does not change.
+- **Hold N** for about a second to call the Night from the Seraph (or while walking), at the level last chosen at the Hearth. Because you have to hold it, a stray press does nothing.
+- Every key is listed in the two-line hint bar at the top, showing only the ones that apply right now.
+
+**Treasure Sense (Rogue).** A Rogue makes gear drop 35% more often, for themselves and for everyone in their party on the same map. Several Rogues do not stack. The party is told when it is active.
+
 ### A celestial Seraph, louder skills, stronger masteries (0.93)
 
 **The Seraph floats.** She hovers above the ground and glides instead of running, leaning into the movement with a little light trailing behind. Her stone glows faintly gold from within.

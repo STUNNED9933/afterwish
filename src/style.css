@@ -1375,7 +1375,20 @@ body.keep-guest #abilities > * { opacity: 0.35; filter: grayscale(0.8); }
 #shoulder-ui.on .sh-keys { display: block; position: absolute; left: 50%; top: 64px; transform: translateX(-50%); padding: 5px 12px; border-radius: 6px; background: rgba(10, 12, 20, 0.7); color: #e8e4d8; font-size: 13px; white-space: nowrap; }
 #shoulder-ui .sh-keys kbd { padding: 0 5px; margin: 0 1px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font: inherit; font-size: 12px; }
 #shoulder-ui .sh-click { display: none; color: #ffd76a; }
-#shoulder-ui.free .sh-click { display: inline; }
+#shoulder-ui.free:not(.alt) .sh-click { display: inline; }
+/* (0.94) every key over the shoulder, in two lines at the top; what applies here shows */
+#shoulder-ui .sh-keys > div + div { margin-top: 3px; }
+#shoulder-ui .sh-posin, #shoulder-ui .sh-nightk, #shoulder-ui .sh-altk { display: none; }
+#shoulder-ui.has-seraph .sh-posin { display: inline; }
+#shoulder-ui.can-night .sh-nightk { display: inline; }
+#shoulder-ui.alt .sh-altk { display: inline; color: #ffd76a; }
+#shoulder-ui.alt .xhair { opacity: 0.25; }
+#shoulder-ui .sh-night { display: none; }
+#shoulder-ui .sh-night.on { display: block; position: absolute; left: 50%; top: 26%; transform: translateX(-50%); width: 320px; text-align: center; color: #fff0c8; text-shadow: 0 1px 4px #000; font-size: 18px; }
+#shoulder-ui .sh-night i { display: block; height: 8px; margin: 8px 0 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+#shoulder-ui .sh-night u { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff6a7a, #ffd8c0); box-shadow: 0 0 12px #ff6a7a; }
+#shoulder-ui .sh-night small { font-size: 12.5px; color: #e8e0c8; }
+#shoulder-ui .sh-night kbd { padding: 0 5px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font-size: 12px; }
 #shoulder-ui .sh-chan { display: none; }
 #shoulder-ui.chan .sh-chan { display: block; position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: 320px; text-align: center; color: #fff0c8; text-shadow: 0 1px 4px #000; font-size: 17px; }
 #shoulder-ui .sh-chan i { display: block; height: 8px; margin: 8px 0 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
@@ -1409,10 +1422,15 @@ body.shoulder-on #prompt { display: none; }
 /* (0.92) the Seraph: the offer to take it up (beside the walk), and the way out */
 #shoulder-ui .sh-pos { display: none; }
 #shoulder-ui.can-pos .sh-pos { display: block; position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); pointer-events: auto; padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255, 236, 190, 0.7); background: rgba(30, 28, 22, 0.85); color: #fff4d8; font: inherit; font-size: 14px; cursor: pointer; }
-#shoulder-ui.can-pos.walk .sh-pos { bottom: auto; top: 108px; }
+#shoulder-ui.can-pos.walk .sh-pos { bottom: auto; top: 132px; }
 #shoulder-ui.can-pos .sh-pos:hover { background: rgba(60, 52, 30, 0.92); }
 #shoulder-ui .sh-pos kbd { padding: 0 5px; margin-left: 4px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font-size: 12px; }
 #shoulder-ui .sh-posk { display: none; }
 #shoulder-ui.pos .sh-posk { display: inline; }
 #miracles .mir.seraph { border-color: rgba(255, 236, 190, 0.6); }
+/* (0.94) the Seraph's growth on the experience bar: pale gold, and a glow when it climbs */
+body.seraph-xp #xp-fill { background: linear-gradient(90deg, #f4d98a, #fff4d0); box-shadow: 0 0 8px rgba(255, 226, 150, 0.7); }
+body.seraph-xp #level-badge { color: #fff4d0; text-shadow: 0 0 6px rgba(255, 220, 140, 0.9); }
+#xp-fill.pulse { animation: seraphPulse 0.5s ease-out; }
+@keyframes seraphPulse { 0% { filter: brightness(2.2); } 100% { filter: brightness(1); } }
 #miracles .mir.seraph i { background: #ffe9b0; }

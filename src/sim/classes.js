@@ -76,7 +76,7 @@ export const CLASSES = {
     blurb: 'Fast and fragile. Gets behind enemies, or stuns them with a parry, then bursts them down.',
     stats: { hp: 0.85, ad: 1.05, as: 1.2, armor: 0.75, ms: 1.15, crit: 15, haste: 0 },
     basic: { range: 2.1, mult: 1 },
-    passive: { name: 'Opportunist', desc: '+15% crit chance. Mercy Stroke hits far harder from behind or on a stunned enemy.' },
+    passive: { name: 'Opportunist', loot: 0.35, desc: '+15% crit chance. Mercy Stroke hits far harder from behind or on a stunned enemy. Treasure Sense (0.94): you, and everyone in your party, find gear 35% more often (several Rogues do not add up).' },
     abilities: {
       q: {
         key: 'Q', name: 'Mercy Stroke', type: 'strike', icon: 'strike', unlock: 1, cd: 3.5, range: 3.4, behind: 0.6,

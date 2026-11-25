@@ -6305,4 +6305,37 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 40; i++) w.step(CONFIG.TICK);
   check('...then the lance lands', w.events.some((e) => e.type === 'seraphFx' && e.kind === 'lance') && !p.seraphWind);
 }
+// --- 0.94: the Seraph's choices and homing lance; never stuck in it; walking pace; Treasure Sense ---------------
+{
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const fresh = new World({ seed: 940, mode: 'explore', cls: 'warrior' });
+  check('Seraph (0.94): a hero always carries "possess" (null), so a snapshot clears it on every screen', 'possess' in fresh.player && fresh.player.possess === null);
+  const w = new World({ seed: 941, mode: 'explore', cls: 'rogue', save: geared('rogue', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5; k.sigils = 100; k.nightMax = 20;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  w.command({ type: 'keepStatueSkill', slot: 'r', id: 'rain' }); w.runCommands();
+  check('...a skill its level has not opened cannot be chosen', k.statue.kit.r === 'descent');
+  w.command({ type: 'keepStatueSkill', slot: 'r', id: 'hand' }); w.runCommands();
+  w.command({ type: 'keepPossess', on: true }); w.runCommands();
+  check('...one it has opened can, and it is what Y gives you', k.statue.kit.r === 'hand' && w.kit.r.name === 'Hand of Heaven' && w.kit.q.name === 'Dawnlance');
+  const e = w.spawnEnemy('grunt', { x: p.x + 12, z: p.z + 4, level: 100 });
+  e.state = 'recover'; e.t = 1e9;
+  w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z }); w.runCommands();
+  for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+  const lance = w.projectiles.find((pr) => pr.kind === 'lance');
+  check('...Dawnlance looses a lance that seeks the foe aimed at', (lance && lance.targetId === e.id) || e.hp < e.maxHp);
+  w.command({ type: 'walkPace', on: true }); w.runCommands();
+  const x0 = p.x;
+  w.command({ type: 'move', x: p.x + 30, z: p.z }); w.runCommands();
+  for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
+  check('...Ctrl: over the shoulder it walks at an even pace, whatever it wears', Math.abs((p.x - x0) - 3.4) < 0.6);
+  w.loadMap('haven');
+  check('...leaving the keep in it, by any road, leaves it home: yourself again, your own kit', !p.possess && w.kit.q.name !== 'Dawnlance' && !w.handsOn());
+  check('Treasure Sense (0.94): a Rogue finds gear more often, and so does their party', w.treasureSense() > 1 && new World({ seed: 1, mode: 'explore', cls: 'mage' }).treasureSense() === 1);
+}
 process.exit(failed ? 1 : 0);

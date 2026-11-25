@@ -41,6 +41,9 @@ export function holdToRank(btn, send) {
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) btn.addEventListener(ev, stop);
 }
 
+const NIGHT_HOLD = 1200; // (0.94) ms N must be held to call the night over the shoulder
+const NIGHT_MAX = 50;
+
 export class Input {
   /**
    * @param {object} o
@@ -105,6 +108,23 @@ export class Input {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => {
       this.keys.delete((e.key || '').toLowerCase());
+      const kk = (e.key || '').toLowerCase();
+      if (kk === 'alt' && this.altFree) {
+        // (0.94) let go of Alt: the mouse is caught again for looking
+        e.preventDefault();
+        this.altFree = false;
+        if (this.shoulderOn() && this.isPlaying()) this.lock();
+      }
+      if (kk === 'control' && this.ctrlTap) {
+        // (0.94) Ctrl tapped alone (no other key with it): walk or run, over the shoulder
+        const tap = this.ctrlTap;
+        this.ctrlTap = null;
+        if (tap.clean && performance.now() - tap.at < 700 && this.shoulderOn() && this.isPlaying()) {
+          const w = this.getWorld();
+          w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
+        }
+      }
+      if (kk === 'n') this.nightHold = null; // (0.94) let go before it filled: no night
       // (0.91.1) letting go of the skill's key, or of every modifier, ends a held rank-up
       if (this.rankHold && (e.code === this.rankHold.code || (!e.ctrlKey && !e.altKey && !e.shiftKey))) this.rankHold = null;
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
@@ -112,6 +132,9 @@ export class Input {
     });
     window.addEventListener('blur', () => {
       this.keys.clear();
+      this.altFree = false;
+      this.ctrlTap = null;
+      this.nightHold = null;
       this.rankHold = null;
       this.lmb = false;
       this.mouse.right = false;
@@ -150,7 +173,8 @@ export class Input {
   }
   /** (0.85) Catch the mouse for looking around (needs a key press or click to be allowed). */
   lock() {
-    if (this.locked() || !this.canvas.requestPointerLock) return;
+    this.lockAt = performance.now(); // (0.94) asked for just now: a frame's lag in the world must not let it go again
+    if (this.locked() || this.altFree || !this.canvas.requestPointerLock) return;
     try {
       const r = this.canvas.requestPointerLock();
       if (r && r.catch) r.catch(() => {});
@@ -180,7 +204,7 @@ export class Input {
       // (0.89) over the shoulder, as action games do: click to catch the mouse; then hold the left button to
       // strike the enemy locked in front of you. The right button does not walk (W A S D do).
       e.preventDefault();
-      if (!this.locked()) return this.lock();
+      if (!this.locked()) return this.altFree ? undefined : this.lock(); // (0.94) Alt held: the mouse is free for the screen
       if (e.button === 0) {
         this.lmb = true;
         const under = this.renderer.pickEnemy(window.innerWidth / 2, window.innerHeight / 2, world);
@@ -247,6 +271,28 @@ export class Input {
   onKeyDown(e) {
     const key = (e.key || '').toLowerCase();
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+    if (this.ctrlTap && key !== 'control') this.ctrlTap.clean = false; // (0.94) Ctrl with another key is not a tap
+    if (this.shoulderOn() && this.isPlaying() && !typing) {
+      // (0.94) over the shoulder: hold Alt to see and use the mouse (as action MMOs do); tap Ctrl to walk or run
+      if (key === 'alt') {
+        e.preventDefault();
+        if (!e.repeat) {
+          this.altFree = true;
+          this.unlock();
+        }
+        return;
+      }
+      if (key === 'control' && !e.repeat) this.ctrlTap = { at: performance.now(), clean: true };
+      // (0.94) hold N to call the night from here (a hold, so a stray press never calls one)
+      if (key === 'n' && !e.repeat) {
+        const w = this.getWorld();
+        if (w.map && w.map.id === 'wishkeep' && !w.keepVisit && w.player && w.player.keep && !(w.tide && w.tide.state === 'on')) {
+          e.preventDefault();
+          this.nightHold = { at: performance.now() };
+          return;
+        }
+      }
+    }
 
     // (0.91) V: walk a keep over your shoulder between nights (and back above)
     if (key === 'v' && !typing && this.isPlaying() && !e.repeat) {
@@ -389,9 +435,15 @@ export class Input {
       e.preventDefault();
       if (e.repeat) return true;
       if ((slot === 'd' || slot === 'f') && !borrowedActive(world, slot)) return true;
-      // (0.89) at the enemy you have locked, if any; else where you look
-      const lockOn = this.softId != null && world.enemies.find((o) => o.id === this.softId && !o.dead);
-      const g = lockOn ? { x: lockOn.x, z: lockOn.z } : this.ground() || { x: world.player.x, z: world.player.z };
+      // (0.89) at the enemy you have locked, if any; else where you look. (0.94) A skill that lands on the
+      // ground (a leap, a blast from the sky) goes where you look, never sideways to a locked foe
+      const def = world.kit && world.kit[slot];
+      const onGround = !!def && ['leap', 'meteor', 'zone', 'seraphRain'].includes(def.type);
+      const lockOn = !onGround && this.softId != null && world.enemies.find((o) => o.id === this.softId && !o.dead);
+      const S = this.renderer.shoulder, p = world.player;
+      const ahead = { x: p.x + Math.cos(S.yaw) * ((def && def.range) || 8), z: p.z + Math.sin(S.yaw) * ((def && def.range) || 8) };
+      const look = this.ground();
+      const g = lockOn ? { x: lockOn.x, z: lockOn.z } : look && (!onGround || Math.hypot(look.x - p.x, look.z - p.z) > 1.5) ? look : ahead;
       world.command({ type: 'cast', slot, x: g.x, z: g.z });
       return true;
     }
@@ -501,7 +553,17 @@ export class Input {
   }
 
   /** Called every frame: hover highlight, and hold-right-click to keep moving. */
+  /** (0.94) How far a held N has come (0 to 1), or null. */
+  nightHoldK(now = performance.now()) {
+    return this.nightHold ? Math.min(1, (now - this.nightHold.at) / NIGHT_HOLD) : null;
+  }
   update(now) {
+    if (this.nightHold && now - this.nightHold.at >= NIGHT_HOLD) {
+      // (0.94) held long enough: the night is called, at the level last chosen at the Hearth
+      this.nightHold = null;
+      const w = this.getWorld(), k = w.player && w.player.keep;
+      if (k && !(w.tide && w.tide.state === 'on')) w.command({ type: 'keepTide', level: k.night || Math.min(NIGHT_MAX, (k.nightMax || 0) + 1) });
+    }
     const world = this.getWorld();
     if (this.rankHold && now >= this.rankHold.next) {
       // (0.91.1) a held rank-up: every 70 ms, more each time the longer it is held

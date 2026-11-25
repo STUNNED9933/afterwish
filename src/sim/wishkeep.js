@@ -175,14 +175,42 @@ export const STATUE = {
 /**
  * (0.92) The Seraph's own kit (the keys are the class kit's: Q, W, E (on Shift over the shoulder), R).
  * (0.93) Celestial and heavy: Dawnlance, Wingbeat and Descent gather light first (`wind` seconds, rooted),
- * then land far harder.
+ * then land far harder. (0.94) Longer reach, and what it looses seeks its mark; and more skills to choose
+ * from as it grows (STATUE_SKILLS: each slot's choices, by the level that opens them).
  */
-export const STATUE_KIT = {
-  q: { key: 'Q', name: 'Dawnlance', type: 'line', icon: 'line', unlock: 1, cd: 5, wind: 0.45, range: 16, width: 1.8, dmg: (s) => 3.4 * s.ad, desc: 'Eyes open in a ring of light behind it; a breath later, a lance of dawn through everything in a line.' },
-  w: { key: 'W', name: 'Wingbeat', type: 'nova', icon: 'w', unlock: 1, cd: 9, wind: 0.3, radius: 5, knockback: 9, mend: 0.15, dmg: (s) => 2.4 * s.ad, desc: 'Its wings draw in, then open in a burst of cloud: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
-  e: { key: 'E', name: 'Glide', type: 'dash', icon: 'e', unlock: 1, cd: 6, range: 7.5, minRange: 3, duration: 0.32, width: 1.6, dmg: (s) => 1.2 * s.ad, desc: 'Glide on a trail of cloud toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
-  r: { key: 'R', name: 'Descent', type: 'leap', icon: 'r', unlock: 5, cd: 24, wind: 0.9, range: 11, radius: 5.5, duration: 0.55, stun: 1.6, dmg: (s) => 6.5 * s.ad, desc: 'A cloud gathers over where you aim and its eyes open on what is beneath; then it rises and comes down there as a pillar of light, striking everything and stunning it (from level 5).' },
+export const STATUE_SKILLS = {
+  q: {
+    dawnlance: { lvl: 1, name: 'Dawnlance', type: 'seraphLance', icon: 'line', cd: 5, wind: 0.35, range: 26, speed: 36, splash: 2.6, dmg: (s) => 3.6 * s.ad, desc: 'A crown of eyes opens over it; a breath later it looses a lance of dawn that seeks the foe you aim at (26 m) and bursts on it.' },
+    choir: { lvl: 10, name: 'Choir of Eyes', type: 'seraphChoir', icon: 'w', cd: 7, wind: 0.35, range: 24, count: 6, speed: 26, dmg: (s) => 1.05 * s.ad, desc: 'Six eyes open round it and fly, each to its own foe near where you aim (24 m), seeking it.' },
+  },
+  w: {
+    wingbeat: { lvl: 1, name: 'Wingbeat', type: 'nova', icon: 'w', cd: 9, wind: 0.3, radius: 5.5, knockback: 9, mend: 0.15, dmg: (s) => 2.4 * s.ad, desc: 'Its wings draw in, then open in a burst of cloud: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
+    halo: { lvl: 20, name: 'Halo of Mercy', type: 'zone', icon: 'zone', cd: 12, wind: 0.3, range: 0, radius: 6, duration: 5, tick: 0.5, slow: 0.35, slowDur: 1, mend: 0.3, halo: true, dmg: (s) => 3.2 * s.ad, desc: 'A ring of light round it for 5 seconds: the Unmade in it are slowed and burned by it, and your heroes in it mend 30% of their health at once.' },
+  },
+  e: {
+    glide: { lvl: 1, name: 'Glide', type: 'dash', icon: 'e', cd: 6, range: 7.5, minRange: 3, duration: 0.32, width: 1.6, dmg: (s) => 1.2 * s.ad, desc: 'Glide on a trail of cloud toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
+    feathers: { lvl: 25, name: 'Shower of Feathers', type: 'dash', icon: 'e', cd: 7, range: 8, minRange: 3, duration: 0.32, width: 1.6, motes: { count: 6, range: 14, speed: 26 }, dmg: (s) => 1.0 * s.ad, desc: 'Glide where you aim, and at its end loose six feathers of light that seek the nearest foes.' },
+  },
+  r: {
+    descent: { lvl: 5, name: 'Descent', type: 'leap', icon: 'r', cd: 22, wind: 0.8, range: 14, radius: 5.5, duration: 0.55, stun: 1.6, pull: 8, dmg: (s) => 6.5 * s.ad, desc: 'A cloud gathers over where you aim (14 m) and its eyes open; it rises and comes down there as a pillar of light, drawing everything within 8 m into it first, then striking and stunning it all.' },
+    hand: { lvl: 15, name: 'Hand of Heaven', type: 'meteor', icon: 'r', cd: 20, wind: 0.6, range: 24, radius: 6, delay: 0.55, stun: 2, fist: true, dmg: (s) => 7.5 * s.ad, desc: 'It points, and a fist of light comes down out of the clouds where you aim (24 m): everything under it is struck and stunned for 2 seconds. It stays where it is.' },
+    rain: { lvl: 30, name: 'Rain of Eyes', type: 'seraphRain', icon: 'r', cd: 20, wind: 0.7, range: 22, radius: 10, rays: 10, gap: 0.12, dmg: (s) => 1.7 * s.ad, desc: 'Eyes open over every foe within 10 m of where you aim (22 m) and look down: ten rays of light fall on them, one after another.' },
+  },
 };
+export const STATUE_SKILL_DEFAULT = { q: 'dawnlance', w: 'wingbeat', e: 'glide', r: 'descent' };
+/** (0.94) The Seraph's kit as chosen (each slot's choice, if it is open at its level). */
+export function statueKit(statue) {
+  const out = {};
+  for (const c of ['q', 'w', 'e', 'r']) {
+    const want = statue && statue.kit && statue.kit[c];
+    const id = want && STATUE_SKILLS[c][want] && (statue.lvl || 1) >= STATUE_SKILLS[c][want].lvl ? want : STATUE_SKILL_DEFAULT[c];
+    const d = STATUE_SKILLS[c][id];
+    out[c] = Object.assign({}, d, { key: c.toUpperCase(), unlock: d.lvl, seraphSkill: id });
+  }
+  return out;
+}
+/** (0.92) The default kit (tooltips and tests). */
+export const STATUE_KIT = statueKit(null);
 export const STATUE_BASIC = { range: 2.8, mult: 1.6 }; // (0.93: slower, half again as hard)
 /** (0.92) The Night a Seraph of this level is a match for: how hard it hits and how much it takes. */
 export const statuePower = (lvl) => NIGHT.power(Math.max(1, Math.min(STATUE.maxLvl, lvl)));
@@ -777,6 +805,9 @@ export function cleanKeep(raw) {
   if (raw.statue && typeof raw.statue === 'object') {
     const s = raw.statue;
     k.statue = { lvl: int(s.lvl, 1, 1, STATUE.maxLvl), xp: int(s.xp, 0, 0, 1e9), rest: Math.max(0, Math.min(STATUE.rest, Number(s.rest) || 0)), hp: Math.max(0.05, Math.min(1, Number.isFinite(+s.hp) ? +s.hp : 1)), fells: int(s.fells), nights: int(s.nights) };
+    // (0.94) the skills chosen for it, slot by slot
+    k.statue.kit = {};
+    for (const c of ['q', 'w', 'e', 'r']) k.statue.kit[c] = s.kit && STATUE_SKILLS[c][s.kit[c]] ? s.kit[c] : STATUE_SKILL_DEFAULT[c];
   }
   return k;
 }

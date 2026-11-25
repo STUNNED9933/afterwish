@@ -95,11 +95,12 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const WALK_PACE = 3.4; // (0.94) over the shoulder, walking (Ctrl): the same for every hero, whatever they wear
+const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, statuePower, statueCap } from './wishkeep.js'; // (0.92)
+import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, STATUE_SKILLS, statueKit, statuePower, statueCap } from './wishkeep.js'; // (0.92)
 import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -379,6 +380,7 @@ export class World {
   removeHero(pid) {
     const h = this.heroByPid(pid);
     if (!h || (h === this.heroes[0] && !(this.travelHook && this.heroes.length > 1))) return;
+    if (h.player && h.player.possess) this.as(h, () => this.possessEnd(false)); // (0.94) leaving the keep's copy: the Seraph stays home
     if (this.tradeFor(pid)) this.as(h, () => this.tradeCancel('gone'));
     this.use(this.heroes.find((x) => x !== h)); // (0.55) on the server, the first hero can leave a copy too
     this.heroes = this.heroes.filter((x) => x !== h);
@@ -489,6 +491,10 @@ export class World {
       bag: [],
       potions: CONFIG.MAX_POTIONS, // every run starts with a full belt
       potionCd: 0,
+      possess: null, // (0.94) always present, so a snapshot clears it on a friend's or a server player's screen
+      walkPace: false,
+      keepWalk: false,
+      seraphWind: null,
       moveTarget: null,
       targetId: null,
       autoAcquire: true,
@@ -641,7 +647,7 @@ export class World {
     const m = defaultMods();
     if (this.player.possess) {
       // (0.92) in the Seraph: its own kit and strike, and nothing of the hero's (talents, sets, augments)
-      this.kit = Object.assign({}, STATUE_KIT);
+      this.kit = statueKit(this.player.keep && this.player.keep.statue); // (0.94) as chosen
       this.basic = STATUE_BASIC;
       this.mods = m;
       return;
@@ -984,11 +990,19 @@ export class World {
         case 'keepPossess':
           this.possessSet(c.on); // (0.92)
           break;
+        case 'walkPace':
+          // (0.94) over the shoulder: walk at an even pace (whatever your gear), or run
+          this.player.walkPace = !!c.on;
+          this.emit('walkPace', { on: this.player.walkPace });
+          break;
         case 'keepStatue':
           this.statueRaise(); // (0.92)
           break;
         case 'keepOffer':
           this.statueOffer(c.n); // (0.92)
+          break;
+        case 'keepStatueSkill':
+          this.statueSkill(c.slot, c.id); // (0.94)
           break;
         case 'parry':
           this.tryParry(c.seen);
@@ -2573,7 +2587,8 @@ export class World {
           this.startZone(zone);
           p.castLock = 0.16;
         }
-        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius, channel: def.channel || 0 });
+        if (def.mend && this.tide && this.tide.state === 'on') for (const tr of this.troops || []) if (!tr.dead && dist(tr.x, tr.z, c.x, c.z) <= radius) this.troopMend(tr, tr.maxHp * def.mend); // (0.94) Halo of Mercy
+        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius, channel: def.channel || 0, halo: def.halo || undefined });
         break;
       }
       case 'hurricane': {
@@ -2750,6 +2765,42 @@ export class World {
         this.emit('buff', { name: 'Hold the Line', x: p.x, z: p.z });
         break;
       }
+      case 'seraphLance': {
+        // (0.94) Dawnlance: a lance of dawn that seeks the foe you aimed at, and bursts on it
+        const t = this.seraphTarget(x, z, range);
+        const la = t ? dAtan2(t.z - p.z, t.x - p.x) : a;
+        p.facing = la;
+        p.castLock = 0.12;
+        this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'lance', slot, pid: this.cur.pid, targetId: t ? t.id : null, x: p.x + dCos(la) * 0.8, z: p.z + dSin(la) * 0.8, px: p.x, pz: p.z, vx: dCos(la) * def.speed, vz: dSin(la) * def.speed, speed: def.speed, radius: 0.6, dmg, splash: def.splash, splashMult: 0.6, parryable: false, reflected: false, life: range / def.speed + 0.4, dead: false });
+        this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: la, range: 0, width: 0, seraphShot: true });
+        break;
+      }
+      case 'seraphChoir': {
+        // (0.94) Choir of Eyes: one eye to each foe near where you aimed
+        const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= range + e.radius).sort((u, v) => dist(u.x, u.z, x, z) - dist(v.x, v.z, x, z));
+        p.facing = a;
+        p.castLock = 0.12;
+        for (let i = 0; i < def.count; i++) {
+          const t = near.length ? near[i % near.length] : null;
+          const ea = (t ? dAtan2(t.z - p.z, t.x - p.x) : a) + (i - (def.count - 1) / 2) * 0.45;
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'eye', slot, pid: this.cur.pid, targetId: t ? t.id : null, x: p.x + dCos(ea) * 1.2, z: p.z + dSin(ea) * 1.2, px: p.x, pz: p.z, vx: dCos(ea) * def.speed, vz: dSin(ea) * def.speed, speed: def.speed, radius: 0.5, dmg, parryable: false, reflected: false, life: range / def.speed + 0.6, dead: false });
+        }
+        this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: a, range: 0, width: 0, seraphShot: true });
+        break;
+      }
+      case 'seraphRain': {
+        // (0.94) Rain of Eyes: rays down on the foes about where you aimed, one after another
+        const c = aimPoint();
+        const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, c.x, c.z) <= def.radius + e.radius).sort((u, v) => dist(u.x, u.z, c.x, c.z) - dist(v.x, v.z, c.x, c.z));
+        p.facing = a;
+        p.castLock = 0.2;
+        for (let i = 0; i < def.rays; i++) {
+          const t = near.length ? near[i % near.length] : null;
+          this.delayed.push({ t: 0.1 + i * def.gap, kind: 'seraphRay', id: t ? t.id : null, x: t ? t.x : c.x + dCos(i * 2.4) * def.radius * 0.5, z: t ? t.z : c.z + dSin(i * 2.4) * def.radius * 0.5, dmg, slot });
+        }
+        this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius: def.radius, noMove: true });
+        break;
+      }
       case 'meteor': {
         const c = aimPoint();
         const instant = oath && oath.instant && slot === 'r'; // (0.70) Blood Oath: Cinderfall lands at once, wider and harder
@@ -2760,10 +2811,10 @@ export class World {
         }
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: delay, parryable: false };
         this.telegraphs.push(tele);
-        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null });
+        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.fist ? 'hand' : def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null }); // (0.94) the Seraph's Hand of Heaven
         p.facing = a;
         p.castLock = 0.2;
-        this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius });
+        this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius, delay, fist: def.fist || undefined });
         break;
       }
     }
@@ -2963,6 +3014,14 @@ export class World {
         Object.assign(p, { castLock: keep.lock, empowerT: keep.emp });
         p.cd[d.slot] = keep.cd;
         this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
+        continue;
+      }
+      if (d.kind === 'seraphRay') {
+        // (0.94) a ray of the Rain of Eyes: on its foe if it still stands, else where it stood
+        const t = d.id != null ? this.enemyById(d.id) : null;
+        const x = t && !t.dead ? t.x : d.x, z = t && !t.dead ? t.z : d.z;
+        for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, x, z) <= 1.6 + o.radius) this.hitEnemy(o, o === t ? d.dmg : d.dmg * 0.5, { source: d.slot });
+        this.emit('seraphFx', { kind: 'ray', x, z });
         continue;
       }
       if (d.kind === 'shadeStrike') {
@@ -3227,7 +3286,7 @@ export class World {
         }
         p.cd[sw.slot] = keep;
         const def = this.kit[sw.slot];
-        this.emit('seraphFx', { kind: { q: 'lance', w: 'wings', r: 'descent' }[sw.slot] || 'strike', slot: sw.slot, x: p.x, z: p.z, dir: p.facing, tx: sw.x, tz: sw.z, range: def && def.range, width: def && def.width, radius: def && def.radius });
+        this.emit('seraphFx', { kind: (def && { dawnlance: 'lance', choir: 'choir', wingbeat: 'wings', halo: 'halo', descent: 'descent', hand: 'hand', rain: 'rain' }[def.seraphSkill]) || 'strike', slot: sw.slot, x: p.x, z: p.z, dir: p.facing, tx: sw.x, tz: sw.z, range: def && def.range, width: def && def.width, radius: def && def.radius });
       }
     }
     p.hurtT = Math.max(0, p.hurtT - dt);
@@ -3389,6 +3448,7 @@ export class World {
         const def = this.kit.r;
         this.telegraphs = this.telegraphs.filter((t) => t !== lp.tele);
         p.leap = null;
+        if (p.possess && def && def.pull > 0) this.pullStun(p.x, p.z, def.pull, 0, 0, 'r', 0); // (0.94) Descent draws them in first: it does not miss
         for (const e of this.enemies) {
           if (e.dead || e.state === 'spawn') continue;
           if (dist(e.x, e.z, p.x, p.z) > lp.radius + e.radius) continue;
@@ -3448,7 +3508,7 @@ export class World {
     }
 
     const parrying = p.parryT > 0;
-    const speed = p.stats.ms * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1) * (p.channel ? 1 - p.channel.slow : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
+    const speed = (p.walkPace && this.handsOn() ? WALK_PACE : p.stats.ms) * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1) * (p.channel ? 1 - p.channel.slow : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
@@ -4191,6 +4251,12 @@ export class World {
     if (p.level >= CONFIG.MAX_LEVEL) p.exp = 0;
   }
 
+  /** (0.94) Treasure Sense: a Rogue on this map (you, or anyone in your party here) makes gear drop more often. */
+  treasureSense() {
+    const rogue = this.heroes.some((h) => (h === this.cur ? this.cls : h.cls) === 'rogue');
+    return rogue ? 1 + CLASSES.rogue.passive.loot : 1;
+  }
+
   dropLoot(e, fall = 1) {
     const def = e.def;
     const p = this.player;
@@ -4203,7 +4269,7 @@ export class World {
     const run = T.n >= 2 ? 1 + (p.streak || 0) * CONFIG.STREAK_LOOT : 1;
     const streak = run * (e.lootMult || 1); // (0.65) the Deep and Caelum pay their own share
     const pile = hoard ? Math.max(1, Math.round(hoard.items * fall * run * Math.min(1.5, e.lootMult || 1) * (e.bars ? CAELUM.bossLoot.items : 1))) : 0; // (0.71.1) twice the pile from a Granted
-    let count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
+    let count = this.trial ? 0 : (hoard ? pile : def.boss ? 2 : this.rng() < Math.min(1, def.drop * T.loot * streak * this.treasureSense()) ? 1 : 0) + (e.elite ? 1 : 0); // the Weekly Echo drops no gear
     if (!this.trial && this.mode === 'explore') {
       // Exploration surprises (0.29): more and better from Rares, the Wishthief and Remnants, and set pieces.
       const extra = [];
@@ -7508,7 +7574,7 @@ export class World {
     if (k.sigils < c.sigils) return this.emit('keepShort', { what: 'sigils', need: c.sigils, have: k.sigils });
     if (!this.keepPay({ faith: c.faith, stone: c.stone })) return;
     k.sigils -= c.sigils;
-    k.statue = { lvl: Math.max(1, Math.min(statueCap(k), k.nightMax - STATUE.startBelow)), xp: 0, rest: 0, hp: 1, fells: 0, nights: 0 };
+    k.statue = { lvl: Math.max(1, Math.min(statueCap(k), k.nightMax - STATUE.startBelow)), xp: 0, rest: 0, hp: 1, fells: 0, nights: 0, kit: { q: 'dawnlance', w: 'wingbeat', e: 'glide', r: 'descent' } };
     this.emit('statueRaised', { lvl: k.statue.lvl, x: STATUE.at.x, z: STATUE.at.z });
   }
   /** (0.92) Faith laid at the Seraph's feet: a quarter of a level each time (n times at once). */
@@ -7549,7 +7615,42 @@ export class World {
       up++;
     }
     if (s.lvl >= cap) s.xp = Math.min(s.xp, STATUE.need(s.lvl) - 1);
-    if (up) this.emit('statueLevel', { lvl: s.lvl, cap, unlocked: Object.keys(STATUE_KIT).filter((c) => STATUE_KIT[c].unlock > s.lvl - up && STATUE_KIT[c].unlock <= s.lvl).map((c) => STATUE_KIT[c].name) });
+    const opened = [];
+    for (const c of ['q', 'w', 'e', 'r']) for (const id in STATUE_SKILLS[c]) if (STATUE_SKILLS[c][id].lvl > s.lvl - up && STATUE_SKILLS[c][id].lvl <= s.lvl) opened.push(STATUE_SKILLS[c][id].name);
+    if (up) {
+      this.emit('statueLevel', { lvl: s.lvl, cap, unlocked: opened });
+      if (this.player.possess) this.recalcMods(); // (a skill it chose may be open now)
+    } else this.emit('statueXp', { n: Math.round(n), xp: s.xp, need: STATUE.need(s.lvl), lvl: s.lvl }); // (0.94) for the bar
+  }
+  /** (0.94) Choose one of the Seraph's skills for a slot (once its level opens it). */
+  statueSkill(slot, id) {
+    const k = this.player.keep, s = k && k.statue;
+    const d = s && STATUE_SKILLS[slot] && STATUE_SKILLS[slot][id];
+    if (!this.inKeep() || !d) return;
+    if (s.lvl < d.lvl) return this.emit('keepMaxed', { name: d.name, what: 'seraphLvl', lvl: d.lvl });
+    s.kit = Object.assign({}, s.kit || {}, { [slot]: id });
+    if (this.player.possess) this.recalcMods();
+    this.emit('statueSkill', { slot, id, name: d.name });
+  }
+  /** (0.94) What a Seraph's shot seeks: the foe nearest where you aimed (within 7 m), else the nearest ahead of it. */
+  seraphTarget(x, z, range) {
+    const p = this.player;
+    let best = null, bd = 7;
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn' || dist(e.x, e.z, p.x, p.z) > range + e.radius) continue;
+      const d = dist(e.x, e.z, x, z) - e.radius;
+      if (d < bd) [best, bd] = [e, d];
+    }
+    if (best) return best;
+    const a = dAtan2(z - p.z, x - p.x);
+    let ba = 0.7;
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'spawn' || dist(e.x, e.z, p.x, p.z) > range + e.radius) continue;
+      let da = dAtan2(e.z - p.z, e.x - p.x) - a;
+      da = Math.abs(dAtan2(dSin(da), dCos(da)));
+      if (da < ba) [best, ba] = [e, da];
+    }
+    return best;
   }
   /** (0.92) P in your keep: into the Seraph, or (on false) back out. */
   possessSet(on) {
@@ -7591,11 +7692,13 @@ export class World {
     this.recalcStats();
     p.hp = Math.max(1, Math.min(p.stats.maxHp, P.hp));
     [p.x, p.z, p.px, p.pz] = [P.x, P.z, P.x, P.z];
-    if (P.walk && !(this.tide && this.tide.state === 'on') && this.map && this.map.id === KEEP.map) p.keepWalk = true;
+    if (P.walk && !(this.tide && this.tide.state === 'on') && this.map && this.map.id === KEEP.map && !this.leaving) p.keepWalk = true;
     this.emit('possess', { on: false, fell: !!fell, x, z, rest: fell ? STATUE.rest : 0 });
   }
   /** (0.92) The Seraph between times: stone mends, and a felled one wakes. */
   stepStatue(dt) {
+    // (0.94) in the Seraph anywhere but your own keep (however you got there): you are yourself again
+    if (this.player.possess && !(this.map && this.map.id === KEEP.map && this.keepOwns())) this.possessEnd(false);
     const k = this.player.keep, s = k && k.statue;
     if (!s || !this.inKeep()) return;
     if (s.rest > 0) {
@@ -10740,7 +10843,10 @@ inTown() {
    */
   loadMap(id, from = null) {
     this.player.keepWalk = false; // (0.91) walking over the shoulder ends at the Waygate
-    if (this.player.possess) this.possessEnd(false); // (0.92) and the Seraph stays home
+    if (this.player.possess) {
+      this.leaving = true;
+      try { this.possessEnd(false); } finally { this.leaving = false; } // (0.92) and the Seraph stays home
+    }
     this.clearWishes(); // the Asker's wishes stay in the Starwell (0.40)
     if (this.map && this.mode === 'explore' && !this.trial && !this.instanced()) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     if (id !== 'rift' && this.rift) {

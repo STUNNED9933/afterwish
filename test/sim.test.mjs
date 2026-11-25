@@ -6285,11 +6285,12 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   }
   {
     const { w, p, e } = mk('warrior', 'windrunner');
+    w.events = [];
     w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z }); w.runCommands();
-    const motes = w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length;
-    check('...Gale Steps: every skill looses homing wind blades', motes === 3);
+    const arrows = () => w.delayed.filter((d) => d.kind === 'galeHit').length;
+    check('...Gale Steps: every skill brings arrows of wind down (0.96: falling, not flying)', arrows() === 3);
     w.basicAttack(e);
-    check('...and every swing one more', w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length === 4);
+    check('...and every swing one more', arrows() === 4);
   }
 }
 {
@@ -6337,7 +6338,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const x0 = p.x;
   w.command({ type: 'move', x: p.x + 30, z: p.z }); w.runCommands();
   for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
-  check('...Ctrl: over the shoulder it walks at an even pace, whatever it wears', Math.abs((p.x - x0) - 3.4) < 0.6);
+  check('...Ctrl: over the shoulder it walks at an even pace, whatever it wears', Math.abs((p.x - x0) - 2.0) < 0.5);
   w.loadMap('haven');
   check('...leaving the keep in it, by any road, leaves it home: yourself again, your own kit', !p.possess && w.kit.q.name !== 'Dawnlance' && !w.handsOn());
   check('Treasure Sense (0.94): a Rogue finds gear more often, and so does their party', w.treasureSense() > 1 && new World({ seed: 1, mode: 'explore', cls: 'mage' }).treasureSense() === 1);
@@ -6375,6 +6376,44 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'move', x: p.x - 30, z: p.z }); w.runCommands();
   for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
   const moved = Math.hypot(p.x - x0, p.z - z0);
-  check('Walking (0.95): Ctrl or Caps Lock walks at an even pace anywhere, not only over the shoulder', Math.abs(moved - 3.4) < 0.6, moved.toFixed(2));
+  check('Walking (0.95): Ctrl or Caps Lock walks at an even pace anywhere, not only over the shoulder', Math.abs(moved - 2.0) < 0.5, moved.toFixed(2));
+}
+// --- 0.96: bulk trades, the keep's people indoors at night, the shade's own dash, the wind's arrows fall --------------
+{
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 960, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 0; k.stone = 1005; k.tier = 3; k.halls.rogue = 2;
+  w.command({ type: 'keepTrade', dir: 'sell', n: 1000 }); w.runCommands();
+  check('Market (0.96): Wishstone sells in bulk (as many lots as you hold)', k.stone === 5 && k.faith === 100 * (40 + 10 * 2) / 1);
+  const npcs = () => w.interactables().filter((o) => o.kind === 'npc').length;
+  const day = npcs();
+  k.troops = [{ id: 1, cls: 'warrior', name: 'a', lvl: 5, gear: 3, rar: 1 }]; w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 1 }); w.runCommands();
+  check('...in the night the keep\'s people are indoors: nobody to click on by mistake', day > 0 && npcs() === 0 && w.interactables().some((o) => o.kind === 'keepaltar'));
+}
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED } = await import('../src/sim/borrowed.js');
+  const { MAPS } = await import('../src/sim/maps.js');
+  const w = new World({ seed: 961, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  w.borrowable = () => Object.keys(BORROWED.warrior);
+  p.borrowed = { d: 'shadowdancer', f: 'windrunner' }; w.recalcStats();
+  w.loadMap('spire', MAPS.spire.portals[0].to);
+  for (const o of w.enemies) o.dead = true;
+  w.enemies = [];
+  for (let i = 0; i < 30; i++) w.step(CONFIG.TICK);
+  const e = w.spawnEnemy('boss3', { x: p.x + 6, z: p.z, level: 100 });
+  e.hp = e.maxHp = 1e11; e.state = 'recover'; e.t = 1e9;
+  const s0 = { x: p.shadeAt.x, z: p.shadeAt.z };
+  w.command({ type: 'cast', slot: 'e', x: e.x, z: e.z }); w.runCommands();
+  let far = 0, motes = 0, rain = 0;
+  for (let i = 0; i < 40; i++) { w.step(CONFIG.TICK); far = Math.max(far, Math.hypot(p.shadeAt.x - s0.x, p.shadeAt.z - s0.z)); motes = Math.max(motes, w.projectiles.filter((pr) => pr.kind === 'mote').length); rain += w.events.filter((ev) => ev.type === 'galeRain').length; w.events = []; e.state = 'recover'; e.t = 1e9; }
+  check('Shade (0.96): it dashes itself, from where it stands (a 1:1 copy, not a burst)', far > 3);
+  check('Windrunner mastery (0.96): the wind\'s arrows fall from the sky (no shots in the air to draw)', motes === 0 && rain > 0);
 }
 process.exit(failed ? 1 : 0);

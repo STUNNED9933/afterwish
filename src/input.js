@@ -118,15 +118,6 @@ export class Input {
         this.altFree = false;
         if (this.shoulderOn() && this.isPlaying()) this.lock();
       }
-      if (kk === 'control' && this.ctrlTap) {
-        // (0.94) Ctrl tapped alone (no other key with it): walk or run, over the shoulder
-        const tap = this.ctrlTap;
-        this.ctrlTap = null;
-        if (tap.clean && performance.now() - tap.at < 700 && this.isPlaying()) { // (0.95: anywhere, not only over the shoulder)
-          const w = this.getWorld();
-          w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
-        }
-      }
       if (kk === 'n') this.nightHold = null; // (0.94) let go before it filled: no night
       if (kk === 'capslock' && /Mac/.test((typeof navigator !== 'undefined' && navigator.platform) || '') && this.isPlaying() && !(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'))) {
         // (0.95) a Mac sends Caps Lock's keydown only as it turns on, its keyup only as it turns off: each press is one
@@ -206,7 +197,6 @@ export class Input {
   }
 
   onMouseDown(e) {
-    if (this.ctrlTap) this.ctrlTap.clean = false; // (0.95) a Ctrl-click is not a tap
     if (!this.isPlaying()) return;
     const world = this.getWorld();
     if (this.shoulderOn()) {
@@ -283,10 +273,9 @@ export class Input {
   onKeyDown(e) {
     const key = (e.key || '').toLowerCase();
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
-    if (this.ctrlTap && key !== 'control') this.ctrlTap.clean = false; // (0.94) Ctrl with another key is not a tap
     // (0.95) Ctrl (a tap) or Caps Lock: walk or run, anywhere you play (Caps Lock never closes a tab, whatever is held with it)
-    if (key === 'control' && !e.repeat && this.isPlaying() && !typing) this.ctrlTap = { at: performance.now(), clean: true };
-    if (key === 'capslock' && !e.repeat && this.isPlaying() && !typing) {
+    // (0.96) Ctrl walks or runs the moment it is pressed (it no longer ranks skills: Shift or Alt + Q W E R does)
+    if ((key === 'capslock' || key === 'control') && !e.repeat && this.isPlaying() && !typing) {
       e.preventDefault();
       const w = this.getWorld();
       w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
@@ -376,7 +365,7 @@ export class Input {
     // Ctrl+Q and the like are the browser's own; read by the key's place (e.code), so Alt on a Mac, which
     // types a symbol instead of a letter, works as well.
     const rankSlot = { KeyQ: 'q', KeyW: 'w', KeyE: 'e', KeyR: 'r' }[e.code] || (['q', 'w', 'e', 'r'].includes(key) ? key : null);
-    if (rankSlot && !e.metaKey && (e.ctrlKey || e.altKey || e.shiftKey)) {
+    if (rankSlot && !e.metaKey && !e.ctrlKey && (e.altKey || e.shiftKey)) { // (0.96: not Ctrl, which walks)
       e.preventDefault();
       if (!e.repeat) {
         // (0.91.1) one rank now; held, more and more of them (see update)

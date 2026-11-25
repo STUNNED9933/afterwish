@@ -1701,6 +1701,10 @@ export class Renderer {
         if ((ev.ally ? an.cls : this.heroCls) !== 'archer' && (ev.ally ? an.cls : this.heroCls) !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
         break;
       }
+      case 'galeRain':
+        // (0.96) the wind's arrows fall on them (instanced: a handful each, however many land)
+        for (const [x, z, n] of ev.pts || []) this.rainArrows(x, z, Math.min(3, n));
+        break;
       case 'shadowSpin':
         // (0.95) a beat of the shade's Whirlwind
         this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0x7a3cff, from: ev.radius * 0.6, to: ev.radius, dur: 0.25, opacity: 0.55 });
@@ -1727,7 +1731,7 @@ export class Renderer {
         }
         // Warrior abilities send no fx name, so fall back on the slot.
         const fx = ev.fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[ev.slot];
-        if (fx !== 'cone' && !ev.noMove) an.move = fx; // a skill with its own animation (rigged.js moves; noMove: the shot that ends a channel, already animated)
+        if (fx !== 'cone' && !ev.noMove && !ev.echo) an.move = fx; // a skill with its own animation (0.96: a shade's copy moves the shade, not you) (rigged.js moves; noMove: the shot that ends a channel, already animated)
         if (fx === 'cone') {
           an.swing = 0;
           an.swingDur = 0.2;
@@ -2542,7 +2546,7 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, walk: !!p.walkPace, speed: p.walkPace ? 3.4 : p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, walk: !!p.walkPace, speed: p.walkPace ? 2.0 : p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
       if (sera) {
         // (0.93) gliding: leaning into it, robes trailing (the idle plays on underneath)
@@ -3036,6 +3040,48 @@ export class Renderer {
     light.position.y = 1.2;
     g.add(outer, core, ...rings, sun, halo, light);
     v.relic = { outer, core, rings, sun, halo, light, main };
+    if (eternal) this.lootEternal(v, add);
+  }
+  /**
+   * (0.96) An Eternal goes far past an Immortal: a beam twice as tall wound round by a white and a crimson
+   * strand, a crown of eight blades turning round the gem, a second sun turning the other way, a shockwave
+   * along the ground every moment, and a deeper light.
+   */
+  lootEternal(v, add) {
+    const g = v.group, R = v.relic;
+    v.gem.scale.setScalar(1.9);
+    R.outer.scale.set(1.6, 1.8, 1.6);
+    R.outer.position.y = 14.4;
+    R.core.scale.set(1.4, 1.8, 1.4);
+    R.core.position.y = 14.4;
+    R.light.distance = 14;
+    // two strands wound round the beam
+    const helix = (phase, color) => {
+      const pts = [];
+      for (let i = 0; i <= 120; i++) {
+        const t = i / 120, a = phase + t * Math.PI * 14;
+        pts.push(new THREE.Vector3(Math.cos(a) * 0.75, t * 22, Math.sin(a) * 0.75));
+      }
+      return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 0.05, 5, false), add(color, 0.9));
+    };
+    const strands = new THREE.Group();
+    strands.add(helix(0, 0xffffff), helix(Math.PI, 0xff2a3a));
+    // a crown of eight blades turning round the gem
+    const crown = new THREE.Group();
+    for (let i = 0; i < 8; i++) {
+      const b = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), add(i % 2 ? 0xffffff : 0xff3d4f, 0.95));
+      b.scale.set(0.5, 0.5, 2.6);
+      const a = (i / 8) * Math.PI * 2;
+      b.position.set(Math.cos(a) * 1.35, 0, Math.sin(a) * 1.35);
+      b.rotation.y = -a + Math.PI / 2;
+      crown.add(b);
+    }
+    // a second sun, white, turning the other way, wider
+    const sun2 = R.sun.clone();
+    sun2.traverse((o) => { if (o.material) { o.material = o.material.clone(); o.material.color.set(0xffffff); } });
+    sun2.scale.setScalar(1.45);
+    g.add(strands, crown, sun2);
+    Object.assign(R, { strands, crown, sun2, wave: 0 });
   }
   stepLootRelic(v, l) {
     const R = v.relic, t = this.time + l.id;
@@ -3051,7 +3097,20 @@ export class Renderer {
     R.halo.position.y = v.gem.position.y;
     R.halo.material.opacity = 0.55 + 0.35 * breath;
     R.light.intensity = 30 + 25 * breath;
-    if (Math.random() < 0.25) this.burst(v.group.position.x + (Math.random() - 0.5) * 1.6, 0.3, v.group.position.z + (Math.random() - 0.5) * 1.6, { count: 1, color: R.main, speed: 0.3, up: 3, gravity: -0.5, life: 1.2, size: 0.6 });
+    if (Math.random() < (R.crown ? 0.6 : 0.25)) this.burst(v.group.position.x + (Math.random() - 0.5) * 1.6, 0.3, v.group.position.z + (Math.random() - 0.5) * 1.6, { count: 1, color: R.crown && Math.random() < 0.5 ? 0xffffff : R.main, speed: 0.3, up: 3, gravity: -0.5, life: 1.2, size: 0.6 });
+    if (R.crown) {
+      // (0.96) the Eternal's own
+      R.strands.rotation.y = t * 1.4;
+      R.crown.rotation.y = -t * 1.1;
+      R.crown.position.y = v.gem.position.y + 0.9 + 0.15 * Math.sin(t * 2);
+      R.sun2.rotation.y = -t * 0.45;
+      R.light.intensity = 60 + 50 * breath;
+      R.wave -= this.lastDt || 1 / 60;
+      if (R.wave <= 0) {
+        R.wave = 1.6;
+        this.flash(this.ringGeo(), { x: v.group.position.x, z: v.group.position.z, y: 0.08, color: 0xff3d4f, from: 0.8, to: 7, dur: 1.1, opacity: 0.7 });
+      }
+    }
   }
   syncLoot(world) {
     const seen = new Set();
@@ -3590,12 +3649,21 @@ export class Renderer {
         const k = 1 - Math.exp(-14 * dt); // (smoothed: it trails you like a shadow)
         g.position.x += (h.shade.x - g.position.x) * k;
         g.position.z += (h.shade.z - g.position.z) * k;
-        // (0.95) the shade's own Whirlwind: it turns with it
-        v.spin = h.shade.spinT > 0 ? (v.spin || 0) + dt * Math.PI * 2 * 2.4 : 0;
-        g.rotation.y = Math.PI / 2 - (h.shade.facing || 0) + v.spin;
+        // (0.95) the shade's own Whirlwind: it turns with it; (0.96) and every move of yours, played on its own body
+        const spinning = h.shade.spinT > 0;
+        v.spin = spinning ? (v.spin || 0) + dt * Math.PI * 2 * 2.4 : 0;
+        g.rotation.y = Math.PI / 2 - (h.shade.facing || 0);
+        if (v.rig) v.rig.group.rotation.y = (v.rig.baseTurn || 0) + v.spin;
+        g.position.y = h.shade.y || 0;
         const attackStart = (h.shade.atk || 0) !== v.atk;
         v.atk = h.shade.atk || 0;
-        if (v.rig) v.rig.update(dt, { moving: !!h.shade.moving, attackStart, attackDur: 0.25 });
+        const mv = h.shade.move;
+        let move = null, moveDur = 0;
+        if (mv && mv.n !== v.moveN) {
+          v.moveN = mv.n;
+          [move, moveDur] = [mv.fx, mv.dur || 0];
+        }
+        if (v.rig) v.rig.update(dt, { moving: !!h.shade.moving && !(h.shade.act), attackStart, attackDur: 0.25, move, moveDur, spinning });
         v.mat.opacity = 0.42 + 0.1 * Math.sin(this.time * 4 + h.pid);
         if (Math.random() < 0.15) this.burst(g.position.x, 0.3 + Math.random() * 1.5, g.position.z, { count: 1, color: 0x5a2aa0, speed: 0.4, up: 1, gravity: 0, life: 0.6 });
       }
@@ -3848,7 +3916,7 @@ export class Renderer {
         if (spinning) v.spinAngle = (v.spinAngle || 0) + dt * Math.PI * 2 * 2.4;
         else v.spinAngle = 0;
         v.model.rig.group.rotation.y = (v.model.rig.baseTurn || 0) + v.spinAngle;
-        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, walk: !!a.walk, speed: a.walk ? 3.4 : undefined, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, walk: !!a.walk, speed: a.walk ? 2.0 : undefined, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
       } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);

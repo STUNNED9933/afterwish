@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Falling arrows, a 1:1 shade, Eternal drops, bulk trades (0.96)
+
+- **Windrunner mastery** no longer fires homing shots. Every attack and skill now calls arrows of wind down onto nearby enemies (within 13 m). The damage is the same, and there is far less on screen to draw, so the lag is gone.
+- **Shadowdancer's shade** now copies your skills 1:1, subclass skills included. It spins the Berserker's W itself, at your full radius (Crimson Reach growth included), and plays the animation. It dashes and leaps from where it stands, and it plays each skill's own motion.
+- **Eternal drops** now stand apart from Immortal ones. They have twin crimson helix strands, a crown of blades, a second sun, a pulsing shockwave, an "An Eternal has fallen" banner and their own sound.
+- **Walking** now moves at 2 m/s, the pace the walk animation was made for, so it looks natural. Online, turning quickly no longer spikes you to run speed for a moment.
+- **Ctrl** toggles walking the moment you press it. **Ctrl + skill no longer ranks skills up**; use Shift or Alt + Q W E R.
+- **Call the Night:** the keep's people go indoors, so you can no longer open Corwin's or Bastian's dialog by mistake mid-fight.
+- **Market:** you can trade Wishstone and Faith in bulk. Type an amount, or use the 10× and 100× buttons. **All** trades everything you hold, after a confirmation.
+
 ### Walking, a truer shade, Immortal drops, fixes (0.95)
 
 **Walking.** Every hero now has a real walk cycle (Quaternius' Universal Animation Library, CC0, retargeted onto each model). The Warrior, the Rogue and the keep's men walk sturdily; the Archer, the Mage and the keep's women walk more upright. This covers the four classes, the ninja, every Eternal form and all eight keep heroes. A walking hero now walks instead of playing a slowed run. **Ctrl (a tap) or Caps Lock** switches to walking anywhere, not only over the shoulder, at a steady pace that gear does not change. Friends see you walk too.

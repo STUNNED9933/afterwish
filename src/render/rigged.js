@@ -769,7 +769,7 @@ export function instantiate(tpl) {
           // let the flinch play out
         } else if (s.moving && actions.walk && (s.walk || (s.speed || 6) < (spec.walkBelow || 4.2))) {
           // (0.95) walking (Ctrl or Caps Lock, or simply slow): a walk, not a slowed run
-          actions.walk.timeScale = Math.max(0.7, Math.min(1.5, (s.speed || 3.4) / (spec.walkRef || 3.4)));
+          actions.walk.timeScale = Math.max(0.7, Math.min(1.8, (s.speed || 2) / (spec.walkRef || 1.25))); // (0.96) the walk covers about 1.25 m a second at its own pace (measured): matched, so the feet hold the ground
           fadeTo(actions.walk, endFade || 0.25);
         } else if (s.moving && actions.run) {
           actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / (spec.runRef || 6.5)));

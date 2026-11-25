@@ -95,7 +95,7 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const WALK_PACE = 3.4; // (0.94) over the shoulder, walking (Ctrl): the same for every hero, whatever they wear
+const WALK_PACE = 2.0; // (0.94; 0.96: 2, the pace the walk's own stride covers, so the feet do not slide) over the shoulder, walking (Ctrl): the same for every hero, whatever they wear
 const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
@@ -900,7 +900,7 @@ export class World {
       else if (c.type === 'keepRaids') this.keepRaidsSet(c.on); // (0.86)
       else if (c.type === 'keepDismiss') this.keepDismiss(c.id);
       else if (c.type === 'keepBless') this.keepBless(c.id);
-      else if (c.type === 'keepTrade') this.keepTrade(c.dir);
+      else if (c.type === 'keepTrade') this.keepTrade(c.dir, c.n); // (0.96) n lots at once
       else if (c.type === 'keepRepair') this.keepRepair();
       else if (c.type === 'keepClock') this.keepClock(c.now);
       else if (c.type === 'swapBounty') this.swapBounty(c.i);
@@ -1645,10 +1645,13 @@ export class World {
       ss.next -= dt;
       if (ss.next <= 0) {
         ss.next += ss.tick;
+        // (0.96) exactly yours: the same reach (Crimson Reach too), the same throw and interrupt, from where it stands
         const cx = p.shadeAt ? p.shadeAt.x : p.x, cz = p.shadeAt ? p.shadeAt.z : p.z;
-        for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, cx, cz) <= ss.radius + e.radius) this.hitEnemy(e, ss.dmg, { source: ss.slot });
+        const R = ss.radius * (ss.slot === 'w' ? CONFIG.CRESCENT.grow[this.bloodReach()] : 1);
+        this.fromShade(() => this.novaHit(ss.slot, this.kit[ss.slot], ss.dmg, R, ss.first, ss.first));
+        ss.first = false;
         if (p.shadeAt) p.shadeAt.spinT = ss.tick + 0.05;
-        this.emit('shadowSpin', { x: cx, z: cz, radius: ss.radius });
+        this.emit('shadowSpin', { x: cx, z: cz, radius: R });
         if (--ss.left <= 0 || p.dead) p.shadeSpin = null;
       }
     }
@@ -1658,6 +1661,36 @@ export class World {
     }
     const a = p.facing + Math.PI * 0.72; // behind you, to one side
     const tx = p.x + dCos(a) * 1.5, tz = p.z + dSin(a) * 1.5;
+    if (p.shadeAt && p.shadeAt.act) {
+      // (0.96) its own dash or leap, the length of yours
+      const s = p.shadeAt, A = s.act;
+      A.t += dt;
+      const k = Math.min(1, A.t / Math.max(0.05, A.dur));
+      s.x = Math.round((A.sx + (A.ex - A.sx) * k) * 1000) / 1000;
+      s.z = Math.round((A.sz + (A.ez - A.sz) * k) * 1000) / 1000;
+      s.y = A.kind === 'leap' ? Math.round(dSin(Math.PI * k) * 5.5 * 100) / 100 : 0;
+      s.moving = true;
+      if (A.kind === 'dash' && A.dmg > 0) {
+        for (const e of this.enemies) {
+          if (e.dead || e.state === 'spawn' || A.hit.includes(e.id) || dist(e.x, e.z, s.x, s.z) > A.w + e.radius) continue;
+          A.hit.push(e.id);
+          this.hitEnemy(e, A.dmg, { source: A.slot });
+        }
+      }
+      if (k >= 1) {
+        if (A.kind === 'leap') {
+          for (const e of this.enemies) {
+            if (e.dead || e.state === 'spawn' || dist(e.x, e.z, s.x, s.z) > A.r + e.radius) continue;
+            this.hitEnemy(e, A.dmg, { source: A.slot });
+            if (!e.dead && A.stun) e.def.boss ? this.addPosture(e, 1, false) : this.stun(e, A.stun);
+          }
+          this.emit('impact', { x: s.x, z: s.z, radius: A.r, kind: 'aftershock', shade: true });
+        }
+        s.act = null;
+        s.y = 0;
+      }
+      return;
+    }
     if (!p.shadeAt || dist(p.shadeAt.x, p.shadeAt.z, p.x, p.z) > 8) p.shadeAt = { x: tx, z: tz, facing: p.facing, atk: 0, moving: false };
     const s = p.shadeAt;
     const k = Math.min(1, dt * 8);
@@ -2044,17 +2077,8 @@ export class World {
         } else this.hitEnemy(target, dmg * m2.shadeEcho, { source: 'shade' });
         this.emit('shadowSlash', { x: sx, z: sz, tx: target.x, tz: target.z, veil: true });
       }
-      if (m2.galeAtk > 0) this.looseCastMotes(m2.galeAtk, m2.galeAtkDmg, target, true); // (0.93) the wind answers an attack
-      if (m2.daggerEvery > 0 && p.swingCount % m2.daggerEvery === 0) {
-        // Tailwind Daggers: two homing daggers at enemies near the target
-        const near = this.enemies.filter((o) => !o.dead && o.state !== 'spawn' && dist(o.x, o.z, target.x, target.z) <= 7).sort((u, v) => dist(u.x, u.z, target.x, target.z) - dist(v.x, v.z, target.x, target.z));
-        const nd = m2.daggerCount || 2;
-        for (let i = 0; i < nd; i++) {
-          const t2 = near[i % Math.max(1, near.length)] || target;
-          const a4 = dAtan2(t2.z - p.z, t2.x - p.x) + (i - (nd - 1) / 2) * 0.8;
-          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'mote', slot: 'basic', pid: this.cur.pid, targetId: t2.id, x: p.x + dCos(a4) * 0.6, z: p.z + dSin(a4) * 0.6, px: p.x, pz: p.z, vx: dCos(a4) * 24, vz: dSin(a4) * 24, speed: 24, radius: 0.35, dmg: p.stats.ad * (m2.daggerDmg || 0.4), parryable: false, reflected: false, life: 1.4, dead: false });
-        }
-      }
+      if (m2.galeAtk > 0) this.galeRain(m2.galeAtk, m2.galeAtkDmg, target); // (0.93) the wind answers an attack (0.96: as falling arrows)
+      if (m2.daggerEvery > 0 && p.swingCount % m2.daggerEvery === 0) this.galeRain(m2.daggerCount || 2, m2.daggerDmg || 0.4, target); // Tailwind Daggers (0.96: they fall, too)
     }
     if (b.shot && this.mods.crosswind > 0 && dmgOverride === null && !target.dead) {
       // Crosswind (Windrunner, 0.43): extra arrows at the same target, more the faster you shoot
@@ -2838,7 +2862,7 @@ export class World {
       if (m.echoQ > 0 && slot === 'q') this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult: m.echoQ }); // a shade casts it again
       else if (m.shadeCast > 0 && ['q', 'w', 'e', 'r'].includes(slot)) this.shadeCopy(slot, def, x, z, dmg, m.shadeCast); // (0.93) every skill
       if (m.castMotes > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.castMotes);
-      if (m.galeCast > 0 && slot !== 'd' && slot !== 'f') this.looseCastMotes(m.galeCast, m.galeCastDmg); // (0.93) the wind answers a skill
+      if (m.galeCast > 0 && slot !== 'd' && slot !== 'f') this.galeRain(m.galeCast, m.galeCastDmg); // (0.93) the wind answers a skill (0.96: as falling arrows)
       const grav = slot === 'r' ? m.rGravity : slot === 'w' ? m.wGravity : 0;
       if (grav > 0) {
         const c = aimPoint();
@@ -3019,7 +3043,10 @@ export class World {
         }
         const ev0 = this.events.length;
         try { this.castAbility(d.slot, d.x, d.z); } finally {
-          for (let i = ev0; i < this.events.length; i++) if (this.events[i].type === 'cast') this.events[i].echo = true; // (0.93) a shade's copy: quieter, no slot flash
+          for (let i = ev0; i < this.events.length; i++) if (this.events[i].type === 'cast') {
+            this.events[i].echo = true; // (0.93) a shade's copy: quieter, no slot flash
+            if (p.shadeAt) p.shadeAt.move = { fx: this.events[i].fx || { q: 'cone', w: 'nova', e: 'dash', r: 'leap' }[d.slot], n: (p.shadeAt.move ? p.shadeAt.move.n : 0) + 1, dur: 0 }; // (0.96) its model plays the move
+          }
           this.recasting = null;
           if (home) {
             if (p.shadeAt) p.shadeAt.facing = p.facing;
@@ -3031,12 +3058,30 @@ export class World {
         this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
         continue;
       }
+      if (d.kind === 'galeHit') {
+        // (0.96) an arrow of the wind lands
+        const t = this.enemyById(d.id);
+        if (t && !p.dead) this.hitEnemy(t, d.dmg, { source: 'gale' });
+        continue;
+      }
       if (d.kind === 'seraphRay') {
         // (0.94) a ray of the Rain of Eyes: on its foe if it still stands, else where it stood
         const t = d.id != null ? this.enemyById(d.id) : null;
         const x = t && !t.dead ? t.x : d.x, z = t && !t.dead ? t.z : d.z;
         for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, x, z) <= 1.6 + o.radius) this.hitEnemy(o, o === t ? d.dmg : d.dmg * 0.5, { source: d.slot });
         this.emit('seraphFx', { kind: 'ray', x, z });
+        continue;
+      }
+      if (d.kind === 'shadeAct') {
+        // (0.96) the shade's own dash or leap begins (stepShade carries it)
+        const s = p.shadeAt;
+        if (!s || p.dead) continue;
+        const a = d.act;
+        s.act = Object.assign({ t: 0, sx: s.x, sz: s.z, hit: [] }, a, a.kind === 'dash' ? { ex: s.x + a.dx, ez: s.z + a.dz } : {});
+        const end = this.clampToArena(s.act.ex, s.act.ez, 0.5);
+        [s.act.ex, s.act.ez] = [end.x, end.z];
+        s.facing = dAtan2(s.act.ez - s.z, s.act.ex - s.x);
+        s.move = { fx: a.kind, n: (s.move ? s.move.n : 0) + 1, dur: a.dur };
         continue;
       }
       if (d.kind === 'shadeDash') {
@@ -3070,6 +3115,7 @@ export class World {
           this.hitEnemy(o, d.dmg, { source: d.slot || 'shade' });
           if (d.stun && !o.dead) o.def.boss ? this.addPosture(o, 1, false) : this.stun(o, d.stun);
         }
+        if (p.shadeAt) p.shadeAt.move = { fx: 'cone', n: (p.shadeAt.move ? p.shadeAt.move.n : 0) + 1, dur: 0 }; // (0.96) it swings
         if (d.quiet) continue;
         if (p.shadeAt) [p.shadeAt.atk, p.shadeAt.facing] = [this.ticks, dAtan2(d.z - p.shadeAt.z, d.x - p.shadeAt.x)];
         this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
@@ -3079,6 +3125,7 @@ export class World {
       if (d.kind === 'shadeEye') {
         // (0.81.3) Umbra Gemina: the Sharpshooter's shadow looses its own Deadeye, from where it stands
         if (!p.shadeAt || p.dead) continue;
+        p.shadeAt.move = { fx: 'deadeye', n: (p.shadeAt.move ? p.shadeAt.move.n : 0) + 1, dur: 0 }; // (0.96)
         const home = { x: p.x, z: p.z };
         p.x = p.shadeAt.x;
         p.z = p.shadeAt.z;
@@ -4051,6 +4098,23 @@ export class World {
     this.emit('cast', { slot, fx: 'nova', x, z, radius, pull: true });
   }
 
+  /**
+   * (0.96) The Windrunner's wind on a borrower: arrows fall out of the sky onto the foes nearest you (`first`
+   * first), a moment later. Nothing flies, so nothing has to be drawn or sent flying: one event a volley.
+   */
+  galeRain(count, share, first = null) {
+    const p = this.player;
+    const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= 13 + e.radius).sort((a, b) => dist(a.x, a.z, p.x, p.z) - dist(b.x, b.z, p.x, p.z));
+    if (first && !first.dead) near.unshift(first);
+    if (!near.length) return;
+    const per = new Map();
+    for (let i = 0; i < count; i++) {
+      const t = near[i % near.length];
+      this.delayed.push({ t: 0.22 + i * 0.05, kind: 'galeHit', id: t.id, dmg: p.stats.ad * share });
+      per.set(t, (per.get(t) || 0) + 1);
+    }
+    this.emit('galeRain', { pts: [...per].map(([e, n]) => [Math.round(e.x * 10) / 10, Math.round(e.z * 10) / 10, n]) });
+  }
   /** (0.70) Gale Motes: homing motes at enemies near you whenever a spell is cast. (0.93) Any share; first at `first`. */
   looseCastMotes(count, share = null, first = null, quiet = false) {
     const p = this.player;
@@ -4069,6 +4133,14 @@ export class World {
    * (0.93) The shade copies a skill: from where it stands, again, a moment later (a skill that does not move
    * you); a skill that would move you (a dash, a leap, a blink, a spin, a channel), it strikes where you aimed.
    */
+  /** (0.96) Do something as if from where the shade stands (its own spin, its own blast). */
+  fromShade(fn) {
+    const p = this.player, s = p.shadeAt;
+    if (!s) return fn();
+    const home = { x: p.x, z: p.z, px: p.px, pz: p.pz };
+    [p.x, p.z, p.px, p.pz] = [s.x, s.z, s.x, s.z];
+    try { return fn(); } finally { Object.assign(p, home); }
+  }
   shadeCopy(slot, def, x, z, dmg, mult) {
     // (0.95) exactly what you did, every class's and every subclass's: a skill that stays where you are is cast
     // again from where the shade stands; one that carries you, the shade does its own way (a spin round it, a
@@ -4081,15 +4153,19 @@ export class World {
     const aim = Number.isFinite(a) ? this.clampToArena(p.x + dCos(a) * d, p.z + dSin(a) * d, 0.5) : { x: p.x, z: p.z };
     if (def.type === 'spin' && p.spin) {
       // the shade spins with you, beat for beat
-      p.shadeSpin = { left: p.spin.left, next: 0.15, tick: p.spin.tick, dmg: p.spin.dmg * mult, radius: p.spin.radius, slot };
+      p.shadeSpin = { left: p.spin.left, next: 0.15, tick: p.spin.tick, dmg: p.spin.dmg * mult, radius: p.spin.radius, slot, first: true };
       return;
     }
     if (def.type === 'dash' && p.dash) {
-      if (!(p.dash.dmg > 0)) return;
-      this.delayed.push({ t: 0.3, kind: 'shadeDash', sx: p.dash.sx, sz: p.dash.sz, ex: p.dash.ex, ez: p.dash.ez, w: Math.max(1.4, p.dash.width || 0), dmg: p.dash.dmg * mult, slot });
+      // (0.96) the shade dashes itself, from where it stands, the same way and as far
+      this.delayed.push({ t: 0.2, kind: 'shadeAct', act: { kind: 'dash', dx: p.dash.ex - p.dash.sx, dz: p.dash.ez - p.dash.sz, dur: p.dash.dur, w: Math.max(0.8, p.dash.width || 0), dmg: p.dash.dmg * mult, slot } });
       return;
     }
-    if (def.type === 'leap' && p.leap) return void this.delayed.push({ t: p.leap.dur + 0.25, kind: 'shadeStrike', x: p.leap.ex, z: p.leap.ez, r: p.leap.radius, dmg: p.leap.dmg * mult, stun: p.leap.stun || 0, slot });
+    if (def.type === 'leap' && p.leap) {
+      // (0.96) the shade leaps too, and comes down where you do
+      this.delayed.push({ t: 0.2, kind: 'shadeAct', act: { kind: 'leap', ex: p.leap.ex, ez: p.leap.ez, dur: p.leap.dur, r: p.leap.radius, stun: p.leap.stun || 0, dmg: p.leap.dmg * mult, slot } });
+      return;
+    }
     if (def.type === 'deadeye' && !(m.shadeEye > 0 && slot === 'r')) return void this.delayed.push({ t: (def.channel || 0) + 0.25, kind: 'shadeEye', a: Number.isFinite(a) ? a : p.facing, range: def.range || 20, width: def.width || 2, dmg: dmg * mult, slot });
     if (def.type === 'deadeye') return; // (Umbra Gemina draws its own)
     if (def.type === 'zone' && def.channel) return void this.delayed.push({ t: def.channel + 0.2, kind: 'shadeZone', x: aim.x, z: aim.z, def, dmg: dmg * mult, slot, radius: (def.radius || 3) * (m[slot + 'Radius'] || 1) });
@@ -4725,7 +4801,9 @@ export class World {
   interactables() {
     if (this.mode !== 'explore' || !this.map) return [];
     const list = [];
-    for (const ob of this.obstacles) if (INTERACT_KINDS.has(ob.kind)) list.push(ob);
+    // (0.96) in the keep's night its people are indoors: not there to be clicked or talked to
+    const sheltered = !!(this.tide && this.tide.state === 'on' && this.map.id === KEEP.map);
+    for (const ob of this.obstacles) if (INTERACT_KINDS.has(ob.kind) && !(sheltered && ob.kind === 'npc')) list.push(ob);
     const alt = this.bossAltar(); // a boss's altar, while its boss is down (0.33)
     if (alt) list.push(Object.assign(alt, { reach: SIGIL.altar - alt.r, pickR: 1.4 }));
     if (this.merchant) list.push({ kind: 'merchant', id: 'merchant', name: 'Travelling Merchant', x: this.merchant.x, z: this.merchant.z, r: 0.6 }); // (0.31)
@@ -6302,19 +6380,24 @@ export class World {
     this.emit('keepBlessed', { name: B.name });
   }
   /** Trade at the Market: 10 Wishstone for Faith, or 100 Faith for Wishstone. */
-  keepTrade(dir) {
+  keepTrade(dir, n = 1) {
     const k = this.player.keep;
     if (!this.inKeep()) return;
     if (!this.hallWorks('rogue')) return this.emit('keepHallShut', { name: HALLS.rogue.name, cls: 'rogue', down: this.wrecked('rogue') });
     const T = KEEP.trade, L = k.halls.rogue;
+    // (0.96) in bulk: n lots (10 Wishstone sold, or T.faithPer Faith spent, each), as many as can be paid for
+    const want = Math.max(1, Math.min(1e6, Math.floor(Number(n) || 1)));
+    const lots = dir === 'sell' ? Math.min(want, Math.floor(k.stone / 10)) : Math.min(want, Math.floor(k.faith / T.faithPer));
+    if (lots <= 0) return dir === 'sell' ? this.keepPay({ stone: 10 }, 'stone') : this.keepPay({ faith: T.faithPer });
     if (dir === 'sell') {
-      if (!this.keepPay({ stone: 10 }, 'stone')) return;
-      k.faith += T.stoneFor(L);
+      if (!this.keepPay({ stone: 10 * lots }, 'stone')) return;
+      k.faith += T.stoneFor(L) * lots;
+      this.emit('keepTraded', { dir, stone: 10 * lots, faith: T.stoneFor(L) * lots });
     } else {
-      if (!this.keepPay({ faith: T.faithPer })) return;
-      k.stone += T.stoneOut(L);
+      if (!this.keepPay({ faith: T.faithPer * lots })) return;
+      k.stone += T.stoneOut(L) * lots;
+      this.emit('keepTraded', { dir, stone: T.stoneOut(L) * lots, faith: T.faithPer * lots });
     }
-    this.emit('keepTraded', { dir });
   }
   /** Mend every damaged building, with Wishstone (one mends KEEP.repairPer). */
   keepRepair() {

@@ -467,7 +467,7 @@ export class Hud {
       slot.up.classList.toggle('hidden', !show);
       canRank = canRank || show;
     }
-    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Alt or Ctrl + Q W E R` : '';
+    const note = canRank ? `${p.skillPoints} skill point${p.skillPoints === 1 ? '' : 's'} · Shift or Alt + Q W E R` : '';
     if (note !== this.lastNote) {
       this.lastNote = note;
       $('sp-note').textContent = note;

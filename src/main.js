@@ -1695,8 +1695,38 @@ function start(hot = {}) {
     if (cls === 'rogue') {
       const T = KEEP.trade;
       const card = keepCard('Trade', '', `<p class="setting-desc">Faith comes in while you are away: ${KEEP.produce.base + KEEP.produce.perMarket * lvl} an hour with the Market at level ${lvl} (up to ${KEEP.produce.capHours} hours banked).</p>`);
-      card.appendChild(keepBtn(`Sell 10 Wishstone for ${T.stoneFor(lvl)} Faith`, () => applyNow({ type: 'keepTrade', dir: 'sell' }), { primary: true, disabled: k.stone < 10 }));
-      card.appendChild(keepBtn(`Buy ${T.stoneOut(lvl)} Wishstone for ${T.faithPer} Faith`, () => applyNow({ type: 'keepTrade', dir: 'buy' }), { primary: true, disabled: k.faith < T.faithPer }));
+      // (0.96) in bulk: an amount of your own, a few steps, or everything (asked first)
+      const sellLots = Math.floor(k.stone / 10), buyLots = Math.floor(k.faith / T.faithPer);
+      const row = (label, unit, have, lotSize, dir, rate) => {
+        const r = document.createElement('div');
+        r.className = 'keep-trade';
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.min = String(lotSize);
+        inp.step = String(lotSize);
+        inp.value = String(Math.min(have, lotSize * 100) || lotSize);
+        inp.title = `${unit} to trade (in steps of ${lotSize})`;
+        const out = document.createElement('span');
+        out.className = 'setting-desc';
+        const lotsOf = () => Math.max(0, Math.floor((Number(inp.value) || 0) / lotSize));
+        const say = () => (out.textContent = `= ${rate(lotsOf()).toLocaleString()}`);
+        inp.addEventListener('input', say);
+        say();
+        r.append(document.createTextNode(label), inp, out);
+        r.appendChild(keepBtn('Trade', () => applyNow({ type: 'keepTrade', dir, n: lotsOf() }), { primary: true, disabled: have < lotSize }));
+        for (const m of [10, 100]) if (have >= lotSize * m) r.appendChild(keepBtn(`${(lotSize * m).toLocaleString()}`, () => applyNow({ type: 'keepTrade', dir, n: m }), { quick: true }));
+        const all = Math.floor(have / lotSize);
+        r.appendChild(keepBtn('All', () => confirmModal({
+          title: dir === 'sell' ? 'Sell all your Wishstone?' : 'Spend all your Faith on Wishstone?',
+          html: `<p>${dir === 'sell' ? `Sell <b>${(all * 10).toLocaleString()} Wishstone</b> for <b>${rate(all).toLocaleString()} Faith</b>?` : `Spend <b>${(all * T.faithPer).toLocaleString()} Faith</b> for <b>${rate(all).toLocaleString()} Wishstone</b>?`}</p><p class="setting-desc">There is no undoing a trade (only trading back, at the Market's rate).</p>`,
+          ok: dir === 'sell' ? 'Sell it all' : 'Spend it all',
+          onOk: () => applyNow({ type: 'keepTrade', dir, n: all }),
+        }), { disabled: all < 1, title: 'Everything, after you confirm' }));
+        card.appendChild(r);
+      };
+      row('Sell Wishstone ', 'Wishstone', k.stone, 10, 'sell', (lots) => lots * T.stoneFor(lvl));
+      card.insertAdjacentHTML('beforeend', `<p class="setting-desc">10 Wishstone sells for ${T.stoneFor(lvl)} Faith; ${T.faithPer} Faith buys ${T.stoneOut(lvl)} Wishstone.${sellLots || buyLots ? '' : ''}</p>`);
+      row('Buy Wishstone with Faith ', 'Faith', k.faith, T.faithPer, 'buy', (lots) => lots * T.stoneOut(lvl));
       list.appendChild(card);
     }
   }
@@ -3157,6 +3187,7 @@ function start(hot = {}) {
   }
 
   /** Friend: how far ahead of the host's position to draw this player's own hero while it walks. */
+  const WALK_PACE = 2.0; // (0.96) as the sim's
   function predictedOffset(alpha) {
     const p = world.player;
     const it = net && net.intent;
@@ -3177,7 +3208,7 @@ function start(hot = {}) {
       net.intent = null;
       return null;
     }
-    const speed = (p.stats && p.stats.ms) || 6;
+    const speed = p.walkPace ? WALK_PACE : (p.stats && p.stats.ms) || 6; // (0.96) walking: lead at a walk (a run's lead was the spike on every turn)
     const lead = Math.min(d, speed * Math.min(net.lagEst, (now - it.t) / 1000));
     return { dx: (dx / d) * lead, dz: (dz / d) * lead, facing: Math.atan2(dz, dx) };
   }
@@ -5437,6 +5468,15 @@ function start(hot = {}) {
         }
         break;
       }
+      case 'lootDrop':
+        // (0.96) the rarest drops are heard and seen: an Immortal chimes; an Eternal stops the world a moment
+        if (ev.ally) break;
+        if (ev.rarity >= 7) {
+          sfx.eternal();
+          hud.screenFlash(0.35);
+          hud.banner('An Eternal has fallen', 'White and crimson, on the ground: an Eternal. Take it before you go.');
+        } else if (ev.rarity >= 6) sfx.pickup(6);
+        break;
       case 'walkPace':
         hud.feedText(ev.on ? 'Walking at an even pace. Ctrl or Caps Lock to run again.' : 'Running. Ctrl or Caps Lock to walk.'); // (0.94)
         break;
@@ -5617,7 +5657,7 @@ function start(hot = {}) {
       case 'keepTraded':
       case 'keepRepaired':
         sfx.upgrade();
-        hud.feedText(ev.type === 'keepTrained' ? `${ev.name} is level ${ev.lvl} now.` : ev.type === 'keepArmed' ? `${ev.name}: gear ${ev.gear}.` : ev.type === 'keepLearned' ? `${ev.name} learned ${ev.skill}.` : ev.type === 'keepBlessed' ? `${ev.name}, for the next night.` : ev.type === 'keepRepaired' ? (ev.left ? `Mended with ${ev.stone} Wishstone${ev.hearth ? ' (the Hearth is lit again)' : ''}; ${ev.left} more mends the rest.` : `The keep is mended (${ev.stone} Wishstone).`) : 'Traded.');
+        hud.feedText(ev.type === 'keepTrained' ? `${ev.name} is level ${ev.lvl} now.` : ev.type === 'keepArmed' ? `${ev.name}: gear ${ev.gear}.` : ev.type === 'keepLearned' ? `${ev.name} learned ${ev.skill}.` : ev.type === 'keepBlessed' ? `${ev.name}, for the next night.` : ev.type === 'keepRepaired' ? (ev.left ? `Mended with ${ev.stone} Wishstone${ev.hearth ? ' (the Hearth is lit again)' : ''}; ${ev.left} more mends the rest.` : `The keep is mended (${ev.stone} Wishstone).`) : ev.dir === 'sell' ? `Sold ${(ev.stone || 10).toLocaleString()} Wishstone for ${(ev.faith || 0).toLocaleString()} Faith.` : `Bought ${(ev.stone || 0).toLocaleString()} Wishstone for ${(ev.faith || 0).toLocaleString()} Faith.`);
         if (mode === 'talk') renderTalk();
         break;
       case 'keepFull':

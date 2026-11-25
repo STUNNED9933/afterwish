@@ -122,13 +122,13 @@ export class Input {
         // (0.94) Ctrl tapped alone (no other key with it): walk or run, over the shoulder
         const tap = this.ctrlTap;
         this.ctrlTap = null;
-        if (tap.clean && performance.now() - tap.at < 700 && this.shoulderOn() && this.isPlaying()) {
+        if (tap.clean && performance.now() - tap.at < 700 && this.isPlaying()) { // (0.95: anywhere, not only over the shoulder)
           const w = this.getWorld();
           w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
         }
       }
       if (kk === 'n') this.nightHold = null; // (0.94) let go before it filled: no night
-      if (kk === 'capslock' && /Mac/.test((typeof navigator !== 'undefined' && navigator.platform) || '') && this.shoulderOn() && this.isPlaying()) {
+      if (kk === 'capslock' && /Mac/.test((typeof navigator !== 'undefined' && navigator.platform) || '') && this.isPlaying() && !(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'))) {
         // (0.95) a Mac sends Caps Lock's keydown only as it turns on, its keyup only as it turns off: each press is one
         const w = this.getWorld();
         w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
@@ -206,6 +206,7 @@ export class Input {
   }
 
   onMouseDown(e) {
+    if (this.ctrlTap) this.ctrlTap.clean = false; // (0.95) a Ctrl-click is not a tap
     if (!this.isPlaying()) return;
     const world = this.getWorld();
     if (this.shoulderOn()) {
@@ -283,16 +284,17 @@ export class Input {
     const key = (e.key || '').toLowerCase();
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
     if (this.ctrlTap && key !== 'control') this.ctrlTap.clean = false; // (0.94) Ctrl with another key is not a tap
+    // (0.95) Ctrl (a tap) or Caps Lock: walk or run, anywhere you play (Caps Lock never closes a tab, whatever is held with it)
+    if (key === 'control' && !e.repeat && this.isPlaying() && !typing) this.ctrlTap = { at: performance.now(), clean: true };
+    if (key === 'capslock' && !e.repeat && this.isPlaying() && !typing) {
+      e.preventDefault();
+      const w = this.getWorld();
+      w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
+      return;
+    }
     if (this.shoulderOn() && this.isPlaying() && !typing) {
       // (0.95) the mouse was let go (Esc): any key catches it again
       if (!this.locked() && !this.altFree && key !== 'alt' && key !== 'escape') this.lock();
-      // (0.95) Caps Lock: walk or run, like a Ctrl tap (it never closes a tab, whatever is held with it)
-      if (key === 'capslock' && !e.repeat) {
-        e.preventDefault();
-        const w = this.getWorld();
-        w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
-        return;
-      }
       // (0.94) over the shoulder: hold Alt to see and use the mouse (as action MMOs do); tap Ctrl to walk or run
       if (key === 'alt') {
         e.preventDefault();
@@ -302,7 +304,6 @@ export class Input {
         }
         return;
       }
-      if (key === 'control' && !e.repeat) this.ctrlTap = { at: performance.now(), clean: true };
       // (0.94) hold N to call the night from here (a hold, so a stray press never calls one)
       if (key === 'n' && !e.repeat) {
         const w = this.getWorld();

@@ -160,6 +160,27 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Walking, a truer shade, Immortal drops, fixes (0.95)
+
+**Walking.** Every hero now has a real walk cycle (Quaternius' Universal Animation Library, CC0, retargeted onto each model). The Warrior, the Rogue and the keep's men walk sturdily; the Archer, the Mage and the keep's women walk more upright. This covers the four classes, the ninja, every Eternal form and all eight keep heroes. A walking hero now walks instead of playing a slowed run. **Ctrl (a tap) or Caps Lock** switches to walking anywhere, not only over the shoulder, at a steady pace that gear does not change. Friends see you walk too.
+
+**The Shadowdancer's shade copies everything.** That includes every class's and every subclass's skills:
+- Spins: it does a Whirlwind of its own, beat for beat, so a Berserker's main damage is copied.
+- Dashes: it follows down the same line.
+- Leaps: it lands where yours lands, stunning.
+- Channelled fields such as Arrow Storm: it looses its own.
+- Deadeye-type beams: it fires its own from where it stands.
+- Frozen Orb: it throws an orb of its own, which never shatters yours.
+- Barrage: it looses its own volley.
+- Blinks, snares, Hold the Line and halos: it bursts where they happen.
+- Toggles and buffs of your own are not copied.
+
+**Windrunner mastery lag fixed.** Gale Steps, Gale Motes and Tailwind Daggers fire half as many homing shots, each twice as strong, so the damage is the same. Every shot of a colour now shares one material instead of making a new one each time, and their trails are lighter.
+
+**Immortal drops look like Immortals.** A larger gem with a white-hot heart, a tall double beam (a white core in gold) that breathes, three gold rings turning, a turning sun on the ground, a halo, a warm light and rising sparks. Next to an Ancient's single orange beam it is unmistakable. Eternal drops look the same in white and crimson.
+
+**Fixed: Berserker stuck at half health.** Blood Rage's trait stopped lifesteal just below half health while Bloodied, even with Crimson Oath turned off, so the hero could never heal past half by hitting. It now applies only while the Oath is on.
+
 ### No more "click to take hold", Caps Lock walks, the Seraph's light (0.94.1)
 
 **Over the shoulder, the view is never lost.** The browser always lets go of the mouse on Esc. Now the view keeps following the mouse anyway, with no cursor showing. The next key or click captures it again, and a click that re-captures still strikes. The "click to take hold of the view" step is gone. Only **holding Alt** frees the mouse for the screen.

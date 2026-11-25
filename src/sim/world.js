@@ -404,6 +404,7 @@ export class World {
       out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null, eform: eternalForm(p), // (0.76) their Eternal form
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
         seraph: !!p.possess, // (0.92) in their keep's Seraph
+        walk: !!p.walkPace, // (0.95) walking: their model walks
         dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0,
         shade: p.shadeAt || null, clones: p.fireClones && p.fireClones.length ? p.fireClones : null, rime: p.rimeT > 0 ? p.rimeR : 0 }); // (0.81.3)
     }
@@ -1637,6 +1638,20 @@ export class World {
    */
   stepShade(dt) {
     const p = this.player, m = this.mods;
+    if (p.shadeAt && p.shadeAt.spinT > 0) p.shadeAt.spinT -= dt;
+    if (p.shadeSpin) {
+      // (0.95) the shade's own Whirlwind, beat for beat with yours
+      const ss = p.shadeSpin;
+      ss.next -= dt;
+      if (ss.next <= 0) {
+        ss.next += ss.tick;
+        const cx = p.shadeAt ? p.shadeAt.x : p.x, cz = p.shadeAt ? p.shadeAt.z : p.z;
+        for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, cx, cz) <= ss.radius + e.radius) this.hitEnemy(e, ss.dmg, { source: ss.slot });
+        if (p.shadeAt) p.shadeAt.spinT = ss.tick + 0.05;
+        this.emit('shadowSpin', { x: cx, z: cz, radius: ss.radius });
+        if (--ss.left <= 0 || p.dead) p.shadeSpin = null;
+      }
+    }
     if (!(m.shadeEcho > 0 || m.echoQ > 0 || m.shadeCast > 0)) {
       if (p.shadeAt) p.shadeAt = null;
       return;
@@ -2145,7 +2160,7 @@ export class World {
     }
     if (def && def.type === 'orb') {
       // Frozen Orb: casting again while it is out shatters it where it is.
-      const mine = this.projectiles.find((pr) => pr.kind === 'orb' && !pr.dead && pr.pid === this.cur.pid);
+      const mine = this.projectiles.find((pr) => pr.kind === 'orb' && !pr.dead && pr.pid === this.cur.pid && !pr.shade); // (0.95: never the shade's)
       if (mine) {
         this.shatterOrb(mine);
         return;
@@ -3024,10 +3039,38 @@ export class World {
         this.emit('seraphFx', { kind: 'ray', x, z });
         continue;
       }
+      if (d.kind === 'shadeDash') {
+        // (0.95) the shade's own dash, down the same line
+        if (p.dead) continue;
+        const L = dist(d.sx, d.sz, d.ex, d.ez) || 0.01, ux = (d.ex - d.sx) / L, uz = (d.ez - d.sz) / L;
+        for (const o of this.enemies) {
+          if (o.dead || o.state === 'spawn') continue;
+          const rx = o.x - d.sx, rz = o.z - d.sz, along = rx * ux + rz * uz;
+          if (along < -o.radius || along > L + o.radius || Math.abs(rx * uz - rz * ux) > d.w + o.radius) continue;
+          this.hitEnemy(o, d.dmg, { source: d.slot });
+        }
+        this.emit('shadowSlash', { x: d.sx, z: d.sz, tx: d.ex, tz: d.ez, veil: false });
+        continue;
+      }
+      if (d.kind === 'shadeZone') {
+        // (0.95) the shade's own channelled field (Arrow Storm and its kind), loosed where you aimed
+        if (p.dead) continue;
+        const def = d.def, ticks = Math.max(1, Math.round(def.duration / def.tick)), lasts = def.duration + (this.mods[d.slot + 'Duration'] || 0);
+        const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: d.x, z: d.z, dir: 0, radius: d.radius, t: 0, dur: lasts, parryable: false };
+        this.telegraphs.push(tele);
+        this.startZone({ x: d.x, z: d.z, radius: d.radius, lasts, tick: def.tick, dmg: d.dmg / ticks, total: d.dmg, slow: def.slow || 0, slowDur: def.slowDur || 1, slot: d.slot, tele, opening: def.opening || 0, pin: def.pin || 0, burn: def.burnTick || 0 });
+        this.emit('cast', { slot: d.slot, fx: 'zone', x: d.x, z: d.z, radius: d.radius, echo: true });
+        continue;
+      }
       if (d.kind === 'shadeStrike') {
         // (0.93) the shade strikes where you aimed a skill that moved you
         if (p.dead) continue;
-        for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, d.x, d.z) <= d.r + o.radius) this.hitEnemy(o, d.dmg, { source: 'shade' });
+        for (const o of this.enemies) {
+          if (o.dead || o.state === 'spawn' || dist(o.x, o.z, d.x, d.z) > d.r + o.radius) continue;
+          this.hitEnemy(o, d.dmg, { source: d.slot || 'shade' });
+          if (d.stun && !o.dead) o.def.boss ? this.addPosture(o, 1, false) : this.stun(o, d.stun);
+        }
+        if (d.quiet) continue;
         if (p.shadeAt) [p.shadeAt.atk, p.shadeAt.facing] = [this.ticks, dAtan2(d.z - p.shadeAt.z, d.x - p.shadeAt.x)];
         this.emit('shadowSlash', { x: p.shadeAt ? p.shadeAt.x : p.x, z: p.shadeAt ? p.shadeAt.z : p.z, tx: d.x, tz: d.z, veil: false });
         this.emit('burst', { x: d.x, z: d.z, radius: d.r, color: 0x9a7aff });
@@ -3508,7 +3551,7 @@ export class World {
     }
 
     const parrying = p.parryT > 0;
-    const speed = (p.walkPace && this.handsOn() ? WALK_PACE : p.stats.ms) * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1) * (p.channel ? 1 - p.channel.slow : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
+    const speed = (p.walkPace ? WALK_PACE : p.stats.ms) * (parrying && !this.mods.parryFree ? CONFIG.PARRY_MOVE_MULT : 1) * (p.chillT > 0 ? 0.65 : 1) * (p.channel ? 1 - p.channel.slow : 1); // Frostbound elites (Unyielding Greaves: parry at full speed)
 
     if (target) {
       const d = dist(target.x, target.z, p.x, p.z) - target.radius;
@@ -4027,15 +4070,50 @@ export class World {
    * you); a skill that would move you (a dash, a leap, a blink, a spin, a channel), it strikes where you aimed.
    */
   shadeCopy(slot, def, x, z, dmg, mult) {
-    const p = this.player;
-    if (!def || def.passive || def.type === 'deadeye' || def.type === 'bloodoath') return; // (Deadeye: Umbra Gemina's own draw)
-    const SAFE = ['cone', 'nova', 'line', 'bolt', 'smoulder', 'meteor', 'zone', 'kunai', 'ricochet', 'breath', 'anchor'];
-    if (SAFE.includes(def.type) || (def.type === 'dash' && def.quick)) return void this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult });
-    if (!(dmg > 0)) return;
+    // (0.95) exactly what you did, every class's and every subclass's: a skill that stays where you are is cast
+    // again from where the shade stands; one that carries you, the shade does its own way (a spin round it, a
+    // dash down the same line, a leap's landing, a Deadeye from its place, an orb of its own...)
+    const p = this.player, m = this.mods;
+    if (!def || def.passive || ['bloodoath', 'frenzy', 'focus', 'hurricane', 'veil'].includes(def.type)) return; // (a toggle or a buff of your own: nothing to copy)
+    const SAFE = ['cone', 'nova', 'line', 'bolt', 'smoulder', 'meteor', 'kunai', 'ricochet', 'breath', 'anchor', 'wall', 'trap', 'fireclones'];
+    if (SAFE.includes(def.type) || (def.type === 'zone' && !def.channel) || (def.type === 'dash' && def.quick)) return void this.delayed.push({ t: 0.3, kind: 'recast', slot, x, z, mult });
     const a = dAtan2(z - p.z, x - p.x), d = Math.min(dist(x, z, p.x, p.z), def.range || 6);
-    const at = Number.isFinite(a) ? this.clampToArena(p.x + dCos(a) * d, p.z + dSin(a) * d, 0.5) : { x: p.x, z: p.z };
-    this.delayed.push({ t: 0.35, kind: 'shadeStrike', x: at.x, z: at.z, r: Math.max(3, (def.radius || 0) * 0.8), dmg: dmg * mult, slot });
+    const aim = Number.isFinite(a) ? this.clampToArena(p.x + dCos(a) * d, p.z + dSin(a) * d, 0.5) : { x: p.x, z: p.z };
+    if (def.type === 'spin' && p.spin) {
+      // the shade spins with you, beat for beat
+      p.shadeSpin = { left: p.spin.left, next: 0.15, tick: p.spin.tick, dmg: p.spin.dmg * mult, radius: p.spin.radius, slot };
+      return;
+    }
+    if (def.type === 'dash' && p.dash) {
+      if (!(p.dash.dmg > 0)) return;
+      this.delayed.push({ t: 0.3, kind: 'shadeDash', sx: p.dash.sx, sz: p.dash.sz, ex: p.dash.ex, ez: p.dash.ez, w: Math.max(1.4, p.dash.width || 0), dmg: p.dash.dmg * mult, slot });
+      return;
+    }
+    if (def.type === 'leap' && p.leap) return void this.delayed.push({ t: p.leap.dur + 0.25, kind: 'shadeStrike', x: p.leap.ex, z: p.leap.ez, r: p.leap.radius, dmg: p.leap.dmg * mult, stun: p.leap.stun || 0, slot });
+    if (def.type === 'deadeye' && !(m.shadeEye > 0 && slot === 'r')) return void this.delayed.push({ t: (def.channel || 0) + 0.25, kind: 'shadeEye', a: Number.isFinite(a) ? a : p.facing, range: def.range || 20, width: def.width || 2, dmg: dmg * mult, slot });
+    if (def.type === 'deadeye') return; // (Umbra Gemina draws its own)
+    if (def.type === 'zone' && def.channel) return void this.delayed.push({ t: def.channel + 0.2, kind: 'shadeZone', x: aim.x, z: aim.z, def, dmg: dmg * mult, slot, radius: (def.radius || 3) * (m[slot + 'Radius'] || 1) });
+    if (def.type === 'orb') {
+      // an orb of its own, from where it stands
+      const o = this.projectiles.filter((pr) => pr.kind === 'orb' && pr.pid === this.cur.pid && !pr.shade).pop();
+      if (o) {
+        const sx = p.shadeAt ? p.shadeAt.x : p.x, sz = p.shadeAt ? p.shadeAt.z : p.z;
+        const oa = dAtan2(aim.z - sz, aim.x - sx);
+        const sp = dHypot(o.vx, o.vz);
+        this.projectiles.push(Object.assign({}, o, { id: this.nextId++, shade: true, x: sx, z: sz, px: sx, pz: sz, vx: dCos(oa) * sp, vz: dSin(oa) * sp, dmg: o.dmg * mult, hits: o.hits ? new Map() : o.hits, hit: o.hit ? new Set() : o.hit }));
+      }
+      return;
+    }
+    if (def.type === 'barrage') {
+      const n = def.count + (m.wExtra || 0);
+      for (let i = 0; i < n; i++) this.delayed.push({ t: 0.3 + i * (def.gap || 0.09), kind: 'shadeStrike', x: aim.x, z: aim.z, r: 1.4, dmg: dmg * mult, slot, quiet: i > 0 });
+      return;
+    }
+    if (def.type === 'blink' || def.type === 'snare' || def.type === 'bastion' || def.type === 'rimehalo') return void this.delayed.push({ t: 0.3, kind: 'shadeStrike', x: p.x, z: p.z, r: Math.max(3, def.radius || def.burst || 4), dmg: dmg * mult, slot });
+    if (!(dmg > 0)) return;
+    this.delayed.push({ t: 0.35, kind: 'shadeStrike', x: aim.x, z: aim.z, r: Math.max(3, (def.radius || 0) * 0.8), dmg: dmg * mult, slot });
   }
+
 
   /** (0.68) The Animus asked of this hero here: the most any enemy within reach asks (0 if none). */
   willNeed(p) {
@@ -9970,7 +10048,8 @@ export class World {
         heal = Math.min(heal, p.lsPool || 0);
         p.lsPool = Math.max(0, (p.lsPool || 0) - heal);
         // Blood Rage: while Bloodied, lifesteal stops just below half health, so it keeps you Bloodied.
-        if (this.mods.bloodCap && p.bloodied) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
+        // (0.95) only while Crimson Oath is on: turned off, lifesteal heals you all the way again
+        if (this.mods.bloodCap && p.bloodied && this.frenzyActive(p)) heal = Math.min(heal, Math.max(0, p.stats.maxHp * 0.495 - p.hp));
       }
       if (heal > 0) this.healPlayer(heal, false);
     }

@@ -1896,7 +1896,11 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     p.hp = p.stats.maxHp * 0.45; run(w, 0.05);
     p.stats.lifesteal = 25;
     for (let i = 0; i < 40; i++) w.hitEnemy(e, 5000, { basic: true, canCrit: false });
-    check('Blood Rage: lifesteal stops just below half health while Bloodied', p.hp < p.stats.maxHp * 0.5 && p.hp > p.stats.maxHp * 0.49 && p.bloodied, (p.hp / p.stats.maxHp).toFixed(3));
+    check('Blood Rage (0.95): with Crimson Oath off, lifesteal heals past half again', p.hp > p.stats.maxHp * 0.5, (p.hp / p.stats.maxHp).toFixed(3));
+    p.hp = p.stats.maxHp * 0.45; p.frenzyOn = true; run(w, 0.05);
+    for (let i = 0; i < 40; i++) w.hitEnemy(e, 5000, { basic: true, canCrit: false });
+    check('Blood Rage: under Crimson Oath, lifesteal stops just below half health', p.hp <= p.stats.maxHp * 0.5 && p.hp > p.stats.maxHp * 0.45, (p.hp / p.stats.maxHp).toFixed(3));
+    p.frenzyOn = false;
     p.hp = 20; run(w, 0.05);
     w.hitPlayer(1e6, { parryable: false, src: e });
     check('Blood Rage: a killing blow while Bloodied leaves you at 1 health', !p.dead && p.hp === 1);
@@ -6283,9 +6287,9 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const { w, p, e } = mk('warrior', 'windrunner');
     w.command({ type: 'cast', slot: 'q', x: e.x, z: e.z }); w.runCommands();
     const motes = w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length;
-    check('...Gale Steps: every skill looses homing wind blades', motes === 5);
+    check('...Gale Steps: every skill looses homing wind blades', motes === 3);
     w.basicAttack(e);
-    check('...and every swing one more', w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length === 6);
+    check('...and every swing one more', w.projectiles.filter((pr) => pr.kind === 'mote' && pr.slot === 'gale').length === 4);
   }
 }
 {
@@ -6337,5 +6341,40 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.loadMap('haven');
   check('...leaving the keep in it, by any road, leaves it home: yourself again, your own kit', !p.possess && w.kit.q.name !== 'Dawnlance' && !w.handsOn());
   check('Treasure Sense (0.94): a Rogue finds gear more often, and so does their party', w.treasureSense() > 1 && new World({ seed: 1, mode: 'explore', cls: 'mage' }).treasureSense() === 1);
+}
+// --- 0.95: Crimson Oath's cap lifts when it is off; the shade copies a Whirlwind; walking anywhere ---------------
+{
+  const { geared } = await import('./balance.mjs');
+  const { BORROWED } = await import('../src/sim/borrowed.js');
+  const { MAPS } = await import('../src/sim/maps.js');
+  const w = new World({ seed: 950, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  w.command({ type: 'chooseSpec', id: 'berserker' }); w.step(CONFIG.TICK); w.command({ type: 'autoTalents' }); w.step(CONFIG.TICK);
+  p.hp = p.stats.maxHp * 0.3; p.bloodied = true;
+  const e = w.spawnEnemy('grunt', { x: p.x + 1.5, z: p.z, level: 100 }); e.hp = e.maxHp = 1e9;
+  for (let i = 0; i < 300; i++) { w.hitEnemy(e, p.stats.ad, { basic: true }); p.lsPool = 1e9; }
+  check('Berserker (0.95): with Crimson Oath off, lifesteal heals past half (Blood Rage holds you there only under the Oath)', p.hp > p.stats.maxHp * 0.6);
+  w.borrowable = () => Object.keys(BORROWED.warrior);
+  p.borrowed = { d: 'shadowdancer', f: null }; w.recalcStats();
+  w.loadMap('spire', MAPS.spire.portals[0].to);
+  for (const o of w.enemies) o.dead = true;
+  w.enemies = [];
+  const b = w.spawnEnemy('boss3', { x: p.x + 2, z: p.z, level: 100 });
+  b.hp = b.maxHp = 1e11; b.state = 'recover'; b.t = 1e9;
+  let mine = 0;
+  const orig = w.hitEnemy.bind(w);
+  w.hitEnemy = (en, d, o = {}) => { if (o.source === 'w') mine++; return orig(en, d, o); };
+  p.hp = p.stats.maxHp;
+  w.command({ type: 'cast', slot: 'w', x: b.x, z: b.z }); w.runCommands();
+  for (let i = 0; i < 240; i++) { w.step(CONFIG.TICK); b.state = 'recover'; b.t = 1e9; }
+  w.hitEnemy = orig;
+  check('...the shade spins its own Whirlwind with yours, beat for beat (twice the hits)', mine >= 2 * 10);
+  b.dead = true; w.enemies = [];
+  w.command({ type: 'walkPace', on: true }); w.runCommands();
+  const x0 = p.x, z0 = p.z;
+  w.command({ type: 'move', x: p.x - 30, z: p.z }); w.runCommands();
+  for (let i = 0; i < 60; i++) w.step(CONFIG.TICK);
+  const moved = Math.hypot(p.x - x0, p.z - z0);
+  check('Walking (0.95): Ctrl or Caps Lock walks at an even pace anywhere, not only over the shoulder', Math.abs(moved - 3.4) < 0.6, moved.toFixed(2));
 }
 process.exit(failed ? 1 : 0);

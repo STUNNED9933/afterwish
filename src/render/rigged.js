@@ -456,6 +456,7 @@ function prepare(spec, gltf) {
   for (const c of gltf.animations) clips[c.name] = c;
   const h = box.max.y - box.min.y;
   if (clips[spec.run]) stripDrift(clips[spec.run], spec.rootBones);
+  if (clips[spec.walk || 'ual_Walk']) stripDrift(clips[spec.walk || 'ual_Walk'], spec.rootBones); // (0.95) the walk stays where the body is
   if (spec.recentre === '*') {
     // (0.54.7) creatures: any clip that walks itself away (a Tripo walk with its travel left in) is put back
     // in place, so the body stays on its hitbox. A fall keeps its own stagger back.
@@ -576,7 +577,7 @@ export function instantiate(tpl) {
     }
     return a;
   };
-  const actions = { idle: act(spec.idle), run: act(spec.run), attack: act('__attack', true), death: act(spec.death, true), hit: act(spec.hit, true) };
+  const actions = { idle: act(spec.idle), run: act(spec.run), walk: act(spec.walk || 'ual_Walk'), attack: act('__attack', true), death: act(spec.death, true), hit: act(spec.hit, true) }; // (0.95) a walk of their own (UAL, CC0)
   // alternating basic attacks (spec.attacks), in place of the single one
   const combo = (spec.attacks || []).map((_, i) => act(`__attack${i}`, true)).filter(Boolean);
   let comboAt = 0;
@@ -643,6 +644,10 @@ export function instantiate(tpl) {
   const aiming = Object.values(actions).concat(Object.values(moves).map((m) => m.action)).filter((a) => a && spec.aiming && spec.aiming.test(a.getClip().name));
   let bow = null;
   return {
+    /** (0.95) the clip playing now (tests) */
+    get clipName() {
+      return current ? current.getClip().name : null;
+    },
     group: holder,
     mats,
     hand,
@@ -762,10 +767,14 @@ export function instantiate(tpl) {
           if (k > 0.3 && k < 0.7) slash = 0.55;
         } else if (flinching) {
           // let the flinch play out
+        } else if (s.moving && actions.walk && (s.walk || (s.speed || 6) < (spec.walkBelow || 4.2))) {
+          // (0.95) walking (Ctrl or Caps Lock, or simply slow): a walk, not a slowed run
+          actions.walk.timeScale = Math.max(0.7, Math.min(1.5, (s.speed || 3.4) / (spec.walkRef || 3.4)));
+          fadeTo(actions.walk, endFade || 0.25);
         } else if (s.moving && actions.run) {
           actions.run.timeScale = Math.max(0.6, Math.min(1.8, (s.speed || 6) / (spec.runRef || 6.5)));
           fadeTo(actions.run, endFade || 0.2);
-        } else fadeTo(actions.idle, endFade || (current === actions.run ? 0.35 : current === actions.spin ? 0.2 : 0.25)); // ease into a stop
+        } else fadeTo(actions.idle, endFade || (current === actions.run || current === actions.walk ? 0.35 : current === actions.spin ? 0.2 : 0.25)); // ease into a stop
         if (!move) endFade = 0;
       }
       // (0.50) put back the wrist the clips posed before they pose it again: while clips fade in and out

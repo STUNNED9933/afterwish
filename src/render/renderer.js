@@ -1416,7 +1416,7 @@ export class Renderer {
    * point, a halo turning round it); a Choir's shot a shard of light in its own glow.
    */
   seraphShot(m, kind) {
-    m.material.visible = false;
+    m.material = new THREE.MeshBasicMaterial({ visible: false }); // (its own: the shared shot materials stay seen)
     const add = (o) => (m.add(o), o);
     const glow = new THREE.SpriteMaterial({ map: this.glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffe2a0 });
     const bright = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -1701,6 +1701,10 @@ export class Renderer {
         if ((ev.ally ? an.cls : this.heroCls) !== 'archer' && (ev.ally ? an.cls : this.heroCls) !== 'mage') this.flash(this.sectorGeo(2.4, 0.55), { x: ev.x, z: ev.z, y: 1.0, dir: ev.dir, color: 0xdff4ff, from: 2.4, to: 3.0, dur: 0.2, opacity: 0.5 });
         break;
       }
+      case 'shadowSpin':
+        // (0.95) a beat of the shade's Whirlwind
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.3, color: 0x7a3cff, from: ev.radius * 0.6, to: ev.radius, dur: 0.25, opacity: 0.55 });
+        break;
       case 'seraphFx':
         this.seraphFx(ev); // (0.93)
         break;
@@ -2538,7 +2542,7 @@ export class Renderer {
       h.prevDash = !!p.dash;
       h.prevLeap = !!p.leap;
       an.move = null;
-      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, speed: p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
+      h.rig.update(dt, { dead: p.dead, attackStart: attackStart && !p.dead && !p.spin, attackDur: an.swingDur, moving: walking && !p.dash && !p.leap && !sera, walk: !!p.walkPace, speed: p.walkPace ? 3.4 : p.stats && p.stats.ms, spinning, hitStart, move: p.dead ? null : move, moveDur, period: p.stats && p.stats.as > 0 ? 1 / p.stats.as : 0 });
       g.rotation.z = 0;
       if (sera) {
         // (0.93) gliding: leaning into it, robes trailing (the idle plays on underneath)
@@ -2829,6 +2833,18 @@ export class Renderer {
     });
   }
 
+  /** (0.95) One material for every shot of a colour (a fresh one per mote was a Windrunner borrower's lag). */
+  shotMat(color) {
+    this.shotMats = this.shotMats || new Map();
+    let m = this.shotMats.get(color);
+    if (!m) {
+      m = new THREE.MeshBasicMaterial({ color });
+      m.userData.shared = true;
+      m.userData.color = color;
+      this.shotMats.set(color, m);
+    }
+    return m;
+  }
   syncProjectiles(world, alpha) {
     const seen = new Set();
     for (const pr of world.projectiles) {
@@ -2847,7 +2863,7 @@ export class Renderer {
             this.shotGeo = new THREE.IcosahedronGeometry(0.32, 1);
             this.shotGeo.userData.keep = true;
           }
-          m = new THREE.Mesh(this.shotGeo, new THREE.MeshBasicMaterial({ color: 0xd78bff }));
+          m = new THREE.Mesh(this.shotGeo, this.shotMat(0xd78bff)); // (0.95) a material shared by every shot of a colour
         }
         this.scene.add(m);
         this.projViews.set(pr.id, m);
@@ -2856,7 +2872,10 @@ export class Renderer {
       m.userData.kind = pr.kind;
       const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a, lance: 0xfff0c0, eye: 0xffffff }[pr.kind]; // the hero's own shots (0.94: the Seraph's lance and eyes)
       m.userData.color = own || 0xd78bff;
-      m.material.color.set(own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger));
+      const want = own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger);
+      if (m.material.userData.shared) {
+        if (m.material.userData.color !== want) m.material = this.shotMat(want);
+      } else m.material.color.set(want);
       m.position.set(lerp(pr.px, pr.x, alpha), 1.2, lerp(pr.pz, pr.z, alpha));
       m.scale.setScalar(pr.kind === 'orb' ? 2.5 : pr.kind === 'bolt' ? 1.7 : pr.kind === 'spark' ? 0.75 : pr.kind ? 0.55 : pr.reflected ? 1.3 : 1);
       if (pr.kind === 'bolt' || pr.kind === 'spark') {
@@ -2869,8 +2888,8 @@ export class Renderer {
         this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: FX_COLOR[pr.fx], speed: 0.5, up: 0.4, gravity: 0.5, life: 0.45, size: 1.2 });
       }
       if (pr.kind === 'mote') {
-        m.scale.setScalar(0.8);
-        if (Math.random() < 0.9) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: 0xfff3b0, speed: 0.4, up: 0.3, gravity: 0, life: 0.4, size: 1 });
+        m.scale.setScalar(0.8); // (0.95) a lighter wake: many of them fly at once
+        if (Math.random() < 0.3) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: 0xfff3b0, speed: 0.4, up: 0.3, gravity: 0, life: 0.35, size: 1 });
       }
       if (pr.kind === 'crescent') {
         const a = Math.atan2(pr.z - pr.pz, pr.x - pr.px);
@@ -2901,15 +2920,15 @@ export class Renderer {
         m.rotation.x += 0.07;
         if (Math.random() < 0.8) this.burst(m.position.x, 1.2, m.position.z, { count: 2, color: 0xe8fbff, speed: 2.5, up: 1, gravity: 0, life: 0.5, size: 1.1 });
       }
-      if (Math.random() < (pr.kind === 'arrow' ? 0.3 : 0.6)) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: own || (pr.reflected ? 0x9fe8ff : 0xb44aff), speed: 0.6, up: 0.4, gravity: 0, life: 0.35, size: 0.9 });
+      if (pr.kind !== 'mote' && Math.random() < (pr.kind === 'arrow' ? 0.3 : 0.6)) this.burst(m.position.x, 1.2, m.position.z, { count: 1, color: own || (pr.reflected ? 0x9fe8ff : 0xb44aff), speed: 0.6, up: 0.4, gravity: 0, life: 0.35, size: 0.9 });
     }
     for (const [id, m] of this.projViews) {
       if (!seen.has(id)) {
-        this.burst(m.position.x, 1.2, m.position.z, { count: m.userData.kind === 'arrow' ? 4 : 8, color: m.userData.color || 0xd78bff, speed: 4, up: 2 });
+        this.burst(m.position.x, 1.2, m.position.z, { count: m.userData.kind === 'arrow' ? 4 : m.userData.kind === 'mote' ? 3 : 8, color: m.userData.color || 0xd78bff, speed: 4, up: 2 });
         if (m.userData.volley > 0) this.rainArrows(m.position.x, m.position.z, m.userData.volley);
         this.scene.remove(m);
         if (!m.geometry.userData.keep) m.geometry.dispose();
-        m.material.dispose();
+        if (!m.material.userData.shared) m.material.dispose();
         this.projViews.delete(id);
       }
     }
@@ -2972,6 +2991,68 @@ export class Renderer {
     R.mesh.instanceMatrix.needsUpdate = true;
   }
 
+  /**
+   * (0.95) An Immortal on the ground, unmistakable beside an Ancient: a white-hot heart in a larger gold gem,
+   * a tall double beam (a white core in gold) that breathes, three gold rings turning round it, a turning sun
+   * on the ground, a halo of light, a warm light on everything near, and sparks rising. An Eternal the same in
+   * white and crimson.
+   */
+  lootRelic(v, eternal) {
+    const g = v.group;
+    const main = eternal ? 0xff3d4f : 0xffd24a, hot = eternal ? 0xffffff : 0xfff6d8;
+    const add = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    // the gem: larger, and a white-hot heart inside it
+    v.gem.scale.setScalar(1.45);
+    const heart = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: hot }));
+    v.gem.add(heart);
+    // the beam, doubled and taller
+    const H = 16;
+    const outer = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.42, H, 12, 1, true), add(main, 0.55));
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.1, H, 8, 1, true), add(hot, 0.9));
+    outer.position.y = core.position.y = H / 2;
+    // three rings turning round the gem, each its own way
+    const rings = [0, 1, 2].map((i) => {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.55 + i * 0.18, 0.035, 6, 32), add(i === 1 ? hot : main, 0.85));
+      r.rotation.x = Math.PI / 2 + (i - 1) * 0.5;
+      return r;
+    });
+    // a sun on the ground: a ring and twelve rays, turning
+    const sun = new THREE.Group();
+    const disc = new THREE.Mesh(this.ringGeo(), add(main, 0.8));
+    disc.scale.setScalar(1.5);
+    sun.add(disc);
+    for (let i = 0; i < 12; i++) {
+      const ray = new THREE.Mesh(new THREE.PlaneGeometry(0.08, i % 2 ? 0.9 : 1.5).rotateX(-Math.PI / 2), add(main, 0.7));
+      const a = (i / 12) * Math.PI * 2;
+      ray.position.set(Math.cos(a) * (i % 2 ? 1.9 : 2.2), 0, Math.sin(a) * (i % 2 ? 1.9 : 2.2));
+      ray.rotation.y = -a + Math.PI / 2;
+      sun.add(ray);
+    }
+    sun.position.y = 0.05;
+    // a halo of light round the gem, and a warm light
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex(), color: main, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.set(3.2, 3.2, 1);
+    const light = new THREE.PointLight(main, 40, 9, 1.6);
+    light.position.y = 1.2;
+    g.add(outer, core, ...rings, sun, halo, light);
+    v.relic = { outer, core, rings, sun, halo, light, main };
+  }
+  stepLootRelic(v, l) {
+    const R = v.relic, t = this.time + l.id;
+    const breath = 0.5 + 0.5 * Math.sin(t * 2.4);
+    R.outer.material.opacity = 0.35 + 0.3 * breath;
+    R.core.material.opacity = 0.6 + 0.35 * breath;
+    R.rings.forEach((r, i) => {
+      r.position.y = v.gem.position.y;
+      r.rotation.z += (i % 2 ? -1 : 1) * 0.03 * (1 + i * 0.4);
+      r.rotation.y += 0.012 * (i + 1);
+    });
+    R.sun.rotation.y = t * 0.6;
+    R.halo.position.y = v.gem.position.y;
+    R.halo.material.opacity = 0.55 + 0.35 * breath;
+    R.light.intensity = 30 + 25 * breath;
+    if (Math.random() < 0.25) this.burst(v.group.position.x + (Math.random() - 0.5) * 1.6, 0.3, v.group.position.z + (Math.random() - 0.5) * 1.6, { count: 1, color: R.main, speed: 0.3, up: 3, gravity: -0.5, life: 1.2, size: 0.6 });
+  }
   syncLoot(world) {
     const seen = new Set();
     const me = world.cur ? world.cur.pid : undefined;
@@ -2995,11 +3076,13 @@ export class Renderer {
         group.add(gem, beam, ring);
         this.scene.add(group);
         v = { group, gem };
+        if (l.item.rarity >= 6 && !l.item.set) this.lootRelic(v, l.item.rarity >= 7); // (0.95) Immortal (and Eternal): a look of their own
         this.lootViews.set(l.id, v);
       }
       v.group.position.set(l.x, 0, l.z);
       v.gem.position.y = 0.7 + Math.sin(this.time * 3 + l.id) * 0.15;
       v.gem.rotation.y = this.time * 2;
+      if (v.relic) this.stepLootRelic(v, l);
     }
     for (const [id, v] of this.lootViews) {
       if (!seen.has(id)) {
@@ -3507,7 +3590,9 @@ export class Renderer {
         const k = 1 - Math.exp(-14 * dt); // (smoothed: it trails you like a shadow)
         g.position.x += (h.shade.x - g.position.x) * k;
         g.position.z += (h.shade.z - g.position.z) * k;
-        g.rotation.y = Math.PI / 2 - (h.shade.facing || 0);
+        // (0.95) the shade's own Whirlwind: it turns with it
+        v.spin = h.shade.spinT > 0 ? (v.spin || 0) + dt * Math.PI * 2 * 2.4 : 0;
+        g.rotation.y = Math.PI / 2 - (h.shade.facing || 0) + v.spin;
         const attackStart = (h.shade.atk || 0) !== v.atk;
         v.atk = h.shade.atk || 0;
         if (v.rig) v.rig.update(dt, { moving: !!h.shade.moving, attackStart, attackDur: 0.25 });
@@ -3763,7 +3848,7 @@ export class Renderer {
         if (spinning) v.spinAngle = (v.spinAngle || 0) + dt * Math.PI * 2 * 2.4;
         else v.spinAngle = 0;
         v.model.rig.group.rotation.y = (v.model.rig.baseTurn || 0) + v.spinAngle;
-        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
+        v.model.rig.update(dt, { dead: a.dead, moving: a.moving && !a.dash && !a.leap && !sera, walk: !!a.walk, speed: a.walk ? 3.4 : undefined, attackStart: attackStart && !a.dead && !a.spin, attackDur: an.swingDur, spinning, move: a.dead ? null : move, moveDur, period: a.as > 0 ? 1 / a.as : 0 });
       } else if (a.dead) {
         g.rotation.x = -Math.PI / 2 + 0.15;
         g.position.set(x, 0.3, z);

@@ -96,11 +96,11 @@ const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
 const WALK_PACE = 1.8; // (0.94; 0.96.1: 1.8, a natural stride and cadence for a two-metre hero; the walk is timed to it, so the feet hold the ground) over the shoulder, walking (Ctrl): the same for every hero, whatever they wear
-const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepStatueTier', 'keepTrial', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
-import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, STATUE_SKILLS, statueKit, statuePower, statueCap } from './wishkeep.js'; // (0.92)
+import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, STATUE_SKILLS, statueKit, statuePower, statueCap, statueSkillOpen, STATUE_TIERS, statueTierMult, TRIAL } from './wishkeep.js'; // (0.92; 0.98 tiers and the trial)
 import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -496,6 +496,8 @@ export class World {
       walkPace: false,
       keepWalk: false,
       seraphWind: null,
+      seraphBeam: null, // (0.98) Sunfall
+      ascendT: 0, // (0.98) Ascension
       moveTarget: null,
       targetId: null,
       autoAcquire: true,
@@ -1004,6 +1006,12 @@ export class World {
           break;
         case 'keepStatueSkill':
           this.statueSkill(c.slot, c.id); // (0.94)
+          break;
+        case 'keepStatueTier':
+          this.statueTierUp(); // (0.98)
+          break;
+        case 'keepTrial':
+          this.statueTrial(); // (0.98)
           break;
         case 'parry':
           this.tryParry(c.seen);
@@ -2178,8 +2186,20 @@ export class World {
       p.castLock = def.wind;
       p.facing = a;
       p.moveTarget = null;
-      p.seraphWind = { slot, x: Number.isFinite(x) ? x : at.x, z: Number.isFinite(z) ? z : at.z, t: def.wind };
-      this.emit('cast', { slot, fx: 'wind_' + slot, seraph: 'wind', x: p.x, z: p.z, dir: a, tx: at.x, tz: at.z, dur: def.wind, range: def.range, radius: def.radius });
+      let wx = Number.isFinite(x) ? x : at.x, wz = Number.isFinite(z) ? z : at.z, track = null, tx = at.x, tz = at.z;
+      if (def.blink) {
+        // (0.98) it goes there in a flash first: beside the foe or hero nearest where you aimed
+        const b = this.seraphBlink(wx, wz, def.blink);
+        [wx, wz, tx, tz] = [p.x, p.z, p.x, p.z];
+        if (b) p.facing = b.face;
+      }
+      if (def.track) {
+        // (0.98) the gathering follows the foe nearest where you aimed, wherever it goes
+        const t = this.seraphTarget(wx, wz, (def.range || 20) + 4);
+        if (t) [track, wx, wz, tx, tz] = [t.id, t.x, t.z, t.x, t.z];
+      }
+      p.seraphWind = { slot, x: wx, z: wz, t: def.wind, track, emitT: 0 };
+      this.emit('cast', { slot, fx: 'wind_' + slot, seraph: 'wind', x: p.x, z: p.z, dir: p.facing, tx, tz, dur: def.wind, range: def.range, radius: def.radius, track: track != null || undefined });
       return;
     }
     if (def && def.type === 'orb') {
@@ -2292,6 +2312,7 @@ export class World {
         }
         const hits = this.novaHit(slot, def, dmg, radius, true, true);
         if (def.mend && this.tide && this.tide.state === 'on') for (const tr of this.troops || []) if (!tr.dead && dist(tr.x, tr.z, p.x, p.z) <= radius) this.troopMend(tr, tr.maxHp * def.mend); // (0.92) Wingbeat
+        for (let i = 1; i < (def.pulses || 1); i++) this.delayed.push({ t: def.gap * i, kind: 'seraphPulse', x: p.x, z: p.z, r: radius, dmg, mend: def.mend || 0, fx: 'wings', slot }); // (0.98) Wrath of Wings
         this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull: slot === 'w' && m.wPull, wings: !!def.mend });
         this.battleRhythm(slot, hits);
         break;
@@ -2331,6 +2352,14 @@ export class World {
         if (slot === 'e' && m.shadowStep) this.addShadow('e', p.x, p.z, a);
         if (def.veil) this.addShadow(slot, p.x, p.z, a); // Veilstep leaves one too
         p.dash = { t: 0, dur: def.duration, sx: p.x, sz: p.z, ex: end.x, ez: end.z, hit: new Set(), dmg, refunded: false, slot, width: def.width || 0, empower: def.empower || null, rush: def.rush || null, motes: def.motes || null, veil: def.veil || 0, faceId, quick: def.quick || null };
+        if (def.wake) {
+          // (0.98) Radiant Wake: light left along the glide burns what stands in it, again and again
+          const W = def.wake;
+          for (let i = 0; i < W.n; i++) {
+            const u = (i + 0.5) / W.n, wx = p.x + (end.x - p.x) * u, wz = p.z + (end.z - p.z) * u;
+            for (let j = 0; j < W.pulses; j++) this.delayed.push({ t: def.duration * u + 0.1 + j * W.gap, kind: 'seraphPulse', x: wx, z: wz, r: W.r, dmg: dmg * W.share, fx: 'wake', slot });
+          }
+        }
         p.moveTarget = null;
         this.emit('cast', { slot, fx: 'dash', x: p.x, z: p.z, dir: a, ex: end.x, ez: end.z });
         break;
@@ -2814,15 +2843,97 @@ export class World {
         this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: la, range: 0, width: 0, seraphShot: true });
         break;
       }
+      case 'seraphLaser': {
+        // (0.98) Dawnlance: a ray of dawn to the foe aimed at, glancing on from foe to foe (Prism Lance: first
+        // straight through a line, then breaking into rays on the last thing it struck)
+        const SPEED = 90;
+        let first = this.seraphTarget(x, z, range);
+        p.facing = first ? dAtan2(first.z - p.z, first.x - p.x) : a;
+        p.castLock = 0.12;
+        const pts = [[p.x, p.z]];
+        const chain = [];
+        let t = 0, line = null;
+        if (def.line) {
+          const la = p.facing, c = dCos(la), sn = dSin(la);
+          const hit = [];
+          for (const e of this.enemies) {
+            if (e.dead || e.state === 'spawn') continue;
+            const rx = e.x - p.x, rz = e.z - p.z, along = rx * c + rz * sn;
+            if (along < -e.radius || along > range + e.radius || Math.abs(rz * c - rx * sn) > def.line / 2 + e.radius) continue;
+            hit.push([e, along]);
+          }
+          hit.sort((u, v) => u[1] - v[1]);
+          for (const [e, along] of hit) this.delayed.push({ t: along / SPEED, kind: 'ricochet', id: e.id, dmg, crit: false, sunder: 0 });
+          line = { a: la, len: range, hit: hit.map(([e]) => e) };
+          first = hit.length ? hit[hit.length - 1][0] : null;
+          if (first) t = hit[hit.length - 1][1] / SPEED;
+          pts.push([p.x + c * (first ? hit[hit.length - 1][1] : range), p.z + sn * (first ? hit[hit.length - 1][1] : range)]);
+        }
+        if (first) {
+          chain.push(first);
+          const seen = new Set([first]);
+          if (line) for (const e of line.hit) seen.add(e); // (the rays go on to others)
+          while (chain.length < 1 + (def.bounces || 0)) {
+            const last = chain[chain.length - 1];
+            let best = null, bd = def.bounceRange || 10;
+            for (const e of this.enemies) {
+              if (e.dead || e.state === 'spawn' || seen.has(e)) continue;
+              const de = dist(e.x, e.z, last.x, last.z) - e.radius;
+              if (de < bd) [best, bd] = [e, de];
+            }
+            if (!best) break;
+            chain.push(best);
+            seen.add(best);
+          }
+          let fx = def.line ? first.x : p.x, fz = def.line ? first.z : p.z, fall = 1;
+          chain.forEach((e, i) => {
+            if (i > 0) fall *= def.falloff || 0.85; // (multiplied, not Math.pow: the same on every machine)
+            if (def.line && i === 0) return; // (struck by the beam already)
+            t += dist(fx, fz, e.x, e.z) / SPEED;
+            [fx, fz] = [e.x, e.z];
+            pts.push([e.x, e.z]);
+            this.delayed.push({ t, kind: 'ricochet', id: e.id, dmg: dmg * fall, crit: false, sunder: 0 });
+          });
+        } else if (!def.line) {
+          const len = Math.min(d, range);
+          pts.push([p.x + cos * len, p.z + sin * len]);
+        }
+        this.emit('cast', { slot, fx: 'seraphLaser', x: p.x, z: p.z, dir: p.facing, pts, line: line ? { a: line.a, len: line.len } : null, noMove: true });
+        break;
+      }
+      case 'seraphBeam': {
+        // (0.98) Sunfall: a beam of sunlight that hunts the foe aimed at, then the next
+        const t0 = this.seraphTarget(x, z, range);
+        const c = t0 ? { x: t0.x, z: t0.z } : aimPoint();
+        p.facing = a;
+        p.castLock = 0.2;
+        p.seraphBeam = { x: c.x, z: c.z, id: t0 ? t0.id : null, left: def.duration, tick: 0, every: def.tick, dmg, r: def.radius, chase: def.chase, range, slot };
+        this.emit('cast', { slot, fx: 'sunfall', x: c.x, z: c.z, radius: def.radius, dur: def.duration, noMove: true });
+        break;
+      }
+      case 'seraphAscend': {
+        // (0.98) Ascension
+        p.ascendT = def.duration;
+        p.castLock = 0.3;
+        this.emit('cast', { slot, fx: 'ascend', x: p.x, z: p.z, dur: def.duration, noMove: true });
+        this.emit('buff', { name: 'Ascension', x: p.x, z: p.z });
+        break;
+      }
       case 'seraphChoir': {
         // (0.94) Choir of Eyes: one eye to each foe near where you aimed
         const near = this.enemies.filter((e) => !e.dead && e.state !== 'spawn' && dist(e.x, e.z, p.x, p.z) <= range + e.radius).sort((u, v) => dist(u.x, u.z, x, z) - dist(v.x, v.z, x, z));
+        if (def.focus) {
+          // (0.98) Seraphic Barrage: every bolt at the one foe aimed at, curving in from either side
+          const t = this.seraphTarget(x, z, range);
+          near.length = 0;
+          if (t) near.push(t);
+        }
         p.facing = a;
         p.castLock = 0.12;
         for (let i = 0; i < def.count; i++) {
           const t = near.length ? near[i % near.length] : null;
-          const ea = (t ? dAtan2(t.z - p.z, t.x - p.x) : a) + (i - (def.count - 1) / 2) * 0.45;
-          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'eye', slot, pid: this.cur.pid, targetId: t ? t.id : null, x: p.x + dCos(ea) * 1.2, z: p.z + dSin(ea) * 1.2, px: p.x, pz: p.z, vx: dCos(ea) * def.speed, vz: dSin(ea) * def.speed, speed: def.speed, radius: 0.5, dmg, parryable: false, reflected: false, life: range / def.speed + 0.6, dead: false });
+          const ea = (t ? dAtan2(t.z - p.z, t.x - p.x) : a) + (i - (def.count - 1) / 2) * (def.focus ? 0.6 : 0.45);
+          this.projectiles.push({ id: this.nextId++, owner: 'player', kind: def.focus ? 'holy' : 'eye', slot, pid: this.cur.pid, targetId: t ? t.id : null, x: p.x + dCos(ea) * 1.2, z: p.z + dSin(ea) * 1.2, px: p.x, pz: p.z, vx: dCos(ea) * def.speed, vz: dSin(ea) * def.speed, speed: def.speed, radius: 0.5, dmg, parryable: false, reflected: false, life: range / def.speed + 0.6, dead: false });
         }
         this.emit('cast', { slot, fx: 'line', x: p.x, z: p.z, dir: a, range: 0, width: 0, seraphShot: true });
         break;
@@ -2835,7 +2946,7 @@ export class World {
         p.castLock = 0.2;
         for (let i = 0; i < def.rays; i++) {
           const t = near.length ? near[i % near.length] : null;
-          this.delayed.push({ t: 0.1 + i * def.gap, kind: 'seraphRay', id: t ? t.id : null, x: t ? t.x : c.x + dCos(i * 2.4) * def.radius * 0.5, z: t ? t.z : c.z + dSin(i * 2.4) * def.radius * 0.5, dmg, slot });
+          this.delayed.push({ t: 0.1 + i * def.gap, kind: 'seraphRay', id: t ? t.id : null, x: t ? t.x : c.x + dCos(i * 2.4) * def.radius * 0.5, z: t ? t.z : c.z + dSin(i * 2.4) * def.radius * 0.5, dmg, slot, stun: def.stun || 0 });
         }
         this.emit('cast', { slot, fx: 'zone', x: c.x, z: c.z, radius: def.radius, noMove: true });
         break;
@@ -2850,10 +2961,10 @@ export class World {
         }
         const tele = { id: this.nextId++, kind: 'circle', friendly: true, x: c.x, z: c.z, dir: 0, radius, t: 0, dur: delay, parryable: false };
         this.telegraphs.push(tele);
-        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.fist ? 'hand' : def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null }); // (0.94) the Seraph's Hand of Heaven
+        this.delayed.push({ t: delay, kind: 'quake', x: c.x, z: c.z, radius, dmg, tele, stun: def.stun || 0, slot, fx: def.fist ? 'hand' : def.burnZone ? 'cinderfall' : 'skyfall', burnZone: def.burnZone || null, track: def.track && this.seraphTrackId != null ? this.seraphTrackId : null }); // (0.94) the Seraph's Hand of Heaven (0.98: it follows its foe down)
         p.facing = a;
         p.castLock = 0.2;
-        this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius, delay, fist: def.fist || undefined });
+        this.emit('cast', { slot, fx: 'meteor', x: c.x, z: c.z, radius, delay, fist: def.fist || undefined, tele: tele.id });
         break;
       }
     }
@@ -3006,6 +3117,15 @@ export class World {
     for (const d of this.delayed) {
       d.t -= dt;
       if (d.tele) d.tele.t = d.tele.dur - d.t;
+      if (d.track != null && d.t > 0) {
+        // (0.98) a Hand of Heaven coming down keeps over its foe
+        const tg = this.enemyById(d.track);
+        if (tg && !tg.dead) {
+          const dd = dist(tg.x, tg.z, d.x, d.z), step = Math.min(dd, 18 * dt);
+          if (dd > 0.01) [d.x, d.z] = [d.x + ((tg.x - d.x) / dd) * step, d.z + ((tg.z - d.z) / dd) * step];
+          if (d.tele) [d.tele.x, d.tele.z] = [d.x, d.z];
+        }
+      }
       if (d.kind === 'trap' && d.t > 0) {
         // (0.70) Frost Trap: armed after a moment, set off by the first enemy on it
         d.arm -= dt;
@@ -3068,8 +3188,19 @@ export class World {
         // (0.94) a ray of the Rain of Eyes: on its foe if it still stands, else where it stood
         const t = d.id != null ? this.enemyById(d.id) : null;
         const x = t && !t.dead ? t.x : d.x, z = t && !t.dead ? t.z : d.z;
-        for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, x, z) <= 1.6 + o.radius) this.hitEnemy(o, o === t ? d.dmg : d.dmg * 0.5, { source: d.slot });
+        for (const o of this.enemies) {
+          if (o.dead || o.state === 'spawn' || dist(o.x, o.z, x, z) > 1.6 + o.radius) continue;
+          this.hitEnemy(o, o === t ? d.dmg : d.dmg * 0.5, { source: d.slot });
+          if (d.stun > 0 && !o.dead) (o.def.boss ? this.addPosture(o, 0.5, false) : this.stun(o, d.stun)); // (0.98) Judgement
+        }
         this.emit('seraphFx', { kind: 'ray', x, z });
+        continue;
+      }
+      if (d.kind === 'seraphPulse') {
+        // (0.98) a beat of Wrath of Wings, or a pulse of Radiant Wake's light
+        for (const o of this.enemies) if (!o.dead && o.state !== 'spawn' && dist(o.x, o.z, d.x, d.z) <= d.r + o.radius) this.hitEnemy(o, d.dmg, { source: d.slot });
+        if (d.mend > 0 && this.tide && this.tide.state === 'on') for (const tr of this.troops || []) if (!tr.dead && dist(tr.x, tr.z, d.x, d.z) <= d.r) this.troopMend(tr, tr.maxHp * d.mend);
+        this.emit('seraphFx', { kind: d.fx, x: d.x, z: d.z, radius: d.r });
         continue;
       }
       if (d.kind === 'shadeAct') {
@@ -3249,7 +3380,7 @@ export class World {
     p.moving = false;
 
     // Slipstream on a Rogue or Mage: cooldowns run 60% faster while it lasts.
-    const cdRate = p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1 + 0.6 * this.pot('slipstream') : 1;
+    const cdRate = (p.slipT > 0 && this.mods.slipstream && CASTER_CLASSES.has(this.cls) ? 1 + 0.6 * this.pot('slipstream') : 1) * (p.possess && p.ascendT > 0 ? 2 : 1); // (0.98) Ascension
     for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
     if (p.fangT > 0) p.fangT -= dt;
     p.idleT = (p.idleT || 0) + dt; // reset by any input (applyCommands)
@@ -3361,6 +3492,21 @@ export class World {
     p.parryCd = Math.max(0, p.parryCd - dt);
     p.potionCd = Math.max(0, p.potionCd - dt);
     p.castLock = Math.max(0, p.castLock - dt);
+    if (p.seraphWind && p.seraphWind.track != null) {
+      // (0.98) gathering over a foe: it follows it (within the skill's reach)
+      const sw = p.seraphWind, t = this.enemyById(sw.track), def = this.kit[sw.slot];
+      if (t && !t.dead) {
+        const R = (def && def.range) || 20, d = dist(t.x, t.z, p.x, p.z);
+        const k = d > R ? R / d : 1;
+        [sw.x, sw.z] = [p.x + (t.x - p.x) * k, p.z + (t.z - p.z) * k];
+        if ((sw.emitT -= dt) <= 0) {
+          sw.emitT = 0.1;
+          this.emit('seraphTrack', { slot: sw.slot, x: sw.x, z: sw.z });
+        }
+      }
+    }
+    if (p.ascendT > 0) p.ascendT = Math.max(0, p.ascendT - dt); // (0.98)
+    if (p.seraphBeam) this.stepSeraphBeam(dt); // (0.98) Sunfall
     if (p.seraphWind && (p.seraphWind.t -= dt) <= 0) {
       // (0.93) the Seraph's gathered light lands
       const sw = p.seraphWind, keep = p.cd[sw.slot];
@@ -3369,14 +3515,16 @@ export class World {
         p.cd[sw.slot] = 0;
         p.castLock = 0;
         this.seraphRelease = true;
+        this.seraphTrackId = sw.track;
         const ev0 = this.events.length;
         try { this.castAbility(sw.slot, sw.x, sw.z); } finally {
           this.seraphRelease = false;
+          this.seraphTrackId = null;
           for (let i = ev0; i < this.events.length; i++) if (this.events[i].type === 'cast') this.events[i].seraphRel = true; // (its own sound: seraphFx)
         }
         p.cd[sw.slot] = keep;
         const def = this.kit[sw.slot];
-        this.emit('seraphFx', { kind: (def && { dawnlance: 'lance', choir: 'choir', wingbeat: 'wings', halo: 'halo', descent: 'descent', hand: 'hand', rain: 'rain' }[def.seraphSkill]) || 'strike', slot: sw.slot, x: p.x, z: p.z, dir: p.facing, tx: sw.x, tz: sw.z, range: def && def.range, width: def && def.width, radius: def && def.radius });
+        this.emit('seraphFx', { kind: (def && { dawnlance: 'lance', prism: 'lance', choir: 'choir', barrage: 'choir', wingbeat: 'wings', wrath: 'wings', halo: 'halo', descent: 'descent', hand: 'hand', rain: 'rain', judgement: 'rain', sunfall: 'sun', ascension: 'ascend' }[def.seraphSkill]) || 'strike', slot: sw.slot, x: p.x, z: p.z, dir: p.facing, tx: sw.x, tz: sw.z, range: def && def.range, width: def && def.width, radius: def && def.radius });
       }
     }
     p.hurtT = Math.max(0, p.hurtT - dt);
@@ -3386,7 +3534,8 @@ export class World {
       if (p.quickT <= 0) p.quickShots = 0;
     }
     p.veilT = Math.max(0, p.veilT - dt);
-    if (!this.oathLeech(p) || p.hp < p.stats.maxHp * OATH.hpCap) p.hp = Math.min(p.stats.maxHp * (this.oathLeech(p) ? OATH.hpCap : 1), p.hp + p.stats.regen * dt); // (0.71.5)
+    if (!this.seraphFighting(p) && // (0.98) the Seraph mends nothing by itself in a night or the trial
+       (!this.oathLeech(p) || p.hp < p.stats.maxHp * OATH.hpCap)) p.hp = Math.min(p.stats.maxHp * (this.oathLeech(p) ? OATH.hpCap : 1), p.hp + p.stats.regen * dt); // (0.71.5)
     // Berserker: Bloodied while below half health (attack speed needs a stat rebuild when it flips).
     const bloodied = !!this.mods.bloodRage && p.hp < p.stats.maxHp * 0.5;
     if (bloodied !== !!p.bloodied) {
@@ -7595,8 +7744,9 @@ export class World {
     p.targetId = null;
     p.attackMove = null;
     p.attackCd = period;
-    p.freeSwing = { t: period * 0.3, a };
-    this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: period * 0.3, seraph: p.possess ? true : undefined });
+    const wind = period * (p.possess ? 0.4 : 0.3); // (0.98) the Seraph's prayer, then the light leaves its hands
+    p.freeSwing = { t: wind, a, x, z };
+    this.emit('swing', { who: 'player', dir: a, x: p.x, z: p.z, dur: wind, seraph: p.possess ? true : undefined });
   }
   /** (0.90) A free strike lands. */
   landFreeSwing(fs) {
@@ -7604,6 +7754,22 @@ export class World {
     const dmg = p.stats.ad * b.mult;
     const a = fs.a;
     p.swingCount++;
+    if (b.shot && p.possess) {
+      // (0.98) the Seraph's strike: a bolt of holy light (three in its Ascension) that seeks the foe aimed at
+      const range = b.range;
+      const ax = Number.isFinite(fs.x) ? fs.x : p.x + dCos(a) * 10, az = Number.isFinite(fs.z) ? fs.z : p.z + dSin(a) * 10;
+      const first = this.seraphTarget(ax, az, range);
+      const tgts = [first];
+      if (p.ascendT > 0) for (const e of this.enemies.filter((o) => !o.dead && o.state !== 'spawn' && o !== first && dist(o.x, o.z, p.x, p.z) <= range).sort((u, v) => dist(u.x, u.z, ax, az) - dist(v.x, v.z, ax, az)).slice(0, 2)) tgts.push(e);
+      tgts.forEach((t, i) => {
+        const la = t ? dAtan2(t.z - p.z, t.x - p.x) : a;
+        const sa = la + (i === 0 ? 0 : i === 1 ? 0.35 : -0.35);
+        this.projectiles.push({ id: this.nextId++, owner: 'player', kind: 'holy', basic: true, targetId: t ? t.id : null, critBonus: 0, pierce: null, x: p.x + dCos(sa) * 0.9, z: p.z + dSin(sa) * 0.9, px: p.x, pz: p.z, vx: dCos(sa) * b.speed, vz: dSin(sa) * b.speed, speed: b.speed, radius: 0.45, dmg, splash: b.splash, splashMult: b.splashMult, parryable: false, reflected: false, life: range / b.speed + 0.5, dead: false });
+      });
+      if (first) p.facing = dAtan2(first.z - p.z, first.x - p.x);
+      this.emit('seraphFx', { kind: 'pray', x: p.x, z: p.z, dir: p.facing });
+      return;
+    }
     if (b.shot) {
       this.projectiles.push({
         id: this.nextId++, owner: 'player', kind: b.shot, basic: true, targetId: null, critBonus: 0, pierce: null,
@@ -7705,11 +7871,11 @@ export class World {
   incarnateHurt(dmg) {
     const p = this.player;
     if (p.dodgeT > 0 || (p.dash && !p.dash.refunded && p.possess)) return this.emit('dodged', { x: p.x, z: p.z }); // (0.89) rolled through it (0.92: or mid-glide)
-    const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
+    const stone = this.tide && this.tide.bless.includes('stoneskin') ? 0.7 : 1; // (0.98: or the trial, no night)
     // (as a mortal: health counted as if it were INCARNATE.body, so any hero's gear makes the same fight)
     // (0.92) the Seraph: its body at the Night its level matches
     const k = p.keep;
-    const body = p.possess ? STATUE.body * statuePower(k && k.statue ? k.statue.lvl : 1) : INCARNATE.body;
+    const body = p.possess ? STATUE.body * statuePower(k && k.statue ? k.statue.lvl : 1) * statueTierMult(k && k.statue) : INCARNATE.body; // (0.98) its rarity
     const n = Math.max(1, Math.round((p.stats.maxHp * dmg * stone) / body));
     p.hp -= n;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: n });
@@ -7788,10 +7954,252 @@ export class World {
     const k = this.player.keep, s = k && k.statue;
     const d = s && STATUE_SKILLS[slot] && STATUE_SKILLS[slot][id];
     if (!this.inKeep() || !d) return;
-    if (s.lvl < d.lvl) return this.emit('keepMaxed', { name: d.name, what: 'seraphLvl', lvl: d.lvl });
+    if (!statueSkillOpen(s, d)) return this.emit('keepMaxed', { name: d.name, what: d.tier && (s.tier || 0) < d.tier ? 'seraphTier' : 'seraphLvl', lvl: d.lvl, tier: d.tier ? STATUE_TIERS[d.tier].name : null });
     s.kit = Object.assign({}, s.kit || {}, { [slot]: id });
     if (this.player.possess) this.recalcMods();
     this.emit('statueSkill', { slot, id, name: d.name });
+  }
+  /** (0.98) What the Seraph's blows are worth: the Night its level matches, its rarity, its Ascension. */
+  seraphAtk() {
+    const p = this.player, k = p.keep, s = k && k.statue;
+    return STATUE.atk * statuePower(s ? s.lvl : 1) * statueTierMult(s) * (p.ascendT > 0 ? 1.4 : 1);
+  }
+  /** (0.98) Rise a rarity, at its plinth: once its level reaches the gate, for an offering. */
+  statueTierUp() {
+    const k = this.player.keep, s = k && k.statue;
+    if (!this.inKeep() || !s) return;
+    const n = (s.tier || 0) + 1, T = STATUE_TIERS[n];
+    if (!T) return;
+    if (T.trial) return this.emit('keepMaxed', { name: STATUE.name, what: 'seraphTrial' });
+    if (s.lvl < T.lvl) return this.emit('keepMaxed', { name: STATUE.name, what: 'seraphTierLvl', lvl: T.lvl, tier: T.name });
+    const c = T.cost;
+    if (k.faith < c.faith || k.stone < c.stone || (k.sigils || 0) < c.sigils) return;
+    k.faith -= c.faith;
+    k.stone -= c.stone;
+    k.sigils -= c.sigils;
+    s.tier = n;
+    if (this.player.possess) this.recalcMods();
+    const opened = [];
+    for (const sl of ['q', 'w', 'e', 'r']) for (const d of Object.values(STATUE_SKILLS[sl])) if (d.tier === n) opened.push(d.name);
+    this.emit('statueTier', { tier: n, name: T.name, opened });
+  }
+  /** (0.98) The trial is open: an Immortal Seraph, at its highest level. */
+  trialOpen() {
+    const s = this.player.keep && this.player.keep.statue;
+    return !!s && (s.tier || 0) === STATUE_TIERS.length - 2 && s.lvl >= TRIAL.lvl;
+  }
+  /** (0.98) The Eternal trial: the Seraph alone against the Unblinking, in the keep. */
+  statueTrial() {
+    const p = this.player, k = p.keep, s = k && k.statue;
+    if (!this.inKeep() || !s || this.trial || (this.tide && this.tide.state === 'on')) return;
+    if (!this.trialOpen()) return this.emit('keepMaxed', { name: STATUE.name, what: 'seraphTrialLocked', lvl: TRIAL.lvl });
+    if (!p.possess) this.possessSet(true);
+    if (!p.possess) return;
+    const P = NIGHT.power(TRIAL.lvl);
+    const a = p.facing;
+    const at = this.clampToArena(p.x + dCos(a) * 13, p.z + dSin(a) * 13, 2);
+    const e = this.spawnEnemy(TRIAL.boss, { x: at.x, z: at.z, level: KEEP.tide.level });
+    Object.assign(e, { trial: true, home: null, aggro: true, noLoot: true, facing: a + Math.PI, stareT: 2.5, lidT: 6, gazeT: 4.5, callT: 8, tdmg: TRIAL.dmg * P });
+    e.maxHp = e.hp = Math.round(TRIAL.hp * P);
+    this.trial = { id: e.id, t: 0, stars: [], hp0: p.hp };
+    p.hp = p.stats.maxHp; // it comes to the trial whole
+    this.emit('trialStart', { x: e.x, z: e.z, name: e.def.name });
+  }
+  /** (0.98) The trial's end: won, the Seraph is Eternal. */
+  trialEnd(won) {
+    const T = this.trial;
+    if (!T) return;
+    this.trial = null;
+    for (const st of T.stars) this.telegraphs = this.telegraphs.filter((t) => t !== st.tele);
+    for (const e of this.enemies) if (e.trial) [e.dead, e.hp] = [true, 0];
+    this.enemies = this.enemies.filter((e) => !e.trial);
+    this.telegraphs = this.telegraphs.filter((t) => !t.trial);
+    const s = this.player.keep && this.player.keep.statue;
+    if (won && s) {
+      s.tier = STATUE_TIERS.length - 1;
+      if (this.player.possess) this.recalcMods();
+    }
+    this.emit('trialEnd', { won: !!won, t: Math.round(T.t) });
+  }
+  /** (0.98) The trial goes on: it fails if the Seraph is felled or leaves; the eyes' blows land. */
+  stepTrial(dt) {
+    const T = this.trial;
+    if (!T) return;
+    const p = this.player;
+    if (!p.possess || p.dead || !(this.map && this.map.id === KEEP.map) || (this.tide && this.tide.state === 'on')) return this.trialEnd(false);
+    const boss = this.enemyById(T.id);
+    if (!boss || boss.dead) return this.trialEnd(true);
+    T.t += dt;
+    for (const e of this.enemies) {
+      // a lesser eye put out gives the Seraph back a little of its stone
+      if (!e.trial || e === boss || !e.dead || e.mended) continue;
+      e.mended = true;
+      p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * TRIAL.call.mend);
+      this.emit('seraphMend', { x: p.x, z: p.z, n: Math.round(p.stats.maxHp * TRIAL.call.mend) });
+    }
+    for (const st of T.stars) {
+      st.t -= dt;
+      if (st.tele) st.tele.t = st.tele.dur - Math.max(0, st.t);
+    }
+    for (const st of T.stars.filter((x) => x.t <= 0)) {
+      this.telegraphs = this.telegraphs.filter((t) => t !== st.tele);
+      if (st.kind === 'gaze') {
+        const c = dCos(st.a), sn = dSin(st.a), rx = p.x - st.x, rz = p.z - st.z, along = rx * c + rz * sn;
+        if (along >= -p.radius && along <= st.len + p.radius && Math.abs(rz * c - rx * sn) <= st.w / 2 + p.radius) this.incarnateHurt(st.dmg);
+        this.emit('trialGaze', { x: st.x, z: st.z, a: st.a, len: st.len, w: st.w });
+      } else {
+        if (dist(p.x, p.z, st.x, st.z) <= st.r + p.radius) this.incarnateHurt(st.dmg);
+        this.emit(st.kind === 'lid' ? 'tideSlam' : 'starFall', { x: st.x, z: st.z, r: st.r });
+      }
+    }
+    T.stars = T.stars.filter((x) => x.t > 0);
+  }
+  /** (0.98) A blow of the trial's on the ground, shown first: a circle (or a line of sight) that lands after `t`. */
+  trialWarn(o) {
+    const tele = o.kind === 'gaze'
+      ? { id: this.nextId++, kind: 'rect', trial: true, friendly: false, parryable: false, x: o.x, z: o.z, dir: o.a, length: o.len, width: o.w, t: 0, dur: o.t }
+      : { id: this.nextId++, kind: 'circle', trial: true, friendly: false, parryable: false, x: o.x, z: o.z, dir: 0, radius: o.r, t: 0, dur: o.t };
+    this.telegraphs.push(tele);
+    this.trial.stars.push(Object.assign(o, { tele }));
+  }
+  /** (0.98) The Unblinking and its Eyelets. */
+  stepTrialFoe(e, dt) {
+    const T = this.trial, p = this.player;
+    if (!T) return;
+    if (e.state === 'spawn') {
+      e.t -= dt;
+      if (e.t <= 0) e.state = 'chase';
+      return;
+    }
+    if (e.stunT > 0) {
+      e.stunT -= dt * (e.type === TRIAL.boss ? 3 : 1);
+      return;
+    }
+    if (e.slowT > 0) e.slowT -= dt;
+    const slow = e.slowT > 0 ? 1 - (e.slow || 0) : 1;
+    const d = dist(p.x, p.z, e.x, e.z) || 0.001;
+    e.facing = turnToward(e.facing, dAtan2(p.z - e.z, p.x - e.x), 6 * dt);
+    if (e.type !== TRIAL.boss) {
+      // an Eyelet: swoops at the Seraph and pecks
+      const F = FOES.eyelet;
+      if (d > F.range + e.radius + p.radius) {
+        this.navStep(e, p.x, p.z, F.speed * slow, dt, e.radius);
+        e.moving = true;
+        return;
+      }
+      if ((e.tAtk = (e.tAtk == null ? 0.4 : e.tAtk) - dt) > 0) return;
+      e.tAtk = F.cd;
+      this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: p.x, tz: p.z });
+      this.incarnateHurt(F.dmg * NIGHT.power(TRIAL.lvl));
+      return;
+    }
+    // the Unblinking: hangs at a distance, circling, and looks
+    if (!e.raged && e.hp < e.maxHp * TRIAL.rage) {
+      e.raged = true;
+      this.emit('tideBossRage', { x: e.x, z: e.z });
+    }
+    const pace = e.raged ? 1.35 : 1;
+    const want = TRIAL.keep;
+    const side = dAtan2(e.z - p.z, e.x - p.x) + 0.35 * dt * pace; // it drifts round
+    const gx = p.x + dCos(side) * want, gz = p.z + dSin(side) * want;
+    const g = this.clampToArena(gx, gz, e.radius);
+    if (dist(g.x, g.z, e.x, e.z) > 0.4) {
+      this.navStep(e, g.x, g.z, TRIAL.speed * pace * slow, dt, e.radius);
+      e.moving = true;
+    }
+    const S = TRIAL.stare, L = TRIAL.lid, G = TRIAL.gaze, C = TRIAL.call;
+    e.stareT -= dt * pace;
+    e.lidT -= dt * pace;
+    e.gazeT -= dt * pace;
+    e.callT -= dt * pace;
+    if (e.stareT <= 0) {
+      // eyes look down where it is, and where it is going
+      e.stareT = S.cd;
+      const vx = (p.x - p.px) / Math.max(dt, 1e-3), vz = (p.z - p.pz) / Math.max(dt, 1e-3);
+      const n = S.n + (e.raged ? 2 : 0);
+      for (let i = 0; i < n; i++) {
+        const lead = (S.warn + i * S.gap) * 0.7;
+        const at = this.clampToArena(p.x + vx * lead, p.z + vz * lead, 1);
+        this.trialWarn({ kind: 'stare', x: at.x, z: at.z, r: S.r, t: S.warn + i * S.gap, dmg: e.tdmg * S.x });
+      }
+      this.emit('trialStare', { x: e.x, z: e.z, n });
+    }
+    if (e.lidT <= 0 && d <= L.near) {
+      e.lidT = L.cd;
+      this.trialWarn({ kind: 'lid', x: e.x, z: e.z, r: L.r, t: L.warn, dmg: e.tdmg * L.x });
+    }
+    if (e.gazeT <= 0) {
+      e.gazeT = G.cd;
+      const ga = dAtan2(p.z - e.z, p.x - e.x);
+      this.trialWarn({ kind: 'gaze', x: e.x, z: e.z, a: ga, len: G.len, w: G.w, t: G.warn, dmg: e.tdmg * G.x });
+    }
+    if (e.callT <= 0) {
+      e.callT = C.cd;
+      const live = this.enemies.filter((o) => o.trial && !o.dead && o !== e).length;
+      for (let i = 0; i < Math.max(0, C.n + (e.raged ? 2 : 0) - live); i++) {
+        const a = (i / C.n) * Math.PI * 2 + T.t;
+        const o = this.spawnEnemy(C.type, { x: e.x + dCos(a) * 3, z: e.z + dSin(a) * 3, level: KEEP.tide.level });
+        Object.assign(o, { trial: true, home: null, aggro: true, noLoot: true });
+        o.maxHp = o.hp = Math.round(FOES.eyelet.hp * NIGHT.power(TRIAL.lvl));
+      }
+      this.emit('tideCall', { x: e.x, z: e.z, n: C.n });
+    }
+  }
+  /** (0.98) Sunfall: the beam hunts its foe (the next nearest when it falls), and burns what is under it. */
+  stepSeraphBeam(dt) {
+    const p = this.player, b = p.seraphBeam;
+    if (!p.possess || p.dead) return (p.seraphBeam = null);
+    b.left -= dt;
+    let t = b.id != null ? this.enemyById(b.id) : null;
+    if (!t || t.dead) {
+      t = null;
+      let bd = 12;
+      for (const e of this.enemies) {
+        if (e.dead || e.state === 'spawn') continue;
+        const de = dist(e.x, e.z, b.x, b.z);
+        if (de < bd && dist(e.x, e.z, p.x, p.z) <= b.range + 6) [t, bd] = [e, de];
+      }
+      b.id = t ? t.id : null;
+    }
+    if (t) {
+      const dd = dist(t.x, t.z, b.x, b.z), step = Math.min(dd, b.chase * dt);
+      if (dd > 0.01) [b.x, b.z] = [b.x + ((t.x - b.x) / dd) * step, b.z + ((t.z - b.z) / dd) * step];
+    }
+    if ((b.tick -= dt) <= 0) {
+      b.tick = b.every;
+      for (const e of this.enemies) if (!e.dead && e.state !== 'spawn' && dist(e.x, e.z, b.x, b.z) <= b.r + e.radius) this.hitEnemy(e, b.dmg, { source: b.slot });
+      this.emit('seraphFx', { kind: 'beam', x: b.x, z: b.z, radius: b.r });
+    }
+    if (b.left <= 0) p.seraphBeam = null;
+  }
+  /** (0.98) Where the Seraph goes in a flash: beside the foe or hero nearest where you aimed (within reach). */
+  seraphBlink(x, z, reach) {
+    const p = this.player;
+    let best = null, bd = 1e9;
+    const consider = (o, r) => {
+      if (dist(o.x, o.z, p.x, p.z) > reach + (r || 0)) return;
+      const da = dist(o.x, o.z, x, z);
+      if (da < bd) [best, bd] = [{ x: o.x, z: o.z, r: r || 0.5 }, da];
+    };
+    for (const e of this.enemies) if (!e.dead && e.state !== 'spawn') consider(e, e.radius);
+    for (const tr of this.troops || []) if (!tr.dead) consider(tr, 0.5);
+    for (const h of this.heroes || []) if (h.player !== p && !h.player.dead) consider(h.player, h.player.radius);
+    let to;
+    if (best && bd <= 7) {
+      // on its near side, a step away
+      const a = dAtan2(p.z - best.z, p.x - best.x);
+      to = this.clampToArena(best.x + dCos(a) * (best.r + p.radius + 0.6), best.z + dSin(a) * (best.r + p.radius + 0.6), p.radius);
+    } else {
+      const a = dAtan2(z - p.z, x - p.x), len = Math.min(reach, dist(x, z, p.x, p.z));
+      to = this.clampToArena(p.x + dCos(a) * len, p.z + dSin(a) * len, p.radius);
+    }
+    this.pushOut(to, p.radius);
+    const fx = p.x, fz = p.z;
+    [p.x, p.z, p.px, p.pz] = [to.x, to.z, to.x, to.z];
+    const face = best ? dAtan2(best.z - p.z, best.x - p.x) : dAtan2(to.z - fz, to.x - fx);
+    p.facing = face;
+    this.emit('seraphBlink', { fx, fz, x: p.x, z: p.z });
+    return { face };
   }
   /** (0.94) What a Seraph's shot seeks: the foe nearest where you aimed (within 7 m), else the nearest ahead of it. */
   seraphTarget(x, z, range) {
@@ -7848,6 +8256,7 @@ export class World {
       }
     }
     p.possess = null;
+    [p.seraphBeam, p.ascendT] = [null, 0]; // (0.98)
     p.ranks = P.ranks;
     [p.dash, p.leap, p.channel, p.freeSwing, p.spin, p.targetId, p.attackMove, p.moveTarget, p.seraphWind] = [null, null, null, null, null, null, null, null, null];
     this.recalcStats();
@@ -10086,11 +10495,11 @@ export class World {
     // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate (0.82.6: at full
     // strength). (0.82.4) A visiting friend's blows never land: it is the keeper's night.
     if (e.tide && (!this.tide || !this.inField() || !this.keepOwns())) return;
-    if (e.tide) {
+    if (e.tide || e.trial) {
       // (0.85) as a mortal: N times your attack lands as N times INCARNATE.atk of the night's strength;
-      // (0.92) the Seraph as the Night its level matches
+      // (0.92) the Seraph as the Night its level matches; (0.98) times its rarity, and its Ascension
       const k = this.player.keep;
-      dmg = (dmg / Math.max(1, this.player.stats.ad)) * (this.player.possess ? STATUE.atk * statuePower(k && k.statue ? k.statue.lvl : 1) : INCARNATE.atk * (this.tide.night || 1));
+      dmg = (dmg / Math.max(1, this.player.stats.ad)) * (this.player.possess ? this.seraphAtk() : INCARNATE.atk * ((this.tide && this.tide.night) || 1));
       if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84)
     }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
@@ -10398,6 +10807,10 @@ export class World {
       e.moving = false;
       if (e.dead) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt;
+      if (e.trial) {
+        this.stepTrialFoe(e, dt); // (0.98) the Eternal trial's own
+        continue;
+      }
       if (e.tide) {
         this.stepTideFoe(e, dt); // (0.81) a Tide's own: for the keep's buildings and heroes
         continue;
@@ -10973,6 +11386,10 @@ export class World {
 inTown() {
     return this.mode === 'explore' && this.map.safe;
   }
+  /** (0.98) The Seraph in a night or the trial: it mends nothing by itself (the keep's rest is not for it then). */
+  seraphFighting(p = this.player) {
+    return !!p.possess && ((!!this.tide && this.tide.state === 'on') || !!this.trial);
+  }
 
   /** Where the hero is, for the HUD. */
   zone() {
@@ -11531,6 +11948,7 @@ inTown() {
     if (this.tide) this.stepTide(dt); // (0.80)
     else this.stepRaidClock(dt); // (0.86)
     this.stepStatue(dt); // (0.92)
+    this.stepTrial(dt); // (0.98)
     const p = this.player;
     if (p.dead) {
       this.respawnT -= dt;
@@ -11542,7 +11960,7 @@ inTown() {
       }
       return;
     }
-    if (this.inTown(p)) {
+    if (this.inTown(p) && !this.seraphFighting(p)) { // (0.98) not the Seraph in a night or the trial
       p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * CONFIG.TOWN_HEAL * dt);
       p.potions = CONFIG.MAX_POTIONS;
       p.undyingUsed = false;
@@ -11755,7 +12173,7 @@ inTown() {
       const owner = (this.keepOwner != null && this.heroByPid(this.keepOwner)) || lead;
       this.as(owner, () => this.stepTide(dt));
     } else if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => this.stepRaidClock(dt)); // (0.86)
-    if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => this.stepStatue(dt)); // (0.92)
+    if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => (this.stepStatue(dt), this.stepTrial(dt))); // (0.92; 0.98 the trial)
     // Enemies come back a while after they are killed, but not right on top of anyone; (0.61) faster
     // the more heroes share the map (not the bosses), so each can hold a stretch of it.
     const faster = 1 + CONFIG.PARTY_RESPAWN * (this.heroes.length - 1);
@@ -11805,7 +12223,7 @@ inTown() {
         }
         continue;
       }
-      if (this.inTown(p)) {
+      if (this.inTown(p) && !this.seraphFighting(p)) { // (0.98)
         p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * CONFIG.TOWN_HEAL * dt);
         p.potions = CONFIG.MAX_POTIONS;
         p.undyingUsed = false;

@@ -103,6 +103,23 @@ export const ICONS = {
   bastion: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8 12h8M12 8v8"/>',
   veil: '<path d="M5 19c2-7 5-11 9-13"/><path d="M10 20c1.5-5 4-8 8-10" opacity="0.55"/><circle cx="16" cy="6" r="2"/><path d="M3 12h4M4 16h3" opacity="0.55"/>',
   icebolt: '<path d="M12 2l3 7-3 13-3-13z"/><path d="M5 7l3 3M19 7l-3 3M4 14h4M20 14h-4"/>',
+  // (0.98) the Seraph's own, one for each of its skills
+  sLaser: '<path d="M3 19l6-6 4 3 8-9"/><path d="M18 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/><circle cx="3" cy="19" r="1.6"/>',
+  sChoir: '<path d="M2 8c2-3 6-3 8 0-2 3-6 3-8 0z"/><circle cx="6" cy="8" r="1"/><path d="M14 8c2-3 6-3 8 0-2 3-6 3-8 0z"/><circle cx="18" cy="8" r="1"/><path d="M8 17c2-3 6-3 8 0-2 3-6 3-8 0z"/><circle cx="12" cy="17" r="1"/>',
+  sBarrage: '<circle cx="19" cy="12" r="2.6"/><path d="M2 5l3 1-1 3-3-1zM2 16l3-1 1 3-3 1zM2 11l2 1-2 1"/><path d="M7 7l9 4M7 17l9-4M6 12h10" stroke-dasharray="2 2"/>',
+  sPrism: '<path d="M10 5l6 12H4z"/><path d="M1 11h6"/><path d="M14 10l8-4M15 13h8M14 15l7 5"/>',
+  sWings: '<path d="M12 13C9 9 5 8 2 9c2 2 3 5 7 6"/><path d="M12 13c3-4 7-5 10-4-2 2-3 5-7 6"/><circle cx="12" cy="14" r="2"/><path d="M12 3v3M8 4l1 2M16 4l-1 2"/>',
+  sHalo: '<ellipse cx="12" cy="5" rx="6" ry="2"/><path d="M4 15c3-4 13-4 16 0-3 4-13 4-16 0z"/><circle cx="12" cy="15" r="2"/>',
+  sWrath: '<path d="M12 11C9 7 5 6 2 7c2 2 3 5 7 6"/><path d="M12 11c3-4 7-5 10-4-2 2-3 5-7 6"/><path d="M5 17c4 3 10 3 14 0M8 21c2.5 1.2 5.5 1.2 8 0"/>',
+  sGlide: '<path d="M21 5C14 5 8 9 5 17c5-2 9-2 12-5"/><path d="M9 13c2-1 5-1 7-3"/><path d="M2 20h5M2 15h3"/>',
+  sFeathers: '<path d="M6 20C6 12 10 6 18 4c-1 7-5 12-12 16z"/><path d="M6 20l7-9"/><path d="M15 21l4-4M19 14l2-2"/>',
+  sWake: '<path d="M3 18c4-1 8-5 18-12"/><path d="M7 12l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/><path d="M15 17l.7 1.3 1.3.7-1.3.7-.7 1.3-.7-1.3-1.3-.7 1.3-.7z"/>',
+  sDescent: '<path d="M9 2h6v12H9z"/><path d="M5 18c2-2 12-2 14 0"/><path d="M3 22h18"/><path d="M12 14v4"/>',
+  sHand: '<path d="M9 2h6v6H9z"/><path d="M6 8h12v6a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4z"/><path d="M10 8v4M14 8v4"/><path d="M4 22h16"/>',
+  sRain: '<path d="M3 7c4-5 14-5 18 0-4 5-14 5-18 0z"/><circle cx="12" cy="7" r="2"/><path d="M6 13v4M12 14v7M18 13v4"/>',
+  sSun: '<circle cx="12" cy="6" r="3"/><path d="M12 0.5v1.5M5.5 6H7M17 6h1.5M7.5 1.5l1 1M16.5 1.5l-1 1"/><path d="M10 11l-2 11h8l-2-11"/>',
+  sJudge: '<path d="M12 2l10 18H2z"/><path d="M7 14c3-3.5 7-3.5 10 0-3 3.5-7 3.5-10 0z"/><circle cx="12" cy="14" r="1.3"/>',
+  sAscend: '<path d="M12 22V10"/><path d="M8 14l4-4 4 4"/><path d="M12 16C9 12 5 11 2 12c2 2 3 4 6 5M12 16c3-4 7-5 10-4-2 2-3 4-6 5"/><path d="M9 5l1.5 2L12 4l1.5 3L15 5"/>',
 };
 // Gear icons, one set per class, so a bow looks like a bow and a mage's hat like a hat.
 // Line art on a 24x24 grid, drawn with the same stroke style as the ability icons.
@@ -776,6 +793,11 @@ export class Hud {
     for (const e of world.enemies) if (!e.dead) dot(e.x, e.z, e.def.boss ? 4.5 : e.rare || e.def.thief ? 3.5 : 2, e.rare || e.def.thief ? '#ffd27a' : e.aggro ? '#ff4d5a' : '#b0525c');
     const p = world.player;
     if (world.allies) for (const a of world.allies()) dot(a.x, a.z, 3, a.dead ? '#8a8f9c' : '#7fd0ff');
+    for (const tr of world.troops || []) {
+      // (0.98) the keep's heroes: green, gold or red by how hurt they are
+      const f = tr.hp / Math.max(1, tr.maxHp);
+      dot(tr.x, tr.z, 3, tr.dead ? '#8a8f9c' : f < 0.35 ? '#ff5a5a' : f < 0.7 ? '#ffd27a' : '#7fe0a0');
+    }
     if (this.aim) {
       // (0.61.2) a held Deadeye: the whole shot, far past the edge of the screen, and what it would hit
       const A = this.aim;

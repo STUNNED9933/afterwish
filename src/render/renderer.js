@@ -1435,6 +1435,16 @@ export class Renderer {
       sp.position.z = 1.6;
       body.add(sp);
       m.userData.halo = halo;
+    } else if (kind === 'holy') {
+      // (0.98) its strike: a bead of white light in a gold glow, a thin ring turning round it, a tail
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), bright(0xffffff));
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.1, 10).rotateX(-Math.PI / 2), bright(0xffd98a, 0.55));
+      tail.position.z = -0.6;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.03, 6, 20), bright(0xfff2c8, 0.85));
+      const sp = new THREE.Sprite(glow);
+      sp.scale.set(1.6, 1.6, 1);
+      body.add(core, tail, ring, sp);
+      m.userData.halo = ring;
     } else {
       const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), bright(0xffffff));
       shard.scale.set(0.8, 0.8, 2.2);
@@ -1518,17 +1528,18 @@ export class Renderer {
     } else if (ev.slot === 'r') {
       // a cloud over where it will come down, its eyes opening on what is beneath (as in the old icons)
       const x = ev.tx, z = ev.tz;
-      this.skyCloud(x, 6.6, z, 2.2, d + 0.9, { grow: 0.7 });
+      const objs = [this.skyCloud(x, 6.6, z, 2.2, d + 0.9, { grow: 0.7 })];
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        this.skyEye(x + Math.cos(a) * 3.0, 6.2 + (i % 2) * 0.9, z + Math.sin(a) * 3.0, 1.3, d + 0.6, 0.05 + i * 0.06);
+        objs.push(this.skyEye(x + Math.cos(a) * 3.0, 6.2 + (i % 2) * 0.9, z + Math.sin(a) * 3.0, 1.3, d + 0.6, 0.05 + i * 0.06));
       }
-      this.flash(this.ringGeo(), { x, z, y: 0.12, color: 0xffe9b0, from: 0.5, to: ev.radius || 5, dur: d, opacity: 0.8 });
-      this.flash(this.discGeo(), { x, z, y: 0.1, color: 0xfff4d8, from: ev.radius || 5, to: ev.radius || 5, dur: d + 0.2, opacity: 0.18 });
+      objs.push(this.flash(this.ringGeo(), { x, z, y: 0.12, color: 0xffe9b0, from: 0.5, to: ev.radius || 5, dur: d, opacity: 0.8 }));
+      objs.push(this.flash(this.discGeo(), { x, z, y: 0.1, color: 0xfff4d8, from: ev.radius || 5, to: ev.radius || 5, dur: d + 0.2, opacity: 0.18 }));
+      this._rWind = ev.track ? { objs, x, z } : null; // (0.98) it follows its foe (seraphTrack)
     }
   }
   /** (0.94) Hand of Heaven: a fist of light comes down out of a cloud onto (x, z) in `delay` seconds. */
-  seraphFist(x, z, delay, radius) {
+  seraphFist(x, z, delay, radius, teleId = null) {
     const g = new THREE.Group();
     const mat = new THREE.MeshStandardMaterial({ color: 0xfff8ee, emissive: 0xffd98a, emissiveIntensity: 0.65, roughness: 0.6, transparent: true, opacity: 0.96 });
     const box = (w, h, d, px, py, pz) => {
@@ -1549,8 +1560,43 @@ export class Renderer {
     this.fxBit(g, delay + 0.5, (k, t) => {
       const u = Math.min(1, t / delay);
       g.position.y = top + (bottom - top) * u * u; // gathering speed as it falls
+      const tg = teleId != null && this._world && this._world.telegraphs.find((o) => o.id === teleId); // (0.98) it follows its foe down
+      if (tg) g.position.set(tg.x, g.position.y, tg.z);
       mat.opacity = t > delay ? 0.96 * (1 - (t - delay) / 0.5) : 0.96;
     });
+  }
+  /** (0.98) Dawnlance as a ray: leg by leg as it travels (90 m a second), each a white core in a gold sheath. */
+  seraphLaser(ev) {
+    const pts = ev.pts || [];
+    if (pts.length < 2) return;
+    const geo = this._rayGeo || (this._rayGeo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true).rotateZ(Math.PI / 2).translate(0.5, 0, 0));
+    let t = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+      const len = Math.hypot(bx - ax, bz - az);
+      const wide = i === 1 && ev.line;
+      const leg = () => {
+        const g = new THREE.Group();
+        const core = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending }));
+        const sheath = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffc860, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+        core.scale.set(len, wide ? 0.12 : 0.06, wide ? 0.12 : 0.06);
+        sheath.scale.set(len, wide ? 0.55 : 0.22, wide ? 0.55 : 0.22);
+        g.add(core, sheath);
+        g.position.set(ax, i === 1 ? 1.75 : 1.3, az);
+        g.rotation.y = -Math.atan2(bz - az, bx - ax);
+        if (i > 1) g.rotation.z = Math.atan2(0, len);
+        this.fxBit(g, 0.6, (k) => {
+          core.material.opacity = 1 - k * k;
+          sheath.material.opacity = 0.5 * (1 - k);
+          sheath.scale.set(len, (wide ? 0.55 : 0.22) * (1 + k), (wide ? 0.55 : 0.22) * (1 + k));
+        });
+        this.burst(bx, 1.3, bz, { count: 10, color: 0xfff0c0, speed: 4, up: 3, life: 0.4, size: 0.5 });
+        this.flash(this.ringGeo(), { x: bx, z: bz, y: 0.1, color: 0xffe9b0, from: 0.3, to: 1.6, dur: 0.3, opacity: 0.7 });
+      };
+      this.later(t, leg);
+      t += len / 90;
+    }
+    this.shake = Math.max(this.shake, 0.15);
   }
   /** (0.93) The Seraph's skills landing, and its strike: light, eyes, clouds, feathers. */
   seraphFx(ev) {
@@ -1634,6 +1680,33 @@ export class Renderer {
       this.flash(this.sectorGeo(2.8, 0.5), { x: ev.x, z: ev.z, y: 1.2, dir: ev.dir, color: 0xffe2a0, from: 2.6, to: 3.4, dur: 0.28, opacity: 0.75 });
       this.skyEye(ev.tx, 2.6, ev.tz, 0.8, 0.35);
       this.burst(ev.tx, 1.2, ev.tz, { count: 10, color: 0xfff4d8, speed: 5, up: 3, life: 0.4 });
+    } else if (ev.kind === 'pray') {
+      // (0.98) the light leaves its joined hands
+      const hx = ev.x + Math.cos(ev.dir) * 0.9, hz = ev.z + Math.sin(ev.dir) * 0.9;
+      this.burst(hx, 1.8, hz, { count: 10, color: 0xfff4d8, speed: 3, up: 1, life: 0.35, size: 0.5 });
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffe2a0 }));
+      sp.position.set(hx, 1.8, hz);
+      this.fxBit(sp, 0.3, (k) => { sp.scale.setScalar(0.6 + 1.6 * k); sp.material.opacity = 1 - k; });
+    } else if (ev.kind === 'wake') {
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: ev.radius * 0.5, to: ev.radius, dur: 0.35, opacity: 0.45 });
+      this.burst(ev.x, 0.4, ev.z, { count: 5, color: 0xfff4d8, speed: 1.5, up: 3, life: 0.5, size: 0.45, gravity: -1 });
+    } else if (ev.kind === 'beam') {
+      // (0.98) Sunfall: a shaft of sunlight out of the sky, burning the ground where it stands
+      const R = ev.radius || 3;
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      const shaft = new THREE.Mesh(this._sunGeo || (this._sunGeo = new THREE.CylinderGeometry(1, 1, 22, 20, 1, true)), mat);
+      shaft.position.set(ev.x, 11, ev.z);
+      shaft.scale.set(R * 0.55, 1, R * 0.55);
+      this.fxBit(shaft, 0.26, (k) => { mat.opacity = 0.55 * (1 - k * 0.8); shaft.scale.set(R * (0.55 + 0.1 * k), 1, R * (0.55 + 0.1 * k)); });
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffd070, from: R * 0.7, to: R, dur: 0.25, opacity: 0.4 });
+      this.burst(ev.x, 0.5, ev.z, { count: 4, color: 0xfff0b0, speed: 3, up: 4, life: 0.4, size: 0.5 });
+    } else if (ev.kind === 'sun' || ev.kind === 'ascend') {
+      this.burst(ev.x, 2.2, ev.z, { count: ev.kind === 'ascend' ? 50 : 20, color: 0xfff0c0, speed: ev.kind === 'ascend' ? 7 : 3, up: 6, life: 0.9, size: 0.6 });
+      if (ev.kind === 'ascend') {
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.15, color: 0xffffff, from: 0.5, to: 7, dur: 0.6, opacity: 1 });
+        for (let i = 0; i < 8; i++) this.skyEye(ev.x + Math.cos(i * 0.785) * 2.6, 3.6, ev.z + Math.sin(i * 0.785) * 2.6, 0.7, 0.9, i * 0.04);
+        this.shake = Math.max(this.shake, 0.5);
+      }
     } else if (ev.kind === 'glide') {
       const n = 6;
       for (let i = 0; i < n; i++) this.skyCloud(ev.x + (ev.ex - ev.x) * (i / n), 0.8, ev.z + (ev.ez - ev.z) * (i / n), 0.55, 0.9, { grow: 0.5, drift: 0.6 });
@@ -1712,6 +1785,46 @@ export class Renderer {
       case 'seraphFx':
         this.seraphFx(ev); // (0.93)
         break;
+      case 'seraphBlink': {
+        // (0.98) gone in a flash of light, and there
+        for (const [x, z, n] of [[ev.fx, ev.fz, 18], [ev.x, ev.z, 28]]) {
+          this.flash(this.discGeo(), { x, z, y: 0.1, color: 0xfff4d8, from: 0.4, to: 2.4, dur: 0.35, opacity: 0.6 });
+          this.burst(x, 1.6, z, { count: n, color: 0xfff0c0, speed: 4, up: 5, life: 0.6, size: 0.55 });
+        }
+        const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 7, 12, 1, true), mat);
+        col.position.set(ev.x, 3.5, ev.z);
+        this.fxBit(col, 0.35, (k) => { mat.opacity = 0.7 * (1 - k); col.scale.set(1 - 0.6 * k, 1, 1 - 0.6 * k); });
+        break;
+      }
+      case 'seraphTrack':
+        // (0.98) the gathering cloud follows its foe
+        if (this._rWind) {
+          const dx = ev.x - this._rWind.x, dz = ev.z - this._rWind.z;
+          for (const o of this._rWind.objs) if (o && o.position) [o.position.x, o.position.z] = [o.position.x + dx, o.position.z + dz];
+          [this._rWind.x, this._rWind.z] = [ev.x, ev.z];
+        }
+        break;
+      case 'seraphMend':
+        this.burst(ev.x, 1.6, ev.z, { count: 16, color: 0xb8ffd0, speed: 2, up: 4, life: 0.7, size: 0.5 });
+        break;
+      case 'trialStart':
+        // (0.98) the far sky opens
+        this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.1, color: 0xffe9b0, from: 1, to: 14, dur: 1.2, opacity: 0.9 });
+        for (let i = 0; i < 12; i++) this.skyEye(ev.x + Math.cos(i * 0.52) * 8, 8 + (i % 3), ev.z + Math.sin(i * 0.52) * 8, 1.6, 2.4, i * 0.08);
+        this.shake = Math.max(this.shake, 0.8);
+        break;
+      case 'trialStare':
+        for (let i = 0; i < 3; i++) this.skyEye(ev.x + (i - 1) * 1.6, 6.2, ev.z, 0.9, 0.8, i * 0.06);
+        break;
+      case 'trialGaze': {
+        // a line of sight: a burning stare along the ground
+        const c = Math.cos(ev.a), s = Math.sin(ev.a);
+        this.flash(this.rectGeo(), { x: ev.x, z: ev.z, y: 0.1, dir: ev.a, color: 0xff5a3a, from: ev.len, to: ev.len, sz: ev.w / ev.len, dur: 0.5, opacity: 0.7 });
+        for (let i = 1; i <= 6; i++) this.burst(ev.x + c * (ev.len * i) / 6, 1, ev.z + s * (ev.len * i) / 6, { count: 5, color: 0xffa060, speed: 3, up: 3, life: 0.4 });
+        this.shake = Math.max(this.shake, 0.3);
+        break;
+      }
       case 'cast': {
         const an = ev.ally ? this.allyAnim(ev.hero) : this.heroAnim;
         if (ev.seraph === 'wind') {
@@ -1721,8 +1834,19 @@ export class Renderer {
           break;
         }
         if (ev.fx === 'dash' && (ev.ally ? (this.allyViews.get(ev.hero) || {}).look === 'statue' : this.heroCls === 'statue')) this.seraphFx({ kind: 'glide', x: ev.x, z: ev.z, ex: ev.ex, ez: ev.ez });
+        if (ev.fx === 'seraphLaser') {
+          // (0.98) Dawnlance: a ray from its hands, glancing from foe to foe
+          an.move = 'line';
+          this.seraphLaser(ev);
+          break;
+        }
+        if (ev.fx === 'sunfall') {
+          this.flash(this.ringGeo(), { x: ev.x, z: ev.z, y: 0.12, color: 0xffd070, from: 0.5, to: (ev.radius || 3) * 1.6, dur: 0.5, opacity: 0.9 });
+          this.skyEye(ev.x, 9, ev.z, 3.2, ev.dur || 3);
+          break;
+        }
         if (ev.fist) {
-          this.seraphFist(ev.x, ev.z, ev.delay || 0.5, ev.radius || 6); // (0.94) Hand of Heaven
+          this.seraphFist(ev.x, ev.z, ev.delay || 0.5, ev.radius || 6, ev.tele); // (0.94) Hand of Heaven
           break;
         }
         if (ev.halo) {
@@ -2645,6 +2769,16 @@ export class Renderer {
         parts.legR.rotation.x = lerp(parts.legR.rotation.x, -sw, 0.3);
       }
       const body = parts.body;
+      if (parts.wheels || parts.wings) {
+        // (0.98) the trial's eyes hang in the air: they bob, their wheels and wings turn
+        const base = parts.wheels ? 3.4 : 1.5;
+        body.position.y = base + Math.sin(this.time * (parts.wheels ? 1.3 : 6) + e.id) * (parts.wheels ? 0.35 : 0.12);
+        if (parts.wheels) parts.wheels.forEach((w, i) => (w.rotation.z += dt * (i ? -0.5 : 0.7) * (e.raged ? 1.8 : 1)));
+        if (parts.halo) parts.halo.rotation.z += dt * 2;
+        if (parts.wings) parts.wings.forEach((w, i) => (w.rotation.x = Math.sin(this.time * 18 + i) * 0.6));
+        if (parts.stars) parts.stars.visible = e.state === 'stunned' || e.stunT > 0;
+        continue;
+      }
       body.position.y = e.moving ? Math.abs(Math.sin(v.walk)) * 0.07 : 0;
 
       // Attack pose
@@ -2874,7 +3008,7 @@ export class Renderer {
       }
       if (pr.volley > 0) m.userData.volley = pr.volley; // (0.81.5) arrows folded into this one
       m.userData.kind = pr.kind;
-      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a, lance: 0xfff0c0, eye: 0xffffff }[pr.kind]; // the hero's own shots (0.94: the Seraph's lance and eyes)
+      const own = pr.ice ? 0x9fe6ff : { arrow: 0xfff0b0, spark: 0x8fd0ff, bolt: 0xff9a3a, orb: 0xc8f0ff, kunai: 0xe4d6ff, mote: 0xfff3b0, crescent: 0xff3a3a, lance: 0xfff0c0, eye: 0xffffff, holy: 0xfff4d8 }[pr.kind]; // the hero's own shots (0.94: the Seraph's lance and eyes)
       m.userData.color = own || 0xd78bff;
       const want = own || (pr.reflected ? 0xbff2ff : pr.parryable ? 0xe7a8ff : COLORS.danger);
       if (m.material.userData.shared) {
@@ -2903,14 +3037,15 @@ export class Renderer {
         m.position.set(m.position.x - Math.cos(a) * w * 0.7, 1.0, m.position.z - Math.sin(a) * w * 0.7);
         if (Math.random() < 0.8) this.burst(m.position.x + Math.cos(a) * w * 0.7, 1.0, m.position.z + Math.sin(a) * w * 0.7, { count: 1, color: 0xff5050, speed: 0.6, up: 0.3, gravity: 0, life: 0.3, size: 1.1 });
       }
-      if (pr.kind === 'lance' || pr.kind === 'eye') {
+      if (pr.kind === 'lance' || pr.kind === 'eye' || pr.kind === 'holy') {
         // (0.95) the Seraph's shots: a spear of light (Dawnlance) or a shard of light (Choir of Eyes), pointing
         // where they fly, a halo turning, a wake of gold
         if (!m.userData.body) this.seraphShot(m, pr.kind);
         m.scale.setScalar(1);
         if (pr.x !== pr.px || pr.z !== pr.pz) m.rotation.set(0, Math.atan2(pr.x - pr.px, pr.z - pr.pz), 0);
-        m.position.y = pr.kind === 'lance' ? 1.8 : 1.9;
+        m.position.y = pr.kind === 'lance' ? 1.8 : pr.kind === 'holy' ? 1.7 : 1.9;
         if (m.userData.halo) m.userData.halo.rotation.z += 0.25;
+        if (pr.kind === 'holy') m.userData.halo.rotation.x += 0.18;
         const big = pr.kind === 'lance';
         if (Math.random() < (big ? 0.9 : 0.5)) this.burst(m.position.x, m.position.y, m.position.z, { count: big ? 2 : 1, color: big ? 0xffe2a0 : 0xfff6e0, speed: big ? 0.8 : 0.4, up: 0.15, gravity: 0, life: big ? 0.5 : 0.3, size: big ? 0.45 : 0.35 });
       }
@@ -3329,6 +3464,7 @@ export class Renderer {
 
   render(world, alpha, dt) {
     this.lastDt = dt; // (0.81.5) for the arrow rain
+    this._world = world; // (0.98) for effects that follow the sim (a Hand of Heaven over its foe)
     this.time += dt;
     const eform = eternalForm(world.player); // (0.76)
     const seraph = !!world.player.possess && !!world.map && world.map.id === 'wishkeep'; // (0.92) in the Seraph: its body
@@ -3487,6 +3623,30 @@ export class Renderer {
       if (L.flash > 0) L.flash = Math.max(0, L.flash - dt);
       const f = L.flash > 0.3 ? 1 : L.flash > 0.22 ? 0.2 : L.flash > 0.12 ? 0.8 : L.flash > 0 ? L.flash * 4 : 0;
       this.hemi.intensity = this.mood.sky * (1 + f * 2.2);
+    }
+
+    // (0.98) Ascension: the Seraph burns with its full light while it lasts
+    const asc = seraph && world.player.ascendT > 0 && this.hero;
+    if (asc && !this._asc) {
+      const g = new THREE.Group();
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffe2a0 }));
+      sp.scale.set(5, 6, 1);
+      sp.position.y = 1.6;
+      const ring = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+      ring.position.y = 0.1;
+      ring.scale.setScalar(2.2);
+      g.add(sp, ring);
+      this.scene.add(g);
+      this._asc = { g, sp, ring };
+    }
+    if (this._asc) {
+      this._asc.g.visible = !!asc;
+      if (asc) {
+        this._asc.g.position.copy(this.hero.group.position);
+        this._asc.sp.material.opacity = 0.55 + 0.25 * Math.sin(this.time * 6);
+        this._asc.ring.rotation.y += dt * 2;
+        if (Math.random() < 0.5) this.burst(this.hero.group.position.x, 2 + Math.random(), this.hero.group.position.z, { count: 1, color: 0xfff4d8, speed: 1, up: 2, life: 0.6, size: 0.45 });
+      }
     }
 
     if (this.post) this.post.render();

@@ -166,8 +166,8 @@ export const STATUE = {
   rest: 60, // seconds as stone, once felled
   need: (lvl) => Math.round(30 * (1 + 0.4 * (lvl - 1))), // xp from lvl to lvl + 1
   // xp for one of the Unmade it fells (by the Night's pay); a Night or raid it fights in and holds: `held` times that
-  kill: (L, F) => (1 + 0.4 * (L - 1)) * (F && F.role === 'boss' ? 30 : F && F.big ? 8 : F && F.role ? 3 : 1),
-  held: 12,
+  kill: (L, F) => 1.5 * (1 + 0.4 * (L - 1)) * (F && F.role === 'boss' ? 30 : F && F.big ? 8 : F && F.role ? 3 : 1),
+  held: 18, // (0.98: 12) and faster growth: kills count half again (kill below)
   low: 0.25, // a Night more than two under its level gives this much
   offer: (lvl) => ({ faith: Math.round(40 * (1 + 0.4 * (lvl - 1))) }), // Faith for a quarter of a level
   offerShare: 0.25,
@@ -179,22 +179,30 @@ export const STATUE = {
  * from as it grows (STATUE_SKILLS: each slot's choices, by the level that opens them).
  */
 export const STATUE_SKILLS = {
+  // (0.98) the base kit made flashier and much stronger; a new skill opens with each rarity it rises to (tier)
   q: {
-    dawnlance: { lvl: 1, name: 'Dawnlance', type: 'seraphLance', icon: 'line', cd: 5, wind: 0.35, range: 26, speed: 36, splash: 2.6, dmg: (s) => 3.6 * s.ad, desc: 'A crown of eyes opens over it; a breath later it looses a lance of dawn that seeks the foe you aim at (26 m) and bursts on it.' },
-    choir: { lvl: 10, name: 'Choir of Eyes', type: 'seraphChoir', icon: 'w', cd: 7, wind: 0.35, range: 24, count: 6, speed: 26, dmg: (s) => 1.05 * s.ad, desc: 'Six eyes open round it and fly, each to its own foe near where you aim (24 m), seeking it.' },
+    dawnlance: { lvl: 1, name: 'Dawnlance', type: 'seraphLaser', icon: 'sLaser', cd: 4.5, wind: 0.25, range: 26, bounces: 4, bounceRange: 11, falloff: 0.85, dmg: (s) => 3.4 * s.ad, desc: 'A crown of eyes opens over it, and a ray of dawn leaps from its hands to the foe you aim at (26 m), then glances on to four more foes near each in turn.' },
+    choir: { lvl: 10, name: 'Choir of Eyes', type: 'seraphChoir', icon: 'sChoir', cd: 6, wind: 0.3, range: 24, count: 7, speed: 28, dmg: (s) => 1.5 * s.ad, desc: 'Seven eyes open round it and fly, each to its own foe near where you aim (24 m), seeking it.' },
+    barrage: { lvl: 1, tier: 2, name: 'Seraphic Barrage', type: 'seraphChoir', icon: 'sBarrage', cd: 5, wind: 0.2, range: 26, count: 6, speed: 34, focus: true, dmg: (s) => 1.4 * s.ad, desc: 'Rare: six bolts of holy light, all at the one foe you aim at, curving in from every side.' },
+    prism: { lvl: 1, tier: 5, name: 'Prism Lance', type: 'seraphLaser', icon: 'sPrism', cd: 6, wind: 0.3, range: 30, line: 1.8, bounces: 6, bounceRange: 12, falloff: 0.9, dmg: (s) => 4.6 * s.ad, desc: 'Ancient: a beam straight through everything in a line (30 m) that breaks into rays on the last thing it strikes, glancing on to six more foes.' },
   },
   w: {
-    wingbeat: { lvl: 1, name: 'Wingbeat', type: 'nova', icon: 'w', cd: 9, wind: 0.3, radius: 5.5, knockback: 9, mend: 0.15, dmg: (s) => 2.4 * s.ad, desc: 'Its wings draw in, then open in a burst of cloud: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
-    halo: { lvl: 20, name: 'Halo of Mercy', type: 'zone', icon: 'zone', cd: 12, wind: 0.3, range: 0, radius: 6, duration: 5, tick: 0.5, slow: 0.35, slowDur: 1, mend: 0.3, halo: true, dmg: (s) => 3.2 * s.ad, desc: 'A ring of light round it for 5 seconds: the Unmade in it are slowed and burned by it, and your heroes in it mend 30% of their health at once.' },
+    wingbeat: { lvl: 1, name: 'Wingbeat', type: 'nova', icon: 'sWings', cd: 8, wind: 0.25, blink: 16, radius: 6, knockback: 9, mend: 0.2, dmg: (s) => 3.2 * s.ad, desc: 'It vanishes in light to the foe or hero nearest where you aim (16 m), then its wings open in a burst there: the Unmade around are struck and thrown back, and your heroes in reach mend 20% of their health.' },
+    halo: { lvl: 20, name: 'Halo of Mercy', type: 'zone', icon: 'sHalo', cd: 11, wind: 0.25, blink: 16, range: 0, radius: 6.5, duration: 5, tick: 0.5, slow: 0.35, slowDur: 1, mend: 0.3, halo: true, dmg: (s) => 4.2 * s.ad, desc: 'It blinks to the foe or hero nearest where you aim (16 m) and lays a ring of light round itself for 5 seconds: the Unmade in it are slowed and burned, and your heroes in it mend 30% of their health at once.' },
+    wrath: { lvl: 1, tier: 3, name: 'Wrath of Wings', type: 'nova', icon: 'sWrath', cd: 9, wind: 0.2, blink: 18, radius: 7, knockback: 4, pulses: 3, gap: 0.35, mend: 0.1, dmg: (s) => 2.8 * s.ad, desc: 'Epic: it blinks to the foe or hero nearest where you aim (18 m), and its wings beat three times there, each a burst of light.' },
   },
   e: {
-    glide: { lvl: 1, name: 'Glide', type: 'dash', icon: 'e', cd: 6, range: 7.5, minRange: 3, duration: 0.32, width: 1.6, dmg: (s) => 1.2 * s.ad, desc: 'Glide on a trail of cloud toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
-    feathers: { lvl: 25, name: 'Shower of Feathers', type: 'dash', icon: 'e', cd: 7, range: 8, minRange: 3, duration: 0.32, width: 1.6, motes: { count: 6, range: 14, speed: 26 }, dmg: (s) => 1.0 * s.ad, desc: 'Glide where you aim, and at its end loose six feathers of light that seek the nearest foes.' },
+    glide: { lvl: 1, name: 'Glide', type: 'dash', icon: 'sGlide', cd: 5, range: 8, minRange: 3, duration: 0.34, width: 1.8, dmg: (s) => 1.8 * s.ad, desc: 'It spreads its wings and glides toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
+    feathers: { lvl: 25, name: 'Shower of Feathers', type: 'dash', icon: 'sFeathers', cd: 6, range: 8.5, minRange: 3, duration: 0.34, width: 1.8, motes: { count: 8, range: 16, speed: 28 }, dmg: (s) => 1.5 * s.ad, desc: 'Glide where you aim, and at its end loose eight feathers of light that seek the nearest foes.' },
+    wake: { lvl: 1, tier: 1, name: 'Radiant Wake', type: 'dash', icon: 'sWake', cd: 6, range: 9, minRange: 3, duration: 0.34, width: 1.8, wake: { n: 5, pulses: 3, gap: 0.5, r: 2.4, share: 0.7 }, dmg: (s) => 1.6 * s.ad, desc: 'Uncommon: glide where you aim, leaving a trail of light behind that burns what stands in it three times.' },
   },
   r: {
-    descent: { lvl: 5, name: 'Descent', type: 'leap', icon: 'r', cd: 22, wind: 0.8, range: 14, radius: 5.5, duration: 0.55, stun: 1.6, pull: 8, dmg: (s) => 6.5 * s.ad, desc: 'A cloud gathers over where you aim (14 m) and its eyes open; it rises and comes down there as a pillar of light, drawing everything within 8 m into it first, then striking and stunning it all.' },
-    hand: { lvl: 15, name: 'Hand of Heaven', type: 'meteor', icon: 'r', cd: 20, wind: 0.6, range: 24, radius: 6, delay: 0.55, stun: 2, fist: true, dmg: (s) => 7.5 * s.ad, desc: 'It points, and a fist of light comes down out of the clouds where you aim (24 m): everything under it is struck and stunned for 2 seconds. It stays where it is.' },
-    rain: { lvl: 30, name: 'Rain of Eyes', type: 'seraphRain', icon: 'r', cd: 20, wind: 0.7, range: 22, radius: 10, rays: 10, gap: 0.12, dmg: (s) => 1.7 * s.ad, desc: 'Eyes open over every foe within 10 m of where you aim (22 m) and look down: ten rays of light fall on them, one after another.' },
+    descent: { lvl: 5, name: 'Descent', type: 'leap', icon: 'sDescent', cd: 18, wind: 0.8, track: true, range: 16, radius: 6, duration: 0.55, stun: 1.6, pull: 8, dmg: (s) => 8.5 * s.ad, desc: 'A cloud gathers over the foe nearest where you aim (16 m) and follows it while its eyes open; it rises and comes down on it as a pillar of light, drawing everything within 8 m in first, then striking and stunning it all.' },
+    hand: { lvl: 15, name: 'Hand of Heaven', type: 'meteor', icon: 'sHand', cd: 17, wind: 0.6, track: true, range: 26, radius: 6.5, delay: 0.55, stun: 2, fist: true, dmg: (s) => 10 * s.ad, desc: 'It points at the foe nearest where you aim (26 m), and a fist of light comes down out of the clouds onto it, following it as it falls: everything under it is struck and stunned for 2 seconds.' },
+    rain: { lvl: 30, name: 'Rain of Eyes', type: 'seraphRain', icon: 'sRain', cd: 17, wind: 0.6, track: true, range: 24, radius: 11, rays: 14, gap: 0.1, dmg: (s) => 2.3 * s.ad, desc: 'Eyes open over every foe within 11 m of where you aim (24 m) and look down: fourteen rays of light fall on them, one after another, wherever they run.' },
+    sunfall: { lvl: 1, tier: 4, name: 'Sunfall', type: 'seraphBeam', icon: 'sSun', cd: 18, wind: 0.4, range: 26, duration: 3.2, tick: 0.2, radius: 3.2, chase: 11, dmg: (s) => 1.1 * s.ad, desc: 'Mythic: a beam of sunlight falls from the sky on the foe nearest where you aim (26 m) and hunts it for three seconds, moving on to the next when it falls, burning everything it touches.' },
+    judgement: { lvl: 1, tier: 6, name: 'Judgement of the Choir', type: 'seraphRain', icon: 'sJudge', cd: 20, wind: 0.6, track: true, range: 26, radius: 15, rays: 30, gap: 0.06, stun: 0.6, dmg: (s) => 2.6 * s.ad, desc: 'Immortal: the whole sky opens its eyes over where you aim (26 m): thirty rays fall on the Unmade within 15 m, each one stunning.' },
+    ascension: { lvl: 1, tier: 7, name: 'Ascension', type: 'seraphAscend', icon: 'sAscend', cd: 30, wind: 0.5, duration: 10, dmg: (s) => 0, desc: 'Eternal: for 10 seconds it burns with its full light: its strikes loose three bolts at three foes, its skills come back twice as fast, and everything it does hits 40% harder.' },
   },
 };
 export const STATUE_SKILL_DEFAULT = { q: 'dawnlance', w: 'wingbeat', e: 'glide', r: 'descent' };
@@ -203,7 +211,7 @@ export function statueKit(statue) {
   const out = {};
   for (const c of ['q', 'w', 'e', 'r']) {
     const want = statue && statue.kit && statue.kit[c];
-    const id = want && STATUE_SKILLS[c][want] && (statue.lvl || 1) >= STATUE_SKILLS[c][want].lvl ? want : STATUE_SKILL_DEFAULT[c];
+    const id = want && STATUE_SKILLS[c][want] && statueSkillOpen(statue, STATUE_SKILLS[c][want]) ? want : STATUE_SKILL_DEFAULT[c];
     const d = STATUE_SKILLS[c][id];
     out[c] = Object.assign({}, d, { key: c.toUpperCase(), unlock: d.lvl, seraphSkill: id });
   }
@@ -211,7 +219,41 @@ export function statueKit(statue) {
 }
 /** (0.92) The default kit (tooltips and tests). */
 export const STATUE_KIT = statueKit(null);
-export const STATUE_BASIC = { range: 2.8, mult: 1.6 }; // (0.93: slower, half again as hard)
+/** (0.98) Is this skill open to the Seraph (its level and its rarity)? */
+export function statueSkillOpen(statue, d) {
+  return !!d && ((statue && statue.lvl) || 1) >= (d.lvl || 1) && ((statue && statue.tier) || 0) >= (d.tier || 0);
+}
+/**
+ * (0.98) The Seraph's rarity: from Common it rises, at its plinth, by an offering once its level reaches the
+ * gate, up to Immortal; Eternal is won only by beating the Eternal trial. Each step makes it hit harder and
+ * stand longer (mult), and opens a new skill (STATUE_SKILLS: tier).
+ */
+export const STATUE_TIERS = [
+  { name: 'Common', lvl: 1, mult: 1 },
+  { name: 'Uncommon', lvl: 8, mult: 1.15, cost: { faith: 1500, stone: 100, sigils: 5 } },
+  { name: 'Rare', lvl: 15, mult: 1.32, cost: { faith: 3500, stone: 250, sigils: 10 } },
+  { name: 'Epic', lvl: 22, mult: 1.52, cost: { faith: 7000, stone: 500, sigils: 18 } },
+  { name: 'Mythic', lvl: 30, mult: 1.76, cost: { faith: 12000, stone: 900, sigils: 30 } },
+  { name: 'Ancient', lvl: 38, mult: 2.05, cost: { faith: 20000, stone: 1500, sigils: 45 } },
+  { name: 'Immortal', lvl: 46, mult: 2.4, cost: { faith: 32000, stone: 2500, sigils: 65 } },
+  { name: 'Eternal', lvl: 50, mult: 3.0, trial: true },
+];
+export const statueTierMult = (statue) => (STATUE_TIERS[(statue && statue.tier) || 0] || STATUE_TIERS[0]).mult;
+/**
+ * (0.98) The Eternal trial: the Seraph alone against the Unblinking, a choir of eyes from the far sky, in the keep.
+ * Opened by an Immortal Seraph at level 50. hp: times the Night-50 power; its blows are Night 50's.
+ */
+export const TRIAL = {
+  boss: 'unblinking', hp: 26000, dmg: 46, lvl: 50,
+  stare: { cd: 4.2, n: 3, gap: 0.55, r: 3.0, warn: 1.0, x: 1.0 }, // eyes look down where it is (and where it will be)
+  lid: { cd: 9, r: 7.5, warn: 1.3, x: 1.8, near: 9 }, // the great eye closes: a burst round it
+  gaze: { cd: 7, warn: 0.9, len: 26, w: 2.4, x: 1.3 }, // a line of sight, straight at it
+  call: { cd: 13, n: 4, type: 'eyelet', mend: 0.05 }, // lesser eyes open and swoop (each put out mends the Seraph 5%)
+  keep: 9, // the distance it keeps
+  speed: 3.2, rage: 0.5, // past half: faster, more
+};
+
+export const STATUE_BASIC = { range: 22, mult: 1.9, shot: 'holy', speed: 30, splash: 1.6, splashMult: 0.4 }; // (0.98) a bolt of holy light from its prayer, seeking the foe aimed at
 /** (0.92) The Night a Seraph of this level is a match for: how hard it hits and how much it takes. */
 export const statuePower = (lvl) => NIGHT.power(Math.max(1, Math.min(STATUE.maxLvl, lvl)));
 /** (0.92) The highest level the Seraph can reach now: the best Night held. */
@@ -243,6 +285,7 @@ export const FOES = {
   gloamwing: { name: 'Gloamwing', hp: 150, dmg: 16, speed: 6.4, range: 1.6, cd: 1.0, role: 'dive', from: 34, pack: 2, pounce: 2.5, desc: 'Fast, and goes over the front line for your archers and mages. Its first blow on each lands two and a half times as hard.' },
   rotmother: { name: 'Rotmother', hp: 1400, dmg: 20, speed: 2.0, range: 2.0, cd: 1.5, siege: 2, role: 'split', from: 38, big: true, split: { n: 3, into: 'rotling' }, rot: { r: 3.5, cut: 0.5 }, desc: 'Heroes near her heal half as much, and when she falls she breaks into three Rotlings.' },
   rotling: { name: 'Rotling', hp: 260, dmg: 10, speed: 3.8, range: 1.6, cd: 1.0, desc: 'What is left of a Rotmother.' },
+  eyelet: { name: 'Eyelet', hp: 320, dmg: 14, speed: 5.2, range: 1.6, cd: 1.0, desc: 'A lesser eye of the Unblinking: swoops and pecks.' },
   tidecaller: { name: 'The Tidecaller', hp: 4200, dmg: 40, speed: 2.6, range: 3, cd: 2.0, siege: 3, role: 'boss', big: true, slam: { cd: 6, r: 4.5, x: 1.6, wind: 0.8 }, call: { cd: 12, n: 3 }, desc: 'The night\'s king, on the last wave of every fifth Night: slams those near, calls the Hush, and rages when hurt.' },
 };
 export const FOE_SPECIALS = ['thief', 'cinderling', 'veilbearer', 'gatebreaker', 'mourner', 'oathbreaker', 'gloamwing', 'rotmother'];
@@ -804,7 +847,7 @@ export function cleanKeep(raw) {
   // (0.92) the Seraph, once raised: one for the whole account, like the keep
   if (raw.statue && typeof raw.statue === 'object') {
     const s = raw.statue;
-    k.statue = { lvl: int(s.lvl, 1, 1, STATUE.maxLvl), xp: int(s.xp, 0, 0, 1e9), rest: Math.max(0, Math.min(STATUE.rest, Number(s.rest) || 0)), hp: Math.max(0.05, Math.min(1, Number.isFinite(+s.hp) ? +s.hp : 1)), fells: int(s.fells), nights: int(s.nights) };
+    k.statue = { tier: int(s.tier, 0, 0, STATUE_TIERS.length - 1), lvl: int(s.lvl, 1, 1, STATUE.maxLvl), xp: int(s.xp, 0, 0, 1e9), rest: Math.max(0, Math.min(STATUE.rest, Number(s.rest) || 0)), hp: Math.max(0.05, Math.min(1, Number.isFinite(+s.hp) ? +s.hp : 1)), fells: int(s.fells), nights: int(s.nights) };
     // (0.94) the skills chosen for it, slot by slot
     k.statue.kit = {};
     for (const c of ['q', 'w', 'e', 'r']) k.statue.kit[c] = s.kit && STATUE_SKILLS[c][s.kit[c]] ? s.kit[c] : STATUE_SKILL_DEFAULT[c];

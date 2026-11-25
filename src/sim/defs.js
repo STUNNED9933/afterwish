@@ -506,6 +506,9 @@ Object.assign(ENEMIES, {
   gloamwing: { ...ENEMIES.wraith, name: 'Gloamwing', look: { scale: 0.9, colors: [0x101830, 0x6a9aff] }, exp: 0, drop: 0, tideOnly: true },
   rotmother: { ...ENEMIES.golem, name: 'Rotmother', look: { scale: 1.3, colors: [0x2a3018, 0x9ac040, 0x0c1008] }, exp: 0, drop: 0, tideOnly: true },
   rotling: { ...ENEMIES.grunt, name: 'Rotling', look: { scale: 0.7, colors: [0x2a3018, 0x9ac040, 0x0c1008] }, exp: 0, drop: 0, tideOnly: true },
+  // (0.98) the Eternal trial: a choir of eyes from the far sky, and its lesser eyes (their AI is the trial's own)
+  unblinking: { name: 'The Unblinking', model: 'watcher', hp: 1, speed: 3.2, radius: 1.8, height: 5.2, heavy: true, boss: true, exp: 0, drop: 0, cost: 0, ai: 'boss', poise: 6, parryStun: 2, atkCd: [1, 1], attacks: [], tideOnly: true, title: 'The eyes of the far sky' },
+  eyelet: { name: 'Eyelet', model: 'eyelet', hp: 1, speed: 5.2, radius: 0.6, height: 2.2, exp: 0, drop: 0, cost: 0, ai: 'melee', attacks: [], tideOnly: true },
   tidecaller: { ...ENEMIES.boss3, name: 'The Tidecaller', look: { scale: 1.3, colors: [0x0c1a2e, 0x8a6aff, 0x04080c] }, exp: 0, drop: 0, tideOnly: true, boss: false },
 });
 // The Cinder: the ash-fever was its breath. It does not hate you. It is only very late.

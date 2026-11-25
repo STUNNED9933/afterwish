@@ -171,11 +171,11 @@ export const RIGGED = {
     runRef: 6.5,
     death: 'hit_to_body_01',
     hit: 'hit_to_body_01',
-    attack: { clip: 'slash', from: 1.5, to: 2.3 },
+    attack: { clip: 'seraph_pray', from: 0, to: 0.9 }, // (0.98) hands together in prayer, then thrust out: the light leaves them (tools/seraph)
     moves: {
       line: { clip: 'cast_a_spell', keys: [[0, 2.1], [0.2, 2.6], [0.5, 3.4], [0.75, 4.3]], fade: 0.25 },
       nova: { clip: 'cast_a_spell', keys: [[0, 0.9], [0.15, 1.2], [0.45, 1.6], [0.7, 2.2]], fade: 0.25 },
-      dash: { clip: 'slash', keys: [[0, 1.5], [0.15, 1.9], [0.3, 2.1], [0.55, 2.6]], land: 2, fade: 0.25 },
+      dash: { clip: 'seraph_glide', keys: [[0, 0.1], [0.15, 0.35], [0.3, 0.6], [0.55, 0.95]], land: 2, fade: 0.18 }, // (0.98) wings spread, leaning into the flight
       leap: { clip: 'slash', keys: [[0, 1.6], [0.45, 1.85], [0.55, 2.05], [0.95, 2.8]], land: 2, stop: [0.55, 0.12], fade: 0.3 },
       // (0.93) gathering light before a skill: arms drawn back and up, held
       wind_q: { clip: 'cast_a_spell', keys: [[0, 1.3], [0.3, 2.0], [0.45, 2.2], [1.2, 2.25]], fade: 0.2 },

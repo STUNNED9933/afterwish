@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, STATUE_KIT, STATUE_SKILLS, statueKit, statueCap, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, nightOmens, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, STATUE_KIT, STATUE_SKILLS, statueKit, statueCap, STATUE_TIERS, statueSkillOpen, TRIAL, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, nightOmens, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1419,6 +1419,23 @@ function start(hot = {}) {
       if (toNext > 1) card.appendChild(keepBtn(`To level ${s.lvl + 1} · ${(toNext * o.faith).toLocaleString()} Faith`, () => applyNow({ type: 'keepOffer', n: toNext }), { disabled: k.faith < toNext * o.faith }));
     }
     list.appendChild(card);
+    // (0.98) its rarity: an offering raises it once its level reaches the gate; Eternal is won in the trial
+    {
+      const t = s.tier || 0, T = STATUE_TIERS[t], N = STATUE_TIERS[t + 1];
+      const col = RARITIES[Math.min(t, RARITIES.length - 1)].color;
+      const opens = N ? ['q', 'w', 'e', 'r'].flatMap((c) => Object.values(STATUE_SKILLS[c]).filter((d) => d.tier === t + 1).map((d) => d.name)) : [];
+      const tc = keepCard(`Rarity: <span style="color:${col}">${T.name}</span>`, N ? (N.trial ? `Eternal: win the trial` : `next: ${N.name} at level ${N.lvl}`) : 'as high as it goes', `<p>Its blows land and its stone stands <b>${T.mult}×</b> as hard as a Common Seraph's.${N ? ` <span style="color:${RARITIES[Math.min(t + 1, RARITIES.length - 1)].color}">${N.name}</span>: <b>${N.mult}×</b>${opens.length ? `, and it learns <b>${opens.join(', ')}</b>` : ''}.` : ''}</p>`);
+      if (N && !N.trial) {
+        const c = N.cost, ok = s.lvl >= N.lvl && k.faith >= c.faith && k.stone >= c.stone && (k.sigils || 0) >= c.sigils;
+        tc.appendChild(keepBtn(s.lvl < N.lvl ? `${N.name} opens at level ${N.lvl}` : `Raise it to ${N.name} · ${c.faith.toLocaleString()} Faith, ${c.stone.toLocaleString()} Wishstone, ${c.sigils} Sigils`, () => applyNow({ type: 'keepStatueTier' }), { primary: s.lvl >= N.lvl, disabled: !ok }));
+      } else if (N && N.trial) {
+        const open = s.lvl >= TRIAL.lvl;
+        tc.insertAdjacentHTML('beforeend', `<p class="setting-desc"><b>The Eternal trial.</b> The Seraph alone, against <b>the Unblinking</b>: a great eye from the far sky in a wheel of lesser eyes. Its stares fall where you stand and where you are going, its gaze burns a line along the ground, its lid comes down round it when you are close, and its Eyelets swoop at you (each one you put out mends 5% of your stone). It mends nothing else. Win, and the Seraph is <b style="color:${RARITIES[7].color}">Eternal</b> (<b>${N.mult}×</b>), and learns <b>Ascension</b>.</p>`);
+        const busy = world.tide && world.tide.state === 'on';
+        tc.appendChild(keepBtn(world.trial ? 'The trial is on' : !open ? `Opens at level ${TRIAL.lvl}` : busy ? 'Not during a night' : 'Face the Eternal trial', () => { setMode('play'); applyNow({ type: 'keepTrial' }); }, { primary: open, disabled: !open || busy || !!world.trial || s.rest > 0 }));
+      }
+      list.appendChild(tc);
+    }
     // (0.94) its skills: one for each key, chosen here from those its level has opened
     const KEYS = { q: 'Q', w: 'E', e: 'Shift', r: 'R' };
     const chosen = statueKit(s);
@@ -1426,15 +1443,16 @@ function start(hot = {}) {
     for (const c of ['q', 'w', 'e', 'r']) {
       for (const id of Object.keys(STATUE_SKILLS[c])) {
         const d = STATUE_SKILLS[c][id];
-        const on = chosen[c].seraphSkill === id, open = s.lvl >= d.lvl;
+        const on = chosen[c].seraphSkill === id, open = statueSkillOpen(s, d);
+        const tierLock = d.tier && (s.tier || 0) < d.tier ? STATUE_TIERS[d.tier].name : null;
         const row = document.createElement('div');
         row.className = 'keep-troop' + (open ? '' : ' locked');
-        row.innerHTML = `<span><kbd>${KEYS[c]}</kbd> <b>${esc(d.name)}</b>${d.wind ? ` <i>(gathers ${d.wind}s)</i>` : ''}${open ? '' : ` <i>· opens at level ${d.lvl}</i>`}<br><small>${esc(d.desc)}</small></span>`;
-        row.appendChild(keepBtn(on ? 'In use' : open ? 'Use' : `Level ${d.lvl}`, () => applyNow({ type: 'keepStatueSkill', slot: c, id }), { primary: on, disabled: on || !open }));
+        row.innerHTML = `<span><span class="seraph-ico">${svg(d.icon)}</span><kbd>${KEYS[c]}</kbd> <b${d.tier ? ` style="color:${RARITIES[Math.min(d.tier, RARITIES.length - 1)].color}"` : ''}>${esc(d.name)}</b>${d.wind ? ` <i>(gathers ${d.wind}s)</i>` : ''}${open ? '' : tierLock ? ` <i>· opens at ${tierLock}</i>` : ` <i>· opens at level ${d.lvl}</i>`}<br><small>${esc(d.desc)}</small></span>`;
+        row.appendChild(keepBtn(on ? 'In use' : open ? 'Use' : tierLock || `Level ${d.lvl}`, () => applyNow({ type: 'keepStatueSkill', slot: c, id }), { primary: on, disabled: on || !open }));
         kit.appendChild(row);
       }
     }
-    kit.insertAdjacentHTML('beforeend', '<p class="setting-desc"><b>Strike</b> (left click) and <b>roll</b> (double-tap a direction) are always its own.</p>');
+    kit.insertAdjacentHTML('beforeend', '<p class="setting-desc"><b>Strike</b> (left click: a bolt of holy light from its prayer, seeking the foe you aim at, 22 m) and <b>roll</b> (double-tap a direction) are always its own.</p>');
     list.appendChild(kit);
   }
   function renderKeepWorks(id) {
@@ -1980,6 +1998,70 @@ function start(hot = {}) {
   let rankSfxAt = 0; // (0.91.1)
   let shoulderPos = false; // (0.92)
   let shoulderWas = false; // (0.94)
+  /**
+   * (0.98) Over the shoulder: a compass along the top (north is up on the map) with your heroes, the night's
+   * king and the Hearth on it, and a list of your heroes down the side: their health, how far, and which way.
+   */
+  const COMPASS_SPAN = Math.PI * 0.62; // half the strip, either side of straight ahead
+  const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  let compassBuilt = false;
+  function compassFrame() {
+    const strip = shoulderUi.querySelector('.sh-cstrip'), marks = shoulderUi.querySelector('.sh-cmark'), list = shoulderUi.querySelector('.sh-heroes');
+    const W = 560, yaw = renderer.shoulder.yaw || 0;
+    const xOf = (bearing) => { const rel = wrapA(bearing - yaw); return Math.abs(rel) > COMPASS_SPAN ? null : W / 2 + (rel / COMPASS_SPAN) * (W / 2); };
+    if (!compassBuilt) {
+      compassBuilt = true;
+      let h = '';
+      for (let d = 0; d < 360; d += 15) {
+        const name = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' }[d];
+        h += `<i data-d="${d}" class="${name ? (name.length === 1 ? 'card' : 'mid') : 'tick'}">${name || ''}</i>`;
+      }
+      strip.innerHTML = h;
+    }
+    // north is -z (up on the map), east +x: a heading d degrees clockwise from north is the world angle d - 90
+    for (const el of strip.children) {
+      const x = xOf(((+el.dataset.d - 90) * Math.PI) / 180);
+      el.style.display = x == null ? 'none' : '';
+      if (x != null) el.style.transform = `translateX(${Math.round(x)}px)`;
+    }
+    const p = world.player;
+    const heroes = [];
+    for (const tr of world.troops || []) heroes.push({ id: 'troop:' + tr.id, name: tr.name, x: tr.x, z: tr.z, hp: tr.hp, max: tr.maxHp, dead: !!tr.dead, color: tr.rar ? RARITIES[tr.rar].color : '#e8f4ff' });
+    if (world.allies) for (const a of world.allies()) heroes.push({ id: 'ally:' + a.pid, name: a.name, x: a.x, z: a.z, hp: a.hp, max: a.maxHp, dead: a.dead, color: '#7fd0ff' });
+    const pins = [];
+    for (const h of heroes) {
+      const f = Math.max(0, Math.min(1, h.hp / Math.max(1, h.max)));
+      pins.push({ x: xOf(Math.atan2(h.z - p.z, h.x - p.x)), cls: `hero${h.dead ? ' down' : f < 0.35 ? ' low' : ''}`, tip: h.name, edge: true, bearing: Math.atan2(h.z - p.z, h.x - p.x) });
+    }
+    const boss = world.enemies.find((e) => !e.dead && ((e.def && e.def.boss) || e.type === 'tidecaller'));
+    if (boss) pins.push({ x: xOf(Math.atan2(boss.z - p.z, boss.x - p.x)), cls: 'boss', tip: boss.def.name, edge: true, bearing: Math.atan2(boss.z - p.z, boss.x - p.x) });
+    const hearth = (world.keepBuilds || []).find((b) => b.id === 'hearth');
+    if (hearth) pins.push({ x: xOf(Math.atan2(hearth.z - p.z, hearth.x - p.x)), cls: 'hearth', tip: 'The Hearth' });
+    let mh = '';
+    for (const pin of pins) {
+      let x = pin.x, edge = '';
+      if (x == null) {
+        if (!pin.edge) continue;
+        const rel = wrapA(pin.bearing - yaw);
+        x = rel > 0 ? W - 6 : 6; // off the strip: at its edge, pointing the way
+        edge = rel > 0 ? ' right' : ' left';
+      }
+      mh += `<b class="${pin.cls}${edge}" style="transform:translateX(${Math.round(x)}px)"></b>`;
+    }
+    marks.innerHTML = mh;
+    // the heroes, down the side
+    list.classList.toggle('hidden', !heroes.length);
+    if (heroes.length) {
+      let lh = '<h5>Your heroes</h5>';
+      for (const h of heroes) {
+        const f = Math.max(0, Math.min(1, h.hp / Math.max(1, h.max)));
+        const d = Math.hypot(h.x - p.x, h.z - p.z);
+        const rel = wrapA(Math.atan2(h.z - p.z, h.x - p.x) - yaw); // 0: ahead, +: to the right
+        lh += `<div class="shh${h.dead ? ' down' : f < 0.35 ? ' low' : ''}"><span class="shh-dir" style="transform:rotate(${Math.round((rel * 180) / Math.PI)}deg)">▲</span><span class="shh-name" style="color:${h.color}">${esc(h.name)}</span><span class="shh-d">${h.dead ? 'down' : `${Math.round(d)} m`}</span><i><u style="width:${Math.round(f * 100)}%"></u></i></div>`;
+      }
+      list.innerHTML = lh;
+    }
+  }
   function shoulderFrame() {
     const t = world && world.tide;
     const mine = !!(t && t.state === 'on' && !world.keepVisit);
@@ -1997,7 +2079,7 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps Lock</kbd> <span class="sh-pace">walk</span> · hold <kbd>Alt</kbd> for the mouse<span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-posin"> · <kbd>Y</kbd> take up the Seraph</span><span class="sh-nightk"> · hold <kbd>N</kbd> to call the night</span><span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-altk"> · the mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps Lock</kbd> <span class="sh-pace">walk</span> · hold <kbd>Alt</kbd> for the mouse<span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-posin"> · <kbd>Y</kbd> take up the Seraph</span><span class="sh-nightk"> · hold <kbd>N</kbd> to call the night</span><span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-altk"> · the mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div><div class="sh-compass"><div class="sh-cstrip"></div><div class="sh-cmark"></div></div><div class="sh-heroes"></div>';
       document.body.appendChild(shoulderUi);
       shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
       shoulderUi.querySelector('.sh-pos').addEventListener('click', () => input.togglePossess()); // (0.92)
@@ -2009,12 +2091,13 @@ function start(hot = {}) {
     const canPos = inKeep && !world.keepVisit && !pos && !!(world.player && world.player.keep && world.player.keep.statue) && mode === 'play';
     shoulderUi.classList.toggle('can-pos', canPos && !(t && t.state === 'on'));
     // (0.91) between nights in a keep: the offer to walk it over your shoulder
-    shoulderUi.classList.toggle('can-walk', inKeep && !walk && !(t && t.state === 'on') && mode === 'play');
+    shoulderUi.classList.toggle('can-walk', inKeep && !walk && !pos && !(t && t.state === 'on') && mode === 'play'); // (0.98: not from inside the Seraph)
     shoulderUi.classList.toggle('chan', chan);
     shoulderUi.classList.toggle('free', on && !input.locked());
     // (0.89) the soft lock: its frame at the top, and the crosshair turns gold
     const lockOn = on && input.softId != null ? world.enemies.find((e) => e.id === input.softId && !e.dead) : null;
     shoulderUi.classList.toggle('locked', !!lockOn);
+    shoulderUi.classList.toggle('boss-lock', !!(lockOn && lockOn.def && lockOn.def.boss && !$('boss-box').classList.contains('hidden'))); // (0.98)
     if (on) {
       const dc = world.player.dodgeCd || 0; // (0.89) the roll's cooldown
       const dEl = shoulderUi.querySelector('.sh-dodge');
@@ -2050,6 +2133,7 @@ function start(hot = {}) {
       nEl.querySelector('b').textContent = `Calling Night ${k ? k.night || Math.min(NIGHT.max, (k.nightMax || 0) + 1) : ''}…`;
       nEl.querySelector('u').style.width = `${Math.round(nk * 100)}%`;
     }
+    if (on) compassFrame();
     const walkEl = shoulderUi.querySelector('.sh-pace');
     if (walkEl) walkEl.textContent = world.player && world.player.walkPace ? 'run' : 'walk';
   }
@@ -5435,7 +5519,7 @@ function start(hot = {}) {
           renderer.shoulder.yaw = Math.atan2(-ev.z, -ev.x);
           renderer.shoulder.pitch = 0.4;
           renderer.keepFx({ type: 'possessFx', x: ev.x, z: ev.z, on: true });
-          hud.feedText(`You take up the Seraph (level ${ev.lvl}): Q Dawnlance, E Wingbeat, Shift Glide, R Descent, left click to strike. Y to leave it.`);
+          hud.feedText(`You take up the Seraph (level ${ev.lvl}): left click looses holy light; Q, E, Shift and R are its skills. Y to leave it.`);
         } else {
           renderer.keepFx({ type: 'possessFx', x: ev.x, z: ev.z, on: false });
           if (ev.fell) {
@@ -5479,6 +5563,29 @@ function start(hot = {}) {
         break;
       case 'walkPace':
         hud.feedText(ev.on ? 'Walking at an even pace. Ctrl or Caps Lock to run again.' : 'Running. Ctrl or Caps Lock to walk.'); // (0.94)
+        break;
+      case 'statueTier':
+        sfx.levelUp();
+        hud.banner(`The Seraph is ${ev.name}`, `Its light grows: it strikes harder and stands longer.${ev.opened && ev.opened.length ? ` It learns ${ev.opened.join(', ')}.` : ''}`);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'trialStart':
+        sfx.levelUp();
+        hud.banner('The Eternal trial', `${ev.name} opens its eyes. Keep moving: its stares fall where you are going.`);
+        break;
+      case 'trialEnd':
+        if (ev.won) {
+          sfx.eternal();
+          hud.screenFlash(0.4);
+          hud.banner('The Seraph is Eternal', `The Unblinking closes its eyes (${ev.t} seconds). White and crimson light: the Seraph has learnt Ascension.`);
+        } else {
+          sfx.denied();
+          hud.banner('The trial is lost', 'The eyes close and the sky shuts. Mend the Seraph and try again, from its plinth.');
+        }
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'seraphMend':
+        hud.float(renderer, ev.x, 3.2, ev.z, `+${ev.n}`, 'heal');
         break;
       case 'statueSkill':
         sfx.ui();
@@ -5667,7 +5774,7 @@ function start(hot = {}) {
         break;
       case 'keepMaxed':
         sfx.denied();
-        talkNote = ev.what === 'rank' ? `${ev.name} needs ${ev.hall} at level ${ev.rank}.` : ev.what === 'stage' ? `${ev.name} opens when the keep grows to ${GROWTH.names[ev.stage]}.` : ev.what === 'seraphLvl' ? `${ev.name} opens when the Seraph reaches level ${ev.lvl}.` : ev.what === 'level' ? `${ev.name} is as high as it goes.` : `${ev.name} is as far as this hall can take them: raise the hall.`;
+        talkNote = ev.what === 'rank' ? `${ev.name} needs ${ev.hall} at level ${ev.rank}.` : ev.what === 'stage' ? `${ev.name} opens when the keep grows to ${GROWTH.names[ev.stage]}.` : ev.what === 'seraphLvl' ? `${ev.name} opens when the Seraph reaches level ${ev.lvl}.` : ev.what === 'seraphTier' ? `${ev.name} opens when the Seraph is ${ev.tier}.` : ev.what === 'seraphTierLvl' ? `The Seraph can be raised to ${ev.tier} at level ${ev.lvl}.` : ev.what === 'seraphTrial' ? 'Eternal is won in the trial, not bought.' : ev.what === 'seraphTrialLocked' ? `The Eternal trial opens to an Immortal Seraph at level ${ev.lvl}.` : ev.what === 'level' ? `${ev.name} is as high as it goes.` : `${ev.name} is as far as this hall can take them: raise the hall.`;
         if (mode === 'talk') renderTalk();
         break;
       case 'keepProduced':

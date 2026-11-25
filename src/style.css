@@ -1440,3 +1440,39 @@ body.seraph-xp #level-badge { color: #fff4d0; text-shadow: 0 0 6px rgba(255, 220
 /* (0.96) the Market's bulk trade rows */
 .keep-trade { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
 .keep-trade input { width: 96px; padding: 4px 6px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.35); color: inherit; font: inherit; }
+
+/* (0.98) over the shoulder: the compass along the top, and your heroes down the side */
+#shoulder-ui .sh-compass, #shoulder-ui .sh-heroes { display: none; }
+#shoulder-ui.on .sh-compass { display: block; position: absolute; left: 50%; top: 118px; width: 560px; height: 30px; margin-left: -280px; overflow: hidden; border-radius: 6px; background: linear-gradient(90deg, rgba(10, 12, 20, 0), rgba(10, 12, 20, 0.72) 18%, rgba(10, 12, 20, 0.72) 82%, rgba(10, 12, 20, 0)); }
+#shoulder-ui .sh-compass::after { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 8px; margin-left: -1px; background: #ffd27a; }
+#shoulder-ui .sh-cstrip i { position: absolute; left: 0; top: 0; font-style: normal; text-align: center; width: 30px; margin-left: -15px; color: #c8ccd8; text-shadow: 0 1px 2px #000; }
+#shoulder-ui .sh-cstrip i.card { top: 6px; font-size: 15px; font-weight: 700; color: #fff0c8; }
+#shoulder-ui .sh-cstrip i.card[data-d="0"] { color: #ff8a7a; }
+#shoulder-ui .sh-cstrip i.mid { top: 8px; font-size: 11px; }
+#shoulder-ui .sh-cstrip i.tick::after { content: ''; position: absolute; left: 14px; top: 20px; width: 1px; height: 7px; background: rgba(220, 224, 236, 0.55); }
+#shoulder-ui .sh-cmark b { position: absolute; left: 0; bottom: 1px; width: 10px; height: 10px; margin-left: -5px; transform-origin: center; }
+#shoulder-ui .sh-cmark b.hero { background: #7fe0a0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: 0 0 6px #7fe0a0; }
+#shoulder-ui .sh-cmark b.hero.low { background: #ff5a5a; animation: shPulse 0.8s ease-in-out infinite; }
+#shoulder-ui .sh-cmark b.hero.down { background: #8a8f9c; }
+#shoulder-ui .sh-cmark b.boss { width: 14px; height: 14px; margin-left: -7px; background: #ff3d6a; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+#shoulder-ui .sh-cmark b.hearth { background: #ffd27a; border-radius: 50%; }
+#shoulder-ui .sh-cmark b.left::before, #shoulder-ui .sh-cmark b.right::before { content: ''; }
+@keyframes shPulse { 50% { opacity: 0.35; } }
+#shoulder-ui.on.locked .sh-target { top: 156px; }
+#shoulder-ui.on .sh-heroes { display: block; position: absolute; left: 14px; top: 34%; width: 210px; padding: 8px 10px; border-radius: 8px; background: rgba(10, 12, 20, 0.62); color: #e8ecf6; font-size: 12.5px; }
+#shoulder-ui.on .sh-heroes.hidden { display: none; }
+#shoulder-ui .sh-heroes h5 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27a; }
+#shoulder-ui .shh { display: grid; grid-template-columns: 16px 1fr auto; align-items: center; column-gap: 6px; margin: 4px 0; }
+#shoulder-ui .shh-dir { display: inline-block; font-size: 10px; color: #ffe8c0; }
+#shoulder-ui .shh-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#shoulder-ui .shh-d { color: #aab0c0; font-size: 11.5px; }
+#shoulder-ui .shh i { grid-column: 2 / 4; display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+#shoulder-ui .shh u { display: block; height: 100%; background: linear-gradient(90deg, #3fbf7a, #8ff0b0); }
+#shoulder-ui .shh.low u { background: linear-gradient(90deg, #c8463a, #ff7a5a); }
+#shoulder-ui .shh.low .shh-name { animation: shPulse 0.8s ease-in-out infinite; }
+#shoulder-ui .shh.down { opacity: 0.5; }
+/* (0.98) the Seraph's skills, each with its own mark, at its plinth */
+.seraph-ico svg { width: 18px; height: 18px; vertical-align: -4px; margin-right: 5px; fill: none; stroke: #ffe2a0; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* (0.98) over the shoulder the boss's bar sits under the compass, clear of the keys */
+body.shoulder-on #boss-box { transform: translateY(96px); }
+#shoulder-ui.on.locked.boss-lock .sh-target { display: none; } /* (its own bar says it all) */

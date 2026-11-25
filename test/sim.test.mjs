@@ -6416,4 +6416,101 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('Shade (0.96): it dashes itself, from where it stands (a 1:1 copy, not a burst)', far > 3);
   check('Windrunner mastery (0.96): the wind\'s arrows fall from the sky (no shots in the air to draw)', motes === 0 && rain > 0);
 }
+// --- 0.98: the Seraph's flashier kit, its rarities, the Eternal trial, and no mending mid-fight --------------
+{
+  const K = await import('../src/sim/wishkeep.js');
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 980, mode: 'explore', cls: 'archer', save: geared('archer', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e7; k.stone = 1e6; k.sigils = 1000; k.nightMax = 50;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  k.statue.lvl = 20;
+  w.command({ type: 'keepPossess', on: true }); w.runCommands();
+  const run = (n) => { const out = []; for (let i = 0; i < n; i++) { w.step(CONFIG.TICK); out.push(...w.events); w.events = []; } return out; };
+  const foe = (x, z) => { const e = w.spawnEnemy('grunt', { x: p.x + x, z: p.z + z, level: 10 }); Object.assign(e, { state: 'stunned', stunT: 1e9, trial: true }); e.hp = e.maxHp = 1e12; return e; };
+  const a = foe(10, 2);
+  p.attackCd = 0;
+  w.freeSwing(a.x, a.z);
+  run(40);
+  check('Seraph (0.98): its strike is a bolt of holy light that seeks the foe aimed at (22 m)', w.basic.shot === 'holy' && a.hp < 1e12);
+  const row = [foe(14, -2), foe(18, 2), foe(22, -2), foe(26, 2)];
+  p.cd.q = 0;
+  w.command({ type: 'cast', slot: 'q', x: a.x, z: a.z }); w.runCommands();
+  const ev = run(60);
+  const laser = ev.find((x) => x.type === 'cast' && x.fx === 'seraphLaser');
+  check('...Dawnlance: a ray to the foe aimed at that glances on to four more', laser && laser.pts.length === 6 && row.every((e) => e.hp < 1e12));
+  const x0 = p.x;
+  p.cd.w = 0;
+  const near = foe(12, 6);
+  const [nx, nz] = [near.x, near.z];
+  w.command({ type: 'cast', slot: 'w', x: nx + 1, z: nz }); w.runCommands();
+  const evB = run(30);
+  const bl = evB.find((x) => x.type === 'seraphBlink');
+  check('...Wingbeat: it blinks beside the foe nearest where you aim, then its wings open', bl && bl.x - x0 > 8 && Math.hypot(bl.x - nx, bl.z - nz) < 3 && evB.some((x) => x.type === 'seraphFx' && x.kind === 'wings'));
+  // rarities: an offering at the gate, a power step, a skill each
+  const atk0 = w.seraphAtk();
+  w.command({ type: 'keepStatueSkill', slot: 'e', id: 'wake' }); w.runCommands();
+  check('...a rarity\'s skill stays shut until the Seraph is that rare', w.kit.e.name === 'Glide');
+  const f0 = k.faith;
+  w.command({ type: 'keepStatueTier' }); w.runCommands();
+  check('...an offering raises it to Uncommon: harder blows (x1.15), and Radiant Wake opens', k.statue.tier === 1 && f0 - k.faith === K.STATUE_TIERS[1].cost.faith && Math.abs(w.seraphAtk() / atk0 - 1.15) < 1e-9);
+  w.command({ type: 'keepStatueSkill', slot: 'e', id: 'wake' }); w.runCommands();
+  check('...and it can take it up', w.kit.e.name === 'Radiant Wake');
+  for (let i = 0; i < 6; i++) { w.command({ type: 'keepStatueTier' }); w.runCommands(); }
+  check('...no further than its level allows (Epic opens at 22)', k.statue.tier === 2);
+  k.statue.lvl = 50;
+  for (let i = 0; i < 6; i++) { w.command({ type: 'keepStatueTier' }); w.runCommands(); }
+  check('...up to Immortal by offerings; Eternal is never bought', k.statue.tier === 6);
+  // no mending by itself in a night
+  for (const e of w.enemies) e.dead = true;
+  w.enemies = [];
+  k.troops = [{ id: 1, cls: 'warrior', name: 'a', lvl: 9, gear: 6, rar: 3 }];
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 40 }); w.runCommands();
+  p.hp = p.stats.maxHp * 0.5;
+  const hpN = p.hp;
+  run(120);
+  check('...in a night the Seraph mends nothing by itself (no rest by the Hearth, no regeneration)', w.seraphFighting() && p.hp <= hpN);
+  w.tideEnd(false);
+  run(5);
+  // the trial
+  w.command({ type: 'keepTrial' }); w.runCommands();
+  const boss = w.enemies.find((e) => e.type === K.TRIAL.boss);
+  check('...an Immortal Seraph at level 50 may face the Eternal trial: the Unblinking comes', !!w.trial && !!boss && Math.abs(boss.maxHp - K.TRIAL.hp * K.NIGHT.power(50)) < 2);
+  const evT = run(60 * 16);
+  check('...it stares where you stand, burns a line of sight, and calls its Eyelets', evT.some((x) => x.type === 'starFall') && evT.some((x) => x.type === 'trialGaze') && w.enemies.some((e) => e.type === 'eyelet'));
+  check('...and the Seraph mends nothing by itself there either', p.hp < p.stats.maxHp);
+  w.hitEnemy(boss, 1e15, { source: 'q' });
+  run(3);
+  check('...beat it, and the Seraph is Eternal (x3), and Ascension opens', !w.trial && k.statue.tier === 7 && K.statueSkillOpen(k.statue, K.STATUE_SKILLS.r.ascension));
+  w.command({ type: 'keepStatueSkill', slot: 'r', id: 'ascension' }); w.runCommands();
+  p.cd.r = 0;
+  w.command({ type: 'cast', slot: 'r', x: p.x + 5, z: p.z }); w.runCommands();
+  run(40);
+  check('...Ascension: its full light for 10 seconds, blows 40% harder', p.ascendT > 8 && Math.abs(w.seraphAtk() / (K.STATUE.atk * K.statuePower(50) * 3) - 1.4) < 1e-9);
+}
+{
+  // the trial fails if the Seraph is felled
+  const { geared } = await import('./balance.mjs');
+  const K = await import('../src/sim/wishkeep.js');
+  const w = new World({ seed: 983, mode: 'explore', cls: 'mage', save: geared('mage', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e7; k.stone = 1e6; k.sigils = 1000; k.nightMax = 50;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  k.statue.lvl = 40; k.statue.tier = 6;
+  w.command({ type: 'keepTrial' }); w.runCommands();
+  check('Eternal trial (0.98): shut below level 50', !w.trial);
+  k.statue.lvl = 50;
+  w.command({ type: 'keepTrial' }); w.runCommands();
+  p.hp = 2;
+  w.incarnateHurt(K.TRIAL.dmg * 1e6);
+  for (let i = 0; i < 3; i++) w.step(CONFIG.TICK);
+  check('...felled in it, the trial is lost, the eyes are gone, and it stays Immortal', !w.trial && !w.enemies.some((e) => e.trial) && k.statue.tier === 6 && k.statue.rest > 0);
+}
 process.exit(failed ? 1 : 0);

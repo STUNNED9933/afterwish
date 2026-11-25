@@ -160,6 +160,36 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Seraph rises: a flashier kit, rarities, the Eternal trial, a compass (0.98)
+
+- **Strike:** the Seraph's left click is now a ranged attack. It brings its hands together in prayer and releases a bolt of holy light that homes in on the foe you aim at (22 m), with a small splash.
+- **Glide:** a new, graceful animation. The Seraph leans into the flight with its wings raised and spread, instead of slamming its hands down.
+- **The base kit is stronger and flashier:**
+  - **Dawnlance (Q)** fires a laser that bounces from the foe you aim at to four more.
+  - **Wingbeat (E)** first blinks the Seraph beside the foe or hero nearest your aim (16 m), then bursts there. Halo of Mercy blinks the same way.
+  - **Descent and Hand of Heaven (R)** track the foe you aim at while they gather, so they no longer miss a moving target. The fist follows its foe all the way down. Rain of Eyes is bigger.
+  - Every skill hits harder, and its kills give half again as much experience.
+- **Rarity:** at its plinth, the Seraph can be raised from Common up to Immortal. Each step opens at a level (8, 15, 22, 30, 38, 46) and costs an offering of Faith, Wishstone and Sigils. Each step multiplies its damage and toughness (up to 2.4× at Immortal) and opens a new, more offensive skill:
+  - Uncommon: **Radiant Wake** (a glide that leaves a burning trail of light).
+  - Rare: **Seraphic Barrage** (six homing bolts at one foe).
+  - Epic: **Wrath of Wings** (blink, then three bursts).
+  - Mythic: **Sunfall** (a sunbeam that hunts its foe for three seconds).
+  - Ancient: **Prism Lance** (a beam through a whole line that splits into bouncing rays).
+  - Immortal: **Judgement of the Choir** (thirty stunning rays).
+- **The Eternal trial:** an Immortal Seraph at level 50 can face **the Unblinking**, alone. It is a great eye in a crown of gold blades, ringed by wheels of lesser eyes, and it fights from range:
+  - Its stares land where you stand and where you are heading.
+  - Its gaze burns a straight line along the ground.
+  - Its lid slams down around it when you get close.
+  - Its Eyelets swoop in; each one you destroy restores 5% of your health.
+  - Winning makes the Seraph **Eternal** (3× power) and unlocks **Ascension**: for 10 seconds the Seraph blazes with light, fires three bolts per strike, recovers its skills twice as fast, and hits 40% harder.
+- **No healing mid-fight:** during a Night or the trial, the Seraph no longer regenerates or heals from resting by the Hearth.
+- **Wings:** they no longer stretch when the Seraph raises its arms. They are now attached to its shoulders.
+- **Skill icons:** each Seraph skill has its own icon, on the skill bar and at its plinth.
+- **Over the shoulder (Seraph or Incarnate):**
+  - A **compass** runs along the top, with north up as on the map. It shows your heroes (red and pulsing when hurt), the boss and the Hearth. Anyone outside its view waits at the edge on the side to turn toward.
+  - **Your heroes** are listed down the left side, each with their health, distance, and an arrow pointing to them.
+  - The keep's heroes now appear on the minimap, coloured green, gold or red by their health.
+
 ### The mage holds her staff her own way (0.97.2)
 
 - **Standing:** she holds the staff upright at her right side, its foot on the ground by her foot and her left hand on her hip. It no longer sticks out from her hand.

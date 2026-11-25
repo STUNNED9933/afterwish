@@ -334,7 +334,84 @@ export function buildAltar(color = 0x4b4655) {
   return g;
 }
 
-const BUILDERS = { grunt: buildGrunt, spitter: buildSpitter, brute: buildBrute, stalker: buildStalker, boss: buildBoss };
+/** (0.98) An eyeball: white, an iris of `iris`, a black pupil, a glow; looking down its +Z. */
+function eyeball(r, iris, glow = 0) {
+  const g = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color: 0xfff8ee, roughness: 0.35, emissive: 0x6a5a40, emissiveIntensity: 0.35 });
+  const ir = new THREE.MeshStandardMaterial({ color: iris, emissive: iris, emissiveIntensity: 0.9, roughness: 0.3 });
+  const pupil = new THREE.MeshBasicMaterial({ color: 0x080404 });
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), white));
+  const i = new THREE.Mesh(new THREE.SphereGeometry(r * 0.52, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), ir);
+  i.rotation.x = Math.PI / 2;
+  i.position.z = r * 0.5;
+  const p = new THREE.Mesh(new THREE.SphereGeometry(r * 0.26, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.4), pupil);
+  p.rotation.x = Math.PI / 2;
+  p.position.z = r * 0.78;
+  g.add(i, p);
+  if (glow) {
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(r * 1.25, r * 0.06, 8, 40), new THREE.MeshBasicMaterial({ color: glow, transparent: true, opacity: 0.85 }));
+    g.add(halo);
+    g.userData.halo = halo;
+  }
+  return { g, mats: [white, ir] };
+}
+/**
+ * (0.98) The Unblinking: a great eye in a crown of gold blades, ringed by two turning wheels of lesser eyes,
+ * hanging in the air (the trial's own; the renderer turns its wheels and lets it bob).
+ */
+function buildWatcher() {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  body.position.y = 3.4;
+  const big = eyeball(1.15, 0xffb030, 0xffe08a);
+  body.add(big.g);
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffd26a, metalness: 0.8, roughness: 0.3, emissive: 0x6a4a10, emissiveIntensity: 0.4 });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.3, 6), gold);
+    blade.position.set(Math.cos(a) * 1.75, Math.sin(a) * 1.75, -0.2);
+    blade.rotation.z = a - Math.PI / 2;
+    body.add(blade);
+  }
+  const wheels = [];
+  for (const [n, R, tilt] of [[8, 2.9, 0.35], [6, 3.8, -0.5]]) {
+    const w = new THREE.Group();
+    w.rotation.x = Math.PI / 2 + tilt;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const e = eyeball(0.36, 0xffc040);
+      e.g.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
+      e.g.rotation.x = -Math.PI / 2 - tilt; // looking out, roughly forward
+      w.add(e.g);
+    }
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 6, 64), gold);
+    w.add(rim);
+    body.add(w);
+    wheels.push(w);
+  }
+  g.add(body);
+  return finish(g, [gold, ...big.mats], { body, wheels, halo: big.g.userData.halo, stars: addStunStars(g, 5.4) });
+}
+/** (0.98) An Eyelet: one eye with little wings of gold, flying low. */
+function buildEyelet() {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  body.position.y = 1.5;
+  const e = eyeball(0.42, 0xffa030, 0xffd070);
+  body.add(e.g);
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffd26a, metalness: 0.7, roughness: 0.35 });
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const w = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 4), gold);
+    w.rotation.z = s * Math.PI / 2;
+    w.position.set(s * 0.75, 0.1, -0.1);
+    body.add(w);
+    wings.push(w);
+  }
+  g.add(body);
+  return finish(g, [gold, ...e.mats], { body, wings, stars: addStunStars(g, 2.2) });
+}
+const BUILDERS = { grunt: buildGrunt, spitter: buildSpitter, brute: buildBrute, stalker: buildStalker, boss: buildBoss, watcher: buildWatcher, eyelet: buildEyelet };
 
 /**
  * Build the model for an enemy type. Later enemies reuse one of the five body

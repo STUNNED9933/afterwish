@@ -32,6 +32,9 @@ export const RIGGED = {
     // so). Worked out against the walk, frame by frame (tools/gait/README.md): it clears the body by as much
     // as the hand itself does.
     walkCarry: { main: [0.8, -0.6, 0.05], w: 0.8 },
+    // (0.97) walking, the sword goes into a scabbard on his left hip (at: where the grip sits, metres from
+    // the bone in the bind pose, model space +X forward +Y up +Z his right; dir: the blade, hilt up front)
+    stow: { main: { bone: 'Pelvis', at: [0.12, 0.04, -0.23], dir: [-0.72, -0.67, -0.14], hang: true }, sheath: true },
     idle: 'idle',
     run: 'run',
     death: 'ual_Death',
@@ -69,6 +72,9 @@ export const RIGGED = {
     turn: -Math.PI / 2,
     hand: 'L_Hand',
     bow: { drawHand: 'R_Hand', shoulder: 'L_Upperarm' },
+    // (0.97) walking, the bow is slung across her back, over her left shoulder, crossing the quiver (dir: up the
+    // bow; flat: the way its belly faces, out from her back)
+    stow: { main: { bone: 'Spine02', at: [-0.24, -0.06, 0.0], dir: [0.0, 0.86, -0.5], flat: [-1, 0, 0], bow: true } },
     idle: 'idle',
     run: 'arc_run', // her own (Tripo's sprint leaned too hard for a bow)
     runRef: 5.6, // the speed it is played at its own pace (quicker, shorter strides)
@@ -102,6 +108,8 @@ export const RIGGED = {
     offhand: 'L_Hand',
     weaponScale: 0.82,
     walkCarry: { main: [-0.61, -0.61, 0.51], off: [-0.61, -0.61, -0.51], w: 0.7 }, // (0.96.2) walking, both daggers held reversed along the forearms, clear of the body
+    // (0.97) walking, both daggers go into sheaths on his belt, one on each hip, hilts up
+    stow: { main: { bone: 'Pelvis', at: [-0.05, -0.02, 0.22], dir: [-0.28, -0.94, 0.15], hang: true }, off: { bone: 'Pelvis', at: [-0.05, -0.02, -0.22], dir: [-0.28, -0.94, -0.15], hang: true }, sheath: true },
     idle: 'idle',
     run: 'rog_run',
     runRef: 6.0,
@@ -182,6 +190,8 @@ export const RIGGED = {
     hand: 'R_Hand',
     staff: true,
     weaponScale: 0.82,
+    // (0.97) walking, the staff is slung across her back, its head over her right shoulder
+    stow: { main: { bone: 'Spine02', at: [-0.24, -0.02, 0.02], dir: [-0.1, 0.84, 0.53] } },
     idle: 'idle',
     run: 'mag_run',
     runRef: 5.6,
@@ -629,6 +639,64 @@ export function instantiate(tpl) {
   const trailQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...(spec.trail || [0, -1, 0])).normalize());
   const carry = (v) => (v ? new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...v).normalize()) : null);
   const walkMainQ = spec.walkCarry ? carry(spec.walkCarry.main) : null, walkOffQ = spec.walkCarry ? carry(spec.walkCarry.off) : null;
+  // (0.97) Put away while walking (spec.stow): each place as a bone and a pose in that bone's own space, read
+  // from the bind pose, so it rides the hips or the back as they move.
+  const stows = {};
+  for (const [k, def] of Object.entries(spec.stow || {})) {
+    if (!def || !def.bone) continue;
+    const bone = root.getObjectByName(def.bone);
+    if (!bone) continue;
+    const bp = new THREE.Vector3(), bq = new THREE.Quaternion();
+    new THREE.Matrix4().multiplyMatrices(rootInv0, bone.matrixWorld).decompose(bp, bq, new THREE.Vector3());
+    const bqi = bq.clone().invert();
+    const along = new THREE.Vector3(...def.dir).normalize();
+    const flat = new THREE.Vector3(...(def.flat || [1, 0, 0]));
+    flat.addScaledVector(along, -flat.dot(along)).normalize();
+    const basis = new THREE.Matrix4();
+    // a blade or staff runs along its +Z (guard along +X); the bow along its +Y, its belly to +X
+    if (def.bow) basis.makeBasis(flat, along, new THREE.Vector3().crossVectors(flat, along));
+    else basis.makeBasis(flat, new THREE.Vector3().crossVectors(along, flat), along);
+    const q = new THREE.Quaternion().setFromRotationMatrix(basis);
+    const atM = new THREE.Vector3(...def.at).multiplyScalar(1 / tpl.scale);
+    stows[k] = { bone, hang: !!def.hang, bqi, atM, qM: q, at: atM.clone().applyQuaternion(bqi), q: bqi.clone().multiply(q), pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  }
+  const stowM = new THREE.Matrix4(), stowP = new THREE.Vector3(), stowQ = new THREE.Quaternion(), stowS = new THREE.Vector3(), stowF = new THREE.Vector3(), stowY = new THREE.Quaternion();
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+  const placeStows = (inv) => {
+    for (const st of Object.values(stows)) {
+      stowM.multiplyMatrices(inv, st.bone.matrixWorld).decompose(stowP, stowQ, stowS);
+      if (st.hang) {
+        // on a belt it hangs: it turns with the hips, but does not lean or tip with them
+        stowF.set(1, 0, 0).applyQuaternion(stowQ.multiply(st.bqi));
+        stowY.setFromAxisAngle(Y_AXIS, Math.atan2(-stowF.z, stowF.x));
+        st.pos.copy(st.atM).applyQuaternion(stowY).add(stowP);
+        st.quat.copy(stowY).multiply(st.qM);
+        continue;
+      }
+      st.pos.copy(st.at).applyQuaternion(stowQ).add(stowP);
+      st.quat.copy(stowQ).multiply(st.q);
+    }
+  };
+  // a scabbard fitted to whatever is in it (made again when the weapon's look changes)
+  const sheaths = {};
+  const sheathFor = (k, obj) => {
+    if (!spec.stow || !spec.stow.sheath || !stows[k] || !obj) return null;
+    let first = null;
+    obj.traverse((o) => { if (!first && o.isMesh) first = o; });
+    if (!first) return null;
+    const sh = sheaths[k];
+    if (sh && sh.key === first.uuid) return sh.group;
+    if (sh) { root.remove(sh.group); sh.group.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); }
+    const group = makeSheath(obj);
+    if (!group) return null;
+    root.add(group);
+    sheaths[k] = { key: first.uuid, group };
+    return group;
+  };
+  const putAway = (obj, k) => {
+    obj.position.copy(stows[k].pos);
+    obj.quaternion.copy(stows[k].quat);
+  };
   // Cross-fade to an action (restart: play it again from the start if it is already on).
   const fadeTo = (a, fade = 0.15, restart = false) => {
     if (!a) return;
@@ -792,10 +860,16 @@ export function instantiate(tpl) {
         handBent = null;
       }
       mixer.update(dt);
+      // (0.97) walking (Ctrl), weapons are put away: on the hip or across the back, until a blow or a skill
+      const stowed = !!s.walk && !s.dead && !s.spinning && !move && attackLeft <= 0;
+      if (spec.stow) {
+        root.updateMatrixWorld(true);
+        placeStows(tmpM.copy(root.matrixWorld).invert());
+      }
       if (bow) {
         let aimW = 0;
         for (const a of aiming) if (a.isRunning() || a === current) aimW += a.getEffectiveWeight();
-        bow.update(s.dead ? 0 : Math.min(1, aimW));
+        bow.update(s.dead ? 0 : Math.min(1, aimW), !!s.walk && !s.dead && !move && attackLeft <= 0 && aimW < 0.05 ? stows.main : null);
       }
       // (0.96.2) how much the walk is playing (and nothing else is moving the arms): weapons are carried clear of the legs
       const walkW = actions.walk && (actions.walk.isRunning() || actions.walk === current) && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.walk.getEffectiveWeight() : 0;
@@ -814,6 +888,9 @@ export function instantiate(tpl) {
         const runW = actions.run && actions.run.isRunning() && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.run.getEffectiveWeight() : 0;
         if (spec.trail && runW > 0.01) weapon.quaternion.slerp(trailQ, runW);
         if (walkMainQ && walkW > 0.01) weapon.quaternion.slerp(walkMainQ, walkW * spec.walkCarry.w);
+        const sh = sheathFor('main', weapon);
+        if (sh) { putAway(sh, 'main'); sh.scale.copy(weapon.scale); }
+        if (stowed && stows.main) putAway(weapon, 'main');
       }
       if (held.length) {
         root.updateMatrixWorld(true);
@@ -825,6 +902,11 @@ export function instantiate(tpl) {
             h.obj.position.copy(h.palm).applyMatrix4(hm);
             h.obj.quaternion.copy(tmpQ).multiply(h.grip);
             if (walkOffQ && walkW > 0.01 && h.hand.name === spec.offhand) h.obj.quaternion.slerp(walkOffQ, walkW * spec.walkCarry.w);
+            if (h.hand.name === spec.offhand && stows.off) {
+              const sh = sheathFor('off', h.obj);
+              if (sh) { putAway(sh, 'off'); sh.scale.copy(h.obj.scale); }
+              if (stowed) putAway(h.obj, 'off');
+            }
           } else {
             // a staff stays upright, leaning the way the forearm points (forward when casting)
             const fore = h.hand.parent;
@@ -833,7 +915,7 @@ export function instantiate(tpl) {
             staffB.sub(staffA).transformDirection(inv);
             staffUp.set(0, 1, 0).addScaledVector(staffB, 0.35).normalize();
             h.obj.quaternion.setFromUnitVectors(zAxis, staffUp);
-            if (fistHole) {
+            if (fistHole && !(stowed && stows.main)) {
               // bend the wrist so the fist closes round the staff, knuckles along it, as a hand holds a
               // walking stick (0.48.1): the smallest turn of the hand that lines its fist up with the staff
               const hm0 = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
@@ -852,11 +934,86 @@ export function instantiate(tpl) {
             }
             const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
             h.obj.position.copy(h.palm).applyMatrix4(hm);
+            if (stowed && stows.main) putAway(h.obj, 'main'); // (0.97) across her back
           }
         }
       }
     },
   };
+}
+
+/**
+ * A scabbard (0.97) fitted to a blade: measured from the weapon itself (grip at the origin, blade along +Z),
+ * from just past the guard (the widest part near the grip) to the tip, a little wider than the blade.
+ * Leather, with a metal throat and chape. Built in the weapon's own units; it takes the weapon's scale.
+ */
+const SHEATH_LEATHER = new THREE.MeshStandardMaterial({ color: 0x3a2416, roughness: 0.75, metalness: 0.05 });
+const SHEATH_METAL = new THREE.MeshStandardMaterial({ color: 0xb39255, roughness: 0.35, metalness: 0.8 });
+export function makeSheath(obj) {
+  obj.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(obj.matrixWorld).invert();
+  const pts = [];
+  const v = new THREE.Vector3(), m = new THREE.Matrix4();
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.geometry.attributes.position) return;
+    m.multiplyMatrices(inv, o.matrixWorld);
+    const p = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(p.count / 4000));
+    for (let i = 0; i < p.count; i += step) { v.fromBufferAttribute(p, i).applyMatrix4(m); pts.push(v.x, v.y, v.z); }
+  });
+  if (!pts.length) return null;
+  let tip = -Infinity;
+  for (let i = 2; i < pts.length; i += 3) tip = Math.max(tip, pts[i]);
+  if (!(tip > 0)) return null;
+  // the guard: the widest part near the grip (in any direction across the blade)
+  const N = 40, rad = new Array(N).fill(0);
+  for (let i = 0; i < pts.length; i += 3) {
+    const z = pts[i + 2];
+    if (z < 0) continue;
+    const b = Math.min(N - 1, Math.floor((z / tip) * N));
+    rad[b] = Math.max(rad[b], Math.hypot(pts[i], pts[i + 1]));
+  }
+  let guard = 0;
+  for (let b = 0; b < N * 0.45; b++) if (rad[b] > rad[guard]) guard = b;
+  const from = ((guard + 1.5) / N) * tip;
+  // the blade's cross-section, along its own flat (a blade need not lie square to the file's axes)
+  let sx = 0, sy = 0, n = 0;
+  const bp = [];
+  for (let i = 0; i < pts.length; i += 3) {
+    const z = pts[i + 2];
+    if (z < ((guard + 2) / N) * tip || z > 0.97 * tip) continue;
+    bp.push(pts[i], pts[i + 1], z); sx += pts[i]; sy += pts[i + 1]; n++;
+  }
+  if (n < 10) return null;
+  const mx = sx / n, my = sy / n;
+  let cxx = 0, cyy = 0, cxy = 0;
+  for (let i = 0; i < bp.length; i += 3) { const dx = bp[i] - mx, dy = bp[i + 1] - my; cxx += dx * dx; cyy += dy * dy; cxy += dx * dy; }
+  const th = 0.5 * Math.atan2(2 * cxy, cxx - cyy), c = Math.cos(th), sn = Math.sin(th);
+  const lo = new Array(N).fill(Infinity), hi = new Array(N).fill(-Infinity), loY = new Array(N).fill(Infinity), hiY = new Array(N).fill(-Infinity);
+  for (let i = 0; i < bp.length; i += 3) {
+    const dx = bp[i] - mx, dy = bp[i + 1] - my, u = dx * c + dy * sn, w = -dx * sn + dy * c;
+    const b = Math.min(N - 1, Math.floor((bp[i + 2] / tip) * N));
+    lo[b] = Math.min(lo[b], u); hi[b] = Math.max(hi[b], u); loY[b] = Math.min(loY[b], w); hiY[b] = Math.max(hiY[b], w);
+  }
+  const ws = [], ts = [];
+  for (let b = 0; b < N; b++) if (hi[b] > lo[b]) { ws.push(hi[b] - lo[b]); ts.push(hiY[b] - loY[b]); }
+  if (ws.length < 3) return null;
+  const pct = (a, f) => a.slice().sort((p, q) => p - q)[Math.min(a.length - 1, Math.floor(a.length * f))];
+  const bw = pct(ws, 0.8), bt = pct(ts, 0.8);
+  const x0 = -bw / 2, x1 = bw / 2, y0 = -bt / 2, y1 = bt / 2;
+  const len = tip * 1.03 - from, cx = mx, cy = my;
+  const hw = (x1 - x0) * 0.56 + tip * 0.005, ht = (y1 - y0) * 0.56 + tip * 0.007; // flat like the blade, a little over it
+  const body = new THREE.CylinderGeometry(0.62, 1, len, 16).rotateX(Math.PI / 2).scale(hw, ht, 1).rotateZ(th).translate(cx, cy, from + len / 2);
+  const throat = new THREE.CylinderGeometry(1.08, 1.08, tip * 0.05, 16).rotateX(Math.PI / 2).scale(hw, ht, 1).rotateZ(th).translate(cx, cy, from + tip * 0.025);
+  const chape = new THREE.CylinderGeometry(0.12, 0.66, tip * 0.09, 16).rotateX(Math.PI / 2).scale(hw, ht, 1).rotateZ(th).translate(cx, cy, from + len - tip * 0.045);
+  const group = new THREE.Group();
+  for (const [g, mat] of [[body, SHEATH_LEATHER], [throat, SHEATH_METAL], [chape, SHEATH_METAL]]) {
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.castShadow = true;
+    mesh.userData.keepMat = true;
+    group.add(mesh);
+  }
+  return group;
 }
 
 /**
@@ -907,7 +1064,7 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
   const rest = new THREE.Vector3(-0.19, 0, 0);
   const nock = new THREE.Vector3();
   return {
-    update(aimW) {
+    update(aimW, stow = null) {
       root.updateMatrixWorld(true);
       inv.copy(root.matrixWorld).invert();
       hp.copy(palm).applyMatrix4(m.multiplyMatrices(inv, hand.matrixWorld)); // the grip, in her palm
@@ -925,12 +1082,17 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
       q.copy(qc).slerp(qa, aimW);
       group.quaternion.copy(q);
       group.position.copy(hp);
+      if (stow) {
+        // (0.97) slung across her back, the string slack
+        group.quaternion.copy(stow.quat);
+        group.position.copy(stow.pos);
+      }
       group.updateMatrix();
       // the string: to the drawing hand while it is pulled back behind the bow
       tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());
       // (0.52: the arrow shows again whenever the hand is drawing, as before 0.50: it is the next arrow
       // coming from the quiver to the string, which is what she is doing)
-      const drawn = aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
+      const drawn = !stow && aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
       nock.copy(drawn ? tmp.set(tmp.x, 0, 0) : rest);
       seg(upper, nock, top);
       seg(lower, nock, bottom);

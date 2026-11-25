@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Weapons put away while walking (0.97)
+
+- While walking (Ctrl or Caps Lock), every hero puts their weapon away. It comes straight back into their hand the moment they attack or use a skill.
+  - **Warrior:** sheathes his sword in a scabbard on his left hip, with the hilt forward.
+  - **Rogue:** sheathes his daggers on his belt, one on each hip.
+  - **Archer:** slings her bow across her back, crossing her quiver.
+  - **Mage:** slings her staff across her back, with its head over her right shoulder.
+- The scabbards stay on the hip at all times. Each one is shaped to the blade in it, so the finer, Ancient, Immortal and Edric's blades get one that fits them.
+- A scabbard hangs from the belt. It turns with the hips but doesn't tip when the hero leans into a run.
+
 ### Weapons clear of the body when walking (0.96.2)
 
 - The walk's arm swing no longer sweeps weapons through the body. Arm and hand motion are unchanged; only how the weapon sits in the hand has changed.

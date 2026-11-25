@@ -890,7 +890,7 @@ export class World {
       else if (c.type === 'summonRemnant') this.summonRemnant();
       else if (c.type === 'openCache') this.openCache(c.tier, c.n);
       else if (c.type === 'buyTome') this.buyTome();
-      else if (c.type === 'rankUp') this.rankUp(c.slot);
+      else if (c.type === 'rankUp') this.rankUp(c.slot, c.n); // (0.91.1) n at once, for a held key
       else if (c.type === 'augment') this.takeAugment(c.id);
       else if (c.type === 'borrow') this.setBorrowed(c.slot, c.spec ?? null); // (0.70)
       else if (c.type === 'reroll') this.rerollOffer();
@@ -8685,12 +8685,16 @@ export class World {
   }
 
   /** Spend a skill point to rank up an ability. */
-  rankUp(slot) {
+  rankUp(slot, n = 1) {
     const p = this.player;
     if (!this.kit[slot] || p.skillPoints <= 0 || p.ranks[slot] >= CONFIG.MAX_RANK || !this.abilityUnlocked(slot)) return;
-    p.ranks[slot]++;
-    p.skillPoints--;
-    this.emit('rankUp', { slot, rank: p.ranks[slot] });
+    // (0.91.1) as many as asked (a held key or button asks for more each moment), as far as the points and
+    // the cap allow
+    const want = Math.max(1, Math.min(1000, Math.floor(Number(n) || 1)));
+    const k = Math.min(want, p.skillPoints, CONFIG.MAX_RANK - p.ranks[slot]);
+    p.ranks[slot] += k;
+    p.skillPoints -= k;
+    this.emit('rankUp', { slot, rank: p.ranks[slot], n: k });
   }
 
   // --- Augments --------------------------------------------------------------

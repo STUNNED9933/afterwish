@@ -9,6 +9,38 @@ function borrowedActive(world, key) {
   return !!(def && !def.passive);
 }
 
+/**
+ * (0.91.1) How many ranks a held rank-up asks for each 70 ms, after `held` seconds: one at first, then
+ * faster (about 100 ranks in under three seconds).
+ */
+export const rankBurst = (held) => Math.max(1, Math.min(25, Math.floor(1 + held * held * 3)));
+
+/**
+ * (0.91.1) Hold a rank-up button to keep ranking (faster the longer it is held); Shift-click spends all
+ * the points the skill can take.
+ */
+export function holdToRank(btn, send) {
+  let timer = null, at = 0;
+  const stop = () => {
+    clearTimeout(timer);
+    timer = null;
+  };
+  const tick = () => {
+    send(rankBurst((performance.now() - at) / 1000));
+    timer = setTimeout(tick, 70);
+  };
+  btn.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    if (e.shiftKey) return send(1000);
+    send(1);
+    at = performance.now();
+    stop();
+    timer = setTimeout(tick, 320);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) btn.addEventListener(ev, stop);
+}
+
 export class Input {
   /**
    * @param {object} o
@@ -73,11 +105,14 @@ export class Input {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => {
       this.keys.delete((e.key || '').toLowerCase());
+      // (0.91.1) letting go of the skill's key, or of every modifier, ends a held rank-up
+      if (this.rankHold && (e.code === this.rankHold.code || (!e.ctrlKey && !e.altKey && !e.shiftKey))) this.rankHold = null;
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
       if (this.held && (e.key || '').toLowerCase() === this.held.slot) this.release(true);
     });
     window.addEventListener('blur', () => {
       this.keys.clear();
+      this.rankHold = null;
       this.lmb = false;
       this.mouse.right = false;
       this.release(false); // tabbing away puts the bow down
@@ -259,7 +294,11 @@ export class Input {
     const rankSlot = { KeyQ: 'q', KeyW: 'w', KeyE: 'e', KeyR: 'r' }[e.code] || (['q', 'w', 'e', 'r'].includes(key) ? key : null);
     if (rankSlot && !e.metaKey && (e.ctrlKey || e.altKey || e.shiftKey)) {
       e.preventDefault();
-      if (!e.repeat) this.getWorld().command({ type: 'rankUp', slot: rankSlot });
+      if (!e.repeat) {
+        // (0.91.1) one rank now; held, more and more of them (see update)
+        this.getWorld().command({ type: 'rankUp', slot: rankSlot, n: 1 });
+        this.rankHold = { slot: rankSlot, code: e.code, at: performance.now(), next: performance.now() + 320 };
+      }
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -447,6 +486,12 @@ export class Input {
   /** Called every frame: hover highlight, and hold-right-click to keep moving. */
   update(now) {
     const world = this.getWorld();
+    if (this.rankHold && now >= this.rankHold.next) {
+      // (0.91.1) a held rank-up: every 70 ms, more each time the longer it is held
+      const held = (now - this.rankHold.at) / 1000;
+      world.command({ type: 'rankUp', slot: this.rankHold.slot, n: rankBurst(held) });
+      this.rankHold.next = now + 70;
+    }
     if (!this.isPlaying()) {
       this.held = null; // a menu opened while aiming: the shot is put down
       this.renderer.hoverId = null;

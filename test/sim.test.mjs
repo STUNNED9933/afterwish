@@ -6156,4 +6156,17 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.loadMap('haven');
   check('...as does leaving through the Waygate', was && !p.keepWalk);
 }
+// --- 0.91.1: ranking a skill many at a time (a held key or button) ---------------------------------------------
+{
+  const w = new World({ seed: 911, mode: 'explore', cls: 'warrior' });
+  const p = w.player;
+  p.level = 60; p.skillPoints = 30;
+  for (const s of ['q', 'w', 'e', 'r']) p.ranks[s] = 1;
+  w.command({ type: 'rankUp', slot: 'q', n: 7 }); w.runCommands();
+  check('Ranks (0.91.1): one command can rank a skill several times (a held key asks for more)', p.ranks.q === 8 && p.skillPoints === 23);
+  w.command({ type: 'rankUp', slot: 'w', n: 1000 }); w.runCommands();
+  check('...never past the cap, nor past the points there are', p.ranks.w === Math.min(CONFIG.MAX_RANK, 1 + 23) && p.skillPoints === 23 - (p.ranks.w - 1));
+  w.command({ type: 'rankUp', slot: 'e' }); w.runCommands();
+  check('...and one at a time as ever', p.ranks.e === 2);
+}
 process.exit(failed ? 1 : 0);

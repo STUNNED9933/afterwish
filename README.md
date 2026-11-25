@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Quick ranks (0.91.1)
+
+Ranking a skill no longer takes one press per rank. Hold Ctrl, Alt or Shift with Q, W, E or R and the skill keeps ranking: one rank at first, then faster the longer it's held. A skill reaches its cap in about two seconds. The + on the skill bar and the town's Rank up buttons work the same way when held, and Shift-click spends every point the skill can take. The sim takes a count with each `rankUp` command, so a held key sends a few batched commands rather than a hundred single ones. The rank-up sound and floating text appear once per batch, with the count shown.
+
 ### A living keep, and walking it (0.91)
 
 - **The villagers have their days**, with animations of their own (Quaternius' Universal Animation Library, CC0, moved onto their rigs):

@@ -1,3 +1,4 @@
+import { holdToRank } from '../input.js'; // (0.91.1)
 // The heads-up display: health and EXP bars, ability bar with ranks, wave and
 // boss status, enemy health bars, floating combat text, banners and hints.
 // Plain DOM on top of the 3D canvas.
@@ -314,10 +315,9 @@ export class Hud {
       up.className = 'rankup hidden';
       up.textContent = '+';
       up.setAttribute('aria-label', `Rank up ${ABILITIES[s].name}`);
-      up.addEventListener('click', () => {
-        this.send({ type: 'rankUp', slot: s });
-        up.blur();
-      });
+      // (0.91.1) hold to keep ranking; Shift-click for all it can take
+      holdToRank(up, (n) => this.send({ type: 'rankUp', slot: s, n }));
+      up.title = 'Click to rank up · hold to keep going · Shift-click for as many as you can';
       el.append(pips, up);
       this.slots[s].pips = pips;
       this.slots[s].up = up;

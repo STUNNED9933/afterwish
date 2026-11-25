@@ -1,3 +1,4 @@
+import { holdToRank } from '../input.js'; // (0.91.1)
 // The camp at the Echo Ring: where you spend what the echoes left behind.
 //   The Ring     pick a checkpoint and wake it (one starglass shard)
 //   Blacksmith   upgrade equipped gear with scrap and gold
@@ -230,7 +231,8 @@ export class Town {
       btn.className = 'ghost';
       btn.textContent = !unlocked ? `Level ${a.unlock}` : rank >= CONFIG.MAX_RANK ? 'Max' : 'Rank up';
       btn.disabled = !unlocked || rank >= CONFIG.MAX_RANK || p.skillPoints <= 0;
-      btn.addEventListener('click', () => this.send({ type: 'rankUp', slot: s }));
+      holdToRank(btn, (n) => this.send({ type: 'rankUp', slot: s, n })); // (0.91.1) hold to keep going; Shift-click for all
+      btn.title = 'Hold to keep going · Shift-click for as many as you can';
       row.append(icon, text, btn);
       tr.appendChild(row);
     }

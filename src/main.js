@@ -1895,6 +1895,7 @@ function start(hot = {}) {
    */
   let shoulderUi = null;
   let shoulderTipT = 0;
+  let rankSfxAt = 0; // (0.91.1)
   function shoulderFrame() {
     const t = world && world.tide;
     const mine = !!(t && t.state === 'on' && !world.keepVisit);
@@ -5579,9 +5580,10 @@ function start(hot = {}) {
         break;
       }
       case 'rankUp':
-        sfx.rankUp();
+        if (performance.now() - (rankSfxAt || 0) > 140) sfx.rankUp(); // (0.91.1) a held rank-up: not a sound every tick
+        rankSfxAt = performance.now();
         hud.flashSlot(ev.slot);
-        if (mode === 'play') hud.float(renderer, p.x, 3.0, p.z, `${world.kit[ev.slot].name} rank ${ev.rank}`, 'word stun');
+        if (mode === 'play') hud.float(renderer, p.x, 3.0, p.z, `${world.kit[ev.slot].name} rank ${ev.rank}${ev.n > 1 ? ` (+${ev.n})` : ''}`, 'word stun');
         break;
       case 'tome':
         sfx.rankUp();

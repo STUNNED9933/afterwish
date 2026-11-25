@@ -27,7 +27,7 @@ import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
 import { RARITIES, itemName, STATS, formatStat, MISC, SLOTS, SLOT_NAMES, CACHES, upgradeCost, MAX_PLUS } from './sim/items.js';
 import { wishWhere } from './sim/wishwhere.js'; // (0.81.2)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, CHAPTERS, RELIC_NAMES, cleanKeep, settlerLevel, wishText, wishGoal, lifeOfSave, troopStats, SKILLS, SKILL_IDS, SKILL_SLOT2, skillSlotSchool, skillSlotOpen, troopSupport, BLESSINGS, BLESSING_IDS, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE, STATUE_KIT, statueCap, BUILD_IDS, buildMax, HERO_RARITY, HERO_RAR_MAX, NIGHT, FOES, OMENS, nightOmen, nightOmens, tideSpecials, RAID, raidLevel, HERO_SLOTS, HERO_SLOT_NAMES, heroWorn, WORKS, WORK_IDS, workHands, keepRates, BUILD_TIER, GROWTH, keepStage } from './sim/wishkeep.js';
 import { steadyRatings } from './power.js';
 import { PERKS, PERK_IDS, REBIRTH, rebirthBlock, perkRank } from './sim/rebirth.js';
 import { WELL, CREDITS } from './sim/story.js';
@@ -1386,6 +1386,42 @@ function start(hot = {}) {
   };
 
   /** (0.82.1) The Mine or the Fields: what it makes, who works it, and raising it. */
+  /** (0.92) The Seraph's plinth: raise it, lay Faith at its feet, take it up. */
+  function renderSeraph() {
+    const k = world.player.keep, s = k && k.statue;
+    $('talk-role').textContent = 'By the Hearth';
+    $('talk-name').textContent = STATUE.name;
+    $('talk-keys').classList.add('hidden');
+    const list = $('talk-quests');
+    list.innerHTML = '';
+    if (!k) return ($('talk-line').textContent = 'An empty plinth.');
+    if (!s) {
+      $('talk-line').innerHTML = talkNote ? esc(talkNote) : `An empty plinth of white stone. The faithful say an angel should stand here, and that they could carve one, if the keep were known to hold back the deep nights. ${keepHave(k)}`;
+      const c = STATUE.raise;
+      const ready = (k.nightMax || 0) >= STATUE.needNight;
+      const card = keepCard('Raise the Seraph', ready ? `${keepCost(c)} and ${c.sigils} Sigils` : `once Night ${STATUE.needNight} is held (best so far: ${k.nightMax || 0})`, `<p>An angel of stone for the whole account. <b>Possess</b> it (<kbd>Y</kbd>) anywhere in your keep, at any time, a night or a raid included, with no Faith and no time limit, and fight over your shoulder with its own skills: <b>Dawnlance</b> (<kbd>Q</kbd>), <b>Wingbeat</b> (<kbd>E</kbd>, which also mends your heroes), <b>Glide</b> (<kbd>Shift</kbd>) and <b>Descent</b> (<kbd>R</kbd>, from level 5).</p><p class="setting-desc">It is as strong as the Night its level matches, and it starts ${STATUE.startBelow} levels below your best Night. It grows from what it fells, from the nights it fights in, and from Faith laid at its feet, never past your best Night. Felled, it is stone for ${STATUE.rest} seconds.</p>`);
+      card.appendChild(keepBtn(ready ? `Raise it · ${keepCost(c)}, ${c.sigils} Sigils` : `Hold Night ${STATUE.needNight} first`, () => applyNow({ type: 'keepStatue' }), { primary: true, disabled: !ready || k.faith < c.faith || k.stone < c.stone || k.sigils < c.sigils }));
+      list.appendChild(card);
+      return;
+    }
+    const cap = statueCap(k), need = STATUE.need(s.lvl);
+    const pos = !!world.player.possess;
+    $('talk-line').innerHTML = talkNote ? esc(talkNote) : `${s.rest > 0 ? `Only stone for now: it wakes in ${Math.ceil(s.rest)} seconds.` : 'White stone, warm to the touch. The faithful leave candles at its feet.'} ${keepHave(k)}`;
+    const card = keepCard(`The Seraph, level ${s.lvl}`, s.lvl >= cap ? `as high as your best Night (${cap})` : `${s.xp} of ${need} toward level ${s.lvl + 1} · up to ${cap}`, `<p>A match for <b>Night ${s.lvl}</b>. It has fought in ${s.nights} night${s.nights === 1 ? '' : 's'} and raid${s.nights === 1 ? '' : 's'}${s.fells ? ` and been felled ${s.fells} time${s.fells === 1 ? '' : 's'}` : ''}.${s.hp < 1 ? ` Its stone is ${Math.round(s.hp * 100)}% whole (it mends by itself).` : ''}</p><p class="setting-desc">It grows from what it fells (less on Nights more than two below its level) and from every night or raid it fights in and holds. <kbd>Y</kbd> takes it up anywhere in your keep, and leaves it again.</p>`);
+    card.appendChild(keepBtn(pos ? 'Leave the Seraph (Y)' : s.rest > 0 ? `Stone for ${Math.ceil(s.rest)}s` : 'Possess it (Y)', () => {
+      setMode('play');
+      input.togglePossess();
+    }, { primary: true, disabled: !pos && s.rest > 0 }));
+    if (s.lvl < cap) {
+      const o = STATUE.offer(s.lvl);
+      card.appendChild(keepBtn(`Lay Faith at its feet · ${o.faith.toLocaleString()} Faith → a quarter of a level`, () => applyNow({ type: 'keepOffer', n: 1 }), { disabled: k.faith < o.faith }));
+      const toNext = Math.ceil((need - s.xp) / (need * STATUE.offerShare));
+      if (toNext > 1) card.appendChild(keepBtn(`To level ${s.lvl + 1} · ${(toNext * o.faith).toLocaleString()} Faith`, () => applyNow({ type: 'keepOffer', n: toNext }), { disabled: k.faith < toNext * o.faith }));
+    }
+    list.appendChild(card);
+    const kit = keepCard('Its skills', 'over your shoulder', `<p>${['q', 'w', 'e', 'r'].map((c) => `<b>${STATUE_KIT[c].name}</b> (<kbd>${{ q: 'Q', w: 'E', e: 'Shift', r: 'R' }[c]}</kbd>)${STATUE_KIT[c].unlock > s.lvl ? ` <i>from level ${STATUE_KIT[c].unlock}</i>` : ''}: ${STATUE_KIT[c].desc}`).join('<br>')}<br><b>Strike</b> (left click), <b>roll</b> (double-tap a direction).</p>`);
+    list.appendChild(kit);
+  }
   function renderKeepWorks(id) {
     const k = world.player.keep, W = WORKS[id];
     $('talk-role').textContent = W.kind === 'mine' ? 'Under the keep' : 'Beyond the halls';
@@ -1453,7 +1489,7 @@ function start(hot = {}) {
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
     const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
-    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike (it, or the air where you aim), <kbd>Tab</kbd> for the next target, your skills on <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> and your dash on <kbd>Shift</kbd>, a direction tapped twice to roll). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
+    const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20, six from 40) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike (it, or the air where you aim), <kbd>Tab</kbd> for the next target, your skills on <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> and your dash on <kbd>Shift</kbd>, a direction tapped twice to roll). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
     const lvSel = document.createElement('select');
@@ -1473,7 +1509,7 @@ function start(hot = {}) {
     pick.append(lvSel, info);
     night.appendChild(pick);
     // (0.84) what this Night brings: its omen, its stranger children, and its stars
-    const om = nightOmen(lvl);
+    const oms = nightOmens(lvl); // (0.92) two on a deep Night
     const W = NIGHT.waves(lvl);
     const kinds = new Set();
     for (let w = 1; w <= W; w++) for (const f of Object.keys(tideSpecials(lvl, w, W))) kinds.add(f);
@@ -1487,7 +1523,8 @@ function start(hot = {}) {
     raidRow.innerHTML = `<span><b>Raids</b>: ${k.nightMax ? `smaller than a night (Night ${raidLevel(k)}, one wave), they come every ${RAID.every[0] / 60}–${RAID.every[1] / 60} minutes while you are here, and every ${RAID.awayEvery} hours you are away your heroes meet one alone. Each held pays about a third of a night, and sometimes Hero gear.` : 'once you have held a night, the Unmade will raid the keep now and then.'}${k.raids ? ` Held so far: ${k.raids}.` : ''}</span>`;
     raidRow.appendChild(keepBtn(k.raidsOn !== false ? 'Raids on' : 'Raids off', () => applyNow({ type: 'keepRaids', on: k.raidsOn === false }), { primary: k.raidsOn !== false, title: k.raidsOn !== false ? 'Turn raids off (in the keep and while away)' : 'Turn raids on' }));
     night.appendChild(raidRow);
-    brief.innerHTML = `${om ? `<p><b class="omen">Omen: ${OMENS[om].name}</b> (+${Math.round(OMENS[om].pay * 100)}% pay). ${OMENS[om].desc}</p>` : ''}${kinds.size ? `<p>${[...kinds].map((f) => `<b>${FOES[f].name}</b>: ${FOES[f].desc}`).join('<br>')}</p>` : ''}<p>${star(1, 'Hold the keep')} ${star(2, 'No hall wrecked')} ${star(4, 'No hero falls')}<br><small>Each star won for the first time pays ${NIGHT.starSigils(lvl)} Sigils; all three in one night, an extra piece of Hero gear.</small></p>`;
+    const deepNote = lvl > NIGHT.deep ? `<p><b>A deep Night.</b> Past Night ${NIGHT.deep} the Unmade grow slowly but bring new kinds, two omens and (from 40) a sixth wave. Each Night held past ${NIGHT.deep} teaches the Lodge and the Bastion more: a level of training per three, a point of arming per four. Immortal gear won here is <b>Starforged</b>: a fifth stronger, with a fourth line.</p>` : '';
+    brief.innerHTML = `${deepNote}${oms.map((om) => `<p><b class="omen">Omen: ${OMENS[om].name}</b> (+${Math.round(OMENS[om].pay * 100)}% pay). ${OMENS[om].desc}</p>`).join('')}${kinds.size ? `<p>${[...kinds].map((f) => `<b>${FOES[f].name}</b>: ${FOES[f].desc}`).join('<br>')}</p>` : ''}<p>${star(1, 'Hold the keep')} ${star(2, 'No hall wrecked')} ${star(4, 'No hero falls')}<br><small>Each star won for the first time pays ${NIGHT.starSigils(lvl)} Sigils; all three in one night, an extra piece of Hero gear.</small></p>`;
     night.appendChild(brief);
     night.appendChild(keepBtn(on ? 'The Tide is coming' : world.wrecked('hearth') ? 'Mend the Hearth first' : `Call Night ${lvl} (${k.troops.length} hero${k.troops.length === 1 ? '' : 'es'})`, () => {
       applyNow({ type: 'keepTide', level: lvl });
@@ -1571,7 +1608,7 @@ function start(hot = {}) {
     const on = world.tide && world.tide.state === 'on';
     if (cls === 'warrior' && k.troops.length) list.appendChild(keepBtn(`Open the Armory: Hero gear (${(k.armory || []).length})`, () => openArmory(), { primary: true })); // (0.82)
     if (cls === 'warrior') {
-      const max = KEEP.armMax(lvl, k.btier.warrior || 0);
+      const max = KEEP.armMax(lvl, k.btier.warrior || 0, k.nightMax); // (0.92: deep Nights held raise it)
       const card = keepCard('Arm your heroes', `arms up to ${max}`, `<p class="setting-desc">Each point of arms (the Bastion's, apart from Hero gear): +${Math.round(KEEP.perGear * 100)}% health and damage. Every building in the keep is ${Math.round(KEEP.perBastionHp * lvl * 100)}% sturdier for the Bastion.</p>`);
       for (const t of k.troops) {
         const row = document.createElement('div');
@@ -1587,7 +1624,7 @@ function start(hot = {}) {
     if (cls === 'archer' || cls === 'mage') {
       const school = cls === 'archer' ? 'phys' : 'magic';
       if (cls === 'archer') {
-        const max = KEEP.trainMax(lvl, k.btier.archer || 0);
+        const max = KEEP.trainMax(lvl, k.btier.archer || 0, k.nightMax); // (0.92: deep Nights held raise it)
         const card = keepCard('Train your heroes', `levels up to ${max}`, `<p class="setting-desc">Each level: +${Math.round(KEEP.perLvl * 100)}% health and damage.</p>`);
         for (const t of k.troops) {
           const row = document.createElement('div');
@@ -1896,24 +1933,35 @@ function start(hot = {}) {
   let shoulderUi = null;
   let shoulderTipT = 0;
   let rankSfxAt = 0; // (0.91.1)
+  let shoulderPos = false; // (0.92)
   function shoulderFrame() {
     const t = world && world.tide;
     const mine = !!(t && t.state === 'on' && !world.keepVisit);
     const inKeep = !!(world && world.map && world.map.id === 'wishkeep');
     const walk = inKeep && !!(world.player && world.player.keepWalk) && !(t && t.state === 'on'); // (0.91) walking the keep (V)
-    const on = ((mine && t.inc > 0) || walk) && mode === 'play';
+    const pos = inKeep && !world.keepVisit && !!(world.player && world.player.possess); // (0.92) in the Seraph
+    const on = ((mine && t.inc > 0) || walk || pos) && mode === 'play';
+    if (pos !== shoulderPos) {
+      // (0.92) the Seraph's kit on the bar (a friend's screen learns of it from the snapshot), its body on screen
+      shoulderPos = pos;
+      if (world.recalcMods) world.recalcMods();
+    }
     const chan = mine && t.chan != null;
     renderer.shoulder.on = on;
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry<span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · <b>hold left click</b> strikes · <kbd>Tab</kbd> next target · <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> skills · <kbd>Shift</kbd> dash · double-tap a direction to <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry<span class="sh-stop"> · <kbd>V</kbd> back above</span><span class="sh-posk"> · <kbd>Y</kbd> leave the Seraph</span><span class="sh-click"> · click to take hold of the view</span></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div>';
       document.body.appendChild(shoulderUi);
       shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
+      shoulderUi.querySelector('.sh-pos').addEventListener('click', () => input.togglePossess()); // (0.92)
     }
     document.body.classList.toggle('shoulder-on', on);
     shoulderUi.classList.toggle('on', on);
     shoulderUi.classList.toggle('walk', walk);
+    shoulderUi.classList.toggle('pos', pos);
+    const canPos = inKeep && !world.keepVisit && !pos && !!(world.player && world.player.keep && world.player.keep.statue) && mode === 'play';
+    shoulderUi.classList.toggle('can-pos', canPos && !(t && t.state === 'on'));
     // (0.91) between nights in a keep: the offer to walk it over your shoulder
     shoulderUi.classList.toggle('can-walk', inKeep && !walk && !(t && t.state === 'on') && mode === 'play');
     shoulderUi.classList.toggle('chan', chan);
@@ -2038,7 +2086,7 @@ function start(hot = {}) {
     if (talkTo === 'delve') return renderDelve();
     if (talkTo === 'ringstones') return renderRingStones();
     if (talkTo === 'tomashusk') return renderTomasHusk();
-    if (world.keepVisit && (talkTo === 'keepaltar' || talkTo === 'wishes' || String(talkTo).startsWith('hall_') || WORKS[talkTo] || SETTLERS[talkTo])) {
+    if (world.keepVisit && (talkTo === 'keepaltar' || talkTo === 'seraph' || talkTo === 'wishes' || String(talkTo).startsWith('hall_') || WORKS[talkTo] || SETTLERS[talkTo])) {
       // (0.82.2) a friend's keep: theirs to tend
       $('talk-role').textContent = "A friend's keep";
       $('talk-name').textContent = `${world.keepVisitOf || 'A friend'}'s Wishkeep`;
@@ -2049,6 +2097,7 @@ function start(hot = {}) {
     }
     if (talkTo === 'wishes') return renderKeepBoard(); // (0.80) the Wishkeep
     if (talkTo === 'keepaltar') return renderKeepHearth();
+    if (talkTo === 'seraph') return renderSeraph(); // (0.92)
     if (WORKS[talkTo]) return renderKeepWorks(talkTo); // (0.82.1)
     if (String(talkTo).startsWith('hall_')) return renderKeepHall(String(talkTo).slice(5));
     if (SETTLERS[talkTo]) return renderSettler(talkTo);
@@ -5245,7 +5294,7 @@ function start(hot = {}) {
         break;
       case 'keepShort':
         sfx.denied();
-        talkNote = ev.what === 'repair' ? `The Hearth is dark, so no night can be called. Mend it here at the Hearth: "Mend the keep" below (${ev.need} Wishstone for the Hearth; you have ${ev.have}).` : ev.what === 'sigils' ? `Not enough Ascension Sigils: ${ev.need} needed, you have ${ev.have}. Hold nights to earn them (more the deeper the night).` : ev.what === 'stone' && ev.mend ? 'No Wishstone to mend with. Answer wishes on the board (most pay Wishstone), or trade Faith for it at the Market.' : ev.what === 'stone' ? 'Not enough Wishstone.' : ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()}${ev.stone ? `, and ${ev.stone} Wishstone` : ''}.` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
+        talkNote = ev.what === 'repair' ? `The Hearth is dark, so no night can be called. Mend it here at the Hearth: "Mend the keep" below (${ev.need} Wishstone for the Hearth; you have ${ev.have}).` : ev.what === 'night' ? `The faithful will raise it once Night ${ev.need} is held (your best: ${ev.have}).` : ev.what === 'sigils' ? `Not enough Ascension Sigils: ${ev.need} needed, you have ${ev.have}. Hold nights to earn them (more the deeper the night).` : ev.what === 'stone' && ev.mend ? 'No Wishstone to mend with. Answer wishes on the board (most pay Wishstone), or trade Faith for it at the Market.' : ev.what === 'stone' ? 'Not enough Wishstone.' : ev.what === 'faith' || ev.what === 'tier' || ev.what === 'hall' ? `Not enough yet: ${ev.need.toLocaleString()} Faith needed, you have ${ev.have.toLocaleString()}${ev.stone ? `, and ${ev.stone} Wishstone` : ''}.` : `Not enough: ${ev.need.toLocaleString()} needed, you have ${ev.have.toLocaleString()}.`;
         if (mode === 'play') hud.feedText(talkNote);
         if (mode === 'talk') renderTalk();
         break;
@@ -5275,7 +5324,7 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         sfx.levelUp();
-        hud.banner(ev.omen ? `The night is coming · ${OMENS[ev.omen].name}` : 'The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Judgement (what they strike), W Benediction (keep them fighting), E Hallowed Ground (where they hold), R to Incarnate. Hover a card to see what it does.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
+        hud.banner(ev.omen ? `The night is coming · ${[ev.omen, ev.omen2].filter(Boolean).map((o) => OMENS[o].name).join(' and ')}` : 'The night is coming', ev.heroes ? `${ev.heroes} hero${ev.heroes > 1 ? 'es' : ''} at their posts. You are the keep's god tonight: Q Judgement (what they strike), W Benediction (keep them fighting), E Hallowed Ground (where they hold), R to Incarnate. Hover a card to see what it does.` : 'Nobody stands at the posts. Your miracles (Q, W, E) and R, to Incarnate and fight, are all that keep the night off. Raise heroes at the Hearth.');
         break;
       case 'keepAscended':
         sfx.levelUp();
@@ -5297,6 +5346,49 @@ function start(hot = {}) {
       case 'troopUnbroken':
         hud.feedText('Unbroken: a hero refuses to fall.');
         renderer.keepFx({ type: 'troopFall', x: ev.x, z: ev.z });
+        break;
+      case 'possess':
+        // (0.92) into the Seraph, or out of it
+        if (ev.on) {
+          sfx.levelUp();
+          renderer.shoulder.yaw = Math.atan2(-ev.z, -ev.x);
+          renderer.shoulder.pitch = 0.4;
+          renderer.keepFx({ type: 'possessFx', x: ev.x, z: ev.z, on: true });
+          hud.feedText(`You take up the Seraph (level ${ev.lvl}): Q Dawnlance, E Wingbeat, Shift Glide, R Descent, left click to strike. Y to leave it.`);
+        } else {
+          renderer.keepFx({ type: 'possessFx', x: ev.x, z: ev.z, on: false });
+          if (ev.fell) {
+            sfx.denied();
+            hud.banner('The Seraph is felled', `It is only stone for ${ev.rest} seconds. You are the keep's god again.`);
+          } else hud.feedText('You leave the Seraph; it stands on its plinth again.');
+        }
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'statueRaised':
+        sfx.levelUp();
+        hud.banner('The Seraph is raised', `The faithful have carved an angel by the Hearth (level ${ev.lvl}). Press Y anywhere in your keep to take it up.`);
+        renderer.keepFx({ type: 'possessFx', x: ev.x, z: ev.z, on: true });
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'statueLevel':
+        sfx.levelUp();
+        hud.feedText(`The Seraph grows: level ${ev.lvl}${ev.lvl >= ev.cap ? ' (as high as your best Night)' : ''}.${ev.unlocked && ev.unlocked.length ? ` It learns ${ev.unlocked.join(', ')}.` : ''}`);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'statueOffered':
+        sfx.pickup(2);
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'statueResting':
+        sfx.denied();
+        hud.feedText(`The Seraph is only stone for now: it wakes in ${ev.t} seconds.`);
+        break;
+      case 'statueNone':
+        sfx.denied();
+        hud.feedText(`No Seraph stands by the Hearth yet. Hold Night ${ev.need} and the faithful can raise one (at its plinth, beside the Hearth).`);
+        break;
+      case 'statueWakes':
+        hud.feedText('The Seraph wakes: Y to take it up.');
         break;
       case 'keepWalk':
         if (ev.on) {
@@ -5381,6 +5473,10 @@ function start(hot = {}) {
       case 'thiefCaught':
         hud.feedText('Thief caught: the Faith comes back, and more.');
         renderer.keepFx(ev);
+        break;
+      case 'rotSplit':
+        hud.feedText('The Rotmother breaks apart: three Rotlings crawl from her.');
+        renderer.keepFx({ ...ev, type: 'cinderBurst', r: 2.5 });
         break;
       case 'mournerRaise':
       case 'cinderBurst':

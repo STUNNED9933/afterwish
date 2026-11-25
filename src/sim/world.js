@@ -13,7 +13,7 @@ const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar', 'works']); // (0.80: the Wishkeep's halls and Hearth)
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar', 'works', 'statue']); // (0.80: the Wishkeep's halls and Hearth)
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
@@ -95,10 +95,11 @@ const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer',
 const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
-const KEEP_CMDS = ['keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
+import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, statuePower, statueCap } from './wishkeep.js'; // (0.92)
 import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
@@ -400,6 +401,7 @@ export class World {
       const p = h.player;
       out.push({ pid: h.pid, name: h.name, cls: h.cls, x: p.x, z: p.z, px: p.px, pz: p.pz, facing: p.facing, dead: !!p.dead, hp: p.hp, maxHp: p.stats.maxHp, level: p.level, moving: !!p.moving, glow: p.glow || null, eform: eternalForm(p), // (0.76) their Eternal form
         // what their model should be doing (0.41.1): rolling, leaping, spinning, parrying
+        seraph: !!p.possess, // (0.92) in their keep's Seraph
         dash: p.dash ? r2n(p.dash.dur) : 0, leap: p.leap ? r2n(p.leap.dur) : 0, spin: !!p.spin, parry: p.parryT > 0, as: r2n(p.stats.as), spec: p.spec || null, lock: p.lockT > 0,
         shade: p.shadeAt || null, clones: p.fireClones && p.fireClones.length ? p.fireClones : null, rime: p.rimeT > 0 ? p.rimeR : 0 }); // (0.81.3)
     }
@@ -637,6 +639,14 @@ export class World {
   /** Rebuild the modifier set from this run's augments and equipped Immortal effects. */
   recalcMods() {
     const m = defaultMods();
+    if (this.player.possess) {
+      // (0.92) in the Seraph: its own kit and strike, and nothing of the hero's (talents, sets, augments)
+      this.kit = Object.assign({}, STATUE_KIT);
+      this.basic = STATUE_BASIC;
+      this.mods = m;
+      return;
+    }
+    this.basic = CLASSES[this.cls].basic;
     // Talents first, so an augment that sets the same thing higher wins for the run.
     const spec = SPECS[this.player.spec];
     if (spec && spec.perk) spec.perk.apply(m); // the subclass trait, from the moment it is chosen
@@ -732,7 +742,8 @@ export class World {
       p.stats.ms *= 1 + 0.2 * p.wished.speed;
       p.stats.as *= 1 + 0.2 * p.wished.speed;
     }
-    if (prevMax && p.stats.maxHp > prevMax) p.hp += p.stats.maxHp - prevMax;
+    if (p.possess) Object.assign(p.stats, { as: STATUE.as, ms: STATUE.ms, crit: STATUE.crit, haste: 0, lifesteal: 0 }); // (0.92) the Seraph's own pace
+    if (prevMax && p.stats.maxHp > prevMax && !p.possess) p.hp += p.stats.maxHp - prevMax;
     p.hp = Math.min(p.hp, p.stats.maxHp);
   }
 
@@ -761,7 +772,7 @@ export class World {
       talents: p.talents,
       talentBuilds: p.talentBuilds,
       tomes: p.tomes,
-      ranks: p.ranks,
+      ranks: p.possess ? p.possess.ranks : p.ranks, // (0.92) never the Seraph's
       borrowed: p.borrowed,
       eternals: p.eternals,
       eternalEssence: p.eternalEssence,
@@ -970,6 +981,15 @@ export class World {
         case 'keepWalk':
           this.keepWalkSet(c.on); // (0.91)
           break;
+        case 'keepPossess':
+          this.possessSet(c.on); // (0.92)
+          break;
+        case 'keepStatue':
+          this.statueRaise(); // (0.92)
+          break;
+        case 'keepOffer':
+          this.statueOffer(c.n); // (0.92)
+          break;
         case 'parry':
           this.tryParry(c.seen);
           break;
@@ -1167,6 +1187,7 @@ export class World {
 
   usePotion() {
     const p = this.player;
+    if (p.possess) return; // (0.92) stone drinks nothing
     if (this.twist === 'dry') return; // (0.60) Dry Spell
     if (p.potions <= 0 || p.potionCd > 0 || p.hp >= p.stats.maxHp) return;
     p.potions--;
@@ -1186,6 +1207,7 @@ export class World {
 
   abilityUnlocked(slot) {
     if (!this.kit[slot]) return false; // (0.70) an empty borrowed slot
+    if (this.player.possess) return ((this.player.keep && this.player.keep.statue && this.player.keep.statue.lvl) || 1) >= this.kit[slot].unlock; // (0.92) the Seraph's level
     return this.player.level >= this.kit[slot].unlock || (slot === 'r' && this.mods.rUnlock);
   }
 
@@ -1927,7 +1949,7 @@ export class World {
     // loosing more of them, so attack speed counts twice over
     if (b.shot && this.mods.galeForce > 0) dmg *= this.galeForce();
     // Steady Aim: every third shot gets +100% crit chance; anything over 100% becomes crit damage.
-    const critBonus = this.cls === 'archer' && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
+    const critBonus = this.cls === 'archer' && !p.possess && p.swingCount % this.mods.critEvery === 0 ? 100 : 0;
     const forceCrit = false;
     let gale = false;
     if (p.quickShots > 0 && dmgOverride === null) {
@@ -2084,7 +2106,7 @@ export class World {
    */
   castAbility(slot, x, z) {
     if (this.map && this.map.id === KEEP.map && !this.keepOwns()) return; // (0.82.5) a visitor casts nothing in a friend's keep (no walls, freezes or pulls in their night)
-    if (this.tide && this.tide.state === 'on' && !(this.tide.inc > 0) && this.keepOwns()) {
+    if (this.tide && this.tide.state === 'on' && !this.inField() && this.keepOwns()) {
       // (0.81; 0.81.1; 0.82.2 a visitor fights) (0.85) R channels where you aim, R again lands early; no miracles meanwhile
       if (slot === INCARNATE.key) return this.tide.chan != null ? this.incarnateLand() : this.incarnate(x, z);
       return this.tide.chan != null ? undefined : this.miracle(slot, x, z);
@@ -2201,7 +2223,8 @@ export class World {
           p.reckAcc = 0;
         }
         const hits = this.novaHit(slot, def, dmg, radius, true, true);
-        this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull: slot === 'w' && m.wPull });
+        if (def.mend && this.tide && this.tide.state === 'on') for (const tr of this.troops || []) if (!tr.dead && dist(tr.x, tr.z, p.x, p.z) <= radius) this.troopMend(tr, tr.maxHp * def.mend); // (0.92) Wingbeat
+        this.emit('cast', { slot, fx: 'nova', x: p.x, z: p.z, radius, pull: slot === 'w' && m.wPull, wings: !!def.mend });
         this.battleRhythm(slot, hits);
         break;
       }
@@ -3340,7 +3363,7 @@ export class World {
     if (p.castLock > 0) return;
 
     // Targeting
-    if (this.tide && this.tide.state === 'on' && (!this.keepOwns() || !(this.tide.inc > 0))) {
+    if (this.tide && this.tide.state === 'on' && (!this.keepOwns() || !this.inField())) {
       // (0.81) in a Tide the hero is the keep's god; (0.82.5) a visitor attacks nothing in it: miracles (Q, W, E), never a sword (unless incarnate, 0.81.1)
       p.targetId = null;
       p.attackMove = null;
@@ -5939,7 +5962,7 @@ export class World {
     const k = this.player.keep, t = this.keepTroop(id);
     if (!this.inKeep() || !t) return;
     if (!this.hallWorks('archer')) return this.emit('keepHallShut', { name: HALLS.archer.name, cls: 'archer', down: this.wrecked('archer') });
-    if (t.lvl >= KEEP.trainMax(k.halls.archer, k.btier.archer || 0)) return this.emit('keepMaxed', { name: t.name, what: 'level' });
+    if (t.lvl >= KEEP.trainMax(k.halls.archer, k.btier.archer || 0, k.nightMax)) return this.emit('keepMaxed', { name: t.name, what: 'level' });
     if (!this.keepPay(KEEP.train(t.lvl))) return;
     t.lvl++;
     this.keepTroopsUp();
@@ -5950,7 +5973,7 @@ export class World {
     const k = this.player.keep, t = this.keepTroop(id);
     if (!this.inKeep() || !t) return;
     if (!this.hallWorks('warrior')) return this.emit('keepHallShut', { name: HALLS.warrior.name, cls: 'warrior', down: this.wrecked('warrior') });
-    if (t.gear >= KEEP.armMax(k.halls.warrior, k.btier.warrior || 0)) return this.emit('keepMaxed', { name: t.name, what: 'gear' });
+    if (t.gear >= KEEP.armMax(k.halls.warrior, k.btier.warrior || 0, k.nightMax)) return this.emit('keepMaxed', { name: t.name, what: 'gear' });
     if (!this.keepPay(KEEP.arm(t.gear))) return;
     t.gear++;
     this.keepTroopsUp();
@@ -6295,12 +6318,12 @@ export class World {
       night: NIGHT.power(L), level: L, blessPow: 1 + 0.1 * (k.btier.mage || 0), hearthDmg: 1 + 0.04 * (k.btier.hearth || 0), bless: k.blessings.slice(), echo: 1 + 0.1 * rec.echoes.length,
       mcd: { judge: 0, bless: 0, hallow: 0 }, zones: [], lost: 0, inc: 0, icd: 0,
       // (0.84) waves by Night, its omen, and what the stars are measured on
-      waves: NIGHT.waves(L), omen: nightOmen(L), fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
+      waves: NIGHT.waves(L), omen: nightOmen(L), omen2: nightOmen2(L), fell: 0, stolen: 0, caught: 0, corpses: [], stars: [], starT: 4, boss: 0,
     };
-    if (this.tide.omen === 'fog') for (const tr of this.troops) if (tr.range > 3) tr.range *= 0.65; // (until the morning's keepTroopsUp)
+    if (this.omenOn('fog')) for (const tr of this.troops) if (tr.range > 3) tr.range *= 0.65; // (until the morning's keepTroopsUp)
     k.blessings = []; // (they are for this night)
     for (const tr of this.troops) tr.unbroken = !!(tr.fx && tr.fx.armor); // (0.82) Unbroken: once a night
-    this.emit('tideStart', { waves: this.tide.waves, heroes: this.troops.length, bless: this.tide.bless, level: L, omen: this.tide.omen });
+    this.emit('tideStart', { waves: this.tide.waves, heroes: this.troops.length, bless: this.tide.bless, level: L, omen: this.tide.omen, omen2: this.tide.omen2 });
   }
 
   stepTide(dt) {
@@ -6323,7 +6346,7 @@ export class World {
       // (0.87) Hallowed Ground: it fades; heroes on it heal
       for (const zo of t.zones) zo.t -= dt;
       t.zones = t.zones.filter((zo) => zo.t > 0);
-      for (const tr of this.troops) if (!tr.dead && tr.hp < tr.maxHp && this.hallowed(tr.x, tr.z)) tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * MIRACLES.hallow.regen * dt);
+      for (const tr of this.troops) if (!tr.dead && tr.hp < tr.maxHp && this.hallowed(tr.x, tr.z)) this.troopMend(tr, tr.maxHp * MIRACLES.hallow.regen * dt);
     }
     this.stepTideOmen(dt);
     this.stepTroops(dt);
@@ -6342,7 +6365,7 @@ export class World {
     t.next = T.gap;
     const rng = this.streamRng('tide', t.seed * 13 + t.wave);
     let n = T.perWave(k.tier) + (t.wave === W ? 2 : 0) + NIGHT.extra(L); // (0.82) more on deeper nights
-    if (t.omen === 'legion') n = Math.round(n * 4 / 3); // (0.84)
+    if (this.omenOn('legion')) n = Math.round(n * 4 / 3); // (0.84)
     const gates = this.map.gates || [{ x: this.radius - 4, z: 0 }];
     let gi = 0;
     const gate = () => gates[gi++ % gates.length];
@@ -6394,7 +6417,7 @@ export class World {
     e.aggro = true;
     e.tide = true;
     e.noLoot = true; // (the night pays in Faith and Wishstone when it is held, not in loot: no farming the dark)
-    e.maxHp = e.hp = Math.round(F.hp * t.night * (t.omen === 'ironhide' ? 1.25 : 1));
+    e.maxHp = e.hp = Math.round(F.hp * t.night * (this.omenOn('ironhide') ? 1.25 : 1));
     e.tdmg = F.dmg * t.night;
     e.tbdmg = F.dmg * NIGHT.siege(t.level || 1); // (0.82) what a building takes (stone outlasts flesh)
     e.tAtk = 0.6 + rng() * 0.6;
@@ -6412,9 +6435,12 @@ export class World {
     const foes = this.enemies.filter((e) => e.tide && !e.dead);
     const veils = foes.filter((e) => FOES[e.type] && FOES[e.type].veil && e.state !== 'spawn');
     for (const e of foes) e.veiled = veils.some((v) => v !== e && dist(v.x, v.z, e.x, e.z) <= FOES.veilbearer.veil.r);
+    // (0.92) a Rotmother's rot: heroes near her mend by half
+    const rots = foes.filter((e) => FOES[e.type] && FOES[e.type].rot && e.state !== 'spawn');
+    for (const tr of this.troops) tr.rotT = !tr.dead && rots.some((e) => dist(e.x, e.z, tr.x, tr.z) <= FOES.rotmother.rot.r + e.radius) ? 0.5 : 0;
     t.corpses = t.corpses.filter((c) => this.time - c.at < 20);
     // Starfall: where the fighting is
-    if (t.omen === 'starfall') {
+    if (this.omenOn('starfall')) {
       for (const st of t.stars) st.t -= dt;
       for (const st of t.stars.filter((x) => x.t <= 0)) {
         for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, st.x, st.z) <= st.r) this.troopHurt(tr, st.dmg);
@@ -6447,12 +6473,23 @@ export class World {
     if (F.burst) {
       // a Cinderling bursts
       for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, e.x, e.z) <= F.burst.r) this.troopHurt(tr, e.tdmg * F.burst.x);
-      if (t.inc > 0 && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.burst.r) this.incarnateHurt(e.tdmg * F.burst.x);
+      if (this.inField() && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.burst.r) this.incarnateHurt(e.tdmg * F.burst.x);
       this.emit('cinderBurst', { x: e.x, z: e.z, r: F.burst.r });
     }
     if (F.role === 'boss') {
       t.boss++;
       this.emit('tideBossDown', { name: F.name, x: e.x, z: e.z });
+    }
+    if (F.split && t.state === 'on') {
+      // (0.92) a Rotmother breaks into Rotlings
+      const rng = this.streamRng('rot', t.seed + e.id);
+      for (let i = 0; i < F.split.n; i++) {
+        const a = (i / F.split.n) * Math.PI * 2;
+        const o = this.spawnTideFoe(F.split.into, { x: e.x + dCos(a) * 1.4, z: e.z + dSin(a) * 1.4 }, rng);
+        o.state = 'chase';
+        this.pushOut(o, o.radius);
+      }
+      this.emit('rotSplit', { x: e.x, z: e.z, n: F.split.n });
     }
     if (!F.big && F.role !== 'mourn' && !e.raised) t.corpses.push({ type: e.type, x: e.x, z: e.z, at: this.time });
   }
@@ -6476,6 +6513,11 @@ export class World {
     }
     const wrecked = (this.keepBuilds || []).filter((b) => b.hp <= 0).map((b) => (b.id === 'hearth' ? 'the Hearth' : HALLS[b.id].name));
     const L = t.level || 1;
+    if (won && k.statue && t.posT > 10) {
+      // (0.92) a night (or raid) the Seraph fought in and held
+      k.statue.nights++;
+      this.statueXp(STATUE.held * STATUE.kill(L, null) * (t.raid ? 0.35 : 1) * (L >= k.statue.lvl - 2 ? 1 : STATUE.low));
+    }
     if (t.raid) return this.raidEnd(won, wrecked, L);
     if (!won) return this.emit('tideEnd', { won: false, wrecked, level: L });
     // (0.82.1) a held night: the keep's people mend a quarter of every building by morning, free
@@ -6495,7 +6537,7 @@ export class World {
     const newStars = ((fresh & 1) ? 1 : 0) + ((fresh & 2) ? 1 : 0) + ((fresh & 4) ? 1 : 0);
     const starCount = ((stars & 1) ? 1 : 0) + ((stars & 2) ? 1 : 0) + ((stars & 4) ? 1 : 0);
     // (0.84) the omen pays; a thief who got away costs a tenth (half at most), one caught gives a twentieth back
-    const omenPay = t.omen ? OMENS[t.omen].pay : 0;
+    const omenPay = (t.omen ? OMENS[t.omen].pay : 0) + (t.omen2 ? OMENS[t.omen2].pay : 0); // (0.92) two on a deep Night
     const thieves = 0.05 * t.caught - Math.min(0.5, 0.1 * Math.max(0, t.stolen - t.caught));
     if (t.boss) k.bosses += t.boss;
     const R = NIGHT.reward(L) * (1 + omenPay + thieves + 0.5 * (t.boss ? 1 : 0));
@@ -6535,7 +6577,7 @@ export class World {
     }
     k.stone += salvaged;
     this.keepEvent('tide');
-    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, auto, first, stars, newStars, omen: t.omen, stolen: t.stolen - t.caught, caught: t.caught, boss: t.boss });
+    this.emit('tideEnd', { won: true, faith, stone, wrecked, level: L, sigils, gear: got, salvaged, auto, first, stars, newStars, omen: t.omen, omen2: t.omen2, stolen: t.stolen - t.caught, caught: t.caught, boss: t.boss });
   }
 
   /** Damage to a building (a ward stops it). */
@@ -6564,7 +6606,11 @@ export class World {
       e.stunT -= dt * (F.big ? 2 : 1); // (0.84) the big ones shrug off half
       return;
     }
-    if (F.role === 'breaker' || F.role === 'thief' || F.role === 'boss') e.tTauntT = 0; // (0.84) not to be Challenged
+    if (F.role === 'breaker' || F.role === 'thief' || F.role === 'boss' || F.role === 'duel') e.tTauntT = 0; // (0.84) not to be Challenged (0.92: nor an Oathbreaker)
+    // (0.92) an Oathbreaker keeps to its chosen while they stand; a Gloamwing hunts the back line
+    if (F.role === 'duel' && (!e.duel || e.duel.dead)) e.duel = this.duelPick();
+    if (F.role === 'duel' && e.duel) [e.tTarget, e.tRe] = [e.duel, 1];
+    if (F.role === 'dive' && (!e.tTarget || e.tTarget.dead || e.tTarget.max != null || e.tRe <= 0)) [e.tTarget, e.tRe] = [this.divePick(e) || e.tTarget, 1];
     // (0.84) each of the stranger children has its own way
     if (F.role === 'boss' && this.tideBossTurn(e, F, dt)) return;
     if (F.role === 'mourn') this.mournerTurn(e, F, dt);
@@ -6575,7 +6621,7 @@ export class World {
       if (e.tTauntBy && !e.tTauntBy.dead) e.tTarget = e.tTauntBy;
     }
     e.tRe -= dt;
-    if (F.role !== 'breaker' && !(e.tTauntT > 0) && (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead)) {
+    if (F.role !== 'breaker' && !(F.role === 'duel' && e.duel) && !(F.role === 'dive' && e.tTarget && !e.tTarget.dead) && !(e.tTauntT > 0) && (e.tRe <= 0 || !e.tTarget || (e.tTarget.hp != null && e.tTarget.hp <= 0) || e.tTarget.dead)) {
       e.tRe = 0.5;
       let best = null, bd = T.engage;
       for (const tr of this.troops) {
@@ -6584,7 +6630,7 @@ export class World {
         if (d < bd) [best, bd] = [tr, d];
       }
       const me = this.player;
-      if (this.tide.inc > 0 && !me.dead && dist(me.x, me.z, e.x, e.z) < bd) best = me; // (0.81.1) the god, walking among them
+      if (this.inField() && !me.dead && dist(me.x, me.z, e.x, e.z) < bd) best = me; // (0.81.1) the god, walking among them (0.92: or the Seraph)
       if (!best) {
         bd = 1e9;
         for (const b of this.keepBuilds || []) {
@@ -6597,7 +6643,7 @@ export class World {
     }
     const tg = e.tTarget;
     if (!tg) return;
-    if (tg === this.player && !(this.tide.inc > 0)) {
+    if (tg === this.player && !this.inField()) {
       e.tTarget = null;
       return;
     }
@@ -6606,7 +6652,7 @@ export class World {
     const dx = tg.x - e.x, dz = tg.z - e.z;
     const d = dHypot(dx, dz) || 0.001;
     e.facing = turnToward(e.facing, dAtan2(dz, dx), 8 * dt);
-    const fast = (this.tide.omen === 'bloodmoon' ? 1.25 : 1) * (e.enraged ? 1.3 : 1); // (0.84)
+    const fast = (this.omenOn('bloodmoon') ? 1.25 : 1) * (e.enraged ? 1.3 : 1); // (0.84)
     if (d > reach) {
       const sp = F.speed * fast * (e.slowT > 0 ? 1 - e.slow : 1) * (holy ? 1 - MIRACLES.hallow.slow : 1);
       e.px = e.x;
@@ -6620,14 +6666,48 @@ export class World {
     e.tAtk = F.cd / fast;
     e.state = 'chase';
     this.emit('foeHit', { id: e.id, x: e.x, z: e.z, tx: tg.x, tz: tg.z, ranged: !!F.ranged });
-    if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1) * (holy || this.hallowed(tg.x, tg.z, tg.r) ? 1 - MIRACLES.hallow.shelter : 1), e); // (0.82) buildings feel deep nights less than heroes do; (0.87) Hallowed Ground shelters them
+    if (isB) this.hurtBuild(tg, e.tbdmg * (F.siege || 1) * (this.omenOn('siegefire') ? 1.5 : 1) * (holy || this.hallowed(tg.x, tg.z, tg.r) ? 1 - MIRACLES.hallow.shelter : 1), e); // (0.82) buildings feel deep nights less than heroes do; (0.87) Hallowed Ground shelters them
     else if (tg === this.player) this.incarnateHurt(e.tdmg);
     else {
       const stone = this.tide.bless.includes('stoneskin') ? 1 - Math.min(0.6, 0.3 * (this.tide.blessPow || 1)) : 1;
       const hp0 = tg.hp;
-      this.troopHurt(tg, e.tdmg * stone);
-      if (this.tide.omen === 'hunger' && tg.hp < hp0) e.hp = Math.min(e.maxHp, e.hp + (hp0 - tg.hp) / 3); // (0.84) Hunger
+      const pounce = F.pounce && !(e.pounced || (e.pounced = [])).includes(tg.id) ? (e.pounced.push(tg.id), F.pounce) : 1; // (0.92) a Gloamwing's first blow on each
+      this.troopHurt(tg, e.tdmg * stone * pounce);
+      if (this.omenOn('hunger') && tg.hp < hp0) e.hp = Math.min(e.maxHp, e.hp + (hp0 - tg.hp) / 3); // (0.84) Hunger
     }
+  }
+
+  /** (0.92) Is this omen on tonight (a deep Night has two)? */
+  omenOn(id) {
+    const t = this.tide;
+    return !!t && (t.omen === id || t.omen2 === id);
+  }
+  /** (0.92) Mend one of the keep's heroes: half as much in a Rotmother's rot. */
+  troopMend(tr, amt) {
+    if (!tr || tr.dead || !(amt > 0)) return;
+    if (tr.rotT > 0) amt *= 1 - FOES.rotmother.rot.cut;
+    tr.hp = Math.min(tr.maxHp, tr.hp + amt);
+  }
+  /** (0.92) An Oathbreaker's chosen: the strongest hero standing (health times damage). */
+  duelPick() {
+    let best = null, bs = -1;
+    for (const tr of this.troops) {
+      if (tr.dead) continue;
+      const s = tr.maxHp * tr.dmg;
+      if (s > bs) [best, bs] = [tr, s];
+    }
+    return best;
+  }
+  /** (0.92) A Gloamwing's prey: the nearest archer or mage, else the nearest hero. */
+  divePick(e) {
+    let best = null, bd = 1e9, back = false;
+    for (const tr of this.troops) {
+      if (tr.dead) continue;
+      const far = tr.range > 3;
+      const d = dist(tr.x, tr.z, e.x, e.z);
+      if ((far && !back) || ((far === back) && d < bd)) [best, bd, back] = [tr, d, far];
+    }
+    return best;
   }
 
   /** (0.84) The nearest standing building. */
@@ -6661,7 +6741,7 @@ export class World {
     if (d > reach) {
       e.px = e.x;
       e.pz = e.z;
-      const sp = F.speed * (e.loot ? 1.1 : 1) * (this.tide.omen === 'bloodmoon' ? 1.25 : 1) * (e.slowT > 0 ? 1 - e.slow : 1);
+      const sp = F.speed * (e.loot ? 1.1 : 1) * (this.omenOn('bloodmoon') ? 1.25 : 1) * (e.slowT > 0 ? 1 - e.slow : 1);
       this.navStep(e, tg.x, tg.z, sp, dt, e.radius);
       e.moving = true;
       return;
@@ -6722,7 +6802,7 @@ export class World {
       e.slamWind -= dt;
       if (e.slamWind <= 0) {
         for (const tr of this.troops) if (!tr.dead && dist(tr.x, tr.z, e.x, e.z) <= F.slam.r) this.troopHurt(tr, e.tdmg * F.slam.x);
-        if (this.tide.inc > 0 && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.slam.r) this.incarnateHurt(e.tdmg * F.slam.x);
+        if (this.inField() && !this.player.dead && dist(this.player.x, this.player.z, e.x, e.z) <= F.slam.r) this.incarnateHurt(e.tdmg * F.slam.x);
         this.emit('tideSlam', { x: e.x, z: e.z, r: F.slam.r });
       }
       return true;
@@ -6796,6 +6876,7 @@ export class World {
     const claims = new Map();
     this.stepTroopFalls(dt, foes, fury);
     for (const tr of this.troops) {
+      this.striker = tr; // (0.92) whose blows these are (an Oathbreaker cares)
       tr.px = tr.x;
       tr.pz = tr.z;
       tr.moving = false;
@@ -6816,7 +6897,7 @@ export class World {
       for (const sk of tr.skills || []) {
         if (scd[sk] > 0) continue;
         if (this.troopSkill(tr, sk, foes, myFury)) {
-          scd[sk] = SKILLS[sk].cd * (1 - (tr.focus || 0));
+          scd[sk] = SKILLS[sk].cd * (1 - (tr.focus || 0)) * (this.omenOn('eclipse') ? 4 / 3 : 1); // (0.92) Eclipse
           break;
         }
       }
@@ -6870,7 +6951,7 @@ export class World {
       this.emit('troopHit', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: best.x, tz: best.z, dir: tr.facing, ranged: tr.range > 3 });
       this.troopStrike(best, dmg, crit);
       if (tr.arc) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= 1.6 + o.radius) this.troopStrike(o, dmg * tr.arc, false); // (0.83) a warrior's swing carries
-      if (tr.leech > 0) tr.hp = Math.min(tr.maxHp, tr.hp + dmg * tr.leech);
+      if (tr.leech > 0) this.troopMend(tr, dmg * tr.leech);
       if (tr.splash) for (const o of foes) if (o !== best && !o.dead && dist(o.x, o.z, best.x, best.z) <= tr.splash) this.troopStrike(o, dmg * 0.5, false);
       if (tr.fx && tr.fx.weapon && (tr.strikes = (tr.strikes || 0) + 1) % 4 === 0) {
         // Hearthflame (an Immortal weapon): every fourth strike bursts
@@ -6878,6 +6959,7 @@ export class World {
         this.emit('burst', { x: best.x, z: best.z, radius: 3, color: 0xff7a2a });
       }
     }
+    this.striker = null;
   }
 
   /** One of the keep's heroes hits an enemy of the Tide (its own numbers). */
@@ -6885,6 +6967,7 @@ export class World {
     if (e.dead) return;
     if (e.judgedT > 0) dmg *= 1 + MIRACLES.judge.mark; // (0.87) Judged: no Veil hides it, and it takes more
     else if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84) shrouded by a Veilbearer
+    if (e.duel && this.striker && this.striker !== e.duel) dmg *= 1 - FOES.oathbreaker.duel.cut; // (0.92) not its chosen
     dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg;
     e.hitFlash = 0.12;
@@ -6925,7 +7008,7 @@ export class World {
     if (tr.atkT > 0) return true;
     tr.atkT = tr.cd;
     const top = build ? hurt.max : hurt.maxHp;
-    const heal = Math.min(top - hurt.hp, tr.dmg * fury * (build ? 3 : 1.5));
+    const heal = Math.min(top - hurt.hp, tr.dmg * fury * (build ? 3 : 1.5) * (!build && hurt.rotT > 0 ? 1 - FOES.rotmother.rot.cut : 1)); // (0.92) a Rotmother's rot
     hurt.hp += heal;
     this.emit('troopHeal', { id: tr.id, cls: tr.cls, x: tr.x, z: tr.z, tx: hurt.x, tz: hurt.z, to: build ? 'b:' + hurt.id : hurt.id, amount: Math.round(heal) });
     return true;
@@ -7079,7 +7162,7 @@ export class World {
     if (sk === 'mend') {
       const hurt = allies(12).filter((o) => o.hp < o.maxHp * (tr.support ? 0.8 : 0.7)).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
       if (!hurt) return false;
-      hurt.hp = Math.min(hurt.maxHp, hurt.hp + hurt.maxHp * S.heal);
+      this.troopMend(hurt, hurt.maxHp * S.heal);
       fx(hurt.x, hurt.z);
       return true;
     }
@@ -7103,7 +7186,7 @@ export class World {
       const fallen = this.troops.find((o) => o.dead && dist(o.x, o.z, tr.x, tr.z) <= S.r);
       const need = round.reduce((n, o) => n + (o.hp < o.maxHp * 0.7 ? 1 : 0), 0);
       if (!fallen && need < 2) return false;
-      for (const o of round) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * S.heal);
+      for (const o of round) this.troopMend(o, o.maxHp * S.heal);
       if (fallen) {
         fallen.dead = false;
         fallen.hp = Math.round(fallen.maxHp / 3);
@@ -7152,7 +7235,7 @@ export class World {
           tr.dead = false;
           tr.hp = tr.maxHp * M.raise;
           this.emit('troopRaised', { id: tr.id, name: tr.name, x: tr.x, z: tr.z });
-        } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * M.heal);
+        } else this.troopMend(tr, tr.maxHp * M.heal);
         [tr.benT, tr.benPow] = [M.dur, M.pow];
         n++;
       }
@@ -7176,7 +7259,7 @@ export class World {
   /** (0.85) R in a Tide: pay, and begin the channel where you aim (in the keep, clear of its buildings). */
   incarnate(x, z) {
     const t = this.tide, k = this.player.keep, p = this.player;
-    if (!t || t.state !== 'on' || !k || p.dead || t.inc > 0 || t.icd > 0 || t.chan != null) return;
+    if (!t || t.state !== 'on' || !k || p.dead || p.possess || t.inc > 0 || t.icd > 0 || t.chan != null) return; // (0.92: not from inside the Seraph)
     if (k.faith < INCARNATE.faith) return this.emit('keepShort', { what: 'faith', need: INCARNATE.faith, have: k.faith });
     k.faith -= INCARNATE.faith;
     this.keepSpend({ faith: INCARNATE.faith });
@@ -7260,8 +7343,8 @@ export class World {
    */
   handsOn() {
     const t = this.tide, p = this.player;
-    if (t && t.state === 'on') return t.inc > 0 && this.keepOwns();
-    return !!p.keepWalk && !!this.map && this.map.id === KEEP.map;
+    if (t && t.state === 'on') return (t.inc > 0 || !!p.possess) && this.keepOwns();
+    return (!!p.keepWalk || !!p.possess) && !!this.map && this.map.id === KEEP.map; // (0.92) or in the Seraph
   }
   /** (0.91) Walk a keep over your shoulder between nights (on or off). */
   keepWalkSet(on) {
@@ -7302,7 +7385,7 @@ export class World {
         tr.hp = Math.round(tr.maxHp * L.raise * s);
         raised++;
         this.emit('troopRaised', { id: tr.id, name: tr.name, x: tr.x, z: tr.z });
-      } else tr.hp = Math.min(tr.maxHp, tr.hp + tr.maxHp * L.heal * s);
+      } else this.troopMend(tr, tr.maxHp * L.heal * s);
       [tr.shield, tr.shieldT] = [tr.maxHp * L.shield * s, L.shieldDur];
       saved++;
     }
@@ -7331,13 +7414,136 @@ export class World {
   /** A Tide foe's blow on the incarnate god: a fall ends the incarnation, never the hero. */
   incarnateHurt(dmg) {
     const p = this.player;
-    if (p.dodgeT > 0) return this.emit('dodged', { x: p.x, z: p.z }); // (0.89) rolled through it
+    if (p.dodgeT > 0 || (p.dash && !p.dash.refunded && p.possess)) return this.emit('dodged', { x: p.x, z: p.z }); // (0.89) rolled through it (0.92: or mid-glide)
     const stone = this.tide.bless.includes('stoneskin') ? 0.7 : 1;
     // (as a mortal: health counted as if it were INCARNATE.body, so any hero's gear makes the same fight)
-    const n = Math.max(1, Math.round((p.stats.maxHp * dmg * stone) / INCARNATE.body));
+    // (0.92) the Seraph: its body at the Night its level matches
+    const k = p.keep;
+    const body = p.possess ? STATUE.body * statuePower(k && k.statue ? k.statue.lvl : 1) : INCARNATE.body;
+    const n = Math.max(1, Math.round((p.stats.maxHp * dmg * stone) / body));
     p.hp -= n;
     this.emit('damage', { who: 'player', x: p.x, z: p.z, amount: n });
-    if (p.hp <= 1) this.incarnateEnd(true);
+    if (p.hp <= 1) return p.possess ? this.possessEnd(true) : this.incarnateEnd(true);
+  }
+
+  /** (0.92) Is the keeper on the field in a night: incarnate, or in the Seraph? */
+  inField() {
+    const t = this.tide;
+    return !!t && (t.inc > 0 || !!this.player.possess);
+  }
+  /** (0.92) The Seraph's level (0 if it is not raised). */
+  statueLvl() {
+    const k = this.player.keep;
+    return k && k.statue ? k.statue.lvl : 0;
+  }
+  /** (0.92) The worshippers raise the Seraph (at its plinth, once a Night this deep is held). */
+  statueRaise() {
+    const k = this.player.keep;
+    if (!this.inKeep() || !k || k.statue) return;
+    if ((k.nightMax || 0) < STATUE.needNight) return this.emit('keepShort', { what: 'night', need: STATUE.needNight, have: k.nightMax || 0 });
+    const c = STATUE.raise;
+    if (k.sigils < c.sigils) return this.emit('keepShort', { what: 'sigils', need: c.sigils, have: k.sigils });
+    if (!this.keepPay({ faith: c.faith, stone: c.stone })) return;
+    k.sigils -= c.sigils;
+    k.statue = { lvl: Math.max(1, Math.min(statueCap(k), k.nightMax - STATUE.startBelow)), xp: 0, rest: 0, hp: 1, fells: 0, nights: 0 };
+    this.emit('statueRaised', { lvl: k.statue.lvl, x: STATUE.at.x, z: STATUE.at.z });
+  }
+  /** (0.92) Faith laid at the Seraph's feet: a quarter of a level each time (n times at once). */
+  statueOffer(n = 1) {
+    const k = this.player.keep;
+    if (!this.inKeep() || !k || !k.statue) return;
+    n = Math.max(1, Math.min(100, Math.floor(Number(n) || 1)));
+    let done = 0;
+    for (let i = 0; i < n; i++) {
+      const s = k.statue;
+      if (s.lvl >= statueCap(k)) {
+        if (!done) this.emit('keepMaxed', { name: STATUE.name, what: 'level', cap: statueCap(k) });
+        break;
+      }
+      const c = STATUE.offer(s.lvl);
+      if (k.faith < c.faith) {
+        if (!done) this.emit('keepShort', { what: 'faith', need: c.faith, have: k.faith });
+        break;
+      }
+      k.faith -= c.faith;
+      this.keepSpend({ faith: c.faith });
+      this.statueXp(STATUE.need(s.lvl) * STATUE.offerShare, true);
+      done++;
+    }
+    if (done) this.emit('statueOffered', { n: done, lvl: k.statue.lvl, xp: k.statue.xp });
+  }
+  /** (0.92) The Seraph grows (never past the best Night held). */
+  statueXp(n, quiet = false) {
+    const k = this.player.keep, s = k && k.statue;
+    if (!s || !(n > 0)) return;
+    const cap = statueCap(k);
+    if (s.lvl >= cap) return;
+    s.xp += Math.round(n);
+    let up = 0;
+    while (s.lvl < cap && s.xp >= STATUE.need(s.lvl)) {
+      s.xp -= STATUE.need(s.lvl);
+      s.lvl++;
+      up++;
+    }
+    if (s.lvl >= cap) s.xp = Math.min(s.xp, STATUE.need(s.lvl) - 1);
+    if (up) this.emit('statueLevel', { lvl: s.lvl, cap, unlocked: Object.keys(STATUE_KIT).filter((c) => STATUE_KIT[c].unlock > s.lvl - up && STATUE_KIT[c].unlock <= s.lvl).map((c) => STATUE_KIT[c].name) });
+  }
+  /** (0.92) P in your keep: into the Seraph, or (on false) back out. */
+  possessSet(on) {
+    const p = this.player, k = p.keep, t = this.tide;
+    if (!on) return this.possessEnd(false);
+    if (p.possess || !this.inKeep() || !k || p.dead) return;
+    if (!k.statue) return this.emit('statueNone', { need: STATUE.needNight, have: k.nightMax || 0 });
+    if (k.statue.rest > 0) return this.emit('statueResting', { t: Math.ceil(k.statue.rest) });
+    if (t && t.state === 'on' && (t.inc > 0 || t.chan != null)) return; // already on the field as yourself
+    p.possess = { ranks: p.ranks, hp: p.hp, x: p.x, z: p.z, walk: !!p.keepWalk };
+    p.keepWalk = false;
+    p.ranks = { q: 1, w: 1, e: 1, r: 1, d: 1, f: 1 };
+    // it steps down from its plinth, toward the Hearth
+    const a = dAtan2(-STATUE.at.z, -STATUE.at.x);
+    const at = { x: STATUE.at.x + dCos(a) * 1.8, z: STATUE.at.z + dSin(a) * 1.8, radius: p.radius };
+    this.pushOut(at, p.radius);
+    [p.x, p.z, p.px, p.pz, p.facing] = [at.x, at.z, at.x, at.z, a];
+    [p.moveTarget, p.targetId, p.attackMove, p.dash, p.leap, p.channel, p.freeSwing, p.spin] = [null, null, null, null, null, null, null, null];
+    for (const c of ['q', 'w', 'e', 'r']) p.cd[c] = 0;
+    this.recalcStats();
+    p.hp = Math.max(1, Math.round(p.stats.maxHp * k.statue.hp));
+    this.emit('possess', { on: true, x: p.x, z: p.z, lvl: k.statue.lvl });
+  }
+  /** (0.92) Out of the Seraph: it is stone on its plinth again (felled: for a while), and you are yourself. */
+  possessEnd(fell) {
+    const p = this.player, k = p.keep, P = p.possess;
+    if (!P) return;
+    const x = p.x, z = p.z;
+    if (k && k.statue) {
+      k.statue.hp = fell ? 1 : Math.max(0.05, Math.min(1, p.hp / Math.max(1, p.stats.maxHp)));
+      if (fell) {
+        k.statue.rest = STATUE.rest;
+        k.statue.fells++;
+      }
+    }
+    p.possess = null;
+    p.ranks = P.ranks;
+    [p.dash, p.leap, p.channel, p.freeSwing, p.spin, p.targetId, p.attackMove, p.moveTarget] = [null, null, null, null, null, null, null, null];
+    this.recalcStats();
+    p.hp = Math.max(1, Math.min(p.stats.maxHp, P.hp));
+    [p.x, p.z, p.px, p.pz] = [P.x, P.z, P.x, P.z];
+    if (P.walk && !(this.tide && this.tide.state === 'on') && this.map && this.map.id === KEEP.map) p.keepWalk = true;
+    this.emit('possess', { on: false, fell: !!fell, x, z, rest: fell ? STATUE.rest : 0 });
+  }
+  /** (0.92) The Seraph between times: stone mends, and a felled one wakes. */
+  stepStatue(dt) {
+    const k = this.player.keep, s = k && k.statue;
+    if (!s || !this.inKeep()) return;
+    if (s.rest > 0) {
+      s.rest -= dt;
+      if (s.rest <= 0) {
+        s.rest = 0;
+        this.emit('statueWakes', { x: STATUE.at.x, z: STATUE.at.z });
+      }
+    }
+    if (!this.player.possess && s.hp < 1 && !(this.tide && this.tide.state === 'on')) s.hp = Math.min(1, s.hp + dt / 60);
+    if (this.player.possess && this.tide && this.tide.state === 'on') this.tide.posT = (this.tide.posT || 0) + dt;
   }
 
   /** Hand in a finished job at the board (in Haven): its rewards, and a new job in its place. */
@@ -8687,7 +8893,7 @@ export class World {
   /** Spend a skill point to rank up an ability. */
   rankUp(slot, n = 1) {
     const p = this.player;
-    if (!this.kit[slot] || p.skillPoints <= 0 || p.ranks[slot] >= CONFIG.MAX_RANK || !this.abilityUnlocked(slot)) return;
+    if (p.possess || !this.kit[slot] || p.skillPoints <= 0 || p.ranks[slot] >= CONFIG.MAX_RANK || !this.abilityUnlocked(slot)) return; // (0.92: not while in the Seraph)
     // (0.91.1) as many as asked (a held key or button asks for more each moment), as far as the points and
     // the cap allow
     const want = Math.max(1, Math.min(1000, Math.floor(Number(n) || 1)));
@@ -9416,8 +9622,11 @@ export class World {
     let far = false;
     if (!opts.raw) {
       // (raw: already-final damage, like Second Death going off, is not scaled again)
-      dmg *= this.gapScale(e.level).dealt;
-      dmg *= classPower(this.cls, SPECS[p.spec] && SPECS[p.spec].cls === this.cls ? p.spec : null, p.level); // class power (0.51, balance.js)
+      if (!p.possess) {
+        // (0.92) the Seraph's blows are its own, whatever hero is in it
+        dmg *= this.gapScale(e.level).dealt;
+        dmg *= classPower(this.cls, SPECS[p.spec] && SPECS[p.spec].cls === this.cls ? p.spec : null, p.level); // class power (0.51, balance.js)
+      }
       if (this.mods.farShot > 0 && !opts.dot) {
         // Long Watch (Sharpshooter): the further the target, the harder the hit.
         const bonus = Math.min(this.mods.farShotMax, Math.max(0, dist(p.x, p.z, e.x, e.z) - e.radius - 2) * this.mods.farShot);
@@ -9549,10 +9758,12 @@ export class World {
     }
     // (0.81.1) the Tide is the keep's heroes' to fight; the god's hand only while incarnate (0.82.6: at full
     // strength). (0.82.4) A visiting friend's blows never land: it is the keeper's night.
-    if (e.tide && (!this.tide || !(this.tide.inc > 0) || !this.keepOwns())) return;
+    if (e.tide && (!this.tide || !this.inField() || !this.keepOwns())) return;
     if (e.tide) {
-      // (0.85) as a mortal: N times your attack lands as N times INCARNATE.atk of the night's strength
-      dmg = (dmg / Math.max(1, this.player.stats.ad)) * INCARNATE.atk * (this.tide.night || 1);
+      // (0.85) as a mortal: N times your attack lands as N times INCARNATE.atk of the night's strength;
+      // (0.92) the Seraph as the Night its level matches
+      const k = this.player.keep;
+      dmg = (dmg / Math.max(1, this.player.stats.ad)) * (this.player.possess ? STATUE.atk * statuePower(k && k.statue ? k.statue.lvl : 1) : INCARNATE.atk * (this.tide.night || 1));
       if (e.veiled) dmg *= 1 - FOES.veilbearer.veil.cut; // (0.84)
     }
     if (e.markT > 0 && e.markPid === this.cur.pid && opts.source !== 'mark') e.markAcc += Math.min(dmg, Math.max(0, e.hp));
@@ -9650,6 +9861,7 @@ export class World {
     }
     this.removeTelegraph(e);
     if (e.tide && this.tide && this.tide.state === 'on') this.tideFoeDown(e); // (0.84)
+    if (e.tide && this.tide && p.possess && source !== 'troop') this.statueXp(STATUE.kill(this.tide.level || 1, FOES[e.type]) * (this.tide.level >= this.statueLvl() - 2 ? 1 : STATUE.low)); // (0.92) the Seraph learns from what it fells
     if (this.quietKills && e.tide) return; // (0.86) a raid fought while you were away: no kills of yours
     this.stats.kills++;
     if (this.mode === 'explore') {
@@ -10465,6 +10677,7 @@ inTown() {
    */
   loadMap(id, from = null) {
     this.player.keepWalk = false; // (0.91) walking over the shoulder ends at the Waygate
+    if (this.player.possess) this.possessEnd(false); // (0.92) and the Seraph stays home
     this.clearWishes(); // the Asker's wishes stay in the Starwell (0.40)
     if (this.map && this.mode === 'explore' && !this.trial && !this.instanced()) this.chestMaps[this.map.id] = { chests: this.chests, refill: this.chestRefill || [] };
     if (id !== 'rift' && this.rift) {
@@ -10986,6 +11199,7 @@ inTown() {
   stepExplore(dt) {
     if (this.tide) this.stepTide(dt); // (0.80)
     else this.stepRaidClock(dt); // (0.86)
+    this.stepStatue(dt); // (0.92)
     const p = this.player;
     if (p.dead) {
       this.respawnT -= dt;
@@ -11210,6 +11424,7 @@ inTown() {
       const owner = (this.keepOwner != null && this.heroByPid(this.keepOwner)) || lead;
       this.as(owner, () => this.stepTide(dt));
     } else if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => this.stepRaidClock(dt)); // (0.86)
+    if (this.keepOwner != null && this.heroByPid(this.keepOwner)) this.as(this.heroByPid(this.keepOwner), () => this.stepStatue(dt)); // (0.92)
     // Enemies come back a while after they are killed, but not right on top of anyone; (0.61) faster
     // the more heroes share the map (not the bosses), so each can hold a stretch of it.
     const faster = 1 + CONFIG.PARTY_RESPAWN * (this.heroes.length - 1);

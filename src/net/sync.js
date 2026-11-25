@@ -60,6 +60,12 @@ const unpack = (a, keys) => {
 };
 
 /** Light hero state: everything except the HEAVY parts. */
+/** (0.92) The keeper's Seraph (level, and how long it is only stone), for a keep's snapshot. */
+function keepStatueOf(world) {
+  const owner = world.keepOwner != null ? world.heroByPid(world.keepOwner) : world.heroes && world.heroes[0];
+  const s = owner && owner.player && owner.player.keep && owner.player.keep.statue;
+  return s ? { lvl: s.lvl, rest: Math.round(s.rest) } : undefined;
+}
 function lightPlayer(p) {
   const out = {};
   for (const k in p) if (!HEAVY.includes(k)) out[k] = p[k];
@@ -240,9 +246,10 @@ export function makeSnapshot(world, pid, memo) {
       merchant: world.merchant ? { id: world.merchant.id, x: r2(world.merchant.x), z: r2(world.merchant.z), left: r2(world.merchant.left), level: world.merchant.level, stock: merchantStock(world.merchant, pid, memo) } : null, // (0.66) what this player has bought, only when it changes
       // (0.81) the Wishkeep: its night, its heroes and its buildings
       keep: world.map && world.map.id === 'wishkeep' ? {
-        tide: world.tide ? { state: world.tide.state, raid: world.tide.raid || undefined, wave: world.tide.wave, waves: world.tide.waves, omen: world.tide.omen || undefined, level: world.tide.level || 1, mcd: world.tide.mcd, zones: world.tide.zones && world.tide.zones.length ? world.tide.zones.map((zo) => ({ x: r2(zo.x), z: r2(zo.z), r: zo.r, t: r2(zo.t) })) : undefined, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, chan: world.tide.chan != null ? r2(world.tide.chan) : undefined, chanAt: world.tide.chanAt || undefined, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
+        tide: world.tide ? { state: world.tide.state, raid: world.tide.raid || undefined, wave: world.tide.wave, waves: world.tide.waves, omen: world.tide.omen || undefined, omen2: world.tide.omen2 || undefined, level: world.tide.level || 1, mcd: world.tide.mcd, zones: world.tide.zones && world.tide.zones.length ? world.tide.zones.map((zo) => ({ x: r2(zo.x), z: r2(zo.z), r: zo.r, t: r2(zo.t) })) : undefined, bless: world.tide.bless, inc: world.tide.inc > 0 ? r2(world.tide.inc) : 0, chan: world.tide.chan != null ? r2(world.tide.chan) : undefined, chanAt: world.tide.chanAt || undefined, icd: world.tide.icd > 0 ? r2(world.tide.icd) : 0 } : null,
         troops: (world.troops || []).map((t) => ({ id: t.id, cls: t.cls, name: t.name, x: r2(t.x), z: r2(t.z), facing: r2(t.facing), hp: Math.round(t.hp), maxHp: t.maxHp, dead: t.dead || undefined, moving: t.moving || undefined, lvl: t.lvl, rar: t.rar || 0, shield: t.shield > 0 ? 1 : undefined, gender: t.gender })),
         builds: (world.keepBuilds || []).map((b) => ({ id: b.id, x: b.x, z: b.z, r: b.r, hp: Math.round(b.hp), max: b.max, wardT: b.wardT > 0 ? r2(b.wardT) : undefined })),
+        statue: keepStatueOf(world), // (0.92) the keeper's Seraph, for the plinth
       } : undefined,
       delve: world.delve ? { tier: world.delve.tier, rooms: world.delve.rooms, room: world.delve.room, route: world.delve.route, seed: world.delve.seed, state: world.delve.state } : null,
       rift: world.rift ? { tier: world.rift.tier, theme: world.rift.theme, seed: world.rift.seed, progress: world.rift.progress, need: world.rift.need, timeLeft: r2(world.rift.timeLeft), state: world.rift.state, won: world.rift.won } : null,
@@ -275,6 +282,7 @@ export function applySnapshot(world, snap, alpha = 1) {
   world.delve = snap.delve || null;
   world.rift = snap.rift || null;
   world.tide = snap.keep ? snap.keep.tide : null; // (0.81)
+  world.keepStatueShown = snap.keep ? snap.keep.statue || null : null; // (0.92)
   world.keepVisit = !!(snap.keepMap && snap.keepMap.visit); // (0.82.2) in a friend's keep
   world.keepVisitOf = snap.keepMap && snap.keepMap.visit ? snap.keepMap.owner : null;
   world.keepBuilds = snap.keep ? snap.keep.builds : [];

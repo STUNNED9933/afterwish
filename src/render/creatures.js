@@ -64,6 +64,11 @@ export const CREATURES = {
   gatebreaker: { model: 't_gatebreaker', height: 3.7, kinds: { attack: 'chop' } },
   mourner: { model: 't_mourner', height: 2.3 },
   tidecaller: { model: 't_tidecaller', height: 4.4, glow: [0.1, 0.1, 0.3] },
+  // (0.92) the deep Nights' own, in bodies the game already has (tinted)
+  oathbreaker: { model: 'e_oathshade', height: 2.7, tint: 0xa03050 },
+  gloamwing: { model: 'e_wraith', height: 2.0, tint: 0x3a5aff, float: 0.6 },
+  rotmother: { model: 'e_sporecap', height: 3.0, tint: 0x7aa030 },
+  rotling: { model: 'e_sporecap', height: 1.3, tint: 0x7aa030 },
   // the Granted (0.64)
   answered: { model: 'e_answered', height: 2.4 },
   cantor: { model: 'e_cantor', height: 2.2 },

@@ -132,6 +132,14 @@ export class Input {
     if (on) this.lock(); // (a key press or a click allows it now)
     else this.unlock();
   }
+  /** (0.92) Into the Seraph, or back out of it (anywhere in your own keep). */
+  togglePossess() {
+    const w = this.getWorld();
+    const on = !(w.player && w.player.possess);
+    w.command({ type: 'keepPossess', on });
+    if (on) this.lock(); // (a key press or a click allows it now)
+    else if (!(w.player && w.player.possess && w.player.possess.walk)) this.unlock();
+  }
   /** (0.85) Over the shoulder (incarnate in your keep's night)? */
   shoulderOn() {
     return !!(this.renderer.shoulder && this.renderer.shoulder.on);
@@ -243,9 +251,18 @@ export class Input {
     // (0.91) V: walk a keep over your shoulder between nights (and back above)
     if (key === 'v' && !typing && this.isPlaying() && !e.repeat) {
       const w = this.getWorld();
-      if (w.map && w.map.id === 'wishkeep' && !(w.tide && w.tide.state === 'on')) {
+      if (w.map && w.map.id === 'wishkeep' && !(w.tide && w.tide.state === 'on') && !(w.player && w.player.possess)) {
         e.preventDefault();
         this.toggleWalk();
+        return;
+      }
+    }
+    // (0.92) Y: into the keep's Seraph, or back out (anywhere in your own keep, a night included)
+    if (key === 'y' && !typing && this.isPlaying() && !e.repeat) {
+      const w = this.getWorld();
+      if (w.map && w.map.id === 'wishkeep' && !w.keepVisit && w.player && w.player.keep && w.player.keep.statue) {
+        e.preventDefault();
+        this.togglePossess();
         return;
       }
     }

@@ -160,6 +160,28 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Deep Nights and the Seraph (0.92)
+
+**Call the Night now goes to Night 50.** Past Night 30, each level is 8.5% stronger instead of 28%, but the deep Nights bring more than bigger numbers:
+- **Two omens a Night.** Two new omens appear only as the second one: Eclipse (heroes' skills recharge a third slower) and Siegefire (buildings take 50% more).
+- **A sixth wave** from Night 40, and two Tidecallers on Night 50.
+- **Three new foes:**
+  - **Oathbreaker** (from 31) duels your strongest hero and takes half damage from everyone else.
+  - **Gloamwing** (from 34, in pairs) dives past the front line onto archers and mages; its first hit on each lands 2.5 times as hard.
+  - **Rotmother** (from 38) halves healing on heroes near her and splits into three Rotlings when she falls.
+  - All three reuse existing models, recoloured, so they cost no Tripo credits.
+- **Rewards.** Every three Nights held past 30 raises the Lodge's training cap by one level (up to 22), and every four raises the Bastion's arming cap by one point (up to 20). An Immortal piece won past Night 30 is **Starforged**: its main stat is a fifth stronger and it has a fourth bonus line. From Night 37, no piece is below Ancient, and the Immortal chance climbs to 30% by Night 50. A fifth gear piece drops from Night 40.
+- **Balance check.** Fully trained, fully armed heroes with Starforged gear hold every Night through 47 alone and lose Night 50. With a matching Seraph fighting beside them, they win Night 50.
+
+**Possess: the Seraph.** Once Night 10 is held, the keep's worshippers can raise an angel of stone on a new plinth beside the Hearth. It costs 1,200 Faith, 120 Wishstone and 10 Sigils.
+- **One per account.** It is saved with the Wishkeep, so every class shares it.
+- **Taking it up.** Press **Y** anywhere in your own keep, at any time, including during raids and Call the Night. It costs no Faith and has no time limit. Press Y again to leave it.
+- **Controls.** You fight in the over-the-shoulder combat system with its own kit: **Dawnlance** (Q, a piercing line), **Wingbeat** (E, a knockback burst that also heals your heroes by 15%), **Glide** (Shift, an untouchable dash) and **Descent** (R, a stunning leap, from level 5). Free strikes, Tab targeting and the dodge roll work as they do for Incarnate.
+- **Strength.** None of the hero's gear, talents, class power or level affects it. Its level is the Night it is a match for: a level-30 Seraph hits and takes hits like a fighter of Night 30.
+- **Growth.** It starts four levels below your best Night and can never pass it. It gains XP from what it kills, from Nights and raids it fights in and holds, and from Faith laid at its feet (each offering is a quarter of a level). Fighting on Nights far below its level earns little.
+- **Falling.** If it is felled, it turns back to stone for 60 seconds and you return to being the keep's god.
+- **Model.** It is a new Tripo model (105 credits; about 590 remain).
+
 ### Quick ranks (0.91.1)
 
 Ranking a skill no longer takes one press per rank. Hold Ctrl, Alt or Shift with Q, W, E or R and the skill keeps ranking: one rank at first, then faster the longer it's held. A skill reaches its cap in about two seconds. The + on the skill bar and the town's Rank up buttons work the same way when held, and Shift-click spends every point the skill can take. The sim takes a count with each `rankUp` command, so a held key sends a few batched commands rather than a hundred single ones. The rank-up sound and floating text appear once per batch, with the count shown.

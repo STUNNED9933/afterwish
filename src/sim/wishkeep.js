@@ -42,9 +42,9 @@ export const KEEP = {
   heroCap: [0, 3, 5, 8], // heroes the keep can have, by tier: few, and good
   recruit: (n) => ({ faith: 120 * (n + 1) }), // the n-th (from 0)
   train: (lvl) => ({ faith: 50 * lvl }), // from lvl to lvl + 1 (at the Lodge)
-  trainMax: (lodge, tier = 0) => (lodge ? 3 + 2 * lodge : 1) + tier, // a hero's level cap (the Lodge's level, and its tier, 0.82.1)
+  trainMax: (lodge, tier = 0, nightMax = 0) => (lodge ? 3 + 2 * lodge : 1) + tier + deepTrain(nightMax), // a hero's level cap (the Lodge's level, and its tier, 0.82.1; 0.92: deep Nights held)
   arm: (gear) => ({ faith: 40 * (gear + 1), stone: 8 * (gear + 1) }), // gear to gear + 1 (at the Bastion)
-  armMax: (bastion, tier = 0) => 3 * bastion + tier, // (and the Bastion's tier, 0.82.1)
+  armMax: (bastion, tier = 0, nightMax = 0) => 3 * bastion + tier + deepArm(nightMax), // (and the Bastion's tier, 0.82.1; 0.92: deep Nights held)
   learn: { faith: 100 }, // teaching a hero a skill
   perLvl: 0.12, // a hero's health and damage per level
   perGear: 0.15, // ... and per point of gear
@@ -144,6 +144,47 @@ export const MIRACLE_IDS = Object.keys(MIRACLES);
  * Your blows count as a mortal's, like your health: a hit worth N times your attack deals N times `atk`
  * of the night's strength, whatever your gear. Once or twice a night (`cd`).
  */
+/**
+ * (0.92) The Seraph: an angel of stone the keep's worshippers raise by the Hearth, one for the whole account
+ * (it lives in the keep, like the keep's heroes). The keeper can Possess it (P) anywhere in their own keep,
+ * at any time, a night or a raid included, for as long as they like, and fight in it over the shoulder with
+ * its own four skills, free strikes and the roll. It is no hero of a class: its numbers are its own, and
+ * its level is the Night it is a match for (as Incarnate is a match for whatever Night it is): a blow worth
+ * N times its attack deals N times `atk` of NIGHT.power(level), and it stands `body` times that. It grows
+ * from what it fells, from the nights it fights in, and from Faith laid at its feet, never past the
+ * best Night held. Felled, it is only stone for `rest` seconds.
+ */
+export const STATUE = {
+  name: 'The Seraph',
+  at: { x: 4.2, z: -4.2 }, // its plinth, by the Hearth
+  needNight: 10, // the worshippers raise it once a Night this deep is held
+  raise: { faith: 1200, stone: 120, sigils: 10 },
+  startBelow: 4, // it starts this many levels under the best Night held
+  maxLvl: 50,
+  atk: 30, body: 650,
+  as: 1.15, ms: 7.0, crit: 10,
+  rest: 60, // seconds as stone, once felled
+  need: (lvl) => Math.round(30 * (1 + 0.4 * (lvl - 1))), // xp from lvl to lvl + 1
+  // xp for one of the Unmade it fells (by the Night's pay); a Night or raid it fights in and holds: `held` times that
+  kill: (L, F) => (1 + 0.4 * (L - 1)) * (F && F.role === 'boss' ? 30 : F && F.big ? 8 : F && F.role ? 3 : 1),
+  held: 12,
+  low: 0.25, // a Night more than two under its level gives this much
+  offer: (lvl) => ({ faith: Math.round(40 * (1 + 0.4 * (lvl - 1))) }), // Faith for a quarter of a level
+  offerShare: 0.25,
+};
+/** (0.92) The Seraph's own kit (the keys are the class kit's: Q, W, E (on Shift over the shoulder), R). */
+export const STATUE_KIT = {
+  q: { key: 'Q', name: 'Dawnlance', type: 'line', icon: 'line', unlock: 1, cd: 5, range: 15, width: 1.6, dmg: (s) => 2.0 * s.ad, desc: 'A lance of light from its hand, through everything in a line.' },
+  w: { key: 'W', name: 'Wingbeat', type: 'nova', icon: 'w', unlock: 1, cd: 9, radius: 4.6, knockback: 8, mend: 0.15, dmg: (s) => 1.4 * s.ad, desc: 'Its wings open: everything around is struck and thrown back, and your heroes in reach mend 15% of their health.' },
+  e: { key: 'E', name: 'Glide', type: 'dash', icon: 'e', unlock: 1, cd: 6, range: 7, minRange: 3, duration: 0.3, width: 1.4, dmg: (s) => 0.8 * s.ad, desc: 'Glide toward where you aim, cutting through what is in the way. Nothing can strike it mid-glide.' },
+  r: { key: 'R', name: 'Descent', type: 'leap', icon: 'r', unlock: 5, cd: 24, range: 10, radius: 5, duration: 0.55, stun: 1.2, dmg: (s) => 3.5 * s.ad, desc: 'Rise and come down where you aim, striking everything there and stunning it (from level 5).' },
+};
+export const STATUE_BASIC = { range: 2.6, mult: 1 };
+/** (0.92) The Night a Seraph of this level is a match for: how hard it hits and how much it takes. */
+export const statuePower = (lvl) => NIGHT.power(Math.max(1, Math.min(STATUE.maxLvl, lvl)));
+/** (0.92) The highest level the Seraph can reach now: the best Night held. */
+export const statueCap = (keep) => Math.max(1, Math.min(STATUE.maxLvl, (keep && keep.nightMax) || 1));
+
 /** (0.89) The incarnate god's dodge roll (Shift): how far, how quick, how long blows pass through, how often. */
 export const DODGE = { dist: 4.5, dur: 0.3, grace: 0.4, cd: 2.5 };
 export const INCARNATE = {
@@ -165,9 +206,14 @@ export const FOES = {
   veilbearer: { name: 'Veilbearer', hp: 160, dmg: 6, speed: 3.0, range: 7, cd: 1.6, ranged: true, role: 'veil', from: 6, veil: { r: 5.5, cut: 0.5 }, desc: 'The Unmade near it take half damage. Break through to it first.' },
   gatebreaker: { name: 'Gatebreaker', hp: 950, dmg: 30, speed: 1.9, range: 2.6, cd: 2.4, siege: 4, role: 'breaker', from: 8, big: true, desc: 'A siege giant: walks straight for the halls, never turns on a hero, and shrugs off half a stun.' },
   mourner: { name: 'Mourner', hp: 190, dmg: 8, speed: 2.8, range: 8, cd: 1.8, ranged: true, role: 'mourn', from: 11, raise: { cd: 7, r: 12, hp: 0.6 }, desc: 'Hangs back and raises the Unmade who fell near her.' },
+  // (0.92) the deep Nights' own (past 30)
+  oathbreaker: { name: 'Oathbreaker', hp: 900, dmg: 26, speed: 3.0, range: 2.2, cd: 1.6, role: 'duel', from: 31, duel: { cut: 0.5 }, desc: 'A fallen knight who singles out your strongest hero and fights only them. Your other heroes deal it half damage, so help the one it chose.' },
+  gloamwing: { name: 'Gloamwing', hp: 150, dmg: 16, speed: 6.4, range: 1.6, cd: 1.0, role: 'dive', from: 34, pack: 2, pounce: 2.5, desc: 'Fast, and goes over the front line for your archers and mages. Its first blow on each lands two and a half times as hard.' },
+  rotmother: { name: 'Rotmother', hp: 1400, dmg: 20, speed: 2.0, range: 2.0, cd: 1.5, siege: 2, role: 'split', from: 38, big: true, split: { n: 3, into: 'rotling' }, rot: { r: 3.5, cut: 0.5 }, desc: 'Heroes near her heal half as much, and when she falls she breaks into three Rotlings.' },
+  rotling: { name: 'Rotling', hp: 260, dmg: 10, speed: 3.8, range: 1.6, cd: 1.0, desc: 'What is left of a Rotmother.' },
   tidecaller: { name: 'The Tidecaller', hp: 4200, dmg: 40, speed: 2.6, range: 3, cd: 2.0, siege: 3, role: 'boss', big: true, slam: { cd: 6, r: 4.5, x: 1.6, wind: 0.8 }, call: { cd: 12, n: 3 }, desc: 'The night\'s king, on the last wave of every fifth Night: slams those near, calls the Hush, and rages when hurt.' },
 };
-export const FOE_SPECIALS = ['thief', 'cinderling', 'veilbearer', 'gatebreaker', 'mourner'];
+export const FOE_SPECIALS = ['thief', 'cinderling', 'veilbearer', 'gatebreaker', 'mourner', 'oathbreaker', 'gloamwing', 'rotmother'];
 /**
  * (0.84) How many of each special foe a wave brings on a Night: wave w (1-based) of W.
  */
@@ -178,7 +224,11 @@ export function tideSpecials(L, w, W) {
   if (L >= 6 && w >= 2) out.veilbearer = 1 + (L >= 18);
   if (L >= 8 && (w === W || (L >= 16 && w === 2))) out.gatebreaker = 1 + (L >= 24 && w === W);
   if (L >= 11 && w >= 2) out.mourner = 1 + (L >= 21);
-  if (L % 5 === 0 && w === W) out.tidecaller = 1;
+  // (0.92) the deep Nights
+  if (L >= 31 && w >= 2) out.oathbreaker = 1 + (L >= 44 && w === W);
+  if (L >= 34 && w >= 2) out.gloamwing = 1 + (L >= 42); // pairs
+  if (L >= 38 && (w === W || w === 3)) out.rotmother = 1 + (L >= 46 && w === W);
+  if (L % 5 === 0 && w === W) out.tidecaller = 1 + (L === NIGHT.max); // (0.92) two on the last Night
   return out;
 }
 /**
@@ -192,8 +242,12 @@ export const OMENS = {
   starfall: { name: 'Starfall', pay: 0.25, desc: 'Stars fall where the fighting is, every few seconds, on heroes and Unmade alike.' },
   legion: { name: 'Legion', pay: 0.3, desc: 'A third more Unmade in every wave.' },
   ironhide: { name: 'Iron Hide', pay: 0.25, desc: 'The Unmade have a quarter more health.' },
+  // (0.92) only on the deep Nights (past 30), as the second omen
+  eclipse: { name: 'Eclipse', pay: 0.25, deep: true, desc: "Your heroes' skills come round a third slower." },
+  siegefire: { name: 'Siegefire', pay: 0.2, deep: true, desc: 'The Unmade hit buildings half again as hard.' },
 };
-export const OMEN_IDS = Object.keys(OMENS);
+export const OMEN_IDS = Object.keys(OMENS).filter((o) => !OMENS[o].deep);
+export const DEEP_OMEN_IDS = Object.keys(OMENS).filter((o) => o !== 'starfall'); // (0.92) a deep Night's second omen (one Starfall is enough)
 /**
  * (0.86) Raids: smaller than a night, unasked. While you are in your keep one comes every so often (a horn,
  * then a single wave, a little below your best Night); while you are away the heroes meet one every
@@ -211,6 +265,20 @@ export const RAID = {
 };
 export const raidLevel = (keep) => Math.max(1, (keep.nightMax || 0) - RAID.below);
 export const nightOmen = (L) => (L >= 6 ? OMEN_IDS[(L * 7 + 3) % OMEN_IDS.length] : null);
+/** (0.92) From Night 31 a second omen, never the same as the first. */
+export const nightOmen2 = (L) => {
+  if (L <= 30) return null;
+  const one = nightOmen(L);
+  const pool = DEEP_OMEN_IDS.filter((o) => o !== one);
+  return pool[(L * 5 + 1) % pool.length];
+};
+/** (0.92) Every omen a Night brings. */
+export const nightOmens = (L) => [nightOmen(L), nightOmen2(L)].filter(Boolean);
+/** (0.92) Past Night 30 the halls learn from the deep: a level of training per three Nights held, a point of arming per four. */
+export const deepTrain = (nightMax) => Math.max(0, Math.floor(((nightMax || 0) - 30) / 3));
+export const deepArm = (nightMax) => Math.max(0, Math.floor(((nightMax || 0) - 30) / 4));
+export const TROOP_LVL_MAX = 16 + deepTrain(50);
+export const TROOP_GEAR_MAX = 15 + deepArm(50);
 
 // ---------------------------------------------------------------------------------------------- (0.82.1)
 /**
@@ -316,22 +384,23 @@ export const HERO_RAR_MAX = 6;
  * stronger (power), pays more, and gives rarer Hero gear and more Sigils.
  */
 export const NIGHT = {
-  max: 30,
+  max: 50, // (0.92: from 30)
+  deep: 30, // (0.92) past this, the deep Nights: gentler steps, new foes, two omens, a sixth wave from 40
   power: (L) => {
     let x = 0.6; // the Unmade's health and damage: 0.6, then 28% more each level (0.84: up from 0.55 and 27%,
-    for (let i = 1; i < L; i++) x *= 1.28; // for heroes who know four skills; whole powers: the same in every browser)
-    return x;
+    for (let i = 1; i < L; i++) x *= i < 30 ? 1.28 : 1.085; // for heroes who know four skills; whole powers: the same in every browser)
+    return x; // (0.92) past 30, 8.5% a level (heroes grow by deep training, deep arming and Starforged gear); Night 50 is past them alone
   },
   siege: (L) => {
     let x = 0.7; // what the buildings feel of it: about power^0.6 (stone outlasts flesh)
-    for (let i = 1; i < L; i++) x *= 1.154;
+    for (let i = 1; i < L; i++) x *= i < 30 ? 1.154 : 1.05;
     return x;
   },
   extra: (L) => Math.floor((L - 1) / 4), // more of them in each wave
-  waves: (L) => 3 + (L >= 10) + (L >= 20), // (0.84) a fourth wave from Night 10, a fifth from 20
+  waves: (L) => 3 + (L >= 10) + (L >= 20) + (L >= 40), // (0.84) a fourth wave from Night 10, a fifth from 20; (0.92) a sixth from 40
   reward: (L) => 1 + 0.4 * (L - 1), // Faith and Wishstone (0.84: steeper, from 0.3)
   sigils: (L) => 1 + Math.floor(L / 2),
-  pieces: (L) => Math.min(4, 1 + Math.floor(L / 5)), // Hero gear held nights give
+  pieces: (L) => Math.min(4, 1 + Math.floor(L / 5)) + (L >= 40), // Hero gear held nights give (0.92: a fifth from Night 40)
   // (0.84) stars: held; no hall wrecked; no hero fell. Each star won for the first time on a Night pays
   starSigils: (L) => 2 + Math.floor(L / 3),
 };
@@ -348,6 +417,7 @@ export const ARMORY_MAX = 80;
 export const HERO_GEAR = {
   main: [0.1, 0.15, 0.22, 0.32, 0.45, 0.62, 0.85], // the main line's share, by rarity (before the night's level)
   perNight: 0.04, // and 4% more for each Night level it was won on past the first
+  starforged: 1.2, // (0.92) an Immortal from past Night 30
   lines: [0, 1, 1, 2, 2, 3, 3], // bonus lines, by rarity
   // bonus lines: the most each can roll at Immortal (rarer pieces roll nearer it)
   bonus: {
@@ -387,14 +457,23 @@ export function rollHeroGear(rng, L, id, slot = null) {
     const top = HERO_GEAR.bonus[k].max * (0.35 + 0.65 * (r / HERO_RAR_MAX));
     g.lines.push({ k, v: Math.round(top * (0.6 + 0.4 * rng()) * 1000) / 1000 });
   }
+  if (r >= HERO_RAR_MAX && L > NIGHT.deep) {
+    // (0.92) Starforged: an Immortal from a deep Night, a fifth stronger and with a fourth line
+    g.name = 'Starforged ' + g.name;
+    g.main.v = Math.round(g.main.v * HERO_GEAR.starforged * 1000) / 1000;
+    if (pool.length) {
+      const k = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+      g.lines.push({ k, v: Math.round(HERO_GEAR.bonus[k].max * (0.6 + 0.4 * rng()) * 1000) / 1000 });
+    }
+  }
   return g;
 }
 /** (0.82) The rarity of a piece the night gives: rarer the higher the level; Immortal from level 10. */
 export function heroGearRarity(rng, L) {
-  const imm = L >= 10 ? Math.min(0.15, 0.012 * (L - 9)) : 0;
+  const imm = L >= 10 ? Math.min(0.15, 0.012 * (L - 9)) + (L > 30 ? 0.0075 * (L - 30) : 0) : 0; // (0.92: up to 30% on Night 50)
   if (rng() < imm) return 6;
   const base = [50, 28, 14, 5.5, 1.8, 0.5];
-  const floor = Math.min(4, Math.floor((L - 1) / 6)); // nothing below this from deep nights
+  const floor = Math.min(L >= 37 ? 5 : 4, Math.floor((L - 1) / 6)); // nothing below this from deep nights (0.92: Ancient from 37)
   const g = Math.sqrt(1 + 0.18 * L); // (sqrt is exact in every browser)
   const w = base.map((b, i) => {
     if (i < floor) return 0;
@@ -647,7 +726,7 @@ export function cleanKeep(raw) {
       k.armory.push({
         id: String(g.id || '').slice(0, 16), slot: g.slot, r, L: int(g.L, 1, 1, NIGHT.max), name: String(g.name || 'Hero gear').slice(0, 32),
         main: { k: g.main.k, v: Math.max(0, Math.min(5, Number(g.main.v) || 0)) },
-        lines: (Array.isArray(g.lines) ? g.lines : []).filter((l) => l && HERO_GEAR.bonus[l.k]).slice(0, 3).map((l) => ({ k: l.k, v: Math.max(0, Math.min(HERO_GEAR.bonus[l.k].max, Number(l.v) || 0)) })),
+        lines: (Array.isArray(g.lines) ? g.lines : []).filter((l) => l && HERO_GEAR.bonus[l.k]).slice(0, 4).map((l) => ({ k: l.k, v: Math.max(0, Math.min(HERO_GEAR.bonus[l.k].max, Number(l.v) || 0)) })),
         hero: g.hero == null ? null : int(g.hero, 0, 0, 1e6), locked: !!g.locked,
       });
     }
@@ -655,7 +734,7 @@ export function cleanKeep(raw) {
   if (Array.isArray(raw.troops)) {
     for (const t of raw.troops.slice(0, 8)) {
       if (!t || !TROOPS[t.cls]) continue;
-      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, 16), gear: int(t.gear, 0, 0, 15), skills: cleanSkills(t), rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
+      k.troops.push({ id: int(t.id, 0, 0, 1e6), cls: t.cls, name: String(t.name || 'A hero').slice(0, 24), lvl: int(t.lvl, 1, 1, TROOP_LVL_MAX), gear: int(t.gear, 0, 0, TROOP_GEAR_MAX), skills: cleanSkills(t), rar: int(t.rar, 0, 0, HERO_RAR_MAX) });
     }
   }
   // (0.82) gear on a hero who has gone home goes back to the Armory; one piece a slot a hero
@@ -689,6 +768,11 @@ export function cleanKeep(raw) {
       if (w.ch && CHAPTER_IDS.includes(w.ch)) c.ch = w.ch;
       k.wishes.push(c);
     }
+  }
+  // (0.92) the Seraph, once raised: one for the whole account, like the keep
+  if (raw.statue && typeof raw.statue === 'object') {
+    const s = raw.statue;
+    k.statue = { lvl: int(s.lvl, 1, 1, STATUE.maxLvl), xp: int(s.xp, 0, 0, 1e9), rest: Math.max(0, Math.min(STATUE.rest, Number(s.rest) || 0)), hp: Math.max(0.05, Math.min(1, Number.isFinite(+s.hp) ? +s.hp : 1)), fells: int(s.fells), nights: int(s.nights) };
   }
   return k;
 }

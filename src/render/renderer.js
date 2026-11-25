@@ -85,7 +85,7 @@ function makeSeeded(seed) {
 /** (0.83) How often each of the keep's heroes strikes (their basic swing is timed to it). */
 const dCosR = Math.cos, dSinR = Math.sin; // (0.85) (rendering only: Math is fine outside the sim)
 /** (0.84) Which clip each of the Tide's own plays when it strikes. */
-const TIDE_KIND = { veilbearer: 'cast', mourner: 'cast', gatebreaker: 'chop', echo: 'fire', tidecaller: 'slash' };
+const TIDE_KIND = { veilbearer: 'cast', mourner: 'cast', gatebreaker: 'chop', echo: 'fire', tidecaller: 'slash', rotmother: 'chop' };
 const TROOP_AS = { warrior: 1, archer: 1 / 0.9, mage: 1 / 1.3, rogue: 1 / 0.55 };
 
 export class Renderer {
@@ -377,6 +377,8 @@ export class Renderer {
       }
     }
     this.ringViews = []; // (0.61) the Echo Ring's stones, animated each frame
+    if (this.seraphView) this.seraphView.dead = true;
+    this.seraphView = null; // (0.92) the Seraph's plinth, when this is a keep
     if (this.exploreGroup) this.disposeGroup(this.exploreGroup);
     this.people = []; // Haven's people on the last map are gone with it
     this.mapNpcs = []; // (0.85) the map's people, as drawn (the keep's go indoors for the night)
@@ -595,6 +597,36 @@ export class Renderer {
         ring.position.set(o.x, 0, o.z);
         g.add(ring);
         this.ringViews.push({ swirlA, swirlB, column, glow, shards });
+      } else if (o.kind === 'statue') {
+        // (0.92) the Seraph's plinth: white stone and candles; the angel stands on it once raised
+        const plinth = new THREE.Group();
+        const stoneM = new THREE.MeshStandardMaterial({ color: 0xece6da, roughness: 0.8 });
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.2, 0.3, 24), stoneM);
+        base.position.y = 0.15;
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.28, 24), stoneM);
+        top.position.y = 0.43;
+        base.castShadow = top.castShadow = true;
+        base.receiveShadow = top.receiveShadow = true;
+        plinth.add(base, top);
+        const wax = new THREE.MeshStandardMaterial({ color: 0xf4ecd8, roughness: 0.6 });
+        const flameM = new THREE.MeshBasicMaterial({ color: 0xffc860 });
+        for (let i = 0; i < 5; i++) {
+          const a = 0.6 + (i / 5) * Math.PI * 2;
+          const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16 + 0.06 * (i % 2), 8), wax);
+          c.position.set(Math.cos(a) * 1.08, 0.38, Math.sin(a) * 1.08);
+          const f = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), flameM);
+          f.position.set(c.position.x, 0.5 + 0.03 * (i % 2), c.position.z);
+          f.scale.y = 1.6;
+          plinth.add(c, f);
+        }
+        const glowRing = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+        glowRing.scale.setScalar(1.5);
+        glowRing.position.y = 0.6;
+        plinth.add(glowRing);
+        plinth.position.set(o.x, 0, o.z);
+        g.add(plinth);
+        // it faces the Hearth
+        this.seraphView = { group: plinth, glow: glowRing, model: null, loading: false, face: Math.PI / 2 - Math.atan2(-o.z, -o.x), rest: false, mats: [] };
       } else if (o.kind === 'keepaltar') {
         // (0.80) the Wishkeep's Hearth: a white-and-crimson altar with a fire that never goes out
         const altar = buildAltar(0xf2ece4);
@@ -2751,7 +2783,9 @@ export class Renderer {
     this.lastDt = dt; // (0.81.5) for the arrow rain
     this.time += dt;
     const eform = eternalForm(world.player); // (0.76)
-    if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec, eform) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec, eform);
+    const seraph = !!world.player.possess && !!world.map && world.map.id === 'wishkeep'; // (0.92) in the Seraph: its body
+    if (seraph !== (this.heroCls === 'statue')) this.setHeroClass(seraph ? 'statue' : world.cls, seraph ? null : world.player.spec, seraph ? false : eform);
+    else if (world.cls === this.heroCls && heroLook(world.cls, world.player.spec, eform) !== this.heroLook) this.setHeroClass(world.cls, world.player.spec, eform);
     this.lastHeroPos = { x: world.player.x, z: world.player.z };
     const heroPos = this.syncHero(world, alpha, dt);
     this.syncAllies(world, alpha, dt);
@@ -3251,7 +3285,7 @@ export class Renderer {
     const seen = new Set();
     for (const a of list) {
       let v = this.allyViews.get(a.pid);
-      const look = a.troop ? `keep_${a.cls}_${a.gender}:${a.rar || 0}` : heroLook(a.cls, a.spec, !!a.eform);
+      const look = a.troop ? `keep_${a.cls}_${a.gender}:${a.rar || 0}` : a.seraph ? 'statue' : heroLook(a.cls, a.spec, !!a.eform); // (0.92) a keeper in their Seraph
       if (v && (v.cls !== a.cls || v.look !== look)) {
         v.model.disposed = true;
         this.disposeGroup(v.model.group);
@@ -3425,6 +3459,40 @@ export class Renderer {
   }
 
   /** (0.81) The Wishkeep's events: its heroes' blows and skills, the Tide's blows, wards and wrecks, the god's miracles. */
+  /**
+   * (0.92) The Seraph on its plinth: there once raised, gone while someone is in it, grey and cracked while it
+   * is only stone. (A visitor sees their friend's, from the snapshot.)
+   */
+  syncSeraph(world, dt) {
+    const v = this.seraphView;
+    if (!v) return;
+    const inKeep = world.map && world.map.id === 'wishkeep';
+    const st = !inKeep ? null : world.keepVisit ? world.keepStatueShown : world.player && world.player.keep && world.player.keep.statue;
+    const taken = !!world.player.possess || (world.allies ? world.allies().some((a) => a.seraph) : false);
+    if (st && !v.model && !v.loading) {
+      v.loading = true;
+      loadRigged('hero_statue').then((tpl) => {
+        if (!tpl || v.dead) return;
+        const rig = instantiate(tpl);
+        rig.group.rotation.y = (rig.group.rotation.y || 0) + v.face;
+        rig.group.position.y = 0.55;
+        v.group.add(rig.group);
+        v.model = rig;
+        v.mats = [];
+        rig.group.traverse((o) => { if (o.isMesh) v.mats.push(o.material); });
+      });
+    }
+    if (v.model) {
+      v.model.group.visible = !!st && !taken;
+      const rest = st && st.rest > 0;
+      if (rest !== v.rest) {
+        v.rest = rest;
+        for (const m of v.mats) if (m.color) m.color.setScalar(rest ? 0.45 : 1);
+      }
+    }
+    v.glow.visible = !!st && !taken && !(st.rest > 0);
+    if (v.glow.visible) v.glow.material.opacity = 0.35 + 0.15 * Math.sin(this.time * 2.2);
+  }
   keepFx(ev) {
     const streak = (x, z, tx, tz, color, w = 0.12, dur = 0.18) => {
       const len = Math.hypot(tx - x, tz - z) || 0.1;
@@ -3502,6 +3570,13 @@ export class Renderer {
       this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: c, from: 0.5, to: ev.r, dur: 0.4, opacity: 0.6 });
       this.burst(ev.x, 1.2, ev.z, { count: 26, color: c, speed: 7, up: 6, life: 0.7 });
       this.shake = Math.max(this.shake, ev.type === 'tideSlam' ? 0.45 : 0.2);
+    } else if (ev.type === 'possessFx') {
+      // (0.92) into the Seraph or out: a column of pale gold
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xffe9b0, from: 0.4, to: 3.2, dur: 0.5, opacity: 0.6 });
+      this.burst(ev.x, 1.4, ev.z, { count: 40, color: 0xfff4d8, speed: 4, up: 7, life: 0.9 });
+    } else if (ev.type === 'rotSplit') {
+      this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0x9ac040, from: 0.3, to: 2.5, dur: 0.3, opacity: 0.55 });
+      this.burst(ev.x, 0.8, ev.z, { count: 16, color: 0xb0d060, speed: 6, up: 4, life: 0.5 });
     } else if (ev.type === 'cinderBurst') {
       this.flash(this.discGeo(), { x: ev.x, z: ev.z, color: 0xff7a2a, from: 0.3, to: ev.r, dur: 0.3, opacity: 0.55 });
       this.burst(ev.x, 0.8, ev.z, { count: 16, color: 0xffa040, speed: 6, up: 4, life: 0.5 });
@@ -3617,6 +3692,7 @@ export class Renderer {
   updateKeep(world, dt) {
     const builds = world.keepBuilds || [];
     const kp = world.player && world.player.keep;
+    this.syncSeraph(world, dt); // (0.92)
     if (kp) {
       // (0.82.1) the works show their level; the halls their tier
       for (const v of this.worksViews || []) {

@@ -142,6 +142,28 @@ export const RIGGED = {
   // The Mage (0.37.3): Tripo's idle and flinch; Frozen Orb is an overhand throw from the
   // library; her run, sparks, Fire Bolt, Starwake, Meteor and the fall are our own
   // (tools/models/mage-moves.js). Her staff stays upright, leaning with her forearm.
+  // (0.92) The Seraph: the keep's angel of stone (Tripo, roster k_statue), its own idle, run, slash, cast and
+  // flinch; no weapon (light from its hands). Its skills play the slash and the cast at their strongest part.
+  hero_statue: {
+    url: 'models/k_statue.glb',
+    height: 2.4,
+    turn: -Math.PI / 2,
+    hand: 'R_Hand',
+    noWeapon: true,
+    idle: 'idle',
+    run: 'run',
+    runRef: 6.5,
+    death: 'hit_to_body_01',
+    hit: 'hit_to_body_01',
+    attack: { clip: 'slash', from: 1.5, to: 2.3 },
+    moves: {
+      line: { clip: 'cast_a_spell', keys: [[0, 2.1], [0.2, 2.6], [0.5, 3.4], [0.75, 4.3]], fade: 0.25 },
+      nova: { clip: 'cast_a_spell', keys: [[0, 0.9], [0.15, 1.2], [0.45, 1.6], [0.7, 2.2]], fade: 0.25 },
+      dash: { clip: 'slash', keys: [[0, 1.5], [0.15, 1.9], [0.3, 2.1], [0.55, 2.6]], land: 2, fade: 0.25 },
+      leap: { clip: 'slash', keys: [[0, 1.2], [0.4, 1.8], [0.55, 2.05], [0.95, 2.8]], land: 2, stop: [0.55, 0.08], fade: 0.3 },
+    },
+    rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'],
+  },
   hero_mage: {
     url: 'models/mage.glb',
     height: 1.9,
@@ -933,6 +955,15 @@ export function upgradeHero(model, cls, look = cls) {
     if (!tpl || model.disposed || model.rig) return;
     const rig = instantiate(tpl);
     const arm = model.parts.arm;
+    if (tpl.spec.noWeapon) {
+      // (0.92) the Seraph holds nothing
+      model.parts.body.visible = false;
+      model.group.add(rig.group);
+      model.mats.push(...rig.mats);
+      rig.baseTurn = rig.group.rotation.y;
+      model.rig = rig;
+      return;
+    }
     if (tpl.spec.bow) {
       // her own bow (the hand-built one stays with the hidden hand-built body)
       model.parts.bowWood = new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 0.65 });

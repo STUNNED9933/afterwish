@@ -6169,4 +6169,86 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w.command({ type: 'rankUp', slot: 'e' }); w.runCommands();
   check('...and one at a time as ever', p.ranks.e === 2);
 }
+// --- 0.92: deep Nights (31 to 50) and the Seraph -------------------------------------------------------------
+{
+  const K = await import('../src/sim/wishkeep.js');
+  const { geared } = await import('./balance.mjs');
+  check('Deep Nights (0.92): Nights go to 50, with gentler steps past 30', K.NIGHT.max === 50 && Math.abs(K.NIGHT.power(31) / K.NIGHT.power(30) - 1.085) < 1e-9 && Math.abs(K.NIGHT.power(30) / K.NIGHT.power(29) - 1.28) < 1e-9);
+  check('...a sixth wave from 40, two omens from 31 (never the same one twice)', K.NIGHT.waves(39) === 5 && K.NIGHT.waves(40) === 6 && K.nightOmen2(30) === null && Array.from({ length: 20 }, (_, i) => 31 + i).every((L) => K.nightOmen2(L) && K.nightOmen2(L) !== K.nightOmen(L)));
+  const kinds = new Set();
+  for (let L = 31; L <= 50; L++) for (let wv = 1; wv <= K.NIGHT.waves(L); wv++) for (const f of Object.keys(K.tideSpecials(L, wv, K.NIGHT.waves(L)))) kinds.add(f);
+  check('...and the deep foes come (Oathbreaker, Gloamwing, Rotmother), never before Night 31', ['oathbreaker', 'gloamwing', 'rotmother'].every((f) => kinds.has(f)) && !Object.keys(K.tideSpecials(30, 3, 5)).some((f) => ['oathbreaker', 'gloamwing', 'rotmother'].includes(f)));
+  check('...deep training and arming: caps grow with Nights held past 30', K.KEEP.trainMax(5, 3, 30) === 16 && K.KEEP.trainMax(5, 3, 48) === 22 && K.KEEP.armMax(4, 3, 50) === 20);
+  let s = 5; const rng = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  let sf = null;
+  for (let i = 0; i < 3000 && !sf; i++) { const g = K.rollHeroGear(rng, 45, 'g' + i); if (g.r === 6) sf = g; }
+  check('...an Immortal from a deep Night is Starforged: named so, with a fourth line, and kept by the save', sf && sf.name.startsWith('Starforged') && sf.lines.length === 4 && K.cleanKeep({ armory: [sf] }).armory[0].lines.length === 4);
+  // a Rotmother splits; an Oathbreaker shrugs off all but its chosen
+  const w = new World({ seed: 920, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  w.player.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = w.player.keep;
+  k.faith = 1e6; k.stone = 1e5; k.sigils = 100; k.nightMax = 40; k.tier = 3;
+  k.troops = [{ id: 1, cls: 'warrior', name: 'a', lvl: 16, gear: 15, rar: 6 }, { id: 2, cls: 'archer', name: 'b', lvl: 1, gear: 0, rar: 0 }];
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 41 }); w.runCommands();
+  check('...a deep Night is called with both its omens', w.tide && w.tide.omen === K.nightOmen(41) && w.tide.omen2 === K.nightOmen2(41));
+  const rot = w.spawnTideFoe('rotmother', { x: 10, z: 10 }, rng);
+  rot.state = 'chase';
+  const before = w.enemies.filter((e) => e.type === 'rotling' && !e.dead).length;
+  w.troopStrike(rot, rot.maxHp * 2, false);
+  check('...a Rotmother breaks into three Rotlings', w.enemies.filter((e) => e.type === 'rotling' && !e.dead).length === before + 3);
+  const ob = w.spawnTideFoe('oathbreaker', { x: -10, z: 10 }, rng);
+  ob.state = 'chase';
+  w.stepTideFoe(ob, CONFIG.TICK);
+  const chosen = ob.duel, other = w.troops.find((t) => t !== chosen);
+  const hp0 = ob.hp;
+  w.striker = other; w.troopStrike(ob, 100, false);
+  const byOther = hp0 - ob.hp;
+  w.striker = chosen; w.troopStrike(ob, 100, false);
+  const byChosen = hp0 - byOther - ob.hp;
+  w.striker = null;
+  check('...an Oathbreaker chooses the strongest hero and takes half from the rest', chosen && chosen.id === 1 && byOther === 50 && byChosen === 100);
+}
+{
+  const K = await import('../src/sim/wishkeep.js');
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 921, mode: 'explore', cls: 'archer', save: geared('archer', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5; k.sigils = 100; k.nightMax = 8;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  check('Seraph (0.92): not before Night 10 is held', !k.statue);
+  k.nightMax = 14;
+  w.command({ type: 'keepStatue' }); w.runCommands();
+  check('...then raised, a few levels under the best Night held', k.statue && k.statue.lvl === 14 - K.STATUE.startBelow && k.sigils === 100 - K.STATUE.raise.sigils);
+  const ranks = JSON.stringify(p.ranks), q = w.kit.q.name;
+  w.command({ type: 'keepPossess', on: true }); w.runCommands();
+  check('...Y takes it up: its own kit, its strike, hands on (over the shoulder)', p.possess && w.kit.q.name === 'Dawnlance' && w.basic === K.STATUE_BASIC && w.handsOn() && !w.kit.d);
+  check("...and the hero's own ranks are what is saved, never the Seraph's", JSON.stringify(w.toSave().ranks) === ranks);
+  w.command({ type: 'rankUp', slot: 'q' }); w.runCommands();
+  check('...nothing is ranked while in it', JSON.stringify(p.possess.ranks) === ranks && p.ranks.q === 1);
+  const lvl0 = k.statue.lvl;
+  w.command({ type: 'keepOffer', n: 4 }); w.runCommands();
+  check('...Faith at its feet: four offerings, a level', k.statue.lvl === lvl0 + 1);
+  w.command({ type: 'keepOffer', n: 100 }); w.runCommands();
+  check('...never past the best Night held', k.statue.lvl === 14 && k.statue.xp < K.STATUE.need(14));
+  // a night in it: it strikes as the Night its level matches, and a fall makes it stone for a while
+  k.troops = [{ id: 1, cls: 'warrior', name: 'a', lvl: 9, gear: 6, rar: 3 }];
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepTide', level: 14 }); w.runCommands();
+  check('...it stays taken up when a night is called, and fights in it', p.possess && w.inField());
+  const e = w.spawnTideFoe('unnamed', { x: p.x + 1.5, z: p.z }, () => 0.5);
+  e.state = 'chase';
+  const hpE = e.hp;
+  w.hitEnemy(e, p.stats.ad * 2, { source: 'q' });
+  check('...its blows land as a match for its level (2 x its attack x the Night it matches)', Math.abs((hpE - e.hp) - 2 * K.STATUE.atk * K.statuePower(14)) < 2);
+  w.incarnateHurt(1e12);
+  check('...felled, it is only stone for a while, and you are the god again (your own kit back)', !p.possess && k.statue.rest === K.STATUE.rest && k.statue.fells === 1 && w.kit.q.name === q && JSON.stringify(p.ranks) === ranks);
+  w.command({ type: 'keepPossess', on: true }); w.runCommands();
+  check('...and cannot be taken up again until it wakes', !p.possess);
+  check('...the keep remembers it (cleanKeep)', K.cleanKeep(JSON.parse(JSON.stringify(k))).statue.lvl === 14);
+}
 process.exit(failed ? 1 : 0);

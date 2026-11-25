@@ -19,12 +19,13 @@ import { MAPS } from '../sim/maps.js';
 import { TIERS, CAELUM } from '../sim/endgame.js';
 import { ringWhole, ringText } from '../sim/ring.js';
 import { wishWhere } from '../sim/wishwhere.js'; // (0.81.2)
-import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE } from '../sim/wishkeep.js';
+import { SETTLERS, HALLS, wishGoal, MIRACLES, MIRACLE_IDS, INCARNATE, STATUE } from '../sim/wishkeep.js';
 
 const escT = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** (0.87) What each of the god's cards does, for its tooltip. */
 const MIRACLE_TIPS = {
   ...Object.fromEntries(Object.entries(MIRACLES).map(([id, M]) => [id, `<div class="tt-name">${M.name}</div><div class="tt-meta">${M.key.toUpperCase()} · ${M.faith} Faith · ${M.cd}s cooldown · aimed, ${M.radius} m</div><div>${M.desc}</div><div class="tt-desc">${{ judge: 'Use it to say what matters: a Veilbearer, a thief with Faith, the Tidecaller.', bless: 'Use it where the fighting is thickest, or where a hero has fallen.', hallow: 'Lay it on the hall the Unmade are battering, or where you want your heroes to hold.' }[id] || ''}</div>`])),
+  seraph: `<div class="tt-name">The Seraph</div><div class="tt-meta">Y · no Faith, no time limit</div><div>Take up the keep's angel of stone and fight in it over your shoulder, with its own skills (Q Dawnlance, E Wingbeat, Shift Glide, R Descent). It is as strong as the Night its level matches; felled, it is stone for ${STATUE.rest} seconds and you are the keep's god again. Y again to leave it.</div>`,
   incarnate: `<div class="tt-name">Incarnate</div><div class="tt-meta">R · ${INCARNATE.faith} Faith · ${INCARNATE.cd}s cooldown</div><div>${INCARNATE.desc}</div><div class="tt-desc">A rescue, not a sweep: the landing is what saves your heroes. Gather all the aura you can before you land.</div>`,
 };
 
@@ -201,6 +202,12 @@ function buffLines(world, def, slot, b) {
 export function abilityTooltip(world, slot, detail = Tooltip.shift) {
   const a = world.kit[slot];
   const p = world.player;
+  if (p.possess) {
+    // (0.92) the Seraph's skills: its own numbers, as strong as the Night its level matches
+    const lvl = (p.keep && p.keep.statue && p.keep.statue.lvl) || 1;
+    const x = a.dmg({ ad: 1 }, 1);
+    return `<div class="tt-name">${a.name}</div><div class="tt-meta">The Seraph &middot; ${a.cd} s cooldown${a.range ? ` &middot; ${a.range} m` : ''}${lvl < a.unlock ? ` &middot; from level ${a.unlock}` : ''}</div>${x > 0 ? `<div class="tt-dmg"><b>${x.toFixed(1)}&times;</b> its strike <span>(a match for Night ${lvl})</span></div>` : ''}<div>${a.desc}</div>`;
+  }
   const rank = p.ranks[slot];
   const unlocked = world.abilityUnlocked(slot);
   const b = world.abilityBreakdown(slot);
@@ -412,7 +419,7 @@ export class Hud {
       const slot = this.slots[s];
       const def = world.kit[s];
       const may = world.borrowable ? world.borrowable().length > 0 : false;
-      slot.el.classList.toggle('hidden', !may && !def);
+      slot.el.classList.toggle('hidden', (!may && !def) || !!p.possess); // (0.92) the Seraph borrows nothing
       slot.el.classList.toggle('empty', !def);
       slot.el.classList.toggle('passive', !!(def && def.passive));
       slot.el.classList.toggle('empowered', !!(def && def.type === 'bloodoath' && (p.oathOn || p.oathT > 0)));
@@ -447,7 +454,7 @@ export class Hud {
         for (let i = 0; i < CONFIG.MAX_RANK; i++) html += `<i class="${i < rank ? 'on' : ''}"></i>`;
         slot.pips.innerHTML = html;
       }
-      const show = p.skillPoints > 0 && !locked && rank < CONFIG.MAX_RANK;
+      const show = p.skillPoints > 0 && !locked && rank < CONFIG.MAX_RANK && !p.possess; // (0.92) the Seraph is not ranked
       slot.up.classList.toggle('hidden', !show);
       canRank = canRank || show;
     }
@@ -1144,11 +1151,13 @@ export class Hud {
     const on = !!(t && t.state === 'on' && world.map && world.map.id === 'wishkeep' && !world.keepVisit); // (0.82.2) the miracles are the keeper's
     document.body.classList.toggle('keep-guest', !!(world.keepVisit && world.map && world.map.id === 'wishkeep')); // (0.82.5) a visitor's skills are greyed: they do nothing here
     el.classList.toggle('hidden', !on);
-    document.body.classList.toggle('god', on && !(t.inc > 0)); // (0.81.1) the hero's own skill bar dims while they are a god
+    const pos = !!world.player.possess; // (0.92) in the Seraph
+    document.body.classList.toggle('god', on && !(t.inc > 0) && !pos); // (0.81.1) the hero's own skill bar dims while they are a god
     if (!on) return (this.mirKey = null);
     const faith = world.player.keep ? world.player.keep.faith : 0;
     const inc = t.inc > 0;
-    const key = (inc ? `inc${Math.ceil(t.inc)}` : MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}`).join('|') + `|${Math.ceil(t.icd || 0)}`) + '|' + faith;
+    const st = world.player.keep && world.player.keep.statue;
+    const key = (pos ? `pos${Math.round(world.player.hp)}` : inc ? `inc${Math.ceil(t.inc)}` : MIRACLE_IDS.map((m) => `${Math.ceil((t.mcd && t.mcd[m]) || 0)}`).join('|') + `|${Math.ceil(t.icd || 0)}|${st ? Math.ceil(st.rest) : 'x'}`) + '|' + faith;
     if (key === this.mirKey) return;
     this.mirKey = key;
     if (!el.dataset.tips) {
@@ -1164,9 +1173,13 @@ export class Hud {
     }
     const tipId = (k) => (k === INCARNATE.key ? 'incarnate' : MIRACLE_IDS.find((m) => MIRACLES[m].key === k));
     const card = (k, name, cost, cd, max, desc, extra = '') => `<div class="mir${cd > 0 ? ' cool' : ''}${faith < cost ? ' poor' : ''}${extra}" data-tip="${tipId(k)}"><kbd>${k.toUpperCase()}</kbd> <b>${name}</b>${cost} Faith${cd > 0 ? ` · ${Math.ceil(cd)}s` : ''}<i style="width:${cd > 0 ? Math.round((1 - cd / max) * 100) : 100}%"></i></div>`;
-    el.innerHTML = inc
+    // (0.92) the Seraph: Y to take it up (no Faith, no timer); a felled one is stone for a while
+    const seraph = st ? `<div class="mir seraph${st.rest > 0 ? ' cool' : ''}" data-tip="seraph"><kbd>Y</kbd> <b>Possess</b>the Seraph · level ${st.lvl}${st.rest > 0 ? ` · ${Math.ceil(st.rest)}s` : ''}<i style="width:${st.rest > 0 ? Math.round((1 - st.rest / STATUE.rest) * 100) : 100}%"></i></div>` : '';
+    el.innerHTML = pos
+      ? `<div class="mir seraph" data-tip="seraph"><b>The Seraph</b>its own skills · <kbd>Y</kbd> to leave it<i style="width:${Math.round((world.player.hp / Math.max(1, world.player.stats.maxHp)) * 100)}%"></i></div>`
+      : inc
       ? `<div class="mir incarnate" data-tip="incarnate"><b>Incarnate</b>your own skills · ${Math.ceil(t.inc)}s<i style="width:${Math.round((t.inc / INCARNATE.dur) * 100)}%"></i></div>`
-      : MIRACLE_IDS.map((m) => card(MIRACLES[m].key, MIRACLES[m].name, MIRACLES[m].faith, (t.mcd && t.mcd[m]) || 0, MIRACLES[m].cd, MIRACLES[m].desc)).join('') + card(INCARNATE.key, 'Incarnate', INCARNATE.faith, t.icd || 0, INCARNATE.cd, INCARNATE.desc, ' inc');
+      : MIRACLE_IDS.map((m) => card(MIRACLES[m].key, MIRACLES[m].name, MIRACLES[m].faith, (t.mcd && t.mcd[m]) || 0, MIRACLES[m].cd, MIRACLES[m].desc)).join('') + card(INCARNATE.key, 'Incarnate', INCARNATE.faith, t.icd || 0, INCARNATE.cd, INCARNATE.desc, ' inc') + seraph;
   }
 
   /** "Room K7QXM · 3 players", top of the screen, while in a room. */

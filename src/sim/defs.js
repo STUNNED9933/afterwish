@@ -501,6 +501,11 @@ Object.assign(ENEMIES, {
   veilbearer: { ...ENEMIES.shaman, name: 'Veilbearer', look: { scale: 1.15, colors: [0x14101c, 0x8a6aff] }, exp: 0, drop: 0, tideOnly: true },
   gatebreaker: { ...ENEMIES.golem, name: 'Gatebreaker', look: { scale: 1.45, colors: [0x3a3a40, 0x8a6aff] }, exp: 0, drop: 0, tideOnly: true },
   mourner: { ...ENEMIES.wraith, name: 'Mourner', look: { scale: 1.15, colors: [0x18141c, 0xb08aff] }, exp: 0, drop: 0, tideOnly: true },
+  // (0.92) the deep Nights' own
+  oathbreaker: { ...ENEMIES.knight, name: 'Oathbreaker', look: { scale: 1.2, colors: [0x1a1424, 0xc04a6a, 0x08060c] }, exp: 0, drop: 0, tideOnly: true },
+  gloamwing: { ...ENEMIES.wraith, name: 'Gloamwing', look: { scale: 0.9, colors: [0x101830, 0x6a9aff] }, exp: 0, drop: 0, tideOnly: true },
+  rotmother: { ...ENEMIES.golem, name: 'Rotmother', look: { scale: 1.3, colors: [0x2a3018, 0x9ac040, 0x0c1008] }, exp: 0, drop: 0, tideOnly: true },
+  rotling: { ...ENEMIES.grunt, name: 'Rotling', look: { scale: 0.7, colors: [0x2a3018, 0x9ac040, 0x0c1008] }, exp: 0, drop: 0, tideOnly: true },
   tidecaller: { ...ENEMIES.boss3, name: 'The Tidecaller', look: { scale: 1.3, colors: [0x0c1a2e, 0x8a6aff, 0x04080c] }, exp: 0, drop: 0, tideOnly: true, boss: false },
 });
 // The Cinder: the ash-fever was its breath. It does not hate you. It is only very late.

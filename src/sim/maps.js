@@ -15,7 +15,7 @@
 // Everything solid is in `obstacles`. The simulation stops heroes and enemies
 // walking through them, and the renderer draws them, from this one list.
 import { NPCS, SIGNS } from './story.js';
-import { SETTLERS, SETTLER_SPOTS, GROWTH, WORKS, WORK_IDS } from './wishkeep.js';
+import { SETTLERS, SETTLER_SPOTS, GROWTH, WORKS, WORK_IDS, STATUE } from './wishkeep.js';
 import { makeRng } from './rng.js';
 import { dAtan2, dCos, dHypot, dSin } from './dmath.js';
 
@@ -405,6 +405,7 @@ function layKeep(R, obstacles, keepClear, stage = 0) {
     placed++;
   }
   obstacles.push({ kind: 'keepaltar', shape: 'circle', id: 'keepaltar', name: 'The Hearth', x: 0, z: 0, r: 1.6, pickR: 2.4 });
+  obstacles.push({ kind: 'statue', shape: 'circle', id: 'seraph', name: 'The Seraph', x: STATUE.at.x, z: STATUE.at.z, r: 1.0, pickR: 2.4 }); // (0.92) its plinth, empty until the worshippers raise it
   obstacles.push({ kind: 'board', shape: 'circle', id: 'wishes', name: 'The Wishes', x: 4.6, z: 1.6, r: 0.6, pickR: 1.3 });
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;

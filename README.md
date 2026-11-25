@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Sheathing (0.97.1)
+
+- Heroes now put their weapon away with a motion instead of it jumping into place. This happens when you start walking, or when an attack or skill ends while you're walking.
+  - **Warrior:** brings his sword across to his left hip, turns it to line up with the scabbard, slides it in, then lets go.
+  - **Rogue:** slides a dagger into each hip sheath.
+  - **Archer and mage:** reach up over the shoulder and settle the bow or staff onto their back.
+- After that the arm goes back to the walk. Drawing stays instant, so a blow is never held back.
+
 ### Weapons put away while walking (0.97)
 
 - While walking (Ctrl or Caps Lock), every hero puts their weapon away. It comes straight back into their hand the moment they attack or use a skill.

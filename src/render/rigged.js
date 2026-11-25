@@ -34,7 +34,7 @@ export const RIGGED = {
     walkCarry: { main: [0.8, -0.6, 0.05], w: 0.8 },
     // (0.97) walking, the sword goes into a scabbard on his left hip (at: where the grip sits, metres from
     // the bone in the bind pose, model space +X forward +Y up +Z his right; dir: the blade, hilt up front)
-    stow: { main: { bone: 'Pelvis', at: [0.12, 0.04, -0.23], dir: [-0.72, -0.67, -0.14], hang: true }, sheath: true },
+    stow: { main: { bone: 'Pelvis', at: [0.12, 0.04, -0.23], dir: [-0.72, -0.67, -0.14], hang: true, slide: 0.42 }, sheath: true, time: 0.85 },
     idle: 'idle',
     run: 'run',
     death: 'ual_Death',
@@ -74,7 +74,7 @@ export const RIGGED = {
     bow: { drawHand: 'R_Hand', shoulder: 'L_Upperarm' },
     // (0.97) walking, the bow is slung across her back, over her left shoulder, crossing the quiver (dir: up the
     // bow; flat: the way its belly faces, out from her back)
-    stow: { main: { bone: 'Spine02', at: [-0.24, -0.06, 0.0], dir: [0.0, 0.86, -0.5], flat: [-1, 0, 0], bow: true } },
+    stow: { main: { bone: 'Spine02', at: [-0.24, -0.06, 0.0], dir: [0.0, 0.86, -0.5], flat: [-1, 0, 0], bow: true, reach: { bone: 'L_Upperarm', at: [-0.16, 0.2, 0.06] } }, time: 0.75 },
     idle: 'idle',
     run: 'arc_run', // her own (Tripo's sprint leaned too hard for a bow)
     runRef: 5.6, // the speed it is played at its own pace (quicker, shorter strides)
@@ -109,7 +109,7 @@ export const RIGGED = {
     weaponScale: 0.82,
     walkCarry: { main: [-0.61, -0.61, 0.51], off: [-0.61, -0.61, -0.51], w: 0.7 }, // (0.96.2) walking, both daggers held reversed along the forearms, clear of the body
     // (0.97) walking, both daggers go into sheaths on his belt, one on each hip, hilts up
-    stow: { main: { bone: 'Pelvis', at: [-0.05, -0.02, 0.22], dir: [-0.28, -0.94, 0.15], hang: true }, off: { bone: 'Pelvis', at: [-0.05, -0.02, -0.22], dir: [-0.28, -0.94, -0.15], hang: true }, sheath: true },
+    stow: { main: { bone: 'Pelvis', at: [-0.05, -0.02, 0.22], dir: [-0.28, -0.94, 0.15], hang: true, slide: 0.16 }, off: { bone: 'Pelvis', at: [-0.05, -0.02, -0.22], dir: [-0.28, -0.94, -0.15], hang: true, slide: 0.16 }, sheath: true, time: 0.55 },
     idle: 'idle',
     run: 'rog_run',
     runRef: 6.0,
@@ -191,7 +191,7 @@ export const RIGGED = {
     staff: true,
     weaponScale: 0.82,
     // (0.97) walking, the staff is slung across her back, its head over her right shoulder
-    stow: { main: { bone: 'Spine02', at: [-0.24, -0.02, 0.02], dir: [-0.1, 0.84, 0.53] } },
+    stow: { main: { bone: 'Spine02', at: [-0.24, -0.02, 0.02], dir: [-0.1, 0.84, 0.53], reach: { bone: 'R_Upperarm', at: [-0.16, 0.2, -0.06] } }, time: 0.75 },
     idle: 'idle',
     run: 'mag_run',
     runRef: 5.6,
@@ -641,6 +641,8 @@ export function instantiate(tpl) {
   const walkMainQ = spec.walkCarry ? carry(spec.walkCarry.main) : null, walkOffQ = spec.walkCarry ? carry(spec.walkCarry.off) : null;
   // (0.97) Put away while walking (spec.stow): each place as a bone and a pose in that bone's own space, read
   // from the bind pose, so it rides the hips or the back as they move.
+  const fistAt = FIST_AT.get(spec.url) || {};
+  const gripAt = (h) => (fistAt[h.name] ? new THREE.Vector3(...fistAt[h.name].at) : palmOf(h, spec.palm)); // in the fist (or the palm)
   const stows = {};
   for (const [k, def] of Object.entries(spec.stow || {})) {
     if (!def || !def.bone) continue;
@@ -658,12 +660,26 @@ export function instantiate(tpl) {
     else basis.makeBasis(flat, new THREE.Vector3().crossVectors(along, flat), along);
     const q = new THREE.Quaternion().setFromRotationMatrix(basis);
     const atM = new THREE.Vector3(...def.at).multiplyScalar(1 / tpl.scale);
-    stows[k] = { bone, hang: !!def.hang, bqi, atM, qM: q, at: atM.clone().applyQuaternion(bqi), q: bqi.clone().multiply(q), pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+    const handBone = root.getObjectByName(k === 'off' ? spec.offhand : spec.hand);
+    let reach = null; // a back carry is reached over the shoulder, not at the grip
+    if (def.reach) {
+      const rb = root.getObjectByName(def.reach.bone);
+      if (rb) {
+        const rq = new THREE.Quaternion();
+        new THREE.Matrix4().multiplyMatrices(rootInv0, rb.matrixWorld).decompose(new THREE.Vector3(), rq, new THREE.Vector3());
+        reach = { bone: rb, at: new THREE.Vector3(...def.reach.at).multiplyScalar(1 / tpl.scale).applyQuaternion(rq.invert()), pos: new THREE.Vector3() };
+      }
+    }
+    stows[k] = { bone, hang: !!def.hang, bqi, atM, qM: q, at: atM.clone().applyQuaternion(bqi), q: bqi.clone().multiply(q), pos: new THREE.Vector3(), quat: new THREE.Quaternion(), hand: handBone, palm: handBone ? gripAt(handBone) : null, slide: (def.slide || 0.3) / tpl.scale, reach };
   }
   const stowM = new THREE.Matrix4(), stowP = new THREE.Vector3(), stowQ = new THREE.Quaternion(), stowS = new THREE.Vector3(), stowF = new THREE.Vector3(), stowY = new THREE.Quaternion();
   const Y_AXIS = new THREE.Vector3(0, 1, 0);
   const placeStows = (inv) => {
     for (const st of Object.values(stows)) {
+      if (st.reach) {
+        stowM.multiplyMatrices(inv, st.reach.bone.matrixWorld).decompose(stowP, stowQ, stowS);
+        st.reach.pos.copy(st.reach.at).applyQuaternion(stowQ).add(stowP);
+      }
       stowM.multiplyMatrices(inv, st.bone.matrixWorld).decompose(stowP, stowQ, stowS);
       if (st.hang) {
         // on a belt it hangs: it turns with the hips, but does not lean or tip with them
@@ -697,6 +713,56 @@ export function instantiate(tpl) {
     obj.position.copy(stows[k].pos);
     obj.quaternion.copy(stows[k].quat);
   };
+  // (0.97.1) Sheathing: after a blow or a skill, walking, the hand takes the weapon to its place. It turns
+  // the weapon to the scabbard's line on the way (or lifts it over the shoulder), slides it home, lets go,
+  // and the arm goes back to the walk. Drawing is instant (the blow needs it).
+  const SH_TURN = 0.4, SH_HOME = 0.66; // shares of the time: turned by, home by
+  const sheathing = {}; // stow key -> seconds since it began
+  let wasStowed = null;
+  const ikRest = [];
+  const shSmooth = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  const ikS = new THREE.Vector3(), ikE = new THREE.Vector3(), ikW = new THREE.Vector3(), ikT = new THREE.Vector3(), ikP = new THREE.Vector3(), ikD = new THREE.Vector3(), ikE2 = new THREE.Vector3();
+  const ikQ = new THREE.Quaternion(), ikPW = new THREE.Quaternion(), ikBW = new THREE.Quaternion();
+  const turnBone = (bone, from, to, w) => {
+    // turn a bone (in the world) so the direction `from` lies along `to`, by share w
+    ikQ.setFromUnitVectors(from.normalize(), to.normalize());
+    bone.getWorldQuaternion(ikBW);
+    bone.parent.getWorldQuaternion(ikPW);
+    ikBW.premultiply(ikQ).premultiply(ikPW.invert());
+    bone.quaternion.slerp(ikBW, w);
+    bone.updateWorldMatrix(false, true);
+  };
+  // two-bone reach: the palm to targetW (world), the elbow staying on the side the walk had it
+  const reachArm = (st, targetW, w) => {
+    const hand = st.hand, fore = hand && hand.parent, upper = fore && fore.parent;
+    if (!upper || w <= 0.001) return;
+    ikRest.push([upper, upper.quaternion.clone()], [fore, fore.quaternion.clone()]);
+    upper.updateWorldMatrix(true, true);
+    upper.getWorldPosition(ikS); fore.getWorldPosition(ikE); hand.getWorldPosition(ikW);
+    ikP.copy(st.palm).applyMatrix4(hand.matrixWorld).sub(ikW); // palm from wrist, as it is now
+    ikT.copy(targetW).sub(ikP);
+    const a = ikE.distanceTo(ikS), b = ikW.distanceTo(ikE);
+    ikD.copy(ikT).sub(ikS);
+    const d = Math.min(Math.max(ikD.length(), 1e-4), (a + b) * 0.999);
+    ikD.normalize();
+    const pole = ikE.clone().sub(ikS);
+    pole.addScaledVector(ikD, -pole.dot(ikD));
+    if (pole.lengthSq() < 1e-8) pole.set(0, -1, 0);
+    pole.normalize();
+    const cosA = Math.min(1, Math.max(-1, (a * a + d * d - b * b) / (2 * a * d)));
+    ikE2.copy(ikS).addScaledVector(ikD, a * cosA).addScaledVector(pole, a * Math.sqrt(1 - cosA * cosA));
+    turnBone(upper, ikE.clone().sub(ikS), ikE2.clone().sub(ikS), w);
+    fore.getWorldPosition(ikE); hand.getWorldPosition(ikW);
+    turnBone(fore, ikW.clone().sub(ikE), ikT.clone().sub(ikE), w);
+  };
+  // where the weapon is while it is being sheathed (in hand at palmPos / inHandQ to begin with)
+  const sheathPose = (k, pos, quat) => {
+    const st = stows[k], f = sheathing[k] / ((spec.stow && spec.stow.time) || 0.7);
+    if (f >= SH_HOME) { pos.copy(st.pos); quat.copy(st.quat); return; }
+    if (f < SH_TURN) { quat.slerp(st.quat, shSmooth(f / SH_TURN)); return; }
+    quat.copy(st.quat);
+    if (st.reach) pos.lerp(st.pos, shSmooth((f - SH_TURN) / (SH_HOME - SH_TURN)));
+  };
   // Cross-fade to an action (restart: play it again from the start if it is already on).
   const fadeTo = (a, fade = 0.15, restart = false) => {
     if (!a) return;
@@ -710,8 +776,6 @@ export function instantiate(tpl) {
   };
   fadeTo(actions.idle, 0);
   const hand = spec.hand ? root.getObjectByName(spec.hand) : null;
-  const fistAt = FIST_AT.get(spec.url) || {};
-  const gripAt = (h) => (fistAt[h.name] ? new THREE.Vector3(...fistAt[h.name].at) : palmOf(h, spec.palm)); // in the fist (or the palm)
   const fistHole = hand && fistAt[hand.name] ? new THREE.Vector3(...fistAt[hand.name].hole) : null;
   const handRest = new THREE.Quaternion(); // the wrist as the clips left it, before the staff bend
   let handBent = null;
@@ -859,17 +923,37 @@ export function instantiate(tpl) {
         handBent.quaternion.copy(handRest);
         handBent = null;
       }
+      for (const [b, q] of ikRest) b.quaternion.copy(q); // (0.97.1) the sheathing reach, put back before the clips pose the arm again
+      ikRest.length = 0;
       mixer.update(dt);
       // (0.97) walking (Ctrl), weapons are put away: on the hip or across the back, until a blow or a skill
       const stowed = !!s.walk && !s.dead && !s.spinning && !move && attackLeft <= 0;
       if (spec.stow) {
         root.updateMatrixWorld(true);
         placeStows(tmpM.copy(root.matrixWorld).invert());
+        if (stowed && wasStowed === false) for (const k of Object.keys(stows)) if (stows[k].hand) sheathing[k] = 0;
+        if (!stowed) for (const k of Object.keys(sheathing)) delete sheathing[k];
+        wasStowed = stowed;
+        const T = spec.stow.time || 0.7;
+        for (const k of Object.keys(sheathing)) {
+          sheathing[k] += dt;
+          const f = sheathing[k] / T;
+          if (f >= 1) { delete sheathing[k]; continue; }
+          const st = stows[k];
+          const w = f < 0.3 ? shSmooth(f / 0.3) : f < SH_HOME ? 1 : 1 - shSmooth((f - SH_HOME) / (1 - SH_HOME));
+          // the hand: to the scabbard's mouth with the blade still out (or over the shoulder), then home
+          const out = tmpP.set(0, 0, -st.slide).applyQuaternion(st.quat).add(st.pos);
+          if (st.reach) out.copy(st.reach.pos);
+          else if (f >= SH_TURN) out.lerp(st.pos, shSmooth((f - SH_TURN) / (SH_HOME - SH_TURN)));
+          reachArm(st, root.localToWorld(out.clone()), w);
+        }
+        if (Object.keys(sheathing).length) root.updateMatrixWorld(true);
       }
       if (bow) {
         let aimW = 0;
         for (const a of aiming) if (a.isRunning() || a === current) aimW += a.getEffectiveWeight();
-        bow.update(s.dead ? 0 : Math.min(1, aimW), !!s.walk && !s.dead && !move && attackLeft <= 0 && aimW < 0.05 ? stows.main : null);
+        const slung = !!s.walk && !s.dead && !move && attackLeft <= 0 && aimW < 0.05 && stows.main;
+        bow.update(s.dead ? 0 : Math.min(1, aimW), slung && sheathing.main == null ? stows.main : null, slung && sheathing.main != null ? (p, q) => sheathPose('main', p, q) : null);
       }
       // (0.96.2) how much the walk is playing (and nothing else is moving the arms): weapons are carried clear of the legs
       const walkW = actions.walk && (actions.walk.isRunning() || actions.walk === current) && !s.dead && !s.spinning && !move && attackLeft <= 0 ? actions.walk.getEffectiveWeight() : 0;
@@ -890,7 +974,10 @@ export function instantiate(tpl) {
         if (walkMainQ && walkW > 0.01) weapon.quaternion.slerp(walkMainQ, walkW * spec.walkCarry.w);
         const sh = sheathFor('main', weapon);
         if (sh) { putAway(sh, 'main'); sh.scale.copy(weapon.scale); }
-        if (stowed && stows.main) putAway(weapon, 'main');
+        if (stowed && stows.main) {
+          if (sheathing.main != null) sheathPose('main', weapon.position, weapon.quaternion);
+          else putAway(weapon, 'main');
+        }
       }
       if (held.length) {
         root.updateMatrixWorld(true);
@@ -905,7 +992,10 @@ export function instantiate(tpl) {
             if (h.hand.name === spec.offhand && stows.off) {
               const sh = sheathFor('off', h.obj);
               if (sh) { putAway(sh, 'off'); sh.scale.copy(h.obj.scale); }
-              if (stowed) putAway(h.obj, 'off');
+              if (stowed) {
+                if (sheathing.off != null) sheathPose('off', h.obj.position, h.obj.quaternion);
+                else putAway(h.obj, 'off');
+              }
             }
           } else {
             // a staff stays upright, leaning the way the forearm points (forward when casting)
@@ -934,7 +1024,11 @@ export function instantiate(tpl) {
             }
             const hm = new THREE.Matrix4().multiplyMatrices(inv, h.hand.matrixWorld);
             h.obj.position.copy(h.palm).applyMatrix4(hm);
-            if (stowed && stows.main) putAway(h.obj, 'main'); // (0.97) across her back
+            if (stowed && stows.main) {
+              // (0.97) across her back
+              if (sheathing.main != null) sheathPose('main', h.obj.position, h.obj.quaternion);
+              else putAway(h.obj, 'main');
+            }
           }
         }
       }
@@ -1064,7 +1158,7 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
   const rest = new THREE.Vector3(-0.19, 0, 0);
   const nock = new THREE.Vector3();
   return {
-    update(aimW, stow = null) {
+    update(aimW, stow = null, adjust = null) {
       root.updateMatrixWorld(true);
       inv.copy(root.matrixWorld).invert();
       hp.copy(palm).applyMatrix4(m.multiplyMatrices(inv, hand.matrixWorld)); // the grip, in her palm
@@ -1087,12 +1181,13 @@ function makeBow(wood, stringMat, scale, root, hand, palm, drawHand, shoulder, h
         group.quaternion.copy(stow.quat);
         group.position.copy(stow.pos);
       }
+      if (adjust) adjust(group.position, group.quaternion); // (0.97.1) on its way there
       group.updateMatrix();
       // the string: to the drawing hand while it is pulled back behind the bow
       tmp.copy(dp).applyMatrix4(m.copy(group.matrix).invert());
       // (0.52: the arrow shows again whenever the hand is drawing, as before 0.50: it is the next arrow
       // coming from the quiver to the string, which is what she is doing)
-      const drawn = !stow && aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
+      const drawn = !stow && !adjust && aimW > 0.4 && tmp.x < -0.24 && tmp.x > -0.72 && Math.abs(tmp.y) < 0.3 && Math.abs(tmp.z) < 0.25;
       nock.copy(drawn ? tmp.set(tmp.x, 0, 0) : rest);
       seg(upper, nock, top);
       seg(lower, nock, bottom);

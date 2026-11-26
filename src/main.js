@@ -762,8 +762,9 @@ function start(hot = {}) {
     resetViews();
     sfx.unlock();
     setMode('play');
-    
-    hintOnce('explore', 'Haven is safe and heals you. Stand in the blue portal to travel to the Greenwood Trail.', 10);
+    // (1.0) once the Wishkeep is open, the day starts there (Haven is a walk or the Waygate away)
+    if (world.keepOpen && world.keepOpen()) world.command({ type: 'travel', to: KEEP.map });
+    else hintOnce('explore', 'Haven is safe and heals you. Stand in the blue portal to travel to the Greenwood Trail.', 10);
   }
 
   // --------------------------------------------------------------- augments
@@ -830,6 +831,7 @@ function start(hot = {}) {
 
   /** The Waygate's list: every map in order, with the ones not yet reached locked. */
   let travelStone = null; // the waystone the travel menu was opened from (null: the town Waygate)
+  let travelGate = null; // (1.0) the Verge crossing it was opened from ('deep' or 'caelum'; null: not a crossing)
   let riftPick = null; // the rift tier chosen at the Waygate
   /**
    * (0.61.3) The world tier you are on, for the Waygate. In Haven your own choice counts at once (on the server
@@ -1112,6 +1114,7 @@ function start(hot = {}) {
   }
 
   function renderTravel() {
+    if (travelGate) return renderCrossing(travelGate);
     renderDeep();
     renderCaelum();
     const list = $('travel-list');
@@ -1218,6 +1221,36 @@ function start(hot = {}) {
       });
       list.appendChild(btn);
     }
+  }
+
+  /** (1.0) A crossing on the Verge: only where it goes (the Deep's Depths, or Caelum's maps). */
+  function renderCrossing(kind) {
+    $('travel-here').innerHTML = '';
+    $('travel-list').innerHTML = '';
+    $('travel-deep').innerHTML = '';
+    $('travel-eyebrow').textContent = kind === 'deep' ? 'The Way Down' : 'The Way Up';
+    $('travel-desc').textContent = kind === 'deep' ? 'Down through the rock, past the Starwell, to the Deep.' : 'Up the white stair, past the Starwell, to Caelum.';
+    if (kind === 'deep') renderDeep();
+    else renderCaelum();
+    if (!$('travel-deep').children.length) {
+      const p = document.createElement('p');
+      p.className = 'setting-desc';
+      p.textContent = kind === 'deep' ? 'The way down is shut to you: the Deep opens after the Starwell, through rebirth.' : 'The way up is shut to you: Caelum opens with the quest More Than One Life.';
+      $('travel-deep').appendChild(p);
+    }
+  }
+
+  /** (1.0) The crack in the air on the Verge. Lacuna is through it, one day (docs/design/chapter-2.md). */
+  function renderCrack() {
+    const p = world.player;
+    const granted = ['ianitor', 'arbiter', 'desiderium', 'fiat'].every((t) => p.bossKills && p.bossKills[t] > 0);
+    $('talk-role').textContent = 'The Verge';
+    $('talk-name').textContent = 'A crack in the air';
+    $('talk-keys').classList.add('hidden');
+    $('talk-quests').innerHTML = '';
+    $('talk-line').textContent = granted
+      ? 'Since the Granted fell, the crack has widened. Light comes through it: sunlight, from a sky that is not this one, and the sound of a market. It still will not let you through. Not yet.'
+      : 'A thin crack hangs in the air, taller than a door, its edges bright. It hums when you come close and pushes you gently back. Something is on the other side. The Granted, up in Caelum, would know what.';
   }
 
   // ------------------------------------------------- story: people, signs, journal
@@ -2380,6 +2413,7 @@ function start(hot = {}) {
     if (talkTo === 'delve') return renderDelve();
     if (talkTo === 'ringstones') return renderRingStones();
     if (talkTo === 'tomashusk') return renderTomasHusk();
+    if (talkTo === 'crack') return renderCrack(); // (1.0) the Verge
     if (world.keepVisit && (talkTo === 'keepaltar' || talkTo === 'seraph' || talkTo === 'wishes' || String(talkTo).startsWith('hall_') || WORKS[talkTo] || SETTLERS[talkTo])) {
       // (0.82.2) a friend's keep: theirs to tend
       $('talk-role').textContent = "A friend's keep";
@@ -6194,6 +6228,15 @@ function start(hot = {}) {
         if (mode === 'play') {
           sfx.ui();
           travelStone = null;
+          travelGate = null;
+          setMode('travel');
+        }
+        break;
+      case 'crossing': // (1.0) the Verge: the way down or the way up
+        if (mode === 'play') {
+          sfx.ui();
+          travelStone = null;
+          travelGate = ev.kind;
           setMode('travel');
         }
         break;

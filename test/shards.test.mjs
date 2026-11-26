@@ -520,5 +520,21 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('...when the keeper leaves, the visitor walks back to Haven', sv.players.get(B).copy.world.map.id === 'town');
 }
 
+// (1.0) Once the keep is open, a hero logs in at the Wishkeep instead of Haven
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), passcode: 'stun', name: 'Home World', seed: 11 });
+  const cn = (n) => { const c = { n }; box.set(c, []); return c; };
+  const mk = (name, cls, lives) => ({ t: 'hello', v: NET_VERSION, pass: 'stun', name, cls, save: Object.assign(geared(cls, 100, 6), { acctLives: lives }), gold: 100, tickets: 3, keep: null });
+  const a = cn('a'), b = cn('b');
+  sv.message(b, mk('Newcomer', 'mage', {}));
+  sv.message(a, mk('Keeper', 'warrior', { archer: { prim: [6, 7, 8, 9, 10], et: ['ring'], gr: [], wish: 50 } }));
+  const A = box.get(a).find((m) => m.t === 'welcome').pid, B = box.get(b).find((m) => m.t === 'welcome').pid;
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('Server (1.0): with the keep open, a hero starts the session in their Wishkeep', sv.players.get(A).copy.key === `wishkeep:${A}` && sv.players.get(A).copy.world.map.id === 'wishkeep', sv.players.get(A).copy.key);
+  check('...and Haven is not told they arrived there', !box.get(b).some((m) => m.t === 'chat' && /Keeper arrived in Haven/.test(m.text || '')));
+  check('...a hero without a keep still starts in Haven', sv.players.get(B).copy.key === 'town');
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

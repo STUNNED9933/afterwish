@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Verge: home at the keep, the ways up and down, and a crack in the air (0.99.6)
+
+- **Once your Wishkeep is open, you start every session there instead of Haven** (on your own and on the server world). The keep's own Waygate, just south of the Hearth, still goes anywhere.
+- **A new map off the keep, the Verge** (through the second beacon out of the keep). It's safe, and it holds two gates you walk into:
+  - **The Way Down:** the old stone arch, now with a dark violet veil. Standing in it opens the Deep's list.
+  - **The Way Up:** floating white steps under a gold halo. Standing in it opens Caelum's list.
+  - Coming back from the Deep or Caelum takes a keep owner to the Verge, beside the gate they used. Without a keep, it's still Haven.
+- **The crack:** a tear in the air at the back of the Verge. Look at it with G or right-click. For now it only hums, and it reads differently once all four Granted have fallen. It will be the way into Lacuna (Chapter 2).
+- **Map exits are now beacons:** a soft column of light with rising rings and motes, which brightens while you stand in it, instead of the old swirling portal.
+- Fixed: Asterfell had a second copy of its houses stacked on the first.
+
 ### The hero, younger (0.99.5)
 
 - **All four heroes and their Eternal forms are remade younger:** teenagers now, slimmer and about a head shorter than before, with the same outfits and colours (Tripo, 8 models, 495 credits). Every animation carries over unchanged: idle, walk, run, attacks, skills, the sheathing (copied onto the new bodies with `tools/models/copy-clips.mjs`).

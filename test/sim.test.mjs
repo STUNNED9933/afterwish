@@ -226,7 +226,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const seen = new Set(['town']); const queue = ['town'];
   while (queue.length) for (const g of buildMap(queue.shift()).portals) if (!seen.has(g.to)) { seen.add(g.to); queue.push(g.to); }
   // (The Wilds is reached by the Waygate only, from world tier II: its one portal leads home.)
-  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep); // (0.80: the Wishkeep is by the Waygate only)
+  const road = MAP_IDS.filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep && !MAPS[id].verge); // (1.0: the Verge is reached from the keep) (0.80: the Wishkeep is by the Waygate only)
   check('maps: every map on the road can be reached from town', road.every((id) => seen.has(id)), [...seen].join(' > '));
   check('maps: every portal on the road has a way back', road.every((id) => buildMap(id).portals.every((g) => buildMap(g.to).portals.some((b) => b.to === id))));
   check('maps: the Waygate-only maps lead home', MAP_IDS.filter((id) => MAPS[id].fromTier).every((id) => buildMap(id).portals.every((g) => g.to === 'town')));
@@ -243,7 +243,7 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
     const chain = ['town'];
     for (;;) { const next = MAPS[chain[chain.length - 1]].portals.map((g) => g.to).find((to) => !chain.includes(to)); if (!next) break; chain.push(next); }
     const fields = chain.slice(1).map((id) => MAPS[id]);
-    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep).length, chain.join(' > '));
+    check('maps: one road from Haven through every map', chain.length === Object.keys(MAPS).filter((id) => !MAPS[id].fromTier && !MAPS[id].deep && !MAPS[id].caelum && !MAPS[id].wishkeep && !MAPS[id].verge).length, chain.join(' > '));
     check('maps: each map picks up where the last one ended, up to level 100', fields.every((m, i) => m.level === (i === 0 ? 1 : fields[i - 1].level + fields[i - 1].levelSpan + 1)) && buildMap(chain[chain.length - 1]).spawns.some((sp) => sp.level === 100));
     check('maps: three bosses, each in its own map', ['keep', 'hollow', 'sanctum'].map((id) => buildMap(id).spawns.find((sp) => DEFS.ENEMIES[sp.type].boss).type).join() === 'boss,boss2,boss3');
     check('maps: enemies get tougher the deeper in you go', (() => { const m = buildMap('frost'); const near = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) < 30); const far = m.spawns.filter((sp) => Math.hypot(sp.x - m.portals[0].x, sp.z - m.portals[0].z) > 60); const av = (l) => l.reduce((a, sp) => a + sp.level, 0) / l.length; return near.length && far.length && av(far) > av(near) + 2; })());
@@ -6548,5 +6548,36 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   check('...in the night the keep\'s people are indoors: nobody bumps into them', Math.abs(o.x - (s.x + 0.1)) < 1e-9);
   w.command({ type: 'keepTide', level: 5 }); w.runCommands();
   check('...calling again mid-night says so instead of doing nothing', evs(w).includes('nightBusy') && w.tide.level === 32);
+}
+{
+  // (1.0) The Verge: out of the keep, its two crossings, the crack, and the way home from the Deep and Caelum
+  const { geared } = await import('./balance.mjs');
+  const { buildMap: vergeBuild } = await import('../src/sim/maps.js');
+  const evs = (w) => { const out = w.events.map((e) => e.type); w.events = []; return out; };
+  const w = new World({ seed: 1001, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  check('Verge (1.0): Asterfell has each of its houses once (no second copy on top)', (() => { const m = vergeBuild('asterfell'); const hs = m.obstacles.filter((o) => o.kind === 'house'); return hs.length <= MAPS.asterfell.houses && hs.length > 0; })());
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const out = w.map.portals.find((g) => g.to === 'verge');
+  check('...the Wishkeep has a way out to the Verge, clear of the Unmade\'s ways in', !!out && w.map.gates.every((gt) => Math.hypot(gt.x - out.x, gt.z - out.z) > 6));
+  p.x = p.px = out.x; p.z = p.pz = out.z;
+  for (let i = 0; i < 80 && w.map.id !== 'verge'; i++) w.step(CONFIG.TICK);
+  check('...walk into it and you are on the Verge', w.map.id === 'verge' && w.map.safe && w.map.crossings.length === 2 && w.obstacles.some((o) => o.kind === 'crack'));
+  evs(w);
+  const down = w.map.crossings.find((c) => c.kind === 'deep');
+  p.x = p.px = 0; p.z = p.pz = 4; w.step(CONFIG.TICK); evs(w);
+  p.x = p.px = down.x; p.z = p.pz = down.z;
+  let ce = null;
+  for (let i = 0; i < 80 && !ce; i++) { w.step(CONFIG.TICK); ce = w.events.find((e) => e.type === 'crossing'); }
+  check('...stand on the Way Down and its list opens (the Deep only)', !!ce && ce.kind === 'deep');
+  check('...the crack can be looked at (G or right-click)', w.interactables().some((o) => o.kind === 'crack'));
+  w.goMap('deep6', 'town');
+  check('...and from the Deep, a hero with a keep goes home to the Verge, arriving by the Way Down', w.homeOf('town') === 'verge');
+  w.goMap(w.homeOf('town'), 'deep6');
+  check('...(arriving a few steps in from it)', w.map.id === 'verge' && Math.hypot(p.x - down.x, p.z - down.z) < 7);
+  const w2 = new World({ seed: 1002, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  w2.goMap('deep6', 'town');
+  check('...without a keep, the Deep\'s way home is still Haven', w2.homeOf('town') === 'town');
 }
 process.exit(failed ? 1 : 0);

@@ -786,6 +786,7 @@ export class Hud {
       dot(gate.x, gate.z, 2.5, '#0a0d16');
     }
     if (world.map.waygate) dot(world.map.waygate.x, world.map.waygate.z, 4, '#ffd27a');
+    for (const c of world.map.crossings || []) dot(c.x, c.z, 4, c.kind === 'deep' ? '#9a6cff' : '#fff2c4'); // (1.0)
     for (const ob of world.map.obstacles) if (ob.kind === 'ring') dot(ob.x, ob.z, 4, '#9fe7ff'); // (0.61) the Echo Ring
     for (const ws of world.map.waystones || []) dot(ws.x, ws.z, 3.5, '#9fe6ff');
     for (const c of world.chests || []) dot(c.x, c.z, c.tier === 'radiant' ? 3.2 : 2.4, c.tier === 'radiant' ? '#7ff5e1' : c.tier === 'gilded' ? '#f0c45a' : '#c08a4e');
@@ -882,9 +883,18 @@ export class Hud {
         for (const gate of world.map.portals) {
           const el = document.createElement('div');
           el.className = 'plabel';
-          el.textContent = 'To ' + gate.name;
+          const to = world.homeOf ? world.homeOf(gate.to) : gate.to; // (1.0) home from the Deep or Caelum: the Verge, for a keep's owner
+          el.textContent = 'To ' + (to !== gate.to && MAPS[to] ? MAPS[to].name : gate.name);
           this.worldUi.appendChild(el);
           this.portalLabels.push({ el, gate });
+        }
+        for (const c of world.map.crossings || []) {
+          // (1.0) the Verge's crossings
+          const el = document.createElement('div');
+          el.className = 'plabel way cross-' + c.kind;
+          el.textContent = c.name;
+          this.worldUi.appendChild(el);
+          this.portalLabels.push({ el, gate: c });
         }
         if (world.map.waygate) {
           const el = document.createElement('div');

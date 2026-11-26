@@ -175,7 +175,16 @@ export class ServerWorld {
     }
     const signs = Array.isArray(hello.signs) ? hello.signs.slice(0, 200).map(String) : []; // (0.56.4) the account's
     this.place(pl, 'town', null, null, { save, name, cls, parry: hello.parry, autoAttack: hello.autoAttack !== false, gold, tickets, signs, keep });
-    if (!pl.alone) this.chatAll(`${name} arrived in Haven.`);
+    // (1.0) a hero whose Wishkeep is open starts in it (Haven is a walk or the Waygate away)
+    let home = false;
+    try {
+      const w = pl.copy && pl.copy.world, h = w && w.heroByPid(pl.pid);
+      home = !!(h && w.as(h, () => w.keepOpen()));
+    } catch {
+      home = false;
+    }
+    if (home) this.moves.push({ pid: pl.pid, copy: pl.copy, to: KEEP.map, from: 'town', extra: null });
+    if (!pl.alone && !home) this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }
 

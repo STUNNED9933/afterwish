@@ -19,6 +19,7 @@ import { PostFX } from './postfx.js';
 import { eternalForm } from '../sim/eternal.js';
 import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook, hideWhileLoading, preload } from './rigged.js';
 import { propInstances, PROPS } from './props.js';
+import { buildBeacon, animBeacon, buildWayDown, buildWayUp, buildCrack } from './gates.js'; // (1.0)
 import { placeBuilding, TOWN_SET, KEEP_HOMES, KEEP_HALLS, CITY_SET } from './buildings.js'; // (0.99.3)
 import { SlashTrail } from './slash.js';
 
@@ -770,6 +771,9 @@ export class Renderer {
         tierRing.scale.setScalar(5);
         g.add(tierRing);
         (this.tierViews = this.tierViews || []).push({ id: o.cls, cap, ring: tierRing, tier: -1 });
+      } else if (o.kind === 'crack') {
+        // (1.0) the Verge's crack in the air: a jagged tear of light, taller than a door, shards turning round it
+        g.add((this.crackView = buildCrack(o)).group);
       } else if (o.kind === 'board') {
         const board = buildBoard();
         board.position.set(o.x, 0, o.z);
@@ -871,30 +875,25 @@ export class Renderer {
       this.altarRunes.push(altar.userData.rune);
     }
 
-    // Portals to the neighbouring maps
+    // Portals to the neighbouring maps. (1.0) A beacon, as in MapleStory: a ring on the ground and a column of
+    // light with rings rising up it, not a stone gate standing alone in a field. The old arch is the Way Down now.
+    if (!(map.obstacles || []).some((o) => o.kind === 'crack')) this.crackView = null;
     this.portalViews = [];
     for (const gate of map.portals) {
-      const portal = new THREE.Group();
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.16, 6, 22), new THREE.MeshBasicMaterial({ color: 0x9fd8ff }));
-      arch.position.y = 1.9;
-      const veil = new THREE.Mesh(new THREE.CircleGeometry(1.6, 22), new THREE.MeshBasicMaterial({ color: 0x6fb4ff, transparent: true, opacity: 0.4, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
-      veil.position.y = 1.9;
-      const pad = new THREE.Mesh(this.ringGeo(), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.8, depthWrite: false }));
-      pad.scale.setScalar(gate.r);
-      pad.position.y = 0.05;
-      portal.add(arch, veil, pad);
-      portal.position.set(gate.x, 0, gate.z);
-      portal.rotation.y = -gate.angle + Math.PI / 2; // face the middle of the map
-      g.add(portal);
-      this.portalViews.push({ veil, pad, gate });
-      // An old stone arch around it (0.41); the plain ring stays until the arch arrives.
-      propInstances('waygate', [{ x: 0, z: 0, rot: Math.PI / 2, sx: 4.6, sz: 1.2, sy: 4.4 }]).then((mesh) => {
-        if (!mesh || this.exploreGroup !== g) return;
-        portal.add(mesh);
-        arch.visible = false;
-        veil.scale.set(0.62, 0.92, 1);
-        veil.position.y = 1.75;
-      });
+      const v = buildBeacon(this.ringGeo());
+      v.group.position.set(gate.x, 0, gate.z);
+      g.add(v.group);
+      this.portalViews.push({ ...v, gate });
+    }
+    // (1.0) The Verge's crossings: the Way Down (the old stone arch, a dark veil) and the Way Up (a white stair
+    // to a ring of gold)
+    this.crossViews = [];
+    for (const c of map.crossings || []) {
+      const v = c.kind === 'deep' ? buildWayDown(this.ringGeo(), (mesh) => this.exploreGroup === g && mesh) : buildWayUp(this.ringGeo());
+      v.group.position.set(c.x, 0, c.z);
+      v.group.rotation.y = Math.atan2(c.x, c.z) + Math.PI; // facing the middle of the map
+      g.add(v.group);
+      this.crossViews.push({ ...v, gate: c });
     }
     // The Waygate in town (0.61): a round dais, four gold-veined obelisks, and a ring of light that turns
     // above it (faster, lower and brighter while it carries you off).
@@ -3645,9 +3644,14 @@ export class Renderer {
     if (this.portalViews && this.exploreGroup && this.exploreGroup.visible) {
       for (const pv of this.portalViews) {
         const active = world.portalOn === pv.gate && world.portalArmed;
-        pv.veil.material.opacity = active ? 0.9 : 0.32 + Math.sin(this.time * 2.5) * 0.1;
-        pv.pad.scale.setScalar(pv.gate.r * (active ? 1 - 0.5 * Math.min(1, world.portalT / 0.9) : 1));
+        animBeacon(pv, dt, this.time, active ? Math.min(1, world.portalT / 0.9) : 0);
       }
+      const pp = world.player;
+      for (const cv of this.crossViews || []) {
+        const on = !!pp && Math.hypot(pp.x - cv.gate.x, pp.z - cv.gate.z) < cv.gate.r && world.gateArmed;
+        cv.anim(dt, this.time, on ? Math.min(1, (world.gateT || 0) / 0.9) : 0);
+      }
+      if (this.crackView && this.crackView.group.parent) this.crackView.anim(dt, this.time);
     }
     if (this.wayView && this.exploreGroup && this.exploreGroup.visible) {
       // (0.61) the Waygate's rings turn; faster, lower and brighter while it carries you off

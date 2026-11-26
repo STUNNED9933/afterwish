@@ -13,7 +13,7 @@ const DEPTH_FIRST = DEPTH_IDS[0]; // (0.57.6) the Depth the main story opens (VI
 
 /** Commands that mean a player is at the keys (anything else, like sorting the bag, does not). */
 // Map objects you can interact with (G, or right-click to walk over). New kinds go here.
-const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar', 'works', 'statue']); // (0.80: the Wishkeep's halls and Hearth)
+const INTERACT_KINDS = new Set(['npc', 'sign', 'board', 'delve', 'ring', 'hall', 'keepaltar', 'works', 'statue', 'crack']); // (1.0: the Verge's crack) // (0.80: the Wishkeep's halls and Hearth)
 const r2n = (n) => Math.round((n || 0) * 100) / 100;
 // How long a friend's hits may wait for their parry to arrive (0.41.1): about a slow connection's round trip.
 const LAG_CAP = 0.5;
@@ -88,7 +88,7 @@ function turnToward(current, target, maxStep) {
  * so all the single-hero code below works unchanged for whichever hero is
  * acting (casting, being attacked, picking up loot ...).
  */
-const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'picks', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'stoneT', 'stoneArmed', 'stoneOn', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
+const HERO_KEYS = ['player', 'cls', 'kit', 'basic', 'mods', 'augments', 'offer', 'picks', 'rerolls', 'portalT', 'portalArmed', 'portalOn', 'wayT', 'wayArmed', 'gateT', 'gateArmed', 'stoneT', 'stoneArmed', 'stoneOn', 'respawnT', 'stats', 'bestWave', 'maxCheckpoint', 'parryPreset'];
 
 /** Rarity weights that allow exactly one rarity. */
 /** Commands the Weekly Echo ignores: its gear and build are fixed by the week. */
@@ -223,7 +223,7 @@ export class World {
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
     this.respawnT = 0;
     this.portalT = this.wayT = this.stoneT = 0;
-    this.portalArmed = this.wayArmed = this.stoneArmed = false;
+    this.portalArmed = this.wayArmed = this.stoneArmed = this.gateArmed = false;
     this.stoneOn = null;
     this.portalOn = null;
     // The heroes in this world. Alone, there is one and nothing ever switches.
@@ -276,7 +276,7 @@ export class World {
   arriveHero(h, from) {
     this.as(h, (p) => {
       const map = this.map;
-      const gate = map.portals.find((g) => g.to === from);
+      const gate = map.portals.find((g) => g.to === from) || this.crossingFor(map, from);
       const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0;
       const a = this.rng() * TAU;
       p.x = p.px = (gate ? gate.x * k : 0) + dCos(a) * 1.2;
@@ -292,7 +292,7 @@ export class World {
       h.will = null; // (0.68) a new map asks afresh
       this.portalT = this.wayT = 0;
       this.portalOn = null;
-      this.portalArmed = this.wayArmed = false;
+      this.portalArmed = this.wayArmed = this.gateArmed = false;
       if (!p.visited.includes(map.id) && map.id !== 'rift' && map.id !== 'delve') {
         p.visited.push(map.id);
         this.emit('discovered', { id: map.id, name: map.name });
@@ -349,7 +349,7 @@ export class World {
     this.offer = null;
     this.rerolls = CONFIG.AUGMENT_REROLLS;
     this.portalT = this.wayT = this.stoneT = this.respawnT = 0;
-    this.portalArmed = this.wayArmed = this.stoneArmed = false;
+    this.portalArmed = this.wayArmed = this.stoneArmed = this.gateArmed = false;
     this.stoneOn = null;
     this.portalOn = null;
     this.stats = { parries: 0, perfects: 0, kills: 0, dodges: 0 };
@@ -11510,7 +11510,7 @@ inTown() {
     this.keepOwnerName = id === KEEP.map && this.cur ? this.cur.name || null : null;
     this.keepTierShown = id === KEEP.map && this.player.keep ? this.player.keep.tier : 1;
     this.keepArrive(); // (0.81) the Wishkeep's heroes and buildings (none anywhere else)
-    const gate = map.portals.find((g) => g.to === from);
+    const gate = map.portals.find((g) => g.to === from) || this.crossingFor(map, from); // (1.0) back from the Deep or Caelum: at its crossing
     const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
     p.x = p.px = gate ? gate.x * k : 0;
     p.z = p.pz = gate ? gate.z * k : 0;
@@ -12055,6 +12055,7 @@ inTown() {
       }
     }
     this.stepWaystones(dt);
+    this.stepCrossings(dt); // (1.0)
     // Portals: stand in one for a moment to travel to the next map.
     let on = null;
     for (const g of this.map.portals) if (dist(p.x, p.z, g.x, g.z) < g.r) on = g;
@@ -12064,7 +12065,40 @@ inTown() {
       this.portalT = 0;
     } else if (this.portalArmed) {
       this.portalT += dt;
-      if (this.portalT >= CONFIG.PORTAL_TIME) this.goMap(on.to, this.map.id);
+      if (this.portalT >= CONFIG.PORTAL_TIME) this.goMap(this.homeOf(on.to), this.map.id);
+    }
+  }
+
+  /**
+   * (1.0) Where a portal home leads: from the Deep or Caelum, a hero with a Wishkeep comes back to the Verge
+   * (by the crossing they took), not all the way to Haven.
+   */
+  homeOf(to) {
+    if (to !== 'town' || !this.map || !(this.map.deep || CAELUM.maps[this.map.id])) return to;
+    return this.keepOpen() ? 'verge' : to;
+  }
+
+  /** (1.0) On the Verge, the crossing that leads to `from` (the Deep or Caelum), to arrive by. */
+  crossingFor(map, from) {
+    if (!map.crossings || !MAPS[from]) return null;
+    return map.crossings.find((c) => (c.kind === 'deep' && MAPS[from].deep) || (c.kind === 'caelum' && CAELUM.maps[from])) || null;
+  }
+
+  /** (1.0) The Verge's crossings: stand on one a moment and the list of where it goes opens (like the Waygate). */
+  stepCrossings(dt) {
+    const cs = this.map.crossings;
+    if (!cs) return;
+    const p = this.player;
+    const on = cs.find((c) => dist(p.x, p.z, c.x, c.z) < c.r);
+    if (!on) {
+      this.gateArmed = true;
+      this.gateT = 0;
+    } else if (this.gateArmed) {
+      this.gateT = (this.gateT || 0) + dt;
+      if (this.gateT >= CONFIG.PORTAL_TIME) {
+        this.gateArmed = false;
+        this.emit('crossing', { kind: on.kind, name: on.name });
+      }
     }
   }
 
@@ -12290,6 +12324,7 @@ inTown() {
         }
       }
       this.stepWaystones(dt);
+      this.stepCrossings(dt); // (1.0)
       let on = null;
       for (const g of this.map.portals) if (dist(p.x, p.z, g.x, g.z) < g.r) on = g;
       this.portalOn = on;
@@ -12300,7 +12335,7 @@ inTown() {
         this.portalT += dt;
         if (this.portalT >= CONFIG.PORTAL_TIME) {
           // One hero takes the portal and the whole party goes with them (on the server, just them).
-          this.goMap(on.to, this.map.id);
+          this.goMap(this.homeOf(on.to), this.map.id);
           this.use(lead);
           return;
         }

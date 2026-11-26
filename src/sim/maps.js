@@ -166,7 +166,15 @@ export const MAPS = {
     name: 'The Wishkeep', theme: 'town', safe: true, wishkeep: true, radius: 32, level: 100, levelSpan: 0,
     blurb: 'The people the Unmade took from, and the fire they keep for you',
     roster: {}, spawns: 0, trees: 26, rocks: 6, houses: 0,
-    portals: [{ to: 'town', angle: Math.PI }],
+    portals: [{ to: 'town', angle: Math.PI }, { to: 'verge', angle: -0.8 }], // (1.0) and out to the Verge, north-east (clear of the Unmade's ways in)
+  },
+  // (1.0) The Verge: out past the Wishkeep, where the ways part. A way down to the Deep and a way up to
+  // Caelum (stand on one: the list of where it goes), and a crack in the air that nobody can explain yet.
+  verge: {
+    name: 'The Verge', theme: 'forest', safe: true, verge: true, radius: 30, level: 100, levelSpan: 0,
+    blurb: "Where the keep's road ends: a way down, a way up, and a crack in the air",
+    roster: {}, spawns: 0, trees: 34, rocks: 14, houses: 0,
+    portals: [{ to: 'wishkeep', angle: Math.PI / 2 }],
   },
   deep10: {
     name: 'The Quiet', theme: 'quiet', radius: 42, level: 100, levelSpan: 0, deep: 10, song: 'starwell',
@@ -215,6 +223,13 @@ export function buildMap(id, custom = null) {
     }
   }
   if (def.wishkeep) layKeep(R, obstacles, keepClear, def.keepStage || 0);
+  // (1.0) The Verge: two crossings (stand on one: where it goes) and the crack (G: look at it)
+  const crossings = def.verge ? [{ kind: 'deep', name: 'The Way Down', x: -10, z: -7, r: 2 }, { kind: 'caelum', name: 'The Way Up', x: 10, z: -7, r: 2 }] : null;
+  if (def.verge) {
+    for (const c of crossings) keepClear.push({ x: c.x, z: c.z, r: 6 });
+    obstacles.push({ kind: 'crack', shape: 'circle', id: 'crack', name: 'A crack in the air', x: 0, z: -17, r: 1.1, pickR: 2.2, reach: 1.6 });
+    keepClear.push({ x: 0, z: -17, r: 6 }, { x: 0, z: 0, r: 8 });
+  }
   if (def.theme === 'town' && !def.wishkeep) {
     keepClear.push({ x: 0, z: 0, r: 9 });
     for (let i = 0; i < def.houses; i++) {
@@ -237,18 +252,7 @@ export function buildMap(id, custom = null) {
     obstacles.push({ kind: 'ring', shape: 'circle', id: 'ringstones', name: 'The Echo Ring', x: -15.2, z: -0.4, r: 2.3, pickR: 3.2, soft: true });
   }
   // People to talk to (Haven) and signs to read (two on every map). See sim/story.js.
-  if (def.houses && def.theme !== 'town') {
-    // A buried city (Asterfell): houses along two rings of streets, gaps left for the roads.
-    for (let i = 0; i < def.houses; i++) {
-      const ring = i % 2 ? 0.42 : 0.7;
-      const a = (i / def.houses) * Math.PI * 2 + rng() * 0.18;
-      if (portals.some((g) => Math.abs(dAtan2(dSin(a - g.angle), dCos(a - g.angle))) < 0.3)) continue;
-      const x = dCos(a) * R * ring, z = dSin(a) * R * ring;
-      if (Object.values(SIGNS).some((sg) => sg.map === id && Array.isArray(sg.spot) && dHypot(sg.spot[0] - x, sg.spot[1] - z) < 7)) continue; // not on a sign
-      obstacles.push({ kind: 'house', shape: 'box', x, z, hw: 2.4 + rng() * 1.2, hd: 2.0 + rng(), rot: a + Math.PI / 2, height: 3.2 + rng() * 2.4, r: 3.6 });
-      keepClear.push({ x, z, r: 4.5 });
-    }
-  }
+  // ((1.0) a second copy of the buried city's houses stood here, so Asterfell had them twice, on top of each other)
   if (def.theme === 'town' && !def.wishkeep) {
     // (0.58.1) Someone who is here for some heroes and not others (by their own story) never blocks the
     // way, so a shared Haven on the server moves everyone the same way whatever each of them sees.
@@ -288,7 +292,7 @@ export function buildMap(id, custom = null) {
   // Waystones (out in the world): one by the entrance, where fallen teammates wake up, and one
   // on the far side. Stand on one to jump to the other (just you), or travel on like the Waygate.
   const waystones = [];
-  if (def.theme !== 'town' && portals.length && !custom) {
+  if (def.theme !== 'town' && !def.verge && portals.length && !custom) {
     const g = portals[0];
     const d = dHypot(g.x, g.z);
     waystones.push({ x: g.x * (1 - 10 / d) + (g.z / d) * 4, z: g.z * (1 - 10 / d) - (g.x / d) * 4, r: 1.5, name: 'Entrance waystone' });
@@ -361,7 +365,7 @@ export function buildMap(id, custom = null) {
   return {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan, deep: def.deep || 0,
-    portals, obstacles, spawns, waygate, waystones, ...(def.wishkeep ? { gates: [0, 1.571, 2.75, 4.712].map((a) => ({ x: dCos(a) * (R - 4), z: dSin(a) * (R - 4) })) } : {}),
+    portals, obstacles, spawns, waygate, waystones, ...(crossings ? { crossings } : {}), ...(def.wishkeep ? { gates: [0, 1.571, 2.75, 4.712].map((a) => ({ x: dCos(a) * (R - 4), z: dSin(a) * (R - 4) })) } : {}),
     ...(road ? { road: road.line, sidePaths: road.sidePaths, chestSpots: road.shrines.map((sh) => ({ x: sh.x - sh.nx * 1.5, z: sh.z - sh.nz * 1.5 })), arena: road.arena } : {}),
   };
 }

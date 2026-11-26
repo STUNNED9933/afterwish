@@ -1337,6 +1337,58 @@
       "rigType": "biped",
       "rigModel": "v1.0",
       "animations": []
+    },
+    "l_rowan": {
+      "prompt": "Rowan, leader of an adventuring company, a handsome rugged man in his early thirties, broad shoulders and a muscular athletic build, short swept-back dark auburn hair, a short trimmed beard, confident warm smile, a fitted sleeveless brown leather jerkin worn open at the collar showing a toned chest, a marigold-yellow scarf knotted at his neck, leather bracers, a wide belt with a sword frog, dark fitted trousers, sturdy knee boots, a small marigold flower badge on the jerkin, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": [
+        "preset:biped:standing_relax",
+        "preset:biped:walk",
+        "preset:biped:fold_arms",
+        "preset:biped:greet_02"
+      ]
+    },
+    "l_ilse": {
+      "prompt": "Ilse, the healer of an adventuring company, a beautiful kind woman in her late twenties, curvy figure, long wavy honey-blonde hair over one shoulder, gentle smile, a fitted white and marigold-yellow healer's dress with a laced corset bodice and a low sweetheart neckline, a long flowing skirt slit at the side over soft leggings, a satchel of herbs at her hip, a small golden sun pendant, soft leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": [
+        "preset:biped:standing_relax",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:greet_01"
+      ]
+    },
+    "l_juni": {
+      "prompt": "Juni, the scout of an adventuring company, an energetic grinning adult woman in her early twenties, lean athletic toned build, short choppy black hair with a marigold-yellow headband, freckles, a cropped fitted dark-green leather top showing a toned midriff, a short hooded capelet on her shoulders with the hood down, fingerless gloves, several small belts with pouches and a knife sheath, fitted brown trousers, light short boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": [
+        "preset:biped:standing_relax",
+        "preset:biped:walk",
+        "preset:biped:jump",
+        "preset:biped:look_around"
+      ]
+    },
+    "l_sorrel": {
+      "prompt": "Sorrel, the mage of an adventuring company, a tall slender elegant man in his thirties, long straight silver-white hair tied low, sharp handsome features, a calm faint smile, a long deep-green coat with gold trim and a high collar worn open over a fitted black shirt, a marigold-yellow sash, faint glowing arcane tattoos on his forearms, a small book on a chain at his belt, dark trousers, polished tall boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": [
+        "preset:biped:standing_relax",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:wait"
+      ]
     }
   }
 }

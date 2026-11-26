@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Every building its own, and solid (0.99.3)
+
+- **Buildings:** the same cottage no longer stands everywhere. Each house is now a building of its own, from KayKit's Medieval Hexagon Pack (free, CC0; see `ASSETS.md`):
+  - **Haven:** a tavern, a chapel, a windmill, two different homes, and Bram's forge beside Bram. The plaza well is a proper well with a roof and bucket.
+  - **The Wishkeep's halls:** the Bastion is a small castle, the Lodge an archery range with targets, the Observatory a tall blue tower, and the Market a market. The cottages that come as the keep grows are all different: homes, a tavern, a windmill, a lumbermill, a watermill.
+  - **The Mine** (and the Deep Seam and the Star Quarry) is a rocky hill with timbers and rails, its star-glass still glinting. **The Fields** are standing wheat.
+  - **Asterfell's buried city:** many shapes of house, washed to sandstone (green under the water in the Drowned Court).
+- **Solid:** the Mine's rock can no longer be walked through. Neither can the keep's settlers (Old Ysolde, Maren, Bastian, Liesl, Corwin, Hesper). The villagers who wander the keep step aside as you come through. Haven's townsfolk were already solid. Story characters that only some players see (Tomas on the road, Sister Odile when she first appears) stay passable on the shared server, so nobody bumps into someone they cannot see.
+
 ### Lines that sound like people, and a truer heroes list (0.99.2)
 
 - **Spoken audio is off for now.** The synthetic voices sounded flat and robotic, and could not do age (elders, children) or real emotion. The speech bubbles stay. The audio tools stay in `tools/voice/` for when better voices are available, and the Voice volume setting is hidden until then.

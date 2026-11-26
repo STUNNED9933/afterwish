@@ -390,6 +390,8 @@ function layKeep(R, obstacles, keepClear, stage = 0) {
     if (W.stage > stage) continue;
     const x = dCos(W.a) * W.r, z = dSin(W.a) * W.r;
     obstacles.push({ kind: 'works', shape: 'circle', id, work: W.kind, name: W.name, x, z, r: 1, soft: true, pickR: 2.2, reach: 2.6 });
+    // (0.99.3) the mine's rock is solid: its mouth (where you speak to it) at the spot, its body behind, away from the Hearth
+    if (W.kind === 'mine') obstacles.push({ kind: 'minebody', shape: 'circle', id: id + '_rock', x: dCos(W.a) * (W.r + 3.3), z: dSin(W.a) * (W.r + 3.3), r: 2.7 });
     keepClear.push({ x, z, r: W.kind === 'mine' ? 5 : 6 });
     shut.push(W.a);
   }
@@ -422,7 +424,7 @@ function layKeep(R, obstacles, keepClear, stage = 0) {
   }
   for (const id in SETTLER_SPOTS) {
     const [x, z] = SETTLER_SPOTS[id];
-    obstacles.push({ kind: 'npc', shape: 'circle', id, name: SETTLERS[id].name, x, z, r: 0.55, soft: true });
+    obstacles.push({ kind: 'npc', shape: 'circle', id, name: SETTLERS[id].name, x, z, r: 0.55 }); // (0.99.3) solid: in nobody's keep only some see them
   }
   keepClear.push({ x: -R + 4.5, z: 0, r: 8 }); // the road home
 }

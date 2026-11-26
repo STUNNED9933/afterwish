@@ -19,6 +19,7 @@ import { PostFX } from './postfx.js';
 import { eternalForm } from '../sim/eternal.js';
 import { upgradeHero, heroLook, loadRigged, loadWeapon, instantiate, RIGGED , setWeaponLook, weaponLook, hideWhileLoading, preload } from './rigged.js';
 import { propInstances, PROPS } from './props.js';
+import { placeBuilding, TOWN_SET, KEEP_HOMES, KEEP_HALLS, CITY_SET } from './buildings.js'; // (0.99.3)
 import { SlashTrail } from './slash.js';
 
 const R = CONFIG.ARENA_RADIUS;
@@ -444,7 +445,7 @@ export class Renderer {
     g.add(houseFallback);
     for (const o of map.obstacles) {
       if (o.kind === 'house') {
-        houseList.push({ x: o.x, z: o.z, rot: -o.rot, sx: o.hw * 2 + 0.3, sz: o.hd * 2 + 0.3 });
+        houseList.push({ x: o.x, z: o.z, rot: -o.rot, sx: o.hw * 2 + 0.3, sz: o.hd * 2 + 0.3, o });
         const house = new THREE.Group();
         const base = new THREE.Mesh(new THREE.BoxGeometry(o.hw * 2, o.height, o.hd * 2), wall);
         base.position.y = o.height / 2;
@@ -666,7 +667,15 @@ export class Renderer {
           lin.position.set(0, 2.6, 0.85);
           const cart = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.8), timber);
           cart.position.set(1.9, 0.5, 1.6);
-          d.add(mound, mouth, pL, pR, lin, cart);
+          const prim = new THREE.Group();
+          prim.add(mound, mouth, pL, pR, lin, cart);
+          d.add(prim);
+          // (0.99.3) the mine itself (KayKit, CC0): rock, timbers, rails; its body is solid (maps.js)
+          placeBuilding('mine_red', { x: 0, z: -3.1, rot: 0, fw: 5.6, fd: 6.6, turn: 0 }).then((b) => {
+            if (!b || !d.parent) return;
+            d.add(b);
+            prim.visible = false;
+          });
           const glass = new THREE.MeshStandardMaterial({ color: 0x9fe6ff, emissive: 0x4ab8ff, emissiveIntensity: 1.6 });
           for (let i = 0; i < 6; i++) {
             const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), glass);
@@ -712,13 +721,21 @@ export class Renderer {
               d.add(hive);
             }
           } else {
+            const rows = new THREE.Group();
             for (let r = 0; r < 5; r++) {
               const row = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.7, 0.45), grain);
               row.position.set(0, 0.45, -3.4 + r * 0.95);
               row.castShadow = true;
-              d.add(row);
-              lit.push(row);
+              rows.add(row);
             }
+            d.add(rows);
+            // (0.99.3) a field of standing grain (KayKit) in place of the rows
+            placeBuilding('grain', { x: 0, z: -1.5, rot: 0, fw: 7.4, fd: 5.6, turn: 0, scale: 1.05 }).then((b) => {
+              if (!b || !d.parent) return;
+              d.add(b);
+              rows.visible = soil.visible = false; // (the wheat is its own patch of ground)
+              lit.push(b); // shown once the field is worked, as the rows were
+            });
           }
           const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 5), new THREE.MeshStandardMaterial({ color: 0x6b4a2e }));
           pole.position.set(2.9, 1.1, 0.9);
@@ -771,18 +788,48 @@ export class Renderer {
         const water = new THREE.Mesh(new THREE.CircleGeometry(o.r * 0.78, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3f8fb0 }));
         water.position.set(o.x, 0.92, o.z);
         g.add(ring, water);
+        // (0.99.3) a proper well: stone, a roof, a bucket (KayKit)
+        placeBuilding('well_blue', { x: o.x, z: o.z, rot: Math.atan2(-o.x, -o.z), fw: o.r * 2.3, fd: o.r * 2.3, turn: 0 }).then((b) => {
+          if (!b || this.exploreGroup !== g) return;
+          g.add(b);
+          ring.visible = water.visible = false;
+        });
       }
     }
 
     if (houseList.length) {
-      propInstances(sandstone ? 'asterhouse' : 'cottage', houseList).then((mesh) => {
-        if (!mesh || this.exploreGroup !== g) return;
-        if (drowned) {
-          mesh.material = mesh.material.clone(); // its own copy: Asterfell above keeps its gold
-          mesh.material.color.set(0x5a7a78);
-        }
-        g.add(mesh);
-        houseFallback.visible = false;
+      // (0.99.3) each house its own building (KayKit, CC0): Haven's tavern, chapel and mill, Bram's forge, the
+      // keep's halls each their own, a buried city of many shapes (washed to sandstone). Until they arrive (or
+      // if they cannot), the old ones.
+      const oldProp = (list) =>
+        propInstances(sandstone ? 'asterhouse' : 'cottage', list).then((mesh) => {
+          if (!mesh || this.exploreGroup !== g) return false;
+          if (drowned) {
+            mesh.material = mesh.material.clone(); // its own copy: Asterfell above keeps its gold
+            mesh.material.color.set(0x5a7a78);
+          }
+          g.add(mesh);
+          return true;
+        });
+      const bram = map.id === 'town' && NPCS.bram && NPCS.bram.at;
+      const smithy = bram ? houseList.reduce((b, h) => (!b || Math.hypot(h.x - bram[0], h.z - bram[1]) < Math.hypot(b.x - bram[0], b.z - bram[1]) ? h : b), null) : null;
+      let home = 0, town = 0;
+      const pick = houseList.map((h, i) => {
+        if (h.o.hall) return KEEP_HALLS[h.o.hall] || null;
+        if (h.o.cottage) return KEEP_HOMES[home++ % KEEP_HOMES.length];
+        if (sandstone) return CITY_SET[(i * 5) % CITY_SET.length]; // (no two the same side by side)
+        if (h === smithy) return 'blacksmith_red';
+        return TOWN_SET[town++ % TOWN_SET.length];
+      });
+      const tint = drowned ? 0x6a8a86 : sandstone ? 0xd8c098 : null;
+      const mine = houseList.map((h, i) => (pick[i] ? placeBuilding(pick[i], { x: h.x, z: h.z, rot: h.rot, fw: h.sx, fd: h.sz, tint }) : Promise.resolve(null)));
+      Promise.all(mine).then((built) => {
+        if (this.exploreGroup !== g) return;
+        if (built.some((b, i) => pick[i] && !b)) return oldProp(houseList).then((ok) => ok && (houseFallback.visible = false)); // the pack did not come: the old ones
+        built.forEach((b) => b && g.add(b));
+        const rest = houseList.filter((h, i) => !pick[i]);
+        if (!rest.length) return (houseFallback.visible = false);
+        return oldProp(rest).then((ok) => ok && (houseFallback.visible = false));
       });
     }
     // The Deep (0.54): each domain's own landmark, in a ring beyond its edge
@@ -4481,6 +4528,20 @@ export class Renderer {
       if (!this.villageCtx) this.villageCtx = { benches: this.buildBenches(world), walkers: this.walkers };
       w.speed = w.speed || 1;
       const s = stepVillager(w, world, this.villageCtx, dt);
+      // (0.99.3) they make way for you (and for other heroes): nobody walks through them
+      const sat = w.task && w.task.then && w.task.then.sit && w.task.then.started;
+      if (!sat) {
+        const gp = w.g.position;
+        const ws = (this.hero && this.hero.group ? [this.hero.group.position] : []).concat([...(this.allyViews ? this.allyViews.values() : [])].map((v) => v.model && v.model.group && v.model.group.position).filter(Boolean));
+        for (const h of ws) {
+          const dx = gp.x - h.x, dz = gp.z - h.z, d = Math.hypot(dx, dz), room = 0.95;
+          if (d < room) {
+            const k = d > 1e-3 ? (room - d) / d : 0;
+            const nx = gp.x + (d > 1e-3 ? dx * k : room), nz = gp.z + (d > 1e-3 ? dz * k : 0);
+            if (!world.navFree || world.navFree(nx, nz)) [gp.x, gp.z] = [nx, nz];
+          }
+        }
+      }
       if (w.rig) w.rig.update(dt, s);
       else w.m.anim(dt, { moving: s.moving, swing: 1 });
     }

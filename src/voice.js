@@ -27,13 +27,14 @@ export class Voice {
     if (now < this.busyUntil && pri <= this.busyPri) return null;
     const key = who + ':' + moment;
     let pick = set[Math.floor(Math.random() * set.length)];
-    if (set.length > 1 && pick.f === this.last.get(key)) pick = set[(set.indexOf(pick) + 1) % set.length];
-    this.last.set(key, pick.f);
+    if (set.length > 1 && pick.t === this.last.get(key)) pick = set[(set.indexOf(pick) + 1) % set.length];
+    this.last.set(key, pick.t);
     if (this.audio) {
       try { this.audio.pause(); } catch {}
     }
     const vol = this.muted ? 0 : this.volume;
-    if (vol > 0) {
+    if (vol > 0 && pick.f) {
+      // (0.99.2) lines without audio (f) are shown only
       try {
         const a = new Audio(`voice/${pick.f}.mp3`);
         a.volume = Math.max(0, Math.min(1, vol));

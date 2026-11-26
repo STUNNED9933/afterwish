@@ -1,4 +1,6 @@
-# NPC voices (0.99)
+# NPC lines and voices (0.99)
+
+**Now (0.99.2): text only.** Edit `lines.json`, then run `python3 tools/voice/text.py`. It writes `src/voicelines.js` with each line and how long its bubble stays up. Spoken audio is off: Kokoro and Chatterbox (`sample_chatterbox.py`, the "Voice samples" workflow) both sounded too flat, with no real elders or children. To bring audio back, voice the lines with `make.py` (below) or something better, so each line has an `f` (its MP3); `src/voice.js` plays any line that has one.
 
 - `lines.json`: what each person says, by moment, plus their voice settings (Kokoro voice, speed, pitch).
   - Haven's townsfolk say `greet` (when you talk to them), `near` (as you pass), and `questDone` (when you hand in their quest).

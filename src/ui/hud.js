@@ -1097,7 +1097,9 @@ export class Hud {
       }
       const s = b.renderer.project(p.x, p.y || 2.6, p.z);
       const W = window.innerWidth, H = window.innerHeight;
-      const x = Math.max(110, Math.min(W - 110, s.visible ? s.x : W / 2)), y = Math.max(70, Math.min(H - 160, s.visible ? s.y : 90));
+      // (0.99.2) a speaker out of sight: low in the middle, over the prompts (not on the compass), without a tail
+      const x = Math.max(110, Math.min(W - 110, s.visible ? s.x : W / 2)), y = s.visible ? Math.max(110, Math.min(H - 160, s.y)) : H - 190;
+      b.el.classList.toggle('off', !s.visible);
       b.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
       b.el.style.opacity = b.left < 0.4 ? b.left / 0.4 : 1;
     }

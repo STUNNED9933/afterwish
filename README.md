@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lines that sound like people, and a truer heroes list (0.99.2)
+
+- **Spoken audio is off for now.** The synthetic voices sounded flat and robotic, and could not do age (elders, children) or real emotion. The speech bubbles stay. The audio tools stay in `tools/voice/` for when better voices are available, and the Voice volume setting is hidden until then.
+- **Every NPC line rewritten** to sound like a person talking rather than a fortune cookie: contractions, trailing off, small talk and everyday detail, and clearer voices for each age. Elders say "love" and "dear" and fuss over you; the children ramble and ask three questions at once.
+- **Bubbles from someone out of sight** (a hero behind you, a settler across the keep) now show low in the middle of the screen, not over the compass.
+- **Your heroes (0.99.1):** between Nights, heroes wander their halls only on screen, and that wander could get stuck far from where the game had them (online it was not even told their post). The list measured one place while you saw them in another. A stuck hero now starts again where they really are, and the list and compass measure where you see each hero.
+
 ### The game's people speak (0.99)
 
 - **Voiced NPCs.** About 150 short lines, each character with their own voice, shown in a speech bubble over them as they speak.

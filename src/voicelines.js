@@ -1,940 +1,791 @@
-// Written by tools/voice/make.py (0.99): what each of the game's people says out loud, by moment.
-// f: assets/voice/<f>.mp3 (served at voice/<f>.mp3); t: the words (the bubble); d: seconds long.
+// Written by tools/voice/text.py from tools/voice/lines.json: what each of the game's people says, by moment.
+// t: the words (the bubble); d: seconds it stays up. No f: no audio (spoken lines are off for now).
 export const VOICE_LINES = {
  "wren": {
   "greet": [
    {
-    "f": "wren_greet_0",
-    "t": "Come in, child. Mind the step. It remembers your feet better than you do.",
-    "d": 4.15
+    "t": "Oh, there you are. Come in, come in, before the cold follows you.",
+    "d": 5.3
    },
    {
-    "f": "wren_greet_1",
-    "t": "There you are. I had the kettle on before you reached the gate.",
-    "d": 3.24
+    "t": "I put the kettle on when I saw you on the road. Don't make me drink both cups.",
+    "d": 6.5
    },
    {
-    "f": "wren_greet_2",
-    "t": "Sit a moment. The mountain will still be there when you have rested.",
-    "d": 3.46
+    "t": "Sit down a minute, love. You've got that look again. Have you slept at all?",
+    "d": 5.9
    }
   ],
   "near": [
    {
-    "f": "wren_near_0",
-    "t": "Back again. Good. I count you, every time.",
-    "d": 2.4
+    "t": "Back in one piece. Good. I do worry, you know.",
+    "d": 4.4
    },
    {
-    "f": "wren_near_1",
-    "t": "Don't stand in the doorway like that, child. You'll let the warm out.",
-    "d": 3.82
+    "t": "Shut the door, love, you're letting all the warm out.",
+    "d": 4.4
    },
    {
-    "f": "wren_near_2",
-    "t": "Haven is small. But it is ours.",
-    "d": 2.14
+    "t": "It's not much, Haven. But it's ours, isn't it?",
+    "d": 4.1
    }
   ],
   "questDone": [
    {
-    "f": "wren_questDone_0",
-    "t": "Well done. I knew you would. I always know, and I always worry anyway.",
-    "d": 4.03
+    "t": "You did it? Oh, good. I knew you would. Still worried myself silly, mind.",
+    "d": 5.6
    },
    {
-    "f": "wren_questDone_1",
-    "t": "That's done, then. Rest a little, before the next thing finds you.",
-    "d": 3.41
+    "t": "Well, that's that. Now go and rest before something else turns up.",
+    "d": 5.0
    }
   ]
  },
  "bram": {
   "greet": [
    {
-    "f": "bram_greet_0",
-    "t": "Forge is hot. Put it on the anvil and stand back.",
-    "d": 3.46
+    "t": "Forge is hot. What've you broken this time?",
+    "d": 3.8
    },
    {
-    "f": "bram_greet_1",
-    "t": "Bring me iron, not stories. Well. Stories too, if they're short.",
-    "d": 4.27
+    "t": "Put it on the anvil. Let's have a look.",
+    "d": 4.1
    },
    {
-    "f": "bram_greet_2",
-    "t": "Steel's honest. Tell it what you want. It'll argue, but it'll listen.",
-    "d": 4.54
+    "t": "Iron, I'll take. Stories, I'll listen to while I work.",
+    "d": 4.4
    }
   ],
   "near": [
    {
-    "f": "bram_near_0",
-    "t": "Mind the sparks.",
-    "d": 1.3
+    "t": "Watch the sparks.",
+    "d": 2.3
    },
    {
-    "f": "bram_near_1",
-    "t": "That edge of yours wants work. Come by when you're ready.",
-    "d": 3.5
+    "t": "That blade's gone dull. Bring it by later.",
+    "d": 3.8
    },
    {
-    "f": "bram_near_2",
-    "t": "Heard you went up the ridge again. Keep your head down up there.",
-    "d": 3.7
+    "t": "Up the ridge again? Keep your head down up there, eh?",
+    "d": 4.7
    }
   ],
   "questDone": [
    {
-    "f": "bram_questDone_0",
-    "t": "Good work. Doesn't need saying. But there. I said it.",
-    "d": 3.5
+    "t": "Good. Good work. ...Don't make me say it twice.",
+    "d": 4.1
    },
    {
-    "f": "bram_questDone_1",
-    "t": "Done, is it? Edric would have liked you.",
-    "d": 2.59
+    "t": "Done already? Huh. Edric would've liked you.",
+    "d": 3.5
    }
   ]
  },
  "odile": {
   "greet": [
    {
-    "f": "odile_greet_0",
-    "t": "Come in out of the wind. Tell me where it hurts. Then tell me the truth.",
-    "d": 3.72
+    "t": "Get out of that wind. Now, where does it hurt? And don't say nowhere.",
+    "d": 5.6
    },
    {
-    "f": "odile_greet_1",
-    "t": "I have something for most things. Not for everything. I stopped pretending.",
-    "d": 4.08
+    "t": "I've got something for most things. Not everything, mind. I won't lie to you.",
+    "d": 5.6
    },
    {
-    "f": "odile_greet_2",
-    "t": "Sit down. You look like someone carrying more than their pack.",
-    "d": 3.02
+    "t": "Sit. You look like you're carrying a lot more than that pack.",
+    "d": 5.0
    }
   ],
   "near": [
    {
-    "f": "odile_near_0",
-    "t": "The thyme is doing well this year. Small mercies.",
-    "d": 2.74
+    "t": "The thyme's come up nicely this year. That's something, at least.",
+    "d": 4.7
    },
    {
-    "f": "odile_near_1",
-    "t": "Drink something warm before you go back up. Physician's orders. Former physician.",
-    "d": 4.8
+    "t": "Have something warm before you head out. Doctor's orders. Well. Old doctor's orders.",
+    "d": 5.3
    },
    {
-    "f": "odile_near_2",
-    "t": "Careful on the fen road. The water remembers the fever.",
-    "d": 3.22
+    "t": "Careful on the fen road. People still pick up fevers out there.",
+    "d": 5.0
    }
   ],
   "questDone": [
    {
-    "f": "odile_questDone_0",
-    "t": "Thank you. Truly. Few people come back to tell me how it ended.",
-    "d": 3.77
+    "t": "Thank you. Really. Hardly anyone comes back to tell me how it turned out.",
+    "d": 5.6
    },
    {
-    "f": "odile_questDone_1",
-    "t": "There. One less thing for the mountain to keep.",
-    "d": 2.26
+    "t": "There. That's one less thing I have to lie awake over.",
+    "d": 4.7
    }
   ]
  },
  "pip": {
   "greet": [
    {
-    "f": "pip_greet_0",
-    "t": "You came back! I knew you would. I was watching the gate.",
-    "d": 2.71
+    "t": "You're back! I saw you from the gate! I was watching the whole time!",
+    "d": 5.6
    },
    {
-    "f": "pip_greet_1",
-    "t": "Did you see the road? Is it still there? Did anybody walk on it?",
-    "d": 3.1
+    "t": "Did you go on the road? Is it still there? Did you see anybody on it?",
+    "d": 6.2
    },
    {
-    "f": "pip_greet_2",
-    "t": "I'm not scared of the mountain. I'm just watching it, that's all.",
-    "d": 3.07
+    "t": "I'm not scared of the mountain. I'm just keeping an eye on it. That's different.",
+    "d": 5.9
    }
   ],
   "near": [
    {
-    "f": "pip_near_0",
-    "t": "Somebody should watch the gate. So I do.",
-    "d": 2.21
+    "t": "Someone has to watch the gate. So I do it.",
+    "d": 4.4
    },
    {
-    "f": "pip_near_1",
-    "t": "Are you going out again? Come back, all right?",
-    "d": 2.23
+    "t": "Are you going out again? You have to come back, okay? Promise?",
+    "d": 5.0
    },
    {
-    "f": "pip_near_2",
-    "t": "Wren says I'll grow into the scarf. I'm trying.",
-    "d": 2.78
+    "t": "Wren says I'll grow into this scarf. It's taking ages.",
+    "d": 4.4
    }
   ],
   "questDone": [
    {
-    "f": "pip_questDone_0",
-    "t": "You really did it? Really, really? I'm telling everybody.",
-    "d": 2.9
+    "t": "You did it? For real? Really for real? I'm telling everyone!",
+    "d": 4.7
    },
    {
-    "f": "pip_questDone_1",
-    "t": "Thank you. I'll keep it safe. I promise.",
-    "d": 2.33
+    "t": "Thank you. I'll keep it super safe. I promise.",
+    "d": 4.1
    }
   ]
  },
  "tomashusk": {
   "greet": [
    {
-    "f": "tomashusk_greet_0",
-    "t": "Pip. Pip. Home before dark.",
-    "d": 3.12
+    "t": "Pip... Pip. Home before dark.",
+    "d": 2.9
    },
    {
-    "f": "tomashusk_greet_1",
-    "t": "The door. I know the door.",
-    "d": 2.5
+    "t": "The door. I know this door.",
+    "d": 3.2
    },
    {
-    "f": "tomashusk_greet_2",
-    "t": "Pip.",
-    "d": 0.84
+    "t": "Pip?",
+    "d": 2.2
    }
   ],
   "near": [
    {
-    "f": "tomashusk_near_0",
-    "t": "Home before dark. Home before dark.",
-    "d": 3.62
+    "t": "Home before dark. Have to be home before dark.",
+    "d": 4.1
    },
    {
-    "f": "tomashusk_near_1",
-    "t": "Pip?",
-    "d": 0.86
+    "t": "Pip? Is that...",
+    "d": 2.3
    },
    {
-    "f": "tomashusk_near_2",
-    "t": "Almost home.",
-    "d": 1.85
+    "t": "Nearly home. Nearly.",
+    "d": 2.3
    }
   ]
  },
  "tomas": {
   "greet": [
    {
-    "f": "tomas_greet_0",
-    "t": "I'm home. It took me nineteen years to remember how to say it.",
-    "d": 4.3
+    "t": "I'm home. Nineteen years... I'd forgotten how good that sounds.",
+    "d": 4.4
    },
    {
-    "f": "tomas_greet_1",
-    "t": "Sit with us a while. He's asleep. But he'll know you were here.",
-    "d": 4.03
+    "t": "Sit with us a while. He's asleep, but he'll know you came.",
+    "d": 5.0
    }
   ],
   "near": [
    {
-    "f": "tomas_near_0",
-    "t": "I can hear him breathing. That's enough. That's everything.",
-    "d": 3.82
+    "t": "Listen. You can hear him breathing. That's all I need, really.",
+    "d": 4.7
    },
    {
-    "f": "tomas_near_1",
-    "t": "Thank you for bringing me home.",
-    "d": 2.33
+    "t": "I never said it properly. Thank you. For bringing me home.",
+    "d": 4.7
    }
   ]
  },
  "lark": {
   "greet": [
    {
-    "f": "lark_greet_0",
-    "t": "Welcome to the stall! Sister Odile's notes say to be polite. I'm being polite.",
-    "d": 4.2
+    "t": "Hi! Welcome! Sister Odile's notes say be polite, so... hello. Very politely.",
+    "d": 5.0
    },
    {
-    "f": "lark_greet_1",
-    "t": "What will it be? I know where everything is now. Mostly.",
-    "d": 2.66
+    "t": "What can I get you? I know where everything is now. Mostly.",
+    "d": 5.0
    },
    {
-    "f": "lark_greet_2",
-    "t": "Don't touch the thyme. That's the one rule. She wrote it in capitals.",
-    "d": 3.38
+    "t": "Just don't touch the thyme. She underlined that. Twice.",
+    "d": 4.1
    }
   ],
   "near": [
    {
-    "f": "lark_near_0",
-    "t": "Lovely day for picking herbs. Or for getting chased by things. Your choice.",
-    "d": 4.03
+    "t": "Nice day for picking herbs. Or getting chased by things. Up to you, really.",
+    "d": 5.6
    },
    {
-    "f": "lark_near_1",
-    "t": "Sister Odile would tell you to drink some water. So drink some water.",
-    "d": 3.72
+    "t": "Sister Odile would tell you to drink some water. So, um. Drink some water.",
+    "d": 5.6
    },
    {
-    "f": "lark_near_2",
-    "t": "I talk to the herbs. They're very good listeners.",
-    "d": 2.33
+    "t": "I talk to the herbs sometimes. They haven't said anything back. Yet.",
+    "d": 5.0
    }
   ],
   "questDone": [
    {
-    "f": "lark_questDone_0",
-    "t": "You did it! She'd be so proud. She'd never say so. But she would.",
-    "d": 3.12
+    "t": "You did it! She'd be so proud. She wouldn't say it, but she would be.",
+    "d": 5.9
    }
   ]
  },
  "ysolde": {
   "greet": [
    {
-    "f": "ysolde_greet_0",
-    "t": "Sit by the fire. I'll tell it again. It changes a little every time. That's how you know it's true.",
-    "d": 5.98
+    "t": "Sit by the fire, dear. I'll tell it again. It comes out a bit different every time, but that's stories for you.",
+    "d": 6.5
    },
    {
-    "f": "ysolde_greet_1",
-    "t": "Ah. The one the story is about. Don't let it go to your head.",
-    "d": 3.48
+    "t": "Oh, look who it is. The one the story's about. Don't let it go to your head.",
+    "d": 6.5
    },
    {
-    "f": "ysolde_greet_2",
-    "t": "Come, come. The fire is warm, and my memory is long.",
-    "d": 3.07
+    "t": "Come, sit, sit. The fire's warm, and I've got all night.",
+    "d": 4.7
    }
   ],
   "near": [
    {
-    "f": "ysolde_near_0",
-    "t": "Every night you hold, the story gets a new ending. I like that.",
-    "d": 3.94
+    "t": "Every night you hold, I get to change the ending. I do like that.",
+    "d": 5.6
    },
    {
-    "f": "ysolde_near_1",
-    "t": "Once upon a time, there was a keep. You're standing in it.",
-    "d": 3.34
+    "t": "Once upon a time there was a keep... and, well, here you are, standing in it.",
+    "d": 6.2
    },
    {
-    "f": "ysolde_near_2",
-    "t": "I'm not old, dear. I'm well told.",
-    "d": 2.28
+    "t": "Old? Me? I'm not old, dear. I've just got a lot of stories.",
+    "d": 5.3
    }
   ],
   "night": [
    {
-    "f": "ysolde_night_0",
-    "t": "Here they come. Hold, and I'll make you a song of it.",
-    "d": 2.9
+    "t": "Here they come. You hold them off, and I'll make a song out of it.",
+    "d": 5.9
    },
    {
-    "f": "ysolde_night_1",
-    "t": "The dark is knocking. Answer it properly.",
-    "d": 2.81
+    "t": "Hear them out there? Go on, then. Give them something to remember.",
+    "d": 5.0
    }
   ],
   "heroDown": [
    {
-    "f": "ysolde_heroDown_0",
-    "t": "One has fallen. Remember their name. I will.",
-    "d": 2.74
+    "t": "Oh, one's fallen. I'll remember their name. Someone has to.",
+    "d": 4.4
    }
   ],
   "hearthHit": [
    {
-    "f": "ysolde_hearthHit_0",
-    "t": "The Hearth! Keep them from the fire, or there's no story left to tell!",
-    "d": 3.67
+    "t": "The Hearth! Keep them off the fire, or there'll be nobody left to tell it!",
+    "d": 5.9
    }
   ],
   "nightHeld": [
    {
-    "f": "ysolde_nightHeld_0",
-    "t": "Morning. And what a tale it will make. Sit, sit. Let me get it right.",
-    "d": 4.2
+    "t": "Morning, at last. Oh, what a story that'll make. Let me get it right.",
+    "d": 5.6
    }
   ],
   "nightLost": [
    {
-    "f": "ysolde_nightLost_0",
-    "t": "Not every story ends well the first time. We'll tell it again tomorrow.",
-    "d": 4.18
+    "t": "Well. Not every story ends well the first time. We'll try it again tomorrow.",
+    "d": 5.6
    }
   ],
   "bossDown": [
    {
-    "f": "ysolde_bossDown_0",
-    "t": "The night's king, fallen! I've waited my whole life to tell that part.",
-    "d": 4.22
+    "t": "Their king's down! Oh, I've waited my whole life to tell that bit.",
+    "d": 5.3
    }
   ],
   "seraph": [
    {
-    "f": "ysolde_seraph_0",
-    "t": "The angel wakes. I've told of it so long, I'd half forgotten it was real.",
-    "d": 4.51
+    "t": "She's awake. I've told that story so long, I'd half forgotten it was true.",
+    "d": 5.6
    }
   ]
  },
  "maren": {
   "greet": [
    {
-    "f": "maren_greet_0",
-    "t": "Mind the lamps. I made every one of them by hand. The slow way.",
-    "d": 3.24
+    "t": "Watch the lamps. I made every one of those by hand, so... careful.",
+    "d": 5.3
    },
    {
-    "f": "maren_greet_1",
-    "t": "Need light? I've got light. Real light, the kind you have to tend.",
-    "d": 3.14
+    "t": "Need light? I've got plenty. Just remember to trim the wick, all right?",
+    "d": 5.3
    },
    {
-    "f": "maren_greet_2",
-    "t": "The Unmade took my wish for light. So I just made more.",
-    "d": 3.05
+    "t": "The Unmade took my wish for light. So I made my own. Took me a while.",
+    "d": 6.2
    }
   ],
   "near": [
    {
-    "f": "maren_near_0",
-    "t": "A lamp is only a little fire that has agreed to behave.",
-    "d": 3.02
+    "t": "If you see a lamp out on your way, give me a shout.",
+    "d": 5.3
    },
    {
-    "f": "maren_near_1",
-    "t": "I'll keep the lamps lit tonight. You keep the dark outside them.",
-    "d": 3.24
+    "t": "I'll keep the lamps going tonight. You keep the dark off them.",
+    "d": 5.0
    },
    {
-    "f": "maren_near_2",
-    "t": "Funny. I never notice the light until it's gone.",
-    "d": 2.35
+    "t": "Hang on, this one's smoking again. Every single time.",
+    "d": 4.1
    }
   ],
   "night": [
    {
-    "f": "maren_night_0",
-    "t": "Lamps lit! Let them see what's waiting for them!",
-    "d": 2.21
+    "t": "Lamps are lit! Let them see what's waiting for them!",
+    "d": 4.4
    },
    {
-    "f": "maren_night_1",
-    "t": "Here's the dark. Show it what we made.",
-    "d": 1.61
+    "t": "Here comes the dark. Come on, then!",
+    "d": 3.5
    }
   ],
   "heroDown": [
    {
-    "f": "maren_heroDown_0",
-    "t": "A hero's down! Get a light over there!",
-    "d": 1.99
+    "t": "Someone's down! Get a light over there, quick!",
+    "d": 3.8
    }
   ],
   "hearthHit": [
    {
-    "f": "maren_hearthHit_0",
     "t": "They're at the Hearth! Don't let them put it out!",
-    "d": 2.04
+    "d": 4.4
    }
   ],
   "nightHeld": [
    {
-    "f": "maren_nightHeld_0",
-    "t": "Dawn. I'll trim the wicks. You've earned the quiet.",
-    "d": 2.09
+    "t": "Dawn. Right, I'll see to the wicks. You go and sit down.",
+    "d": 5.0
    }
   ],
   "nightLost": [
    {
-    "f": "maren_nightLost_0",
-    "t": "The lamps went out. We'll light them again. We always do.",
-    "d": 2.76
+    "t": "The lamps went out. That's fine. We'll light them again. We always do.",
+    "d": 5.3
    }
   ],
   "bossDown": [
    {
-    "f": "maren_bossDown_0",
-    "t": "Ha! See how it hates the light? Good riddance!",
-    "d": 2.11
+    "t": "Ha! It hated the light, didn't it? Good riddance!",
+    "d": 4.1
    }
   ],
   "seraph": [
    {
-    "f": "maren_seraph_0",
-    "t": "Look at her shine. I couldn't make a lamp like that in a hundred years.",
-    "d": 3.31
+    "t": "Look at her glow. I couldn't make a lamp like that in a hundred years.",
+    "d": 5.9
    }
   ]
  },
  "bastian": {
   "greet": [
    {
-    "f": "bastian_greet_0",
-    "t": "Twenty years at a gate, and nobody came. Now look at us.",
-    "d": 3.72
+    "t": "Twenty years at a gate and nobody ever came. And now look at the place.",
+    "d": 5.9
    },
    {
-    "f": "bastian_greet_1",
-    "t": "Report's simple. Walls standing, gate shut, kettle on.",
-    "d": 3.62
+    "t": "All's well. Walls up, gate shut, kettle on.",
+    "d": 3.8
    },
    {
-    "f": "bastian_greet_2",
-    "t": "Good to see you, commander. Not that you asked for the title.",
-    "d": 3.62
+    "t": "Commander. I know, I know, you never asked for the title.",
+    "d": 4.7
    }
   ],
   "near": [
    {
-    "f": "bastian_near_0",
-    "t": "I check the gate twice a night. Old habit. Good habit.",
-    "d": 3.48
+    "t": "I check the gate twice a night. Old habit. Good one, though.",
+    "d": 5.0
    },
    {
-    "f": "bastian_near_1",
-    "t": "Quiet out there. Too quiet is never really quiet.",
-    "d": 3.58
+    "t": "Bit quiet out there. I don't trust quiet.",
+    "d": 3.8
    },
    {
-    "f": "bastian_near_2",
-    "t": "Stand straight. Somebody's always watching a gate.",
-    "d": 3.24
+    "t": "Stand up straight. Somebody's always watching a gate.",
+    "d": 3.8
    }
   ],
   "night": [
    {
-    "f": "bastian_night_0",
-    "t": "On the walls! They're coming through the trees!",
-    "d": 2.45
+    "t": "On the walls! They're coming out of the trees!",
+    "d": 4.1
    },
    {
-    "f": "bastian_night_1",
-    "t": "Gates hold! Steady now. Steady!",
-    "d": 1.94
+    "t": "Hold the gate! Steady! Steady now!",
+    "d": 3.2
    }
   ],
   "heroDown": [
    {
-    "f": "bastian_heroDown_0",
-    "t": "Hero down! Cover them! Cover them!",
-    "d": 2.21
+    "t": "Hero down! Cover them, cover them!",
+    "d": 3.2
    }
   ],
   "hearthHit": [
    {
-    "f": "bastian_hearthHit_0",
-    "t": "The Hearth is under attack! Fall back to the fire!",
-    "d": 3.19
+    "t": "They're on the Hearth! Fall back to the fire!",
+    "d": 4.1
    }
   ],
   "nightHeld": [
    {
-    "f": "bastian_nightHeld_0",
-    "t": "The gate held. All night. Never thought I'd be proud of a gate.",
-    "d": 3.91
+    "t": "Gate held. All night. Never thought I'd be proud of a gate.",
+    "d": 5.0
    }
   ],
   "nightLost": [
    {
-    "f": "bastian_nightLost_0",
-    "t": "We fell back. No shame in it. We stand again tonight.",
-    "d": 3.31
+    "t": "We fell back. No shame in that. We'll stand again tonight.",
+    "d": 4.7
    }
   ],
   "bossDown": [
    {
-    "f": "bastian_bossDown_0",
-    "t": "Their king is down! That's the night won!",
-    "d": 2.26
+    "t": "Their king's down! That's the night won!",
+    "d": 3.5
    }
   ],
   "seraph": [
    {
-    "f": "bastian_seraph_0",
-    "t": "An angel at our gate. Twenty years I'd have given for that.",
-    "d": 3.84
+    "t": "An angel at our gate. I'd have given twenty years for that.",
+    "d": 5.0
    }
   ]
  },
  "liesl": {
   "greet": [
    {
-    "f": "liesl_greet_0",
-    "t": "Wipe your boots. No, don't. The soil likes it.",
-    "d": 2.62
+    "t": "Oh, don't worry about your boots. The soil doesn't mind.",
+    "d": 4.4
    },
    {
-    "f": "liesl_greet_1",
-    "t": "Things are growing. Properly, slowly. Come and see.",
-    "d": 2.64
+    "t": "Come and look, things are actually growing! Slowly, but they are.",
+    "d": 4.7
    },
    {
-    "f": "liesl_greet_2",
-    "t": "I planted beans where the Unmade walked last night. They're doing very well.",
-    "d": 4.13
+    "t": "I planted beans where the Unmade walked last night. They're doing really well, actually.",
+    "d": 5.6
    }
   ],
   "near": [
    {
-    "f": "liesl_near_0",
-    "t": "Everything here grows, and then it ends. It's beautiful, really.",
-    "d": 3.53
+    "t": "Mind the seedlings, please. They've had a rough week.",
+    "d": 4.1
    },
    {
-    "f": "liesl_near_1",
-    "t": "Don't step on the seedlings. They've had a hard enough week.",
-    "d": 2.88
+    "t": "The bees came back today. I nearly cried, honestly.",
+    "d": 4.1
    },
    {
-    "f": "liesl_near_2",
-    "t": "The bees came back today. I nearly cried.",
-    "d": 2.42
+    "t": "If you see a slug, that's not my fault. They just turn up.",
+    "d": 5.3
    }
   ],
   "night": [
    {
-    "f": "liesl_night_0",
     "t": "Not the garden! Please, not the garden!",
-    "d": 2.14
+    "d": 3.5
    },
    {
-    "f": "liesl_night_1",
     "t": "They're trampling everything! Push them back!",
-    "d": 2.09
+    "d": 3.2
    }
   ],
   "heroDown": [
    {
-    "f": "liesl_heroDown_0",
     "t": "Someone's hurt! Get them out of the mud!",
-    "d": 1.99
+    "d": 3.8
    }
   ],
   "hearthHit": [
    {
-    "f": "liesl_hearthHit_0",
-    "t": "The Hearth's burning wrong! Help it!",
-    "d": 1.78
+    "t": "The Hearth! Something's wrong with the fire, help it!",
+    "d": 4.1
    }
   ],
   "nightHeld": [
    {
-    "f": "liesl_nightHeld_0",
-    "t": "Morning. The dew is on everything. And we're still here.",
-    "d": 2.66
+    "t": "Morning. Dew on everything. And we're still here.",
+    "d": 3.8
    }
   ],
   "nightLost": [
    {
-    "f": "liesl_nightLost_0",
-    "t": "Well. Things grow back. That's the whole point of things.",
-    "d": 2.74
+    "t": "Well. Things grow back. That's sort of the point of them.",
+    "d": 4.7
    }
   ],
   "bossDown": [
    {
-    "f": "liesl_bossDown_0",
-    "t": "It fell! And the ground is going to make something good of it.",
-    "d": 2.81
+    "t": "It's down! Oh, the ground's going to make something lovely out of that.",
+    "d": 5.3
    }
   ],
   "seraph": [
    {
-    "f": "liesl_seraph_0",
-    "t": "She's like a seed that waited a very long time to open.",
-    "d": 2.95
+    "t": "She's like a seed that waited ages and ages to open.",
+    "d": 4.7
    }
   ]
  },
  "corwin": {
   "greet": [
    {
-    "f": "corwin_greet_0",
-    "t": "Is it true? Did you really go all the way down? What was at the bottom?",
-    "d": 3.55
+    "t": "Is it true you went all the way down? What's at the bottom? Was it scary?",
+    "d": 6.2
    },
    {
-    "f": "corwin_greet_1",
-    "t": "I can carry things! Heavy things. Medium things.",
-    "d": 2.28
+    "t": "I can carry stuff! Heavy stuff. Well. Medium stuff.",
+    "d": 4.1
    },
    {
-    "f": "corwin_greet_2",
-    "t": "Teach me something. Anything. Teach me how to stand like that.",
-    "d": 3.07
+    "t": "Can you teach me something? Anything! How do you stand like that?",
+    "d": 5.0
    }
   ],
   "near": [
    {
-    "f": "corwin_near_0",
-    "t": "When I'm big, I'm going to fight the night too.",
-    "d": 2.11
+    "t": "When I'm big I'm gonna fight the night too.",
+    "d": 4.1
    },
    {
-    "f": "corwin_near_1",
-    "t": "I practised your swing with a stick. I hit a fence.",
-    "d": 2.3
+    "t": "I practised your swing with a stick. I hit the fence. By accident.",
+    "d": 5.3
    },
    {
-    "f": "corwin_near_2",
-    "t": "Everybody talks about you. I talk about you the most.",
-    "d": 2.71
+    "t": "Everyone talks about you. I talk about you the most.",
+    "d": 4.4
    }
   ],
   "night": [
    {
-    "f": "corwin_night_0",
     "t": "Get them! Get them! I'm hiding, but get them!",
-    "d": 2.11
+    "d": 4.1
    },
    {
-    "f": "corwin_night_1",
-    "t": "Here they come! I'm not scared! A bit scared!",
-    "d": 1.9
+    "t": "They're coming! I'm not scared! Okay, a bit scared!",
+    "d": 4.1
    }
   ],
   "heroDown": [
    {
-    "f": "corwin_heroDown_0",
-    "t": "No! Get up! You can do it!",
-    "d": 1.15
+    "t": "No! Get up! Come on, get up!",
+    "d": 3.5
    }
   ],
   "hearthHit": [
    {
-    "f": "corwin_hearthHit_0",
     "t": "The Hearth! They're hitting the Hearth!",
-    "d": 1.37
+    "d": 3.2
    }
   ],
   "nightHeld": [
    {
-    "f": "corwin_nightHeld_0",
     "t": "We won! Did you see? Did you see us win?",
-    "d": 2.02
+    "d": 4.4
    }
   ],
   "nightLost": [
    {
-    "f": "corwin_nightLost_0",
-    "t": "That's all right. Heroes lose sometimes. You told me that. I think.",
-    "d": 3.36
+    "t": "That's okay. Heroes lose sometimes. You said that. I think you did.",
+    "d": 5.0
    }
   ],
   "bossDown": [
    {
-    "f": "corwin_bossDown_0",
-    "t": "You beat the big one! That was the best thing I've ever seen!",
-    "d": 2.78
+    "t": "You beat the big one! That was the best thing ever!",
+    "d": 4.7
    }
   ],
   "seraph": [
    {
-    "f": "corwin_seraph_0",
-    "t": "The statue moved! The statue moved, and it's you!",
-    "d": 2.42
+    "t": "The statue moved! It moved! And it's you!",
+    "d": 3.8
    }
   ]
  },
  "hesper": {
   "greet": [
    {
-    "f": "hesper_greet_0",
-    "t": "Relax. I only take things I'm given now. Mostly.",
-    "d": 3.14
+    "t": "Relax. I only take what people give me now. Mostly.",
+    "d": 4.4
    },
    {
-    "f": "hesper_greet_1",
-    "t": "You caught me nine times. I let you catch me the tenth.",
-    "d": 3.02
+    "t": "You caught me nine times. The tenth, I let you.",
+    "d": 4.4
    },
    {
-    "f": "hesper_greet_2",
-    "t": "Looking for something? I probably know where it's hidden.",
-    "d": 2.9
+    "t": "Lost something? I probably know where it is. Don't ask how.",
+    "d": 4.7
    }
   ],
   "near": [
    {
-    "f": "hesper_near_0",
-    "t": "Keep a hand on your purse. Not because of me. Habit.",
-    "d": 3.05
+    "t": "Keep a hand on your purse. Not because of me. Just habit.",
+    "d": 5.0
    },
    {
-    "f": "hesper_near_1",
-    "t": "Nice boots. I'm not going to take them. I'm just saying they're nice.",
-    "d": 3.86
+    "t": "Nice boots. I'm not taking them. I'm just saying they're nice.",
+    "d": 4.7
    },
    {
-    "f": "hesper_near_2",
-    "t": "Wishes are lighter than you'd think. That's why they're so easy to steal.",
-    "d": 3.98
+    "t": "Don't look at me like that. I've been good. Mostly good.",
+    "d": 4.7
    }
   ],
   "night": [
    {
-    "f": "hesper_night_0",
-    "t": "Thieves among them. Watch the Faith. I know the tricks.",
-    "d": 2.9
+    "t": "Watch the Faith. Some of them are thieves. I know the tricks.",
+    "d": 5.0
    },
    {
-    "f": "hesper_night_1",
-    "t": "Eyes open. They'll go for whatever shines.",
-    "d": 2.47
+    "t": "Eyes open. They'll go for anything shiny.",
+    "d": 3.5
    }
   ],
   "heroDown": [
    {
-    "f": "hesper_heroDown_0",
-    "t": "One down. Somebody grab them before the dark does.",
-    "d": 3.1
+    "t": "One's down. Somebody grab them before the dark does.",
+    "d": 4.1
    }
   ],
   "hearthHit": [
    {
-    "f": "hesper_hearthHit_0",
-    "t": "They're after the Hearth. Clever. Stop them.",
-    "d": 2.57
+    "t": "They're going for the Hearth. Clever. Stop them.",
+    "d": 3.8
    }
   ],
   "nightHeld": [
    {
-    "f": "hesper_nightHeld_0",
     "t": "Not bad. I'd steal a morning like this, if I still stole things.",
-    "d": 3.7
+    "d": 5.3
    }
   ],
   "nightLost": [
    {
-    "f": "hesper_nightLost_0",
     "t": "They took more than I ever did. We'll get it back.",
-    "d": 2.54
+    "d": 4.7
    }
   ],
   "bossDown": [
    {
-    "f": "hesper_bossDown_0",
-    "t": "The big one fell. I'd say I'm impressed. I am.",
-    "d": 2.76
+    "t": "The big one's down. I'd say I'm impressed. ...Fine. I'm impressed.",
+    "d": 4.7
    }
   ],
   "seraph": [
    {
-    "f": "hesper_seraph_0",
-    "t": "Now that is a treasure. And for once, nobody has to steal it.",
-    "d": 3.55
+    "t": "Now that's a treasure. And for once, nobody has to steal it.",
+    "d": 5.0
    }
   ]
  },
  "hero_m": {
   "wave": [
    {
-    "f": "hero_m_wave_0",
     "t": "Here they come!",
-    "d": 0.7
+    "d": 2.3
    },
    {
-    "f": "hero_m_wave_1",
     "t": "Hold the line!",
-    "d": 0.7
+    "d": 2.3
    },
    {
-    "f": "hero_m_wave_2",
-    "t": "Stay together!",
-    "d": 0.82
+    "t": "Stick together, all of you!",
+    "d": 2.9
    }
   ],
   "hurt": [
    {
-    "f": "hero_m_hurt_0",
-    "t": "I'm hurt! I need help!",
-    "d": 1.03
+    "t": "I need a heal! Now!",
+    "d": 2.9
    },
    {
-    "f": "hero_m_hurt_1",
-    "t": "I can't hold much longer!",
-    "d": 1.22
+    "t": "I can't hold them much longer!",
+    "d": 3.2
    }
   ],
   "boss": [
    {
-    "f": "hero_m_boss_0",
-    "t": "The Tidecaller! Watch its slam!",
-    "d": 1.49
+    "t": "The Tidecaller! Watch out for its slam!",
+    "d": 3.5
    }
   ],
   "cheer": [
    {
-    "f": "hero_m_cheer_0",
-    "t": "We held! The keep stands!",
-    "d": 1.27
+    "t": "We held! Ha! The keep's still standing!",
+    "d": 3.5
    },
    {
-    "f": "hero_m_cheer_1",
-    "t": "Morning! We made it!",
-    "d": 0.94
+    "t": "Morning! We actually made it!",
+    "d": 2.9
    }
   ]
  },
  "hero_f": {
   "wave": [
    {
-    "f": "hero_f_wave_0",
     "t": "Here they come!",
-    "d": 1.13
+    "d": 2.3
    },
    {
-    "f": "hero_f_wave_1",
     "t": "Hold the line!",
-    "d": 1.13
+    "d": 2.3
    },
    {
-    "f": "hero_f_wave_2",
-    "t": "Stay close, all of you!",
-    "d": 1.61
+    "t": "Stay close, everyone!",
+    "d": 2.3
    }
   ],
   "hurt": [
    {
-    "f": "hero_f_hurt_0",
     "t": "I'm hurt! Somebody help me!",
-    "d": 1.68
+    "d": 2.9
    },
    {
-    "f": "hero_f_hurt_1",
-    "t": "I'm not going to last!",
-    "d": 1.54
+    "t": "I'm not gonna last much longer!",
+    "d": 3.2
    }
   ],
   "boss": [
    {
-    "f": "hero_f_boss_0",
     "t": "It's the Tidecaller! Spread out!",
-    "d": 1.8
+    "d": 2.9
    }
   ],
   "cheer": [
    {
-    "f": "hero_f_cheer_0",
     "t": "We held! We actually held!",
-    "d": 1.7
+    "d": 2.9
    },
    {
-    "f": "hero_f_cheer_1",
-    "t": "The sun's up! We made it!",
-    "d": 1.51
+    "t": "Sun's up! We made it!",
+    "d": 2.9
    }
   ]
  }

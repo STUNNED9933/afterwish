@@ -1496,3 +1496,5 @@ body.shoulder-on #boss-box { transform: translateY(40px); }
 .say-bubble { position: absolute; left: 0; top: 0; max-width: 280px; padding: 6px 11px 7px; border-radius: 10px; background: rgba(250, 244, 230, 0.95); color: #2a2018; font-size: 13.5px; line-height: 1.35; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); pointer-events: none; white-space: normal; z-index: 6; }
 .say-bubble b { display: block; font-size: 11px; letter-spacing: 0.04em; color: #8a5a1a; margin-bottom: 1px; }
 .say-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: rgba(250, 244, 230, 0.95); }
+.say-bubble.off { background: rgba(250, 244, 230, 0.86); } /* (0.99.2) out of sight */
+.say-bubble.off::after { display: none; }

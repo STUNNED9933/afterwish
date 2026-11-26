@@ -6,7 +6,7 @@
 // scope (Sharpshooter), Shift sprint, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
 import * as THREE from 'three';
-import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult } from './sim.js';
+import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP } from './sim.js';
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
@@ -48,7 +48,7 @@ let linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : 
 const NAMES = { warrior: 'Berserker', archer: 'Sharpshooter' }; // (working names)
 const standGeo = new THREE.CapsuleGeometry(0.32, 1.0, 4, 8).translate(0, 0.82, 0);
 function makeHero(colour = 0xd8c8a8) {
-  const h = { group: new THREE.Group(), body: new THREE.Group(), rig: null, cls: null, token: 0, stand: new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: colour })), anim: { start: false, move: null, moveDur: 0, spinT: 0, hit: false, period: 0 } };
+  const h = { group: new THREE.Group(), body: new THREE.Group(), rig: null, cls: null, token: 0, stand: new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: colour })), anim: { start: false, move: null, moveDur: 0, spinT: 0, hit: false, period: 0, jumpT: -1 } };
   h.stand.castShadow = true;
   h.group.add(h.body);
   h.body.add(h.stand);
@@ -88,9 +88,20 @@ function animate(h, ev) {
   else if (ev.skill === 'volley') a.move = 'barrage';
   else if (ev.skill === 'deadeye') a.move = 'aim';
   else if (ev.skill === 'rage') a.move = 'cone';
+  else if (ev.skill === 'jump') a.jumpT = 0;
+}
+/** Height of a hop, t seconds after it began (the sim's own arc, for other players: the server sends no height). */
+function hopAt(t) {
+  const y = JUMP.up * t - 0.5 * JUMP.gravity * t * t;
+  return y > 0 ? y : 0;
 }
 function pose(h, dt, s) {
   const a = h.anim;
+  // in the air: a little forward lean (no jump clip in these models yet)
+  if (a.jumpT >= 0) { a.jumpT += dt; if (a.jumpT > (2 * JUMP.up) / JUMP.gravity) a.jumpT = -1; }
+  const air = s.y !== undefined ? s.y : a.jumpT >= 0 ? hopAt(a.jumpT) : 0;
+  h.body.position.y = air;
+  h.body.rotation.x = air > 0.05 ? Math.min(0.22, air * 0.25) : 0;
   if (a.spinT > 0) { a.spinT -= dt; h.body.rotation.y += dt * 16; } else h.body.rotation.y = 0;
   if (!h.rig) return;
   h.rig.update(dt, { ...s, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
@@ -392,6 +403,7 @@ addEventListener('keydown', (e) => {
   }
   const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
   if (n >= 0) wear(['warrior', 'archer', 'mage', 'rogue'][n]);
+  if (e.code === 'Space' && !e.repeat && world.jump(1) && net && net.ready) net.send({ t: 'jump' });
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', (e) => {
@@ -517,7 +529,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize();
-let last = performance.now(), acc = 0, time = 0, heroX = me.x, heroZ = me.z, fov = 62;
+let last = performance.now(), acc = 0, time = 0, heroX = me.x, heroZ = me.z, heroY = 0, prevY = 0, fov = 62;
 const prev = { x: me.x, z: me.z };
 const perf = { frames: 0, t: 0, fps: 0, worst: 0, worstNow: 0, simMs: 0, simN: 0, simShown: 0 };
 const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), proj = new THREE.Vector3();
@@ -534,7 +546,7 @@ function frame(now) {
   const w = wish();
   const s0 = performance.now();
   while (acc >= TICK) {
-    prev.x = me.x; prev.z = me.z;
+    prev.x = me.x; prev.z = me.z; prevY = me.y;
     world.input(1, w);
     for (const b of bots) {
       b.t -= TICK;
@@ -568,16 +580,17 @@ function frame(now) {
   hero.group.position.set(hx, 0, hz);
   hero.group.rotation.y = Math.PI / 2 - me.facing;
   hero.group.visible = !scoped;
-  pose(hero, dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving, dead: me.dead });
+  heroY = prevY + (me.y - prevY) * alpha;
+  pose(hero, dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving, dead: me.dead, y: heroY });
   // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
   if (scoped) {
-    camPos.set(hx + Math.cos(yaw) * 0.3, 1.62, hz + Math.sin(yaw) * 0.3);
+    camPos.set(hx + Math.cos(yaw) * 0.3, 1.62 + heroY, hz + Math.sin(yaw) * 0.3);
     view.camera.position.copy(camPos);
     view.camera.lookAt(camPos.x + lx * 10, camPos.y + ly * 10, camPos.z + lz * 10);
   } else {
-    camTarget.set(hx + rx * 0.7, 1.55, hz + rz * 0.7);
+    camTarget.set(hx + rx * 0.7, 1.55 + heroY * 0.6, hz + rz * 0.7); // (follows a hop a little, not all the way: less bobbing)
     camPos.set(camTarget.x - lx * dist, camTarget.y - ly * dist, camTarget.z - lz * dist);
     if (camPos.y < 0.35) camPos.y = 0.35;
     view.camera.position.copy(camPos);
@@ -666,5 +679,5 @@ function frame(now) {
   }
 }
 requestAnimationFrame(frame);
-note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Alt frees the mouse (hover for descriptions).');
+note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Alt frees the mouse (hover for descriptions).');
 window.land = { world, view, crowd, me, fx, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

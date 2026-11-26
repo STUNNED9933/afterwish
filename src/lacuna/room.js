@@ -6,7 +6,7 @@
 // Each player is sent, ten times a second, only what they can see and only what changed (see net.js).
 //
 // Messages, browser to server (JSON): hello { v, pass, name, cls }, pos { x, z, f, m, p }, cls { cls },
-// act { k, ax, az } (a blow or skill, aimed at a point), chat { text }, ping { at }. Server to browser: welcome,
+// act { k, ax, az } (a blow or skill, aimed at a point), jump, chat { text }, ping { at }. Server to browser: welcome,
 // reject, roster, snap (go back here), me (your health, mana, cooldowns), evs (what happened near you: shots,
 // hits, falls, casts), chat, pong (JSON), and the state of what is in sight (binary, net.js).
 // (phase 2) The Dimension Link comes from the account's characters when signed in (linkOf), else from the page.
@@ -52,6 +52,7 @@ export class LandRoom {
       const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF);
       if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az);
     }
+    else if (msg.t === 'jump') this.world.jump(m.pid);
     else if (msg.t === 'chat') this.chat(m, msg.text);
     else if (msg.t === 'ping') this.send(conn, { t: 'pong', at: num(msg.at, 0, 1e15) });
   }

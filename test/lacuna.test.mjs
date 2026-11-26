@@ -286,6 +286,31 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('...but only once', box.get(b).some((m) => m.t === 'snap'));
 }
 
+// ---- jumping
+{
+  const w = new LandWorld();
+  const p = w.addPlayer(1);
+  const ok = w.jump(1);
+  const again = w.jump(1);
+  let top = 0, t = 0;
+  for (; t < 60; t++) { w.step(TICK); top = Math.max(top, p.y); if (p.y === 0 && p.vy === 0) break; }
+  check('Lacuna jump: Space hops about a metre and lands again in under a second (once: no jumping off the air)', ok && !again && top > 0.8 && top < 1.2 && t < 30 && p.y === 0, `${top.toFixed(2)} m, ${((t + 1) / 30).toFixed(2)} s`);
+  check('...others are told (to draw the hop)', w.events.some((e) => e.type === 'cast' && e.skill === 'jump'));
+  p.dead = true;
+  check('...and nobody jumps while down', !w.jump(1));
+  const { LandRoom, LACUNA_NET } = await import('../src/lacuna/room.js');
+  const box = new Map();
+  const room = new LandRoom({ passcode: 'stun', send: (c, m) => box.get(c).push(m), sendBin() {} });
+  const a = {}, b = {};
+  box.set(a, []); box.set(b, []);
+  room.message(a, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'A' });
+  room.message(b, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'B' });
+  for (let i = 0; i < 10; i++) room.tick(1 / 60);
+  room.message(a, { t: 'jump' });
+  for (let i = 0; i < 12; i++) room.tick(1 / 60);
+  check('...together: a friend sees you hop', box.get(b).some((m) => m.t === 'evs' && m.list.some((e) => e.type === 'cast' && e.skill === 'jump')));
+}
+
 // ---- deterministic maths only in the sim
 {
   const bad = ['land.js', 'sim.js'].filter((f) => /Math\.(sin|cos|tan|atan2?|hypot|pow|exp|log|random)\(/.test(fs.readFileSync(new URL('../src/lacuna/' + f, import.meta.url), 'utf8').replace(/\/\/.*$/gm, '')));

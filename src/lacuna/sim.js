@@ -70,6 +70,7 @@ const MP_REGEN = 7; // a second
 const CALM = 6; // seconds without a fight before health comes back
 const RESPAWN = 45; // a beast comes back this long after it falls (if nobody is standing on its home)
 const DOWN = 6; // seconds a hero is down
+export const JUMP = { up: 6.4, gravity: 21 }; // about a metre high, two thirds of a second in the air
 
 export class LandWorld {
   constructor({ seed = LAND.seed } = {}) {
@@ -97,7 +98,7 @@ export class LandWorld {
 
   /** A player arrives (by default at Sunmere's south gate). */
   addPlayer(pid, at = GATE, { cls = 'warrior', link = null } = {}) {
-    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, acts: [], cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, rage: 0, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null };
+    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, rage: 0, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null };
     this.land.pushOut(p, PLAYER_R);
     this.players.set(pid, p);
     this.refit(p, true);
@@ -153,6 +154,15 @@ export class LandWorld {
     p.acts.push({ k, ax, az });
   }
 
+  /** A hop (Space): only from the ground, not while leaping, rolling or down. Nothing can be dodged by it. */
+  jump(pid) {
+    const p = this.players.get(pid);
+    if (!p || p.dead || p.y > 0 || p.vy > 0 || p.leap || p.roll) return false;
+    p.vy = JUMP.up;
+    this.emit('cast', { pid: p.pid, skill: 'jump', x: p.x, z: p.z });
+    return true;
+  }
+
   /** Could this blow or skill go now (for the browser, to show it ready, and not to send what would be refused)? */
   ready(p, k) {
     if (!p || p.dead || p.leap || p.roll || p.draw) return false;
@@ -205,6 +215,7 @@ export class LandWorld {
       p.acts.length = 0;
       if (p.downT <= 0) {
         p.dead = false;
+        p.y = p.vy = 0;
         p.hp = p.maxHp;
         p.mp = p.maxMp;
         p.x = GATE.x; p.z = GATE.z;
@@ -215,6 +226,11 @@ export class LandWorld {
       return;
     }
     p.mp = Math.min(p.maxMp, p.mp + MP_REGEN * dt);
+    if (p.y > 0 || p.vy > 0) {
+      p.vy -= JUMP.gravity * dt;
+      p.y += p.vy * dt;
+      if (p.y <= 0) { p.y = 0; p.vy = 0; }
+    }
     if (p.calm > CALM && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.05 * dt);
     // Walking (moves made by the browser itself, on the server, are taken as they come: see room.js)
     if (!p.driven && !p.leap && !p.roll) {

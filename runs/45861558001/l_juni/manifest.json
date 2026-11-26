@@ -1,0 +1,95 @@
+{
+  "id": "l_juni",
+  "prompt": "Juni, the scout of an adventuring company, an energetic grinning adult woman in her early twenties, lean athletic toned build, short choppy black hair with a marigold-yellow headband, freckles, a cropped fitted dark-green leather top showing a toned midriff, a short hooded capelet on her shoulders with the hood down, fingerless gloves, several small belts with pouches and a knife sheath, fitted brown trousers, light short boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+  "started": "2026-11-26T16:48:34.068Z",
+  "creditsBefore": 2405,
+  "steps": {
+    "model": {
+      "task": "6968e4db-f719-4662-815f-fffc56ff0567",
+      "result": {
+        "task_id": "6968e4db-f719-4662-815f-fffc56ff0567",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/model.glb",
+        "preview": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/preview.png"
+      }
+    },
+    "check": {
+      "task": "eb1e693e-fe64-49a7-93fc-6f1cb3ee7bd9",
+      "result": {
+        "task_id": "eb1e693e-fe64-49a7-93fc-6f1cb3ee7bd9",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_juni/2-check/tripo-out/rig-check-3-eb1e693e",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "5625c172-321d-4d40-a327-0d336ab91080",
+      "rigType": "biped",
+      "result": {
+        "task_id": "5625c172-321d-4d40-a327-0d336ab91080",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_juni/3-rig/tripo-out/rig-3-5625c172",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_juni/3-rig/tripo-out/rig-3-5625c172/model.glb",
+        "preview": "out/models/l_juni/3-rig/tripo-out/rig-3-5625c172/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "9ecd9221-d62b-4949-8b24-4e3203d41ccb",
+        "presets": [
+          "preset:biped:standing_relax",
+          "preset:biped:walk",
+          "preset:biped:jump",
+          "preset:biped:look_around"
+        ],
+        "result": {
+          "task_id": "9ecd9221-d62b-4949-8b24-4e3203d41ccb",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/l_juni/4-anim-1/tripo-out/retarget-3-9ecd9221",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_juni/4-anim-1/tripo-out/retarget-3-9ecd9221/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2310,
+  "creditsUsed": 95,
+  "finished": "2026-11-26T16:50:40.857Z",
+  "files": [
+    "1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/generated_image.jpeg",
+    "1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/model.glb",
+    "1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/preview.png",
+    "1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/rendered_image.webp",
+    "1-model/tripo-out/juni-the-scout-of-an-adventuring-6968e4db/task.json",
+    "2-check/tripo-out/rig-check-3-eb1e693e/task.json",
+    "3-rig/tripo-out/rig-3-5625c172/model.glb",
+    "3-rig/tripo-out/rig-3-5625c172/preview.png",
+    "3-rig/tripo-out/rig-3-5625c172/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-5625c172/task.json",
+    "4-anim-1/tripo-out/retarget-3-9ecd9221/model.glb",
+    "4-anim-1/tripo-out/retarget-3-9ecd9221/task.json",
+    "manifest.json"
+  ]
+}

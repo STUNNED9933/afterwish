@@ -1,0 +1,32 @@
+{
+  "task_id": "6968e4db-f719-4662-815f-fffc56ff0567",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Juni, the scout of an adventuring company, an energetic grinning adult woman in her early twenties, lean athletic toned build, short choppy black hair with a marigold-yellow headband, freckles, a cropped fitted dark-green leather top showing a toned midriff, a short hooded capelet on her shoulders with the hood down, fingerless gloves, several small belts with pouches and a knife sheath, fitted brown trousers, light short boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-26T16:48:35.099519Z",
+  "completed_at": "2026-11-26T16:49:58.697202Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

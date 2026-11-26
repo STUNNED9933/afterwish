@@ -1,0 +1,95 @@
+{
+  "id": "l_sorrel",
+  "prompt": "Sorrel, the mage of an adventuring company, a tall slender elegant man in his thirties, long straight silver-white hair tied low, sharp handsome features, a calm faint smile, a long deep-green coat with gold trim and a high collar worn open over a fitted black shirt, a marigold-yellow sash, faint glowing arcane tattoos on his forearms, a small book on a chain at his belt, dark trousers, polished tall boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+  "started": "2026-11-26T16:50:40.858Z",
+  "creditsBefore": 2310,
+  "steps": {
+    "model": {
+      "task": "31d3b518-1b57-49dc-8238-acc710dd6f4d",
+      "result": {
+        "task_id": "31d3b518-1b57-49dc-8238-acc710dd6f4d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/model.glb",
+        "preview": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/preview.png"
+      }
+    },
+    "check": {
+      "task": "7fbbb40c-1358-4ebe-9074-e0cd199353a8",
+      "result": {
+        "task_id": "7fbbb40c-1358-4ebe-9074-e0cd199353a8",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_sorrel/2-check/tripo-out/rig-check-4-7fbbb40c",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "7ba283aa-53a3-41e3-b5ec-7b6363b76e49",
+      "rigType": "biped",
+      "result": {
+        "task_id": "7ba283aa-53a3-41e3-b5ec-7b6363b76e49",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_sorrel/3-rig/tripo-out/rig-4-7ba283aa",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_sorrel/3-rig/tripo-out/rig-4-7ba283aa/model.glb",
+        "preview": "out/models/l_sorrel/3-rig/tripo-out/rig-4-7ba283aa/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "92c5d9fd-f6fe-469c-ab05-aea4c01feab2",
+        "presets": [
+          "preset:biped:standing_relax",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:wait"
+        ],
+        "result": {
+          "task_id": "92c5d9fd-f6fe-469c-ab05-aea4c01feab2",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/l_sorrel/4-anim-1/tripo-out/retarget-4-92c5d9fd",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_sorrel/4-anim-1/tripo-out/retarget-4-92c5d9fd/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2215,
+  "creditsUsed": 95,
+  "finished": "2026-11-26T16:52:58.351Z",
+  "files": [
+    "1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/generated_image.jpeg",
+    "1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/model.glb",
+    "1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/preview.png",
+    "1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/rendered_image.webp",
+    "1-model/tripo-out/sorrel-the-mage-of-an-adventurin-31d3b518/task.json",
+    "2-check/tripo-out/rig-check-4-7fbbb40c/task.json",
+    "3-rig/tripo-out/rig-4-7ba283aa/model.glb",
+    "3-rig/tripo-out/rig-4-7ba283aa/preview.png",
+    "3-rig/tripo-out/rig-4-7ba283aa/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-7ba283aa/task.json",
+    "4-anim-1/tripo-out/retarget-4-92c5d9fd/model.glb",
+    "4-anim-1/tripo-out/retarget-4-92c5d9fd/task.json",
+    "manifest.json"
+  ]
+}

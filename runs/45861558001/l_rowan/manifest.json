@@ -1,0 +1,95 @@
+{
+  "id": "l_rowan",
+  "prompt": "Rowan, leader of an adventuring company, a handsome rugged man in his early thirties, broad shoulders and a muscular athletic build, short swept-back dark auburn hair, a short trimmed beard, confident warm smile, a fitted sleeveless brown leather jerkin worn open at the collar showing a toned chest, a marigold-yellow scarf knotted at his neck, leather bracers, a wide belt with a sword frog, dark fitted trousers, sturdy knee boots, a small marigold flower badge on the jerkin, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, warm sunny fantasy adventure, attractive adult character design",
+  "started": "2026-11-26T16:44:53.397Z",
+  "creditsBefore": 2595,
+  "steps": {
+    "model": {
+      "task": "3cda75f9-37f4-479b-9f1c-d2a522cc85be",
+      "result": {
+        "task_id": "3cda75f9-37f4-479b-9f1c-d2a522cc85be",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/model.glb",
+        "preview": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/preview.png"
+      }
+    },
+    "check": {
+      "task": "816cf04e-1206-4f51-baee-c44552a2110f",
+      "result": {
+        "task_id": "816cf04e-1206-4f51-baee-c44552a2110f",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_rowan/2-check/tripo-out/rig-check-816cf04e",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "ea701dbf-7623-4fde-8688-f2463db47b9f",
+      "rigType": "biped",
+      "result": {
+        "task_id": "ea701dbf-7623-4fde-8688-f2463db47b9f",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_rowan/3-rig/tripo-out/rig-ea701dbf",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_rowan/3-rig/tripo-out/rig-ea701dbf/model.glb",
+        "preview": "out/models/l_rowan/3-rig/tripo-out/rig-ea701dbf/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "b9dabca6-16f2-457b-9aae-2d9ef3733b3b",
+        "presets": [
+          "preset:biped:standing_relax",
+          "preset:biped:walk",
+          "preset:biped:fold_arms",
+          "preset:biped:greet_02"
+        ],
+        "result": {
+          "task_id": "b9dabca6-16f2-457b-9aae-2d9ef3733b3b",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/l_rowan/4-anim-1/tripo-out/retarget-b9dabca6",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_rowan/4-anim-1/tripo-out/retarget-b9dabca6/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2500,
+  "creditsUsed": 95,
+  "finished": "2026-11-26T16:47:02.188Z",
+  "files": [
+    "1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/generated_image.jpeg",
+    "1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/model.glb",
+    "1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/preview.png",
+    "1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/rendered_image.webp",
+    "1-model/tripo-out/rowan-leader-of-an-adventuring-c-3cda75f9/task.json",
+    "2-check/tripo-out/rig-check-816cf04e/task.json",
+    "3-rig/tripo-out/rig-ea701dbf/model.glb",
+    "3-rig/tripo-out/rig-ea701dbf/preview.png",
+    "3-rig/tripo-out/rig-ea701dbf/rendered_image.webp",
+    "3-rig/tripo-out/rig-ea701dbf/task.json",
+    "4-anim-1/tripo-out/retarget-b9dabca6/model.glb",
+    "4-anim-1/tripo-out/retarget-b9dabca6/task.json",
+    "manifest.json"
+  ]
+}

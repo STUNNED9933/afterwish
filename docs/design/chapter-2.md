@@ -117,7 +117,7 @@ management and area splitting; a data-driven cutscene player; background loading
 ## Build order
 
 1. Engine: 512 m test land, streaming, sleeping enemies, NPC crowds, sync. Gate: 60 fps, under 20 KB/s.
-   Status (0.99.11): built as a test page, `lacuna.html` (src/lacuna). Sync measured at ~2–3 KB/s per player (nine players); fps to be checked on Ko Ko's laptop. Still to do: the server running the land (WebSocket rooms, area splitting), client prediction.
+   Status (0.99.11): built as a test page, `lacuna.html` (src/lacuna). Sync measured at ~2–3 KB/s per player (nine players); fps to be checked on Ko Ko's laptop. (0.99.12) The server world runs the land (`/lacuna`, room.js): one shared land, players move in their own browser and the server checks them, beasts run on the server, chat. Still to do: area splitting when one land is not enough.
 2. Opening slice: cutscene player, forest, first town, quests 1–4, 2 classes, mana, Link. Gate: testers find it fun.
 3. All of Act I: 8 classes, quests 5–6, factions, more NPCs, Lumen and buffs tuned.
 4. Live updates, ongoing: Act II and beyond, new regions, new combat systems, events.

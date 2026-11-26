@@ -6,7 +6,7 @@ name: Update server world
 on:
   push:
     branches: [main]
-    paths: ['src/sim/**', 'src/net/**', 'src/config.js', 'game-server/**', '.github/workflows/game-server.yml']
+    paths: ['src/sim/**', 'src/net/**', 'src/lacuna/**', 'src/config.js', 'game-server/**', '.github/workflows/game-server.yml']
   workflow_dispatch:
 
 permissions:

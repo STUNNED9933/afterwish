@@ -62,6 +62,7 @@ export class LandWorld {
   step(dt = TICK) {
     this.time += dt;
     for (const p of this.players.values()) {
+      if (p.driven) continue; // (online) moved by its own browser, checked by the server (room.js)
       const len = dHypot(p.mx, p.mz);
       p.moving = len > 0.05;
       p.speed = p.moving ? SPEED[p.pace] * len : 0;
@@ -72,6 +73,7 @@ export class LandWorld {
         this.land.pushOut(p, PLAYER_R);
       }
     }
+    if (this.noBeasts) return; // (online, in a browser) the server runs the beasts
     // Which chunks are live: each player's and the ones round it (WAKE is under a chunk across).
     const live = new Set();
     for (const p of this.players.values()) {

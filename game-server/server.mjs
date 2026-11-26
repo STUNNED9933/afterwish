@@ -23,6 +23,7 @@ import { ServerWorld, SERVER_LIMITS } from '../src/net/shards.js';
 import { CONFIG } from '../src/config.js';
 import { AccountStore } from './accounts.mjs';
 import { createApi } from './api.mjs';
+import { LandRoom } from '../src/lacuna/room.js'; // (0.99.12) Lacuna's test land, at /lacuna
 
 const PORT = Number(process.env.PORT) || 8787;
 const PASSCODE = process.env.AFTERWISH_PASSCODE || '';
@@ -54,6 +55,20 @@ const world = new ServerWorld({
   congested: (ws) => ws.bufferedAmount > BACKLOG,
 });
 
+// (0.99.12) Lacuna's test land: one shared land, its own WebSocket address (/lacuna), the same passcode
+const land = new LandRoom({
+  passcode: PASSCODE,
+  send(ws, msg) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  },
+  sendBin(ws, buf) {
+    if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < BACKLOG) ws.send(buf);
+  },
+  close(ws, reason) {
+    setTimeout(() => ws.readyState === WebSocket.OPEN && ws.close(4000, String(reason).slice(0, 100)), 300);
+  },
+});
+
 const perIp = new Map();
 const ipOf = (req) => String(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 const originOk = (origin) => !origin || ORIGINS.some((o) => origin === o || (o.startsWith('http://localhost') && origin.startsWith('http://localhost:')) || (o.startsWith('http://127.0.0.1') && origin.startsWith('http://127.0.0.1:')));
@@ -65,7 +80,7 @@ const httpServer = http.createServer(async (req, res) => {
   if (api && (await api(req, res, ipOf(req)))) return;
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
-    res.end(JSON.stringify({ ok: true, name: world.name, open: !!PASSCODE, accounts: accountsOn ? (world.requireAccount ? 'required' : 'optional') : 'off', players: world.size, max: world.maxPlayers, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
+    res.end(JSON.stringify({ ok: true, name: world.name, open: !!PASSCODE, accounts: accountsOn ? (world.requireAccount ? 'required' : 'optional') : 'off', players: world.size, max: world.maxPlayers, lacuna: land.size, copies: world.copies.size, stepMs: +stats.stepMs.toFixed(3), worstMs: +stats.worst.toFixed(1), upMinutes: Math.round((Date.now() - stats.started) / 60000) }));
     return;
   }
   res.writeHead(404);
@@ -92,8 +107,10 @@ wss.on('connection', (ws, req) => {
   ws.alive = true;
   ws.tokens = BURST;
   ws.at = performance.now();
+  const toLand = String(req.url || '').startsWith('/lacuna'); // (0.99.12) Lacuna's test land
+  const room = toLand ? land : world;
   const helloTimer = setTimeout(() => {
-    if (!world.byConn.has(ws)) ws.terminate();
+    if (!room.byConn.has(ws)) ws.terminate();
   }, HELLO_WITHIN);
   ws.on('pong', () => (ws.alive = true));
   ws.on('message', (data, isBinary) => {
@@ -110,7 +127,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
     try {
-      world.message(ws, msg);
+      room.message(ws, msg);
     } catch (err) {
       console.error('message failed', err && err.stack);
     }
@@ -119,7 +136,7 @@ wss.on('connection', (ws, req) => {
     clearTimeout(helloTimer);
     perIp.set(ip, Math.max(0, (perIp.get(ip) || 1) - 1));
     if (!perIp.get(ip)) perIp.delete(ip);
-    world.leave(ws);
+    room.leave(ws);
   });
   ws.on('error', () => {});
 });
@@ -160,6 +177,19 @@ setInterval(() => {
   }
   if (n >= 8) acc = 0;
 }, 5);
+
+// (0.99.12) Lacuna's land keeps its own time (30 steps a second inside), on its own timer
+let landLast = performance.now();
+setInterval(() => {
+  const now = performance.now();
+  const dt = (now - landLast) / 1000;
+  landLast = now;
+  try {
+    land.tick(dt);
+  } catch (err) {
+    console.error('land step failed', err && err.stack);
+  }
+}, 16);
 
 // Stopping (an update): everyone gets their latest save first.
 const stop = () => {

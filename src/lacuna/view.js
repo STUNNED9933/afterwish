@@ -19,7 +19,7 @@ const GROUND = { plaza: 0xbdae8e, street: 0xae9470, road: 0xa3865c, town: 0x86a7
 function beastGeometry(type) {
   const parts = [];
   const add = (geo, color, x, y, z, sx = 1, sy = 1, sz = 1) => {
-    const g = geo.clone().toNonIndexed();
+    const g = geo.index ? geo.clone().toNonIndexed() : geo.clone();
     g.scale(sx, sy, sz);
     g.translate(x, y, z);
     const c = new THREE.Color(color);
@@ -243,6 +243,24 @@ export class LandView {
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
       this.tmpM.compose(this.tmpP.set(bx, bob, bz), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
       const m = this.beastMeshes[b.type];
+      m.setMatrixAt(fill[b.type]++, this.tmpM);
+    }
+    for (const type in this.beastMeshes) {
+      const m = this.beastMeshes[type];
+      m.count = fill[type];
+      m.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  /** (together) Draw the beasts the server says are in sight: { type, x, z, facing, moving, id } (already eased). */
+  drawSeen(list, time) {
+    const fill = {};
+    for (const type in this.beastMeshes) fill[type] = 0;
+    for (const b of list) {
+      const m = this.beastMeshes[b.type];
+      if (!m || fill[b.type] >= m.instanceMatrix.count) continue;
+      const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
+      this.tmpM.compose(this.tmpP.set(b.x, bob, b.z), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
       m.setMatrixAt(fill[b.type]++, this.tmpM);
     }
     for (const type in this.beastMeshes) {

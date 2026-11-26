@@ -78,19 +78,28 @@ export class Interest {
   }
 }
 
-/** Apply a message to a player's copy of the world they can see: a Map id -> { x, z, facing, ... }. */
-export function apply(buf, seen) {
+/** Read a message: { ups: [{ id, x, z, facing, moving, awake, player, state, type }], gone: [id] }. */
+export function decode(buf) {
   const v = new DataView(buf);
   const n = v.getUint16(1, true), g = v.getUint16(3, true);
+  const ups = [], gone = [];
   let o = 5;
   for (let i = 0; i < n; i++) {
     const id = v.getUint16(o, true), flags = v.getUint8(o + 7);
-    seen.set(id, {
+    ups.push({
       id, x: v.getInt16(o + 2, true) / 64, z: v.getInt16(o + 4, true) / 64, facing: (v.getUint8(o + 6) / 256) * TAU,
       moving: !!(flags & 1), awake: !!(flags & 2), player: !!(flags & 4), state: MOODS[(flags >> 3) & 3], type: flags & 4 ? null : KINDS[flags >> 5],
     });
     o += 8;
   }
-  for (let i = 0; i < g; i++) { seen.delete(v.getUint16(o, true)); o += 2; }
+  for (let i = 0; i < g; i++) { gone.push(v.getUint16(o, true)); o += 2; }
+  return { ups, gone };
+}
+
+/** Apply a message to a player's copy of the world they can see: a Map id -> { x, z, facing, ... }. */
+export function apply(buf, seen) {
+  const { ups, gone } = decode(buf);
+  for (const e of ups) seen.set(e.id, e);
+  for (const id of gone) seen.delete(id);
   return seen;
 }

@@ -134,6 +134,67 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('Lacuna sim: no Math.sin/cos/atan2/hypot/pow/random (the same numbers in every browser and on the server)', bad.length === 0, bad.join(', '));
 }
 
+// ---- the land on the server (room.js), with stand-in connections
+{
+  const { LandRoom, LACUNA_NET } = await import('../src/lacuna/room.js');
+  const { decode } = await import('../src/lacuna/net.js');
+  const box = new Map();
+  const closed = new Set();
+  const room = new LandRoom({ passcode: 'stun', send: (c, m) => box.get(c).json.push(JSON.parse(JSON.stringify(m))), sendBin: (c, b) => box.get(c).bin.push(b), close: (c) => closed.add(c) });
+  const conn = (n) => { const c = { n }; box.set(c, { json: [], bin: [] }); return c; };
+  const last = (c, t) => [...box.get(c).json].reverse().find((m) => m.t === t);
+  const run = (sec) => { for (let i = 0; i < Math.round(sec * 60); i++) room.tick(1 / 60); };
+  const x = conn('x');
+  room.message(x, { t: 'hello', v: LACUNA_NET, pass: 'nope', name: 'Mallory' });
+  check('Lacuna server: a wrong passcode is turned away', /passcode/.test((last(x, 'reject') || {}).reason || '') && closed.has(x) && room.size === 0);
+  const old = conn('old');
+  room.message(old, { t: 'hello', v: 'L0', pass: 'stun' });
+  check('...so is an old page', /out of date/.test((last(old, 'reject') || {}).reason || ''));
+  const a = conn('a'), b = conn('b');
+  room.message(a, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Ko Ko', cls: 'archer' });
+  room.message(b, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: '<b>Friend</b>', cls: 'warrior' });
+  const A = last(a, 'welcome'), B = last(b, 'welcome');
+  check('...two friends get in, side by side at Sunmere\'s south gate', A && B && A.pid !== B.pid && Math.hypot(A.at.x - B.at.x, A.at.z - B.at.z) > 1 && Math.hypot(A.at.x - B.at.x, A.at.z - B.at.z) < 10);
+  check('...names are cleaned, and everyone gets the list of who is here', last(b, 'roster').players.map((p) => p.name).join() === 'Ko Ko,bFriendb' && last(a, 'roster').players.length === 2);
+  run(0.5);
+  const seen = (c) => { const m = new Map(); for (const buf of box.get(c).bin) { const d = decode(buf); for (const e of d.ups) m.set(e.id, e); for (const id of d.gone) m.delete(id); } return m; };
+  check('...each is sent what is in sight, the other player among it', seen(a).has(65000 + B.pid) && seen(b).has(65000 + A.pid) && [...seen(a).values()].some((e) => !e.player));
+  // A walks north a few metres a tenth of a second at a time: taken, and B sees it
+  let px = A.at.x, pz = A.at.z;
+  for (let i = 0; i < 10; i++) { pz -= 0.5; room.message(a, { t: 'pos', x: px, z: pz, f: -1.57, m: 1, p: 'run' }); run(0.1); }
+  const aOnB = seen(b).get(65000 + A.pid);
+  check('...a player says where they walk, and the others see them there', Math.abs(aOnB.z - pz) < 0.05 && aOnB.moving);
+  box.get(a).json.length = 0;
+  room.message(a, { t: 'pos', x: px + 80, z: pz, f: 0, m: 1, p: 'sprint' });
+  check('...a jump further than anyone can run is put back', last(a, 'snap') && Math.abs(last(a, 'snap').x - px) < 0.01);
+  const land = room.world.land;
+  const tree = land.chunk(1, 3).trees[0];
+  room.world.players.get(A.pid).x = tree.x + 1.5; room.world.players.get(A.pid).z = tree.z;
+  room.byConn.get(a).last = { x: tree.x + 1.5, z: tree.z, t: room.world.time - 1 };
+  box.get(a).json.length = 0;
+  room.message(a, { t: 'pos', x: tree.x, z: tree.z, f: 0, m: 1, p: 'run' });
+  check('...so is walking into a tree', !!last(a, 'snap'));
+  room.message(a, { t: 'pos', x: 'far', z: null });
+  room.message(a, { t: 'cls', cls: 'mage' });
+  check('...nonsense is ignored; a class swap reaches everyone', last(b, 'roster').players.find((p) => p.pid === A.pid).cls === 'mage');
+  room.message(a, { t: 'chat', text: 'hello\u0007 there' });
+  check('...chat reaches everyone, cleaned', last(b, 'chat') && last(b, 'chat').text === 'hello there' && last(b, 'chat').name === 'Ko Ko');
+  // B goes to a wolf: the server's beasts notice B (and only B is told)
+  { const pa = room.world.players.get(A.pid); pa.x = A.at.x; pa.z = A.at.z; room.byConn.get(a).last = { x: pa.x, z: pa.z, t: room.world.time }; } // A back in town
+  const wolf = room.world.beasts.find((w) => w.type === 'wolf' && Math.hypot(w.x, w.z) > 150);
+  const mb = room.byConn.get(b), pb = room.world.players.get(B.pid);
+  pb.x = wolf.x + 5; pb.z = wolf.z; mb.last = { x: pb.x, z: pb.z, t: room.world.time };
+  box.get(a).json.length = 0;
+  for (let i = 0; i < 40; i++) { room.message(b, { t: 'pos', x: pb.x, z: pb.z, f: 0, m: 0, p: 'run' }); run(0.1); }
+  check('...beasts are the server\'s: B is told one noticed and swiped, A is not', box.get(b).json.some((m) => m.t === 'ev' && m.type === 'aggro') && box.get(b).json.some((m) => m.t === 'ev' && m.type === 'swipe') && !box.get(a).json.some((m) => m.t === 'ev'));
+  room.leave(b);
+  run(0.3);
+  check('...someone leaving is gone from the list and from sight', last(a, 'roster').players.length === 1 && !seen(a).has(65000 + B.pid));
+  const idle = new LandRoom({ passcode: 'stun', send() {}, sendBin() {} });
+  idle.tick(1);
+  check('...an empty server makes no land at all (until someone comes)', idle.world === null);
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;
 void LAND; void CHUNKS; void TOWN; void chunkOf;

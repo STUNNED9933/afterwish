@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: walk the test land together (0.99.12)
+
+- **The server world now runs Lacuna's land too**, at its own address (`/lacuna`, the same passcode as Haven). On [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html), **Walk together** (bottom right): type your name and the passcode, and you are on one shared land with whoever else joins. The game's own server world is untouched.
+- You move in your own browser (no delay); the server checks every step (nobody faster than a sprint, nobody through a tree) and puts you back if not. It runs the beasts for everyone; each player is sent only what is near them.
+- Other players appear as their class's real model with their name over them; swapping class (1 to 4) shows for everyone. **Enter** to chat.
+- The overlay shows ping and the real data coming in (two players: about 3 to 4 KB/s while beasts stream in, much less once they settle).
+- `src/lacuna/room.js` (the server's half), tests in `test/lacuna.test.mjs` (passcode, cheating checks, chat, who sees what).
+
 ### Lacuna, engine phase 1: the test land (0.99.11)
 
 Chapter 2's engine, built apart from the game on its own page: **[lacuna.html](https://afterwish.stunnedgames.net/lacuna.html)** (not linked from the game; nothing in it is final art).

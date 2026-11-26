@@ -311,6 +311,35 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('...together: a friend sees you hop', box.get(b).some((m) => m.t === 'evs' && m.list.some((e) => e.type === 'cast' && e.skill === 'jump')));
 }
 
+// ---- (phase 2) the story: the Company walks you to Sunmere
+{
+  const { walkToTown, ROAD_IN } = await import('../src/lacuna/story.js');
+  const { GLADE } = await import('../src/lacuna/land.js');
+  const mk = (x, z) => ({ x, z, facing: 0, looping: 'idle', once: null, sync() {}, loop(w) { this.looping = w; }, face() {}, update() {}, play() {} });
+  const actors = { rowan: mk(GLADE.x + 1, GLADE.z), ilse: mk(GLADE.x, GLADE.z + 1), juni: mk(GLADE.x + 2, GLADE.z), sorrel: mk(GLADE.x - 1, GLADE.z) };
+  const me = { x: GLADE.x, z: GLADE.z + 2 };
+  const lines = [];
+  let done = false;
+  const run = walkToTown(actors, (l) => lines.push(...l), () => { done = true; }, { x: me.x, z: me.z });
+  // a hero who keeps three metres behind Rowan
+  let t = 0;
+  for (; t < 150 * 30 && !done; t++) {
+    run.update(1 / 30, me);
+    const r = actors.rowan, dx = r.x - me.x, dz = r.z - me.z, d = Math.hypot(dx, dz);
+    if (d > 3) { me.x += (dx / d) * Math.min(d - 3, 6 / 30); me.z += (dz / d) * Math.min(d - 3, 6 / 30); }
+  }
+  check('Lacuna story: the Marigold Company walks you from the glade to Sunmere\'s plaza (Waking Up is done)', done && Math.hypot(me.x, me.z) < 25, `${(t / 30).toFixed(0)} s, ${lines.length} lines on the way`);
+  check('...talking on the way (every exchange heard, in order)', lines.length >= 12 && lines[0][0] === 'juni' && lines.some((l) => l[1].includes('There she is')));
+  // one who stops: the Company waits and calls back
+  const a2 = { rowan: mk(GLADE.x + 1, GLADE.z), ilse: mk(GLADE.x, GLADE.z), juni: mk(GLADE.x, GLADE.z), sorrel: mk(GLADE.x, GLADE.z) };
+  const lines2 = [];
+  const run2 = walkToTown(a2, (l) => lines2.push(...l), () => {}, { x: GLADE.x, z: GLADE.z });
+  const idle = { x: GLADE.x, z: GLADE.z };
+  for (let i = 0; i < 30 * 30; i++) run2.update(1 / 30, idle);
+  check('...stop, and they wait for you (and say so) instead of leaving you behind', Math.hypot(a2.rowan.x - idle.x, a2.rowan.z - idle.z) < 22 && lines2.some((l) => l[1].includes('Keep up')));
+  void ROAD_IN;
+}
+
 // ---- deterministic maths only in the sim
 {
   const bad = ['land.js', 'sim.js'].filter((f) => /Math\.(sin|cos|tan|atan2?|hypot|pow|exp|log|random)\(/.test(fs.readFileSync(new URL('../src/lacuna/' + f, import.meta.url), 'utf8').replace(/\/\/.*$/gm, '')));

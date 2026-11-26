@@ -15,6 +15,10 @@ import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
 import { LACUNA_NET } from './room.js';
 import { SERVERS } from '../net/servers.js';
+import { Cutscene } from './cutscene.js';
+import { Actor } from './actor.js';
+import { beastGeometry } from './view.js';
+import { opening, walkToTown, inTown, loadStory, saveStory, QUESTS, ROAD_IN } from './story.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('land');
@@ -88,7 +92,7 @@ function animate(h, ev) {
   else if (ev.skill === 'volley') a.move = 'barrage';
   else if (ev.skill === 'deadeye') a.move = 'aim';
   else if (ev.skill === 'rage') a.move = 'cone';
-  else if (ev.skill === 'jump') a.jumpT = 0;
+  else if (ev.skill === 'jump') { a.jumpT = 0; a.move = 'hop'; }
 }
 /** Height of a hop, t seconds after it began (the sim's own arc, for other players: the server sends no height). */
 function hopAt(t) {
@@ -99,9 +103,11 @@ function pose(h, dt, s) {
   const a = h.anim;
   // in the air: a little forward lean (no jump clip in these models yet)
   if (a.jumpT >= 0) { a.jumpT += dt; if (a.jumpT > (2 * JUMP.up) / JUMP.gravity) a.jumpT = -1; }
+  if (a.lie && h.rig && !a.lieSent) { a.move = 'lie'; a.lieSent = true; } // (the opening) lying in the grass, once the model is in
   const air = s.y !== undefined ? s.y : a.jumpT >= 0 ? hopAt(a.jumpT) : 0;
   h.body.position.y = air;
-  h.body.rotation.x = air > 0.05 ? Math.min(0.22, air * 0.25) : 0;
+  if (a.air > 0.05 && air <= 0.001 && !a.move) a.move = 'land'; // touching down
+  a.air = air;
   if (a.spinT > 0) { a.spinT -= dt; h.body.rotation.y += dt * 16; } else h.body.rotation.y = 0;
   if (!h.rig) return;
   h.rig.update(dt, { ...s, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
@@ -162,6 +168,7 @@ $('mp-name').value = savedName();
 $('mp-pass').value = savedPass();
 function joinServer() {
   if (net) return;
+  if (cutscene.active) return mpStatus('After the scene.');
   const name = $('mp-name').value.trim(), pass = $('mp-pass').value.trim();
   if (!pass) return mpStatus('Type the server world\'s passcode (the one friends use for Haven).');
   try { localStorage.setItem('lacuna-name', name); } catch (err) { /* private window */ }
@@ -373,6 +380,12 @@ function relock() {
 }
 addEventListener('keydown', (e) => {
   if (typing(e)) return;
+  if (cutscene.active) {
+    // a scene is playing: Space/E/Enter for its lines and prompts, Esc to skip; nothing else
+    if (!e.repeat) cutscene.key(e.code);
+    if (e.code !== 'F12') e.preventDefault();
+    return;
+  }
   if (e.key === 'Alt') {
     e.preventDefault(); // (Alt alone would open the browser's menu)
     if (!altFree) { altFree = true; firing = false; scoped = false; if (locked()) document.exitPointerLock(); drawLookHint(); }
@@ -422,6 +435,7 @@ document.addEventListener('pointerlockchange', () => {
   drawLookHint();
 });
 canvas.addEventListener('mousedown', (e) => {
+  if (cutscene.active) { cutscene.key('Click'); return; }
   if (!locked()) {
     if (!altFree) relock(); // a click takes the mouse back (it does not also shoot: you were not aiming); with Alt held, clicks are yours
     return;
@@ -502,6 +516,7 @@ function act(k) {
 }
 
 function wish() {
+  if (cutscene.active) return { mx: 0, mz: 0, pace: 'run' };
   const f = (k) => (keys.has(k) ? 1 : 0);
   const fwd = f('KeyW') + f('ArrowUp') - f('KeyS') - f('ArrowDown');
   const side = f('KeyD') + f('ArrowRight') - f('KeyA') - f('ArrowLeft');
@@ -525,6 +540,125 @@ dress(hero, startCls);
 drawSkills();
 drawLink();
 
+// ---- the story (Act I): the opening, then the Marigold Company walking you to Sunmere
+const cutscene = new Cutscene({
+  view, fx, $, me, hero,
+  beastMesh: (type) => { const m = new THREE.Mesh(beastGeometry(type), view.mats.beast); m.castShadow = true; return m; },
+  snapHero: () => { prev.x = me.x; prev.z = me.z; },
+  hurt: () => { hurtT = 0.5; },
+  heal: () => { me.hp = me.maxHp; },
+  onEnd(fn) { cutscene.endFn = fn; },
+});
+let story = params.get('story') === 'new' ? { stage: 'new' } : loadStory();
+let questRun = null;
+const company = {};
+function showQuest() {
+  const q = story.stage === 'waking' ? QUESTS.waking : story.stage === 'crystal' ? QUESTS.crystal : null;
+  $('quest').classList.toggle('hidden', !q);
+  if (q) { $('quest-name').textContent = q.name; $('quest-goal').textContent = q.goal; }
+}
+let toastT = 0;
+function toast(title, sub) {
+  $('toast').innerHTML = `${title}${sub ? `<small>${sub}</small>` : ''}`;
+  $('toast').classList.remove('hidden');
+  toastT = 4;
+}
+const barks = [];
+let barkT = 0;
+function bark(lines) {
+  barks.push(...lines);
+  if (barkT <= 0) nextBark();
+}
+function nextBark() {
+  const l = barks.shift();
+  if (!l) { $('bark').classList.add('hidden'); barkT = 0; return; }
+  const [who, text] = l;
+  const name = who ? who[0].toUpperCase() + who.slice(1) : '';
+  $('bark').innerHTML = name ? `<b>${name}</b>` : '';
+  $('bark').appendChild(document.createTextNode(text));
+  $('bark').classList.toggle('thought', !who);
+  $('bark').classList.remove('hidden');
+  barkT = 2.4 + text.length / 22;
+}
+function companyAt(spots) {
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) {
+    if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+    const [x, z] = spots[who];
+    company[who].place(x, z);
+  }
+}
+function startWalk() {
+  story.stage = 'waking';
+  saveStory(story);
+  showQuest();
+  questRun = walkToTown(company, bark, () => {
+    story.stage = 'crystal';
+    saveStory(story);
+    toast('Quest complete: Waking Up', 'Next: The Crystal (coming in the next part)');
+    bark([['rowan', 'Welcome to Sunmere. Stay close tonight; the Guild opens at first light.']]);
+    showQuest();
+    questRun = inTown(company);
+  }, { x: me.x, z: me.z });
+}
+async function playOpening() {
+  if (cutscene.active) return;
+  for (const who of Object.keys(company)) { company[who].remove(); delete company[who]; }
+  questRun = null;
+  if (net) net.ws.close(1000, 'The opening is played alone');
+  if (locked()) document.exitPointerLock();
+  document.body.classList.add('scene');
+  $('cs-skip').classList.remove('hidden');
+  hero.anim.lie = true; hero.anim.lieSent = false;
+  try {
+    await cutscene.run(opening);
+  } finally {
+    if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
+    hero.anim.lie = false;
+    if (hero.rig) hero.anim.move = cutscene.skipping ? 'land' : null;
+    document.body.classList.remove('scene');
+    $('cs-skip').classList.add('hidden');
+  }
+  // the Company stays: they walk you to town
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) company[who] = cutscene.keep(who) || new Actor(view.scene, who, {});
+  cutscene.clear();
+  yaw = Math.atan2(ROAD_IN.z - me.z, ROAD_IN.x - me.x); pitch = 0.28;
+  $('fade').style.transition = 'opacity 0.8s';
+  $('fade').style.opacity = '0';
+  toast('New quest: Waking Up', QUESTS.waking.goal);
+  startWalk();
+}
+$('cs-skip').addEventListener('click', () => cutscene.skip());
+for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () => cutscene.key('Click'));
+$('replay').addEventListener('click', () => { story = { stage: 'new' }; saveStory(story); playOpening(); });
+const markV = new THREE.Vector3();
+function drawMarker() {
+  const lead = story.stage === 'waking' && questRun && questRun.leader;
+  if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
+  const d = Math.hypot(lead.x - me.x, lead.z - me.z);
+  markV.set(lead.x, 2.3, lead.z).project(view.camera);
+  let x = ((markV.x + 1) / 2) * innerWidth, y = ((1 - markV.y) / 2) * innerHeight;
+  const behind = markV.z > 1;
+  if (behind) { x = innerWidth - x; y = innerHeight - 40; }
+  const m = 24;
+  x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
+  y = Math.max(m + 20, Math.min(innerHeight - 180, y));
+  $('marker').textContent = `◆ Rowan · ${Math.round(d)} m`;
+  $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+  $('marker').classList.toggle('hidden', d < 6 && !behind);
+}
+// where the story stands when the page opens
+if (story.stage === 'new') setTimeout(playOpening, 300);
+else if (story.stage === 'waking') {
+  me.x = ROAD_IN.x - 2; me.z = ROAD_IN.z + 3;
+  companyAt({ juni: [ROAD_IN.x + 3, ROAD_IN.z], rowan: [ROAD_IN.x, ROAD_IN.z], ilse: [ROAD_IN.x - 2, ROAD_IN.z + 1], sorrel: [ROAD_IN.x - 3, ROAD_IN.z - 1] });
+  yaw = 0;
+  startWalk();
+} else if (story.stage === 'crystal') {
+  companyAt({ rowan: [-8, -3], ilse: [-9.5, -1.2], juni: [-7.2, -0.6], sorrel: [-10.4, -3.4] });
+  questRun = inTown(company);
+  showQuest();
+}
+
 // ---- the loop
 function resize() {
   view.resize(innerWidth, innerHeight);
@@ -543,7 +677,7 @@ function frame(now) {
   time += dt;
   perf.worstNow = Math.max(perf.worstNow, dt * 1000);
   acc += dt;
-  if (firing && !me.dead) act('basic');
+  if (firing && !me.dead && !cutscene.active) act('basic');
   if (me.cls !== 'archer') scoped = false;
   const w = wish();
   const s0 = performance.now();
@@ -587,7 +721,8 @@ function frame(now) {
   // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
-  if (scoped) {
+  if (cutscene.active) cutscene.update(dt);
+  else if (scoped) {
     camPos.set(hx + Math.cos(yaw) * 0.3, 1.62 + heroY, hz + Math.sin(yaw) * 0.3);
     view.camera.position.copy(camPos);
     view.camera.lookAt(camPos.x + lx * 10, camPos.y + ly * 10, camPos.z + lz * 10);
@@ -638,6 +773,10 @@ function frame(now) {
     fxBeasts = nearBeasts;
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, me.rage > 0, hx, hz);
+  if (questRun && !cutscene.active) questRun.update(dt, me);
+  drawMarker();
+  if (barkT > 0 && (barkT -= dt) <= 0) nextBark();
+  if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.add('hidden');
   crowd.update(dt, hx, hz, time);
   const m = new THREE.Matrix4();
   bots.forEach((b, i) => { const p = world.players.get(b.pid); botMesh.setMatrixAt(i, m.makeTranslation(p.x, 0, p.z)); });
@@ -682,4 +821,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold Alt to use the mouse (hover for descriptions).');
-window.land = { world, view, crowd, me, fx, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, __company: company, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

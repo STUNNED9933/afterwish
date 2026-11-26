@@ -66,7 +66,32 @@
   #tip span { color: #9fb0cc; }
   #tip em { color: #c9b8ff; font-style: normal; }
   #look-hint { position: fixed; left: 50%; top: 58%; transform: translateX(-50%); padding: 6px 12px; background: rgba(10, 14, 24, 0.7); color: #fff; font-size: 13px; border-radius: 6px; pointer-events: none; }
-  .hidden { display: none; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 20; }
+  #cs { position: fixed; inset: 0; z-index: 21; pointer-events: none; }
+  #cs::before, #cs::after { content: ''; position: fixed; left: 0; right: 0; height: 0; background: #000; transition: height 0.6s; }
+  #cs::before { top: 0; } #cs::after { bottom: 0; }
+  #cs.bars::before, #cs.bars::after { height: 11vh; }
+  #cs-card { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; z-index: 22; }
+  #cs-card p { max-width: 640px; padding: 0 24px; color: #efe6d2; font: italic 500 24px/1.55 'Cormorant Garamond', Georgia, serif; text-align: center; transition: opacity 1.4s; }
+  #cs-box { position: fixed; left: 50%; bottom: 13vh; transform: translateX(-50%); width: min(760px, 88vw); padding: 14px 20px 12px; background: rgba(8, 10, 18, 0.86); border: 1px solid rgba(255, 210, 74, 0.35); border-radius: 10px; color: #f4f0e6; font-size: 17px; line-height: 1.5; z-index: 23; }
+  #cs-box.thought { background: rgba(8, 10, 18, 0.55); border-color: transparent; font-style: italic; color: #dfe6f4; text-align: center; }
+  #cs-name { font-weight: 700; color: #ffd24a; font-size: 14px; letter-spacing: 0.04em; margin-bottom: 3px; }
+  #cs-more { float: right; font-size: 12px; color: #9fb0cc; margin-top: 6px; }
+  #cs-prompt { position: fixed; left: 50%; top: 56%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; color: #fff; font: 600 18px system-ui; text-shadow: 0 2px 6px #000; z-index: 23; animation: pulse 0.9s ease-in-out infinite alternate; }
+  #cs-prompt kbd { min-width: 46px; padding: 8px 14px; background: #ffd24a; color: #1a1406; border-radius: 8px; font: 800 20px system-ui; text-align: center; box-shadow: 0 4px 0 #9a7a1a; }
+  #cs-prompt i { font-style: normal; letter-spacing: 6px; color: #ffd24a; }
+  @keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.08); } }
+  #cs-skip { position: fixed; right: 18px; top: calc(11vh + 12px); z-index: 24; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px; background: rgba(0, 0, 0, 0.4); color: #fff; font-size: 12px; cursor: pointer; pointer-events: auto; }
+  #bark { position: fixed; left: 50%; bottom: 168px; transform: translateX(-50%); max-width: min(620px, 80vw); padding: 8px 14px; background: rgba(8, 10, 18, 0.78); border-radius: 8px; color: #f4f0e6; font-size: 15px; pointer-events: none; }
+  #bark b { color: #ffd24a; margin-right: 6px; }
+  #bark.thought { font-style: italic; color: #dfe6f4; }
+  #quest { position: fixed; right: 10px; top: 34px; width: 250px; padding: 8px 11px; background: rgba(10, 14, 24, 0.72); border-left: 3px solid #ffd24a; border-radius: 4px; color: #e8eefc; font-size: 12px; pointer-events: none; }
+  #quest b { display: block; color: #ffd24a; font-size: 13px; }
+  #marker { position: fixed; left: 0; top: 0; padding: 2px 7px; background: rgba(255, 210, 74, 0.9); color: #1a1406; font: 700 11px system-ui; border-radius: 10px; pointer-events: none; white-space: nowrap; }
+  #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 10px 20px; background: rgba(8, 10, 18, 0.85); border: 1px solid #ffd24a; border-radius: 8px; color: #fff; font: 600 16px system-ui; text-align: center; pointer-events: none; }
+  #toast small { display: block; font-weight: 400; font-size: 13px; color: #cfd6e4; }
+  body.scene #hud, body.scene #cross, body.scene #mp, body.scene #stats, body.scene #quest, body.scene #look-hint, body.scene #chat, body.scene #note, body.scene #tag { display: none !important; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -74,7 +99,7 @@
 <div id="hurt"></div>
 <div id="stats">loading…</div>
 <div id="note" class="hidden"></div>
-<div id="tag">Lacuna test land · phase 2: combat · __VERSION__</div>
+<div id="tag">Lacuna test land · phase 2: the opening · __VERSION__</div>
 <div id="labels"></div>
 <div id="fxlayer"></div>
 <div id="scope"></div>
@@ -96,8 +121,19 @@
     <button id="mp-join" type="button">Join the server world's land</button>
   </div>
   <div class="only-joined"><div id="mp-who"></div><button id="mp-leave" class="ghost" type="button">Leave (walk alone)</button></div>
+  <button id="replay" class="ghost" type="button" style="margin-top:8px">Play the opening again</button>
   <div id="mp-status" class="s">Alone: everything runs on this computer. Join to walk with friends (same passcode as Haven).</div>
 </div>
+<div id="quest" class="hidden"><b id="quest-name"></b><span id="quest-goal"></span></div>
+<div id="marker" class="hidden"></div>
+<div id="bark" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+<div id="cs" class="hidden"></div>
+<div id="cs-card" class="hidden"></div>
+<div id="cs-box" class="hidden"><div id="cs-name"></div><div id="cs-text"></div><div id="cs-more">Space ▸</div></div>
+<div id="cs-prompt" class="hidden"></div>
+<div id="fade"></div>
+<button id="cs-skip" class="hidden" type="button">Skip ▸▸ (Esc)</button>
 <script src="lacuna.js"></script>
 </body>
 </html>

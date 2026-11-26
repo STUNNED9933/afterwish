@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the opening, the Marigold Company, and Quest 1 (0.99.17)
+
+- **The opening cutscene** (first visit to [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html); **Play the opening again** in the corner panel): the crack on the Verge opens, a husk runs into it, you follow; you wake in a glade in the Wakewood (tap Space to get up), powerless; wolves; roll away (E); the **Marigold Company** cut them down. Esc (or the button) skips: everything ends where it would have.
+- **Quest 1, Waking Up:** the Company walks you along the road to Sunmere, talking on the way (Rowan's marker shows where they are). Fall behind and they wait and call you. They stay by the plaza afterwards (Quest 2, The Crystal, comes next).
+- **The Marigold Company** made with Tripo (380 credits): Rowan (leader, sword), Ilse (healer), Juni (scout), Sorrel (mage). Their walking, talking, kneeling, nodding and fighting are from Tripo, the heroes' own clips and the Universal Animation Library (free).
+- **A cutscene player** (`src/lacuna/cutscene.js`) for every scene to come: cards, lines of dialogue (Space or click), camera moves, actors, prompts (tap a key), blur, shake, letterbox bars.
+- **The heroes jump properly now** (a push-off and a landing, from the Universal Animation Library), in Lacuna.
+- The glade and the roads are kept clear of beasts. Story progress is kept in this browser for now.
+
 ### Lacuna: jump (0.99.15)
 
 - **Space jumps** (about a metre, two thirds of a second; from the ground only). Friends see you hop. It does not dodge anything (that is the Sharpshooter's Roll). The models have no jump animation yet: they hop with a little lean.

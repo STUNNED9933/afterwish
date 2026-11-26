@@ -13,10 +13,10 @@ export const DRAW = 150; // metres of land drawn round you
 const DROP = DRAW + 50; // past this, a built chunk is taken down
 const SKY = 0xbfd9ec;
 
-const GROUND = { plaza: 0xbdae8e, street: 0xae9470, road: 0xa3865c, town: 0x86a75c, meadow: 0x7cab50, forest: 0x557f3b, stony: 0x8f927c, shore: 0xcbbb8b, water: 0x4f7f99 };
+const GROUND = { glade: 0x8fbf5a, plaza: 0xbdae8e, street: 0xae9470, road: 0xa3865c, town: 0x86a75c, meadow: 0x7cab50, forest: 0x557f3b, stony: 0x8f927c, shore: 0xcbbb8b, water: 0x4f7f99 };
 
 /** One low-poly creature (facing +z, feet on y = 0) per beast kind, coloured by vertex. */
-function beastGeometry(type) {
+export function beastGeometry(type) {
   const parts = [];
   const add = (geo, color, x, y, z, sx = 1, sy = 1, sz = 1) => {
     const g = geo.index ? geo.clone().toNonIndexed() : geo.clone();

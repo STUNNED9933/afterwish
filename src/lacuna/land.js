@@ -22,6 +22,7 @@ const CELLS = LAND.size / LAND.cell; // hash cells along a side
 
 export const TOWN = { x: 0, z: 0, plaza: 14, r: 44 }; // Sunmere
 export const LAKE = { x: 132, z: 118, r: 26 };
+export const GLADE = { x: -150, z: 34, r: 11 }; // (phase 2) where the hero wakes, in the Wakewood: open grass, no beasts near
 export const ROAD_W = 3.2; // half the width of a road
 
 /** A number in [0, 1) from two integers and a seed (the same everywhere). */
@@ -51,6 +52,7 @@ export function roadDist(x, z) {
 export function groundAt(x, z, seed = LAND.seed) {
   const town = dHypot(x - TOWN.x, z - TOWN.z);
   if (town < TOWN.plaza) return 'plaza';
+  if (dHypot(x - GLADE.x, z - GLADE.z) < GLADE.r) return 'glade';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return 'water';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return 'shore';
   if (roadDist(x, z) < ROAD_W) return town < TOWN.r + 4 ? 'street' : 'road';
@@ -162,6 +164,7 @@ export class Land {
       const g = groundAt(x, z, this.seed);
       const type = g === 'forest' ? 'wolf' : g === 'meadow' ? 'hog' : g === 'stony' ? 'golem' : null;
       if (!type || !free(x, z, 1.2, 1) || spawns.some((s) => dHypot(s.x - x, s.z - z) < 4)) continue;
+      if (roadDist(x, z) < 16 || dHypot(x - GLADE.x, z - GLADE.z) < 45) continue; // (phase 2) the roads and the glade are safe to walk
       spawns.push({ type, x, z });
     }
     return { cx, cz, x0, z0, trees, rocks, houses, solid, spawns };

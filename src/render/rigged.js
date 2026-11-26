@@ -17,6 +17,14 @@ import { addRim } from './environment.js';
  */
 // (0.97.4) the mage running: tuned against her run, frame by frame, so the staff clears her legs and body
 const RUN_AT = [0.42, 0.24, 0.38], RUN_DIR = [0.5, 0.84, 0.05], RUN_HOLD = 0.56, RUN_SWING = { fwd: 0.15, bob: 0.05, tilt: 14, phase: 0 };
+// (0.99.17) A hop and its landing, from the Universal Animation Library (retargeted onto the heroes): the push-off
+// and the tuck in the air (Jump_Start from 0.12 s), then the knees taking the landing (Jump_Land, lightly).
+const HOP = {
+  hop: { clip: 'ual_Jump_Start', keys: [[0, 0.12], [0.12, 0.32], [0.6, 1.25]], fade: 0.06 },
+  land: { clip: 'ual_Jump_Land', keys: [[0, 0.06], [0.1, 0.17], [0.4, 0.62]], fade: 0.25 },
+  rise: { clip: 'ual_LayToIdle', keys: [[0, 0], [1.6, 1.53]], fade: 0.3 }, // (the opening) getting up off the ground
+  lie: { clip: 'ual_LayToIdle', keys: [[0, 0], [600, 0]], fade: 0.01 }, // (the opening) lying in the grass, until told to rise
+};
 export const RIGGED = {
   hero_warrior: {
     url: 'models/warrior.glb',
@@ -60,6 +68,7 @@ export const RIGGED = {
       cone: { clip: 'ual_Cleave', keys: [[0, 0.85], [0.12, 1.1], [0.22, 1.3], [0.5, 1.45]], stop: [0.2, 0.05], slash: [0.06, 0.3], fade: 0.3 },
       dash: { clip: 'ual_Lunge', keys: [[0, 0.02], [0.12, 0.27], [0.2, 0.42], [0.5, 0.95], [0.8, 1.42]], land: 2, slash: [0.1, 0.3], fade: 0.3 },
       leap: { clip: 'ual_Smash', keys: [[0, 2.1], [0.42, 2.5], [0.5, 2.64], [0.85, 3.2], [1.3, 3.98]], land: 2, stop: [0.5, 0.08], slash: [0.36, 0.62], fade: 0.35 },
+      ...HOP, // (0.99.17) Lacuna's jump
     },
     // Whirlwind: crouched, blade held out flat, while the game turns the whole model.
     spin: { clip: 'ual_Spin', at: 0.57 },
@@ -94,6 +103,7 @@ export const RIGGED = {
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
       zone: { clip: 'arc_storm', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) drawn for a second, loosed at 1 s with the game's shot
       dash: { clip: 'arc_roll', keys: [[0, 0], [0.36, 0.36], [0.55, 0.55]], land: 1, fade: 0.2 },
+      ...HOP, // (0.99.17) Lacuna's jump
     },
     recentre: ['idle', 'run', 'hit'],
     recentreMin: 0.04,

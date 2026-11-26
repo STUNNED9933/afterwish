@@ -1,0 +1,72 @@
+{
+  "id": "young_rogue",
+  "prompt": "lean youthful teenage boy rogue around 16, slim youthful proportions, short dark messy hair, charcoal leather jacket with the hood down, dark scarf around the neck, leather bracers on the forearms, belts with small pouches and two empty dagger sheaths at the hips, dark trousers, soft leather boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T12:01:49.083Z",
+  "creditsBefore": 2925,
+  "steps": {
+    "model": {
+      "task": "5ff466d4-4687-458d-aedc-1c867155b181",
+      "result": {
+        "task_id": "5ff466d4-4687-458d-aedc-1c867155b181",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_rogue/1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_rogue/1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/model.glb",
+        "preview": "out/models/young_rogue/1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/preview.png"
+      }
+    },
+    "check": {
+      "task": "db4892f3-5b76-4991-a1f4-788883380852",
+      "result": {
+        "task_id": "db4892f3-5b76-4991-a1f4-788883380852",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_rogue/2-check/tripo-out/rig-check-4-db4892f3",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "1754c31f-cdc8-4acb-bebb-99b3bc7ea289",
+      "rigType": "biped",
+      "result": {
+        "task_id": "1754c31f-cdc8-4acb-bebb-99b3bc7ea289",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_rogue/3-rig/tripo-out/rig-4-1754c31f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_rogue/3-rig/tripo-out/rig-4-1754c31f/model.glb",
+        "preview": "out/models/young_rogue/3-rig/tripo-out/rig-4-1754c31f/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2870,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T12:07:10.401Z",
+  "files": [
+    "1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/generated_image.jpeg",
+    "1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/model.glb",
+    "1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/preview.png",
+    "1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/rendered_image.webp",
+    "1-model/tripo-out/lean-youthful-teenage-boy-rogue-5ff466d4/task.json",
+    "2-check/tripo-out/rig-check-4-db4892f3/task.json",
+    "3-rig/tripo-out/rig-4-1754c31f/model.glb",
+    "3-rig/tripo-out/rig-4-1754c31f/preview.png",
+    "3-rig/tripo-out/rig-4-1754c31f/rendered_image.webp",
+    "3-rig/tripo-out/rig-4-1754c31f/task.json",
+    "manifest.json"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "id": "young_mage",
+  "prompt": "youthful teenage girl mage around 16, slim youthful proportions, long silver-white hair tied back, deep blue high-collared knee-length coat with gold trim over a white shirt, wide leather belt with a small book and pouches, dark trousers, tall leather boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no staff, no weapon, no hat, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T11:56:27.775Z",
+  "creditsBefore": 2980,
+  "steps": {
+    "model": {
+      "task": "4c5404f6-742f-4425-9733-bd4e42110b09",
+      "result": {
+        "task_id": "4c5404f6-742f-4425-9733-bd4e42110b09",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_mage/1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_mage/1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/model.glb",
+        "preview": "out/models/young_mage/1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/preview.png"
+      }
+    },
+    "check": {
+      "task": "bb9eea1f-068a-42b7-89bf-149ac34f4163",
+      "result": {
+        "task_id": "bb9eea1f-068a-42b7-89bf-149ac34f4163",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_mage/2-check/tripo-out/rig-check-3-bb9eea1f",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "a805b132-90d3-4721-8edd-2c5fb517cf71",
+      "rigType": "biped",
+      "result": {
+        "task_id": "a805b132-90d3-4721-8edd-2c5fb517cf71",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_mage/3-rig/tripo-out/rig-3-a805b132",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_mage/3-rig/tripo-out/rig-3-a805b132/model.glb",
+        "preview": "out/models/young_mage/3-rig/tripo-out/rig-3-a805b132/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2925,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T12:01:49.082Z",
+  "files": [
+    "1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/generated_image.jpeg",
+    "1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/model.glb",
+    "1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/preview.png",
+    "1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/rendered_image.webp",
+    "1-model/tripo-out/youthful-teenage-girl-mage-aroun-4c5404f6/task.json",
+    "2-check/tripo-out/rig-check-3-bb9eea1f/task.json",
+    "3-rig/tripo-out/rig-3-a805b132/model.glb",
+    "3-rig/tripo-out/rig-3-a805b132/preview.png",
+    "3-rig/tripo-out/rig-3-a805b132/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-a805b132/task.json",
+    "manifest.json"
+  ]
+}

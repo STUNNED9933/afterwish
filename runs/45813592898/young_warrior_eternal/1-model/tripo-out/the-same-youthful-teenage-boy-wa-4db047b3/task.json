@@ -1,0 +1,32 @@
+{
+  "task_id": "4db047b3-aebf-42a0-a258-0a5cf95db5b4",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "the same youthful teenage boy warrior around 16 ascended to a demigod, slim youthful proportions, short tousled brown hair, clean-shaven: ornate white-and-silver plate armour with crimson enamel trim and fine gold filigree, a glowing crimson gem set in the breastplate, thin glowing red rune lines along the pauldrons gauntlets and greaves, a short crimson tabard, white fur trim at the collar, a slim circlet of white gold on the brow, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-26T12:07:12.016049Z",
+  "completed_at": "2026-11-26T12:11:35.976049Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

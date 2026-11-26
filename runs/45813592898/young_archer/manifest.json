@@ -1,0 +1,72 @@
+{
+  "id": "young_archer",
+  "prompt": "youthful teenage girl ranger archer around 16, slim youthful proportions, auburn hair pulled back in a tight braid, forest-green leather jerkin over a cream linen shirt, brown leather bracers on the forearms, quiver of arrows strapped on her back, belt with small pouches, dark trousers, knee-high soft leather boots, small green hooded mantle on the shoulders with the hood down, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no bow, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T11:51:37.051Z",
+  "creditsBefore": 3035,
+  "steps": {
+    "model": {
+      "task": "6f8b1569-5ff3-469b-b53b-d89d6231ae73",
+      "result": {
+        "task_id": "6f8b1569-5ff3-469b-b53b-d89d6231ae73",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_archer/1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_archer/1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/model.glb",
+        "preview": "out/models/young_archer/1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/preview.png"
+      }
+    },
+    "check": {
+      "task": "d1406025-75da-40c3-905c-97dc55e8e350",
+      "result": {
+        "task_id": "d1406025-75da-40c3-905c-97dc55e8e350",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_archer/2-check/tripo-out/rig-check-2-d1406025",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "49343699-ee48-4bfd-9018-ad95cdf709ff",
+      "rigType": "biped",
+      "result": {
+        "task_id": "49343699-ee48-4bfd-9018-ad95cdf709ff",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_archer/3-rig/tripo-out/rig-2-49343699",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_archer/3-rig/tripo-out/rig-2-49343699/model.glb",
+        "preview": "out/models/young_archer/3-rig/tripo-out/rig-2-49343699/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2980,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T11:56:27.773Z",
+  "files": [
+    "1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/generated_image.jpeg",
+    "1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/model.glb",
+    "1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/preview.png",
+    "1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/rendered_image.webp",
+    "1-model/tripo-out/youthful-teenage-girl-ranger-arc-6f8b1569/task.json",
+    "2-check/tripo-out/rig-check-2-d1406025/task.json",
+    "3-rig/tripo-out/rig-2-49343699/model.glb",
+    "3-rig/tripo-out/rig-2-49343699/preview.png",
+    "3-rig/tripo-out/rig-2-49343699/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-49343699/task.json",
+    "manifest.json"
+  ]
+}

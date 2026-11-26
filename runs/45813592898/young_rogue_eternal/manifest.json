@@ -1,0 +1,72 @@
+{
+  "id": "young_rogue_eternal",
+  "prompt": "the same lean youthful teenage boy rogue around 16 ascended to a demigod, slim youthful proportions: short dark hair with a white streak, a white-and-charcoal leather jacket with crimson inner lining and silver filigree, the hood down, a crimson scarf, a glowing crimson gem at the collar, thin glowing red rune lines along his bracers and boots, belts with two empty white dagger sheaths at the hips, dark trousers, soft white boots, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T12:22:20.282Z",
+  "creditsBefore": 2705,
+  "steps": {
+    "model": {
+      "task": "f8b8429c-d3f3-4a2e-a66f-cb70c4bd20d4",
+      "result": {
+        "task_id": "f8b8429c-d3f3-4a2e-a66f-cb70c4bd20d4",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_rogue_eternal/1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_rogue_eternal/1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/model.glb",
+        "preview": "out/models/young_rogue_eternal/1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/preview.png"
+      }
+    },
+    "check": {
+      "task": "1b1203de-8381-4f35-a501-83c04765e674",
+      "result": {
+        "task_id": "1b1203de-8381-4f35-a501-83c04765e674",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_rogue_eternal/2-check/tripo-out/rig-check-8-1b1203de",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "e8990f08-f9ad-4bf7-adf7-fa5da9ff8802",
+      "rigType": "biped",
+      "result": {
+        "task_id": "e8990f08-f9ad-4bf7-adf7-fa5da9ff8802",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_rogue_eternal/3-rig/tripo-out/rig-8-e8990f08",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_rogue_eternal/3-rig/tripo-out/rig-8-e8990f08/model.glb",
+        "preview": "out/models/young_rogue_eternal/3-rig/tripo-out/rig-8-e8990f08/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2650,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T12:27:11.365Z",
+  "files": [
+    "1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/generated_image.jpeg",
+    "1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/model.glb",
+    "1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/preview.png",
+    "1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/rendered_image.webp",
+    "1-model/tripo-out/the-same-lean-youthful-teenage-b-f8b8429c/task.json",
+    "2-check/tripo-out/rig-check-8-1b1203de/task.json",
+    "3-rig/tripo-out/rig-8-e8990f08/model.glb",
+    "3-rig/tripo-out/rig-8-e8990f08/preview.png",
+    "3-rig/tripo-out/rig-8-e8990f08/rendered_image.webp",
+    "3-rig/tripo-out/rig-8-e8990f08/task.json",
+    "manifest.json"
+  ]
+}

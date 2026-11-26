@@ -1,0 +1,72 @@
+{
+  "id": "young_warrior",
+  "prompt": "youthful teenage boy warrior around 16, slim youthful proportions, short tousled brown hair, clean-shaven, bright determined eyes, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T11:46:45.956Z",
+  "creditsBefore": 3090,
+  "steps": {
+    "model": {
+      "task": "1583ed20-95aa-4c5c-a27e-9662a3cea8c6",
+      "result": {
+        "task_id": "1583ed20-95aa-4c5c-a27e-9662a3cea8c6",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_warrior/1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_warrior/1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/model.glb",
+        "preview": "out/models/young_warrior/1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/preview.png"
+      }
+    },
+    "check": {
+      "task": "ff999690-0fbb-41ef-a46b-274d024c3f53",
+      "result": {
+        "task_id": "ff999690-0fbb-41ef-a46b-274d024c3f53",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_warrior/2-check/tripo-out/rig-check-ff999690",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "e53eb7a4-becc-46ff-bd46-6a9a7ee42e4b",
+      "rigType": "biped",
+      "result": {
+        "task_id": "e53eb7a4-becc-46ff-bd46-6a9a7ee42e4b",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_warrior/3-rig/tripo-out/rig-e53eb7a4",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_warrior/3-rig/tripo-out/rig-e53eb7a4/model.glb",
+        "preview": "out/models/young_warrior/3-rig/tripo-out/rig-e53eb7a4/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 3035,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T11:51:37.049Z",
+  "files": [
+    "1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/generated_image.jpeg",
+    "1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/model.glb",
+    "1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/preview.png",
+    "1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/rendered_image.webp",
+    "1-model/tripo-out/youthful-teenage-boy-warrior-aro-1583ed20/task.json",
+    "2-check/tripo-out/rig-check-ff999690/task.json",
+    "3-rig/tripo-out/rig-e53eb7a4/model.glb",
+    "3-rig/tripo-out/rig-e53eb7a4/preview.png",
+    "3-rig/tripo-out/rig-e53eb7a4/rendered_image.webp",
+    "3-rig/tripo-out/rig-e53eb7a4/task.json",
+    "manifest.json"
+  ]
+}

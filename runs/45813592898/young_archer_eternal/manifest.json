@@ -1,0 +1,72 @@
+{
+  "id": "young_archer_eternal",
+  "prompt": "the same youthful teenage girl ranger archer around 16 ascended to a demigod, slim youthful proportions: auburn braid threaded with white-gold rings, a white leather jerkin with crimson panels and silver filigree over a white linen shirt, glowing crimson gem at the collar, thin glowing red rune lines along her bracers and boots, a white quiver with crimson fletching strapped on her back, a short white hooded mantle lined in crimson with the hood down, slim white-gold circlet, eyes faintly glowing, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T12:12:02.213Z",
+  "creditsBefore": 2815,
+  "steps": {
+    "model": {
+      "task": "efe3549c-9904-4e65-80f7-e2285fb259da",
+      "result": {
+        "task_id": "efe3549c-9904-4e65-80f7-e2285fb259da",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_archer_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_archer_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/model.glb",
+        "preview": "out/models/young_archer_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/preview.png"
+      }
+    },
+    "check": {
+      "task": "b7cf67e5-fca2-47fb-a22e-09f868c3de36",
+      "result": {
+        "task_id": "b7cf67e5-fca2-47fb-a22e-09f868c3de36",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_archer_eternal/2-check/tripo-out/rig-check-6-b7cf67e5",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "e89d2469-b5ea-4e10-9358-02973d8a9ec8",
+      "rigType": "biped",
+      "result": {
+        "task_id": "e89d2469-b5ea-4e10-9358-02973d8a9ec8",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_archer_eternal/3-rig/tripo-out/rig-6-e89d2469",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_archer_eternal/3-rig/tripo-out/rig-6-e89d2469/model.glb",
+        "preview": "out/models/young_archer_eternal/3-rig/tripo-out/rig-6-e89d2469/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2760,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T12:17:29.790Z",
+  "files": [
+    "1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/generated_image.jpeg",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/model.glb",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/preview.png",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/rendered_image.webp",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-r-efe3549c/task.json",
+    "2-check/tripo-out/rig-check-6-b7cf67e5/task.json",
+    "3-rig/tripo-out/rig-6-e89d2469/model.glb",
+    "3-rig/tripo-out/rig-6-e89d2469/preview.png",
+    "3-rig/tripo-out/rig-6-e89d2469/rendered_image.webp",
+    "3-rig/tripo-out/rig-6-e89d2469/task.json",
+    "manifest.json"
+  ]
+}

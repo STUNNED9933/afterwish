@@ -1,0 +1,72 @@
+{
+  "id": "young_mage_eternal",
+  "prompt": "the same youthful teenage girl mage around 16 ascended to a demigod, slim youthful proportions: long silver-white hair, a white high-collared knee-length coat with crimson lining, gold filigree and glowing red rune embroidery along the hems, a glowing crimson gem at the throat, a wide white belt with a small gilded book, dark trousers, tall white boots with gold trim, slim white-gold circlet, eyes faintly glowing, no hat, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating. stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-26T12:17:29.791Z",
+  "creditsBefore": 2760,
+  "steps": {
+    "model": {
+      "task": "9a829410-bad6-453a-89a8-c76deb626e40",
+      "result": {
+        "task_id": "9a829410-bad6-453a-89a8-c76deb626e40",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/young_mage_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_mage_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/model.glb",
+        "preview": "out/models/young_mage_eternal/1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/preview.png"
+      }
+    },
+    "check": {
+      "task": "4c585bbd-f99a-4bd2-abf5-fc765031671d",
+      "result": {
+        "task_id": "4c585bbd-f99a-4bd2-abf5-fc765031671d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/young_mage_eternal/2-check/tripo-out/rig-check-7-4c585bbd",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "1da9dac7-ab88-44ae-a4ac-5f84679dde7c",
+      "rigType": "biped",
+      "result": {
+        "task_id": "1da9dac7-ab88-44ae-a4ac-5f84679dde7c",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/young_mage_eternal/3-rig/tripo-out/rig-7-1da9dac7",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/young_mage_eternal/3-rig/tripo-out/rig-7-1da9dac7/model.glb",
+        "preview": "out/models/young_mage_eternal/3-rig/tripo-out/rig-7-1da9dac7/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2705,
+  "creditsUsed": 55,
+  "finished": "2026-11-26T12:22:20.280Z",
+  "files": [
+    "1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/generated_image.jpeg",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/model.glb",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/preview.png",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/rendered_image.webp",
+    "1-model/tripo-out/the-same-youthful-teenage-girl-m-9a829410/task.json",
+    "2-check/tripo-out/rig-check-7-4c585bbd/task.json",
+    "3-rig/tripo-out/rig-7-1da9dac7/model.glb",
+    "3-rig/tripo-out/rig-7-1da9dac7/preview.png",
+    "3-rig/tripo-out/rig-7-1da9dac7/rendered_image.webp",
+    "3-rig/tripo-out/rig-7-1da9dac7/task.json",
+    "manifest.json"
+  ]
+}

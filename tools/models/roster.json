@@ -1,5 +1,5 @@
 {
-  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:). fromRig: add animations to an existing rig task. rig: false makes a prop (no rig, no animations); style replaces the roster style for it.",
+  "_about": "Characters made with the Tripo API (see generate.mjs). style is added to every prompt so the cast matches. Up to 5 animations each (billed per animation). rigType: leave out to let rig-check decide. fromTask: reuse an existing model task (no new generation). rigModel: v3.0 (default, 11 presets) or v1.0 (biped only, 90+ presets prefixed preset:biped:). fromRig: add animations to an existing rig task. rig: false makes a prop (no rig, no animations); style replaces the roster style for it. young_*: the heroes remade younger (1.0, 26 Nov 2026): rig only, no animations; every clip is copied from the old hero with copy-clips.mjs.",
   "style": "stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
   "faceLimit": 10000,
   "characters": {
@@ -1289,6 +1289,54 @@
         "preset:biped:hit_to_body_01"
       ],
       "style": "stylised-realistic fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, hand-painted PBR-style textures"
+    },
+    "young_warrior": {
+      "prompt": "youthful teenage boy warrior around 16, slim youthful proportions, short tousled brown hair, clean-shaven, bright determined eyes, teal tunic with silver embroidery, light steel armour on shoulders forearms and shins, short red shoulder mantle, leather belt, armoured boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_archer": {
+      "prompt": "youthful teenage girl ranger archer around 16, slim youthful proportions, auburn hair pulled back in a tight braid, forest-green leather jerkin over a cream linen shirt, brown leather bracers on the forearms, quiver of arrows strapped on her back, belt with small pouches, dark trousers, knee-high soft leather boots, small green hooded mantle on the shoulders with the hood down, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no bow, no weapon, no cape",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_mage": {
+      "prompt": "youthful teenage girl mage around 16, slim youthful proportions, long silver-white hair tied back, deep blue high-collared knee-length coat with gold trim over a white shirt, wide leather belt with a small book and pouches, dark trousers, tall leather boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no staff, no weapon, no hat, no cape",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_rogue": {
+      "prompt": "lean youthful teenage boy rogue around 16, slim youthful proportions, short dark messy hair, charcoal leather jacket with the hood down, dark scarf around the neck, leather bracers on the forearms, belts with small pouches and two empty dagger sheaths at the hips, dark trousers, soft leather boots, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_warrior_eternal": {
+      "prompt": "the same youthful teenage boy warrior around 16 ascended to a demigod, slim youthful proportions, short tousled brown hair, clean-shaven: ornate white-and-silver plate armour with crimson enamel trim and fine gold filigree, a glowing crimson gem set in the breastplate, thin glowing red rune lines along the pauldrons gauntlets and greaves, a short crimson tabard, white fur trim at the collar, a slim circlet of white gold on the brow, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_archer_eternal": {
+      "prompt": "the same youthful teenage girl ranger archer around 16 ascended to a demigod, slim youthful proportions: auburn braid threaded with white-gold rings, a white leather jerkin with crimson panels and silver filigree over a white linen shirt, glowing crimson gem at the collar, thin glowing red rune lines along her bracers and boots, a white quiver with crimson fletching strapped on her back, a short white hooded mantle lined in crimson with the hood down, slim white-gold circlet, eyes faintly glowing, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_mage_eternal": {
+      "prompt": "the same youthful teenage girl mage around 16 ascended to a demigod, slim youthful proportions: long silver-white hair, a white high-collared knee-length coat with crimson lining, gold filigree and glowing red rune embroidery along the hems, a glowing crimson gem at the throat, a wide white belt with a small gilded book, dark trousers, tall white boots with gold trim, slim white-gold circlet, eyes faintly glowing, no hat, modest practical clothing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
+    },
+    "young_rogue_eternal": {
+      "prompt": "the same lean youthful teenage boy rogue around 16 ascended to a demigod, slim youthful proportions: short dark hair with a white streak, a white-and-charcoal leather jacket with crimson inner lining and silver filigree, the hood down, a crimson scarf, a glowing crimson gem at the collar, thin glowing red rune lines along his bracers and boots, belts with two empty white dagger sheaths at the hips, dark trousers, soft white boots, eyes faintly glowing, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, no wings, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": []
     }
   }
 }

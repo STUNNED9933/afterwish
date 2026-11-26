@@ -22,6 +22,8 @@ import { cleanKeep, KEEP, lifeOfSave } from '../sim/wishkeep.js';
 const SERVER_CMDS = new Set([...FRIEND_CMDS, 'setDepth', 'rebirth', 'unwish']);
 // players: on the whole server. perCopy: in one copy of a road map. haven: in one copy of Haven (a
 // full Haven opens another, so a crowd never costs anyone frames: each hero in view is ~15 draws).
+/** (0.99.9) Maps everyone shares, like Haven (see hubKey). */
+const HUBS = ['town', 'verge'];
 export const SERVER_LIMITS = { players: 24, perCopy: 8, haven: 16, chatLen: 140, chatGap: 0.6, partyMax: CONFIG.PARTY_MAX, msgBytes: 64 * 1024 };
 
 /** The same, checked, from a browser's description of its classes. */
@@ -281,8 +283,16 @@ export class ServerWorld {
 
   /** Which copy of Haven: one with party members in it, else the first with room, else a new one. */
   havenKey(pl) {
-    if (pl.alone) return `town~${pl.pid}`; // (0.57.1) playing alone: a Haven of their own
-    const havens = [...this.copies.values()].filter((c) => c.key === 'town' || c.key.startsWith('town#'));
+    return this.hubKey(pl, 'town');
+  }
+
+  /**
+   * (0.99.9) A shared map (Haven, and the Verge): one copy for everyone, filled up
+   * to havenMax, a party kept together, a second copy when it is full. Alone: one of your own.
+   */
+  hubKey(pl, base) {
+    if (pl.alone) return `${base}~${pl.pid}`; // (0.57.1) playing alone: a Haven of their own
+    const havens = [...this.copies.values()].filter((c) => c.key === base || c.key.startsWith(base + '#'));
     if (pl.party) {
       const members = this.parties.get(pl.party).members;
       const withParty = havens.find((c) => c.world.heroes.length < this.havenMax && c.world.heroes.some((h) => h.pid !== pl.pid && members.has(h.pid)));
@@ -290,12 +300,12 @@ export class ServerWorld {
     }
     const room = havens.find((c) => c.world.heroes.length < this.havenMax);
     if (room) return room.key;
-    if (!this.copies.has('town')) return 'town';
-    for (let i = 2; ; i++) if (!this.copies.has('town#' + i)) return 'town#' + i;
+    if (!this.copies.has(base)) return base;
+    for (let i = 2; ; i++) if (!this.copies.has(base + '#' + i)) return base + '#' + i;
   }
 
   keyFor(pl, to, extra) {
-    if (to === 'town') return this.havenKey(pl);
+    if (HUBS.includes(to)) return this.hubKey(pl, to);
     if (to === KEEP.map) return `${KEEP.map}:${pl.pid}`; // (0.80) the Wishkeep: always a copy of your own (it is your account's)
     if (extra && extra.ring) return `ring:${pl.pid}:${this.ticks}`; // (0.59) an Echo Ring run: always a copy of your own
     if (extra && extra.rift) return `rift:${this.partyKey(pl)}:${extra.rift.seed}`;
@@ -309,7 +319,7 @@ export class ServerWorld {
     let key = this.keyFor(pl, to, extra);
     if (!key || (!MAPS[to] && to !== 'rift' && to !== 'delve' && to !== 'ring')) key = this.havenKey(pl);
     if (extra && extra.joinKey && this.copies.has(extra.joinKey)) key = extra.joinKey; // party members going into a rift or delve
-    else if (pl.party && key !== 'town' && to !== KEEP.map && !(extra && (extra.rift || extra.delve || extra.ring))) {
+    else if (pl.party && !this.isHaven(key) && to !== KEEP.map && !(extra && (extra.rift || extra.delve || extra.ring))) {
       // a party member is already on that map: join their copy
       for (const pid of this.parties.get(pl.party).members) {
         const m = this.players.get(pid);
@@ -365,7 +375,7 @@ export class ServerWorld {
   }
 
   isHaven(key) {
-    return key === 'town' || key.startsWith('town#') || key.startsWith('town~');
+    return HUBS.some((b) => key === b || key.startsWith(b + '#') || key.startsWith(b + '~')); // (0.99.9) and the Verge
   }
 
   removeFrom(copy, pid) {

@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The Verge is shared (0.99.9)
+
+- On the server world the Verge now works like Haven: everyone on it is in the same place, so you see whoever else is heading down to the Deep or up to Caelum. Parties stay together, a second Verge opens if one fills up (16 players), and playing alone still gets you one of your own.
+- The Deep, Caelum and the rest of the maps stay one copy per party, as before.
+
 ### Beacons between Haven, the Wishkeep and the Verge (0.99.8)
 
 - **Haven has two new beacons:** one home to your Wishkeep and one to the Verge, each at the end of its own road out of the plaza. Until your keep is open they stay shut and say why.

@@ -23,6 +23,7 @@ const conn = (name) => {
   return c;
 };
 const last = (c, t) => [...inbox.get(c)].reverse().find((m) => m.t === t);
+const run2 = (sv, n) => { for (let i = 0; i < n; i++) sv.tick(); };
 const run = (n) => {
   for (let i = 0; i < n; i++) sw.tick();
 };
@@ -557,6 +558,39 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   for (let i = 0; i < 90; i++) sv.tick();
   check('Server (0.99.8): Haven\'s keep beacon takes a keeper to their own Wishkeep', sv.players.get(A).copy.key === `wishkeep:${A}`, sv.players.get(A).copy.key);
   check('...and stays shut for someone without a keep, saying why', sv.players.get(B).copy.key === 'town' && box.get(b).some((m) => m.t === 'snap' && (m.ev || []).some((e) => e.type === 'keepLocked')));
+}
+
+// (0.99.9) The Verge is shared like Haven: everyone on it is in the same copy
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), passcode: 'stun', name: 'Verge World', seed: 13 });
+  const cn = (n) => { const c = { n }; box.set(c, []); return c; };
+  const lives = { archer: { prim: [6, 7, 8, 9, 10], et: ['ring'], gr: [], wish: 50 } };
+  const mk = (name, cls, extra = {}) => ({ t: 'hello', v: NET_VERSION, pass: 'stun', name, cls, save: Object.assign(geared(cls, 100, 6), { acctLives: lives }), gold: 100, tickets: 3, keep: null, ...extra });
+  const a = cn('a'), b = cn('b'), c = cn('c');
+  sv.message(a, mk('Ash', 'warrior'));
+  sv.message(b, mk('Bee', 'mage'));
+  sv.message(c, mk('Cal', 'rogue', { alone: true }));
+  const id = (x) => box.get(x).find((m) => m.t === 'welcome').pid;
+  const A = id(a), B = id(b), C = id(c);
+  for (let i = 0; i < 4; i++) sv.tick();
+  for (const P of [A, B, C]) sv.move(sv.players.get(P), 'verge', 'wishkeep', null); // (walked through the keep's Verge beacon)
+  for (let i = 0; i < 4; i++) sv.tick();
+  const ka = sv.players.get(A).copy, kb = sv.players.get(B).copy, kc = sv.players.get(C).copy;
+  check('Server (0.99.9): two players who are not in a party meet on one shared Verge', ka === kb && ka.key === 'verge' && ka.world.map.id === 'verge', `${ka.key} ${kb.key}`);
+  check('...someone playing alone still gets a Verge of their own', kc !== ka && kc.key.startsWith('verge~'), kc.key);
+  run2(sv, 6);
+  check('...and each sees the other there', box.get(a).some((m) => m.t === 'snap' && m.map === 'verge' && m.allies.some((h) => h.pid === B)));
+  const w = ka.world, hA = w.heroByPid(A);
+  const down = w.map.crossings.find((x) => x.kind === 'deep');
+  w.as(hA, (p) => { p.x = p.px = down.x; p.z = p.pz = down.z; });
+  box.get(a).length = 0; box.get(b).length = 0;
+  run2(sv, 90);
+  const saw = (x) => box.get(x).some((m) => m.t === 'snap' && (m.ev || []).some((e) => e.type === 'crossing'));
+  check('...standing on the Way Down opens the list for that player only', saw(a) && !saw(b));
+  sv.move(sv.players.get(A), 'town', 'verge', null);
+  for (let i = 0; i < 4; i++) sv.tick();
+  check('...leaving it, the other stays', sv.players.get(B).copy === kb && kb.world.heroes.length === 1);
 }
 
 console.log(`${pass} passed, ${failed} failed`);

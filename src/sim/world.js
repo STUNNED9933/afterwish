@@ -96,12 +96,12 @@ const ETERNAL_FORGE = 'forgeEternal'; // (0.74)
 const AUTO_FEED = ['low', 'weapon', 'helm', 'chest', 'boots', 'ring']; // (0.75) where new Immortals go when auto-feeding
 const ETERNAL_LOCKED = new Set(['recall', 'echoUp', 'reforge', 'ascend']); // (0.71) never on a worn Eternal; (0.75) rerolls and the blacksmith are open to it
 const WALK_PACE = 1.8; // (0.94; 0.96.1: 1.8, a natural stride and cadence for a two-metre hero; the walk is timed to it, so the feet hold the ground) over the shoulder, walking (Ctrl): the same for every hero, whatever they wear
-const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepStatueTier', 'keepTrial', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
+const KEEP_CMDS = ['keepPossess', 'keepStatue', 'keepOffer', 'keepStatueSkill', 'keepStatueTier', 'keepTrial', 'keepRaids', 'keepAutoSalvage', 'keepWork', 'keepBuildTier', 'keepAscend', 'keepGearOn', 'keepGearOff', 'keepGearLock', 'keepSalvage', 'keepGearBest', 'keepAnswer', 'keepSkip', 'keepTier', 'keepHall', 'keepTide', 'keepNightPick', 'keepAutoBless', 'keepRecruit', 'keepTrain', 'keepArm', 'keepLearn', 'keepBless', 'keepTrade', 'keepRepair', 'keepDismiss', 'keepClock']; // (0.80; 0.81)
 export const AUTO_ROLL_MAX = 500; // (0.81.6) rerolls one press of the auto-roller may spend
 const TRIAL_LOCKED = new Set([ETERNAL_FORGE, ...KEEP_CMDS, 'autoRoll', 'lockItem', 'autoScrap', 'wearEternal', 'stowEternal', 'feedEternal', 'eternalAuto', 'recall', 'echoUp', 'scarfChoice', 'meetOdile', 'enterDelve', 'unwish', 'autoTalents', 'equip', 'autoEquip', 'discard', 'scrap', 'upgrade', 'enchant', 'reforge', 'rebirth', 'rebirthPerk', 'ascend', 'buyMerchant', 'wishReset', 'claimBounty', 'swapBounty', 'craftImmortal', 'summonRemnant', 'openCache', 'buyTome', 'rankUp', 'chooseSpec', 'talent', 'respec', 'travel']);
 import { newRing, ringGain, ringWhole, ringCost, RING } from './ring.js';
 import { nightOmen2, STATUE, STATUE_KIT, STATUE_BASIC, STATUE_SKILLS, statueKit, statuePower, statueCap, statueSkillOpen, STATUE_TIERS, statueTierMult, TRIAL } from './wishkeep.js'; // (0.92; 0.98 tiers and the trial)
-import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
+import { KEEP, HALLS, HALL_IDS, SETTLERS, SETTLER_IDS, settlersAt, settlerLevel, cleanKeep, CHAPTERS, RELIC_NAMES, TROOPS, TROOP_NAMES, SKILLS, BLESSINGS, MIRACLES, INCARNATE, FOES, troopStats, troopSkills, troopSupport, troopGender, BLESSING_IDS, skillSlotSchool, skillSlotOpen, buildMax, BUILD_IDS, WORKS, WORK_IDS, BUILD_TIER, GROWTH, keepRates, keepStage, HERO_RARITY, HERO_RAR_MAX, NIGHT, tideSpecials, OMENS, nightOmen, RAID, raidLevel, DODGE, HERO_GEAR, HERO_SLOTS, ARMORY_MAX, rollHeroGear, heroGearScore, heroGearUpgrade } from './wishkeep.js';
 import { WEEKLY_REWARD } from './trial.js';
 const RARITY_ONLY = (r) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => (i === r ? 1 : 0));
 
@@ -886,6 +886,8 @@ export class World {
       else if (c.type === 'keepTier') this.keepTier();
       else if (c.type === 'keepHall') this.keepHall(c.cls);
       else if (c.type === 'keepTide') this.keepTideStart(c.level); // (0.82) at a Night level
+      else if (c.type === 'keepNightPick') this.keepNightPick(c.level); // (0.99.4) the next Night's level, from anywhere in the keep
+      else if (c.type === 'keepAutoBless') this.keepAutoBless(c.id, !!c.on); // (0.99.4) a blessing bought by itself before each Night
       else if (c.type === 'keepAscend') this.keepAscend(c.id); // (0.82) a hero's rarity, a step up
       else if (c.type === 'keepGearOn') this.keepGearOn(c.gid, c.hero); // (0.82) the Armory
       else if (c.type === 'keepGearOff') this.keepGearOff(c.gid);
@@ -6528,6 +6530,32 @@ export class World {
     k.blessings.push(id);
     this.emit('keepBlessed', { name: B.name });
   }
+  /** (0.99.4) Mark a blessing to be bought by itself before each Night (or not). */
+  keepAutoBless(id, on) {
+    const k = this.player.keep;
+    if (!k || !BLESSINGS[id]) return;
+    k.autoBless = (k.autoBless || []).filter((b) => b !== id);
+    if (on) k.autoBless.push(id);
+    this.emit('keepAutoBless', { id, on: !!on });
+  }
+  /** (0.99.4) Before a Night: buy each auto blessing not yet bought, that the Observatory can give and the Faith covers. */
+  keepBlessAuto() {
+    const k = this.player.keep;
+    if (!k || !(k.autoBless || []).length || !this.hallWorks('mage')) return;
+    const got = [], short = [];
+    for (const id of BLESSING_IDS) {
+      const B = BLESSINGS[id];
+      if (!k.autoBless.includes(id) || k.blessings.includes(id) || (k.halls.mage || 0) < B.rank) continue;
+      if (k.faith < B.faith) {
+        short.push(B.name);
+        continue;
+      }
+      if (!this.keepPay({ faith: B.faith })) continue;
+      k.blessings.push(id);
+      got.push(B.name);
+    }
+    if (got.length || short.length) this.emit('keepBlessAuto', { got, short });
+  }
   /** Trade at the Market: 10 Wishstone for Faith, or 100 Faith for Wishstone. */
   keepTrade(dir, n = 1) {
     const k = this.player.keep;
@@ -6737,10 +6765,23 @@ export class World {
     });
   }
 
+  /** (0.99.4) Choose the next Night's level (what holding N, or the Hearth, calls): 1 up to one past the best held. */
+  keepNightPick(level) {
+    const k = this.player.keep;
+    if (!k || !this.inKeep()) return;
+    const L = Math.max(1, Math.min(NIGHT.max, (k.nightMax || 0) + 1, Math.floor(Number(level)) || 1));
+    if (k.night === L) return;
+    k.night = L;
+    this.emit('nightPick', { level: L, top: Math.min(NIGHT.max, (k.nightMax || 0) + 1) });
+  }
   /** Call the night: a Tide, three waves of the Unmade for the keep's buildings. Its heroes fight; its god works miracles. */
   keepTideStart(level) {
     const k = this.player.keep;
-    if (!this.inKeep() || (this.tide && this.tide.state === 'on') || this.player.dead) return;
+    // (0.99.4) a raid still only horns (none of it here yet): the Night you call takes its place. One already
+    // fighting: say so (the call used to vanish, and the raid's lower Night read as the one you called)
+    if (this.tide && this.tide.state === 'on' && this.tide.raid && this.tide.wave === 0 && this.inKeep()) this.tide = null;
+    if (this.tide && this.tide.state === 'on' && this.inKeep()) return this.emit('nightBusy', { raid: !!this.tide.raid, level: this.tide.level });
+    if (!this.inKeep() || this.player.dead) return;
     // (0.82) at a Night level: up to one past the highest held
     const L = Math.max(1, Math.min(NIGHT.max, k.nightMax + 1, Math.floor(Number(level)) || k.night || 1));
     k.night = L;
@@ -6748,6 +6789,7 @@ export class World {
     if (this.player.keepWalk) this.keepWalkSet(false); // (0.91) the god is wanted above
     if (this.wrecked('hearth')) return this.emit('keepShort', { what: 'repair', need: Math.ceil(buildMax('hearth', k) / KEEP.repairPer), have: k.stone });
     const T = KEEP.tide;
+    this.keepBlessAuto(); // (0.99.4) the blessings chosen at the Observatory, bought now if there is the Faith
     this.keepTroopsUp();
     this.keepBuildsUp();
     const rec = this.keepRecord();
@@ -11406,7 +11448,12 @@ inTown() {
       const up = (this.troops || []).filter((tr) => !tr.dead).length;
       return { name: m.name, sub: t.state === 'won' ? 'morning · the keep held' : t.state === 'lost' ? 'morning · the Hearth went dark' : `${t.raid ? 'Raid' : 'Tide'}${t.level ? ` · Night ${t.level}` : ''}${t.omen ? ` · ${OMENS[t.omen].name}` : ''} · wave ${t.wave} of ${t.waves || KEEP.tide.waves} · Hearth ${h ? Math.ceil((h.hp / h.max) * 100) : 0}% · ${up} of ${(this.troops || []).length} heroes standing · ${this.player.keep.faith} Faith` };
     }
-    if (m.id === KEEP.map && this.player.keep) return { name: m.name, sub: `Tier ${KEEP.tiers[this.player.keep.tier].numeral} · ${this.player.keep.faith.toLocaleString('en-US')} Faith · ${this.player.keep.stone} Wishstone` };
+    if (m.id === KEEP.map && this.player.keep) {
+      const k = this.player.keep, top = Math.min(NIGHT.max, (k.nightMax || 0) + 1), nx = Math.max(1, Math.min(top, k.night || top));
+      // (0.99.4) and the Night that holding N (or the Hearth) will call, which [ and ] change
+      const next = this.keepVisit ? '' : ` · next: Night ${nx}${nx > (k.nightMax || 0) ? ' (new)' : ''} ([ ])`;
+      return { name: m.name, sub: `Tier ${KEEP.tiers[k.tier].numeral} · ${k.faith.toLocaleString('en-US')} Faith · ${k.stone} Wishstone${next}` };
+    }
     const dn = this.depthNow();
     if (dn) return { name: m.name, sub: `Depth ${DEEP.depths[dn].numeral} · Ember ${this.ember()} of ${DEEP.depths[dn].ember}` }; // (0.54)
     const tier = this.worldTier();
@@ -11588,7 +11635,7 @@ inTown() {
     const block = new Uint8Array(n * n);
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (dHypot(i - R, j - R) > this.radius - 1.2) block[j * n + i] = 1;
     for (const ob of this.obstacles) {
-      if (ob.soft) continue;
+      if (ob.soft || ob.kind === 'npc') continue; // (0.99.4) people are stepped round (pushOut), not mapped: the keep's go indoors at night
       const ext = (ob.shape === 'box' ? dHypot(ob.hw, ob.hd) : ob.r) + pad;
       const c = ob.shape === 'box' ? dCos(ob.rot) : 1, sn = ob.shape === 'box' ? dSin(ob.rot) : 0;
       for (let j = Math.max(0, Math.floor(ob.z - ext) + R); j <= Math.min(n - 1, Math.ceil(ob.z + ext) + R); j++) {
@@ -11735,8 +11782,9 @@ inTown() {
 
   pushOut(o, rad) {
     let pushed = false;
+    const indoors = !!(this.tide && this.tide.state === 'on' && this.map && this.map.id === KEEP.map); // (0.99.4) the keep's people shelter in the night: gone, not in the way
     for (const ob of this.obstacles) {
-      if (ob.soft) continue; // (0.58.1) story people and things: seen by some, in nobody's way
+      if (ob.soft || (indoors && ob.kind === 'npc')) continue; // (0.58.1) story people and things: seen by some, in nobody's way
       const dx = o.x - ob.x;
       const dz = o.z - ob.z;
       if (ob.shape === 'box') {

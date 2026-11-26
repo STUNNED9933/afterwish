@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### See where skills land, the Night from anywhere, blessings by themselves (0.99.4)
+
+- **Skill previews:** hold a skill key to see its reach and the ground it will cover: a ring at its range, plus a circle where a leap, meteor or zone lands, the line of a shot, the path of a dash, the cone of a cleave, or the circle round you of a nova. Let go to cast it there; a quick tap casts as before. Right-click or Esc puts it down. Over the shoulder it shows where the crosshair is, with a low wall of light round the landing circle so it reads from eye height; the Seraph's skills (Descent, Hand of Heaven, Lux Aeterna, Wingbeat and the rest) and the god's miracles in a Night (in gold) show too. It can be turned off in the settings ("Show where skills land while held").
+- **The next Night, from anywhere in your keep:** `[` and `]` change its level, and the top of the screen shows it ("next: Night 32 (new)"). Holding N calls that one, and the Hearth's picker is the same setting, so they always agree.
+- **Wrong Night at the top, fixed:** if a raid's horns were already sounding (raids come two Nights under your best), a Night you called was quietly ignored and you fought the raid, so the top read "Night 29" when you had called 32. A Night you call now takes the raid's place while it is still only horns; once a raid is fighting, you are told to hold it first. Holding N also used the last Night you called, not the one picked at the Hearth.
+- **Blessings by themselves:** each blessing at the Observatory has an **Auto** tick. Ticked ones are bought as you call each Night, if you have the Faith (and you are told if you don't). Tick only the ones you want.
+- **The keep's people go indoors at night:** settlers no longer speak (their bubbles went with them) or get in the way during a Night; any bubble showing when the Night starts goes. Your heroes still shout.
+- **Press G, over the shoulder too:** the "G Talk to…" / "G Read the Wishes" tip now pops up just under the crosshair in first person (it was hidden there).
+
 ### Every building its own, and solid (0.99.3)
 
 - **Buildings:** the same cottage no longer stands everywhere. Each house is now a building of its own, from KayKit's Medieval Hexagon Pack (free, CC0; see `ASSETS.md`):

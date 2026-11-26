@@ -3396,6 +3396,109 @@ export class Renderer {
   }
 
   /**
+   * (0.99.4) A held skill: a thin ring at its range round the hero, and the ground it will cover (a circle where
+   * it lands, its line or dash path, its cone, or a circle round you). `this.skillAim` comes from src/ui/aim.js
+   * (skillPreview) every frame, or null. Cool blue, so it never reads as Deadeye's gold; a miracle's is gold.
+   */
+  syncSkillAim() {
+    const a = this.skillAim;
+    if (!a) {
+      if (this.skView) this.skView.group.visible = false;
+      return;
+    }
+    if (!this.skView) {
+      // (drawn just over the ground and pulled toward the eye: over the shoulder the view grazes the ground, and a
+      // shape lying on it would lose to it)
+      const mat = (opacity) => new THREE.MeshBasicMaterial({ color: 0x8fd8ff, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
+      const thin = this.geo('thinring', () => new THREE.RingGeometry(0.975, 1, 96).rotateX(-Math.PI / 2));
+      const group = new THREE.Group();
+      const range = new THREE.Mesh(thin, mat(0.5));
+      const fill = new THREE.Mesh(this.discGeo(), mat(0.16));
+      const edge = new THREE.Mesh(thin, mat(0.85));
+      const band = new THREE.Mesh(this.rectGeo(), mat(0.16));
+      const sideL = new THREE.Mesh(this.rectGeo(), mat(0.7));
+      const sideR = new THREE.Mesh(this.rectGeo(), mat(0.7));
+      const tip = new THREE.Mesh(thin, mat(0.85));
+      const cone = new THREE.Mesh(this.sectorGeo(1.6), mat(0.18));
+      // over the shoulder, a low wall of light round where it lands: a flat ring seen from eye height is a thread
+      const wallGeo = this.geo('aimwall', () => {
+        const g = new THREE.CylinderGeometry(1, 1, 1, 64, 1, true).translate(0, 0.5, 0);
+        const col = [];
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const k = 1 - pos.getY(i); // bright at its foot, gone at its top
+          col.push(k, k, k);
+        }
+        g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+        return g;
+      });
+      const wallMat = mat(0.55);
+      wallMat.vertexColors = true;
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      for (const m of [range, fill, edge, band, sideL, sideR, tip, cone, wall]) m.renderOrder = 3;
+      group.add(range, fill, edge, band, sideL, sideR, tip, cone, wall);
+      this.scene.add(group);
+      this.skView = { group, range, fill, edge, band, sideL, sideR, tip, cone, wall, mats: [range, fill, edge, band, sideL, sideR, tip, cone, wall].map((m) => m.material), free: null };
+    }
+    const v = this.skView, y = this.shoulder && this.shoulder.k > 0.5 ? 0.2 : 0.09;
+    v.group.visible = true;
+    if (v.free !== !!a.free) {
+      v.free = !!a.free;
+      for (const m of v.mats) m.color.setHex(a.free ? 0xffd27a : 0x8fd8ff);
+    }
+    const pulse = 0.85 + 0.15 * Math.sin(this.time * 7);
+    v.fill.material.opacity = 0.16 * pulse;
+    // the reach, round the hero
+    v.range.visible = a.range > 0 && a.shape !== 'self' && a.shape !== 'line' && a.shape !== 'cone';
+    if (v.range.visible) {
+      v.range.position.set(a.hx, y, a.hz);
+      v.range.scale.setScalar(a.range);
+    }
+    const circ = a.shape === 'circle' || a.shape === 'target' || a.shape === 'self';
+    v.fill.visible = v.edge.visible = circ;
+    if (circ) {
+      const r = a.shape === 'target' ? 0.9 : Math.max(0.6, a.radius);
+      v.fill.position.set(a.tx, y, a.tz);
+      v.edge.position.set(a.tx, y + 0.005, a.tz);
+      v.fill.scale.setScalar(r);
+      v.edge.scale.setScalar(r);
+    }
+    const over = !!(this.shoulder && this.shoulder.k > 0.5);
+    v.wall.visible = circ && over && a.shape !== 'target';
+    if (v.wall.visible) {
+      v.wall.position.set(a.tx, 0, a.tz);
+      v.wall.scale.set(v.fill.scale.x, 0.9 * pulse, v.fill.scale.x);
+    }
+    const lined = a.shape === 'line' || a.shape === 'path';
+    v.band.visible = v.sideL.visible = v.sideR.visible = lined;
+    v.tip.visible = a.shape === 'path';
+    if (lined) {
+      const len = Math.max(0.5, a.len || a.range), w = Math.max(0.6, a.width || 1.2);
+      const c = Math.cos(a.dir), sn = Math.sin(a.dir), nx = -sn, nz = c;
+      v.band.position.set(a.hx, y, a.hz);
+      v.band.rotation.y = -a.dir;
+      v.band.scale.set(len, 1, w);
+      for (const [m, k] of [[v.sideL, 1], [v.sideR, -1]]) {
+        m.position.set(a.hx + nx * (w / 2) * k, y + 0.004, a.hz + nz * (w / 2) * k);
+        m.rotation.y = -a.dir;
+        m.scale.set(len, 1, 0.07);
+      }
+      if (v.tip.visible) {
+        v.tip.position.set(a.hx + c * len, y + 0.005, a.hz + sn * len);
+        v.tip.scale.setScalar(0.7);
+      }
+    }
+    v.cone.visible = a.shape === 'cone';
+    if (v.cone.visible) {
+      const g = this.sectorGeo(a.angle);
+      if (v.cone.geometry !== g) v.cone.geometry = g;
+      v.cone.position.set(a.hx, y, a.hz);
+      v.cone.rotation.y = -a.dir;
+      v.cone.scale.setScalar(Math.max(0.5, a.len || a.range));
+    }
+  }
+
+  /**
    * (0.61.2) A held skill shot (Deadeye): its whole line on the ground, gold sparks running down it, a
    * sight at the far end, and a mark on each enemy it would hit, brightest on the first. `this.aim` is set
    * by main.js every frame from src/ui/aim.js, or null.
@@ -3534,6 +3637,7 @@ export class Renderer {
     this.syncTelegraphs(world);
     this.syncMarkers(world);
     this.syncAim(world, heroPos);
+    this.syncSkillAim(); // (0.99.4)
     this.syncIncarnate(world, dt, heroPos); // (0.85) the channel's light, the god rising
     this.syncMiracles(world, dt); // (0.87)
     this.updateParticles(dt);

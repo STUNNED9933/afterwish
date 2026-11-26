@@ -773,6 +773,7 @@ export function cleanKeep(raw) {
     troopN: int(raw.troopN),
     builds: {}, // (0.81) each building's health (missing: whole)
     blessings: Array.isArray(raw.blessings) ? raw.blessings.filter((b) => BLESSING_IDS.includes(b)).slice(0, 3) : [],
+    autoBless: Array.isArray(raw.autoBless) ? [...new Set(raw.autoBless.filter((b) => BLESSING_IDS.includes(b)))] : [], // (0.99.4) bought by themselves before each Night
     last: int(raw.last, 0, 0, 1e15), // (0.81) when Faith last came in (ms). (0.82.3: was capped at 1e12, which today's clock is past, so every load rewound it and paid a full day again)
     sigils: int(raw.sigils), // (0.82) Ascension Sigils, from the night
     nightMax: int(raw.nightMax, 0, 0, NIGHT.max), // (0.82) the highest Night level held

@@ -1085,6 +1085,10 @@ export class Hud {
     this.worldUi.appendChild(el);
     this.bubbles.push({ el, at, who, left: Math.max(2.2, dur + 0.8), renderer });
   }
+  /** (0.99.4) Take down speech bubbles (all, or those whose speaker's name passes `keep(name) === false`). */
+  clearBubbles(keep = () => false) {
+    for (const b of this.bubbles || []) if (!keep(b.who)) b.left = 0;
+  }
   updateBubbles(dt) {
     if (!this.bubbles || !this.bubbles.length) return;
     for (const b of this.bubbles) {

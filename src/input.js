@@ -1,7 +1,7 @@
 // Mouse and keyboard -> commands. This is the only place that knows about
 // input devices. For multiplayer, the same commands would also be sent to
 // the server instead of only to the local World.
-import { canAim } from './ui/aim.js';
+import { canAim, canPreview } from './ui/aim.js';
 
 /** (0.70) Is there a borrowed skill to cast on D or F? (A passive has nothing to press.) */
 function borrowedActive(world, key) {
@@ -127,7 +127,7 @@ export class Input {
       // (0.91.1) letting go of the skill's key, or of every modifier, ends a held rank-up
       if (this.rankHold && (e.code === this.rankHold.code || (!e.ctrlKey && !e.altKey && !e.shiftKey))) this.rankHold = null;
       if (e.key === ' ' && this.isPlaying()) e.preventDefault();
-      if (this.held && (e.key || '').toLowerCase() === this.held.slot) this.release(true);
+      if (this.held && (e.key || '').toLowerCase() === (this.held.key || this.held.slot)) this.release(true);
     });
     window.addEventListener('blur', () => {
       this.keys.clear();
@@ -192,8 +192,12 @@ export class Input {
     this.held = null;
     if (!fire || !this.isPlaying()) return;
     const world = this.getWorld();
-    const g = this.ground() || { x: world.player.x, z: world.player.z };
+    const g = h.shoulder ? this.shoulderAim(h.slot, world) : this.ground() || { x: world.player.x, z: world.player.z };
     world.command({ type: 'cast', slot: h.slot, x: g.x, z: g.z });
+  }
+  /** (0.99.4) Is a skill held to preview it (let go to cast), and is that wanted? */
+  previewOn(world, slot) {
+    return canPreview(world, slot) && (!this.actions.skillPreview || this.actions.skillPreview());
   }
 
   onMouseDown(e) {
@@ -280,6 +284,17 @@ export class Input {
       const w = this.getWorld();
       w.command({ type: 'walkPace', on: !(w.player && w.player.walkPace) });
       return;
+    }
+    // (0.99.4) [ and ]: the next Night's level, from anywhere in your keep (over the shoulder too)
+    if ((key === '[' || key === ']') && !typing && this.isPlaying()) {
+      const w = this.getWorld(), k = w.player && w.player.keep;
+      if (k && w.map && w.map.id === 'wishkeep' && !w.keepVisit) {
+        e.preventDefault();
+        const top = Math.min(NIGHT_MAX, (k.nightMax || 0) + 1);
+        const cur = Math.max(1, Math.min(top, k.night || top));
+        w.command({ type: 'keepNightPick', level: Math.max(1, Math.min(top, cur + (key === ']' ? 1 : -1))) });
+        return;
+      }
     }
     if (this.shoulderOn() && this.isPlaying() && !typing) {
       // (0.95) the mouse was let go (Esc): any key catches it again
@@ -386,8 +401,13 @@ export class Input {
       e.preventDefault();
       if (e.repeat) return;
       if (this.held && this.held.slot === key) return; // other abilities still work while aiming (roll, then loose)
+      if (this.held && this.held.preview) this.release(true); // (0.99.4) another skill while one is held: the held one goes first
       if (canAim(world, key) && (!this.actions.heldAim || this.actions.heldAim())) {
         this.held = { slot: key }; // (0.61.2) held: aim now, loose it when the key comes up
+        return;
+      }
+      if (this.previewOn(world, key)) {
+        this.held = { slot: key, key, preview: true }; // (0.99.4) held: its area shows; let go to cast
         return;
       }
       const g = this.ground() || { x: world.player.x, z: world.player.z };
@@ -445,19 +465,32 @@ export class Input {
       e.preventDefault();
       if (e.repeat) return true;
       if ((slot === 'd' || slot === 'f') && !borrowedActive(world, slot)) return true;
-      // (0.89) at the enemy you have locked, if any; else where you look. (0.94) A skill that lands on the
-      // ground (a leap, a blast from the sky) goes where you look, never sideways to a locked foe
-      const def = world.kit && world.kit[slot];
-      const onGround = !!def && ['leap', 'meteor', 'zone', 'seraphRain'].includes(def.type);
-      const lockOn = !onGround && this.softId != null && world.enemies.find((o) => o.id === this.softId && !o.dead);
-      const S = this.renderer.shoulder, p = world.player;
-      const ahead = { x: p.x + Math.cos(S.yaw) * ((def && def.range) || 8), z: p.z + Math.sin(S.yaw) * ((def && def.range) || 8) };
-      const look = this.ground();
-      const g = lockOn ? { x: lockOn.x, z: lockOn.z } : look && (!onGround || Math.hypot(look.x - p.x, look.z - p.z) > 1.5) ? look : ahead;
+      if (this.held && this.held.slot === slot) return true;
+      if (this.held && this.held.preview) this.release(true); // (0.99.4) the held one goes first
+      if (this.previewOn(world, slot)) {
+        this.held = { slot, key, preview: true, shoulder: true }; // (0.99.4) held: its area shows where it will land; let go to cast
+        return true;
+      }
+      const g = this.shoulderAim(slot, world);
       world.command({ type: 'cast', slot, x: g.x, z: g.z });
       return true;
     }
     return false;
+  }
+
+  /**
+   * (0.89) Where a skill goes over the shoulder: at the enemy you have locked, if any; else where you look.
+   * (0.94) A skill that lands on the ground (a leap, a blast from the sky) goes where you look, never sideways
+   * to a locked foe. (0.99.4: one place for it, so a held skill lands where its preview showed.)
+   */
+  shoulderAim(slot, world) {
+    const def = world.kit && world.kit[slot];
+    const onGround = !!def && ['leap', 'meteor', 'zone', 'seraphRain'].includes(def.type);
+    const lockOn = !onGround && this.softId != null && world.enemies.find((o) => o.id === this.softId && !o.dead);
+    const S = this.renderer.shoulder, p = world.player;
+    const ahead = { x: p.x + Math.cos(S.yaw) * ((def && (def.range || def.blink)) || 8), z: p.z + Math.sin(S.yaw) * ((def && (def.range || def.blink)) || 8) };
+    const look = this.ground();
+    return lockOn ? { x: lockOn.x, z: lockOn.z } : look && (!onGround || Math.hypot(look.x - p.x, look.z - p.z) > 1.5) ? look : ahead;
   }
 
   /**

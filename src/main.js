@@ -1,6 +1,6 @@
 // Entry point: wires the simulation, renderer, HUD, input, audio and saving
 // together, and runs the main loop.
-import { aimPreview } from './ui/aim.js';
+import { aimPreview, skillPreview } from './ui/aim.js';
 import { TIERS, MAX_TIER, RIFT, WISH_STATS, WISH_IDS, DEEP, DEPTH_IDS, emberScale, primordialsOf, emberOf, MASTERY, CAELUM, animusShort } from './sim/endgame.js';
 import { CONFIG } from './config.js';
 import { World } from './sim/world.js';
@@ -1525,7 +1525,7 @@ function start(hot = {}) {
     // the night
     // (0.82) the Night level
     const top = Math.min(NIGHT.max, (k.nightMax || 0) + 1);
-    const lvl = Math.max(1, Math.min(top, keepNight || k.night || top));
+    const lvl = Math.max(1, Math.min(top, k.night || keepNight || top)); // (0.99.4) the keep's own choice first
     const night = keepCard('Call the night', `Night ${lvl} · held up to ${k.nightMax || 0}`, `<p>Waves of the Unmade (three, four from Night 10, five from 20, six from 40) come from four ways in, for the keep's buildings. Your heroes fight them; you are the keep's god, not its soldier: in a Tide your <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> are miracles, paid in Faith (${MIRACLE_IDS.map((m) => `${MIRACLES[m].name} ${MIRACLES[m].faith}`).join(', ')}), and <kbd>R</kbd> <b>Incarnates</b> you (${INCARNATE.faith} Faith, once a minute): you gather aura where you aim for up to ${INCARNATE.chan} seconds, land in a blast that mends, shields and raises the heroes near, and fight beside them for ${INCARNATE.dur} seconds, seen over your shoulder as in an action game (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, the mouse looks and locks on to the enemy before you, hold the left button to strike (it, or the air where you aim), <kbd>Tab</kbd> for the next target, your skills on <kbd>Q</kbd> <kbd>E</kbd> <kbd>R</kbd> and your dash on <kbd>Shift</kbd>, a direction tapped twice to roll). Each Night level is stronger than the last and pays more: Faith, Wishstone, <b>Ascension Sigils</b> to raise your heroes' rarity, and <b>Hero gear</b> for the Armory, rarer the deeper you go (Immortal from Night 10). Hold one to open the next. A wrecked hall stops working until it is mended; if the Hearth goes dark, the night is lost.${k.blessings.length ? ` Blessed for it: ${k.blessings.map((b) => BLESSINGS[b].name).join(', ')}.` : ''}</p>`);
     const pick = document.createElement('div');
     pick.className = 'night-pick';
@@ -1537,6 +1537,7 @@ function start(hot = {}) {
     }
     lvSel.addEventListener('change', () => {
       keepNight = Number(lvSel.value);
+      applyNow({ type: 'keepNightPick', level: keepNight }); // (0.99.4) what holding N calls, too
       renderTalk();
     });
     const pw = NIGHT.power(lvl), R = NIGHT.reward(lvl);
@@ -1702,13 +1703,24 @@ function start(hot = {}) {
       }
       list.appendChild(card);
       if (cls === 'mage') {
-        const bl = keepCard('Bless the next night', 'for one Tide', '');
+        const bl = keepCard('Bless the next night', 'for one Tide', '<p class="setting-desc">Tick <b>Auto</b> and that blessing is bought by itself each time you call a Night, while you have the Faith.</p>');
         for (const id of BLESSING_IDS) {
           const B = BLESSINGS[id];
           const row = document.createElement('div');
           row.className = 'keep-troop';
           row.innerHTML = `<span><b>${B.name}</b> (rank ${B.rank}): ${esc(B.desc)}</span>`;
           row.appendChild(keepBtn(k.blessings.includes(id) ? 'Blessed' : `${B.faith} Faith`, () => applyNow({ type: 'keepBless', id }), { primary: true, disabled: k.blessings.includes(id) || lvl < B.rank || k.faith < B.faith || on }));
+          // (0.99.4) or bought by itself before every Night
+          const auto = document.createElement('label');
+          auto.className = 'bless-auto';
+          auto.title = lvl < B.rank ? `Opens at rank ${B.rank}` : `Buy ${B.name} by itself each time you call a Night (if you have the Faith)`;
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = (k.autoBless || []).includes(id);
+          cb.disabled = lvl < B.rank;
+          cb.addEventListener('change', () => applyNow({ type: 'keepAutoBless', id, on: cb.checked }));
+          auto.append(cb, document.createTextNode(' Auto'));
+          row.appendChild(auto);
           bl.appendChild(row);
         }
         list.appendChild(bl);
@@ -1992,7 +2004,7 @@ function start(hot = {}) {
     list.appendChild(box);
   }
   let ringStart = 0;
-  let keepNight = 0; // (0.82) the Night level picked at the Hearth
+  let keepNight = 0; // (0.82) the Night level picked at the Hearth (0.99.4: kept in the keep, k.night, so holding N calls the same)
   /**
    * (0.85) Over the shoulder while you are incarnate in your own keep's night: the view, the crosshair, the
    * keys, and the channel's bar before it. The mouse is let go when it ends.
@@ -2020,6 +2032,7 @@ function start(hot = {}) {
   /** Someone says a line of theirs: out loud, with a bubble over them (or, out of sight, in the feed). */
   function speak(who, moment, pri = 0, at = null, name = null) {
     if (!voice.has(who, moment)) return null;
+    if (!who.startsWith('hero_') && world && world.tide && world.tide.state === 'on' && world.map && world.map.id === 'wishkeep') return null; // (0.99.4) the keep's people are indoors in the night
     const line = voice.say(who, moment, pri);
     if (!line) return null;
     const spot = at || npcSpot(who);
@@ -2057,6 +2070,7 @@ function start(hot = {}) {
         break;
       case 'tideStart':
         hurtSaid.clear();
+        hud.clearBubbles(); // (0.99.4) the keep's people go indoors, and what they were saying with them
         break;
       case 'tideWave': {
         const s = settlerHere();
@@ -2206,7 +2220,7 @@ function start(hot = {}) {
     if (!shoulderUi) {
       shoulderUi = document.createElement('div');
       shoulderUi.id = 'shoulder-ui';
-      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-pill"><span class="sh-pillk">Hold <kbd>H</kbd> for controls</span><span class="sh-altk">The mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div><div class="sh-keys"><h5>Controls <small>(hold <kbd>H</kbd>)</small></h5><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks</div><div><b>Hold left click</b> strike · <kbd>Tab</kbd> next target</div><div><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Shift</kbd> dash</div><div>Double-tap a direction: <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps</kbd> <span class="sh-pace">walk</span></div><div>Hold <kbd>Alt</kbd> for the mouse</div><div class="sh-posk"><kbd>Y</kbd> leave the Seraph</div><div class="sh-posin"><kbd>Y</kbd> take up the Seraph</div><div class="sh-nightk">Hold <kbd>N</kbd> to call the night</div><div class="sh-stop"><kbd>V</kbd> back above</div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div><div class="sh-compass"><div class="sh-cstrip"></div><div class="sh-cmark"></div></div><div class="sh-heroes"></div>';
+      shoulderUi.innerHTML = '<div class="xhair"></div><button class="sh-walk" type="button">Walk the keep <kbd>V</kbd></button><button class="sh-pos" type="button">Possess the Seraph <kbd>Y</kbd></button><div class="sh-target"><b></b><i><u></u></i></div><div class="sh-tip"></div><div class="sh-pill"><span class="sh-pillk">Hold <kbd>H</kbd> for controls</span><span class="sh-altk">The mouse is yours: let go of <kbd>Alt</kbd> to look again</span></div><div class="sh-keys"><h5>Controls <small>(hold <kbd>H</kbd>)</small></h5><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks</div><div><b>Hold left click</b> strike · <kbd>Tab</kbd> next target</div><div><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd> skills · <kbd>Shift</kbd> dash</div><div>Double-tap a direction: <span class="sh-dodge">roll</span> · <kbd>Space</kbd> parry</div><div><kbd>Ctrl</kbd> or <kbd>Caps</kbd> <span class="sh-pace">walk</span></div><div>Hold <kbd>Alt</kbd> for the mouse</div><div class="sh-posk"><kbd>Y</kbd> leave the Seraph</div><div class="sh-posin"><kbd>Y</kbd> take up the Seraph</div><div class="sh-nightk">Hold <kbd>N</kbd> to call the night · <kbd>[</kbd> <kbd>]</kbd> its level</div><div class="sh-stop"><kbd>V</kbd> back above</div></div><div class="sh-night"><b></b><i><u></u></i><small>keep holding <kbd>N</kbd> · let go to stop</small></div><div class="sh-chan"><b>Gathering aura</b><span class="sh-pct"></span><i><u></u></i><small><kbd>R</kbd> again to land now (less aura)</small></div><div class="sh-compass"><div class="sh-cstrip"></div><div class="sh-cmark"></div></div><div class="sh-heroes"></div>';
       document.body.appendChild(shoulderUi);
       shoulderUi.querySelector('.sh-walk').addEventListener('click', () => input.toggleWalk());
       shoulderUi.querySelector('.sh-pos').addEventListener('click', () => input.togglePossess()); // (0.92)
@@ -4232,6 +4246,7 @@ function start(hot = {}) {
     },
     attackMoveNear: () => (settings.attackMoveNear === 'hero' ? 'hero' : 'cursor'),
     heldAim: () => settings.heldAim !== false, // (0.61.2) Deadeye aims while R is held
+    skillPreview: () => settings.skillPreview !== false, // (0.99.4) every skill shows where it lands while held
     shoulderTip: (text) => { // (0.89) a word over the shoulder (right-click does not walk)
       if (!shoulderUi) return;
       const tip = shoulderUi.querySelector('.sh-tip');
@@ -4702,6 +4717,11 @@ function start(hot = {}) {
     input.sens = Number(e.target.value) || 1;
     settings.lookSens = input.sens;
     $('look-sens-val').textContent = `${input.sens.toFixed(1)}×`;
+    storeSettings(settings);
+  });
+  $('skill-preview').checked = settings.skillPreview !== false; // (0.99.4)
+  $('skill-preview').addEventListener('change', (e) => {
+    settings.skillPreview = e.target.checked;
     storeSettings(settings);
   });
   $('held-aim').checked = settings.heldAim !== false; // (0.61.2)
@@ -5776,6 +5796,13 @@ function start(hot = {}) {
         break;
       // (0.84) the night's stranger children
       // (0.86) raids
+      case 'nightBusy': // (0.99.4)
+        sfx.denied();
+        hud.banner(ev.raid ? 'A raid is at the gates' : 'The night is already here', ev.raid ? `Hold this raid (Night ${ev.level}) first; then call your Night.` : `Night ${ev.level} is under way.`);
+        break;
+      case 'nightPick': // (0.99.4)
+        keepNight = ev.level;
+        break;
       case 'raidWarn':
         sfx.denied();
         hud.banner('Horns at the gates', `A raid, in ${ev.in} seconds: one wave of the Unmade (Night ${ev.level}). Your heroes will meet it; R to Incarnate if they need you.`);
@@ -5892,6 +5919,13 @@ function start(hot = {}) {
         sfx.levelUp();
         hud.feedText(`${ev.name}, a ${CLASSES[ev.cls].name.toLowerCase()}, joins the keep.`);
         if (mode === 'talk') renderTalk();
+        break;
+      case 'keepAutoBless': // (0.99.4)
+        if (mode === 'talk') renderTalk();
+        break;
+      case 'keepBlessAuto': // (0.99.4) bought by themselves as the night was called
+        if (ev.got.length) hud.feedText(`Blessed for this night: ${ev.got.join(', ')}.`);
+        if (ev.short.length) hud.feedText(`Not enough Faith to bless with ${ev.short.join(', ')}.`);
         break;
       case 'keepDismissed':
         hud.feedText(`${ev.name} goes home.`);
@@ -6413,10 +6447,18 @@ function start(hot = {}) {
     let aim = null;
     if (input.held && mode === 'play' && world && world.player) {
       const g = input.ground();
-      if (g) aim = aimPreview(world, input.held.slot, g.x, g.z);
+      if (g && !input.held.preview) aim = aimPreview(world, input.held.slot, g.x, g.z);
     }
-    renderer.aim = aim;
-    hud.aim = aim;
+    renderer.aim = aim && !input.held.preview ? aim : null;
+    hud.aim = aim && !input.held.preview ? aim : null;
+    // (0.99.4) any other skill held: its range and the ground it will cover
+    let sk = null;
+    if (input.held && input.held.preview && mode === 'play' && world && world.player) {
+      const g = input.held.shoulder ? input.shoulderAim(input.held.slot, world) : input.ground();
+      const hp = renderer.hero && renderer.hero.group ? renderer.hero.group.position : world.player;
+      if (g) sk = skillPreview(world, input.held.slot, g.x, g.z, hp.x, hp.z);
+    }
+    renderer.skillAim = sk;
     // (0.62) Auto-start: once the floor is cleared (and any augment picked), start the next wave. Never past a
     // boss's spoils: taking them home or pushing on stays your call.
     if (autoWaveAt && now >= autoWaveAt && mode === 'play' && world.mode === 'arena' && world.wave) {

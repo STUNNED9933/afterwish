@@ -1413,7 +1413,9 @@ body.shoulder-on #abilities kbd[data-sh] { font-size: 0; }
 body.shoulder-on #abilities kbd[data-sh]::after { content: attr(data-sh); font-size: 11px; }
 body.shoulder-on #abilities kbd[data-sh="Shift"]::after { font-size: 9.5px; letter-spacing: -0.2px; }
 body.shoulder-on .ally-tag.build { display: none; }
-body.shoulder-on #prompt { display: none; }
+/* (0.99.4) over the shoulder: a small tip just under the crosshair, popping in, instead of nothing */
+body.shoulder-on #prompt:not(.hidden) { bottom: auto; top: calc(50% + 46px); padding: 4px 11px; font-size: 14px; background: rgba(10, 13, 22, 0.78); animation: sh-prompt-pop 0.22s ease-out; }
+@keyframes sh-prompt-pop { from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.92); } to { opacity: 1; transform: translateX(-50%); } }
 
 /* (0.89) the soft lock's frame, the crosshair when locked, and a word over the shoulder */
 #shoulder-ui .sh-target, #shoulder-ui .sh-tip { display: none; }
@@ -1498,3 +1500,7 @@ body.shoulder-on #boss-box { transform: translateY(40px); }
 .say-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: rgba(250, 244, 230, 0.95); }
 .say-bubble.off { background: rgba(250, 244, 230, 0.86); } /* (0.99.2) out of sight */
 .say-bubble.off::after { display: none; }
+
+/* (0.99.4) the Observatory's Auto ticks */
+.bless-auto { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.bless-auto input { accent-color: var(--gold); cursor: pointer; }

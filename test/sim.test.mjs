@@ -6513,4 +6513,40 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (let i = 0; i < 3; i++) w.step(CONFIG.TICK);
   check('...felled in it, the trial is lost, the eyes are gone, and it stays Immortal', !w.eternalTrial && !w.enemies.some((e) => e.trial) && k.statue.tier === 6 && k.statue.rest > 0);
 }
+{
+  // (0.99.4) the next Night's level from anywhere, blessings bought by themselves, a Night over a raid's horns,
+  // and the keep's people out of the way in the night
+  const { geared } = await import('./balance.mjs');
+  const K994 = await import('../src/sim/wishkeep.js');
+  const evs = (w) => { const out = w.events.map((e) => e.type); w.events = []; return out; };
+  const w = new World({ seed: 994, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  const p = w.player;
+  p.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  w.command({ type: 'travel', to: 'wishkeep' }); w.runCommands(); w.step(CONFIG.TICK);
+  const k = p.keep;
+  k.faith = 1e6; k.stone = 1e5; k.nightMax = 31; k.night = 29; k.halls.mage = 3;
+  k.troops = [{ id: 1, cls: 'warrior', name: 'a', lvl: 9, gear: 6, rar: 3 }];
+  w.keepTroopsUp(); w.keepBuildsUp();
+  w.command({ type: 'keepNightPick', level: 60 }); w.runCommands();
+  const hi = k.night;
+  w.command({ type: 'keepNightPick', level: 0 }); w.runCommands();
+  check('Night pick (0.99.4): the next Night is chosen from anywhere, never past one beyond your best', hi === 32 && k.night === 1);
+  w.command({ type: 'keepNightPick', level: 32 }); w.runCommands();
+  w.command({ type: 'keepAutoBless', id: 'fury', on: true }); w.runCommands();
+  w.command({ type: 'keepAutoBless', id: 'swift', on: true }); w.runCommands();
+  w.command({ type: 'keepAutoBless', id: 'swift', on: false }); w.runCommands();
+  check('...auto blessings are marked one by one, and unmarked', k.autoBless.join() === 'fury');
+  w.keepRaidStart(false);
+  const raid = w.tide && w.tide.raid && w.tide.level === 29;
+  const f0 = k.faith;
+  w.command({ type: 'keepTide', level: k.night }); w.runCommands();
+  check('...a raid still at its horns gives way to the Night you call (at the level picked, not the raid\'s)', raid && w.tide && !w.tide.raid && w.tide.level === 32);
+  check('...and the marked blessing was bought as it was called', w.tide.bless.join() === 'fury' && f0 - k.faith === K994.BLESSINGS.fury.faith);
+  const s = w.obstacles.find((o) => o.kind === 'npc');
+  const o = { x: s.x + 0.1, z: s.z };
+  w.pushOut(o, 0.5);
+  check('...in the night the keep\'s people are indoors: nobody bumps into them', Math.abs(o.x - (s.x + 0.1)) < 1e-9);
+  w.command({ type: 'keepTide', level: 5 }); w.runCommands();
+  check('...calling again mid-night says so instead of doing nothing', evs(w).includes('nightBusy') && w.tide.level === 32);
+}
 process.exit(failed ? 1 : 0);

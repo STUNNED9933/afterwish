@@ -17,7 +17,11 @@ Opens after every Caelum boss is beaten; hard from the first fight even in full 
 
 | Question | Decision |
 | --- | --- |
-| Who you play | One Lacuna hero per account; class chosen in Lacuna (8, from the 8 subclasses, rebuilt for first person) |
+| Who you play | One Lacuna hero per account; one class at a time, swapped freely like FFXIV, each class levelling on its own (8, from the 8 subclasses, rebuilt for first person) |
+| Hero's look | Young (a teenager); character creator from free modular parts; Tripo only where nothing free will do |
+| Feel | Above all a free world to roam with friends, with plenty of gameplay |
+| Old world | Votum; the Primordials grew from desire and malice (Animus stays the resisting will) |
+| Names | Chosen by Claude (working): kingdom Solenne, first town Sunmere, rescuers the Marigold Company (Rowan, leader; Ilse, healer; Juni, scout; Sorrel, mage; all adults), secret service the Gloamwatch, movement the Unbound |
 | View | Over the shoulder; true first-person aim where a class needs it (Sharpshooter scope) |
 | World | One seamless land shared per server; quest bosses in the party's own copy |
 | Power | Magic and mana; Dimension Link for players who owned Eternal gear |
@@ -28,6 +32,25 @@ Opens after every Caelum boss is beaten; hard from the first fight even in full 
 | Story | New: mystery, exploration, the new world's politics; no ending |
 | Tone | More cheerful than Chapter 1, with mystery |
 
+## The fall of Votum (prequel, agreed 26 Nov 2026)
+
+Rule: in Votum, what people want hard enough comes true, good or bad. Wish magic comes from the fallen star; a few
+can ask it directly.
+1. Generations of desire and malice grow the Primordials; a few drink from them and become the Granted.
+2. Queen Maren, who loves all her people and has the greatest wish aptitude ever born, protects the last bright
+   kingdom from the Granted, beasts and other kingdoms; years of peace.
+3. The Granted feed her officials' greed and jealousy on purpose; the officials want the succession, and their
+   wanting, aimed at the heir, makes the child sick (common people's small ingratitude adds; the poison is the court's).
+4. Maren's wish to the star: "Let nothing I love be taken from me." The child becomes the pinnacle of wishes,
+   growing without limit by living several timelines at once unknowingly (the four classes).
+5. The child, sick with malice, cannot hold the power; it bursts out. It would kill everyone, but the wish forbids
+   anyone she loves being taken; she loved all of them, so they become husks.
+6. The wish keeps the child as they were (nothing taken, not even time): the hero wakes years later, young, knowing nothing.
+7. Chapter 1 to its end: across their lives the hero breaks the wish, goes down to the Primordials, up to the
+   Granted who poisoned the court, takes their power, keeps the Wishkeep.
+Split rules: each life grows on its own (classes); lives feel each other (borrowed skills); the portal hero is one
+more life (Dimension Link = the pull between them). Told in Ysolde's chapters and one flashback cutscene in Lacuna.
+
 ## The bridge
 
 1. Prequel (told in Chapter 1): the Primordials grew over generations from desire and malice (proposed wording;
@@ -37,7 +60,7 @@ Opens after every Caelum boss is beaten; hard from the first fight even in full 
    power, becomes almighty and cares for those returned from the curse: the Wishkeep.
 3. A portal opens; a husk runs through; the hero chases it into Lacuna.
 4. Two timelines: the Wishkeep stays playable but the story treats it as the past (flashback); Lacuna is now.
-Old world's name: open (Votum recommended; Optatum; Cupido).
+Old world: Votum.
 
 ## Lacuna, the world
 
@@ -97,13 +120,9 @@ management and area splitting; a data-driven cutscene player; background loading
 2. Opening slice: cutscene player, forest, first town, quests 1–4, 2 classes, mana, Link. Gate: testers find it fun.
 3. All of Act I: 8 classes, quests 5–6, factions, more NPCs, Lumen and buffs tuned.
 4. Live updates, ongoing: Act II and beyond, new regions, new combat systems, events.
-Tripo: ~3,090 credits (topped up 26 Nov); Act I ~40–60 models; cost shown before each batch. Environment: CC0 packs.
+Tripo: ~3,090 credits (topped up 26 Nov); kept small: ~15–25 models for Act I (beasts, bosses, key characters); hero looks and townsfolk from a modular character creator (free parts); cost shown before each batch. Environment: CC0 packs.
 
 ## Open questions
 
-- "Like Roblox or Minecraft": building/housing, gathering/crafting, minigames/social, or a free world to roam?
-- One class or all eight on the shared hero (separate skill levels per class)?
-- Character creator, or set looks per class?
-- The old world's name; desire-and-malice wording; the slice's two classes.
-- Names: the party, first town, kingdom, secret service, movement.
-- Bold designs for NPCs only or player outfits too; a setting to tone them down?
+- The slice's two classes (proposed: Sharpshooter + Berserker).
+- Answered 26 Nov: free roam with friends first; one class at a time, FFXIV-style swap; creator from free parts, minimal Tripo; names by Claude; Votum; desire and malice; younger hero (no bold designs on the hero or player outfits).

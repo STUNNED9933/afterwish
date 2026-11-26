@@ -6590,4 +6590,32 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   for (const v of views) (v.group || v).traverse((o) => { if (!o.geometry) return; for (const at of Object.values(o.geometry.attributes)) for (const x of at.array) { n++; if (!Number.isFinite(x)) bad++; } });
   check('Render (0.99.7): every vertex of the beacons, the Way Up and the crack is a real number (no NaN for bloom to spread)', bad === 0 && n > 1000, `${bad} bad of ${n}`);
 }
+{
+  // (0.99.8) Haven's beacons to the Wishkeep and the Verge (open once the keep is), and the Verge's back to Haven
+  const { geared } = await import('./balance.mjs');
+  const walkInto = (w, to) => {
+    const p = w.player, g = w.map.portals.find((x) => x.to === to);
+    p.x = p.px = 0; p.z = p.pz = 0; w.step(CONFIG.TICK); w.events = [];
+    p.x = p.px = g.x; p.z = p.pz = g.z;
+    const seen = [];
+    for (let i = 0; i < 90 && w.map.id !== to; i++) { w.step(CONFIG.TICK); seen.push(...w.events.map((e) => e.type)); w.events = []; }
+    return seen;
+  };
+  const fresh = new World({ seed: 1004, mode: 'explore', cls: 'warrior' });
+  check('Haven (0.99.8): beacons to the Wishkeep and the Verge, between the houses (all six still there)', ['greenwood', 'wishkeep', 'verge'].every((t) => fresh.map.portals.some((g) => g.to === t)) && fresh.map.obstacles.filter((o) => o.kind === 'house').length === 6);
+  let ev = walkInto(fresh, 'wishkeep');
+  check('...with no keep yet, the keep beacon stays shut and says why (once)', fresh.map.id === 'town' && ev.filter((t) => t === 'keepLocked').length === 1);
+  ev = walkInto(fresh, 'verge');
+  check('...and so does the Verge beacon', fresh.map.id === 'town' && ev.includes('keepLocked'));
+  const w = new World({ seed: 1005, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  w.player.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  walkInto(w, 'wishkeep');
+  check('...with the keep open, walk in and you are home in the Wishkeep', w.map.id === 'wishkeep');
+  w.goMap('town', 'greenwood');
+  walkInto(w, 'verge');
+  check('...Haven to the Verge', w.map.id === 'verge');
+  walkInto(w, 'town');
+  const back = w.map.portals.find((g) => g.to === 'verge');
+  check('...and the Verge back down to Haven, arriving by its Verge beacon', w.map.id === 'town' && Math.hypot(w.player.x - back.x, w.player.z - back.z) < 8);
+}
 process.exit(failed ? 1 : 0);

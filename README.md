@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Beacons between Haven, the Wishkeep and the Verge (0.99.8)
+
+- **Haven has two new beacons:** one home to your Wishkeep and one to the Verge, each at the end of its own road out of the plaza. Until your keep is open they stay shut and say why.
+- **The Verge has a beacon down to Haven**, so you can go Haven to Verge to keep (and back) on foot, without the Waygate.
+- On the server each beacon goes to your own keep, as the Waygate does.
+
 ### Fix: black blocks over the screen (0.99.7)
 
 - The new exit beacons from 0.99.6 could black out large parts of the screen on some graphics cards. A rounding slip gave a few points of each beacon's light column an invalid brightness, and the glow (bloom) effect spread it across the screen. Fixed, with a test that checks every point of the new gates.

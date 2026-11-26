@@ -12065,7 +12065,7 @@ inTown() {
       this.portalT = 0;
     } else if (this.portalArmed) {
       this.portalT += dt;
-      if (this.portalT >= CONFIG.PORTAL_TIME) this.goMap(this.homeOf(on.to), this.map.id);
+      if (this.portalT >= CONFIG.PORTAL_TIME && !this.portalShut(on.to)) this.goMap(this.homeOf(on.to), this.map.id);
     }
   }
 
@@ -12073,6 +12073,20 @@ inTown() {
    * (1.0) Where a portal home leads: from the Deep or Caelum, a hero with a Wishkeep comes back to the Verge
    * (by the crossing they took), not all the way to Haven.
    */
+  /**
+   * (0.99.8) Haven's beacons to the Wishkeep and the Verge only open once your keep has: standing in a shut
+   * one says why (once, until you step out). The keep is still yours alone offline, as by the Waygate.
+   */
+  portalShut(to) {
+    if (to !== KEEP.map && to !== 'verge') return false;
+    const why = !this.keepOpen() ? 'keepLocked' : to === KEEP.map && this.heroes.length > 1 && !this.travelHook ? 'keepAlone' : null;
+    if (!why) return false;
+    this.emit(why, {});
+    this.portalArmed = false;
+    this.portalT = 0;
+    return true;
+  }
+
   homeOf(to) {
     if (to !== 'town' || !this.map || !(this.map.deep || CAELUM.maps[this.map.id])) return to;
     return this.keepOpen() ? 'verge' : to;
@@ -12333,7 +12347,7 @@ inTown() {
         this.portalT = 0;
       } else if (this.portalArmed) {
         this.portalT += dt;
-        if (this.portalT >= CONFIG.PORTAL_TIME) {
+        if (this.portalT >= CONFIG.PORTAL_TIME && !this.portalShut(on.to)) {
           // One hero takes the portal and the whole party goes with them (on the server, just them).
           this.goMap(this.homeOf(on.to), this.map.id);
           this.use(lead);

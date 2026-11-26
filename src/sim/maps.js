@@ -27,7 +27,8 @@ export const MAPS = {
   town: {
     name: 'Haven', theme: 'town', safe: true, radius: 24, level: 0, levelSpan: 0,
     roster: {}, spawns: 0, trees: 16, rocks: 0, houses: 6,
-    portals: [{ to: 'greenwood', angle: 0 }],
+    // (0.99.8) and, once your keep is open, a beacon home to it and one to the Verge (between the houses)
+    portals: [{ to: 'greenwood', angle: 0 }, { to: 'wishkeep', angle: 2.09 }, { to: 'verge', angle: 4.19 }],
   },
   greenwood: {
     name: 'Greenwood Trail', theme: 'forest', radius: 46, level: 1, levelSpan: 8,
@@ -174,7 +175,7 @@ export const MAPS = {
     name: 'The Verge', theme: 'forest', safe: true, verge: true, radius: 30, level: 100, levelSpan: 0,
     blurb: "Where the keep's road ends: a way down, a way up, and a crack in the air",
     roster: {}, spawns: 0, trees: 34, rocks: 14, houses: 0,
-    portals: [{ to: 'wishkeep', angle: Math.PI / 2 }],
+    portals: [{ to: 'wishkeep', angle: Math.PI / 2 }, { to: 'town', angle: Math.PI }], // (0.99.8) and a beacon down to Haven
   },
   deep10: {
     name: 'The Quiet', theme: 'quiet', radius: 42, level: 100, levelSpan: 0, deep: 10, song: 'starwell',

@@ -536,5 +536,28 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   check('...a hero without a keep still starts in Haven', sv.players.get(B).copy.key === 'town');
 }
 
+// (0.99.8) Haven's keep beacon on the server: each hero's own keep, or shut for a hero without one
+{
+  const box = new Map();
+  const sv = new ServerWorld({ send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), passcode: 'stun', name: 'Beacon World', seed: 17 });
+  const cn = (n) => { const c = { n }; box.set(c, []); return c; };
+  const mk = (name, cls, lives) => ({ t: 'hello', v: NET_VERSION, pass: 'stun', name, cls, save: Object.assign(geared(cls, 100, 6), { acctLives: lives }), gold: 100, tickets: 3, keep: null });
+  const a = cn('a'), b = cn('b');
+  sv.message(a, mk('Keeper', 'warrior', { archer: { prim: [6, 7, 8, 9, 10], et: ['ring'], gr: [], wish: 50 } }));
+  sv.message(b, mk('Newcomer', 'mage', {}));
+  const id = (x) => box.get(x).find((m) => m.t === 'welcome').pid;
+  const A = id(a), B = id(b);
+  for (let i = 0; i < 4; i++) sv.tick();
+  sv.command(sv.players.get(A), { type: 'travel', to: 'town' });
+  for (let i = 0; i < 4; i++) sv.tick();
+  const town = sv.players.get(A).copy;
+  const g = town.world.map.portals.find((x) => x.to === 'wishkeep');
+  for (const P of [A, B]) town.world.as(town.world.heroByPid(P), (p) => { p.x = p.px = g.x; p.z = p.pz = g.z; });
+  box.get(b).length = 0;
+  for (let i = 0; i < 90; i++) sv.tick();
+  check('Server (0.99.8): Haven\'s keep beacon takes a keeper to their own Wishkeep', sv.players.get(A).copy.key === `wishkeep:${A}`, sv.players.get(A).copy.key);
+  check('...and stays shut for someone without a keep, saying why', sv.players.get(B).copy.key === 'town' && box.get(b).some((m) => m.t === 'snap' && (m.ev || []).some((e) => e.type === 'keepLocked')));
+}
+
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

@@ -20,7 +20,7 @@ const RUN_AT = [0.42, 0.24, 0.38], RUN_DIR = [0.5, 0.84, 0.05], RUN_HOLD = 0.56,
 export const RIGGED = {
   hero_warrior: {
     url: 'models/warrior.glb',
-    height: 2.05,
+    height: 1.9, // (1.0) younger: a teenager now, a head shorter than the old 2.05
     turn: -Math.PI / 2,
     hand: 'R_Hand',
     weaponScale: 0.82,
@@ -70,7 +70,7 @@ export const RIGGED = {
   // whose string follows her drawing hand.
   hero_archer: {
     url: 'models/archer.glb',
-    height: 1.92,
+    height: 1.79, // (1.0) younger: a teenager now, a head shorter than the old 1.92
     turn: -Math.PI / 2,
     hand: 'L_Hand',
     bow: { drawHand: 'R_Hand', shoulder: 'L_Upperarm' },
@@ -104,7 +104,7 @@ export const RIGGED = {
   // are our own (tools/models/rogue-moves.js). A dagger in each hand.
   hero_rogue: {
     url: 'models/rogue.glb',
-    height: 2.0,
+    height: 1.86, // (1.0) younger: a teenager now, a head shorter than the old 2.0
     turn: -Math.PI / 2,
     hand: 'R_Hand',
     offhand: 'L_Hand',
@@ -187,7 +187,7 @@ export const RIGGED = {
   },
   hero_mage: {
     url: 'models/mage.glb',
-    height: 1.9,
+    height: 1.77, // (1.0) younger: a teenager now, a head shorter than the old 1.9
     turn: -Math.PI / 2,
     hand: 'R_Hand',
     staff: true,

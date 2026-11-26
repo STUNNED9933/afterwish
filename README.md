@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### The hero, younger (0.99.5)
+
+- **All four heroes and their Eternal forms are remade younger:** teenagers now, slimmer and about a head shorter than before, with the same outfits and colours (Tripo, 8 models, 495 credits). Every animation carries over unchanged: idle, walk, run, attacks, skills, the sheathing (copied onto the new bodies with `tools/models/copy-clips.mjs`).
+- The story behind it: the queen's wish kept her child as they were, so the hero wakes years later still young (see `docs/design/chapter-2.md`, *The fall of Votum*).
+- The old adult heroes are kept in `assets/models/archive/` (not shipped) for future enemies.
+
 ### See where skills land, the Night from anywhere, blessings by themselves (0.99.4)
 
 - **Skill previews:** hold a skill key to see its reach and the ground it will cover: a ring at its range, plus a circle where a leap, meteor or zone lands, the line of a shot, the path of a dash, the cone of a cleave, or the circle round you of a nova. Let go to cast it there; a quick tap casts as before. Right-click or Esc puts it down. Over the shoulder it shows where the crosshair is, with a low wall of light round the landing circle so it reads from eye height; the Seraph's skills (Descent, Hand of Heaven, Lux Aeterna, Wingbeat and the rest) and the god's miracles in a Night (in gold) show too. It can be turned off in the settings ("Show where skills land while held").

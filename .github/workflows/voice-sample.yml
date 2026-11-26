@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # only to push the samples to the voice-samples branch
 
 jobs:
   sample:
@@ -22,7 +22,10 @@ jobs:
           pip install -q torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -q chatterbox-tts
       - run: python tools/voice/sample_chatterbox.py out
-      - uses: actions/upload-artifact@v4
-        with:
-          name: voice-samples
-          path: out/
+      - name: Push to the voice-samples branch
+        run: |
+          cd out
+          git init -q -b voice-samples
+          git -c user.name=github-actions -c user.email=actions@github.com add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "Voice samples ${GITHUB_SHA::7}"
+          git push -f -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" voice-samples

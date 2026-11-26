@@ -49,6 +49,8 @@ function writeHtml() {
   writeFileSync('dist/index.html', html);
   // (0.57.8) What the newest page is, for a page to check past every cache (main.js checkNewest).
   writeFileSync('dist/version.json', JSON.stringify({ version, tag }) + '\n');
+  // (0.99.11) Lacuna's test land: a page of its own (lacuna.html), apart from the game
+  writeFileSync('dist/lacuna.html', readFileSync('src/lacuna/index.html', 'utf8').replace('__VERSION__', version).replace('<script src="lacuna.js"></script>', `<script src="lacuna.js?v=${tag}"></script>`));
 }
 
 const options = {
@@ -77,4 +79,5 @@ if (watching) {
   console.log('Watching src/ for changes. Refresh the browser after each rebuild.');
 } else {
   await build(options);
+  await build({ ...options, entryPoints: ['src/lacuna/main.js'], outfile: 'dist/lacuna.js' }); // (0.99.11) Lacuna's test land
 }

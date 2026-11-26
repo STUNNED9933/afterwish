@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna, engine phase 1: the test land (0.99.11)
+
+Chapter 2's engine, built apart from the game on its own page: **[lacuna.html](https://afterwish.stunnedgames.net/lacuna.html)** (not linked from the game; nothing in it is final art).
+- **A 512 m land in 64 m chunks** (`src/lacuna/land.js`): Sunmere (the first town) in the middle, the Wakewood to the west, meadows, a lake, stony ground to the north. Made from a seed, chunk by chunk, the same everywhere; collisions through a spatial hash.
+- **Streaming** (`view.js`): only chunks within 150 m are drawn (one built per frame, far ones taken down) under a haze; trees, rocks and beasts are instanced, so it stays around 25 to 80 draws.
+- **Sleeping beasts** (`sim.js`): 656 beasts; only the ones near a player think. One player: under 0.05 ms a step. Nine across the land: about 0.1 ms.
+- **Townsfolk** (`crowd.js`): 150 people on Sunmere's streets, run in each browser only, with distance level of detail.
+- **Sync** (`net.js`): each player is told only what is within 150 m and only what changed, 8 bytes a thing, 10 times a second. Measured with nine players wandering: about 2 to 3 KB/s each (goal: under 20).
+- Over the shoulder (mouse look), your real hero, **1 to 4 to swap class**, **B** to add test players, **F3** for the numbers (fps is the one to check on your own machine: goal 60).
+
 ### Arrive in the middle of the keep (0.99.10)
 
 - Logging in, or taking the Waygate to the Wishkeep, now puts you in the middle of the keep between the Hearth and the Waygate, facing the Hearth (it used to be by the road to Haven). Walking in through a beacon still puts you by that beacon.

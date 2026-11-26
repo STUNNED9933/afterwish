@@ -1,0 +1,244 @@
+// Lacuna (Chapter 2), engine phase 1: the land.
+//
+// A square land 512 m across, cut into 64 m chunks (8 by 8). Everything on it is worked out from a seed and the
+// chunk's own coordinates, so a chunk comes out the same on the server and in every browser, whenever and in
+// whatever order it is made: a browser only ever builds the chunks near its player (streaming), the server
+// only the ones near someone.
+//
+// What is where (working layout for the test land):
+//   - Sunmere, the first town, in the middle: a paved plaza, rings of houses, four roads out to the edges.
+//   - The Wakewood (the opening forest) to the west: dense trees.
+//   - Meadows with groves elsewhere, a lake to the south-east, rocky ground to the north.
+//
+// Collisions use a spatial hash (8 m cells): a body only ever looks at the few cells it overlaps, never at
+// every tree on the land. This is simulation code: no Math.sin/cos/atan2/hypot/pow/random (see sim/dmath.js).
+import { makeRng } from '../sim/rng.js';
+import { dCos, dSin, dHypot } from '../sim/dmath.js';
+
+export const LAND = { size: 512, chunk: 64, cell: 8, seed: 20261126 };
+export const HALF = LAND.size / 2;
+export const CHUNKS = LAND.size / LAND.chunk; // chunks along a side
+const CELLS = LAND.size / LAND.cell; // hash cells along a side
+
+export const TOWN = { x: 0, z: 0, plaza: 14, r: 44 }; // Sunmere
+export const LAKE = { x: 132, z: 118, r: 26 };
+export const ROAD_W = 3.2; // half the width of a road
+
+/** A number in [0, 1) from two integers and a seed (the same everywhere). */
+export function hash2(x, z, seed) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(z | 0, 668265263) + Math.imul(seed | 0, 1103515245)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** Smooth value noise in [0, 1), one feature every `1` unit. */
+export function noise(x, z, seed) {
+  const ix = Math.floor(x), iz = Math.floor(z);
+  const fx = x - ix, fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+  const a = hash2(ix, iz, seed), b = hash2(ix + 1, iz, seed), c = hash2(ix, iz + 1, seed), d = hash2(ix + 1, iz + 1, seed);
+  return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
+}
+
+/** The four roads: from the town out to each edge, gently winding. Distance from (x, z) to the nearest. */
+export function roadDist(x, z) {
+  const ew = Math.abs(z - 7 * dSin(x / 37)); // east-west road
+  const ns = Math.abs(x - 6 * dSin(z / 41 + 1)); // north-south road
+  return Math.min(ew, ns);
+}
+
+/** What the ground is at (x, z): for placing things here, and for colouring the ground in the renderer. */
+export function groundAt(x, z, seed = LAND.seed) {
+  const town = dHypot(x - TOWN.x, z - TOWN.z);
+  if (town < TOWN.plaza) return 'plaza';
+  if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return 'water';
+  if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return 'shore';
+  if (roadDist(x, z) < ROAD_W) return town < TOWN.r + 4 ? 'street' : 'road';
+  if (town < TOWN.r) return 'town';
+  return forest(x, z, seed) > 0.55 ? 'forest' : z < -150 ? 'stony' : 'meadow';
+}
+
+/** How wooded (x, z) is, 0 to 1: the Wakewood to the west, groves elsewhere. */
+export function forest(x, z, seed = LAND.seed) {
+  const groves = noise(x / 46, z / 46, seed + 7) * 0.75 + noise(x / 13, z / 13, seed + 9) * 0.25;
+  const west = x < -70 ? Math.min(1, (-70 - x) / 60) : 0; // the Wakewood
+  return Math.min(1, groves * (1 - west) + west * (0.78 + groves * 0.3));
+}
+
+/** Sunmere's houses: rings round the plaza, never on a street. The same list everywhere. */
+export function townHouses(seed = LAND.seed) {
+  const out = [];
+  const rings = [{ r: 21, n: 10 }, { r: 33, n: 15 }];
+  for (const [ri, ring] of rings.entries()) {
+    for (let i = 0; i < ring.n; i++) {
+      const a = (i / ring.n) * Math.PI * 2 + ri * 0.21 + 0.09;
+      const x = TOWN.x + dCos(a) * ring.r, z = TOWN.z + dSin(a) * ring.r;
+      if (roadDist(x, z) < ROAD_W + 4.2) continue; // leave the streets open
+      const big = hash2(i, ri, seed + 31) < 0.3;
+      out.push({ kind: 'house', shape: 'box', x, z, hw: big ? 3.2 : 2.5, hd: big ? 2.6 : 2.1, rot: a + Math.PI / 2, r: big ? 4.2 : 3.3, v: Math.floor(hash2(i, ri, seed + 37) * 1000) });
+    }
+  }
+  return out;
+}
+
+/** Which chunk (cx, cz from 0 to CHUNKS - 1) holds (x, z), and the chunk's index. */
+export function chunkOf(x, z) {
+  const cx = Math.max(0, Math.min(CHUNKS - 1, Math.floor((x + HALF) / LAND.chunk)));
+  const cz = Math.max(0, Math.min(CHUNKS - 1, Math.floor((z + HALF) / LAND.chunk)));
+  return { cx, cz, i: cz * CHUNKS + cx };
+}
+
+/** Enemy kinds of the test land (placeholder beasts: real ones come with phase 2). */
+export const BEASTS = {
+  wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest' },
+  hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow' },
+  golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony' },
+};
+
+/** The land: chunks made on demand, and a spatial hash of everything solid on what has been made. */
+export class Land {
+  constructor(seed = LAND.seed) {
+    this.seed = seed;
+    this.chunks = new Array(CHUNKS * CHUNKS).fill(null);
+    this.cells = new Array(CELLS * CELLS).fill(null);
+    this.stamp = 0;
+    this.houses = townHouses(seed);
+    // The lake is one big solid circle, in the hash from the start (it spans several chunks).
+    this.insert({ kind: 'water', shape: 'circle', x: LAKE.x, z: LAKE.z, r: LAKE.r - 1.2 });
+  }
+
+  /** The chunk at (cx, cz), made the first time it is asked for. */
+  chunk(cx, cz) {
+    const i = cz * CHUNKS + cx;
+    if (!this.chunks[i]) {
+      this.chunks[i] = this.makeChunk(cx, cz);
+      for (const o of this.chunks[i].solid) this.insert(o);
+    }
+    return this.chunks[i];
+  }
+
+  /** Make every chunk now (the server and the tests: 64 chunks take a few milliseconds). */
+  all() {
+    for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) this.chunk(cx, cz);
+    return this.chunks;
+  }
+
+  makeChunk(cx, cz) {
+    const rng = makeRng(Math.floor(hash2(cx, cz, this.seed) * 4294967296));
+    const x0 = -HALF + cx * LAND.chunk, z0 = -HALF + cz * LAND.chunk;
+    const solid = [];
+    const trees = [], rocks = [];
+    const free = (x, z, r, gap) => solid.every((o) => o.shape === 'box' || dHypot(o.x - x, o.z - z) > o.r + r + gap) && !this.housesNear(x, z, r + 1.5);
+    // Trees: many tries, kept where the land is wooded enough and there is room.
+    for (let k = 0; k < 220; k++) {
+      const x = x0 + rng() * LAND.chunk, z = z0 + rng() * LAND.chunk, roll = rng(), size = rng(), kind = rng();
+      const g = groundAt(x, z, this.seed);
+      if (g !== 'forest' && g !== 'meadow' && g !== 'stony') continue;
+      const want = g === 'forest' ? 0.55 : g === 'meadow' ? 0.04 : 0.02;
+      if (roll > want || roadDist(x, z) < ROAD_W + 1.5 || !free(x, z, 0.5, 1.6)) continue;
+      const t = { kind: 'tree', shape: 'circle', x, z, r: 0.45, s: 0.8 + size * 0.7, pine: kind < (x < -70 ? 0.55 : 0.25) };
+      trees.push(t);
+      solid.push(t);
+    }
+    // Rocks: a few everywhere, many on the stony ground.
+    for (let k = 0; k < 40; k++) {
+      const x = x0 + rng() * LAND.chunk, z = z0 + rng() * LAND.chunk, roll = rng(), size = rng(), turn = rng();
+      const g = groundAt(x, z, this.seed);
+      const want = g === 'stony' ? 0.55 : g === 'forest' || g === 'meadow' ? 0.07 : 0;
+      if (roll > want || roadDist(x, z) < ROAD_W + 1 || !free(x, z, 1, 1.2)) continue;
+      const rk = { kind: 'rock', shape: 'circle', x, z, r: 0.5 + size * 1.0, turn: turn * 6.283 };
+      rocks.push(rk);
+      solid.push(rk);
+    }
+    const houses = this.houses.filter((h) => chunkOf(h.x, h.z).i === cz * CHUNKS + cx);
+    solid.push(...houses);
+    // Where beasts live (the sim makes them): further from town, more of them.
+    const spawns = [];
+    const far = dHypot(x0 + 32 - TOWN.x, z0 + 32 - TOWN.z);
+    const n = far < 80 ? 0 : Math.min(18, 6 + Math.floor((far - 80) / 22));
+    for (let k = 0; k < n * 4 && spawns.length < n; k++) {
+      const x = x0 + 4 + rng() * (LAND.chunk - 8), z = z0 + 4 + rng() * (LAND.chunk - 8);
+      const g = groundAt(x, z, this.seed);
+      const type = g === 'forest' ? 'wolf' : g === 'meadow' ? 'hog' : g === 'stony' ? 'golem' : null;
+      if (!type || !free(x, z, 1.2, 1) || spawns.some((s) => dHypot(s.x - x, s.z - z) < 4)) continue;
+      spawns.push({ type, x, z });
+    }
+    return { cx, cz, x0, z0, trees, rocks, houses, solid, spawns };
+  }
+
+  housesNear(x, z, r) {
+    if (dHypot(x - TOWN.x, z - TOWN.z) > TOWN.r + 8) return false;
+    return this.houses.some((h) => dHypot(h.x - x, h.z - z) < h.r + r);
+  }
+
+  /** Put a solid thing in every hash cell its bounds touch. */
+  insert(o) {
+    const r = o.shape === 'box' ? o.hw + o.hd : o.r;
+    const c0 = this.cellIdx(o.x - r), c1 = this.cellIdx(o.x + r), r0 = this.cellIdx(o.z - r), r1 = this.cellIdx(o.z + r);
+    for (let rz = r0; rz <= r1; rz++)
+      for (let cx = c0; cx <= c1; cx++) {
+        const i = rz * CELLS + cx;
+        (this.cells[i] || (this.cells[i] = [])).push(o);
+      }
+  }
+
+  cellIdx(v) {
+    return Math.max(0, Math.min(CELLS - 1, Math.floor((v + HALF) / LAND.cell)));
+  }
+
+  /** Everything solid within `r` of (x, z) (each once), making the chunks there if need be. */
+  near(x, z, r, out = []) {
+    const k0 = chunkOf(x - r, z - r), k1 = chunkOf(x + r, z + r);
+    for (let cz = k0.cz; cz <= k1.cz; cz++) for (let cx = k0.cx; cx <= k1.cx; cx++) this.chunk(cx, cz);
+    const s = ++this.stamp;
+    const c0 = this.cellIdx(x - r), c1 = this.cellIdx(x + r), r0 = this.cellIdx(z - r), r1 = this.cellIdx(z + r);
+    for (let rz = r0; rz <= r1; rz++)
+      for (let cx = c0; cx <= c1; cx++) {
+        const cell = this.cells[rz * CELLS + cx];
+        if (!cell) continue;
+        for (const o of cell) {
+          if (o._s === s) continue;
+          o._s = s;
+          out.push(o);
+        }
+      }
+    return out;
+  }
+
+  /** Push a round body (o.x, o.z, radius rad) out of anything solid, and keep it on the land. */
+  pushOut(o, rad) {
+    const near = this.near(o.x, o.z, rad + 1, this._scratch || (this._scratch = []));
+    let pushed = false;
+    for (const ob of near) {
+      const dx = o.x - ob.x, dz = o.z - ob.z;
+      if (ob.shape === 'box') {
+        const c = dCos(ob.rot), s = dSin(ob.rot);
+        const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+        const cx = Math.max(-ob.hw, Math.min(ob.hw, lx)), cz = Math.max(-ob.hd, Math.min(ob.hd, lz));
+        let nx = lx - cx, nz = lz - cz;
+        let d = dHypot(nx, nz);
+        if (d >= rad) continue;
+        if (d < 1e-6) {
+          const px = ob.hw - Math.abs(lx), pz = ob.hd - Math.abs(lz);
+          if (px < pz) { nx = lx < 0 ? -1 : 1; nz = 0; d = -px; } else { nx = 0; nz = lz < 0 ? -1 : 1; d = -pz; }
+        } else { nx /= d; nz /= d; }
+        const push = rad - d;
+        o.x += (nx * c - nz * s) * push;
+        o.z += (nx * s + nz * c) * push;
+        pushed = true;
+      } else {
+        const d = dHypot(dx, dz), min = ob.r + rad;
+        if (d >= min) continue;
+        if (d < 1e-6) { o.x += min; pushed = true; continue; }
+        o.x = ob.x + (dx / d) * min;
+        o.z = ob.z + (dz / d) * min;
+        pushed = true;
+      }
+    }
+    near.length = 0;
+    const edge = HALF - 2;
+    if (o.x < -edge) o.x = -edge; else if (o.x > edge) o.x = edge;
+    if (o.z < -edge) o.z = -edge; else if (o.z > edge) o.z = edge;
+    return pushed;
+  }
+}

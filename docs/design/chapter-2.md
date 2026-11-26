@@ -117,10 +117,16 @@ management and area splitting; a data-driven cutscene player; background loading
 ## Build order
 
 1. Engine: 512 m test land, streaming, sleeping enemies, NPC crowds, sync. Gate: 60 fps, under 20 KB/s.
+   Status (0.99.11): built as a test page, `lacuna.html` (src/lacuna). Sync measured at ~2–3 KB/s per player (nine players); fps to be checked on Ko Ko's laptop. Still to do: the server running the land (WebSocket rooms, area splitting), client prediction.
 2. Opening slice: cutscene player, forest, first town, quests 1–4, 2 classes, mana, Link. Gate: testers find it fun.
 3. All of Act I: 8 classes, quests 5–6, factions, more NPCs, Lumen and buffs tuned.
 4. Live updates, ongoing: Act II and beyond, new regions, new combat systems, events.
 Tripo: ~3,090 credits (topped up 26 Nov); kept small: ~15–25 models for Act I (beasts, bosses, key characters); hero looks and townsfolk from a modular character creator (free parts); cost shown before each batch. Environment: CC0 packs.
+
+## Entrance
+
+The crack in the air on the Verge (off the Wishkeep): it hums now; it widens once all four Granted have fallen;
+it opens into Lacuna when Chapter 2 is ready. (Its cause, likely the Granted's fall, is for later content.)
 
 ## Open questions
 

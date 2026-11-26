@@ -168,6 +168,9 @@ function moveToward(w, x, z, speed, dt) {
  */
 export function heroDay(life, t, world, dt) {
   let L = life.get(t.id);
+  // (0.99.1) drawn too far from where the hero really is (a stale walk from an earlier visit, or a way back
+  // blocked by a house): start again where they stand, so the model, its name plate and the heroes list agree
+  if (L && Math.hypot(L.x - t.x, L.z - t.z) > 6) L = null;
   if (!L) life.set(t.id, (L = { x: t.x, z: t.z, facing: t.facing, wait: rnd(1, 5), tx: t.x, tz: t.z, practice: 0 }));
   const post = t.post || { x: t.x, z: t.z };
   let moving = false, swing = false;

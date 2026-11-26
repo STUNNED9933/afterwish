@@ -3986,7 +3986,7 @@ export class Renderer {
     const list = world.mode === 'explore' && world.allies ? world.allies().slice() : [];
     // (0.81) the Wishkeep's heroes, drawn like other players' heroes (with the keep's crimson on their blades)
     const day = !(world.tide && world.tide.state === 'on');
-    if (!day && this.heroLife && this.heroLife.size) this.heroLife.clear(); // (the night: to their posts, as the game has them)
+    if ((!day || !(world.map && world.map.id === 'wishkeep')) && this.heroLife && this.heroLife.size) this.heroLife.clear(); // (the night: to their posts, as the game has them; 0.99.1: and nothing kept from a visit before)
     for (const t of world.troops || []) {
       const it = { pid: 'troop:' + t.id, cls: t.cls, x: t.x, z: t.z, px: t.px, pz: t.pz, facing: t.facing, moving: !!t.moving, dead: !!t.dead, as: TROOP_AS[t.cls] || 1, troop: t.id, rar: t.rar || 0, shield: t.shield > 0, gender: t.gender || 'm' };
       if (day && !t.dead && world.map && world.map.id === 'wishkeep') {

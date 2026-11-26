@@ -2150,10 +2150,11 @@ function start(hot = {}) {
       el.style.display = x == null ? 'none' : '';
       if (x != null) el.style.transform = `translateX(${Math.round(x)}px)`;
     }
-    const p = world.player;
+    const p0 = world.player, hg = renderer.hero && renderer.hero.group, p = hg ? { x: hg.position.x, z: hg.position.z } : p0; // (0.99.1) from you as drawn
     const heroes = [];
-    for (const tr of world.troops || []) heroes.push({ id: 'troop:' + tr.id, name: tr.name, x: tr.x, z: tr.z, hp: tr.hp, max: tr.maxHp, dead: !!tr.dead, color: tr.rar ? RARITIES[tr.rar].color : '#e8f4ff' });
-    if (world.allies) for (const a of world.allies()) heroes.push({ id: 'ally:' + a.pid, name: a.name, x: a.x, z: a.z, hp: a.hp, max: a.maxHp, dead: a.dead, color: '#7fd0ff' });
+    const drawn = (pid, o) => { const v = renderer.allyViews && renderer.allyViews.get(pid), g = v && v.model && v.model.group; return g ? { x: g.position.x, z: g.position.z } : o; }; // (0.99.1) where they are seen, as their name plates are
+    for (const tr of world.troops || []) heroes.push({ id: 'troop:' + tr.id, name: tr.name, ...drawn('troop:' + tr.id, { x: tr.x, z: tr.z }), hp: tr.hp, max: tr.maxHp, dead: !!tr.dead, color: tr.rar ? RARITIES[tr.rar].color : '#e8f4ff' });
+    if (world.allies) for (const a of world.allies()) heroes.push({ id: 'ally:' + a.pid, name: a.name, ...drawn(a.pid, { x: a.x, z: a.z }), hp: a.hp, max: a.maxHp, dead: a.dead, color: '#7fd0ff' });
     const pins = [];
     for (const h of heroes) {
       const f = Math.max(0, Math.min(1, h.hp / Math.max(1, h.max)));

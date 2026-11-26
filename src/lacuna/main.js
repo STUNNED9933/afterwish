@@ -297,7 +297,8 @@ $('chat-in').addEventListener('keydown', (e) => {
     $('chat-in').value = '';
     $('chat-in').classList.add('hidden');
     $('chat-in').blur();
-  } else if (e.key === 'Escape') { $('chat-in').classList.add('hidden'); $('chat-in').blur(); }
+    relock(); // back to looking round (Enter is a key press: allowed)
+  } else if (e.key === 'Escape') { $('chat-in').classList.add('hidden'); $('chat-in').blur(); drawLookHint(); }
   e.stopPropagation();
 });
 
@@ -344,10 +345,37 @@ function drawHud() {
 // ---- input
 const keys = new Set();
 let yaw = -Math.PI / 2, pitch = 0.32, dist = 5.2, overlay = true, firing = false, scoped = false;
+let walking = false; // Ctrl (or C) toggles walking: held, Ctrl sets off the browser's own shortcuts
+let altFree = false; // Alt (a toggle): the mouse is yours (hover for descriptions); Alt again and it looks around
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+const locked = () => document.pointerLockElement === canvas;
+const chatOpen = () => !$('chat-in').classList.contains('hidden');
+/** Take the mouse back for looking (needs a key or a click: browsers only allow it then). */
+function relock() {
+  if (locked() || altFree || chatOpen() || !canvas.requestPointerLock) return;
+  try {
+    const r = canvas.requestPointerLock();
+    if (r && r.catch) r.catch(() => {});
+  } catch (err) {
+    /* refused (too soon after Esc): the next key or click tries again */
+  }
+}
 addEventListener('keydown', (e) => {
   if (typing(e)) return;
+  if (e.key === 'Alt') {
+    e.preventDefault(); // (Alt alone would open the browser's menu)
+    if (e.repeat) return;
+    altFree = !altFree;
+    if (altFree) { firing = false; scoped = false; if (locked()) document.exitPointerLock(); note('The mouse is yours: hover over things for what they are. Alt again to look around.'); }
+    else { hideTip(); relock(); }
+    drawLookHint();
+    return;
+  }
+  // back from another tab or window: any game key takes the mouse again (Esc and the F keys do not)
+  if (!locked() && e.code !== 'Escape' && !/^F\d+$/.test(e.code)) relock();
+  if (e.repeat && (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC')) return;
   keys.add(e.code);
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') { walking = !walking; note(walking ? 'Walking (Ctrl or C to run again).' : 'Running.'); }
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
   if (e.code === 'KeyL') {
@@ -357,7 +385,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyR') act(e.code.slice(3));
   if (e.code === 'Enter' && net && net.ready) {
     keys.clear();
-    if (document.pointerLockElement) document.exitPointerLock();
+    if (locked()) document.exitPointerLock();
     $('chat-in').classList.remove('hidden');
     $('chat-in').focus();
     e.preventDefault();
@@ -366,21 +394,77 @@ addEventListener('keydown', (e) => {
   if (n >= 0) wear(['warrior', 'archer', 'mage', 'rogue'][n]);
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
-addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; });
+addEventListener('keyup', (e) => {
+  keys.delete(e.code);
+  if (e.key === 'Alt') e.preventDefault();
+});
+addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; hideTip(); });
+function drawLookHint() {
+  $('look-hint').textContent = altFree ? 'Mouse free: hover for descriptions · Alt to look around again' : 'Click, or press any key, to look around · Alt frees the mouse';
+  $('look-hint').classList.toggle('hidden', locked() || chatOpen());
+}
+document.addEventListener('pointerlockchange', () => {
+  if (!locked()) { firing = false; scoped = false; }
+  drawLookHint();
+});
 canvas.addEventListener('mousedown', (e) => {
-  if (document.pointerLockElement !== canvas) { canvas.requestPointerLock && canvas.requestPointerLock(); return; }
+  if (!locked()) {
+    if (!altFree) relock(); // a click takes the mouse back (it does not also shoot: you were not aiming); with Alt on, clicks are yours
+    return;
+  }
   if (e.button === 0) firing = true;
   if (e.button === 2 && me.cls === 'archer') scoped = true;
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) firing = false; if (e.button === 2) scoped = false; });
 addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement !== canvas) return;
+  if (!locked()) { if (altFree) hoverAt(e.clientX, e.clientY); return; }
   const k = scoped ? 0.35 : 1;
   yaw += e.movementX * 0.0032 * k;
   pitch = Math.max(-0.6, Math.min(1.2, pitch + e.movementY * 0.0028 * k));
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---- hover descriptions (hold Alt): skills, and beasts in the world
+function showTip(html, x, y) {
+  const t = $('tip');
+  t.innerHTML = html;
+  t.classList.remove('hidden');
+  t.style.left = `${Math.min(innerWidth - t.offsetWidth - 8, x + 14)}px`;
+  t.style.top = `${Math.max(8, y - t.offsetHeight - 10)}px`;
+}
+function hideTip() {
+  $('tip').classList.add('hidden');
+}
+const tipV = new THREE.Vector3();
+function hoverAt(x, y) {
+  if (document.elementFromPoint(x, y) !== canvas) return; // over the HUD: its own descriptions
+  const list = net ? seenBeasts : nearBeasts;
+  let best = null, bd = 34 * 34;
+  for (const b of list) {
+    if (b.dead || (b.x - me.x) ** 2 + (b.z - me.z) ** 2 > 60 * 60) continue;
+    tipV.set(b.x, (b.tall || 1.8) * 0.55, b.z).project(view.camera);
+    if (tipV.z > 1) continue;
+    const sx = ((tipV.x + 1) / 2) * innerWidth, sy = ((1 - tipV.y) / 2) * innerHeight;
+    const d = (sx - x) ** 2 + (sy - y) ** 2;
+    if (d < bd) { bd = d; best = b; }
+  }
+  if (!best) return hideTip();
+  const type = best.type || (world.beasts[best.id - 1] && world.beasts[best.id - 1].type);
+  const def = BEASTS[type];
+  if (!def) return hideTip();
+  const hp = Math.round((best.hp ?? 1) * def.hp);
+  showTip(`<b>${def.name}</b><br>${hp.toLocaleString()} / ${def.hp.toLocaleString()} health<br><span>Hits for ${def.dmg}, every ${def.every} s · fights within ${def.aggro} m of you</span>`, x, y);
+}
+$('skills').addEventListener('mouseover', (e) => {
+  const sk = e.target.closest && e.target.closest('.sk');
+  if (!sk) return;
+  const k = sk.id.slice(3), kit = KITS[me.cls];
+  const s = k === 'basic' ? kit.basic : kit[k];
+  const r = sk.getBoundingClientRect();
+  const what = k === 'basic' ? (me.cls === 'warrior' ? 'Cut in front of you (hold left click).' : 'Shoot where the crosshair is (hold left click).') : s.text;
+  showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? `every ${s.every} s · no mana` : `${s.mana} mana · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left, r.top);
+});
+$('skills').addEventListener('mouseout', hideTip);
 addEventListener('wheel', (e) => { dist = Math.max(2.4, Math.min(11, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
 
 /** Where the crosshair points, on the ground (looking up: straight ahead, 45 m off). */
@@ -411,7 +495,7 @@ function wish() {
   let mx = fx * fwd + rx * side, mz = fz * fwd + rz * side;
   const len = Math.hypot(mx, mz);
   if (len > 1) { mx /= len; mz /= len; }
-  const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'sprint' : keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC') ? 'walk' : 'run';
+  const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'sprint' : walking ? 'walk' : 'run';
   return { mx, mz, pace: scoped ? 'walk' : pace };
 }
 
@@ -582,5 +666,5 @@ function frame(now) {
   }
 }
 requestAnimationFrame(frame);
-note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class, L to try other Eternal levels.');
+note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Alt frees the mouse (hover for descriptions).');
 window.land = { world, view, crowd, me, fx, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

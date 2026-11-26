@@ -160,6 +160,12 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: kinder controls (0.99.14)
+
+- **Ctrl (or C) toggles walking** instead of being held (holding Ctrl set off the browser's own shortcuts).
+- **Coming back from another tab or window:** any game key (or a click) takes the mouse back for looking round; the click no longer goes to waste.
+- **Alt frees the mouse** (a toggle): hover over a skill for what it does, its mana and cooldown, or over a beast for its name, health and how hard it hits. Alt again to look around. After chatting, the mouse comes back by itself.
+
 ### Lacuna, phase 2 begins: combat (0.99.13)
 
 On [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html), alone or together:

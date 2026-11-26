@@ -23,6 +23,7 @@ import { opening, walkToTown, inTown, loadStory, saveStory, QUESTS, ROAD_IN } fr
 const $ = (id) => document.getElementById(id);
 const canvas = $('land');
 const params = new URLSearchParams(location.search);
+const TIMESCALE = Math.max(0.25, Math.min(4, Number(params.get('timescale')) || 1)); // (tests on slow machines: ?timescale=3)
 const world = new LandWorld();
 
 // ---- the Dimension Link: your Eternal gear in this browser's saves (every class), or a level to try (L)
@@ -542,7 +543,7 @@ drawLink();
 
 // ---- the story (Act I): the opening, then the Marigold Company walking you to Sunmere
 const cutscene = new Cutscene({
-  view, fx, $, me, hero,
+  view, fx, $, me, hero, land: world.land,
   beastMesh: (type) => { const m = new THREE.Mesh(beastGeometry(type), view.mats.beast); m.castShadow = true; return m; },
   snapHero: () => { prev.x = me.x; prev.z = me.z; },
   hurt: () => { hurtT = 0.5; },
@@ -598,7 +599,7 @@ function startWalk() {
     bark([['rowan', 'Welcome to Sunmere. Stay close tonight; the Guild opens at first light.']]);
     showQuest();
     questRun = inTown(company);
-  }, { x: me.x, z: me.z });
+  }, { x: me.x, z: me.z }, world.land);
 }
 async function playOpening() {
   if (cutscene.active) return;
@@ -672,7 +673,7 @@ const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), proj = new 
 const seenBeasts = [], nearBeasts = [];
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.1, (now - last) / 1000);
+  const dt = Math.min(0.1, (now - last) / 1000) * TIMESCALE;
   last = now;
   time += dt;
   perf.worstNow = Math.max(perf.worstNow, dt * 1000);
@@ -717,6 +718,7 @@ function frame(now) {
   hero.group.rotation.y = Math.PI / 2 - me.facing;
   hero.group.visible = !scoped;
   heroY = prevY + (me.y - prevY) * alpha;
+  if (cutscene.active) cutscene.beforePose();
   pose(hero, dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving, dead: me.dead, y: heroY });
   // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);

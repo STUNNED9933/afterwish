@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the opening, reworked (0.99.18)
+
+- **People face each other now:** whoever speaks turns to whoever they are speaking to, the others turn their heads to the speaker, and the hero turns to them too (turning smoothly, not snapping). During the wolves the hero keeps facing them.
+- **A conversation camera:** each line is framed over the listener's shoulder onto the speaker, so you see faces, not backs. Rowan walks over to Sorrel before answering him; Ilse's healing is a two-shot from the side; a faint sliver of the tear stays for Sorrel to study.
+- **Nobody walks through anybody:** the Company, the hero and the wolves keep apart (and step round trees), in the scene and on the walk to town. (A walk that could never arrive now ends where it is blocked: the scene used to hang there.)
+- **A natural walk and idle for the Company** (from the Universal Animation Library): Tripo's held the arms out with the palms forward. Brisk walk and jog too.
+
 ### Lacuna: the opening, the Marigold Company, and Quest 1 (0.99.17)
 
 - **The opening cutscene** (first visit to [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html); **Play the opening again** in the corner panel): the crack on the Verge opens, a husk runs into it, you follow; you wake in a glade in the Wakewood (tap Space to get up), powerless; wolves; roll away (E); the **Marigold Company** cut them down. Esc (or the button) skips: everything ends where it would have.

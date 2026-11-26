@@ -7,6 +7,7 @@
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
 import { GLADE, TOWN, roadDist } from './land.js';
 import { buildCrack } from '../render/gates.js';
+import { separate } from './actor.js';
 
 export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
@@ -40,9 +41,9 @@ export async function opening(a) {
     tearT += 0.033;
     tear.anim(0.033, tearT);
     if (closing > 0) {
-      closing = Math.min(1, closing + 0.05);
-      tear.group.scale.set(1.25 * (1 - closing), 1.25 * (1 + closing * 0.3), 1.25 * (1 - closing));
-      if (closing >= 1) { scene.remove(tear.group); clearInterval(tearTick); }
+      // it closes to a thin, faint sliver: what is left of a door
+      closing = Math.min(0.93, closing + 0.05);
+      tear.group.scale.set(1.25 * (1 - closing), 1.25 * (1 - closing * 0.35), 1.25 * (1 - closing));
     }
   }, 33);
   a.ctx.onEnd(() => { clearInterval(tearTick); scene.remove(tear.group); });
@@ -75,9 +76,11 @@ export async function opening(a) {
     a.actor('wolf1', GLADE.x - 16, GLADE.z - 3), a.actor('wolf2', GLADE.x - 13, GLADE.z + 10), a.actor('wolf3', GLADE.x - 17, GLADE.z + 4),
   ];
   wolves.forEach((w) => w.face(H.x, H.z));
+  a.hero(undefined, undefined, Math.atan2(wolves[2].z - H.z, wolves[2].x - H.x)); // toward the sound
   await a.say('', 'Something growls in the trees.');
   a.camera([H.x + 4, 2.4, H.z + 3], [GLADE.x - 9, 0.8, GLADE.z + 2], 1.6);
   await Promise.all([a.walk('wolf1', H.x - 6, H.z - 3), a.walk('wolf2', H.x - 5, H.z + 4), a.walk('wolf3', H.x - 7, H.z + 1)]);
+  a.watch('wolf3'); // eyes on the wolves from here until help comes
   wolves.forEach((w) => w.face(H.x, H.z));
   await a.say('', 'You reach for a sword that isn\'t there. You reach for the Link, for the wish, for anything at all.');
   await a.say('', 'Nothing answers. Whatever you were in Votum, you are not it here.');
@@ -85,11 +88,13 @@ export async function opening(a) {
   a.walk('wolf1', H.x - 1.2, H.z - 0.8, { run: true });
   await a.wait(0.25);
   await a.prompt('KeyE', 'Roll away!', { label: 'E' });
+  a.busy(true);
   a.hero(H.x + 3, H.z + 1.5, Math.PI, 'hop');
   a.shake(0.1, 0.2);
   await a.wait(0.6);
   wolves[0].face(H.x + 3, H.z + 1.5);
-  // The second: too slow
+  // The second: too slow (seen from further off: the hero and the wolves in one shot)
+  a.camera([H.x + 10, 2.6, H.z + 6.5], [H.x - 1.5, 0.8, H.z + 0.5], 0.5);
   a.walk('wolf2', H.x + 2, H.z + 2.6, { run: true });
   await a.wait(0.45);
   a.shake(0.35, 0.45);
@@ -98,8 +103,10 @@ export async function opening(a) {
   await a.say('', 'Too slow.');
   await a.walk('wolf3', H.x + 1.4, H.z - 0.2, { run: true });
   // The Marigold Company
-  const juniAt = { x: ROAD_IN.x - 3, z: ROAD_IN.z + 8 };
+  const juniAt = { x: H.x + 7, z: H.z - 9 }; // at the edge of the glade, bow up
   a.actor('juni', juniAt.x, juniAt.z).face(H.x, H.z);
+  a.watch(null);
+  a.camera([H.x + 1.5, 2.2, H.z + 7], [juniAt.x - 1, 1.3, juniAt.z + 1], 0.4); // the hero down in front, Juni at the trees
   fx.shot({ x: juniAt.x, z: juniAt.z, dx: (wolves[0].x - juniAt.x) / Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), dz: (wolves[0].z - juniAt.z) / Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), speed: 70, range: Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), kind: 'arrow' });
   await a.wait(0.35);
   fx.puff(wolves[0].x, wolves[0].z);
@@ -109,7 +116,7 @@ export async function opening(a) {
   a.actor('sorrel', ROAD_IN.x + 2, ROAD_IN.z + 1);
   a.actor('ilse', ROAD_IN.x + 1, ROAD_IN.z);
   a.camera([H.x + 7, 2.6, H.z - 2], [H.x + 1, 1, H.z + 1.5], 1.2);
-  await a.walk('rowan', wolves[1].x + 1.6, wolves[1].z - 0.6, { run: true });
+  await a.walk('rowan', wolves[1].x - 1.4, wolves[1].z + 1.2, { run: true }); // to the wolf's far side from the hero
   a.actor('rowan').face(wolves[1].x, wolves[1].z);
   await a.anim('rowan', 'slash', { speed: 1.2 });
   fx.puff(wolves[1].x, wolves[1].z);
@@ -126,38 +133,52 @@ export async function opening(a) {
   fx.ring(w3.x, w3.z, 2.2, 0xff8a3a, 0.5);
   await a.walk('wolf3', GLADE.x - 24, GLADE.z + 6, { run: true, speed: 8 });
   a.remove('wolf3');
-  // Safe
-  const r = a.actor('rowan');
-  r.face(H.x + 3, H.z + 1.5);
-  a.hero(undefined, undefined, Math.atan2(r.z - (H.z + 1.5), r.x - (H.x + 3)));
-  await a.camera([H.x + 6.5, 2, H.z + 3.5], [H.x + 3.2, 1.3, H.z + 1], 1.2);
+  // Safe. They gather round: Rowan in front, Ilse kneeling at your side, Juni a little off, Sorrel at the tear.
+  const HR = { x: H.x + 3, z: H.z + 1.5 };
+  a.busy(false);
+  a.hero(undefined, undefined, Math.atan2(ROAD_IN.z - HR.z, ROAD_IN.x - HR.x));
+  await a.walk('rowan', HR.x + 1.7, HR.z - 0.9);
+  a.talkCam(true);
   await a.say('rowan', 'Easy. Easy, friend. You\'re all right now.');
-  await a.walk('ilse', H.x + 3.9, H.z + 2.3, { run: true });
-  a.actor('ilse').face(H.x + 3, H.z + 1.5);
+  await a.walk('ilse', HR.x - 0.2, HR.z - 1.05, { run: true });
+  const ilse = a.actor('ilse');
+  ilse.stay = true;
+  ilse.face(HR.x, HR.z);
   a.loop('ilse', 'kneel');
-  await a.say('ilse', 'Hold still. You\'re scraped up, but nothing\'s broken.');
-  fx.ring(H.x + 3, H.z + 1.5, 1.6, 0x8fff9a, 1.2);
+  // a two-shot from the side for the healing: both of them in view
+  await a.camera([HR.x - 2.6, 1.25, HR.z + 1.4], [HR.x - 0.1, 0.75, HR.z - 0.5], 0.6);
+  await a.say('ilse', 'Hold still. You\'re scraped up, but nothing\'s broken.', { cam: false });
+  fx.ring(HR.x, HR.z, 1.4, 0x8fff9a, 1.2);
   a.ctx.heal();
-  await a.say('ilse', '...There. Better?');
+  await a.say('ilse', '...There. Better?', { cam: false });
   a.loop('ilse', 'idle');
-  await a.walk('juni', H.x + 5.5, H.z - 0.5, { run: true });
-  a.actor('juni').face(H.x + 3, H.z + 1.5);
+  ilse.stay = false;
+  await a.walk('juni', HR.x + 2.6, HR.z + 1.4, { run: true });
   await a.say('juni', 'Did you see that? One arrow! From all the way up on the bank!');
-  await a.say('rowan', 'We saw, Juni.');
-  await a.walk('sorrel', TEAR.x + 0.8, TEAR.z + 0.6);
-  a.actor('sorrel').face(TEAR.x, TEAR.z);
-  await a.camera([TEAR.x + 4, 2.2, TEAR.z + 3], [TEAR.x, 1.8, TEAR.z], 1.2);
-  await a.say('sorrel', 'Rowan. Come and look at this. The air here has been torn, and not long ago.');
-  await a.say('rowan', 'Can it wait until we\'re out of the wolves\' woods?');
-  await a.say('sorrel', 'It can wait. I\'m not sure it should.');
-  await a.camera([H.x + 7, 2.1, H.z + 3.8], [H.x + 3.5, 1.3, H.z + 0.8], 1.2);
+  await a.say('rowan', 'We saw, Juni.', { to: 'juni' });
+  // Sorrel, at the tear: he calls Rowan over without taking his eyes off it
+  await a.walk('sorrel', TEAR.x + 1.1, TEAR.z + 0.9);
+  const sorrel = a.actor('sorrel');
+  sorrel.stay = true;
+  sorrel.face(TEAR.x, TEAR.z);
+  a.quiet();
+  // from beyond the sliver, onto his face
+  await a.camera([TEAR.x - 2.0, 1.75, TEAR.z - 1.5], [TEAR.x + 1.1, 1.55, TEAR.z + 0.9], 1.1);
+  await a.say('sorrel', 'Rowan. Come and look at this. The air here has been torn, and not long ago.', { to: 'rowan', cam: false });
+  await a.walk('rowan', TEAR.x + 2.5, TEAR.z + 2.3);
+  await a.say('rowan', 'Can it wait until we\'re out of the wolves\' woods?', { to: 'sorrel' });
+  sorrel.stay = false;
+  await a.say('sorrel', 'It can wait. I\'m not sure it should.', { to: 'rowan' });
+  a.quiet();
+  await Promise.all([a.walk('sorrel', HR.x + 1.4, HR.z - 2.4), a.walk('rowan', HR.x + 1.7, HR.z - 0.9)]);
   await a.say('juni', 'So where did you come from? You weren\'t here when we came down the road. Then you were.');
   await a.say('', 'You open your mouth to explain, and realise you don\'t know how.');
-  a.actor('rowan').face(H.x + 3, H.z + 1.5);
   await a.say('rowan', 'Leave it. Whoever you are, you\'re coming with us.');
   a.anim('rowan', 'wave');
   await a.say('rowan', 'We\'re the Marigold Company. Adventurers, out of Sunmere. It\'s not far, and there\'s a hot meal at the end of it.');
   await a.say('ilse', 'And a bath. Please, a bath.');
+  a.talkCam(false);
+  a.quiet();
   a.ctx.onEnd(null);
   clearInterval(tearTick);
   scene.remove(tear.group);
@@ -169,7 +190,7 @@ export async function opening(a) {
  * The Company walking you to Sunmere (Quest 1), after the opening: they follow the road east, a little ahead of
  * you, stopping if you fall behind, talking on the way. Returns { update(dt, me), done }.
  */
-export function walkToTown(actors, bark, onDone, from = ROAD_IN) {
+export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
   // from where the hero stands, up to the road, along it into town, then to the plaza's west side
   const path = [{ x: from.x, z: from.z }, { x: ROAD_IN.x, z: ROAD_IN.z }];
   for (let x = ROAD_IN.x + 10; x < -TOWN.r + 2; x += 10) path.push({ x, z: roadZ(x) });
@@ -238,8 +259,11 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN) {
           a.loop('idle');
           a.face(me.x, me.z);
         }
+        // near the hero, they look at them now and then (stopped, or waiting)
+        a.lookTarget = Math.hypot(me.x - a.x, me.z - a.z) < 7 ? { x: me.x, z: me.z } : null;
         a.update(dt);
       }
+      separate(order.map((w) => actors[w]).filter(Boolean), me, 1.0, land);
     },
   };
   return st;

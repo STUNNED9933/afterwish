@@ -3,7 +3,7 @@
 // the land itself, with letterbox bars. Skipping fast-forwards: every step finishes at once (actors arrive where
 // they were going, lines and prompts pass), so the scene ends in the same state either way.
 import * as THREE from 'three';
-import { Actor, CAST } from './actor.js';
+import { Actor, CAST, separate, makeLook, lookAt, lookRest } from './actor.js';
 
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
@@ -22,6 +22,36 @@ export class Cutscene {
     this.shakeT = 0;
     this.shakeAmt = 0;
     this.blur = { now: 0, to: 0, speed: 0 };
+    this.talk = null; // { who, to }: who is speaking, to whom (they face them; the rest look at the speaker)
+    this.talkCam = false; // frame each speaker over their listener's shoulder
+    this.heroBusy = false; // the hero is in the middle of something (rolling, falling): do not turn them
+    this.heroWatch = null; // someone the hero keeps facing while no one speaks (the wolves)
+    this.heroLook = null;
+  }
+
+  /** Where someone in the scene stands: an actor's id, 'hero', or a point { x, z }. */
+  where(t) {
+    if (!t || t === 'hero') return { x: this.ctx.me.x, z: this.ctx.me.z };
+    if (typeof t === 'string') { const a = this.actors.get(t); return a ? { x: a.x, z: a.z } : null; }
+    return t;
+  }
+
+  /** Before the hero's clip poses them each frame: put back the turn of their head from the last frame. */
+  beforePose() {
+    lookRest(this.heroLook);
+  }
+
+  /** A camera over the listener's shoulder, onto the speaker (so their face is seen). */
+  frameTalk(who, to) {
+    const S = this.where(who), L = this.where(to || 'hero');
+    if (!S || !L) return null;
+    let dx = S.x - L.x, dz = S.z - L.z;
+    const d = Math.hypot(dx, dz) || 1;
+    dx /= d; dz /= d;
+    const back = Math.max(1.6, Math.min(3.2, d * 0.55)), side = 0.85;
+    const at = [L.x - dx * back - dz * side, 1.78, L.z - dz * back + dx * side];
+    const look = [S.x - dx * 0.2, 1.42, S.z - dz * 0.2];
+    return { at, look };
   }
 
   get $() {
@@ -40,7 +70,10 @@ export class Cutscene {
       await script(this.api());
     } finally {
       this.active = false;
-      this.line = this.prompt = this.cam = null;
+      this.line = this.prompt = this.cam = this.talk = null;
+      this.talkCam = this.heroBusy = false;
+      this.heroWatch = null;
+      lookRest(this.heroLook);
       this.blur.to = this.blur.now = 0;
       this.ctx.view.renderer.domElement.style.filter = '';
       for (const id of ['cs-box', 'cs-card', 'cs-prompt']) this.$(id).classList.add('hidden');
@@ -128,8 +161,13 @@ export class Cutscene {
         el.classList.add('hidden');
       },
       /** A line of dialogue (who: a name from CAST, '' for the hero's own thoughts). Waits for Space or a click. */
-      say(who, text, { auto = 0 } = {}) {
+      say(who, text, { auto = 0, to, cam } = {}) {
         if (cs.skipping) return Promise.resolve();
+        if (who) cs.talk = { who, to: to || 'hero' };
+        if (who && (cam !== undefined ? cam : cs.talkCam)) {
+          const f = cs.frameTalk(who, to || 'hero');
+          if (f) cs.api().camera(f.at, f.look, cs.camNow.at.distanceTo(new THREE.Vector3(...f.at)) > 0.3 ? 0.55 : 0);
+        }
         const c = CAST[who];
         const name = c ? c.name : who || '';
         cs.$('cs-box').classList.remove('hidden');
@@ -178,6 +216,21 @@ export class Cutscene {
       bars(on) {
         cs.$('cs').classList.toggle('bars', on);
       },
+      /** Frame each speaker over their listener's shoulder (a conversation), or not. */
+      talkCam(on) {
+        cs.talkCam = on;
+      },
+      /** No one is speaking (people stop turning to the last speaker). */
+      quiet() {
+        cs.talk = null;
+      },
+      busy(on) {
+        cs.heroBusy = on;
+      },
+      /** The hero keeps turning toward someone (an actor's id), while nobody is speaking to them. */
+      watch(who) {
+        cs.heroWatch = who || null;
+      },
       /** Someone in the scene (made once; the same one if asked again). */
       actor(who, x, z, facing = 0) {
         let a = cs.actors.get(who);
@@ -223,7 +276,33 @@ export class Cutscene {
       w.left -= dt;
       if (w.left <= 0) { this.waits.splice(i, 1); w.resolve(); }
     }
+    // who looks at whom: the speaker at their listener (and turns to them), the rest at the speaker
+    const me = this.ctx.me;
+    const S = this.talk && this.talk.who !== 'hero' ? this.actors.get(this.talk.who) : null;
+    const T = this.talk ? this.where(this.talk.to) : null;
+    for (const a of this.actors.values()) {
+      if (a.spec.beast) continue;
+      if (a === S && T) {
+        a.lookTarget = T;
+        if (!a.path && !a.once && !a.stay) {
+          const want = Math.atan2(T.z - a.z, T.x - a.x), d = Math.atan2(Math.sin(want - a.facing), Math.cos(want - a.facing));
+          if (Math.abs(d) > 0.3) a.want = want;
+        }
+      } else a.lookTarget = S ? { x: S.x, z: S.z } : a.stay ? null : { x: me.x, z: me.z };
+    }
+    // the hero turns to whoever is speaking to them (not mid-roll or mid-fall)
+    const W = !S && this.heroWatch ? this.actors.get(this.heroWatch) : null;
+    const F = S || W;
+    if (F && !this.heroBusy) {
+      const want = Math.atan2(F.z - me.z, F.x - me.x), d = Math.atan2(Math.sin(want - me.facing), Math.cos(want - me.facing));
+      if (Math.abs(d) > 0.25) me.facing += Math.sign(d) * Math.min(Math.abs(d), 4 * dt);
+    }
     for (const a of this.actors.values()) a.update(dt);
+    separate([...this.actors.values()], { x: me.x, z: me.z }, 0.95, this.ctx.land); // people and wolves alike: nobody inside anybody
+    // the hero's own head, toward the speaker
+    const rig = this.ctx.hero.rig;
+    if (rig && (!this.heroLook || this.heroLook.of !== rig)) { this.heroLook = makeLook(rig.group); if (this.heroLook) this.heroLook.of = rig; }
+    if (this.heroLook) { this.ctx.hero.group.updateMatrixWorld(true); lookAt(this.heroLook, me.x, me.z, me.facing, S ? { x: S.x, z: S.z } : null, dt); }
     if (this.cam) {
       const c = this.cam;
       c.t += dt;

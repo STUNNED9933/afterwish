@@ -21,9 +21,11 @@ for (const k in CAST) {
 
 /** Which clip plays each named thing, best first (Tripo's presets, the heroes' clips, the library's). */
 const WORDS = {
-  idle: ['standing_relax', 'idle'],
-  walk: ['walk', 'gait_walk'],
-  run: ['run', 'jog', 'sprint'],
+  // (the library's idle, walk and jog first: Tripo's held the arms out, palms forward)
+  idle: ['ual_idle_loop', 'standing_relax', 'idle'],
+  walk: ['ual_walk_formal_loop', 'ual_walk_loop', 'walk', 'gait_walk'],
+  stride: ['ual_walk_loop', 'ual_walk_formal_loop', 'walk'],
+  run: ['ual_jog_fwd_loop', 'run', 'jog', 'sprint'],
   talk: ['ual_idle_talking_loop', 'standing_relax', 'idle'],
   kneel: ['ual_fixing_kneeling', 'ual_crouch_idle_loop'],
   crouch: ['ual_crouch_idle_loop', 'ual_fixing_kneeling'],
@@ -31,12 +33,12 @@ const WORDS = {
   wave: ['greet_02', 'greet_01', 'greet'],
   yes: ['ual_yes', 'agree'],
   no: ['ual_idle_no_loop'],
-  look: ['look_around', 'idle'],
+  look: ['look_around', 'ual_idle_loop', 'idle'],
   slash: ['ual_slasha', 'ual_sword_regular_a', 'ual_cleave', 'slash'],
   cast: ['cast_a_spell', 'ual_spell_simple_shoot', 'mag_bolt', 'mag_cast', 'cast'],
   shoot: ['arc_shot', 'shoot', 'fire'],
   jump: ['jump'],
-  wait: ['wait', 'standing_relax'],
+  wait: ['wait', 'ual_idle_loop', 'standing_relax'],
 };
 function findClip(clips, what) {
   const names = Object.keys(clips);
@@ -47,6 +49,63 @@ function findClip(clips, what) {
     if (hit) return clips[hit];
   }
   return null;
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _wq = new THREE.Quaternion();
+/** The neck and head of a rig, to turn toward someone (after the clip has posed them, each frame). */
+export function makeLook(root) {
+  const head = root && root.getObjectByName('Head');
+  return head ? { head, neck: root.getObjectByName('NeckTwist01'), yaw: 0, rest: [] } : null;
+}
+/** Put back what the last look turned (a clip that does not move these bones would keep it). */
+export function lookRest(look) {
+  if (!look) return;
+  for (const [b, q] of look.rest) b.quaternion.copy(q);
+  look.rest.length = 0;
+}
+/** Turn the head (60%) and neck (40%) toward (tx, tz), from a body at (x, z) facing `facing`; not past ~65 degrees. */
+export function lookAt(look, x, z, facing, target, dt) {
+  if (!look) return;
+  let want = 0;
+  if (target) {
+    const d = wrap(Math.atan2(target.z - z, target.x - x) - facing);
+    want = Math.abs(d) > 2.3 ? 0 : Math.max(-1.15, Math.min(1.15, d)); // behind them: they turn the body instead
+  }
+  look.yaw += (want - look.yaw) * Math.min(1, dt * 5);
+  if (Math.abs(look.yaw) < 0.002) return;
+  for (const [bone, share] of [[look.neck, 0.4], [look.head, 0.6]]) {
+    if (!bone) continue;
+    look.rest.push([bone, bone.quaternion.clone()]);
+    bone.updateWorldMatrix(true, false);
+    bone.getWorldQuaternion(_wq);
+    bone.parent.getWorldQuaternion(_pq);
+    _q.setFromAxisAngle(UP, -look.yaw * share); // facing grows toward +z, which is a turn the other way about +y
+    _wq.premultiply(_q);
+    bone.quaternion.copy(_pq.invert().multiply(_wq));
+    bone.updateMatrixWorld(true);
+  }
+}
+/** Nobody stands inside anybody: people closer than `gap` are eased apart (the hero, `fixed`, is not moved). */
+export function separate(people, fixed, gap = 0.95, land = null) {
+  for (let i = 0; i < people.length; i++) {
+    const a = people[i];
+    for (let j = i + 1; j < people.length; j++) {
+      const b = people[j];
+      const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+      if (d >= gap) continue;
+      const push = (gap - d) / 2, nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0;
+      a.x -= nx * push; a.z -= nz * push;
+      b.x += nx * push; b.z += nz * push;
+    }
+    if (fixed) {
+      const dx = a.x - fixed.x, dz = a.z - fixed.z, d = Math.hypot(dx, dz);
+      if (d < gap) { const nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0; a.x = fixed.x + nx * gap; a.z = fixed.z + nz * gap; }
+    }
+    if (land && !a.spec.beast) land.pushOut(a, 0.4);
+    a.sync();
+  }
 }
 
 export class Actor {
@@ -60,6 +119,8 @@ export class Actor {
     this.group.add(this.body);
     scene.add(this.group);
     this.x = 0; this.z = 0; this.facing = 0;
+    this.want = null; // a facing to turn to (smoothly), or null
+    this.lookTarget = null; // { x, z }: who they look at (head and neck)
     this.path = null; // walking: { x, z, speed, resolve }
     this.mixer = null;
     this.current = null;
@@ -87,6 +148,7 @@ export class Actor {
       this.root = root;
       this.clips = tpl.clips;
       this.mixer = new THREE.AnimationMixer(root);
+      this.look = makeLook(root);
       this.loop('idle', 0);
       if (this.spec.weapon) {
         loadWeapon(this.spec.weapon.cls, 1).then((w) => {
@@ -106,9 +168,10 @@ export class Actor {
     return this;
   }
 
-  face(x, z) {
-    this.facing = Math.atan2(z - this.z, x - this.x);
-    this.sync();
+  /** Turn to face (x, z): at once (now) or over a moment, as a person turns. */
+  face(x, z, now = true) {
+    const f = Math.atan2(z - this.z, x - this.x);
+    if (now) { this.facing = f; this.want = null; this.sync(); } else this.want = f;
     return this;
   }
 
@@ -153,7 +216,7 @@ export class Actor {
   /** Walk (or run) to a spot; resolves on arrival. */
   walkTo(x, z, { run = false, speed } = {}) {
     return new Promise((resolve) => {
-      this.path = { x, z, speed: speed || (run ? 5.2 : 1.9), resolve };
+      this.path = { x, z, speed: speed || (run ? 5.2 : 1.9), resolve, best: Infinity, still: 0 };
       this.loop(run ? 'run' : 'walk', 0.2);
     });
   }
@@ -161,7 +224,9 @@ export class Actor {
   update(dt) {
     if (this.path) {
       const p = this.path, dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz);
-      if (d < 0.08) {
+      // arrived, or as near as they can get (someone is standing there): not stuck walking on the spot
+      if (d < p.best - 0.02) { p.best = d; p.still = 0; } else p.still += dt;
+      if (d < 0.08 || (p.still > 0.5 && d < 1.5)) {
         this.path = null;
         this.loop('idle', 0.3);
         p.resolve();
@@ -183,7 +248,17 @@ export class Actor {
         o.resolve();
       }
     }
+    if (!this.path && this.want !== null) {
+      // turning on the spot, about a half turn a second
+      const d = wrap(this.want - this.facing);
+      const step = Math.sign(d) * Math.min(Math.abs(d), 5 * dt);
+      this.facing += step;
+      if (Math.abs(d) < 0.01) { this.facing = this.want; this.want = null; }
+      this.sync();
+    }
+    lookRest(this.look);
     if (this.mixer) this.mixer.update(dt);
+    if (this.look) { this.group.updateMatrixWorld(true); lookAt(this.look, this.x, this.z, this.facing, this.lookTarget, dt); }
     if (this.blade) {
       // in the hand each frame, at a fixed size (the hand bone's own scale changes with the pose)
       this.holder.updateMatrixWorld(true);

@@ -1,0 +1,28 @@
+# Samples Chatterbox voices next to the current Kokoro ones (tools/voice/sample_chatterbox.py).
+# Started by hand only. Free: open model on the runner's CPU, no API keys. Result: an artifact zip.
+name: Voice samples
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+      - run: |
+          pip install -q torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q chatterbox-tts
+      - run: python tools/voice/sample_chatterbox.py out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-samples
+          path: out/

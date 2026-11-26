@@ -168,7 +168,7 @@ also keeps its own beat instead of the frame that noticed it.
 
 - **Ctrl (or C) toggles walking** instead of being held (holding Ctrl set off the browser's own shortcuts).
 - **Coming back from another tab or window:** any game key (or a click) takes the mouse back for looking round; the click no longer goes to waste.
-- **Alt frees the mouse** (a toggle): hover over a skill for what it does, its mana and cooldown, or over a beast for its name, health and how hard it hits. Alt again to look around. After chatting, the mouse comes back by itself.
+- **Hold Alt to use the mouse:** hover over a skill for what it does, its mana and cooldown, or over a beast for its name, health and how hard it hits; let go and it looks around again (0.99.16: a hold, not a toggle). After chatting, the mouse comes back by itself.
 
 ### Lacuna, phase 2 begins: combat (0.99.13)
 

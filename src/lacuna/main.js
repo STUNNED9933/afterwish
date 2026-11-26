@@ -357,7 +357,7 @@ function drawHud() {
 const keys = new Set();
 let yaw = -Math.PI / 2, pitch = 0.32, dist = 5.2, overlay = true, firing = false, scoped = false;
 let walking = false; // Ctrl (or C) toggles walking: held, Ctrl sets off the browser's own shortcuts
-let altFree = false; // Alt (a toggle): the mouse is yours (hover for descriptions); Alt again and it looks around
+let altFree = false; // Alt held: the mouse is yours (hover for descriptions); let go and it looks around again
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
 const locked = () => document.pointerLockElement === canvas;
 const chatOpen = () => !$('chat-in').classList.contains('hidden');
@@ -375,11 +375,7 @@ addEventListener('keydown', (e) => {
   if (typing(e)) return;
   if (e.key === 'Alt') {
     e.preventDefault(); // (Alt alone would open the browser's menu)
-    if (e.repeat) return;
-    altFree = !altFree;
-    if (altFree) { firing = false; scoped = false; if (locked()) document.exitPointerLock(); note('The mouse is yours: hover over things for what they are. Alt again to look around.'); }
-    else { hideTip(); relock(); }
-    drawLookHint();
+    if (!altFree) { altFree = true; firing = false; scoped = false; if (locked()) document.exitPointerLock(); drawLookHint(); }
     return;
   }
   // back from another tab or window: any game key takes the mouse again (Esc and the F keys do not)
@@ -408,11 +404,17 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys.delete(e.code);
-  if (e.key === 'Alt') e.preventDefault();
+  if (e.key === 'Alt') {
+    e.preventDefault();
+    altFree = false;
+    hideTip();
+    relock(); // (browsers allow it for a few seconds after a key press; held longer, the next key or click does it)
+    drawLookHint();
+  }
 });
-addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; hideTip(); });
+addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; altFree = false; hideTip(); });
 function drawLookHint() {
-  $('look-hint').textContent = altFree ? 'Mouse free: hover for descriptions · Alt to look around again' : 'Click, or press any key, to look around · Alt frees the mouse';
+  $('look-hint').textContent = altFree ? 'Hover for descriptions · let go of Alt to look around' : 'Click, or press any key, to look around · hold Alt to use the mouse';
   $('look-hint').classList.toggle('hidden', locked() || chatOpen());
 }
 document.addEventListener('pointerlockchange', () => {
@@ -421,7 +423,7 @@ document.addEventListener('pointerlockchange', () => {
 });
 canvas.addEventListener('mousedown', (e) => {
   if (!locked()) {
-    if (!altFree) relock(); // a click takes the mouse back (it does not also shoot: you were not aiming); with Alt on, clicks are yours
+    if (!altFree) relock(); // a click takes the mouse back (it does not also shoot: you were not aiming); with Alt held, clicks are yours
     return;
   }
   if (e.button === 0) firing = true;
@@ -679,5 +681,5 @@ function frame(now) {
   }
 }
 requestAnimationFrame(frame);
-note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Alt frees the mouse (hover for descriptions).');
+note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold Alt to use the mouse (hover for descriptions).');
 window.land = { world, view, crowd, me, fx, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

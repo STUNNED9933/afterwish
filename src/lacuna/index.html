@@ -11,7 +11,7 @@
   #land { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   #stats { position: fixed; left: 10px; top: 10px; padding: 8px 10px; background: rgba(10, 14, 24, 0.72); color: #e8eefc; font: 12px/1.5 ui-monospace, monospace; border-radius: 6px; pointer-events: none; }
   #stats b { color: #9fe8a8; font-size: 14px; }
-  #note { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); max-width: 70vw; padding: 8px 14px; background: rgba(10, 14, 24, 0.72); color: #fff; font-size: 14px; border-radius: 6px; text-align: center; pointer-events: none; }
+  #note { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); max-width: 70vw; padding: 8px 14px; background: rgba(10, 14, 24, 0.72); color: #fff; font-size: 14px; border-radius: 6px; text-align: center; pointer-events: none; }
   #hurt { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(200, 30, 30, 0.9); opacity: 0; }
   #tag { position: fixed; right: 10px; top: 10px; color: #1c2a3a; font: 12px system-ui; opacity: 0.7; pointer-events: none; }
   #stats b.on { color: #9fd0ff; font-size: 12px; }
@@ -28,6 +28,38 @@
   #chat-log div { padding: 1px 0; }
   #chat-log div.quiet { color: #ffe9a8; }
   #chat-in { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px 8px; border-radius: 4px; border: 1px solid #3a4560; background: rgba(10, 14, 24, 0.85); color: #fff; font-size: 13px; }
+  #fxlayer, #fxlayer * { pointer-events: none; }
+  #fxlayer .num { position: fixed; left: 0; top: 0; font: 700 17px system-ui; color: #ffe08a; text-shadow: 0 1px 3px #000, 0 0 2px #000; white-space: nowrap; }
+  #fxlayer .num.taken { color: #ff6a5a; font-size: 18px; }
+  #fxlayer .num.heal { color: #8fff9a; }
+  #fxlayer .num.big { font-size: 26px; color: #fff2b0; }
+  #fxlayer .bar { position: fixed; left: 0; top: 0; width: 46px; height: 5px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 0, 0, 0.8); border-radius: 2px; }
+  #fxlayer .bar i { display: block; height: 100%; background: #e2463a; border-radius: 1px; }
+  #cross { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; pointer-events: none; }
+  #cross::before, #cross::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 2px #000; }
+  #cross::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #cross::after { top: 8px; left: 0; height: 2px; width: 18px; }
+  #cross.scoped { width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #ff4a3a; }
+  #cross.scoped::before, #cross.scoped::after { display: none; }
+  #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 34vh, rgba(0, 0, 0, 0.88) 35vh); display: none; }
+  #hud { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 5px; pointer-events: none; color: #fff; font-size: 12px; text-shadow: 0 1px 2px #000; }
+  #hud .bars { width: 340px; }
+  #hud .b { position: relative; height: 14px; margin-top: 3px; background: rgba(10, 14, 24, 0.75); border-radius: 3px; overflow: hidden; }
+  #hud .b i { position: absolute; left: 0; top: 0; bottom: 0; }
+  #hud .b span { position: relative; display: block; text-align: center; line-height: 14px; font-size: 11px; }
+  #hp i { background: linear-gradient(#58c46a, #2f8a3e); }
+  #mpb i { background: linear-gradient(#5a8cff, #2c56c4); }
+  #hud .skills { display: flex; gap: 6px; }
+  #hud .sk { position: relative; width: 74px; height: 50px; padding: 4px 5px; box-sizing: border-box; background: rgba(10, 14, 24, 0.8); border: 1px solid #3a4560; border-radius: 6px; overflow: hidden; }
+  #hud .sk b { display: block; font-size: 11px; color: #ffd24a; }
+  #hud .sk em { font-style: normal; font-size: 10px; color: #9fb8ff; }
+  #hud .sk .k { position: absolute; right: 4px; top: 2px; font-size: 10px; color: #fff; opacity: 0.8; }
+  #hud .sk .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.62); }
+  #hud .sk .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 16px system-ui; }
+  #hud .sk.dry { border-color: #6a2a30; }
+  #hud .link { font-size: 11px; color: #c9b8ff; }
+  #down { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(40, 40, 50, 0.45); backdrop-filter: grayscale(1); color: #fff; font: 600 22px system-ui; text-shadow: 0 2px 6px #000; pointer-events: none; }
+  #down small { font: 14px system-ui; margin-top: 6px; }
   .hidden { display: none; }
 </style>
 </head>
@@ -36,8 +68,17 @@
 <div id="hurt"></div>
 <div id="stats">loading…</div>
 <div id="note" class="hidden"></div>
-<div id="tag">Lacuna test land · engine phase 1 · __VERSION__</div>
+<div id="tag">Lacuna test land · phase 2: combat · __VERSION__</div>
 <div id="labels"></div>
+<div id="fxlayer"></div>
+<div id="scope"></div>
+<div id="cross"></div>
+<div id="down"><div>You are down</div><small id="down-t"></small></div>
+<div id="hud">
+  <div class="link" id="link"></div>
+  <div class="skills" id="skills"></div>
+  <div class="bars"><div class="b" id="hp"><i></i><span></span></div><div class="b" id="mpb"><i></i><span></span></div></div>
+</div>
 <div id="chat"><div id="chat-log"></div><input id="chat-in" class="hidden" maxlength="140" placeholder="Say something (Enter to send, Esc to close)"></div>
 <div id="mp">
   <h3>Walk together</h3>

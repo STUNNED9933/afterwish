@@ -128,6 +128,164 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('...every street corner can be walked to from every other', (() => { const seen = new Set([0]), q = [0]; while (q.length) for (const k of nodes[q.shift()].links) if (!seen.has(k)) { seen.add(k); q.push(k); } return seen.size === nodes.length; })());
 }
 
+// ---- (phase 2) combat
+{
+  const { KITS, linkPower, linkMult, linkFrom, GATE } = await import('../src/lacuna/sim.js');
+  const all = (l) => ({ weapon: l, helm: l, chest: l, boots: l, ring: l });
+  check('Lacuna Link: no Eternal gear x1, level 10 in every slot x3, 30 in every slot x4.4 (less and less past 10)', linkMult(linkPower({})) === 1 && Math.abs(linkMult(linkPower(all(10))) - 3) < 1e-9 && Math.abs(linkMult(linkPower(all(30))) - 4.4) < 1e-9 && linkMult(linkPower(all(20))) - 3 < 3 - 1);
+  const saves = [{ equipped: { weapon: { eternal: true, level: 12 }, helm: { level: 30 } } }, { equipped: {}, eternals: { weapon: { eternal: true, level: 7 }, ring: { eternal: true, level: 22 } } }];
+  const L = linkFrom(saves);
+  check('...each slot counted once, at its best across every class (worn or put away; only Eternal pieces)', L.weapon === 12 && L.ring === 22 && !L.helm && !L.chest);
+  // a clear spot on the meadow, a beast placed there by hand
+  const setup = (cls, link = all(10)) => {
+    const w = new LandWorld();
+    const p = w.addPlayer(1, { x: 60, z: 60 }, { cls, link });
+    p.x = 60; p.z = 60;
+    for (const b of w.beasts) { b.dead = true; b.diedAt = 1e9; } // the land emptied for the test
+    const put = (type, x, z) => { const b = w.beasts.find((q) => q.type === type && q.dead && q.diedAt === 1e9); b.dead = false; b.hp = b.maxHp; b.x = b.hx = x; b.z = b.hz = z; b.state = 'idle'; b.chunk = chunkOf(x, z).i; w.byChunk.forEach((l) => { const i = l.indexOf(b); if (i >= 0) l.splice(i, 1); }); w.byChunk[b.chunk].push(b); return b; };
+    return { w, p, put };
+  };
+  const steps = (w, sec) => { for (let i = 0; i < Math.round(sec * 30); i++) w.step(TICK); };
+  {
+    const { w, p, put } = setup('archer');
+    const hog = put('hog', 75, 60);
+    w.act(1, 'basic', hog.x, hog.z);
+    steps(w, 0.5);
+    const hit = w.events.find((e) => e.type === 'hit');
+    check('Lacuna combat: a Sharpshooter\'s arrow flies and lands, for her damage times the Link (20 x 3)', hit && hit.dmg === 60 && hog.hp === hog.maxHp - 60, hit && hit.dmg);
+    check('...and the beast comes for whoever shot it', hog.state === 'chase' && hog.target === 1);
+    const mp = p.mp;
+    w.act(1, 'Q', hog.x, hog.z);
+    w.step(TICK);
+    check('...Volley: five arrows, its mana paid, and not again until its cooldown is done', w.shots.length === 5 && Math.abs(p.mp - (Math.min(p.maxMp, mp + 7 * TICK) - 20)) < 0.01 && !w.ready(p, 'Q'), `${w.shots.length} shots, mana ${mp} -> ${p.mp}`);
+  }
+  {
+    const { w, p, put } = setup('archer');
+    const a = put('wolf', 70, 60), b = put('wolf', 76, 60);
+    w.act(1, 'R', 90, 60);
+    steps(w, 0.4);
+    check('...Deadeye: drawn first (nothing yet)', !w.events.some((e) => e.type === 'hit'));
+    steps(w, 0.6);
+    const hits = w.events.filter((e) => e.type === 'hit');
+    check('...then one shot through both wolves, six times as hard', hits.length === 2 && hits.every((h) => h.dmg === 360) && hits.map((h) => h.id).sort().join() === [a.id, b.id].sort().join(), hits.map((h) => h.dmg).join());
+  }
+  {
+    const { w, p, put } = setup('archer');
+    const wolf = put('wolf', 61.5, 60);
+    wolf.state = 'chase'; wolf.target = 1; wolf.swipeT = 0;
+    w.input(1, { mx: -1, mz: 0 });
+    w.act(1, 'E', 70, 60);
+    w.step(TICK);
+    const hp = p.hp;
+    steps(w, 0.3);
+    check('...Roll: away she goes, and a swipe while rolling misses', p.x < 58 && p.hp === hp && w.events.some((e) => e.type === 'swipe' && e.dmg === 0));
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const near = put('hog', 70, 60), far = put('hog', 70, 72);
+    w.act(1, 'Q', 70, 60);
+    steps(w, 0.7);
+    const hits = w.events.filter((e) => e.type === 'hit');
+    check('...a Berserker leaps where he looks (landing beside it, not inside) and smashes what is round him', Math.hypot(p.x - 70, p.z - 60) < 2 && hits.some((h) => h.id === near.id) && !hits.some((h) => h.id === far.id) && p.burst > 8);
+    w.events.length = 0;
+    w.act(1, 'E', 70, 60);
+    steps(w, 1.8);
+    check('...Whirlwind: cuts round him again and again', w.events.filter((e) => e.type === 'hit' && e.id === near.id).length >= 4 || near.dead);
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const g = put('golem', 62, 60);
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    const plain = w.events.find((e) => e.type === 'hit').dmg;
+    p.hp = p.maxHp * 0.25; p.basicT = 0; w.events.length = 0;
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    const hurt = w.events.find((e) => e.type === 'hit').dmg;
+    p.hp = p.maxHp * 0.5; p.basicT = 0; w.events.length = 0;
+    w.act(1, 'R', 62, 60); w.step(TICK); p.basicT = 0;
+    const before = p.hp;
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    const raged = w.events.filter((e) => e.type === 'hit').pop().dmg;
+    check('...harder when hurt (a quarter health: +45%), harder still in Bloodrage, and its blows heal him', plain === 84 && hurt === Math.round(84 * 1.45) && raged > Math.round(84 * 1.3 * 1.4) - 2 && p.hp > before, `${plain} ${hurt} ${raged}`);
+    void g;
+  }
+  {
+    const { w, p, put } = setup('warrior', {});
+    const wolf = put('wolf', 61.5, 60);
+    wolf.state = 'chase'; wolf.target = 1;
+    steps(w, 12);
+    check('...with no Eternal gear a wolf is a real danger: it puts you down', w.events.some((e) => e.type === 'down' && e.pid === 1) && p.dead);
+    steps(w, 7);
+    check('...and you get up at Sunmere\'s gate, whole', !p.dead && p.hp === p.maxHp && Math.hypot(p.x - GATE.x, p.z - GATE.z) < 2);
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const hog = put('hog', 62, 60);
+    hog.hp = 10;
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    check('...a beast struck down falls', hog.dead && w.events.some((e) => e.type === 'die' && e.id === hog.id), `${hog.dead} ${hog.hp} ${w.events.map((e) => e.type).join(',')}`);
+    steps(w, 50);
+    check('...and does not come back while someone stands on its ground', hog.dead);
+    p.x = 20; p.z = 60;
+    steps(w, 1);
+    check('...but does once they step away', !hog.dead && hog.hp === hog.maxHp);
+    void KITS;
+  }
+  {
+    const { w } = setup('warrior');
+    const b = w.beasts.find((q) => q.type === 'golem');
+    b.dead = false; b.hp = b.maxHp * 0.4; b.x = 70; b.z = 60;
+    const wire = new Interest(1), mirror = new Map();
+    apply(wire.delta(w), mirror);
+    const got = mirror.get(b.id);
+    b.dead = true;
+    apply(wire.delta(w), mirror);
+    check('Lacuna sync: a beast\'s health comes through (to 1/255), and its fall', got && Math.abs(got.hp - 0.4) < 0.005 && mirror.get(b.id).dead);
+  }
+}
+
+// ---- (phase 2) combat on the server
+{
+  const { LandRoom, LACUNA_NET } = await import('../src/lacuna/room.js');
+  const box = new Map();
+  const accounts = { good: { weapon: 15, helm: 10, chest: 10, boots: 10, ring: 10 } };
+  const room = new LandRoom({ passcode: 'stun', send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), sendBin() {}, linkOf: (s) => accounts[s] || null });
+  const conn = () => { const c = {}; box.set(c, []); return c; };
+  const run = (sec) => { for (let i = 0; i < Math.round(sec * 60); i++) room.tick(1 / 60); };
+  const a = conn(), b = conn();
+  room.message(a, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Signed', cls: 'archer', session: 'good', link: { weapon: 30, helm: 30, chest: 30, boots: 30, ring: 30 } });
+  room.message(b, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Guest', cls: 'warrior', session: 'nope', link: { weapon: 99, helm: 'x' } });
+  const wa = box.get(a).find((m) => m.t === 'welcome'), wb = box.get(b).find((m) => m.t === 'welcome');
+  check('Lacuna server combat: signed in, the Link is your account\'s own Eternal gear (not what the page claims)', wa.linkFrom === 'account' && wa.link.weapon === 15 && room.world.players.get(wa.pid).mult > 3);
+  check('...not signed in, the page\'s levels, kept to 0-30', wb.linkFrom === 'page' && wb.link.weapon === 30 && !wb.link.helm);
+  run(0.2);
+  const pa = room.world.players.get(wa.pid);
+  const me0 = box.get(a).filter((m) => m.t === 'me').pop();
+  check('...each player is told their own health, mana and cooldowns', me0 && me0.v[0] === pa.maxHp && me0.v[2] === Math.floor(pa.mp));
+  const hog = room.world.beasts.find((q) => q.type === 'hog');
+  pa.x = hog.x + 12; pa.z = hog.z; room.byConn.get(a).last = { x: pa.x, z: pa.z, t: room.world.time };
+  const pb = room.world.players.get(wb.pid);
+  pb.x = hog.x + 14; pb.z = hog.z + 3; room.byConn.get(b).last = { x: pb.x, z: pb.z, t: room.world.time };
+  box.get(a).length = 0; box.get(b).length = 0;
+  room.message(a, { t: 'act', k: 'basic', ax: hog.x, az: hog.z });
+  room.message(a, { t: 'act', k: 'X', ax: 0, az: 0 });
+  room.message(a, { t: 'act', k: 'Q', ax: 'far', az: 0 });
+  run(0.6);
+  const evs = (c) => box.get(c).filter((m) => m.t === 'evs').flatMap((m) => m.list);
+  check('...a shot goes through the server: the hit is the server\'s, told to both of them', evs(a).some((e) => e.type === 'hit' && e.id === hog.id && e.pid === wa.pid) && evs(b).some((e) => e.type === 'hit' && e.id === hog.id));
+  check('...the friend sees the shot fly; the shooter is not told of their own shot (their page drew it)', evs(b).some((e) => e.type === 'shot' && e.pid === wa.pid) && !evs(a).some((e) => e.type === 'shot' && e.pid === wa.pid));
+  check('...nonsense actions are ignored', room.world.players.get(wa.pid).cd.Q <= 0);
+  // a Berserker's leap carries him further than a sprint: allowed, once
+  pb.cls === 'warrior' || room.world.setClass(wb.pid, 'warrior');
+  room.message(b, { t: 'act', k: 'Q', ax: pb.x - 11, az: pb.z });
+  run(0.1);
+  const mb = room.byConn.get(b);
+  box.get(b).length = 0;
+  room.message(b, { t: 'pos', x: mb.last.x - 10, z: mb.last.z, f: 0, m: 1, p: 'run' });
+  check('...a leap is allowed for (ten metres in an instant is not put back)', !box.get(b).some((m) => m.t === 'snap'));
+  room.message(b, { t: 'pos', x: mb.last.x - 10, z: mb.last.z, f: 0, m: 1, p: 'run' });
+  check('...but only once', box.get(b).some((m) => m.t === 'snap'));
+}
+
 // ---- deterministic maths only in the sim
 {
   const bad = ['land.js', 'sim.js'].filter((f) => /Math\.(sin|cos|tan|atan2?|hypot|pow|exp|log|random)\(/.test(fs.readFileSync(new URL('../src/lacuna/' + f, import.meta.url), 'utf8').replace(/\/\/.*$/gm, '')));
@@ -175,8 +333,9 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   room.message(a, { t: 'pos', x: tree.x, z: tree.z, f: 0, m: 1, p: 'run' });
   check('...so is walking into a tree', !!last(a, 'snap'));
   room.message(a, { t: 'pos', x: 'far', z: null });
-  room.message(a, { t: 'cls', cls: 'mage' });
-  check('...nonsense is ignored; a class swap reaches everyone', last(b, 'roster').players.find((p) => p.pid === A.pid).cls === 'mage');
+  room.message(a, { t: 'cls', cls: 'mage' }); // not one of the opening's classes: ignored
+  room.message(a, { t: 'cls', cls: 'warrior' });
+  check('...nonsense is ignored; a class swap reaches everyone (and changes the hero)', last(b, 'roster').players.find((p) => p.pid === A.pid).cls === 'warrior' && room.world.players.get(A.pid).cls === 'warrior');
   room.message(a, { t: 'chat', text: 'hello\u0007 there' });
   check('...chat reaches everyone, cleaned', last(b, 'chat') && last(b, 'chat').text === 'hello there' && last(b, 'chat').name === 'Ko Ko');
   // B goes to a wolf: the server's beasts notice B (and only B is told)
@@ -186,7 +345,8 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   pb.x = wolf.x + 5; pb.z = wolf.z; mb.last = { x: pb.x, z: pb.z, t: room.world.time };
   box.get(a).json.length = 0;
   for (let i = 0; i < 40; i++) { room.message(b, { t: 'pos', x: pb.x, z: pb.z, f: 0, m: 0, p: 'run' }); run(0.1); }
-  check('...beasts are the server\'s: B is told one noticed and swiped, A is not', box.get(b).json.some((m) => m.t === 'ev' && m.type === 'aggro') && box.get(b).json.some((m) => m.t === 'ev' && m.type === 'swipe') && !box.get(a).json.some((m) => m.t === 'ev'));
+  const evsOf = (c) => box.get(c).json.filter((m) => m.t === 'evs').flatMap((m) => m.list);
+  check('...beasts are the server\'s: B is told one noticed and swiped at B; nothing swiped at A', evsOf(b).some((e) => e.type === 'aggro' && e.pid === B.pid) && evsOf(b).some((e) => e.type === 'swipe' && e.pid === B.pid) && !evsOf(a).some((e) => e.type === 'swipe' && e.pid === A.pid));
   room.leave(b);
   run(0.3);
   check('...someone leaving is gone from the list and from sight', last(a, 'roster').players.length === 1 && !seen(a).has(65000 + B.pid));

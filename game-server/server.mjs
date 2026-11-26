@@ -24,6 +24,7 @@ import { CONFIG } from '../src/config.js';
 import { AccountStore } from './accounts.mjs';
 import { createApi } from './api.mjs';
 import { LandRoom } from '../src/lacuna/room.js'; // (0.99.12) Lacuna's test land, at /lacuna
+import { linkFrom } from '../src/lacuna/sim.js';
 
 const PORT = Number(process.env.PORT) || 8787;
 const PASSCODE = process.env.AFTERWISH_PASSCODE || '';
@@ -58,6 +59,11 @@ const world = new ServerWorld({
 // (0.99.12) Lacuna's test land: one shared land, its own WebSocket address (/lacuna), the same passcode
 const land = new LandRoom({
   passcode: PASSCODE,
+  // (phase 2) the Dimension Link from a signed-in player's own characters (their Eternal gear, best of each slot)
+  linkOf(session) {
+    const acct = accounts && accounts.bySession(session);
+    return acct ? linkFrom(Object.values(accounts.charsOf(acct.id) || {})) : null;
+  },
   send(ws, msg) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   },

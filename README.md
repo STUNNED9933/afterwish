@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna, phase 2 begins: combat (0.99.13)
+
+On [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html), alone or together:
+- **Health, mana and two classes** (the opening's two, working names). **Left click** attacks (hold it), **Q E R** are skills, **1 / 2** swap class:
+  - **Berserker:** Cleave; **Leap** where you look and smash the ground; **Whirlwind**; **Bloodrage** (+40% damage, blows heal you). Hits harder the more hurt he is.
+  - **Sharpshooter:** Shot; **Volley** (five arrows); **Roll** (a swipe mid-roll misses); **Deadeye** (drawn, then one shot through everything, six times as hard). **Hold right click** to look down the scope (first person).
+- **Beasts fight back**, fall, and come back 45 s later (not while someone stands on their ground). Go down and you get up at Sunmere's gate.
+- **The Dimension Link:** your Eternal gear (each slot once, at its best level across your classes) multiplies your health and damage: x1 with none, x3 at level 10 in every slot (what beasts are tuned for), x4.4 at 30. Together and signed in, the server reads your own account's gear; alone it reads this browser's saves. **L** tries levels 0 / 10 / 20 / 30 (alone).
+- Damage numbers, health bars over hurt beasts, arrows in flight, rings for the slam and whirlwind; trees between the camera and you step aside.
+- On the server every blow is the server's: your page shows your own at once and the server confirms them.
+
 ### Lacuna: walk the test land together (0.99.12)
 
 - **The server world now runs Lacuna's land too**, at its own address (`/lacuna`, the same passcode as Haven). On [lacuna.html](https://afterwish.stunnedgames.net/lacuna.html), **Walk together** (bottom right): type your name and the passcode, and you are on one shared land with whoever else joins. The game's own server world is untouched.

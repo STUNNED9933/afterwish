@@ -100,6 +100,9 @@ export class LandView {
       roof: new THREE.ConeGeometry(0.75, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0),
     };
     this.built = new Map(); // chunk index -> { group, dist }
+    this.treeRefs = new Map(); // tree -> [[instanced mesh, index, how it is placed]] (to clear the view, below)
+    this.hiddenTrees = new Set();
+    this.zero = new THREE.Matrix4().makeScale(0, 0, 0);
     this.buildQueue = [];
     this.stats = { built: 0, made: 0, dropped: 0 };
     // The lake: one disc, always there (cheap)
@@ -158,6 +161,7 @@ export class LandView {
       if (o.isMesh && o.userData.own) o.geometry.dispose();
     });
     c.alive = false;
+    for (const t of c.trees || []) { this.treeRefs.delete(t); this.hiddenTrees.delete(t); }
     this.built.delete(i);
     this.stats.dropped++;
   }
@@ -165,7 +169,7 @@ export class LandView {
   build(cx, cz) {
     const ch = this.land.chunk(cx, cz);
     const group = new THREE.Group();
-    const rec = { group, alive: true };
+    const rec = { group, alive: true, trees: ch.trees };
     this.built.set(cz * CHUNKS + cx, rec);
     this.stats.made++;
     // The ground: 2 m squares, coloured by what is there (with a little mottling)
@@ -193,6 +197,7 @@ export class LandView {
         place(t, this.tmpM);
         m.setMatrixAt(k, this.tmpM);
         if (colour) m.setColorAt(k, colour(t));
+        if (t.kind === 'tree') { let r = this.treeRefs.get(t); if (!r) this.treeRefs.set(t, (r = [])); r.push([m, k, this.tmpM.clone()]); }
       });
       m.castShadow = true;
       m.receiveShadow = true;
@@ -228,12 +233,35 @@ export class LandView {
     this.scene.add(group);
   }
 
+  /**
+   * Trees between the camera and the hero step aside (are not drawn this frame), so the Wakewood never fills the
+   * screen with leaves. (fx, fz): the hero; (cx, cz): the camera.
+   */
+  clearView(fx, fz, cx, cz) {
+    const want = new Set();
+    const dx = cx - fx, dz = cz - fz, len = Math.hypot(dx, dz);
+    const mx = (fx + cx) / 2, mz = (fz + cz) / 2;
+    for (const o of this.land.near(mx, mz, len / 2 + 3.5)) {
+      if (o.kind !== 'tree' || !this.treeRefs.has(o)) continue;
+      // nearest point of the hero-camera line (and a little past the camera) to the tree
+      let t = len > 0 ? ((o.x - fx) * dx + (o.z - fz) * dz) / (len * len) : 0;
+      t = Math.max(0.15, Math.min(1.15, t));
+      const px = fx + dx * t - o.x, pz = fz + dz * t - o.z;
+      if (px * px + pz * pz < (1.7 * o.s + 0.6) ** 2) want.add(o);
+    }
+    const touched = new Set();
+    for (const t of this.hiddenTrees) if (!want.has(t)) { for (const [m, k, mat] of this.treeRefs.get(t) || []) { m.setMatrixAt(k, mat); touched.add(m); } this.hiddenTrees.delete(t); }
+    for (const t of want) if (!this.hiddenTrees.has(t)) { for (const [m, k] of this.treeRefs.get(t)) { m.setMatrixAt(k, this.zero); touched.add(m); } this.hiddenTrees.add(t); }
+    for (const m of touched) m.instanceMatrix.needsUpdate = true;
+  }
+
   /** Put every beast near (x, z) where the sim has it (eased between steps by `alpha`). */
   drawBeasts(x, z, alpha, time) {
     const fill = {};
     for (const type in this.beastMeshes) fill[type] = 0;
     const far2 = DRAW * DRAW;
     for (const b of this.world.beasts) {
+      if (b.dead) continue;
       const dx = b.x - x, dz = b.z - z;
       if (dx * dx + dz * dz > far2) continue;
       let pv = this.prev.get(b.id);
@@ -257,6 +285,7 @@ export class LandView {
     const fill = {};
     for (const type in this.beastMeshes) fill[type] = 0;
     for (const b of list) {
+      if (b.dead) continue;
       const m = this.beastMeshes[b.type];
       if (!m || fill[b.type] >= m.instanceMatrix.count) continue;
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;

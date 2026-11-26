@@ -1,13 +1,15 @@
-// Lacuna (Chapter 2), engine phase 1: the test land, its own page (lacuna.html), apart from the game.
+// Lacuna (Chapter 2): the test land, its own page (lacuna.html), apart from the game.
 //
-// Walk Sunmere and the land round it over the shoulder, alone (everything runs here) or together on the
-// server world (the server runs the land and its beasts: see room.js), with the performance overlay up.
-// Keys: WASD move, mouse look (click to capture), Shift sprint, Ctrl walk, wheel zoom, 1-4 swap class (one
-// hero, any class: the FFXIV way), Enter to chat (together), B add a test player (alone), F3 overlay.
+// Walk and fight on the land round Sunmere over the shoulder, alone (everything runs here) or together on the
+// server world (the server runs the land, its beasts and every blow: see room.js).
+// Keys: WASD move, mouse look (click to capture), left click attack (hold), Q E R skills, right click (hold)
+// scope (Sharpshooter), Shift sprint, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
+// (alone), Enter chat (together), B add a test player (alone), F3 overlay.
 import * as THREE from 'three';
-import { LandWorld, TICK, WAKE } from './sim.js';
+import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult } from './sim.js';
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
+import { Fx } from './fx.js';
 import { groundAt, BEASTS } from './land.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
@@ -16,22 +18,40 @@ import { SERVERS } from '../net/servers.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('land');
+const params = new URLSearchParams(location.search);
 const world = new LandWorld();
-const me = world.addPlayer(1);
+
+// ---- the Dimension Link: your Eternal gear in this browser's saves (every class), or a level to try (L)
+const SAVE_KEY = 'stunned-arena-save-v1';
+function localSaves() {
+  const out = [];
+  for (const cls of ['warrior', 'archer', 'mage', 'rogue']) {
+    try { const s = JSON.parse(localStorage.getItem(cls === 'warrior' ? SAVE_KEY : `${SAVE_KEY}-${cls}`) || 'null'); if (s) out.push(s); } catch (err) { /* unreadable: skip */ }
+  }
+  return out;
+}
+const ownLink = linkFrom(localSaves());
+const TRY = [null, 0, 10, 20, 30]; // L cycles: your own, then every slot at these levels
+let tryAt = 0;
+const linkNow = () => (TRY[tryAt] === null ? ownLink : Object.fromEntries(LINK_SLOTS.map((s) => [s, TRY[tryAt]])));
+const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : 'warrior';
+const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow() });
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
+const fx = new Fx(view.scene, $('fxlayer'));
 // (alone) what a server would send you: made here 10 times a second and measured
 const wire = new Interest(1), mirror = new Map();
 let wireTick = 0, wireBytes = 0, wireRate = 0;
+let linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : '';
 
 // ---- heroes: yours, and (together) everyone else's, each in their class's real model
-const CLASSES = ['warrior', 'archer', 'mage', 'rogue'];
-const NAMES = { warrior: 'Berserker', archer: 'Sharpshooter', mage: 'Pyromancer', rogue: 'Assassin' }; // (working: Lacuna's classes are rebuilt from these)
+const NAMES = { warrior: 'Berserker', archer: 'Sharpshooter' }; // (working names)
 const standGeo = new THREE.CapsuleGeometry(0.32, 1.0, 4, 8).translate(0, 0.82, 0);
 function makeHero(colour = 0xd8c8a8) {
-  const h = { group: new THREE.Group(), rig: null, cls: null, token: 0, stand: new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: colour })) };
+  const h = { group: new THREE.Group(), body: new THREE.Group(), rig: null, cls: null, token: 0, stand: new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: colour })), anim: { start: false, move: null, moveDur: 0, spinT: 0, hit: false, period: 0 } };
   h.stand.castShadow = true;
-  h.group.add(h.stand);
+  h.group.add(h.body);
+  h.body.add(h.stand);
   view.scene.add(h.group);
   return h;
 }
@@ -52,20 +72,42 @@ function dress(h, cls) {
       if (tpl.spec.offhand) rig.holdOffhand(w.clone(), tpl.spec.offhand);
     }
     rig.group.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    if (h.rig) h.group.remove(h.rig.group);
+    if (h.rig) h.body.remove(h.rig.group);
     h.rig = rig;
     h.stand.visible = false;
-    h.group.add(rig.group);
+    h.body.add(rig.group);
   });
+}
+/** A blow or skill seen (yours, or someone else's from the server): what the model does. */
+function animate(h, ev) {
+  const a = h.anim;
+  if (ev.skill === 'basic') { a.start = true; a.period = ev.every || 0.6; }
+  else if (ev.skill === 'leap') { a.move = 'leap'; a.moveDur = ev.dur; }
+  else if (ev.skill === 'whirl') a.spinT = ev.dur;
+  else if (ev.skill === 'roll') { a.move = 'dash'; a.moveDur = ev.dur; }
+  else if (ev.skill === 'volley') a.move = 'barrage';
+  else if (ev.skill === 'deadeye') a.move = 'aim';
+  else if (ev.skill === 'rage') a.move = 'cone';
+}
+function pose(h, dt, s) {
+  const a = h.anim;
+  if (a.spinT > 0) { a.spinT -= dt; h.body.rotation.y += dt * 16; } else h.body.rotation.y = 0;
+  if (!h.rig) return;
+  h.rig.update(dt, { ...s, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
+  a.start = false;
+  a.move = null;
+  a.hit = false;
 }
 const hero = makeHero();
 function wear(cls) {
+  if (!KITS[cls]) return note('Pyromancer, Assassin and the other classes come later: the opening has the Berserker and the Sharpshooter.');
   if (hero.cls === cls) return;
   dress(hero, cls);
+  world.setClass(1, cls);
   if (net && net.ready) net.send({ t: 'cls', cls });
-  note(`Now a ${NAMES[cls]} (working name). One hero, any class: each levels on its own.`);
+  drawSkills();
+  note(`Now a ${NAMES[cls]} (working name). ${KITS[cls].passive}`);
 }
-const params = new URLSearchParams(location.search);
 
 // ---- test players (alone): walk about the land, so beasts wake in several places at once
 const bots = [];
@@ -81,6 +123,7 @@ function addBot() {
   const a = (k / 8) * Math.PI * 2 + 0.4, r = 120 + (k % 3) * 40;
   const pid = 100 + k;
   world.addPlayer(pid, { x: Math.cos(a) * r, z: Math.sin(a) * r });
+  world.players.get(pid).guard = 1e9; // test players cannot be hurt (they would only lie down)
   bots.push({ pid, a: Math.random() * 6.28, t: 0 });
   botMesh.count = bots.length;
   note(`Test player ${bots.length} is wandering near (${Math.round(Math.cos(a) * r)}, ${Math.round(Math.sin(a) * r)}).`);
@@ -97,12 +140,15 @@ function savedPass() {
 function savedName() {
   try { return localStorage.getItem('lacuna-name') || ''; } catch (err) { return ''; }
 }
+function serverBase() {
+  return (params.get('server') || (SERVERS[0] && SERVERS[0].url) || '').replace(/\/+$/, '');
+}
+/** Your sign-in on the server world, if you have one in this browser: the server reads your own Eternal gear. */
+function session() {
+  try { return (JSON.parse(localStorage.getItem('stunned-online-v1') || '{}') || {})[serverBase().replace(/^ws(s?):\/\//, 'http$1://')] || ''; } catch (err) { return ''; }
+}
 $('mp-name').value = savedName();
 $('mp-pass').value = savedPass();
-function serverUrl() {
-  const u = params.get('server') || (SERVERS[0] && SERVERS[0].url) || '';
-  return u.replace(/\/+$/, '') + '/lacuna';
-}
 function joinServer() {
   if (net) return;
   const name = $('mp-name').value.trim(), pass = $('mp-pass').value.trim();
@@ -110,10 +156,10 @@ function joinServer() {
   try { localStorage.setItem('lacuna-name', name); } catch (err) { /* private window */ }
   mpStatus('Connecting…');
   let ws;
-  try { ws = new WebSocket(serverUrl()); } catch (err) { return mpStatus('That server address does not look right.'); }
+  try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow() });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -125,7 +171,8 @@ function joinServer() {
         let s = seen.get(u.id);
         if (!s) seen.set(u.id, (s = { x: u.x, z: u.z }));
         s.fx = s.x; s.fz = s.z; s.tx = u.x; s.tz = u.z; s.t0 = now;
-        Object.assign(s, { id: u.id, facing: u.facing, moving: u.moving, type: u.type, player: u.player, state: u.state });
+        if (u.dead && !s.dead) { s.x = s.fx = u.x; s.z = s.fz = u.z; }
+        Object.assign(s, { id: u.id, facing: u.facing, moving: u.moving, type: u.type, player: u.player, state: u.state, dead: u.dead, hp: u.hp, r: u.type ? BEASTS[u.type].r : 0.4, tall: u.type === 'golem' ? 2.9 : 1.8 });
       }
       for (const id of gone) seen.delete(id);
       return;
@@ -140,22 +187,32 @@ function joinServer() {
       bots.length = 0;
       botMesh.count = 0;
       me.x = prev.x = msg.at.x; me.z = prev.z = msg.at.z;
+      world.setLink(1, msg.link);
+      linkFromLabel = msg.linkFrom === 'account' ? 'your account\'s Eternal gear' : TRY[tryAt] === null ? 'your Eternal gear on this browser' : '';
+      drawLink();
       $('mp').classList.add('joined');
       mpStatus(`On the server world's land as ${msg.name}. Enter to chat.`);
       note('You are on the shared land. Friends who join appear here, at the south gate.');
     } else if (msg.t === 'reject') mpStatus(msg.reason);
     else if (msg.t === 'roster') roster(msg.players);
     else if (msg.t === 'snap') { me.x = prev.x = msg.x; me.z = prev.z = msg.z; }
-    else if (msg.t === 'ev') {
-      if (msg.type === 'swipe') hurtT = 0.35;
-      if (msg.type === 'aggro') { const b = seen.get(msg.id); note(`A ${b && b.type ? BEASTS[b.type].name : 'beast'} has seen you.`); }
-    } else if (msg.t === 'chat') say(msg.name ? `${msg.name}: ${msg.text}` : msg.text, !msg.name);
+    else if (msg.t === 'me') {
+      // the server's word on your health, mana and cooldowns (your page guessed them a moment early)
+      const [hp, maxHp, mp, maxMp, q, e, r, rage, down, mult] = msg.v;
+      Object.assign(me, { hp, maxHp, mp, maxMp, rage, mult });
+      for (const [k, v] of [['Q', q], ['E', e], ['R', r]]) if (Math.abs(me.cd[k] - v) > 0.35) me.cd[k] = v;
+      if (down && !me.dead) { me.dead = true; me.downT = down; me.leap = me.roll = me.whirl = me.draw = null; }
+      if (!down && me.dead) me.dead = false;
+    } else if (msg.t === 'evs') for (const ev of msg.list) onEvent(ev);
+    else if (msg.t === 'chat') say(msg.name ? `${msg.name}: ${msg.text}` : msg.text, !msg.name);
     else if (msg.t === 'pong') net.ping = performance.now() - msg.at;
   };
   ws.onclose = (e) => {
     const was = net && net.ready;
     net = null;
     world.noBeasts = false;
+    world.setLink(1, linkNow());
+    me.dead = false;
     for (const o of others.values()) drop(o);
     others.clear();
     seen.clear();
@@ -193,6 +250,29 @@ function mpStatus(text) {
 $('mp-join').addEventListener('click', joinServer);
 $('mp-leave').addEventListener('click', () => net && net.ws.close(1000, 'You left'));
 
+// ---- what happens: blows, shots, hits, falls (alone from the sim here; together from the server)
+function heroOf(pid) {
+  if (pid === 1 && !net) return hero;
+  if (net && pid === net.pid) return hero;
+  const o = others.get(pid);
+  return o ? o.hero : null;
+}
+const isMe = (pid) => (net ? pid === net.pid : pid === 1);
+function onEvent(ev) {
+  if (ev.type === 'shot') fx.shot(ev);
+  else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); }
+  else if (ev.type === 'slam') fx.ring(ev.x, ev.z, ev.r, 0xffb347, 0.5);
+  else if (ev.type === 'hit') fx.number(ev.x, ev.z, String(ev.dmg), isMe(ev.pid) ? (ev.shot && ev.dmg > 300 ? 'big' : 'dealt') : 'dealt');
+  else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
+  else if (ev.type === 'aggro' && isMe(ev.pid)) { const t = net ? seen.get(ev.id) : world.beasts[ev.id - 1]; note(`A ${t && t.type ? BEASTS[t.type].name : 'beast'} is coming for you.`); }
+  else if (ev.type === 'swipe') {
+    const h = heroOf(ev.pid);
+    if (h) h.anim.hit = true;
+    if (isMe(ev.pid)) { if (ev.dmg) { hurtT = 0.35; fx.number(heroX, heroZ, `-${ev.dmg}`, 'taken'); } else fx.number(heroX, heroZ, 'dodged', 'heal'); }
+  } else if (ev.type === 'down' && isMe(ev.pid)) note('You are down. You will get up at Sunmere\'s gate.');
+  else if (ev.type === 'up' && isMe(ev.pid)) { prev.x = me.x; prev.z = me.z; note('Back on your feet at the gate.'); }
+}
+
 // ---- chat (together)
 const chatLines = [];
 function say(text, quiet) {
@@ -221,15 +301,60 @@ $('chat-in').addEventListener('keydown', (e) => {
   e.stopPropagation();
 });
 
+// ---- the battle display: health, mana, skills, the Link
+function drawSkills() {
+  const kit = KITS[me.cls];
+  $('skills').innerHTML = '';
+  for (const [k, key] of [['basic', 'LMB'], ['Q', 'Q'], ['E', 'E'], ['R', 'R']]) {
+    const s = k === 'basic' ? kit.basic : kit[k];
+    const d = document.createElement('div');
+    d.className = 'sk';
+    d.id = 'sk-' + k;
+    d.title = s.text || '';
+    d.innerHTML = `<span class="k">${key}</span><b>${s.name}</b><em>${k === 'basic' ? 'no mana' : `${s.mana} mana`}</em><div class="cd"></div><div class="n"></div>`;
+    $('skills').appendChild(d);
+  }
+}
+function drawLink() {
+  const L = net && net.ready ? me.link : linkNow();
+  const lv = LINK_SLOTS.map((s) => (L && L[s]) || 0);
+  const from = TRY[tryAt] !== null && !(net && net.ready && linkFromLabel) ? `trying level ${TRY[tryAt]} in every slot (L)` : linkFromLabel || 'your Eternal gear';
+  $('link').textContent = `Dimension Link ×${linkMult(linkPower(L)).toFixed(2)} · Eternal ${lv.join(' / ')} · ${from}`;
+}
+function drawHud() {
+  const kit = KITS[me.cls];
+  $('hp').firstChild.style.width = `${(me.hp / me.maxHp) * 100}%`;
+  $('hp').lastChild.textContent = `${Math.ceil(me.hp)} / ${me.maxHp}`;
+  $('mpb').firstChild.style.width = `${(me.mp / me.maxMp) * 100}%`;
+  $('mpb').lastChild.textContent = `${Math.floor(me.mp)} / ${me.maxMp} mana`;
+  for (const k of ['basic', 'Q', 'E', 'R']) {
+    const el = $('sk-' + k);
+    if (!el) continue;
+    const s = k === 'basic' ? kit.basic : kit[k];
+    const left = k === 'basic' ? Math.max(0, me.basicT) : Math.max(0, me.cd[k]);
+    const full = k === 'basic' ? kit.basic.every : s.cd;
+    el.querySelector('.cd').style.height = `${Math.min(1, left / full) * 100}%`;
+    el.querySelector('.n').textContent = left > 0.95 ? Math.ceil(left) : '';
+    el.classList.toggle('dry', k !== 'basic' && me.mp < s.mana);
+  }
+  $('down').style.display = me.dead ? 'flex' : 'none';
+  if (me.dead) $('down-t').textContent = `Getting up at Sunmere's gate in ${Math.max(0, Math.ceil(me.downT))} s`;
+}
+
 // ---- input
 const keys = new Set();
-let yaw = -Math.PI / 2, pitch = 0.32, dist = 5.2, overlay = true;
+let yaw = -Math.PI / 2, pitch = 0.32, dist = 5.2, overlay = true, firing = false, scoped = false;
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
 addEventListener('keydown', (e) => {
   if (typing(e)) return;
   keys.add(e.code);
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
+  if (e.code === 'KeyL') {
+    if (net && net.ready) note('Together, the server decides your Link (your account\'s Eternal gear if you are signed in).');
+    else { tryAt = (tryAt + 1) % TRY.length; world.setLink(1, linkNow()); linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : ''; drawLink(); note(TRY[tryAt] === null ? 'Your own Eternal gear again.' : `Trying Eternal level ${TRY[tryAt]} in every slot (beasts are tuned for 10).`); }
+  }
+  if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyR') act(e.code.slice(3));
   if (e.code === 'Enter' && net && net.ready) {
     keys.clear();
     if (document.pointerLockElement) document.exitPointerLock();
@@ -238,19 +363,45 @@ addEventListener('keydown', (e) => {
     e.preventDefault();
   }
   const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
-  if (n >= 0) wear(CLASSES[n]);
+  if (n >= 0) wear(['warrior', 'archer', 'mage', 'rogue'][n]);
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
-canvas.addEventListener('click', () => canvas.requestPointerLock && canvas.requestPointerLock());
+addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; });
+canvas.addEventListener('mousedown', (e) => {
+  if (document.pointerLockElement !== canvas) { canvas.requestPointerLock && canvas.requestPointerLock(); return; }
+  if (e.button === 0) firing = true;
+  if (e.button === 2 && me.cls === 'archer') scoped = true;
+});
+addEventListener('mouseup', (e) => { if (e.button === 0) firing = false; if (e.button === 2) scoped = false; });
 addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement !== canvas && !(e.buttons & 2)) return;
-  yaw += e.movementX * 0.0032;
-  pitch = Math.max(-0.35, Math.min(1.2, pitch + e.movementY * 0.0028));
+  if (document.pointerLockElement !== canvas) return;
+  const k = scoped ? 0.35 : 1;
+  yaw += e.movementX * 0.0032 * k;
+  pitch = Math.max(-0.6, Math.min(1.2, pitch + e.movementY * 0.0028 * k));
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('wheel', (e) => { dist = Math.max(2.4, Math.min(11, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
+
+/** Where the crosshair points, on the ground (looking up: straight ahead, 45 m off). */
+const aimDir = new THREE.Vector3();
+function aimPoint() {
+  view.camera.getWorldDirection(aimDir);
+  const c = view.camera.position;
+  if (aimDir.y < -0.02) {
+    const t = -c.y / aimDir.y;
+    const x = c.x + aimDir.x * t, z = c.z + aimDir.z * t;
+    if ((x - me.x) ** 2 + (z - me.z) ** 2 < 70 * 70) return { x, z };
+  }
+  const h = Math.hypot(aimDir.x, aimDir.z) || 1;
+  return { x: me.x + (aimDir.x / h) * 45, z: me.z + (aimDir.z / h) * 45 };
+}
+function act(k) {
+  if (!world.ready(me, k)) return;
+  const a = aimPoint();
+  world.act(1, k, a.x, a.z); // here at once (together, a guess the server confirms)
+  if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2) });
+}
 
 function wish() {
   const f = (k) => (keys.has(k) ? 1 : 0);
@@ -261,7 +412,7 @@ function wish() {
   const len = Math.hypot(mx, mz);
   if (len > 1) { mx /= len; mz /= len; }
   const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'sprint' : keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC') ? 'walk' : 'run';
-  return { mx, mz, pace };
+  return { mx, mz, pace: scoped ? 'walk' : pace };
 }
 
 // ---- messages
@@ -272,7 +423,9 @@ function note(text) {
   noteT = 4;
 }
 let hurtT = 0;
-wear(CLASSES.includes(params.get('cls')) ? params.get('cls') : 'warrior');
+dress(hero, startCls);
+drawSkills();
+drawLink();
 
 // ---- the loop
 function resize() {
@@ -280,11 +433,11 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize();
-let last = performance.now(), acc = 0, time = 0;
+let last = performance.now(), acc = 0, time = 0, heroX = me.x, heroZ = me.z, fov = 62;
 const prev = { x: me.x, z: me.z };
 const perf = { frames: 0, t: 0, fps: 0, worst: 0, worstNow: 0, simMs: 0, simN: 0, simShown: 0 };
 const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), proj = new THREE.Vector3();
-const seenBeasts = [];
+const seenBeasts = [], nearBeasts = [];
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000);
@@ -292,6 +445,8 @@ function frame(now) {
   time += dt;
   perf.worstNow = Math.max(perf.worstNow, dt * 1000);
   acc += dt;
+  if (firing && !me.dead) act('basic');
+  if (me.cls !== 'archer') scoped = false;
   const w = wish();
   const s0 = performance.now();
   while (acc >= TICK) {
@@ -309,34 +464,50 @@ function frame(now) {
   }
   perf.simMs += performance.now() - s0;
   const alpha = acc / TICK;
-  const hx = prev.x + (me.x - prev.x) * alpha, hz = prev.z + (me.z - prev.z) * alpha;
+  heroX = prev.x + (me.x - prev.x) * alpha;
+  heroZ = prev.z + (me.z - prev.z) * alpha;
+  const hx = heroX, hz = heroZ;
   // together: say where you are, ten times a second (and see how long the server takes to answer, now and then)
   if (net && net.ready && now - net.sentAt >= 1000 / SEND_HZ) {
     net.sentAt = now;
     net.send({ t: 'pos', x: +me.x.toFixed(3), z: +me.z.toFixed(3), f: +me.facing.toFixed(3), m: me.moving ? 1 : 0, p: me.pace });
     if (now - net.pingAt > 2000) { net.pingAt = now; net.send({ t: 'ping', at: now }); }
   }
-  // what happened (alone: here; together: the server says)
+  // what happened here (together, only your own shots and blows: the server tells you the rest)
   for (const ev of world.events.splice(0)) {
-    if (ev.pid !== 1 || net) continue;
-    if (ev.type === 'aggro') note(`A ${BEASTS[world.beasts[ev.id - 1].type].name} has seen you.`);
-    if (ev.type === 'swipe') hurtT = 0.35;
+    if (net && !((ev.type === 'shot' || ev.type === 'cast') && ev.pid === 1)) continue;
+    if (net && ev.pid === 1) ev.pid = net.pid;
+    if (bots.some((b) => b.pid === ev.pid)) continue;
+    onEvent(ev);
   }
-  // your hero
+  // your hero (hidden down the scope)
   hero.group.position.set(hx, 0, hz);
   hero.group.rotation.y = Math.PI / 2 - me.facing;
-  if (hero.rig) hero.rig.update(dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving });
-  // the camera: over the right shoulder, kept above the ground
+  hero.group.visible = !scoped;
+  pose(hero, dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving, dead: me.dead });
+  // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
-  camTarget.set(hx + rx * 0.7, 1.55, hz + rz * 0.7);
-  camPos.set(camTarget.x - lx * dist, camTarget.y - ly * dist, camTarget.z - lz * dist);
-  if (camPos.y < 0.35) camPos.y = 0.35;
-  view.camera.position.copy(camPos);
-  view.camera.lookAt(camTarget.x + lx * 10, camTarget.y + ly * 10, camTarget.z + lz * 10);
+  if (scoped) {
+    camPos.set(hx + Math.cos(yaw) * 0.3, 1.62, hz + Math.sin(yaw) * 0.3);
+    view.camera.position.copy(camPos);
+    view.camera.lookAt(camPos.x + lx * 10, camPos.y + ly * 10, camPos.z + lz * 10);
+  } else {
+    camTarget.set(hx + rx * 0.7, 1.55, hz + rz * 0.7);
+    camPos.set(camTarget.x - lx * dist, camTarget.y - ly * dist, camTarget.z - lz * dist);
+    if (camPos.y < 0.35) camPos.y = 0.35;
+    view.camera.position.copy(camPos);
+    view.camera.lookAt(camTarget.x + lx * 10, camTarget.y + ly * 10, camTarget.z + lz * 10);
+  }
+  fov += ((scoped ? 26 : 62) - fov) * Math.min(1, dt * 12);
+  if (Math.abs(view.camera.fov - fov) > 0.05) { view.camera.fov = fov; view.camera.updateProjectionMatrix(); }
+  $('scope').style.display = scoped ? 'block' : 'none';
+  $('cross').classList.toggle('scoped', scoped);
   // the land round you, its beasts, its people, the other players
   view.stream(hx, hz);
   view.followSun(hx, hz);
+  view.clearView(hx, hz, view.camera.position.x, view.camera.position.z);
+  let fxBeasts;
   if (net) {
     // eased between the server's updates (a tenth of a second apart)
     const t = now / 1000;
@@ -348,24 +519,32 @@ function frame(now) {
       if (!s.player) seenBeasts.push(s);
     }
     view.drawSeen(seenBeasts, time);
+    fxBeasts = seenBeasts;
     for (const [pid, o] of others) {
       const s = seen.get(PLAYER_ID + pid);
       o.hero.group.visible = !!s;
       if (!s) { o.label.style.display = 'none'; continue; }
       o.hero.group.position.set(s.x, 0, s.z);
       o.hero.group.rotation.y = Math.PI / 2 - s.facing;
-      if (o.hero.rig) o.hero.rig.update(dt, { moving: s.moving, speed: 5.6 });
+      pose(o.hero, dt, { moving: s.moving, speed: 5.6, dead: s.dead });
       proj.set(s.x, 2.35, s.z).project(view.camera);
       const off = proj.z > 1 || Math.hypot(s.x - hx, s.z - hz) > 60;
       o.label.style.display = off ? 'none' : '';
       if (!off) o.label.style.transform = `translate(${((proj.x + 1) / 2) * innerWidth}px, ${((1 - proj.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
     }
-  } else view.drawBeasts(hx, hz, alpha, time);
+  } else {
+    view.drawBeasts(hx, hz, alpha, time);
+    nearBeasts.length = 0;
+    for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8 });
+    fxBeasts = nearBeasts;
+  }
+  fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, me.rage > 0, hx, hz);
   crowd.update(dt, hx, hz, time);
   const m = new THREE.Matrix4();
   bots.forEach((b, i) => { const p = world.players.get(b.pid); botMesh.setMatrixAt(i, m.makeTranslation(p.x, 0, p.z)); });
   botMesh.instanceMatrix.needsUpdate = true;
   view.render();
+  drawHud();
   // notes, chat fading, overlay twice a second
   if (noteT > 0 && (noteT -= dt) <= 0) $('note').classList.add('hidden');
   $('hurt').style.opacity = hurtT > 0 ? String((hurtT -= dt) / 0.35) : '0';
@@ -397,11 +576,11 @@ function frame(now) {
         on ? `sync ${(wireRate / 1024).toFixed(2)} KB/s from the server (${seen.size} things in sight) · goal under 20` : `sync ${(wireRate / 1024).toFixed(2)} KB/s if online (${SEND_HZ}/s, ${mirror.size} things in sight) · goal under 20`,
         on ? `beasts: the server's (${seenBeasts.length} in sight)` : `beasts ${world.beasts.length}: ${st.awake} awake, ${st.looked} looked at, rest asleep (wake ${WAKE} m)`,
         `townsfolk ${crowd.people.length}: ${cs.near} near, ${cs.mid} mid, ${cs.far} hidden · ${cs.moved} moved this frame`,
-        `at ${me.x.toFixed(0)}, ${me.z.toFixed(0)} · ${groundAt(me.x, me.z)} · ${NAMES[hero.cls]}`,
+        `at ${me.x.toFixed(0)}, ${me.z.toFixed(0)} · ${groundAt(me.x, me.z)} · ${NAMES[me.cls]}`,
       ].join('<br>');
     }
   }
 }
 requestAnimationFrame(frame);
-note('Sunmere, a town in Lacuna. Click to look around. WASD to move, Shift to sprint, 1-4 to change class.');
-window.land = { world, view, crowd, me, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, others, seen, get net() { return net; } }; // (tests)
+note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class, L to try other Eternal levels.');
+window.land = { world, view, crowd, me, fx, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

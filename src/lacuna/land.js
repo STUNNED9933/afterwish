@@ -89,10 +89,11 @@ export function chunkOf(x, z) {
 }
 
 /** Enemy kinds of the test land (placeholder beasts: real ones come with phase 2). */
+// (phase 2) hp and dmg are tuned for a hero whose Eternal gear is level 10 in every slot (see sim.js linkMult)
 export const BEASTS = {
-  wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest' },
-  hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow' },
-  golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony' },
+  wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest', hp: 420, dmg: 42, every: 1.3, xp: 12 },
+  hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow', hp: 560, dmg: 36, every: 1.5, xp: 14 },
+  golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony', hp: 1500, dmg: 95, every: 2.1, xp: 30 },
 };
 
 /** The land: chunks made on demand, and a spatial hash of everything solid on what has been made. */

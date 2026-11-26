@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Fix: black blocks over the screen (0.99.7)
+
+- The new exit beacons from 0.99.6 could black out large parts of the screen on some graphics cards. A rounding slip gave a few points of each beacon's light column an invalid brightness, and the glow (bloom) effect spread it across the screen. Fixed, with a test that checks every point of the new gates.
+
 ### The Verge: home at the keep, the ways up and down, and a crack in the air (0.99.6)
 
 - **Once your Wishkeep is open, you start every session there instead of Haven** (on your own and on the server world). The keep's own Waygate, just south of the Hearth, still goes anywhere.

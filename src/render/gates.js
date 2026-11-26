@@ -17,7 +17,9 @@ function fadeTube(r0, r1, h) {
   const geo = new THREE.CylinderGeometry(r1, r0, h, 40, 6, true).translate(0, h / 2, 0);
   const pos = geo.attributes.position, col = [];
   for (let i = 0; i < pos.count; i++) {
-    const k = Math.pow(1 - pos.getY(i) / h, 1.6);
+    // clamped: float rounding puts the top ring a hair above h, and a negative base gives NaN, which the bloom
+    // pass spreads into black blocks across the screen (0.99.7)
+    const k = Math.pow(Math.min(1, Math.max(0, 1 - pos.getY(i) / h)), 1.6);
     col.push(k, k, k);
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));

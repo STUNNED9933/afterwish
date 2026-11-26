@@ -6580,4 +6580,14 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   w2.goMap('deep6', 'town');
   check('...without a keep, the Deep\'s way home is still Haven', w2.homeOf('town') === 'town');
 }
+{
+  // (0.99.7) No NaN in the beacons' geometry: one NaN colour reaches the bloom pass and blacks out blocks of the screen
+  const THREE = await import('three');
+  const { buildBeacon, buildWayUp, buildCrack } = await import('../src/render/gates.js');
+  const ring = new THREE.RingGeometry(0.8, 1, 32);
+  const views = [buildBeacon(ring), buildWayUp(ring), buildCrack({ x: 0, z: 0, r: 1.1 })];
+  let bad = 0, n = 0;
+  for (const v of views) (v.group || v).traverse((o) => { if (!o.geometry) return; for (const at of Object.values(o.geometry.attributes)) for (const x of at.array) { n++; if (!Number.isFinite(x)) bad++; } });
+  check('Render (0.99.7): every vertex of the beacons, the Way Up and the crack is a real number (no NaN for bloom to spread)', bad === 0 && n > 1000, `${bad} bad of ${n}`);
+}
 process.exit(failed ? 1 : 0);

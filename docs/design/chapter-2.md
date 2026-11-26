@@ -96,8 +96,8 @@ classes (1–30); enemies balanced at 10 in every slot, diminishing returns abov
 Berserker (leaps where you look; harder when hurt), Bulwark (shield blocks the cone you face; taunts),
 Sharpshooter (right-click scope to first person; snipe ultimate is main damage), Windrunner (shoots on the move;
 dashes, wind jumps), Assassin (strikes from behind count; marks), Shadowdancer (blinks between shadows; decoys),
-Pyromancer (aimed fireballs, burning ground), Frostbinder (ice walls where you aim; freezes). Slice: two classes
-(proposed Sharpshooter + Berserker).
+Pyromancer (aimed fireballs, burning ground), Frostbinder (ice walls where you aim; freezes). Slice: two classes,
+Sharpshooter + Berserker (decided 26 Nov 2026).
 
 ## A living world
 
@@ -124,5 +124,5 @@ Tripo: ~3,090 credits (topped up 26 Nov); kept small: ~15–25 models for Act I 
 
 ## Open questions
 
-- The slice's two classes (proposed: Sharpshooter + Berserker).
+- None open. (Slice classes: Sharpshooter + Berserker, decided 26 Nov.)
 - Answered 26 Nov: free roam with friends first; one class at a time, FFXIV-style swap; creator from free parts, minimal Tripo; names by Claude; Votum; desire and malice; younger hero (no bold designs on the hero or player outfits).

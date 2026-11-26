@@ -6618,4 +6618,23 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
   const back = w.map.portals.find((g) => g.to === 'verge');
   check('...and the Verge back down to Haven, arriving by its Verge beacon', w.map.id === 'town' && Math.hypot(w.player.x - back.x, w.player.z - back.z) < 8);
 }
+{
+  // (0.99.10) Logging in or taking the Waygate lands you in the middle of the keep (or the Verge); a portal, by the portal
+  const { geared } = await import('./balance.mjs');
+  const w = new World({ seed: 1006, mode: 'explore', cls: 'warrior', save: geared('warrior', 100, 6) });
+  w.player.lives = { archer: { prim: [10] }, mage: { prim: [10] }, rogue: { prim: [10] }, warrior: { prim: [10] } };
+  const p = w.player;
+  const go = (to) => { w.command({ type: 'travel', to }); w.runCommands(); w.step(CONFIG.TICK); };
+  go('wishkeep');
+  check('Arriving (0.99.10): by the Waygate (as on logging in), in the middle of the keep by the Hearth', w.map.id === 'wishkeep' && Math.hypot(p.x - w.map.centre.x, p.z - w.map.centre.z) < 1 && Math.hypot(p.x, p.z) < 7);
+  go('verge');
+  check('...the Verge is on the Waygate, arriving in its middle', w.map.id === 'verge' && Math.hypot(p.x, p.z) < 1.5);
+  w.goMap('wishkeep', 'verge');
+  const vg = w.map.portals.find((g) => g.to === 'verge');
+  check('...but through the Verge beacon you arrive by that beacon', w.map.id === 'wishkeep' && Math.hypot(p.x - vg.x, p.z - vg.z) < 7);
+  w.goMap('town', 'greenwood');
+  const lone = new World({ seed: 1007, mode: 'explore', cls: 'warrior' });
+  lone.command({ type: 'travel', to: 'verge' }); lone.runCommands(); lone.step(CONFIG.TICK);
+  check('...with no keep, the Verge is shut by the Waygate too', lone.map.id === 'town');
+}
 process.exit(failed ? 1 : 0);

@@ -185,7 +185,7 @@ export class ServerWorld {
     } catch {
       home = false;
     }
-    if (home) this.moves.push({ pid: pl.pid, copy: pl.copy, to: KEEP.map, from: 'town', extra: null });
+    if (home) this.moves.push({ pid: pl.pid, copy: pl.copy, to: KEEP.map, from: null, extra: null }); // (0.99.10) logging in: the middle of the keep
     if (!pl.alone && !home) this.chatAll(`${name} arrived in Haven.`);
     this.rosterDirty = true;
   }

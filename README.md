@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Arrive in the middle of the keep (0.99.10)
+
+- Logging in, or taking the Waygate to the Wishkeep, now puts you in the middle of the keep between the Hearth and the Waygate, facing the Hearth (it used to be by the road to Haven). Walking in through a beacon still puts you by that beacon.
+- **The Verge is on the Waygate** once your keep is open, arriving in the middle of the Verge facing the crack.
+
 ### The Verge is shared (0.99.9)
 
 - On the server world the Verge now works like Haven: everyone on it is in the same place, so you see whoever else is heading down to the Deep or up to Caelum. Parties stay together, a second Verge opens if one fills up (16 players), and playing alone still gets you one of your own.

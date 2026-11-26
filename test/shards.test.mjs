@@ -533,6 +533,8 @@ check('when everyone has gone, nothing is left running', sw.size === 0 && sw.cop
   const A = box.get(a).find((m) => m.t === 'welcome').pid, B = box.get(b).find((m) => m.t === 'welcome').pid;
   for (let i = 0; i < 4; i++) sv.tick();
   check('Server (1.0): with the keep open, a hero starts the session in their Wishkeep', sv.players.get(A).copy.key === `wishkeep:${A}` && sv.players.get(A).copy.world.map.id === 'wishkeep', sv.players.get(A).copy.key);
+  { const k = sv.players.get(A).copy.world, me = k.as(k.heroByPid(A), (p) => p);
+    check('...in the middle of it, by the Hearth (not by its road to Haven)', Math.hypot(me.x - k.map.centre.x, me.z - k.map.centre.z) < 2.5, `${me.x.toFixed(1)},${me.z.toFixed(1)}`); }
   check('...and Haven is not told they arrived there', !box.get(b).some((m) => m.t === 'chat' && /Keeper arrived in Haven/.test(m.text || '')));
   check('...a hero without a keep still starts in Haven', sv.players.get(B).copy.key === 'town');
 }

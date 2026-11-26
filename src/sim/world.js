@@ -278,10 +278,12 @@ export class World {
       const map = this.map;
       const gate = map.portals.find((g) => g.to === from) || this.crossingFor(map, from);
       const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0;
+      const mid = !gate && map.centre; // (0.99.10) logged in or by the Waygate: the middle of the keep (or the Verge)
       const a = this.rng() * TAU;
-      p.x = p.px = (gate ? gate.x * k : 0) + dCos(a) * 1.2;
-      p.z = p.pz = (gate ? gate.z * k : 0) + dSin(a) * 1.2;
+      p.x = p.px = (gate ? gate.x * k : mid ? mid.x : 0) + dCos(a) * 1.2;
+      p.z = p.pz = (gate ? gate.z * k : mid ? mid.z : 0) + dSin(a) * 1.2;
       if (gate) p.facing = dAtan2(-gate.z, -gate.x);
+      else if (mid) p.facing = mid.facing;
       this.pushOut(p, p.radius);
       p.moveTarget = null;
       p.targetId = null;
@@ -1056,7 +1058,11 @@ export class World {
             // (0.80) the Wishkeep: once any class has beaten the Quiet; on the server a copy of your own, offline alone
             if (!this.keepOpen()) this.emit('keepLocked', {});
             else if (this.heroes.length > 1 && !this.travelHook) this.emit('keepAlone', {});
-            else this.goMap(KEEP.map, 'town');
+            else this.goMap(KEEP.map, null); // (0.99.10) not from a portal: arrive in the middle
+          } else if (this.mode === 'explore' && c.to === 'verge') {
+            // (0.99.10) the Verge by the Waygate, once the keep is open: arrive in its middle
+            if (!this.keepOpen()) this.emit('keepLocked', {});
+            else this.goMap('verge', null);
           } else if (this.mode === 'explore' && CAELUM.maps[c.to]) {
             // Caelum (0.64): open from taking The Sky Road; past the first map, once you have walked there.
             // Short of a map's Animus you may still go (with a warning on arrival, see caelumWarn).
@@ -11512,9 +11518,11 @@ inTown() {
     this.keepArrive(); // (0.81) the Wishkeep's heroes and buildings (none anywhere else)
     const gate = map.portals.find((g) => g.to === from) || this.crossingFor(map, from); // (1.0) back from the Deep or Caelum: at its crossing
     const k = gate ? 1 - 5.5 / dHypot(gate.x, gate.z) : 0; // a few steps inside the portal
-    p.x = p.px = gate ? gate.x * k : 0;
-    p.z = p.pz = gate ? gate.z * k : 0;
+    const mid = !gate && map.centre; // (0.99.10) logged in or by the Waygate: the middle of the keep (or the Verge)
+    p.x = p.px = gate ? gate.x * k : mid ? mid.x : 0;
+    p.z = p.pz = gate ? gate.z * k : mid ? mid.z : 0;
     if (gate) p.facing = dAtan2(-gate.z, -gate.x);
+    else if (mid) p.facing = mid.facing;
     p.moveTarget = null;
     p.targetId = null;
     p.dash = null;

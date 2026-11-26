@@ -1185,6 +1185,18 @@ function start(hot = {}) {
       });
       here.prepend(home);
     }
+    if (world.map.id !== 'verge' && world.keepOpen && world.keepOpen()) {
+      // (0.99.10) the Verge by the Waygate (arriving in its middle), once the keep is open
+      const vb = document.createElement('button');
+      vb.type = 'button';
+      vb.className = 'travel-row fit';
+      vb.innerHTML = `<b>The Verge</b><span>${MAPS.verge.blurb}</span>`;
+      vb.addEventListener('click', () => {
+        setMode('play');
+        applyNow({ type: 'travel', to: 'verge' });
+      });
+      here.appendChild(vb);
+    }
     for (const id of MAP_IDS) {
       const m = MAPS[id];
       if (m.safe || id === world.map.id) continue;

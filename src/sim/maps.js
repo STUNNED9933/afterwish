@@ -288,6 +288,9 @@ export function buildMap(id, custom = null) {
     keepClear.push({ x, z, r: 3 });
   }
   // The Waygate: fast travel to maps you have discovered. Stand on it like a portal.
+  // (0.99.10) Where you arrive when you did not come through one of its portals (logging in, the Waygate):
+  // in the keep, between the Hearth and the Waygate, facing the Hearth; on the Verge, in the middle, facing the crack.
+  const centre = def.wishkeep ? { x: 0, z: 5.5, facing: -Math.PI / 2 } : def.verge ? { x: 0, z: 0, facing: -Math.PI / 2 } : null;
   const waygate = def.wishkeep ? { x: 0, z: 9, r: 1.8 } : def.theme === 'town' ? { x: 0, z: 5.5, r: 1.8 } : null;
 
   // Waystones (out in the world): one by the entrance, where fallen teammates wake up, and one
@@ -366,7 +369,7 @@ export function buildMap(id, custom = null) {
   return {
     id, name: def.name, theme: def.theme, song: def.song || null, safe: !!def.safe, radius: R, wilds: !!def.wilds,
     level: def.level, levelMax: def.level + def.levelSpan, deep: def.deep || 0,
-    portals, obstacles, spawns, waygate, waystones, ...(crossings ? { crossings } : {}), ...(def.wishkeep ? { gates: [0, 1.571, 2.75, 4.712].map((a) => ({ x: dCos(a) * (R - 4), z: dSin(a) * (R - 4) })) } : {}),
+    portals, obstacles, spawns, waygate, waystones, ...(crossings ? { crossings } : {}), ...(centre ? { centre } : {}), ...(def.wishkeep ? { gates: [0, 1.571, 2.75, 4.712].map((a) => ({ x: dCos(a) * (R - 4), z: dSin(a) * (R - 4) })) } : {}),
     ...(road ? { road: road.line, sidePaths: road.sidePaths, chestSpots: road.shrines.map((sh) => ({ x: sh.x - sh.nx * 1.5, z: sh.z - sh.nz * 1.5 })), arena: road.arena } : {}),
   };
 }

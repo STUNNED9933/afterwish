@@ -42,9 +42,12 @@ const ownLink = linkFrom(localSaves());
 const TRY = [null, 0, 10, 20, 30]; // L cycles: your own, then every slot at these levels
 let tryAt = 0;
 const linkNow = () => (TRY[tryAt] === null ? ownLink : Object.fromEntries(LINK_SLOTS.map((s) => [s, TRY[tryAt]])));
-const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : 'warrior';
+// (0.99.23) he starts with his fists; a weapon once Rowan hands him one (the trial), then the path he chose
+const saved = loadStory();
+const ownCls = saved.path || (saved.trial === 'warrior' || saved.trial === 'archer' ? saved.trial : 'novice');
+const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : ownCls;
 // (0.99.22) the Link sleeps until the story wakes it (?link=1 wakes it early, for testing)
-const linkAwake = params.get('link') === '1' || !!loadStory().linked;
+const linkAwake = params.get('link') === '1' || !!saved.linked;
 const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake });
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
@@ -55,8 +58,9 @@ let wireTick = 0, wireBytes = 0, wireRate = 0;
 let linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : '';
 
 // ---- heroes: yours, and (together) everyone else's, each in their class's real model
-const NAMES = { warrior: 'Berserker', archer: 'Sharpshooter' }; // (working names)
-const standGeo = new THREE.CapsuleGeometry(0.32, 1.0, 4, 8).translate(0, 0.82, 0);
+const NAMES = { novice: 'Unarmed', warrior: 'Berserker', archer: 'Sharpshooter' }; // (working names)
+const HERO_H = 1.0; // (0.99.23) he is a small boy: about a metre tall
+const standGeo = new THREE.CapsuleGeometry(0.2, 0.55, 4, 8).translate(0, 0.48, 0);
 function makeHero(colour = 0xd8c8a8) {
   const h = { group: new THREE.Group(), body: new THREE.Group(), rig: null, cls: null, token: 0, stand: new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: colour })), anim: { start: false, move: null, moveDur: 0, spinT: 0, hit: false, period: 0, jumpT: -1 } };
   h.stand.castShadow = true;
@@ -69,7 +73,7 @@ function dress(h, cls) {
   if (h.cls === cls) return;
   h.cls = cls;
   const token = ++h.token;
-  const id = 'hero_' + cls;
+  const id = 'kid_' + cls; // (0.99.23) everyone in Lacuna is the small hero in rags, for now
   if (!RIGGED[id]) return;
   Promise.all([loadRigged(id), loadWeapon(cls, RIGGED[id].weaponScale || 1)]).then(([tpl, made]) => {
     if (!tpl || token !== h.token || h.gone) return;
@@ -146,6 +150,7 @@ function pose(h, dt, s) {
 const hero = makeHero();
 function wear(cls, force = false) {
   if (trial && !force) return note('Finish the trial first (your teacher has handed you the weapon).');
+  if (!force && !story.path && cls !== 'novice') return note('You have no weapon yet. (The Iron Hounds will see to that.)');
   if (!KITS[cls]) return note('Pyromancer, Assassin and the other classes come later: the opening has the Berserker and the Sharpshooter.');
   if (hero.cls === cls) return;
   dress(hero, cls);
@@ -359,6 +364,7 @@ function drawSkills() {
   $('skills').innerHTML = '';
   for (const [k, key] of [['basic', 'LMB'], ['Q', 'Q'], ['E', 'E'], ['R', 'R']]) {
     const s = k === 'basic' ? kit.basic : kit[k];
+    if (!s) continue; // (unarmed: no skills yet)
     const d = document.createElement('div');
     d.className = 'sk';
     d.id = 'sk-' + k;
@@ -402,7 +408,7 @@ function drawHud() {
 
 // ---- input
 const keys = new Set();
-let yaw = -Math.PI / 2, pitch = 0.32, dist = 5.2, overlay = true, firing = false, scoped = false;
+let yaw = -Math.PI / 2, pitch = 0.26, dist = 3.3, overlay = true, firing = false, scoped = false;
 let walking = false; // Ctrl (or C) toggles walking: held, Ctrl sets off the browser's own shortcuts
 let altFree = false; // Alt held: the mouse is yours (hover for descriptions); let go and it looks around again
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
@@ -540,11 +546,11 @@ $('skills').addEventListener('mouseover', (e) => {
   const k = sk.id.slice(3), kit = KITS[me.cls];
   const s = k === 'basic' ? kit.basic : kit[k];
   const r = sk.getBoundingClientRect();
-  const what = k === 'basic' ? (me.cls === 'warrior' ? 'Cut in front of you (hold left click).' : 'Shoot where the crosshair is (hold left click).') : s.text;
+  const what = k === 'basic' ? (me.cls === 'warrior' ? 'Cut in front of you (hold left click).' : me.cls === 'novice' ? 'Punch in front of you (hold left click). Small fists; better than nothing.' : 'Shoot where the crosshair is (hold left click).') : s.text;
   showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? `every ${s.every} s · no mana` : `${s.manaText || `${s.mana} mana`} · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left, r.top);
 });
 $('skills').addEventListener('mouseout', hideTip);
-addEventListener('wheel', (e) => { dist = Math.max(2.4, Math.min(11, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
+addEventListener('wheel', (e) => { dist = Math.max(1.6, Math.min(10, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
 
 /** Where the crosshair points, on the ground (looking up: straight ahead, 45 m off). */
 const aimDir = new THREE.Vector3();
@@ -1173,11 +1179,11 @@ function frame(now) {
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
   if (cutscene.active) cutscene.update(dt);
   else if (scoped) {
-    camPos.set(hx + Math.cos(yaw) * 0.3, 1.62 + heroY, hz + Math.sin(yaw) * 0.3);
+    camPos.set(hx + Math.cos(yaw) * 0.2, HERO_H * 0.9 + heroY, hz + Math.sin(yaw) * 0.2);
     view.camera.position.copy(camPos);
     view.camera.lookAt(camPos.x + lx * 10, camPos.y + ly * 10, camPos.z + lz * 10);
   } else {
-    camTarget.set(hx + rx * 0.7, 1.55 + heroY * 0.6, hz + rz * 0.7); // (follows a hop a little, not all the way: less bobbing)
+    camTarget.set(hx + rx * 0.5, HERO_H * 1.05 + heroY * 0.6, hz + rz * 0.5); // (follows a hop a little, not all the way: less bobbing)
     camPos.set(camTarget.x - lx * dist, camTarget.y - ly * dist, camTarget.z - lz * dist);
     if (camPos.y < 0.35) camPos.y = 0.35;
     view.camera.position.copy(camPos);

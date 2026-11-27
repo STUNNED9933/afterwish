@@ -49,8 +49,10 @@ export class Cutscene {
     const d = Math.hypot(dx, dz) || 1;
     dx /= d; dz /= d;
     const back = Math.max(1.6, Math.min(3.2, d * 0.55)), side = 0.85;
-    const at = [L.x - dx * back - dz * side, 1.78, L.z - dz * back + dx * side];
-    const look = [S.x - dx * 0.2, 1.42, S.z - dz * 0.2];
+    // (0.99.23) over a grown-up's shoulder at their height; over the small hero's, low, looking up at whoever speaks
+    const small = (to || 'hero') === 'hero';
+    const at = [L.x - dx * back - dz * side, small ? 1.05 : 1.78, L.z - dz * back + dx * side];
+    const look = [S.x - dx * 0.2, small ? 1.5 : who === 'hero' ? 0.85 : 1.42, S.z - dz * 0.2];
     return { at, look };
   }
 

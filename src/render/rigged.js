@@ -872,7 +872,7 @@ export function instantiate(tpl) {
     /** Hold a bow made here (spec.bow): wood for the limbs, the string glows like a blade. */
     holdBow(wood, string) {
       if (!hand || !spec.bow) return;
-      bow = makeBow(wood, string, tpl.scale, root, hand, palm, root.getObjectByName(spec.bow.drawHand), root.getObjectByName(spec.bow.shoulder), root.getObjectByName('Hip'));
+      bow = makeBow(wood, string, tpl.scale / (spec.bowScale || 1), root, hand, palm, root.getObjectByName(spec.bow.drawHand), root.getObjectByName(spec.bow.shoulder), root.getObjectByName('Hip'));
       mats.push(wood);
     },
     /** How strongly the blade should trail light this frame (0 = not at all). */
@@ -1442,3 +1442,25 @@ export function setWeaponLook(model, cls, look) {
     if (model.applyGlowAgain) model.applyGlowAgain();
   });
 }
+
+
+// (0.99.23) Lacuna's hero as he arrives: a small boy in rags (about a metre tall), one model with three ways of
+// fighting: his fists (until Rowan hands him a blade), then the Berserker's sword or the Sharpshooter's bow, each
+// the heroes' own clips moved onto him (tools/models/copy-clips.mjs). Smaller blade and bow; nothing stowed on
+// his back or hip (those were placed on the grown heroes' bodies).
+const KID = { url: 'models/l_hero.glb', height: 1.0, idle: 'ual_Idle_Loop', walk: 'ual_Walk_Loop', walkRef: 1.25, runRef: 4.6, hit: 'ual_Hit_Chest', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'] };
+RIGGED.kid_novice = {
+  ...KID,
+  turn: -Math.PI / 2,
+  run: 'ual_Jog_Fwd_Loop',
+  death: 'ual_Death01',
+  // a jab and a cross, alternating
+  attack: { clip: 'ual_Punch_Jab', from: 0.1, to: 0.5 },
+  attacks: [
+    { clip: 'ual_Punch_Jab', from: 0.12, to: 0.5 },
+    { clip: 'ual_Punch_Cross', from: 0.15, to: 0.6 },
+  ],
+  moves: { ...HOP },
+};
+RIGGED.kid_warrior = { ...RIGGED.hero_warrior, ...KID, run: 'ual_Jog_Fwd_Loop', death: 'ual_Death', weaponScale: 0.55, attack: { clip: 'ual_SlashA', from: 0.08, to: 0.43 }, stow: undefined, walkCarry: undefined };
+RIGGED.kid_archer = { ...RIGGED.hero_archer, ...KID, run: 'arc_run', runRef: 4.0, bowScale: 0.62, stow: undefined, recentre: ['ual_Idle_Loop', 'arc_run', 'ual_Hit_Chest'] };

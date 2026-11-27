@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the hero arrives small, in rags (0.99.23)
+
+- **A new hero for Lacuna** (Tripo, run 45966236093): a small boy, about a metre tall, in an oversized torn linen shirt, a rope belt, patched trousers and cloth-wrapped feet. Next to the Iron Hounds he is tiny, and he is meant to be. The older hero models are kept for later.
+- **He starts with his fists** (Unarmed: a jab and a cross, 150 health, no skills). Rowan hands him a blade at the trial, Juni a bow; the path he chooses is the weapon he keeps. 1 and 2 only swap weapons once he has chosen.
+- His clips: the library's idle, walk, jog, punches, flinch and fall, and the Berserker's and Sharpshooter's own moves and every emote, moved onto him. A smaller blade and bow (a bow can now be sized to whoever holds it).
+- **The camera sits at his height** (closer, lower), and in the scenes a grown-up speaking to him is framed from low over his shoulder, looking up at them.
+
 ### Lacuna: a darker rift, a new opening, the Telling Glass, the Link asleep (0.99.22)
 
 - **The rift is sinister now** (Lacuna's tear and the crack on the Verge): a black wound in the air with a thin pale-violet rim, lightning crawling off it, dark tendrils clawing out of its edges, scorched ground and ash rising.

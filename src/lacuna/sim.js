@@ -51,6 +51,12 @@ export function linkFrom(saves) {
 // Sharpshooter paths), rebuilt round mana. The Berserker has little and pays the rest in blood; his blows win it
 // back. The Sharpshooter has plenty, breathes it back standing still, and pours it into one shot.
 export const KITS = {
+  // (0.99.23) before he has a weapon: a small boy's fists, and nothing else
+  novice: {
+    name: 'Unarmed', hp: 150, dmg: 8, mp: 30, regen: 3,
+    passive: 'No weapon yet, and no skills: only your fists. (Rowan will hand you a blade.)',
+    basic: { name: 'Punch', every: 0.55, range: 1.7, arc: 1.6, mult: 1.0 },
+  },
   warrior: {
     name: 'Berserker', hp: 340, dmg: 20, mp: 60, regen: 2.5,
     passive: 'Blood Price: short of mana, a skill takes the rest from your health (never below a tenth). Battle Rhythm: every beast your Cleave hits gives back 3 mana. Bloodied (under half health): +25% damage, 20% faster blows, and your hits heal you.',
@@ -390,12 +396,13 @@ export class LandWorld {
     p.calm = 0;
     if (k === 'basic') {
       // faster when Bloodied (Berserker) or just after a roll (Sharpshooter)
-      const haste = 1 + (this.bloodied(p) ? kit.bloodied.haste : 0) + (p.hasteT > 0 ? KITS.archer.E.haste : 0);
+      const haste = 1 + (this.bloodied(p) ? KITS.warrior.bloodied.haste : 0) + (p.hasteT > 0 ? KITS.archer.E.haste : 0);
       const every = kit.basic.every / haste;
       p.basicT = every;
       p.facing = dAtan2(dz, dx);
       this.emit('cast', { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every });
       if (p.cls === 'warrior') this.rhythm(p, this.cleave(p, dx, dz));
+      else if (p.cls === 'novice') this.cleave(p, dx, dz);
       else {
         // Steady Aim: every third Shot a crit, and a little mana back
         const A = kit.steadyAim;
@@ -459,7 +466,7 @@ export class LandWorld {
   }
 
   cleave(p, dx, dz) {
-    const s = KITS.warrior.basic;
+    const s = KITS[p.cls].basic; // a sword's cut, or (unarmed) a punch
     const cosHalf = dCos(s.arc / 2);
     let n = 0;
     for (const b of this.beastsNear(p.x, p.z, s.range + 1.2)) {

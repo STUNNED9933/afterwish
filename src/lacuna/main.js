@@ -19,7 +19,7 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrack } from '../render/gates.js';
 import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
@@ -48,7 +48,7 @@ const saved = loadStory();
 const ownCls = saved.path || (saved.trial === 'warrior' || saved.trial === 'archer' ? saved.trial : 'novice');
 const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : ownCls;
 // (0.99.22) the Link sleeps until the story wakes it (?link=1 wakes it early, for testing)
-const linkAwake = params.get('link') === '1' || !!saved.linked;
+let linkAwake = params.get('link') === '1' || !!saved.linked;
 // (0.99.24) how strong he has grown: weak through the tear, stronger each day with the Hounds
 const startVig = ['new', 'stumble', 'rescued', 'waking'].includes(saved.stage || 'new') ? VIGOUR[0] : saved.stage === 'days' ? VIGOUR[Math.min(VIGOUR.length - 1, saved.day || 0)] : 1;
 const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake, vigour: startVig });
@@ -315,6 +315,8 @@ function heroOf(pid) {
 const isMe = (pid) => (net ? pid === net.pid : pid === 1);
 function onEvent(ev) {
   if (trial) trialEvent(ev);
+  huntEvent(ev);
+  vesperEvent(ev);
   if (ev.type === 'shot') fx.shot(ev);
   else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); }
   else if (ev.type === 'emote') { const h = heroOf(ev.pid); if (h) startEmote(h, ev.id); }
@@ -747,6 +749,10 @@ function showQuest() {
   $('quest').classList.toggle('hidden', !q);
   if (!q) return;
   $('quest-name').textContent = q.name;
+  if (story.stage === 'hunt' && hunt) {
+    $('quest-goal').innerHTML = hunt.done ? 'Sorrel says something is wrong at the glade' : `Hunt the ashen wolves near the glade (${hunt.wolves.length - hunt.left}/${hunt.wolves.length})`;
+    return;
+  }
   if (story.stage === 'days' && day) {
     // (0.99.24) the day's chores, ticked off as you go
     const D = DAYS[day.n];
@@ -817,7 +823,7 @@ async function runScene(script, ...args) {
     document.body.classList.remove('scene');
     $('cs-skip').classList.add('hidden');
   }
-  for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile']) { const k = cutscene.keep(who); if (k) company[who] = k; }
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile', 'vesper']) { const k = cutscene.keep(who); if (k) company[who] = k; }
   cutscene.clear();
   $('fade').style.transition = 'opacity 0.8s';
   $('fade').style.opacity = '0';
@@ -837,7 +843,7 @@ function drawFog(dt, t) {
   if (l > 0.005) $('fog').style.background = `radial-gradient(ellipse at center, rgba(236,239,245,0) ${Math.round(72 - 58 * l)}%, rgba(236,239,245,${(0.5 + 0.45 * l).toFixed(2)}) 100%)`;
 }
 /** How thick the fog is out of the scenes, by how far the story has come. */
-const FOG_AT = { new: 0.7, stumble: 0.7, rescued: 0.5, waking: 0.38, days: 0.34, crystal: 0.1, path: 0.06, ambush: 0.04 };
+const FOG_AT = { new: 0.7, stumble: 0.7, rescued: 0.5, waking: 0.38, days: 0.34, crystal: 0.1, path: 0.06, ambush: 0.04, hunt: 0.04, mourning: 0 };
 let flashT = null;
 function memoryFlash(text, hold = 2.8) {
   $('flash-text').textContent = text;
@@ -850,11 +856,13 @@ function memoryFlash(text, hold = 2.8) {
 const rift = buildCrack(TEAR);
 view.scene.add(rift.group);
 let riftT = 0, riftClosing = 1;
-cutscene.ctx.rift = { open: () => { riftClosing = 0; }, close: () => { riftClosing = Math.max(riftClosing, 0.01); } };
+let riftStir = false;
+cutscene.ctx.rift = { open: () => { riftClosing = 0; }, close: () => { riftClosing = Math.max(riftClosing, 0.01); }, stir: (on) => { riftStir = !!on; } };
 function drawRift(dt) {
   riftT += dt;
   if (riftClosing > 0 && riftClosing < 0.93) riftClosing = Math.min(0.93, riftClosing + dt * 1.5);
-  const k = Math.min(riftClosing, 0.93);
+  // (0.99.26) stirring: the sliver opens part way, and breathes
+  const k = riftStir && riftClosing >= 0.93 ? 0.62 + Math.sin(riftT * 2.2) * 0.06 : Math.min(riftClosing, 0.93);
   rift.group.scale.set(1.25 * (1 - k), 1.25 * (1 - k * 0.35), 1.25 * (1 - k));
   if (Math.hypot(TEAR.x - me.x, TEAR.z - me.z) < 120) rift.anim(dt, riftT);
 }
@@ -958,7 +966,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead).sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -968,7 +976,7 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  const what = story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  const what = story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
   $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
@@ -1095,6 +1103,7 @@ function choosePath(cls) {
   story.trial = null;
   story.path = cls;
   setStage('ambush');
+  setTimeout(startAmbush, 2500);
   wear(cls, true);
   bark(cls === 'warrior' ? [['rowan', 'Ha! Knew it. Blood and iron, then.'], ['juni', 'Your loss. Come and shoot with me some time.']] : [['juni', 'Yes! Another one for the bow.'], ['rowan', 'Fine. Someone has to stand behind me.']]);
   toast('Quest complete: Choosing a Path', 'New quest: When It Counts (coming in the next part)');
@@ -1252,6 +1261,143 @@ async function sleep() {
   toGuild(true);
 }
 
+// ---- (0.99.26) Quest 4, When It Counts: a year on; the ashen wolves; Vesper; Ilse; the Link wakes
+function startAmbush() {
+  uses.clear();
+  bark([['rowan', 'Sprout. A word, when you have one.']]);
+  uses.add({ at: () => company.rowan, r: 2.6, label: 'Talk to Rowan', fn: playYear });
+}
+async function playYear() {
+  uses.clear();
+  if (net) net.ws.close(1000, 'This part of the story is played alone');
+  await runScene(yearScene);
+  setStage('hunt');
+  startHunt();
+}
+let hunt = null; // { wolves, left }
+function startHunt() {
+  // set out along the west road, the Hounds behind you
+  me.x = ROAD_IN.x + 16; me.z = ROAD_IN.z + 2; prev.x = me.x; prev.z = me.z;
+  yaw = Math.PI; pitch = 0.2;
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) {
+    if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+    company[who].place(me.x + 3 + Math.random() * 2, me.z + (Math.random() - 0.5) * 4);
+  }
+  company.rowan.draw(true);
+  setVigour(1);
+  const wolves = ASHEN_AT.map((p) => world.borrowBeast('wolf', p.x, p.z, { story: 'ashen' })).filter(Boolean);
+  hunt = { wolves, left: wolves.length, done: false };
+  const f = follow(company, world.land);
+  questRun = { update(dt) { f.update(dt, me); } };
+  toast('When It Counts', 'Four ashen wolves, near the glade');
+  bark([['juni', 'Ash in the air. Smell that? Like a cold fireplace.'], ['rowan', 'Spread out. Not too far. Sprout, with me.']]);
+  showQuest();
+}
+function huntEvent(ev) {
+  if (!hunt || ev.type !== 'die' || ev.story !== 'ashen') return;
+  hunt.left--;
+  showQuest();
+  if (hunt.left === 2) bark([['juni', 'Two more! They\'re not running. Wolves always run.']]);
+  if (hunt.left > 0) return;
+  hunt.done = true;
+  bark([['rowan', 'That\'s all of them.'], ['sorrel', 'Rowan. The glade. Something\'s wrong at the glade.']]);
+  const f = follow(company, world.land);
+  questRun = { update(dt) { f.update(dt, me); if (Math.hypot(me.x - TEAR.x, me.z - TEAR.z) < 13) playVesper(); } };
+}
+// the fights: Vesper is one of the land's golems with his own numbers, drawn as a man
+let boss = null; // { b (sim), stage: 1 or 2, t, healT }
+function syncVesper(dt) {
+  const v = company.vesper, b = boss && boss.b;
+  if (!v || !b) return;
+  const d = Math.hypot(b.x - v.x, b.z - v.z);
+  v.place(b.x, b.z, b.facing);
+  if (!v.once) { const want = b.moving ? (d / Math.max(dt, 1e-3) > 2.6 ? 'run' : 'walk') : 'idle'; if (v.looping !== want) v.loop(want); }
+}
+const fightRun = { update(dt) { for (const [who, a] of Object.entries(company)) if (who !== 'vesper') a.update(dt); if (company.vesper) company.vesper.update(dt); syncVesper(dt); fightTick(dt); } };
+async function playVesper() {
+  questRun = null;
+  await runScene(vesperScene);
+  const b = world.borrowBeast('golem', VESPER_FROM.x, VESPER_FROM.z, { story: 'vesper', def: VESPER, ward: 0.02, hidden: true });
+  b.state = 'chase'; b.target = 1;
+  boss = { b, stage: 1, t: 0, healT: 4 };
+  for (const who of ['rowan', 'juni', 'sorrel']) company[who].loop('idle');
+  bark([['vesper', 'Go on. Hit me. I\'d like to see what you\'ve got.']]);
+  questRun = fightRun;
+}
+function fightTick(dt) {
+  if (!boss || cutscene.active) return;
+  boss.t += dt;
+  if (boss.stage === 1) {
+    // Ilse keeps him on his feet; he cannot touch Vesper; it ends when it must
+    boss.healT -= dt;
+    const ilse = company.ilse;
+    if (boss.t > 2.5 && ilse && ilse.looping !== 'idle' && !ilse.once) ilse.loop('idle');
+    if (boss.healT <= 0 && ilse) {
+      boss.healT = 6;
+      ilse.face(me.x, me.z);
+      ilse.play('cast');
+      fx.ring(me.x, me.z, 1.3, 0x8fff9a, 1.0);
+      me.hp = Math.min(me.maxHp, me.hp + me.maxHp * 0.22);
+      if (boss.t < 9) bark([['ilse', 'I\'ve got you, Sprout! Keep moving!']]);
+    }
+    if (boss.t > 7 && !boss.warned) { boss.warned = true; bark([['', 'Nothing you do so much as marks him.']]); }
+    if (boss.t > 22 || me.hp < me.maxHp * 0.35) { boss.stage = 0; playDeath(); }
+  } else if (boss.stage === 2) {
+    if (me.hp < me.maxHp * 0.25) me.hp = me.maxHp * 0.25; // the Link holds him up
+    if (boss.b.hp < boss.b.maxHp * 0.45) { boss.stage = 0; playAfter(); }
+    else if (boss.b.hp < boss.b.maxHp * 0.75 && !boss.said) { boss.said = true; bark([['vesper', 'Ha! There it is. Again!']]); }
+  }
+}
+function vesperEvent(ev) {
+  if (!boss || ev.id !== boss.b.id) return;
+  if (ev.type === 'swipe' && company.vesper) { company.vesper.play('cast', { speed: 1.4 }); fx.ring(boss.b.x, boss.b.z, 2.2, 0x2a0a3a, 0.35); }
+}
+async function playDeath() {
+  boss.b.state = 'idle';
+  boss.b.target = 0;
+  boss.b.stunUntil = world.time + 1e6; // still while the scene plays
+  await runScene(deathScene);
+  boss.b.stunUntil = 0;
+  boss.b.ward = null;
+  boss.b.state = 'chase'; boss.b.target = 1;
+  boss.stage = 2;
+  questRun = fightRun; // (a scene clears the quest's own running: back to the fight)
+  bark([['vesper', 'Show me.']]);
+}
+function wakeLink() {
+  story.linked = true;
+  saveStory(story);
+  linkAwake = true;
+  me.linked = true;
+  me.surge = 3; // (the first waking: far stronger than he will be again for a long while)
+  world.refit(me, true);
+  drawLink();
+  toast('The Dimension Link wakes', 'Your Eternal gear lends you its strength in Lacuna now');
+}
+cutscene.ctx.wakeLink = wakeLink;
+async function playAfter() {
+  boss.b.state = 'idle'; boss.b.target = 0; boss.b.stunUntil = world.time + 1e6;
+  await runScene(afterScene);
+  // done: he is gone through the tear, and Ilse with the Hounds' grief
+  boss.b.dead = true; boss.b.diedAt = 1e12; boss.b.hidden = false;
+  boss = null;
+  me.surge = 0;
+  if (company.vesper) { company.vesper.remove(); delete company.vesper; }
+  if (company.ilse) { company.ilse.remove(); delete company.ilse; }
+  story.ilse = 'gone';
+  setStage('mourning');
+  toast('Quest complete: When It Counts', 'New quest: Word Gets Around (coming in the next part)');
+  toMourning();
+}
+function toMourning() {
+  for (const who of ['rowan', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  if (company.ilse) { company.ilse.remove(); delete company.ilse; }
+  me.x = TRAINING.line.x - 4; me.z = TRAINING.line.z + 4; prev.x = me.x; prev.z = me.z;
+  questRun = atTraining(company);
+  company.rowan.sheathe(true);
+  company.rowan.loop('idle');
+}
+
 // where the story stands when the page opens
 if (story.stage === 'new') setTimeout(playOpening, 300);
 else if (story.stage === 'stumble') {
@@ -1276,10 +1422,18 @@ else if (story.stage === 'stumble') {
 } else if (story.stage === 'crystal') {
   toGuild();
   showQuest();
+} else if (story.stage === 'hunt') {
+  toGuild();
+  setTimeout(startHunt, 0);
+} else if (story.stage === 'mourning') {
+  setTimeout(toMourning, 0);
+  crystal.mark(true);
+  showQuest();
 } else if (story.stage === 'path' || story.stage === 'ambush') {
   toGuild();
   questRun = atTraining(company);
   crystal.mark(true);
+  if (story.stage === 'ambush') setTimeout(startAmbush, 0);
   if (story.stage === 'path' && (story.trial === 'warrior' || story.trial === 'archer')) startTrial(story.trial);
   else if (story.stage === 'path' && story.trial === 'choose') setTimeout(showChoose, 600);
   showQuest();

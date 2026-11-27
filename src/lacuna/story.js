@@ -16,7 +16,9 @@ export const QUESTS = {
   days: { name: 'Days with the Hounds', goal: 'Get your strength back' },
   crystal: { name: 'The Telling Glass', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
-  ambush: { name: 'When It Counts', goal: 'The Iron Hounds will take you on your first hunt (the next part of the story is coming)' },
+  ambush: { name: 'When It Counts', goal: 'Rowan wants a word (the training ground)' },
+  hunt: { name: 'When It Counts', goal: 'Hunt the ashen wolves in the Wakewood, near the glade where they found you' },
+  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -668,4 +670,244 @@ export async function nightScene(a, night, morning) {
   if (night.flash) await a.flash(night.flash, 2.6);
   if (morning) await a.card(morning);
   a.bars(false);
+}
+
+// ---- (0.99.26) Quest 4, When It Counts: a year on; the ashen wolves; Vesper of the Unbound; Ilse; the Link wakes
+export const ASHEN_AT = [{ x: GLADE.x + 30, z: GLADE.z - 14 }, { x: GLADE.x + 24, z: GLADE.z + 16 }, { x: GLADE.x + 12, z: GLADE.z - 24 }, { x: GLADE.x + 6, z: GLADE.z + 22 }];
+export const VESPER_FROM = { x: GLADE.x - 10, z: GLADE.z + 3 };
+/** Vesper's own numbers (laid on one of the land's golems, drawn as a man). */
+export const VESPER = { name: 'Vesper of the Unbound', speed: 3.4, aggro: 40, leash: 80, r: 0.55, hp: 2600, dmg: 30, every: 1.5, xp: 0 };
+
+/** A year on, at the training ground: the doorframe that does not change, and a contract. */
+export async function yearScene(a) {
+  a.bars(true);
+  await a.fade(1, 0.6);
+  await a.card([
+    'The days became weeks.',
+    'Every morning, the training ground. Every evening, the lodging, loud and warm. You learned the streets, the Guild\'s board, how each of the Hounds takes their tea.',
+    'The fog never quite left. Neither did the name Sprout.',
+    'A year.',
+  ]);
+  const me = a.ctx.me;
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who);
+  a.walk('ilse', me.x + 1.0, me.z + 0.3);
+  await a.fade(0, 1);
+  a.talkCam(true);
+  await a.say('ilse', 'Stand still. Back straight. Let me look at you.');
+  await a.say('ilse', '...', { auto: 1.2 });
+  await a.say('ilse', 'That\'s odd. You haven\'t grown. Not a hair, since last spring.');
+  await a.say('juni', 'Sprout doesn\'t sprout. I said that a year ago and nobody laughed.');
+  await a.say('', 'Sorrel says nothing. He is watching you the way he watched the tear.');
+  await a.say('rowan', 'Enough. Work. The Guild\'s posted a contract: wolves in the Wakewood again. The wrong kind. Ash in their fur, and eyes like coals.');
+  await a.say('sorrel', 'Where?');
+  await a.say('rowan', 'Near the glade. Where we found him.', { to: 'sorrel' });
+  await a.say('sorrel', 'Near the tear, then.', { to: 'rowan' });
+  await a.say('ilse', 'Stay close to me out there, Sprout. I mean it.');
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.5);
+  a.bars(false);
+}
+
+/** At the glade: the tear stirs, and Vesper steps out of the trees. Ends when he turns to the hero. */
+export async function vesperScene(a) {
+  const { fx } = a;
+  const me = a.ctx.me;
+  const G = { x: GLADE.x, z: GLADE.z };
+  a.bars(true);
+  a.ctx.rift.stir(true);
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who);
+  a.hero(G.x + 4, G.z, Math.PI);
+  a.actor('rowan', G.x + 3, G.z - 1.8, Math.PI); a.actor('ilse', G.x + 5.2, G.z + 1.2, Math.PI);
+  a.actor('juni', G.x + 4.6, G.z - 3.0, Math.PI); a.actor('sorrel', G.x + 2.2, G.z + 1.8, Math.PI);
+  await a.camera([TEAR.x + 6, 2.2, TEAR.z + 5], [TEAR.x, 2.2, TEAR.z], 0);
+  await a.fade(0, 1);
+  await a.say('', 'The sliver of the tear is moving. Breathing, almost. Ash drifts out of it and settles on the grass.');
+  a.fog(0.45, 2);
+  await a.flash('Cold. The same cold as that night. Something on the other side, pressing.', 2.2);
+  a.fog(0.15, 1.5);
+  await a.say('sorrel', 'It\'s open. Not much. But it\'s open.');
+  // he walks out of the trees as if he owned them
+  const v = a.actor('vesper', VESPER_FROM.x - 8, VESPER_FROM.z, 0);
+  a.camera([VESPER_FROM.x + 3, 1.7, VESPER_FROM.z + 3.5], [VESPER_FROM.x - 2, 1.5, VESPER_FROM.z], 1.2);
+  await a.walk('vesper', VESPER_FROM.x, VESPER_FROM.z);
+  v.face(me.x, me.z);
+  a.talkCam(true);
+  await a.say('vesper', 'There you are.', { to: 'hero' });
+  await a.say('vesper', 'A year I\'ve sat by this little scar in the air, waiting to see what had come through it. And it was you. So small.', { to: 'hero' });
+  a.draw('rowan');
+  await a.say('rowan', 'That\'s far enough. Who are you?', { to: 'vesper' });
+  await a.say('vesper', 'Vesper. Of the Unbound. We take the limits the sand puts on people, and we break them.', { to: 'rowan' });
+  await a.say('vesper', 'And this one broke the sand. Didn\'t you, little one?', { to: 'hero' });
+  await a.say('sorrel', 'The ash on the wolves. That was you.', { to: 'vesper' });
+  await a.say('vesper', 'A little desire, a little malice. They take to it so well. So do people.', { to: 'sorrel' });
+  await a.say('vesper', 'Come with me. You don\'t belong to them. You never did.', { to: 'hero' });
+  await a.say('ilse', 'He\'s not going anywhere with you.', { to: 'vesper' });
+  await a.say('rowan', 'Hounds!', { to: 'vesper' });
+  a.talkCam(false);
+  a.quiet();
+  // they go at him, and it is nothing to him
+  await a.camera([me.x + 2, 2.4, me.z + 4], [VESPER_FROM.x, 1.2, VESPER_FROM.z], 0.5);
+  const shoot = (from, to, speed, kind) => { const d = Math.hypot(to.x - from.x, to.z - from.z) || 1; fx.shot({ x: from.x, z: from.z, dx: (to.x - from.x) / d, dz: (to.z - from.z) / d, speed, range: Math.max(0, d - 1.2), kind }); return d / speed; };
+  a.anim('juni', 'shoot');
+  await a.wait(shoot(a.actor('juni'), v, 60, 'arrow'));
+  fx.puff(v.x + 0.6, v.z);
+  await a.say('', 'Juni\'s arrow stops a hand\'s breadth from him and falls apart into ash.');
+  a.anim('sorrel', 'cast');
+  await a.wait(0.4);
+  await a.wait(shoot(a.actor('sorrel'), v, 30, 'deadeye'));
+  fx.ring(v.x, v.z, 1.4, 0x3a1a4a, 0.5);
+  await a.walk('rowan', v.x + 1.4, v.z + 0.3, { run: true });
+  await a.anim('rowan', 'slash', { speed: 1.2 });
+  await a.say('', 'Sorrel\'s fire goes out against him like a candle in a cellar. Rowan\'s blade stops in the air, as if it struck stone.');
+  await a.say('vesper', 'Rank C adventurers. All of you? How sweet.', { to: 'rowan' });
+  // and then he only lifts a hand
+  a.anim('vesper', 'cast');
+  await a.wait(0.4);
+  a.shake(0.35, 0.5);
+  fx.ring(v.x, v.z, 9, 0x2a0a3a, 0.6);
+  for (const who of ['rowan', 'juni', 'sorrel', 'ilse']) a.anim(who, 'knock', { hold: true });
+  await a.wait(1.0);
+  await a.say('', 'The air folds. All four of them are thrown down into the grass like dolls.');
+  v.face(me.x, me.z);
+  await a.camera([me.x - 1.8, 1.05, me.z + 1.2], [v.x, 1.6, v.z], 0.8);
+  await a.say('vesper', 'Now. Just you and me.', { to: 'hero', cam: false });
+  await a.prompt(me.cls === 'archer' ? 'Space' : 'Space', 'Fight', { label: 'Space' });
+  a.bars(false);
+}
+
+/** Ilse steps in front of the blow meant for him; she dies; and something torn out of him a year ago remembers. */
+export async function deathScene(a) {
+  const { fx } = a;
+  const me = a.ctx.me;
+  a.bars(true);
+  for (const who of ['rowan', 'juni', 'sorrel', 'ilse', 'vesper']) a.actor(who);
+  const v = a.actor('vesper');
+  v.face(me.x, me.z);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.loop(who, 'idle');
+  await a.camera([me.x + 3, 1.6, me.z + 3], [v.x, 1.4, v.z], 0.5);
+  await a.say('vesper', 'Enough. You\'re coming with me, in one piece or in several.', { to: 'hero', cam: false });
+  a.anim('vesper', 'cast', { hold: true });
+  await a.wait(0.6);
+  // Ilse runs between them
+  const mid = { x: me.x + (v.x - me.x) * 0.25, z: me.z + (v.z - me.z) * 0.25 };
+  await a.walk('ilse', mid.x, mid.z, { run: true });
+  a.actor('ilse').face(v.x, v.z);
+  const d = Math.hypot(mid.x - v.x, mid.z - v.z) || 1;
+  fx.shot({ x: v.x, z: v.z, dx: (mid.x - v.x) / d, dz: (mid.z - v.z) / d, speed: 40, range: d, kind: 'deadeye' });
+  await a.wait(d / 40);
+  a.shake(0.4, 0.5);
+  fx.ring(mid.x, mid.z, 1.2, 0x1a0a2a, 0.6);
+  a.anim('ilse', 'die', { hold: true });
+  a.actor('ilse').dead = true;
+  a.fog(0.95, 0.3);
+  await a.say('', 'She is between you before you see her move.');
+  a.fog(0.5, 2);
+  // from the side away from Vesper (he is not in this shot)
+  const ax = mid.x - v.x, az = mid.z - v.z, al = Math.hypot(ax, az) || 1;
+  await a.camera([mid.x + (ax / al) * 2.6 - (az / al) * 1.4, 1.6, mid.z + (az / al) * 2.6 + (ax / al) * 1.4], [mid.x, 0.35, mid.z], 1.0);
+  await a.heroWalk(mid.x + 0.6, mid.z + 0.4, 0.8);
+  a.loop('rowan', 'idle');
+  await a.say('juni', 'ILSE!', { cam: false });
+  await a.say('ilse', 'Hey. Hey, look at me.', { to: 'hero', cam: false });
+  await a.say('ilse', 'You\'re all right. You\'re all right now.', { to: 'hero', cam: false });
+  await a.say('ilse', 'Don\'t let that fog take you. Promise me. Stay...', { to: 'hero', cam: false });
+  await a.wait(1.2);
+  await a.say('', 'She doesn\'t finish.');
+  await a.wait(1.4);
+  // the Link
+  a.fog(1, 1.5);
+  await a.wait(1.2);
+  await a.flash('A keep of white stone. A gold thread on a white sleeve. "Keep it safe. Whatever happens, keep it—"', 2.4);
+  await a.flash('Everything you were, a year ago, on the other side of the dark. It was never gone. It was waiting.', 2.4);
+  a.ctx.wakeLink();
+  a.fog(0, 0.6);
+  a.shake(0.5, 0.8);
+  fx.ring(me.x, me.z, 2.5, 0xffd24a, 0.8);
+  fx.ring(me.x, me.z, 6, 0xffe9a0, 1.0);
+  await a.camera([me.x + 2.2, 1.1, me.z - 1.6], [me.x, 0.9, me.z], 0.6);
+  await a.say('', 'A thread pulls tight, somewhere behind your ribs: the same place the tear once hooked you. On the other end of it, something vast turns to look at you.');
+  await a.say('', 'The Dimension Link wakes.');
+  a.talkCam(true);
+  await a.say('vesper', '...Oh.', { to: 'hero' });
+  await a.say('vesper', 'Oh, there you are.', { to: 'hero' });
+  a.talkCam(false);
+  a.quiet();
+  await a.prompt('Space', 'Fight', { label: 'Space' });
+  a.bars(false);
+}
+
+/** Vesper, hurt for the first time, steps back through the tear; then the Hounds and Ilse. */
+export async function afterScene(a) {
+  const me = a.ctx.me;
+  a.bars(true);
+  for (const who of ['rowan', 'juni', 'sorrel', 'ilse', 'vesper']) a.actor(who);
+  const v = a.actor('vesper');
+  v.face(me.x, me.z);
+  a.talkCam(true);
+  await a.say('vesper', 'So that\'s what came through. Not a stray at all.', { to: 'hero' });
+  await a.say('vesper', 'We\'ll meet again, little one. Grieve well.', { to: 'hero' });
+  a.talkCam(false);
+  a.quiet();
+  await a.walk('vesper', TEAR.x, TEAR.z, { run: true });
+  a.ctx.rift.open();
+  await a.camera([TEAR.x + 5, 2, TEAR.z + 4], [TEAR.x, 2, TEAR.z], 0.4);
+  a.shake(0.3, 0.6);
+  a.remove('vesper');
+  await a.wait(0.6);
+  a.ctx.rift.close();
+  a.ctx.rift.stir(false);
+  await a.say('', 'The tear swallows him, and closes again to a sliver.');
+  // the Hounds, round her
+  const ilse = a.actor('ilse');
+  await Promise.all([a.walk('rowan', ilse.x + 1.0, ilse.z - 0.8), a.walk('juni', ilse.x - 0.9, ilse.z - 0.7), a.walk('sorrel', ilse.x + 0.4, ilse.z + 1.1)]);
+  a.loop('rowan', 'kneel'); a.loop('juni', 'crouch');
+  a.sheathe('rowan');
+  await a.camera([ilse.x + 2.6, 1.3, ilse.z + 2.2], [ilse.x, 0.3, ilse.z], 1.4);
+  await a.say('', 'Nobody says anything for a long time.');
+  await a.say('sorrel', 'Your eyes. When you went for him. They were gold.', { to: 'hero', cam: false });
+  await a.say('rowan', 'Later, Sorrel.', { to: 'sorrel', cam: false });
+  await a.say('rowan', 'We take her home.', { cam: false });
+  await a.fade(1, 1.6);
+  await a.card([
+    'They buried Ilse on the hill above Sunmere, where the silverleaf grows.',
+    'Juni didn\'t speak for three days. Rowan stopped folding his arms.',
+    'Nobody called you Sprout that winter.',
+  ], { hold: 3.6 });
+  a.bars(false);
+}
+
+/** The Hounds follow the hero (on the hunt): each a few steps behind and to one side, walking or running to keep up. */
+export function follow(actors, land) {
+  const slot = { rowan: [-2.2, -1.4], ilse: [-2.6, 1.3], juni: [-1.2, 2.4], sorrel: [-3.6, 0.2] };
+  return {
+    update(dt, me) {
+      const fx = Math.cos(me.facing), fz = Math.sin(me.facing);
+      const from = {};
+      for (const [who, [back, side]] of Object.entries(slot)) {
+        const a = actors[who];
+        if (!a) continue;
+        from[who] = { x: a.x, z: a.z };
+        const tx = me.x + fx * back - fz * side, tz = me.z + fz * back + fx * side;
+        const d = Math.hypot(tx - a.x, tz - a.z);
+        if (d > 0.6) {
+          const sp = d > 5 ? 5.4 : d > 2 ? 3.2 : 1.6;
+          a.x += ((tx - a.x) / d) * Math.min(d, sp * dt);
+          a.z += ((tz - a.z) / d) * Math.min(d, sp * dt);
+          a.facing = Math.atan2(tz - a.z, tx - a.x);
+          a.sync();
+        }
+      }
+      separate(Object.keys(slot).map((w) => actors[w]).filter(Boolean), me, 1.0, land);
+      for (const who of Object.keys(slot)) {
+        const a = actors[who];
+        if (!a) continue;
+        const v = Math.hypot(a.x - from[who].x, a.z - from[who].z) / Math.max(dt, 1e-3);
+        a.vel = (a.vel || 0) + (v - (a.vel || 0)) * Math.min(1, dt * 8);
+        const want = a.vel > 3.3 ? 'run' : a.vel > 0.45 ? 'walk' : 'idle';
+        if (a.looping !== want && !a.once) a.loop(want);
+        a.update(dt);
+      }
+    },
+  };
 }

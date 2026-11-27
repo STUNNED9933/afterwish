@@ -100,7 +100,9 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 - **The Link sleeps.** No Dimension Link at the start (beasts tuned for an unlinked hero). About a year after the
   Telling, one of the Iron Hounds is killed by an enemy far beyond them; the hero's grief and determination ionise
   the wish magic of Votum still in him, and it forms the Link: the door to far stronger skills. The Hounds grieve.
-  (Who dies: not decided.)
+  (0.99.26, decided by Claude while Ko Ko was away; easy to change: **Ilse** dies, shielding him from Vesper's blow.
+  Her rescue words come back as her last.) The enemy: **Vesper of the Unbound**, who had watched the tear for a year,
+  put the ash in the wolves, and wants the boy who 'broke the sand'. He escapes through the tear: a recurring villain.
 
 | # | Quest | Goal | Beat |
 | --- | --- | --- | --- |
@@ -108,7 +110,7 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 | 1b | Days with the Hounds | Three days of chores while they look after you | Growing stronger; teasing; attachment; Sorrel's lesson (0.99.24) |
 | 2 | The Telling Glass | Element and aptitude read at the Guild | Three, no element: pity and laughter; the black line |
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
-| 4 | When It Counts | About a year on: an enemy far beyond the party | A Hound dies; grief wakes the Link; stronger skills |
+| 4 | When It Counts | A year on: ashen wolves; Vesper of the Unbound | Ilse dies shielding him; grief wakes the Link; Vesper flees through the tear (0.99.26) |
 | 5 | Word Gets Around | Bigger hunts across the land | Guild ranks; strange beasts point to the movement |
 | 6 | An Invitation | A secret mission, watched | The secret service asks you to join. End of Act I |
 

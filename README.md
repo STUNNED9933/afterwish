@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: Quest 4, When It Counts (0.99.26)
+
+- **After you choose your path, Rowan wants a word.** A year passes in a few cards (the training ground every morning, the lodging every evening, the fog never quite gone, nor the name Sprout). Ilse measures you: you **haven't grown at all** since last spring. Then a contract: **ashen wolves** in the Wakewood, ash in their fur, near the glade where they found you. Near the tear.
+- **The hunt:** the Hounds set out with you along the west road and **follow you** (each a few steps behind, walking or running to keep up). Four ashen wolves; the marker shows the nearest. This part is played alone (like the opening).
+- **At the glade the tear is stirring,** and a smiling man walks out of the trees: **Vesper, of the Unbound** ("We take the limits the sand puts on people, and we break them. And this one broke the sand."). The ash on the wolves was his. The Hounds go at him and it is nothing to him: Juni's arrow crumbles to ash, Sorrel's fire goes out, Rowan's blade stops in the air, and a lift of his hand throws all four of them down.
+- **You fight him, and you cannot hurt him** (your blows barely mark him; Ilse keeps healing you). Then **Ilse steps in front of the blow meant for you**, and dies: "Hey, look at me. You're all right. You're all right now. Don't let that fog take you."
+- **The Link wakes.** The fog floods in; the memories come all at once (the white keep, the gold thread, "keep it safe"), and a thread pulls tight behind your ribs where the tear once hooked you. From now on your Eternal gear lends you its strength in Lacuna (the Link was asleep until now), and for this fight you are three times as strong.
+- **The second fight:** now you can hurt him. Bring him low and he steps back through the tear ("We'll meet again, little one. Grieve well."). The Hounds kneel round Ilse; Sorrel saw your eyes turn gold. They bury her on the hill above Sunmere, where the silverleaf grows. Nobody called you Sprout that winter.
+- **Gestures look like themselves now.** Every one-off move a story character made (a wave, a cut, a cast, a laugh, a fall) was blending half-and-half with the idle still running underneath it; it now cross-fades properly. Falls and knockbacks also keep their drop to the ground. The Hounds gained a fall, a flinch and a knockback.
+- Quest 5, Word Gets Around, is next. Vesper is the first Company's old mage model (the one that always smiled), darkened: no new credits.
+
 ### Lacuna: fixes from playing (0.99.25)
 
 - **Deadeye follows your aim while you hold it.** Its direction was fixed when you pressed R, so scoping in mid-draw changed nothing; now the arrow flies wherever you point when you let go (or when it looses itself at full draw), scoped or not. (The server is told where you aim ten times a second while you draw.)

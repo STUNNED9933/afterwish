@@ -282,6 +282,7 @@ export class LandView {
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
       this.tmpM.compose(this.tmpP.set(bx, bob, bz), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
       const m = this.beastMeshes[b.type];
+      if (!m || b.hidden) continue; // (0.99.26) a story foe drawn as a person instead
       m.setMatrixAt(fill[b.type]++, this.tmpM);
     }
     for (const type in this.beastMeshes) {

@@ -499,7 +499,7 @@ function prepare(spec, gltf) {
     // (0.54.7) creatures: any clip that walks itself away (a Tripo walk with its travel left in) is put back
     // in place, so the body stays on its hitbox. A fall keeps its own stagger back.
     for (const name in clips) {
-      if (name === 'fall') continue;
+      if (name === 'fall' || /Death|Knockback|LayToIdle/.test(name)) continue; // (0.99.26) falling down keeps its own drop to the ground
       if (travel(clips[name], spec.rootBones, scene) > 0.1 * h) stripDrift(clips[name], spec.rootBones);
       recentre(clips[name], spec.rootBones, scene, spec.recentreMin ?? 0.15, h);
     }

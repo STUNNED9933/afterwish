@@ -16,6 +16,8 @@ export const CAST = {
   odile: { model: 'l_odile', name: 'Magistra Odile', height: 1.68, colour: 0x2a3f7a },
   dace: { model: 'l_dace', name: 'Dace', height: 1.84, colour: 0xc8ccd6 },
   wren: { model: 'l_wren', name: 'Wren', height: 1.68, colour: 0x5a3a7a },
+  // (0.99.26) Vesper of the Unbound: the first Company's mage (always smiling), darkened and turned cold
+  vesper: { model: 'x_vesper', name: 'Vesper', height: 1.95, colour: 0x2a2a3a, tint: { mul: 0.55, toward: 0x2a1a40, by: 0.35 } },
   wolf: { beast: 'wolf' },
 };
 for (const k in CAST) {
@@ -49,6 +51,9 @@ const WORDS = {
   bow: ['bow'],
   sob: ['sob'],
   swagger: ['swagger'],
+  die: ['ual_death01', 'death'],
+  knock: ['ual_hit_knockback', 'ual_hit_chest'],
+  flinch: ['ual_hit_chest'],
 };
 function findClip(clips, what) {
   const names = Object.keys(clips);
@@ -102,8 +107,10 @@ export function lookAt(look, x, z, facing, target, dt) {
 export function separate(people, fixed, gap = 0.95, land = null) {
   for (let i = 0; i < people.length; i++) {
     const a = people[i];
+    if (a.dead) continue; // (0.99.26) where she fell
     for (let j = i + 1; j < people.length; j++) {
       const b = people[j];
+      if (b.dead) continue;
       const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
       if (d >= gap) continue;
       const push = (gap - d) / 2, nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0;
@@ -148,7 +155,13 @@ export class Actor {
     this.ready = loadRigged(this.spec.model).then((tpl) => {
       if (!tpl || !this.alive) return;
       const root = SkeletonUtils.clone(tpl.scene);
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = o.material.clone(); } });
+      const tint = this.spec.tint;
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.material = o.material.clone();
+        if (tint && o.material.color) o.material.color.multiplyScalar(tint.mul).lerp(new THREE.Color(tint.toward), tint.by); // (0.99.26) Vesper, darkened
+      });
       const holder = new THREE.Group();
       holder.rotation.y = -Math.PI / 2;
       holder.scale.setScalar(tpl.scale * this.spec.height);
@@ -246,8 +259,15 @@ export class Actor {
     a.setLoop(THREE.LoopOnce, 1);
     a.clampWhenFinished = true;
     a.timeScale = speed;
-    this.current = null;
-    this.fadeTo(a, fade);
+    // (0.99.26) cross-fade from whatever was playing (it used to be left running underneath at full weight: every
+    // wave, cut and fall came out half-blended with the idle)
+    if (a === this.current) a.reset().play();
+    else {
+      const prev = this.current;
+      a.reset().play();
+      if (prev) a.crossFadeFrom(prev, fade, false);
+      this.current = a;
+    }
     return new Promise((resolve) => { this.once = { action: a, resolve, hold, left: a.getClip().duration / speed }; });
   }
 

@@ -117,6 +117,22 @@ export class LandWorld {
     }
   }
 
+  /**
+   * (0.99.26) A story beast: one of the land's own (of `type`) taken from wherever it is and set down at (x, z), whole,
+   * with `extra` laid on it (story: a name for the quest to count it by; def: its own numbers; ward; hidden).
+   */
+  borrowBeast(type, x, z, extra = {}) {
+    const b = this.beasts.filter((q) => q.type === type && !q.story).sort((p, q) => dHypot(q.x - x, q.z - z) - dHypot(p.x - x, p.z - z))[0];
+    if (!b) return null;
+    const list = this.byChunk[b.chunk];
+    list.splice(list.indexOf(b), 1);
+    Object.assign(b, { dead: false, x, z, hx: x, hz: z, state: 'idle', target: 0, awake: false, swipeT: 1, stunUntil: 0, markUntil: 0 }, extra);
+    b.maxHp = b.hp = (extra.def && extra.def.hp) || BEASTS[type].hp;
+    b.chunk = chunkOf(x, z).i;
+    this.byChunk[b.chunk].push(b);
+    return b;
+  }
+
   /** A player arrives (by default at Sunmere's south gate). */
   addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false, vigour = 1 } = {}) {
     const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
@@ -480,7 +496,7 @@ export class LandWorld {
 
   /** How hard this hero hits now: the Link, and (Berserker) Bloodied. */
   might(p) {
-    let m = KITS[p.cls].dmg * p.mult;
+    let m = KITS[p.cls].dmg * p.mult * (p.surge || 1); // (0.99.26) the Link's first waking, in the story
     if (this.bloodied(p)) m *= 1 + KITS.warrior.bloodied.dmg;
     return m;
   }
@@ -588,6 +604,7 @@ export class LandWorld {
   hurt(b, p, dmg, shot = 0, crit = false) {
     if (b.dead) return;
     if (b.markUntil > this.time) dmg *= 1 + KITS.archer.R.mark; // Marked by a Deadeye
+    if (b.ward) dmg *= b.ward; // (0.99.26) a foe far beyond you: your blows barely mark him
     const n = Math.max(1, Math.round(dmg));
     b.hp -= n;
     p.calm = 0;
@@ -605,7 +622,7 @@ export class LandWorld {
       b.awake = false;
       b.moving = false;
       b.diedAt = this.time;
-      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: BEASTS[b.type].xp });
+      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: BEASTS[b.type].xp, story: b.story || '' });
       return;
     }
     // struck from afar, it comes for whoever struck it
@@ -642,7 +659,7 @@ export class LandWorld {
   }
 
   think(b, near, dt) {
-    const def = BEASTS[b.type];
+    const def = b.def || BEASTS[b.type]; // (0.99.26) a story beast may carry its own numbers
     if (b.stunUntil > this.time) { b.moving = false; return; } // (0.99.21) stunned (Skyfall) or Pinned (Deadeye)
     if (def.post) {
       // a training post: still; whole again a few seconds after the last blow

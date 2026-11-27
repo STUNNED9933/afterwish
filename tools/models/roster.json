@@ -1470,6 +1470,15 @@
       "prompt": "the young hero of Lacuna, a small boy about seven years old with child proportions (a slightly large head, short limbs, slight thin build), pale fair skin, messy dark brown hair falling over his eyes, large dark eyes, calm neutral expression, mouth closed, not smiling, an oversized torn grey linen shirt hanging to his knees with frayed long sleeves rolled at the wrists, a frayed rope tied as a belt, patched brown trousers rolled up at the ankles, both feet wrapped in strips of cloth, small bandages on one forearm and one knee, fully clothed, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no bag, no cape, nothing floating",
       "animations": [],
       "note": "0.99.22: the hero as he arrives in Lacuna (about 1 m tall in game; the old hero models are kept for later)."
+    },
+    "l_thessaly": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "prompt": "Thessaly of the Ninth Hand, the crown's hidden hand, a composed watchful woman in her thirties, fair skin, sharp features, dark hair braided and pinned in a low crown, calm neutral expression, relaxed face, mouth closed, not smiling, a hooded deep-grey travelling cloak hanging open over a fitted dark leather jerkin, a long dark riding skirt split at the sides over fitted trousers, tall dark boots, leather gloves, a silver cloak clasp shaped like a closed eye, a slim dagger sheathed at her belt, fully clothed, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, hood down, no bag, nothing floating",
+      "animations": [],
+      "note": "0.99.27: the Ninth Hand's agent (Quest 4's end)."
     }
   }
 }

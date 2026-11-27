@@ -334,8 +334,11 @@ export class LandView {
       const dx = b.x - x, dz = b.z - z;
       if (dx * dx + dz * dz > far2) continue;
       let pv = this.prev.get(b.id);
-      if (!pv) this.prev.set(b.id, (pv = { x: b.x, z: b.z, fx: b.x, fz: b.z }));
-      if (pv.fx !== b.x || pv.fz !== b.z) { pv.x = pv.fx; pv.z = pv.fz; pv.fx = b.x; pv.fz = b.z; }
+      if (!pv) this.prev.set(b.id, (pv = { x: b.x, z: b.z, fx: b.x, fz: b.z, t: this.world.time }));
+      // (0.99.33) one step back each sim step, moved or not. (It only stepped when the beast moved: one that
+      // stopped kept being drawn sliding from where it was a step ago to where it is, over and over, thirty
+      // times a second: the shudder of a beast standing next to you.)
+      if (pv.t !== this.world.time) { pv.x = pv.fx; pv.z = pv.fz; pv.fx = b.x; pv.fz = b.z; pv.t = this.world.time; }
       near.push({ b, x: pv.x + (b.x - pv.x) * alpha, z: pv.z + (b.z - pv.z) * alpha, d: Math.sqrt(dx * dx + dz * dz) });
     }
     const real = this.liveBeasts(near, time);

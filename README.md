@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the real cause of the shaking (0.99.33)
+
+- **A beast that stopped next to you kept shuddering.** Beasts are drawn eased between the sim's last two steps, and that pair only moved on when the beast did: one that had stopped was drawn sliding from where it stood a step ago to where it stands, again and again, thirty times a second (about 8 cm each way). Now it moves on every step, moved or not: a beast standing still is drawn standing still.
+- **Beasts go round trees and rocks** instead of pressing into them (and being pushed straight back, which also looked like being stuck and shaking): held up, a beast veers off to one side for a moment, then comes on.
+
 ### Lacuna: beasts no longer shake as they come at you (0.99.32)
 
 - **The shaking.** A beast at the edge of its reach stepped in and stopped on alternate beats as you moved about (an archer backing off made it worst), and each change restarted its walk or its stand: a violent shudder. Now a beast in reach stays put until you are clearly out of it (in a test of a wolf chasing a backing-off hero: 54 stop-starts in 13 seconds, now 12), its body only changes between walking and standing once the change has lasted a moment, and it turns smoothly instead of snapping round.

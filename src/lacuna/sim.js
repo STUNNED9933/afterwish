@@ -725,14 +725,26 @@ export class LandWorld {
       }
       tx = b.tx; tz = b.tz; speed = 1.3;
     }
-    const dx = tx - b.x, dz = tz - b.z, len = dHypot(dx, dz);
+    let dx = tx - b.x, dz = tz - b.z;
+    const len = dHypot(dx, dz);
     b.moving = speed > 0 && len > 0.3;
     if (b.moving) {
+      // (0.99.33) held up by a tree or a rock (it pushes it straight back), it goes round instead: off to one
+      // side for a moment, then on
+      if (b.detourT > 0) {
+        b.detourT -= dt;
+        const c = dCos(b.detour), s = dSin(b.detour);
+        const rx = dx * c - dz * s, rz = dx * s + dz * c;
+        dx = rx; dz = rz;
+      }
       const step = Math.min(len, speed * dt);
+      const ox = b.x, oz = b.z;
       b.x += (dx / len) * step;
       b.z += (dz / len) * step;
       b.facing = dAtan2(dz, dx);
       this.land.pushOut(b, def.r);
+      const made = ((b.x - ox) * dx + (b.z - oz) * dz) / (len * step || 1);
+      if (made < 0.35 && !(b.detourT > 0)) { b.detour = (b.id % 2 ? 1 : -1) * 1.1; b.detourT = 0.8; }
     }
   }
 

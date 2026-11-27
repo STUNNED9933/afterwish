@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: hands, blades and arrows (0.99.28)
+
+- **Palms face the body.** Every story character stood and walked with their palms turned forward, like a statue. Tripo makes its models with the palms forward; the animation library's are down, and the difference was carried into every clip. The animation tool now reads which way each hand faces from the hand itself and turns the forearm to match before moving the clips across. Everyone was rebuilt: the Hounds, Odile, Dace, Wren, Vesper (from his original model) and Thessaly.
+- **Rowan stands with his hand on his hilt** instead of folding his arms (the fold didn't sit right on him). In the Guild's yard, Wren steps out of the way before he draws on Dace, and he stops clear of everyone: no more blade through a friend.
+- **The boy's sword stays out of the dirt** when he runs. It's carried back and only a little down (the grown hero's angle put the tip in the ground).
+- **Your arrows fly into the crosshair.** They used to fly level at bow height, so scoped they went in under the reticle. Now they rise onto the crosshair's line within a few metres. (Where they can hit is unchanged.)
+- **Thessaly remade.** The first model's long open cloak hung between her legs like a third leg. She now wears a short grey cape over a leather jerkin, trousers and riding boots. The first model is kept for a future enemy. And she really does vanish: she presses the clasp into your hand, you look down at it, and when you look up she's gone.
+- **Ilse's last moments are clearer.** You speak now, as Sprout: "Ilse?", then "Heal it, like you always do!" She answers "Not this one, Sprout." Rowan's line afterwards is finished: "She'd have been so proud of you."
+- **Vesper walks out of the trees by a clear way** instead of straight into one.
+
 ### Lacuna: the story reworked, and fixes from playing (0.99.27)
 
 - **The Hounds don't take you in straight away.** In Sunmere they ask around first: Rowan at the watch-house, Ilse at the temple, Juni's notice on the Guild board (someone has pencilled under it HAVE YOU TRIED THE WELL?), Sorrel in the records hall. Five days, and nobody comes. On the fifth night you overhear them on the step and they decide: you stay, and if someone comes for you one day they'll be glad for you. Then the chores begin. New short quest: **Someone Must Be Looking**.

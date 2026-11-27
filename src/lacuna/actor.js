@@ -250,7 +250,8 @@ export class Actor {
   /** A looping clip (idle, walk, talk, kneel...). */
   loop(what, fade = 0.25) {
     this.asked = what;
-    if (what === 'arms' && this.armed) what = 'idle'; // (0.99.25) no folding his arms round a drawn sword
+    // (0.99.28) a swordsman does not fold his arms: he stands easy, his hand resting on the hilt at his hip (placeBlade)
+    if (what === 'arms' && this.spec.weapon) what = 'idle';
     this.looping = what;
     this.fade = fade;
     this.held = false; // a held pose (a kneel, a fall) lasts until they are asked for something else
@@ -436,6 +437,15 @@ export class Actor {
       this.reach(_p, ease);
       inHand = this.armed ? t >= 0.4 : t < 0.4;
       if (t >= 1) { this.sheathing = false; if (!this.armed && this.asked === 'arms') this.loop('arms', 0.35); } // put away: arms folded again
+    }
+    // (0.99.28) at ease (asked to fold his arms), sword sheathed: his right hand comes to rest on the hilt
+    const rest = !inHand && this.swordT >= 1 && this.asked === 'arms' && !this.once && !this.held;
+    this.restW = Math.max(0, Math.min(1, (this.restW || 0) + (rest ? dt : -dt) * 2.5));
+    if (this.restW > 0.001) {
+      this.hipPose(_p, _q);
+      _p.add(_d.set(0, 0.04, 0));
+      const e = this.restW * this.restW * (3 - 2 * this.restW);
+      this.reach(_p, e * 0.92);
     }
     this.holder.updateMatrixWorld(true);
     if (inHand) this.handPose(_p, _q);

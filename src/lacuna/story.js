@@ -6,7 +6,23 @@
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
 import { GLADE, TOWN, CRYSTAL, TRAINING, WELL, townHouses, roadDist } from './land.js';
-import { separate } from './actor.js';
+import { separate, Actor } from './actor.js';
+import { segHit } from './sim.js';
+
+/**
+ * (0.99.28) Where someone can walk in from, `dist` metres off, to (x, z) without a tree or a rock in the way: the
+ * nearest clear direction to `toward` (an angle), or close in if none is.
+ */
+function clearStart(to, dist, toward) {
+  const land = Actor.land;
+  for (const off of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2, 1.6, -1.6]) {
+    const a = toward + off, sx = to.x + Math.cos(a) * dist, sz = to.z + Math.sin(a) * dist;
+    if (!land) return { x: sx, z: sz };
+    const hit = land.near((sx + to.x) / 2, (sz + to.z) / 2, dist / 2 + 3).some((o) => o.shape === 'circle' && o.kind !== 'water' && segHit(sx, sz, to.x, to.z, o.x, o.z, o.r + 0.7) !== null);
+    if (!hit) return { x: sx, z: sz };
+  }
+  return { x: to.x + Math.cos(toward) * 2.5, z: to.z + Math.sin(toward) * 2.5 };
+}
 
 export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
@@ -19,7 +35,7 @@ export const QUESTS = {
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
   ambush: { name: 'When It Counts', goal: 'Rowan wants a word (the training ground)' },
   hunt: { name: 'When It Counts', goal: 'Hunt the ashen wolves in the Wakewood, near the glade where they found you' },
-  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now. (the next part of the story is coming)' },
+  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -519,11 +535,13 @@ export async function crystalScene(a) {
   a.talkCam(true);
   await a.say('odile', 'Aptitude is set at birth, child. I am sorry. The Guild registers anyone, so you may take work here, but you will be rank F, and rank F does not change.');
   a.walk('juni', ...P(-2.7, -1.5));
+  a.walk('wren', ...P(-4.6, 3.3)); // (0.99.28) out of the way: she wants no part of it
   await a.say('juni', 'Say it again, Dace. Go on. To my face.', { to: 'dace' });
   await a.say('dace', 'Easy, Hound. Keep your stray on a leash.', { to: 'juni' });
   // Rowan steps up, and his hand goes to his sword
-  a.walk('rowan', ...P(-2.4, 1.0));
-  await a.wait(0.4);
+  await a.walk('rowan', ...P(-1.6, 1.7));
+  a.actor('rowan').face(...P(-2.6, 2.9));
+  await a.wait(0.2);
   a.draw('rowan');
   await a.say('rowan', 'Walk away, Dace.', { to: 'dace' });
   await a.say('dace', '...Touchy.', { to: 'rowan' });
@@ -763,7 +781,7 @@ export async function nightScene(a, night, morning) {
 
 // ---- (0.99.26) Quest 4, When It Counts: a year on; the ashen wolves; Vesper of the Unbound; Ilse; the Link wakes
 export const ASHEN_AT = [{ x: GLADE.x + 30, z: GLADE.z - 14 }, { x: GLADE.x + 24, z: GLADE.z + 16 }, { x: GLADE.x + 12, z: GLADE.z - 24 }, { x: GLADE.x + 6, z: GLADE.z + 22 }];
-export const VESPER_FROM = { x: GLADE.x - 10, z: GLADE.z + 3 };
+export const VESPER_FROM = { x: GLADE.x - 2.6, z: GLADE.z + 1.0 }; // (0.99.28) where he stops: near enough to talk to (he stood 14 m off)
 /** Vesper's own numbers (laid on one of the land's golems, drawn as a man). */
 export const VESPER = { name: 'Vesper of the Unbound', speed: 3.4, aggro: 40, leash: 80, r: 0.55, hp: 2600, dmg: 30, every: 1.5, xp: 0 };
 
@@ -820,8 +838,12 @@ export async function vesperScene(a) {
   a.fog(0.15, 1.5);
   await a.say('sorrel', 'It\'s open. Not much. But it\'s open.');
   // he walks out of the trees as if he owned them
-  const v = a.actor('vesper', VESPER_FROM.x - 8, VESPER_FROM.z, 0);
-  a.camera([VESPER_FROM.x + 3, 1.7, VESPER_FROM.z + 3.5], [VESPER_FROM.x - 2, 1.5, VESPER_FROM.z], 1.2);
+  // (0.99.28) out of the trees by a way that is clear of them (he used to walk straight into one)
+  const st = clearStart(VESPER_FROM, 11, Math.PI);
+  const pa = Math.atan2(VESPER_FROM.z - st.z, VESPER_FROM.x - st.x);
+  const v = a.actor('vesper', st.x, st.z, pa);
+  const mx = (st.x + VESPER_FROM.x) / 2, mz = (st.z + VESPER_FROM.z) / 2;
+  a.camera([mx - Math.sin(pa) * 5.5 + Math.cos(pa) * 3, 1.7, mz + Math.cos(pa) * 5.5 + Math.sin(pa) * 3], [mx, 1.4, mz], 1.2);
   await a.walk('vesper', VESPER_FROM.x, VESPER_FROM.z);
   v.face(me.x, me.z);
   a.talkCam(true);
@@ -897,14 +919,16 @@ export async function deathScene(a) {
   a.fog(0.95, 0.3);
   await a.say('', 'She is between you before you see her move. It was meant for you. It goes through her instead.');
   a.fog(0.5, 2);
+  await a.say('hero', 'Ilse?', { cam: false });
   // from the side away from Vesper (he is not in this shot)
   const ax = mid.x - v.x, az = mid.z - v.z, al = Math.hypot(ax, az) || 1;
   await a.camera([mid.x + (ax / al) * 2.6 - (az / al) * 1.4, 1.6, mid.z + (az / al) * 2.6 + (ax / al) * 1.4], [mid.x, 0.35, mid.z], 1.0);
   await a.heroWalk(mid.x + 0.6, mid.z + 0.4, 0.8);
   a.loop('rowan', 'idle');
   await a.say('juni', 'ILSE!', { cam: false });
-  await a.say('ilse', 'Hey. Hey, look at me.', { to: 'hero', cam: false });
-  await a.say('ilse', 'You\'re all right. You\'re all right now.', { to: 'hero', cam: false });
+  await a.say('ilse', 'Hey. Hey, look at me. Not at him. At me.', { to: 'hero', cam: false });
+  await a.say('hero', 'You\'re hurt. Heal it. Ilse, heal it, like you always do!', { to: 'ilse', cam: false });
+  await a.say('ilse', 'Not this one, Sprout. ...It\'s all right. You\'re all right. That\'s what matters.', { to: 'hero', cam: false });
   await a.say('ilse', 'Don\'t let that fog take you. Promise me. Stay...', { to: 'hero', cam: false });
   await a.wait(1.2);
   await a.say('', 'She doesn\'t finish.');
@@ -983,7 +1007,7 @@ export async function afterScene(a) {
   await a.say('juni', 'She said she\'d be right there if it went wrong. She said that. Every time.', { cam: false });
   await a.say('sorrel', 'Your eyes. When you went for him. They were gold.', { to: 'hero', cam: false });
   await a.say('rowan', 'Later, Sorrel.', { to: 'sorrel', cam: false });
-  await a.say('rowan', 'You did what none of us could. She\'d have... she\'d be so...', { to: 'hero', cam: false });
+  await a.say('rowan', 'You did what none of us could. She\'d have been so proud of you.', { to: 'hero', cam: false });
   await a.say('rowan', '...We take her home.', { cam: false });
   await a.fade(1, 1.6);
   await a.card([
@@ -1032,12 +1056,17 @@ export async function thessalyScene(a) {
   await a.say('thessaly', 'Then I expect Lacuna burns. Though I would very much like to be wrong.', { to: 'rowan' });
   await a.say('thessaly', 'He came a long way for you. We don\'t know why. I\'d like to.', { to: 'hero' });
   await a.say('thessaly', 'I\'m not here to take you anywhere. Only to say this: if they sent one, they may send another. When you\'re ready to ask questions, find me.', { to: 'hero' });
-  await a.say('', 'She sets something on the fence post: a silver clasp shaped like a closed eye. Then she is gone, as if she was never there.');
+  // (0.99.28) she leaves it in his hand; he looks down at it, and when he looks up she is gone
+  await a.say('', 'She presses something cold into your hand: a silver clasp, shaped like a closed eye.');
+  await a.camera([me.x + 0.9, 1.0, me.z - 0.9], [me.x, 0.45, me.z], 0.6);
+  a.remove('thessaly');
+  await a.wait(1.2);
+  await a.camera([R.x + 4, 2.2, R.z - 4], [T.x, 1.1, T.z], 0.8);
+  await a.say('', 'When you look up, she is gone. Nobody saw her go.');
   await a.say('juni', '...I still say there\'s no such thing.', { to: 'rowan' });
-  await a.say('rowan', 'Then put it somewhere safe, Juni. For nothing.', { to: 'juni' });
+  await a.say('rowan', 'Then it\'s nothing. Keep it somewhere safe anyway, Sprout.', { to: 'hero' });
   a.talkCam(false);
   a.quiet();
-  a.remove('thessaly');
   await a.fade(1, 0.8);
   a.bars(false);
 }

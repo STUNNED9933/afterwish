@@ -1467,5 +1467,6 @@ RIGGED.kid_novice = {
   ],
   moves: { ...HOP },
 };
-RIGGED.kid_warrior = { ...RIGGED.hero_warrior, ...KID, run: 'ual_Jog_Fwd_Loop', death: 'ual_Death', weaponScale: 0.55, attack: { clip: 'ual_SlashA', from: 0.08, to: 0.43 }, stow: undefined, walkCarry: undefined };
+// (0.99.28) trail: running, his blade is carried back and only a little down (a grown man's angle put a boy's tip in the dirt)
+RIGGED.kid_warrior = { ...RIGGED.hero_warrior, ...KID, run: 'ual_Jog_Fwd_Loop', death: 'ual_Death', weaponScale: 0.55, trail: [-0.86, -0.18, 0.3], attack: { clip: 'ual_SlashA', from: 0.08, to: 0.43 }, stow: undefined, walkCarry: undefined };
 RIGGED.kid_archer = { ...RIGGED.hero_archer, ...KID, run: 'arc_run', runRef: 4.0, bowScale: 0.62, stow: undefined, recentre: ['ual_Idle_Loop', 'arc_run', 'ual_Hit_Chest'] };

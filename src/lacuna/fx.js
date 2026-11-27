@@ -33,7 +33,7 @@ export class Fx {
   }
 
   /** An arrow leaving (x, z) along (dx, dz). */
-  shot({ x, z, dx, dz, speed, range, kind, y = ARROW_Y }) {
+  shot({ x, z, dx, dz, speed, range, kind, y = ARROW_Y, ray = null }) {
     const g = new THREE.Group();
     const big = kind === 'deadeye';
     const shaft = new THREE.Mesh(this.arrowGeo.shaft, big ? this.mats.deadeye : this.mats.shaft);
@@ -47,7 +47,22 @@ export class Fx {
     g.position.set(x, y, z);
     g.lookAt(x + dx, y, z + dz);
     this.scene.add(g);
-    this.arrows.push({ g, x, z, y, dx, dz, speed, left: range, big });
+    this.arrows.push({ g, x, z, y, y0: y, flown: 0, ray, dx, dz, speed, left: range, big });
+  }
+
+  /**
+   * (0.99.28) Your own arrows rise (or fall) from the bow onto the line through the crosshair, within a few metres:
+   * scoped, the arrow flies into the middle of the reticle instead of along the ground at bow height below it.
+   * (Where it can hit is the sim's flat path; this is only where it is drawn.)
+   */
+  arrowY(a) {
+    const r = a.ray;
+    if (!r) return a.y0;
+    const h = Math.hypot(r.dx, r.dz) || 1e-6;
+    const s = ((a.x - r.x) * r.dx + (a.z - r.z) * r.dz) / h; // how far along the crosshair's line, over the ground
+    const onRay = Math.max(0.12, r.y + (r.dy / h) * s);
+    const k = Math.min(1, a.flown / 4);
+    return a.y0 + (onRay - a.y0) * k * k * (3 - 2 * k);
   }
 
   /**
@@ -121,6 +136,10 @@ export class Fx {
       a.x += a.dx * step;
       a.z += a.dz * step;
       a.left -= step;
+      a.flown += step;
+      const y = this.arrowY(a);
+      if (a.ray && step > 1e-4) a.g.lookAt(a.x + a.dx * step, y + (y - a.y), a.z + a.dz * step); // pointing the way it climbs
+      a.y = y;
       a.g.position.set(a.x, a.y, a.z);
       // (0.99.27) the arrow goes where it goes: it stops in a beast only when the sim says it struck (landed), so a
       // miss is seen to miss. (Out of range, it is gone.)

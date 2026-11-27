@@ -317,7 +317,13 @@ function onEvent(ev) {
   if (trial) trialEvent(ev);
   huntEvent(ev);
   vesperEvent(ev);
-  if (ev.type === 'shot') { const h = heroOf(ev.pid); fx.shot(h ? { ...ev, y: h.group.position.y + 0.62 } : ev); } // (0.99.27) from his bow, jumping or not
+  if (ev.type === 'shot') {
+    // (0.99.27) from his bow, jumping or not; (0.99.28) yours climb onto the crosshair's line
+    const h = heroOf(ev.pid);
+    let ray = null;
+    if (isMe(ev.pid) && !cutscene.active) { view.camera.getWorldDirection(aimDir); const c = view.camera.position; ray = { x: c.x, y: c.y, z: c.z, dx: aimDir.x, dy: aimDir.y, dz: aimDir.z }; }
+    fx.shot(h ? { ...ev, y: h.group.position.y + 0.62, ray } : ev);
+  }
   else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); if (ev.arc) fx.arc(ev.x, ev.z, ev.f, ev.r, ev.arc); }
   else if (ev.type === 'emote') { const h = heroOf(ev.pid); if (h) startEmote(h, ev.id); }
   else if (ev.type === 'face') { const h = heroOf(ev.pid); if (h) showFace(h, ev.id); }

@@ -172,7 +172,8 @@ export class Cutscene {
           if (f) cs.api().camera(f.at, f.look, cs.camNow.at.distanceTo(new THREE.Vector3(...f.at)) > 0.3 ? 0.55 : 0);
         }
         const c = CAST[who];
-        const name = c ? c.name : who || '';
+        // (0.99.28) the hero speaks too, now and then: as Sprout (what the Hounds call him)
+        const name = c ? c.name : who === 'hero' ? 'Sprout' : who || '';
         cs.$('cs-box').classList.remove('hidden');
         cs.$('cs-box').classList.toggle('thought', !who);
         cs.$('cs-name').textContent = name;

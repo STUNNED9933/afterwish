@@ -38,6 +38,67 @@ export function straightenArms(root) {
   };
   for (const s of ['L_', 'R_']) { turn(s + 'Upperarm', s + 'Forearm'); turn(s + 'Forearm', s + 'Hand'); }
   straightenLegs(root);
+  palmsDown(root);
+}
+
+/**
+ * (0.99.28) Tripo makes its models in a T-pose with the palms facing forward; the library's T-pose has them facing
+ * down. Measured against each other, every clip kept the difference: arms hanging at the sides, palms forward, like a
+ * statue. So, only for the measuring, each forearm is turned about its own length until the palm faces down. Which way
+ * a palm faces is read from the hand itself: the skin's thinnest direction (a flat open hand) round the hand bone.
+ */
+export function palmsDown(root) {
+  root.updateMatrixWorld(true);
+  const meshes = [];
+  root.traverse((o) => { if (o.isSkinnedMesh) meshes.push(o); });
+  for (const s of ['L_', 'R_']) {
+    const fore = root.getObjectByName(s + 'Forearm'), hand = root.getObjectByName(s + 'Hand');
+    if (!fore || !hand || !meshes.length) continue;
+    const pts = [];
+    const v = new THREE.Vector3();
+    for (const m of meshes) {
+      const hi = m.skeleton.bones.indexOf(hand);
+      if (hi < 0) continue;
+      m.skeleton.update();
+      const pos = m.geometry.attributes.position, si = m.geometry.attributes.skinIndex, sw = m.geometry.attributes.skinWeight;
+      for (let i = 0; i < pos.count; i += 1) {
+        let w = 0;
+        for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === hi) w += sw.getComponent(i, k);
+        if (w < 0.5) continue;
+        v.fromBufferAttribute(pos, i);
+        m.applyBoneTransform(i, v);
+        pts.push(v.clone().applyMatrix4(m.matrixWorld));
+      }
+    }
+    if (typeof window !== 'undefined') (window.palmDebug = window.palmDebug || {})[s] = { n: pts.length };
+    if (pts.length < 20) continue;
+    // the thinnest direction of the hand (the smallest axis of its spread): its palm faces along it, one way or the other
+    const c = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+    const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const p of pts) { const d = [p.x - c.x, p.y - c.y, p.z - c.z]; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) C[i][j] += d[i] * d[j]; }
+    let n = new THREE.Vector3(1, 1, 1).normalize();
+    // smallest eigenvector: power iteration on (trace·I - C)
+    const tr = C[0][0] + C[1][1] + C[2][2];
+    for (let it = 0; it < 60; it++) {
+      const x = (tr - C[0][0]) * n.x - C[0][1] * n.y - C[0][2] * n.z;
+      const y = -C[1][0] * n.x + (tr - C[1][1]) * n.y - C[1][2] * n.z;
+      const z = -C[2][0] * n.x - C[2][1] * n.y + (tr - C[2][2]) * n.z;
+      n.set(x, y, z).normalize();
+    }
+    const arm = hand.getWorldPosition(new THREE.Vector3()).sub(fore.getWorldPosition(new THREE.Vector3())).normalize();
+    n.addScaledVector(arm, -n.dot(arm)).normalize();
+    if (typeof window !== 'undefined') Object.assign(window.palmDebug[s], { nx: +n.x.toFixed(2), ny: +n.y.toFixed(2), nz: +n.z.toFixed(2), arm: [+arm.x.toFixed(2), +arm.y.toFixed(2), +arm.z.toFixed(2)] });
+    // which side is the palm is not in the shape, so take the reading nearest down (never a turn past a right angle)
+    const want = new THREE.Vector3(0, -1, 0).addScaledVector(arm, arm.y).normalize();
+    if (n.dot(want) < 0) n.negate();
+    const ang = Math.atan2(new THREE.Vector3().crossVectors(n, want).dot(arm), n.dot(want));
+    if (Math.abs(ang) < 0.44) continue; // within 25 degrees of down already: leave it
+    const q = new THREE.Quaternion().setFromAxisAngle(arm, ang);
+    const wq = fore.getWorldQuaternion(new THREE.Quaternion()).premultiply(q);
+    fore.quaternion.copy(fore.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(wq));
+    root.updateMatrixWorld(true);
+    if (typeof window !== 'undefined') (window.palmTurns = window.palmTurns || {})[s] = Math.round((ang * 180) / Math.PI);
+  }
 }
 
 /**

@@ -64,6 +64,11 @@ const land = new LandRoom({
     const acct = accounts && accounts.bySession(session);
     return acct ? linkFrom(Object.values(accounts.charsOf(acct.id) || {})) : null;
   },
+  // (0.99.38) a signed-in player's Lacuna progress (level, talent web, tricks), kept with their account
+  progress: {
+    get(session) { const acct = accounts && accounts.bySession(session); return acct ? accounts.lacunaOf(acct.id) : null; },
+    put(session, data) { const acct = accounts && accounts.bySession(session); if (acct) accounts.setLacuna(acct.id, data); return !!acct; },
+  },
   send(ws, msg) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   },

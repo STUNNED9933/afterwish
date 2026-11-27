@@ -156,6 +156,21 @@ export class AccountStore {
     this.touch('accounts');
   }
 
+  // --------------------------------------------------------------- Lacuna (0.99.38)
+  /** The account's progress in Lacuna ({ xp, web, tricks }), or null. */
+  lacunaOf(accountId) {
+    const a = this.accounts[accountId];
+    return (a && a.lacuna) || null;
+  }
+  setLacuna(accountId, data) {
+    const a = this.accounts[accountId];
+    if (!a || !data || typeof data !== 'object') return;
+    const text = JSON.stringify(data);
+    if (text.length > 16 * 1024 || text === JSON.stringify(a.lacuna || null)) return;
+    a.lacuna = JSON.parse(text);
+    this.touch('accounts');
+  }
+
   // --------------------------------------------------------------- the Weekly Echo (0.60)
   /** Link a Weekly Echo board name to this account. Refused if another account has it already. */
   linkBoard(accountId, boardId) {

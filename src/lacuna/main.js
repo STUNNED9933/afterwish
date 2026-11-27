@@ -268,6 +268,7 @@ function joinServer() {
       drawLink();
       $('mp').classList.add('joined');
       mpStatus(`On the server world's land as ${msg.name}. Enter to chat.`);
+      sendProgress(); // (0.99.38) kept with your account, if you are signed in
       note('You are on the shared land. Friends who join appear here, at the south gate.');
     } else if (msg.t === 'reject') mpStatus(msg.reason);
     else if (msg.t === 'roster') roster(msg.players);
@@ -280,6 +281,7 @@ function joinServer() {
       if (down && !me.dead) { me.dead = true; me.downT = down; me.leap = me.roll = me.whirl = me.draw = null; }
       if (!down && me.dead) me.dead = false;
     } else if (msg.t === 'evs') for (const ev of msg.list) onEvent(ev);
+    else if (msg.t === 'progress') takeProgress(msg); // (0.99.38) your account's (further on than this browser)
     else if (msg.t === 'air') for (const [pid, y] of msg.a) airOf.set(pid, { y: y / 100, at: performance.now() }); // (0.99.35) who is off the ground, how high
     else if (msg.t === 'chat') say(msg.name ? `${msg.name}: ${msg.text}` : msg.text, !msg.name);
     else if (msg.t === 'pong') net.ping = performance.now() - msg.at;
@@ -963,6 +965,7 @@ function gainXp(n, why = '') {
   saveStory(story);
   const now = levelOf(story.xp).level;
   if (why) note(`+${Math.round(n)} xp · ${why}`);
+  clearTimeout(gainXp.sync); gainXp.sync = setTimeout(sendProgress, 4000); // (0.99.38) to your account, now and then
   if (now > was) {
     world.setLevel(1, now);
     if (net && net.ready) net.send({ t: 'lvl', L: now });
@@ -986,7 +989,7 @@ const webUI = new WebUI($('web'), {
   cls: () => me.cls,
   have: () => webOf(),
   points: () => pointsAt(me.level || 1),
-  set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); },
+  set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); clearTimeout(gainXp.sync); gainXp.sync = setTimeout(sendProgress, 2000); },
 });
 function toggleWeb() {
   if (webUI.open) { webUI.hide(); relock(); return; }
@@ -998,6 +1001,24 @@ function toggleWeb() {
 $('web-close').addEventListener('click', () => toggleWeb());
 $('web-reset').addEventListener('click', () => { if (webOf().length && confirmReset()) { story.web[me.cls] = []; saveStory(story); applyWeb(); webUI.draw(); } });
 function confirmReset() { const b = $('web-reset'); if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Give all back'; return true; } b.dataset.sure = '1'; b.textContent = 'Sure? Click again'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Give all back'; }, 2500); return false; }
+
+/** (0.99.38) Your progress (experience, talent webs, tricks) to the server, to keep with your account. */
+function sendProgress() {
+  if (net && net.ready) net.send({ t: 'progress', xp: story.xp || 0, web: story.web || {}, tricks: story.tricks || {} });
+}
+/** (0.99.38) The account's progress, when it is further on than this browser's: taken. */
+function takeProgress(msg) {
+  if (!(msg.xp > (story.xp || 0))) return;
+  story.xp = msg.xp;
+  if (msg.web && typeof msg.web === 'object') story.web = msg.web;
+  story.tricks = { ...(story.tricks || {}), ...(msg.tricks || {}) };
+  saveStory(story);
+  const L = levelOf(story.xp).level;
+  world.setLevel(1, L);
+  net.send({ t: 'lvl', L });
+  applyWeb();
+  toast('Progress from your account', `Level ${L}, and your talents`);
+}
 
 function setStage(stage) {
   // (0.99.36) leaving a part of the story: its experience, once

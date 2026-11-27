@@ -25,8 +25,9 @@ const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.m
 
 export class LandRoom {
   /** send(conn, obj) sends JSON; sendBin(conn, ArrayBuffer) sends bytes; close(conn, why) ends it. */
-  constructor({ send, sendBin, close = () => {}, passcode = '', seed, linkOf = null } = {}) {
+  constructor({ send, sendBin, close = () => {}, passcode = '', seed, linkOf = null, progress = null } = {}) {
     this.linkOf = linkOf; // (session) -> Eternal levels by slot, or null (not signed in)
+    this.progress = progress; // (0.99.38) { get(session), put(session, data) }: Lacuna progress kept with an account
     this.send = send;
     this.sendBin = sendBin;
     this.close = close;
@@ -49,7 +50,8 @@ export class LandRoom {
     if (!m) return msg.t === 'hello' ? this.hello(conn, msg) : undefined;
     if (msg.t === 'pos') this.pos(m, msg);
     else if (msg.t === 'cls' && CLASSES.includes(msg.cls) && msg.cls !== m.cls) { m.cls = msg.cls; this.world.setClass(m.pid, m.cls); this.roster(); }
-    else if (msg.t === 'web') this.world.setWeb(m.pid, msg.ids); // (0.99.37) talents (checked: joined up, no more than the level allows)
+    else if (msg.t === 'web') this.world.setWeb(m.pid, msg.ids);
+    else if (msg.t === 'progress') this.keep(m, msg); // (0.99.38) the page's progress, kept with the account // (0.99.37) talents (checked: joined up, no more than the level allows)
     else if (msg.t === 'lvl') { const L = num(msg.L, 1, 60); if (L !== null) this.world.setLevel(m.pid, L); } // (0.99.36) the page's level (for now; with accounts, the server's)
     else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
     else if (msg.t === 'act') {
@@ -91,9 +93,12 @@ export class LandRoom {
     const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true, vigour: num(msg.vigour, 0.5, 1) ?? 1, level: num(msg.level, 1, 60) ?? 1 });
     p.driven = true; // moved by its own browser (checked), not by the sim
     if (Array.isArray(msg.web)) this.world.setWeb(pid, msg.web); // (0.99.37) talents
-    const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page' };
+    const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page', session: typeof msg.session === 'string' ? msg.session.slice(0, 200) : '' };
     this.byConn.set(conn, m);
     this.send(conn, { t: 'welcome', pid, name, at: { x: p.x, z: p.z }, v: LACUNA_NET, hz: SEND_HZ, link, linkFrom: m.linkFrom });
+    // (0.99.38) what the account has kept: the page compares it with its own and keeps the further on
+    const kept = this.progress && m.session ? this.progress.get(m.session) : null;
+    if (kept) this.send(conn, { t: 'progress', ...kept });
     this.roster();
     this.chatAll(`${name} has arrived.`);
   }
@@ -119,6 +124,23 @@ export class LandRoom {
     p.pace = SPEED[msg.p] ? msg.p : 'run';
     p.speed = p.moving ? SPEED[p.pace] : 0;
     m.last = { x: p.x, z: p.z, t: w.time };
+  }
+
+  /**
+   * (0.99.38) Progress (experience, talent webs, tricks) to keep with a signed-in player's account: the most
+   * experience either side has seen wins (progress is earned in the story, which is played alone in the browser).
+   */
+  keep(m, msg) {
+    if (!this.progress || !m.session) return;
+    const xp = num(msg.xp, 0, 1e8);
+    if (xp === null) return;
+    const web = {};
+    for (const cls of Object.keys(KITS)) if (msg.web && Array.isArray(msg.web[cls])) web[cls] = msg.web[cls].filter((i) => Number.isInteger(i) && i >= 0 && i < 2000).slice(0, 80);
+    const tricks = {};
+    if (msg.tricks && typeof msg.tricks === 'object') for (const k of Object.keys(msg.tricks).slice(0, 20)) if (/^[a-zA-Z0-9]{1,16}$/.test(k)) tricks[k] = true;
+    const had = this.progress.get(m.session);
+    if (had && had.xp > xp) return this.send(m.conn, { t: 'progress', ...had }); // the account is further on: the page takes it
+    this.progress.put(m.session, { xp: Math.floor(xp), web, tricks });
   }
 
   snap(m, p) {

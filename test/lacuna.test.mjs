@@ -726,3 +726,26 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   check('...every keystone is in the web', Object.keys(KEYSTONES).every((k) => n.some((x) => x.key === k)));
   console.log(`${pass} passed, ${failed} failed (after the web)`);
 }
+
+// ---- (0.99.38) progress kept with an account on the server world
+{
+  const { LandRoom, LACUNA_NET: v } = await import('../src/lacuna/room.js');
+  const kept = {};
+  const box = new Map();
+  const room = new LandRoom({ passcode: 'stun', send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), sendBin() {}, progress: { get: (s) => kept[s] || null, put: (s, d) => { if (s === 'good') kept[s] = d; return s === 'good'; } } });
+  const conn = () => { const c = {}; box.set(c, []); return c; };
+  const a = conn();
+  room.message(a, { t: 'hello', v, pass: 'stun', name: 'Signed', cls: 'warrior', session: 'good', level: 12 });
+  room.message(a, { t: 'progress', xp: 3000, web: { warrior: [5, 6, 'x'] }, tricks: { bhop: true, '<bad>': true } });
+  check('progress: a signed-in player\'s experience, webs and tricks are kept with the account (cleaned)', kept.good && kept.good.xp === 3000 && kept.good.web.warrior.length === 2 && kept.good.tricks.bhop && !kept.good.tricks['<bad>']);
+  const b = conn();
+  room.message(b, { t: 'hello', v, pass: 'stun', name: 'Signed', cls: 'warrior', session: 'good' });
+  check('...and handed back on joining (on another browser)', box.get(b).some((m) => m.t === 'progress' && m.xp === 3000));
+  room.message(b, { t: 'progress', xp: 100, web: {}, tricks: {} });
+  check('...a browser behind the account does not overwrite it (it is sent the account\'s)', kept.good.xp === 3000 && box.get(b).filter((m) => m.t === 'progress').length === 2);
+  const c = conn();
+  room.message(c, { t: 'hello', v, pass: 'stun', name: 'Guest', cls: 'warrior', session: 'nope' });
+  room.message(c, { t: 'progress', xp: 999999, web: {}, tricks: {} });
+  check('...not signed in: nothing kept', !kept.nope);
+  console.log(`${pass} passed, ${failed} failed (after progress)`);
+}

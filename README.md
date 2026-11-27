@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: progress kept with your account (0.99.38)
+
+- Signed in and joining a server world, your Lacuna progress (experience and so your level, each path's talent web, the tricks you have learned) is sent to the server and kept with your account, and sent again now and then as it grows. On another browser, joining hands it back: whichever has seen more experience wins (the story is played alone in the browser, so the browser earns it; the account keeps it safe and carries it about).
+
 ### Lacuna: the talent web (0.99.37)
 
 - **P opens the talent web**: one great web of about 450 passive talents, shared by both paths (after Path of Exile's passive tree), the Berserker starting on its west side (reds: blood, fury, quakes, storms, iron), the Sharpshooter on its east (greens: precision, fletching, the wind, the hunt, stillness). North are the acrobats (jump height, damage in the air, faster bunny hops, more wall kicks), south vitality and the mind, between them ferocity and focus. Either path can wander anywhere.

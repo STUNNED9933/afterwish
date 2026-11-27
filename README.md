@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the Iron Hounds, emotes and emoticons (0.99.19)
+
+- **The Company is remade and renamed: the Iron Hounds** (gunmetal and crimson, a hound's-head badge): Rowan (leader, sword), Ilse (healer), Juni (scout), Sorrel (mage), in a Korean-manhwa look, with calm, neutral faces instead of the old fixed smiles. Made with Tripo (Iron Hounds run 45939994405, and Sorrel remade standing straight in run 45941171305). The Marigold models are kept, unshipped, for enemies later (`assets/models/archive/`).
+- **Emotes:** hold **T** for the emote wheel and let go on one (or press its number): Wave, Bow, Nod, No, Dance, Sit, Show off, Cry. Moving, attacking or casting ends it; Sit stays seated until you move. Players near you see it.
+- **Emoticons:** hold **Y** for the emoticon wheel: a little face or sign pops up in a bubble over your head for three seconds (Happy, Laugh, Love, Wow, Sad, Angry, Sweat, ?, !, Music). Drawn in code, so they look the same on every computer.
+- The server passes emotes and emoticons on to players within sight (at most one every 0.4 s each, known ones only), never back to the sender.
+- The heroes gained the dance, sit, nod and head-shake clips (Universal Animation Library) and the wave, bow, show-off and cry clips (Tripo, from Juni).
+
 ### Lacuna: the opening, reworked (0.99.18)
 
 - **People face each other now:** whoever speaks turns to whoever they are speaking to, the others turn their heads to the speaker, and the hero turns to them too (turning smoothly, not snapping). During the wolves the hero keeps facing them.

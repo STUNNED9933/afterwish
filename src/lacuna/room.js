@@ -6,7 +6,7 @@
 // Each player is sent, ten times a second, only what they can see and only what changed (see net.js).
 //
 // Messages, browser to server (JSON): hello { v, pass, name, cls }, pos { x, z, f, m, p }, cls { cls },
-// act { k, ax, az } (a blow or skill, aimed at a point), jump, chat { text }, ping { at }. Server to browser: welcome,
+// act { k, ax, az } (a blow or skill, aimed at a point), jump, emote { id }, face { id } (an emoticon), chat { text }, ping { at }. Server to browser: welcome,
 // reject, roster, snap (go back here), me (your health, mana, cooldowns), evs (what happened near you: shots,
 // hits, falls, casts), chat, pong (JSON), and the state of what is in sight (binary, net.js).
 // (phase 2) The Dimension Link comes from the account's characters when signed in (linkOf), else from the page.
@@ -14,6 +14,7 @@
 import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS } from './sim.js';
 import { Interest, SEND_HZ } from './net.js';
 import { TOWN, HALF } from './land.js';
+import { EMOTE_IDS, EMOTICONS } from './emotes.js';
 
 export const LACUNA_NET = 'L1';
 export const LAND_LIMITS = { players: 24, nameLen: 16, chatLen: 140, chatGap: 0.6 };
@@ -53,6 +54,13 @@ export class LandRoom {
       if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az);
     }
     else if (msg.t === 'jump') this.world.jump(m.pid);
+    else if ((msg.t === 'emote' && EMOTE_IDS.includes(msg.id)) || (msg.t === 'face' && EMOTICONS.includes(msg.id))) {
+      // (0.99.19) an emote or an emoticon: for everyone near to see (not too often)
+      const p = this.world.players.get(m.pid);
+      if (!p || p.dead || this.world.time - (m.emoteAt || -1e9) < 0.4) return;
+      m.emoteAt = this.world.time;
+      this.world.emit(msg.t, { pid: m.pid, id: msg.id, x: p.x, z: p.z });
+    }
     else if (msg.t === 'chat') this.chat(m, msg.text);
     else if (msg.t === 'ping') this.send(conn, { t: 'pong', at: num(msg.at, 0, 1e15) });
   }
@@ -155,7 +163,7 @@ export class LandRoom {
       const evs = [];
       for (const ev of events) {
         if (ev.type === 'up' && ev.pid === m.pid) { m.last = { x: p.x, z: p.z, t: this.world.time }; this.send(m.conn, { t: 'snap', x: p.x, z: p.z }); }
-        if ((ev.type === 'shot' || ev.type === 'cast') && ev.pid === m.pid) continue;
+        if ((ev.type === 'shot' || ev.type === 'cast' || ev.type === 'emote' || ev.type === 'face') && ev.pid === m.pid) continue;
         if (ev.x !== undefined && Math.hypot(ev.x - p.x, ev.z - p.z) > 150) continue;
         evs.push(ev);
       }

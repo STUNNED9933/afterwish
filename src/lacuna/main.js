@@ -19,6 +19,7 @@ import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
 import { opening, walkToTown, inTown, loadStory, saveStory, QUESTS, ROAD_IN } from './story.js';
+import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('land');
@@ -69,6 +70,8 @@ function dress(h, cls) {
   Promise.all([loadRigged(id), loadWeapon(cls, RIGGED[id].weaponScale || 1)]).then(([tpl, made]) => {
     if (!tpl || token !== h.token || h.gone) return;
     const rig = instantiate(tpl);
+    h.clipNames = Object.keys(tpl.clips);
+    h.clipLen = (n) => (tpl.clips[n] ? tpl.clips[n].duration : 1);
     if (tpl.spec.bow) rig.holdBow(new THREE.MeshStandardMaterial({ color: 0x7a5232 }), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
     else if (made) {
       const w = new THREE.Group();
@@ -111,7 +114,25 @@ function pose(h, dt, s) {
   a.air = air;
   if (a.spinT > 0) { a.spinT -= dt; h.body.rotation.y += dt * 16; } else h.body.rotation.y = 0;
   if (!h.rig) return;
-  h.rig.update(dt, { ...s, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
+  // an emote: until it ends, or the hero moves, attacks or casts
+  let emote = null, emoteOnce = false, emoteStart = false;
+  if (a.em) {
+    const e = a.em;
+    if (s.moving || a.start || a.move || a.spinT > 0 || s.dead) a.em = null;
+    else {
+      if (!e.clip) { e.clip = emoteClip(h.clipNames, e.def.clip); e.len = e.def.len || (e.clip ? h.clipLen(e.clip) : 0); e.once = !!e.def.once || !!e.def.then; e.start = true; }
+      if (!e.clip) a.em = null;
+      else {
+        e.t += dt;
+        if (e.t >= e.len && e.once) {
+          const next = e.def.then && emoteClip(h.clipNames, e.def.then);
+          if (next) { e.clip = next; e.once = false; e.start = true; e.t = 0; e.len = Infinity; } else a.em = null;
+        }
+        if (a.em) { emote = e.clip; emoteOnce = e.once; emoteStart = e.start; e.start = false; }
+      }
+    }
+  }
+  h.rig.update(dt, { ...s, emote, emoteOnce, emoteStart, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
   a.start = false;
   a.move = null;
   a.hit = false;
@@ -280,6 +301,8 @@ const isMe = (pid) => (net ? pid === net.pid : pid === 1);
 function onEvent(ev) {
   if (ev.type === 'shot') fx.shot(ev);
   else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); }
+  else if (ev.type === 'emote') { const h = heroOf(ev.pid); if (h) startEmote(h, ev.id); }
+  else if (ev.type === 'face') { const h = heroOf(ev.pid); if (h) showFace(h, ev.id); }
   else if (ev.type === 'slam') fx.ring(ev.x, ev.z, ev.r, 0xffb347, 0.5);
   else if (ev.type === 'hit') fx.number(ev.x, ev.z, String(ev.dmg), isMe(ev.pid) ? (ev.shot && ev.dmg > 300 ? 'big' : 'dealt') : 'dealt');
   else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
@@ -403,6 +426,12 @@ addEventListener('keydown', (e) => {
     if (net && net.ready) note('Together, the server decides your Link (your account\'s Eternal gear if you are signed in).');
     else { tryAt = (tryAt + 1) % TRY.length; world.setLink(1, linkNow()); linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : ''; drawLink(); note(TRY[tryAt] === null ? 'Your own Eternal gear again.' : `Trying Eternal level ${TRY[tryAt]} in every slot (beasts are tuned for 10).`); }
   }
+  if ((e.code === 'KeyT' || e.code === 'KeyY') && !e.repeat && !wheel) { openWheel(e.code === 'KeyT' ? 'emote' : 'face'); return; }
+  if (wheel) {
+    const d = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'].indexOf(e.code);
+    if (d >= 0 && d < wheel.items.length) { pick(d); closeWheel(true); }
+    return;
+  }
   if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyR') act(e.code.slice(3));
   if (e.code === 'Enter' && net && net.ready) {
     keys.clear();
@@ -418,6 +447,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys.delete(e.code);
+  if ((e.code === 'KeyT' && wheel && wheel.kind === 'emote') || (e.code === 'KeyY' && wheel && wheel.kind === 'face')) closeWheel(true);
   if (e.key === 'Alt') {
     e.preventDefault();
     altFree = false;
@@ -426,7 +456,7 @@ addEventListener('keyup', (e) => {
     drawLookHint();
   }
 });
-addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; altFree = false; hideTip(); });
+addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; altFree = false; hideTip(); closeWheel(false); });
 function drawLookHint() {
   $('look-hint').textContent = altFree ? 'Hover for descriptions · let go of Alt to look around' : 'Click, or press any key, to look around · hold Alt to use the mouse';
   $('look-hint').classList.toggle('hidden', locked() || chatOpen());
@@ -446,6 +476,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) firing = false; if (e.button === 2) scoped = false; });
 addEventListener('mousemove', (e) => {
+  if (wheel && locked()) { wheelMove(e.movementX, e.movementY); return; } // pointing at the wheel, not looking round
   if (!locked()) { if (altFree) hoverAt(e.clientX, e.clientY); return; }
   const k = scoped ? 0.35 : 1;
   yaw += e.movementX * 0.0032 * k;
@@ -511,6 +542,7 @@ function aimPoint() {
 }
 function act(k) {
   if (!world.ready(me, k)) return;
+  hero.anim.em = null;
   const a = aimPoint();
   world.act(1, k, a.x, a.z); // here at once (together, a guess the server confirms)
   if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2) });
@@ -541,7 +573,109 @@ dress(hero, startCls);
 drawSkills();
 drawLink();
 
-// ---- the story (Act I): the opening, then the Marigold Company walking you to Sunmere
+// ---- emotes and emoticons (hold T / Y for their wheels)
+function startEmote(h, id) {
+  const def = EMOTES.find((e) => e.id === id);
+  if (def) h.anim.em = { def, t: 0, clip: null };
+}
+const faceTex = {};
+const bubbles = [];
+function faceTexture(id) {
+  if (!faceTex[id]) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    drawEmoticon(c.getContext('2d'), id, 128);
+    faceTex[id] = new THREE.CanvasTexture(c);
+    faceTex[id].colorSpace = THREE.SRGBColorSpace;
+  }
+  return faceTex[id];
+}
+function showFace(h, id) {
+  if (!EMOTICONS.includes(id)) return;
+  for (const b of bubbles) if (b.h === h) b.t = 99; // one at a time over each head
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTexture(id), transparent: true, depthWrite: false }));
+  sp.position.set(0.35, 2.55, 0);
+  sp.renderOrder = 10;
+  h.group.add(sp);
+  bubbles.push({ h, sp, t: 0 });
+}
+function updateBubbles(dt) {
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.t += dt;
+    const pop = b.t < 0.18 ? b.t / 0.18 : 1;
+    const k = 0.75 * (pop < 1 ? 0.4 + 0.75 * pop : 1 + Math.sin(b.t * 5) * 0.03);
+    b.sp.scale.set(k, k, k);
+    b.sp.position.y = 2.55 + Math.min(b.t, 0.3) * 0.4;
+    b.sp.material.opacity = b.t > 2.7 ? Math.max(0, 1 - (b.t - 2.7) / 0.3) : 1;
+    if (b.t >= 3 || !b.h.group.parent) { b.h.group.remove(b.sp); b.sp.material.dispose(); bubbles.splice(i, 1); }
+  }
+}
+function doEmote(id) {
+  if (me.dead || cutscene.active) return;
+  const def = EMOTES.find((e) => e.id === id);
+  if (!def || !emoteClip(hero.clipNames, def.clip)) return note(`${def ? def.name : 'That'} comes with the next update (its animation is still being made).`);
+  startEmote(hero, id);
+  if (net && net.ready) net.send({ t: 'emote', id });
+}
+function doFace(id) {
+  if (me.dead || cutscene.active) return;
+  showFace(hero, id);
+  if (net && net.ready) net.send({ t: 'face', id });
+}
+// the wheel: items round a circle; point with the mouse (or press a number), let go of the key to choose
+let wheel = null;
+function openWheel(kind) {
+  const items = kind === 'emote' ? EMOTES.map((e) => ({ id: e.id, label: e.name, ok: !!emoteClip(hero.clipNames, e.clip) })) : EMOTICONS.map((id) => ({ id, label: EMOTICON_NAMES[id], icon: true, ok: true }));
+  const el = $('wheel');
+  el.innerHTML = `<div class="hub" id="wheel-hub">${kind === 'emote' ? 'Emotes' : 'Emoticons'}</div>`;
+  items.forEach((it, i) => {
+    const a = (i / items.length) * Math.PI * 2 - Math.PI / 2;
+    const d = document.createElement('div');
+    d.className = 'slot' + (it.ok ? '' : ' off');
+    d.style.left = `${50 + Math.cos(a) * 38}%`;
+    d.style.top = `${50 + Math.sin(a) * 38}%`;
+    if (it.icon) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      drawEmoticon(c.getContext('2d'), it.id, 64);
+      d.appendChild(c);
+    }
+    d.appendChild(Object.assign(document.createElement('span'), { textContent: `${(i + 1) % 10} ${it.label}` }));
+    d.addEventListener('mouseenter', () => pick(i));
+    d.addEventListener('mousedown', (e) => { e.preventDefault(); pick(i); closeWheel(true); });
+    el.appendChild(d);
+  });
+  el.classList.remove('hidden');
+  wheel = { kind, items, sel: -1, vx: 0, vy: 0 };
+}
+function pick(i) {
+  if (!wheel) return;
+  wheel.sel = i;
+  [...$('wheel').querySelectorAll('.slot')].forEach((d, k) => d.classList.toggle('on', k === i));
+  $('wheel-hub').textContent = wheel.items[i] ? wheel.items[i].label : '';
+}
+function closeWheel(choose) {
+  if (!wheel) return;
+  const w = wheel;
+  wheel = null;
+  $('wheel').classList.add('hidden');
+  if (!choose || w.sel < 0) return;
+  const it = w.items[w.sel];
+  if (w.kind === 'emote') doEmote(it.id);
+  else doFace(it.id);
+}
+function wheelMove(dx, dy) {
+  if (!wheel) return;
+  wheel.vx = Math.max(-120, Math.min(120, wheel.vx + dx));
+  wheel.vy = Math.max(-120, Math.min(120, wheel.vy + dy));
+  if (Math.hypot(wheel.vx, wheel.vy) < 25) return;
+  const a = Math.atan2(wheel.vy, wheel.vx) + Math.PI / 2;
+  const n = wheel.items.length;
+  pick(((Math.round((a / (Math.PI * 2)) * n) % n) + n) % n);
+}
+
+// ---- the story (Act I): the opening, then the Iron Hounds walking you to Sunmere
 const cutscene = new Cutscene({
   view, fx, $, me, hero, land: world.land,
   beastMesh: (type) => { const m = new THREE.Mesh(beastGeometry(type), view.mats.beast); m.castShadow = true; return m; },
@@ -776,6 +910,7 @@ function frame(now) {
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, me.rage > 0, hx, hz);
   if (questRun && !cutscene.active) questRun.update(dt, me);
+  updateBubbles(dt);
   drawMarker();
   if (barkT > 0 && (barkT -= dt) <= 0) nextBark();
   if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.add('hidden');
@@ -822,5 +957,5 @@ function frame(now) {
   }
 }
 requestAnimationFrame(frame);
-note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold Alt to use the mouse (hover for descriptions).');
+note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
 window.land = { world, view, crowd, me, fx, hero, __company: company, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

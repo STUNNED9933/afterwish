@@ -392,6 +392,20 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('...nonsense is ignored; a class swap reaches everyone (and changes the hero)', last(b, 'roster').players.find((p) => p.pid === A.pid).cls === 'warrior' && room.world.players.get(A.pid).cls === 'warrior');
   room.message(a, { t: 'chat', text: 'hello\u0007 there' });
   check('...chat reaches everyone, cleaned', last(b, 'chat') && last(b, 'chat').text === 'hello there' && last(b, 'chat').name === 'Ko Ko');
+  {
+    // emotes and emoticons: B sees them, A is not sent their own back; unknown ones and spam are dropped
+    { const pa = room.world.players.get(A.pid); pa.x = A.at.x; pa.z = A.at.z; } // beside B (A was off at a tree)
+    box.get(a).json.length = 0; box.get(b).json.length = 0;
+    room.message(a, { t: 'emote', id: 'wave' });
+    room.message(a, { t: 'face', id: 'love' }); // too soon after the wave
+    room.message(a, { t: 'emote', id: '<script>' });
+    run(0.5);
+    room.message(a, { t: 'face', id: 'love' });
+    run(0.2);
+    const evs = (c) => box.get(c).json.filter((m) => m.t === 'evs').flatMap((m) => m.list);
+    const bs = evs(b).filter((e) => e.type === 'emote' || e.type === 'face');
+    check('...emotes and emoticons reach the others (not too often, known ones only), not the sender', bs.length === 2 && bs[0].type === 'emote' && bs[0].id === 'wave' && bs[1].type === 'face' && bs[1].id === 'love' && bs.every((e) => e.pid === A.pid) && !evs(a).some((e) => e.type === 'emote' || e.type === 'face'));
+  }
   // B goes to a wolf: the server's beasts notice B (and only B is told)
   { const pa = room.world.players.get(A.pid); pa.x = A.at.x; pa.z = A.at.z; room.byConn.get(a).last = { x: pa.x, z: pa.z, t: room.world.time }; } // A back in town
   const wolf = room.world.beasts.find((w) => w.type === 'wolf' && Math.hypot(w.x, w.z) > 150);
@@ -407,6 +421,18 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   const idle = new LandRoom({ passcode: 'stun', send() {}, sendBin() {} });
   idle.tick(1);
   check('...an empty server makes no land at all (until someone comes)', idle.world === null);
+}
+
+{
+  const { EMOTES, EMOTICONS, emoteClip, drawEmoticon } = await import('../src/lacuna/emotes.js');
+  check('Emotes: a clip is found by exact name or by part of it', emoteClip(['ual_Yes', 'x|greet_02|y'], 'greet_02') === 'x|greet_02|y' && emoteClip(['ual_Yes'], 'ual_Yes') === 'ual_Yes' && emoteClip(['a'], 'bow') === null);
+  check('...eight emotes and ten emoticons, each with its own id', new Set(EMOTES.map((e) => e.id)).size === 8 && new Set(EMOTICONS).size === 10);
+  let calls = 0;
+  const g = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => { calls++; }), set: (t, k, v) => { t[k] = v; return true; } });
+  for (const id of EMOTICONS) drawEmoticon(g, id, 64);
+  check('...every emoticon draws without error', calls > 100);
+  const heroes = ['warrior', 'archer'].map((n) => fs.readFileSync(`assets/models/${n}.glb`).toString('latin1'));
+  check('...both heroes carry the dance, sit, nod and head-shake clips', heroes.every((t) => ['ual_Dance_Loop', 'ual_Sitting_Enter', 'ual_Sitting_Idle_Loop', 'ual_Yes', 'ual_Idle_No_Loop'].every((c) => t.includes(c))));
 }
 
 console.log(`${pass} passed, ${failed} failed`);

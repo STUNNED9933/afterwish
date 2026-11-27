@@ -21,7 +21,7 @@ Opens after every Caelum boss is beaten; hard from the first fight even in full 
 | Hero's look | Young (a teenager); character creator from free modular parts; Tripo only where nothing free will do |
 | Feel | Above all a free world to roam with friends, with plenty of gameplay |
 | Old world | Votum; the Primordials grew from desire and malice (Animus stays the resisting will) |
-| Names | Chosen by Claude (working): kingdom Solenne, first town Sunmere, rescuers the Marigold Company (Rowan, leader; Ilse, healer; Juni, scout; Sorrel, mage; all adults), secret service the Gloamwatch, movement the Unbound |
+| Names | Chosen by Claude (working): kingdom Solenne, first town Sunmere, rescuers the Iron Hounds (renamed from the Marigold Company in 0.99.19: gunmetal and crimson, a hound's-head badge; Rowan, leader; Ilse, healer; Juni, scout; Sorrel, mage; all adults), secret service the Gloamwatch, movement the Unbound |
 | View | Over the shoulder; true first-person aim where a class needs it (Sharpshooter scope) |
 | World | One seamless land shared per server; quest bosses in the party's own copy |
 | Power | Magic and mana; Dimension Link for players who owned Eternal gear |

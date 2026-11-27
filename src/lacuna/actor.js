@@ -1,4 +1,4 @@
-// Lacuna (Chapter 2): someone in a scene (the Marigold Company, the beasts of the opening). Not in the sim: the
+// Lacuna (Chapter 2): someone in a scene (the Iron Hounds, the beasts of the opening). Not in the sim: the
 // cutscene player and the story move them, in this browser only. A stand-in figure shows until the model loads.
 //   a = new Actor(scene, 'l_rowan', { height: 1.86, weapon: 'warrior' })
 //   a.place(x, z, facing); await a.walkTo(x, z, { run }); await a.play('ual_Fixing_Kneeling', { hold: true })

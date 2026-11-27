@@ -91,6 +91,14 @@
   #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 10px 20px; background: rgba(8, 10, 18, 0.85); border: 1px solid #ffd24a; border-radius: 8px; color: #fff; font: 600 16px system-ui; text-align: center; pointer-events: none; }
   #toast small { display: block; font-weight: 400; font-size: 13px; color: #cfd6e4; }
   body.scene #hud, body.scene #cross, body.scene #mp, body.scene #stats, body.scene #quest, body.scene #look-hint, body.scene #chat, body.scene #note, body.scene #tag { display: none !important; }
+  #wheel { position: fixed; left: 50%; top: 50%; width: 340px; height: 340px; margin: -170px 0 0 -170px; border-radius: 50%; background: radial-gradient(circle, rgba(10, 14, 24, 0.55) 0 30%, rgba(10, 14, 24, 0.78) 31% 70%, transparent 71%); z-index: 15; }
+  #wheel .hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #ffd24a; font: 700 14px system-ui; text-align: center; pointer-events: none; }
+  #wheel .slot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; min-width: 56px; border-radius: 10px; color: #fff; font-size: 12px; text-align: center; cursor: pointer; }
+  #wheel .slot canvas { width: 40px; height: 40px; }
+  #wheel .slot span { white-space: nowrap; text-shadow: 0 1px 2px #000; }
+  #wheel .slot.on { background: rgba(255, 210, 74, 0.9); color: #1a1406; }
+  #wheel .slot.on span { text-shadow: none; }
+  #wheel .slot.off { opacity: 0.4; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -106,6 +114,7 @@
 <div id="cross"></div>
 <div id="look-hint">Click, or press any key, to look around · hold Alt to use the mouse</div>
 <div id="tip" class="hidden"></div>
+<div id="wheel" class="hidden"></div>
 <div id="down"><div>You are down</div><small id="down-t"></small></div>
 <div id="hud">
   <div class="link" id="link"></div>

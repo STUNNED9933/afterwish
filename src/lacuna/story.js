@@ -3,7 +3,7 @@
 // now (STORY_KEY); with accounts it moves to the server.
 //
 // The opening: the crack on the Verge opens, a husk runs into it, the hero follows; wakes in a glade in the
-// Wakewood, powerless; wolves; the Marigold Company (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
+// Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
 import { GLADE, TOWN, roadDist } from './land.js';
 import { buildCrack } from '../render/gates.js';
@@ -11,7 +11,7 @@ import { separate } from './actor.js';
 
 export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
-  waking: { name: 'Waking Up', goal: 'Follow the Marigold Company to Sunmere' },
+  waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
   crystal: { name: 'The Crystal', goal: 'The Adventurers\' Guild reads you in the morning (the next part of the story is coming)' },
 };
 export function loadStory() {
@@ -175,7 +175,7 @@ export async function opening(a) {
   await a.say('', 'You open your mouth to explain, and realise you don\'t know how.');
   await a.say('rowan', 'Leave it. Whoever you are, you\'re coming with us.');
   a.anim('rowan', 'wave');
-  await a.say('rowan', 'We\'re the Marigold Company. Adventurers, out of Sunmere. It\'s not far, and there\'s a hot meal at the end of it.');
+  await a.say('rowan', 'We\'re the Iron Hounds. Sellswords, out of Sunmere. It\'s not far, and there\'s a hot meal at the end of it.');
   await a.say('ilse', 'And a bath. Please, a bath.');
   a.talkCam(false);
   a.quiet();

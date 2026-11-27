@@ -827,6 +827,7 @@ export function instantiate(tpl) {
     current = a;
   };
   fadeTo(actions.idle, 0);
+  const emotes = {}; // (0.99.19) emote clips, made when first played
   const hand = spec.hand ? root.getObjectByName(spec.hand) : null;
   const fistHole = hand && fistAt[hand.name] ? new THREE.Vector3(...fistAt[hand.name].hole) : null;
   const handRest = new THREE.Quaternion(); // the wrist as the clips left it, before the staff bend
@@ -959,6 +960,11 @@ export function instantiate(tpl) {
           if (k > 0.3 && k < 0.7) slash = 0.55;
         } else if (flinching) {
           // let the flinch play out
+        } else if (s.emote && !s.moving && clips[s.emote]) {
+          // (0.99.19) an emote (Lacuna): a clip by name, looped or once, until the player moves or acts
+          const key = s.emote + (s.emoteOnce ? '#1' : '');
+          const ea = emotes[key] || (emotes[key] = act(s.emote, !!s.emoteOnce));
+          fadeTo(ea, endFade || 0.25, !!s.emoteStart);
         } else if (s.moving && actions.walk && (s.walk || (s.speed || 6) < (spec.walkBelow || 4.2))) {
           // (0.95) walking (Ctrl or Caps Lock, or simply slow): a walk, not a slowed run
           actions.walk.timeScale = Math.max(0.7, Math.min(1.8, (s.speed || 1.8) / (spec.walkRef || 1.8))); // (0.96.1) the walk is made to cover 1.8 m a second at its own pace: matched, so the feet hold the ground

@@ -85,6 +85,23 @@ const CALM = 6; // seconds without a fight before health comes back
 const RESPAWN = 45; // a beast comes back this long after it falls (if nobody is standing on its home)
 const DOWN = 6; // seconds a hero is down
 export const JUMP = { up: 6.4, gravity: 21 }; // about a metre high, two thirds of a second in the air
+/**
+ * (0.99.35) Moving well, for those who want to: all of it optional (walk and jump as before and none of it matters).
+ *  - momentum: speed above your stride is kept a moment on landing, then bleeds away (friction)
+ *  - bunny hop: jump again within `hopWindow` of landing (or press it just before: `buffer`) and keep your speed,
+ *    a little more each time (`hopGain`), up to `hopCap` times a run
+ *  - slide (C, running): a burst along the ground (`slideBoost`), and jumping out of it flings you (`slideJumpGain`)
+ *  - in the air: one double jump; kick off a tree, a rock or a wall (`kicks` before you land), which gives it back
+ *  - rocks can be stood on
+ *  - the Berserker's Skyfall bounce: jump as it lands (`bounceWindow`) and go up high; the Sharpshooter's recoil: a
+ *    Shot fired down in mid-air throws you up and back, once a jump
+ * Speeds are in runs (SPEED.run); none of it is faster than `cap` runs.
+ */
+export const MOVE = {
+  accel: 70, airAccel: 16, friction: 6, buffer: 0.12, hopWindow: 0.14, hopGain: 1.07, hopCap: 1.7,
+  slideBoost: 1.45, slideDur: 0.7, slideCd: 0.5, slideDrag: 2.6, slideJumpUp: 0.9, slideJumpGain: 1.2,
+  doubleUp: 0.85, kickUp: 1.0, kickOut: 6, kicks: 3, bounceUp: 1.6, bounceWindow: 0.28, recoilUp: 1.15, recoilBack: 6, cap: 2.0,
+};
 
 export class LandWorld {
   constructor({ seed = LAND.seed } = {}) {
@@ -135,7 +152,7 @@ export class LandWorld {
 
   /** A player arrives (by default at Sunmere's south gate). */
   addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false, vigour = 1 } = {}) {
-    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
+    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0, vx: 0, vz: 0, g: 0, landT: 1, jumpBuf: 0, air2: false, kicks: 0, recoil: false, slide: null, slideCd: 0, slamAt: -9 };
     this.land.pushOut(p, PLAYER_R);
     this.players.set(pid, p);
     this.refit(p, true);
@@ -199,10 +216,10 @@ export class LandWorld {
    * A blow or a skill (k: 'basic', 'Q', 'E', 'R'), aimed at the point (ax, az) on the ground. `up`: the key was
    * let go (a held skill, Whirlwind or Deadeye, ends or looses).
    */
-  act(pid, k, ax, az, up = false) {
+  act(pid, k, ax, az, up = false, down = false) {
     const p = this.players.get(pid);
     if (!p || p.acts.length >= 6 || !(k === 'basic' || k === 'Q' || k === 'E' || k === 'R')) return;
-    p.acts.push({ k, ax, az, up: !!up });
+    p.acts.push({ k, ax, az, up: !!up, down: !!down });
   }
 
   /** (0.99.25) Where a drawn Deadeye points now: it follows the aim (the scope, the crosshair) until it is loosed. */
@@ -245,13 +262,91 @@ export class LandWorld {
     return p.oath ? Math.floor(p.maxHp * KITS.warrior.R.cap) : p.maxHp;
   }
 
-  /** A hop (Space): only from the ground, not while leaping, rolling or down. Nothing can be dodged by it. */
+  /**
+   * Space. (0.99.35) Remembered a moment (`MOVE.buffer`): from the ground a hop (or a bunny hop, a slide-jump, a
+   * Skyfall bounce); in the air a wall kick or the double jump; just before landing, a hop the instant you land.
+   * Nothing can be dodged by it.
+   */
   jump(pid) {
     const p = this.players.get(pid);
-    if (!p || p.dead || p.y > 0 || p.vy > 0 || p.leap || p.roll) return false;
-    p.vy = JUMP.up;
-    this.emit('cast', { pid: p.pid, skill: 'jump', x: p.x, z: p.z });
+    if (!p || p.dead || p.roll) return false;
+    p.jumpBuf = MOVE.buffer;
+    if (p.leap) return true; // remembered for the landing: the Skyfall bounce
+    this.tryJump(p);
     return true;
+  }
+
+  /** (0.99.35) C: a slide, running, on the ground. */
+  slide(pid) {
+    const p = this.players.get(pid);
+    if (!p || p.dead || p.leap || p.roll || p.draw || p.whirl || p.slide || p.slideCd > 0) return false;
+    if (p.y > p.g + 0.01 || p.vy > 0) return false;
+    const run = SPEED.run, sp = dHypot(p.vx, p.vz);
+    if (sp < run * 0.7) return false;
+    const k = Math.max(sp, run * MOVE.slideBoost) / sp;
+    p.vx *= k; p.vz *= k;
+    p.slide = { t: MOVE.slideDur };
+    this.emit('cast', { pid: p.pid, skill: 'slide', x: p.x, z: p.z, dur: MOVE.slideDur });
+    return true;
+  }
+
+  /** (0.99.35) Speed over the ground, held to the cap. */
+  capSpeed(p, most = MOVE.cap * SPEED.run) {
+    const sp = dHypot(p.vx, p.vz);
+    if (sp > most) { p.vx *= most / sp; p.vz *= most / sp; }
+  }
+
+  /** (0.99.35) A remembered jump, if it can go now. */
+  tryJump(p) {
+    if (!(p.jumpBuf > 0) || p.dead || p.leap || p.roll) return;
+    const run = SPEED.run, U = JUMP.up;
+    const ground = p.y <= p.g + 0.01 && p.vy <= 0;
+    let kind = null;
+    if (ground) {
+      const sp = dHypot(p.vx, p.vz);
+      if (p.slide) {
+        kind = 'slideJump';
+        p.vy = U * MOVE.slideJumpUp;
+        p.vx *= MOVE.slideJumpGain; p.vz *= MOVE.slideJumpGain;
+        p.slide = null;
+        p.slideCd = MOVE.slideCd;
+      } else if (p.cls === 'warrior' && this.time - p.slamAt <= MOVE.bounceWindow) {
+        kind = 'bounce';
+        p.vy = U * MOVE.bounceUp;
+      } else if (p.landT <= MOVE.hopWindow && sp > run * 0.9) {
+        kind = 'bhop';
+        p.vy = U;
+        const k = Math.min(sp * MOVE.hopGain, run * MOVE.hopCap) / sp;
+        if (k > 1) { p.vx *= k; p.vz *= k; }
+      } else {
+        kind = 'jump';
+        p.vy = U;
+      }
+      p.air2 = false; p.kicks = 0; p.recoil = false;
+    } else {
+      // near the ground and falling: keep it for the landing (a bunny hop); just off it, rising: not yet
+      if (p.vy < 0 && p.y - p.g < 0.4) return;
+      if (p.vy > 0 && p.y - p.g < 0.15) return;
+      const wall = p.kicks < MOVE.kicks ? this.land.wallAt(p.x, p.z, p.y, PLAYER_R) : null;
+      if (wall) {
+        kind = 'kick';
+        // off the wall: out from it, keeping the speed along it
+        const along = p.vx * -wall.nz + p.vz * wall.nx;
+        p.vx = wall.nx * MOVE.kickOut + -wall.nz * along;
+        p.vz = wall.nz * MOVE.kickOut + wall.nx * along;
+        p.vy = U * MOVE.kickUp;
+        p.kicks++;
+        p.air2 = false; // a kick gives the double jump back
+        p.facing = dAtan2(p.vz, p.vx);
+      } else if (!p.air2) {
+        kind = 'jump2';
+        p.vy = U * MOVE.doubleUp;
+        p.air2 = true;
+      } else return;
+    }
+    this.capSpeed(p);
+    p.jumpBuf = 0;
+    this.emit('cast', { pid: p.pid, skill: kind === 'bhop' || kind === 'jump' ? 'jump' : kind, x: p.x, z: p.z, bhop: kind === 'bhop' ? 1 : 0 });
   }
 
   /** Could this blow or skill go now (for the browser, to show it ready, and not to send what would be refused)? */
@@ -322,26 +417,13 @@ export class LandWorld {
     p.still = p.moving || p.leap || p.roll || p.whirl ? 0 : p.still + dt;
     const breath = kit.still && p.still >= kit.still.after ? kit.still.regen : 1;
     p.mp = Math.min(p.maxMp, p.mp + kit.regen * breath * dt);
-    if (p.y > 0 || p.vy > 0) {
-      p.vy -= JUMP.gravity * dt;
-      p.y += p.vy * dt;
-      if (p.y <= 0) { p.y = 0; p.vy = 0; }
-    }
+    p.jumpBuf -= dt;
+    p.slideCd -= dt;
+    if (!p.driven) this.fall(p, dt);
     if (p.calm > CALM && p.hp < this.hpCap(p)) p.hp = Math.min(this.hpCap(p), p.hp + p.maxHp * 0.05 * dt);
     // Walking (moves made by the browser itself, on the server, are taken as they come: see room.js)
-    if (!p.driven && !p.leap && !p.roll) {
-      const len = dHypot(p.mx, p.mz);
-      // (0.99.21) a Whirlwind keeps running, a drawn bow creeps; (0.99.24) and a weak boy is slower
-      const slow = (p.draw ? 0.45 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
-      p.moving = len > 0.05;
-      p.speed = p.moving ? SPEED[p.pace] * len * slow : 0;
-      if (p.moving) {
-        p.x += p.mx * SPEED[p.pace] * slow * dt;
-        p.z += p.mz * SPEED[p.pace] * slow * dt;
-        if (!p.draw && !(p.faceT > 0)) p.facing = dAtan2(p.mz, p.mx); // (0.99.27) not mid-swing: a cut faces its way
-        this.land.pushOut(p, PLAYER_R);
-      }
-    }
+    if (!p.driven && !p.leap && !p.roll) this.walk(p, dt);
+    else if (!p.driven) { p.vx = p.vz = 0; p.slide = null; }
     if (p.faceT > 0) p.faceT -= dt;
     for (const a of p.acts.splice(0)) this.doAct(p, a);
     // What is under way
@@ -354,6 +436,9 @@ export class LandWorld {
         p.leap = null;
         if (!p.driven) { p.x = L.tx; p.z = L.tz; this.land.pushOut(p, PLAYER_R); }
         const s = KITS.warrior.Q;
+        p.slamAt = this.time; // (0.99.35) jump now: the bounce
+        p.vx = p.vz = 0;
+        this.tryJump(p);
         this.emit('slam', { pid: p.pid, x: L.tx, z: L.tz, r: s.radius });
         this.area(p, L.tx, L.tz, s.radius, s.mult, s.stun);
       }
@@ -398,6 +483,86 @@ export class LandWorld {
     }
   }
 
+  /**
+   * (0.99.35) Feet: under gravity when off the ground (the land, or the top of a rock); landing starts the bunny-hop
+   * clock; walking off a rock's edge, you fall.
+   */
+  fall(p, dt) {
+    const air = p.y > p.g + 0.005 || p.vy > 0;
+    if (air) {
+      p.vy -= JUMP.gravity * dt;
+      p.y += p.vy * dt;
+      p.g = this.land.groundAt(p.x, p.z, p.y);
+      if (p.y <= p.g) {
+        p.y = p.g; p.vy = 0; p.landT = 0; p.kicks = 0; p.air2 = false; p.recoil = false;
+        this.tryJump(p); // pressed just before landing: away again at once
+      }
+    } else {
+      p.landT += dt;
+      p.g = this.land.groundAt(p.x, p.z, p.y);
+      if (p.g < p.y - 0.005) { p.vy = 0; } // walked off an edge: falling next step
+      else p.y = p.g;
+      this.tryJump(p);
+    }
+  }
+
+  /**
+   * (0.99.35) Moving: speed kept as a velocity. On the ground you reach your stride almost at once (so it feels as
+   * before), and anything faster bleeds off once you have been down a moment; sliding, you glide and steer a
+   * little; in the air you steer, but cannot gain speed by it.
+   */
+  walk(p, dt) {
+    const len = Math.min(1, dHypot(p.mx, p.mz));
+    // (0.99.21) a Whirlwind keeps running, a drawn bow creeps; (0.99.24) and a weak boy is slower
+    const slow = (p.draw ? 0.45 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
+    const stride = SPEED[p.pace] * slow;
+    const wx = len > 0.05 ? (p.mx / dHypot(p.mx, p.mz)) * stride * len : 0, wz = len > 0.05 ? (p.mz / dHypot(p.mx, p.mz)) * stride * len : 0;
+    const ground = p.y <= p.g + 0.01 && p.vy <= 0;
+    let sp = dHypot(p.vx, p.vz);
+    if (p.slide) {
+      p.slide.t -= dt;
+      const drag = Math.max(0, sp - MOVE.slideDrag * dt);
+      if (len > 0.05 && sp > 0.01) {
+        // steer, gently
+        const k = Math.min(1, dt * 3), nx = p.vx / sp + (wx / (stride || 1) - p.vx / sp) * k, nz = p.vz / sp + (wz / (stride || 1) - p.vz / sp) * k, n = dHypot(nx, nz) || 1;
+        p.vx = (nx / n) * drag; p.vz = (nz / n) * drag;
+      } else if (sp > 0) { p.vx *= drag / sp; p.vz *= drag / sp; }
+      if (p.slide.t <= 0 || drag < SPEED.run * 0.5 || !ground) { p.slide = null; p.slideCd = MOVE.slideCd; }
+    } else if (ground) {
+      if (sp > stride + 0.05 && len > 0.05 && p.landT > MOVE.hopWindow) {
+        // faster than your stride: steer, and lose the extra
+        const ns = Math.max(stride, sp - MOVE.friction * dt), k = Math.min(1, dt * 10);
+        const nx = p.vx / sp + (wx / stride - p.vx / sp) * k, nz = p.vz / sp + (wz / stride - p.vz / sp) * k, n = dHypot(nx, nz) || 1;
+        p.vx = (nx / n) * ns; p.vz = (nz / n) * ns;
+      } else if (sp > stride + 0.05 && len > 0.05) {
+        // just landed: the speed is kept (the bunny hop's moment)
+      } else {
+        const ex = wx - p.vx, ez = wz - p.vz, e = dHypot(ex, ez), step = MOVE.accel * dt;
+        if (e <= step) { p.vx = wx; p.vz = wz; } else { p.vx += (ex / e) * step; p.vz += (ez / e) * step; }
+      }
+    } else if (len > 0.05) {
+      // the air: steer toward where you are pushing, never faster than you were (or your stride)
+      const most = Math.max(sp, stride);
+      p.vx += (wx / stride) * MOVE.airAccel * dt;
+      p.vz += (wz / stride) * MOVE.airAccel * dt;
+      const n = dHypot(p.vx, p.vz);
+      if (n > most) { p.vx *= most / n; p.vz *= most / n; }
+    }
+    sp = dHypot(p.vx, p.vz);
+    p.moving = sp > 0.3 || len > 0.05;
+    p.speed = sp;
+    if (sp > 0.001) {
+      p.x += p.vx * dt;
+      p.z += p.vz * dt;
+      if (!p.draw && !(p.faceT > 0)) p.facing = len > 0.05 ? dAtan2(p.mz, p.mx) : dAtan2(p.vz, p.vx); // (0.99.27) not mid-swing
+      if (this.land.pushOut(p, PLAYER_R) && p.y <= p.g + 0.01) {
+        // ran into something: lose the speed into it
+        const back = dHypot(p.vx, p.vz);
+        if (back > stride) { p.vx *= stride / back; p.vz *= stride / back; }
+      }
+    }
+  }
+
   endWhirl(p) {
     p.whirl = null;
     p.cd.E = KITS.warrior.E.cd;
@@ -411,7 +576,7 @@ export class LandWorld {
     p.mp = Math.min(p.maxMp, p.mp + Math.min(R.most, hits * R.mana));
   }
 
-  doAct(p, { k, ax, az, up }) {
+  doAct(p, { k, ax, az, up, down }) {
     if (up) {
       // a held skill let go: the spin winds down, the arrow flies (once drawn)
       if (k === 'E' && p.whirl) p.whirl.held = false;
@@ -449,6 +614,14 @@ export class LandWorld {
         const crit = p.shotN % A.every === 0;
         if (crit) p.mp = Math.min(p.maxMp, p.mp + A.mana);
         this.shoot(p, dx, dz, kit.basic.speed, kit.basic.range, kit.basic.mult * (crit ? A.mult : 1), false, 'arrow', { crit });
+        // (0.99.35) the recoil: a Shot down from the air throws you up and back (once a jump)
+        if (down && !p.recoil && p.y > p.g + 0.3 && !p.driven) {
+          p.recoil = true;
+          p.vy = Math.max(p.vy, JUMP.up * MOVE.recoilUp);
+          p.vx -= dx * MOVE.recoilBack; p.vz -= dz * MOVE.recoilBack;
+          this.capSpeed(p);
+          this.emit('cast', { pid: p.pid, skill: 'recoil', x: p.x, z: p.z });
+        }
       }
       return;
     }

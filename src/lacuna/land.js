@@ -182,6 +182,7 @@ export class Land {
       const want = g === 'stony' ? 0.55 : g === 'forest' || g === 'meadow' ? 0.07 : 0;
       if (roll > want || roadDist(x, z) < ROAD_W + 1 || !free(x, z, 1, 1.2)) continue;
       const rk = { kind: 'rock', shape: 'circle', x, z, r: 0.5 + size * 1.0, turn: turn * 6.283 };
+      rk.top = rk.r * 0.95; // (0.99.35) a rock can be stood on: its top (as drawn: a squashed dodecahedron)
       rocks.push(rk);
       solid.push(rk);
     }
@@ -241,6 +242,46 @@ export class Land {
     return out;
   }
 
+  /**
+   * (0.99.35) The ground under (x, z) for a body whose feet are at height y: the top of a rock it is over (and up to
+   * a step above), or the land itself.
+   */
+  groundAt(x, z, y = 0) {
+    let g = 0;
+    for (const ob of this.near(x, z, 2, this._scratchG || (this._scratchG = []))) {
+      if (ob.top === undefined) continue;
+      if (dHypot(x - ob.x, z - ob.z) < ob.r * 0.8 && y >= ob.top - 0.3 && ob.top > g) g = ob.top;
+    }
+    this._scratchG.length = 0;
+    return g;
+  }
+
+  /** Whether a body at (x, z), feet at y, is against something it could kick off (a tree, a rock's side, a wall): the
+   * way out from it, or null. */
+  wallAt(x, z, y, rad) {
+    let best = null, bd = Infinity;
+    for (const ob of this.near(x, z, rad + 2, this._scratchW || (this._scratchW = []))) {
+      if (ob.kind === 'water' || ob.kind === 'crystal') continue;
+      if (ob.top !== undefined && y >= ob.top - 0.15) continue;
+      let nx, nz, gap;
+      if (ob.shape === 'box') {
+        const c = dCos(ob.rot), s = dSin(ob.rot), dx = x - ob.x, dz = z - ob.z;
+        const lx = dx * c + dz * s, lz = -dx * s + dz * c;
+        const cx = Math.max(-ob.hw, Math.min(ob.hw, lx)), cz = Math.max(-ob.hd, Math.min(ob.hd, lz));
+        const ex = lx - cx, ez = lz - cz, d = dHypot(ex, ez) || 1e-6;
+        gap = d - rad;
+        nx = ((ex / d) * c - (ez / d) * s); nz = ((ex / d) * s + (ez / d) * c);
+      } else {
+        const dx = x - ob.x, dz = z - ob.z, d = dHypot(dx, dz) || 1e-6;
+        gap = d - ob.r - rad;
+        nx = dx / d; nz = dz / d;
+      }
+      if (gap < 0.55 && gap < bd) { bd = gap; best = { nx, nz }; }
+    }
+    this._scratchW.length = 0;
+    return best;
+  }
+
   /** Push a round body (o.x, o.z, radius rad) out of anything solid, and keep it on the land. */
   pushOut(o, rad) {
     const near = this.near(o.x, o.z, rad + 1, this._scratch || (this._scratch = []));
@@ -263,6 +304,7 @@ export class Land {
         o.z += (nx * s + nz * c) * push;
         pushed = true;
       } else {
+        if (ob.top !== undefined && (o.y || 0) >= ob.top - 0.15) continue; // (0.99.35) above a rock: over it, not into it
         const d = dHypot(dx, dz), min = ob.r + rad;
         if (d >= min) continue;
         if (d < 1e-6) { o.x += min; pushed = true; continue; }

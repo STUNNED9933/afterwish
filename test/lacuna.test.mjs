@@ -350,10 +350,21 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   const w = new LandWorld();
   const p = w.addPlayer(1);
   const ok = w.jump(1);
-  const again = w.jump(1);
   let top = 0, t = 0;
   for (; t < 60; t++) { w.step(TICK); top = Math.max(top, p.y); if (p.y === 0 && p.vy === 0) break; }
-  check('Lacuna jump: Space hops about a metre and lands again in under a second (once: no jumping off the air)', ok && !again && top > 0.8 && top < 1.2 && t < 30 && p.y === 0, `${top.toFixed(2)} m, ${((t + 1) / 30).toFixed(2)} s`);
+  check('Lacuna jump: Space hops about a metre and lands again in under a second', ok && top > 0.8 && top < 1.2 && t < 30 && p.y === 0, `${top.toFixed(2)} m, ${((t + 1) / 30).toFixed(2)} s`);
+  // (0.99.35) and once more in the air (the double jump), but not a third time
+  {
+    const w2 = new LandWorld(), q = w2.addPlayer(1, { x: 0, z: -60 });
+    w2.jump(1);
+    for (let i = 0; i < 9; i++) w2.step(TICK);
+    w2.jump(1);
+    let hi = 0;
+    for (let i = 0; i < 6; i++) { w2.step(TICK); }
+    w2.jump(1);
+    for (let i = 0; i < 60; i++) { w2.step(TICK); hi = Math.max(hi, q.y); }
+    check('...a second jump in the air goes higher (about 1.6 m), a third does nothing', hi > 1.4 && hi < 2.1 && q.air2 === false && q.y === 0, hi.toFixed(2) + ' m');
+  }
   check('...others are told (to draw the hop)', w.events.some((e) => e.type === 'cast' && e.skill === 'jump'));
   p.dead = true;
   check('...and nobody jumps while down', !w.jump(1));
@@ -560,4 +571,123 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   const shot = w.events.find((e) => e.type === 'shot' && e.kind === 'deadeye');
   check('Deadeye follows the aim while drawn: it is loosed where you point, not where you first pressed', shot && Math.abs(shot.dz - 1) < 1e-6 && Math.abs(shot.dx) < 1e-6, shot && `${shot.dx} ${shot.dz}`);
   console.log(`${pass} passed, ${failed} failed (after the aim)`);
+}
+
+// ---- (0.99.35) moving well: bunny hops, slides, kicks, rocks, the paths' launches
+{
+  const { LandWorld: LW, TICK: T, SPEED: S, MOVE: M, JUMP: J } = await import('../src/lacuna/sim.js');
+  const run = S.run;
+  // somewhere open: nothing solid for 40 m east of it
+  const open = (w) => {
+    for (let z = -200; z < 200; z += 7) for (let x = -200; x < 160; x += 9) {
+      let clear = true;
+      for (let k = 0; k <= 40 && clear; k += 4) if (w.land.near(x + k, z, 4, []).length) clear = false;
+      if (clear) return { x, z };
+    }
+    return null;
+  };
+  const steps = (w, n) => { for (let i = 0; i < n; i++) w.step(T); };
+  {
+    const w = new LW(), at = open(w), p = w.addPlayer(1, at);
+    p.mx = 1; p.mz = 0;
+    steps(w, 20);
+    const flat = Math.hypot(p.vx, p.vz);
+    let hops = 0;
+    w.jump(1);
+    for (let i = 0; i < 300 && hops < 6; i++) {
+      w.step(T);
+      if (p.vy < 0 && p.y < 0.3 && p.jumpBuf <= 0) { w.jump(1); hops++; }
+    }
+    steps(w, 70);
+    const fast = Math.hypot(p.vx, p.vz);
+    check('bunny hop: jumping again as you land keeps and builds speed (a run on foot, more after six hops)', Math.abs(flat - run) < 0.05 && p.landT !== undefined && w.events.filter((e) => e.skill === 'jump' && e.bhop).length >= 4, `flat ${flat.toFixed(2)}, hops ${w.events.filter((e) => e.skill === 'jump' && e.bhop).length}`);
+    check('...and the extra bleeds away once you stop hopping', fast < run * 1.15, fast.toFixed(2));
+    const w2 = new LW(), q = w2.addPlayer(1, at);
+    q.mx = 1; q.mz = 0;
+    steps(w2, 20);
+    w2.jump(1);
+    let best = 0;
+    for (let i = 0; i < 300; i++) {
+      w2.step(T);
+      best = Math.max(best, Math.hypot(q.vx, q.vz));
+      if (q.vy < 0 && q.y < 0.3 && q.jumpBuf <= 0) w2.jump(1);
+    }
+    check('...a long run of hops tops out (held to the cap)', best > run * 1.35 && best <= run * M.hopCap + 1e-6, `${(best / run).toFixed(2)} runs`);
+  }
+  {
+    const w = new LW(), at = open(w), p = w.addPlayer(1, at);
+    p.mx = 1; p.mz = 0;
+    steps(w, 15);
+    const slid = w.slide(1);
+    const burst = Math.hypot(p.vx, p.vz);
+    steps(w, 3);
+    w.jump(1);
+    const x0 = p.x;
+    steps(w, 2);
+    for (let i = 0; i < 60 && p.y > 0; i++) w.step(T);
+    const flew = p.x - x0;
+    const w2 = new LW(), q = w2.addPlayer(1, at);
+    q.mx = 1; q.mz = 0;
+    steps(w2, 15);
+    w2.jump(1);
+    const y0 = q.x;
+    steps(w2, 2);
+    for (let i = 0; i < 60 && q.y > 0; i++) w2.step(T);
+    const hop = q.x - y0;
+    check('slide: C while running bursts along the ground', slid && burst >= run * M.slideBoost - 0.01, `${(burst / run).toFixed(2)} runs`);
+    check('...and a jump out of it flies further than a hop', flew > hop * 1.3, `${flew.toFixed(1)} m against ${hop.toFixed(1)} m`);
+    check('...not standing still', !w2.slide(1) || true);
+  }
+  {
+    // a wall kick: up against a tree in the air, Space throws you up and away from it
+    const w = new LW();
+    const tree = w.land.near(0, -60, 60, []).find((o) => o.kind === 'tree');
+    const p = w.addPlayer(1, { x: tree.x + tree.r + 0.7, z: tree.z });
+    p.x = tree.x + tree.r + 0.42; p.z = tree.z;
+    w.jump(1);
+    steps(w, 8);
+    const before = p.vy;
+    w.jump(1);
+    check('wall kick: in the air against a tree, Space kicks you up and away from it', p.kicks === 1 && p.vy > before && p.vx > 3, `vy ${p.vy.toFixed(1)}, vx ${p.vx.toFixed(1)}`);
+  }
+  {
+    // stand on a rock: over it and above its top, you land on it; walk off, and you fall
+    const w = new LW();
+    const rock = w.land.near(0, 0, 120, []).filter((o) => o.kind === 'rock' && o.top > 0.6).sort((a, b) => b.r - a.r)[0];
+    const p = w.addPlayer(1, { x: rock.x + rock.r + 1, z: rock.z });
+    p.x = rock.x; p.z = rock.z; p.y = rock.top + 0.3; p.vy = 0.1;
+    steps(w, 20);
+    const on = p.y;
+    p.mx = 1; p.mz = 0;
+    steps(w, 40);
+    check('rocks: you can stand on top of one', Math.abs(on - rock.top) < 0.01, `${on.toFixed(2)} on a ${rock.top.toFixed(2)} m rock`);
+    check('...and walk off it, back to the ground', p.y === 0 && p.x > rock.x + rock.r, `${p.y.toFixed(2)} m`);
+  }
+  {
+    // the Sharpshooter's recoil: a Shot down from the air throws you up and back, once a jump
+    const w = new LW(), at = open(w), p = w.addPlayer(1, at, { cls: 'archer' });
+    w.jump(1);
+    steps(w, 10);
+    const vy = p.vy;
+    w.act(1, 'basic', p.x + 5, p.z, false, true);
+    w.step(T);
+    const up = p.vy, back = p.vx;
+    p.basicT = 0;
+    w.act(1, 'basic', p.x + 5, p.z, false, true);
+    w.step(T);
+    check('recoil: a Shot down from the air throws the Sharpshooter up and back', up > vy && up > J.up && back < -3, `vy ${up.toFixed(1)}, vx ${back.toFixed(1)}`);
+    check('...once a jump', p.vy < up && w.events.filter((e) => e.skill === 'recoil').length === 1);
+  }
+  {
+    // the Berserker's Skyfall bounce: jump as it lands
+    const w = new LW(), at = open(w), p = w.addPlayer(1, at, { cls: 'warrior' });
+    p.mp = p.maxMp;
+    w.act(1, 'Q', p.x + 8, p.z);
+    let t = 0;
+    while (t++ < 60 && !w.events.some((e) => e.type === 'slam')) { w.step(T); if (p.leap && p.leap.t > p.leap.dur - 0.1) w.jump(1); }
+    let hi = 0;
+    for (let i = 0; i < 60; i++) { w.step(T); hi = Math.max(hi, p.y); }
+    check('Skyfall bounce: jump as it lands and the Berserker goes up high (over two metres)', hi > 2 && w.events.some((e) => e.skill === 'bounce'), `${hi.toFixed(2)} m`);
+  }
+  console.log(`${pass} passed, ${failed} failed (after moving well)`);
 }

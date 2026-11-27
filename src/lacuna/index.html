@@ -92,6 +92,12 @@
   #bark.thought { font-style: italic; color: #dfe6f4; }
   #quest { position: fixed; right: 10px; top: 34px; width: 250px; padding: 8px 11px; background: rgba(10, 14, 24, 0.72); border-left: 3px solid #ffd24a; border-radius: 4px; color: #e8eefc; font-size: 12px; pointer-events: none; }
   #quest b { display: block; color: #ffd24a; font-size: 13px; }
+  #tricks { position: fixed; left: 10px; top: 210px; width: 270px; padding: 8px 11px; background: rgba(10, 14, 24, 0.78); border-left: 3px solid #7fc8ff; border-radius: 4px; color: #e8eefc; font-size: 12px; pointer-events: none; }
+  #tricks b { display: block; color: #7fc8ff; font-size: 13px; margin-bottom: 2px; }
+  #tricks kbd, #tricks .k { display: inline-block; padding: 0 5px; background: #2a3a55; border-radius: 3px; font: 700 11px system-ui; color: #fff; }
+  #tricks .step { display: block; margin-top: 4px; color: #c8d2ea; }
+  #tricks .step.done { color: #7fd88a; opacity: 0.8; }
+  #tricks em { display: block; margin-top: 6px; color: #8a96b4; font-size: 11px; }
   #quest .step { display: block; margin-top: 3px; color: #c8d2ea; }
   #quest .step.done { color: #7fd88a; text-decoration: line-through; opacity: 0.75; }
   #quest .step.now { color: #fff; }
@@ -160,6 +166,7 @@
   <div id="mp-status" class="s">Alone: everything runs on this computer. Join to walk with friends (same passcode as Haven).</div>
 </div>
 <div id="quest" class="hidden"><b id="quest-name"></b><span id="quest-goal"></span></div>
+<div id="tricks" class="hidden"><b>Moving well <kbd>H</kbd></b><span id="tricks-list"></span><em>All optional. Walk and jump as you like.</em></div>
 <div id="choose" class="hidden">
   <h2>Choose your path</h2>
   <p>Rowan's way or Juni's. It is where you start, not where you must stay: you can change your path at any time (1 and 2), and the Guild will teach you both.</p>

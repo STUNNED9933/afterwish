@@ -11,7 +11,7 @@
 // hits, falls, casts), chat, pong (JSON), and the state of what is in sight (binary, net.js).
 // (phase 2) The Dimension Link comes from the account's characters when signed in (linkOf), else from the page.
 // No storage and no save: the test land keeps nothing. It is behind the server world's passcode.
-import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS } from './sim.js';
+import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS, MOVE } from './sim.js';
 import { Interest, SEND_HZ } from './net.js';
 import { TOWN, HALF } from './land.js';
 import { EMOTE_IDS, EMOTICONS } from './emotes.js';
@@ -52,9 +52,10 @@ export class LandRoom {
     else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
     else if (msg.t === 'act') {
       const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF);
-      if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true);
+      if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true, msg.down === true);
     }
     else if (msg.t === 'jump') this.world.jump(m.pid);
+    else if (msg.t === 'slide') { const p = this.world.players.get(m.pid); if (p && !p.dead) this.world.emit('cast', { pid: m.pid, skill: 'slide', x: p.x, z: p.z, dur: MOVE.slideDur }); } // (0.99.35) for others to draw
     else if (msg.t === 'aim') { const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF); if (ax !== null && az !== null) this.world.aim(m.pid, ax, az); } // (0.99.25) a drawn Deadeye following the aim
     else if ((msg.t === 'emote' && EMOTE_IDS.includes(msg.id)) || (msg.t === 'face' && EMOTICONS.includes(msg.id))) {
       // (0.99.19) an emote or an emoticon: for everyone near to see (not too often)
@@ -102,9 +103,11 @@ export class LandRoom {
     const dt = Math.max(TICK, w.time - m.last.t);
     const far = Math.hypot(x - m.last.x, z - m.last.z);
     if (p.dead) return; // down: you stay where you fell (the server brings you back to the gate)
-    if (far > SPEED.sprint * dt * 1.3 + 1.5 + p.burst) { p.burst = 0; return this.snap(m, p); } // faster than anyone can run (a leap or a roll allows for itself)
+    // faster than anyone can go (a leap or a roll allows for itself; (0.99.35) a bunny hop or a slide-jump is held to MOVE.cap)
+    if (far > Math.max(SPEED.sprint, MOVE.cap * SPEED.run) * dt * 1.3 + 1.5 + p.burst) { p.burst = 0; return this.snap(m, p); }
     p.burst = Math.max(0, p.burst - far);
     p.x = x; p.z = z;
+    p.y = num(msg.y, 0, 6) ?? 0; // (0.99.35) how high (a jump, a rock's top): over a rock is not inside it
     w.land.pushOut(p, R);
     if (Math.hypot(p.x - x, p.z - z) > 0.6) return this.snap(m, p); // inside something
     const f = num(msg.f, -10, 10);
@@ -180,5 +183,10 @@ export class LandRoom {
       const buf = m.wire.delta(this.world);
       if (buf) this.sendBin(m.conn, buf);
     }
+    // (0.99.35) who is off the ground, and how high (in cm): for others to draw them there
+    const air = [];
+    for (const p of this.world.players.values()) if (p.y > 0.05) air.push([p.pid, Math.round(p.y * 100)]);
+    if (air.length || this.airWas) for (const m of this.byConn.values()) this.send(m.conn, { t: 'air', a: air.filter(([pid]) => pid !== m.pid) });
+    this.airWas = air.length > 0;
   }
 }

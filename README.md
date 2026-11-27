@@ -160,6 +160,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: moving well (0.99.35)
+
+Tricks for those who want them, none of them needed (walk and jump as before and nothing changes). **H** shows the list, ticked off as you do each one.
+
+- **Bunny hop:** press Space again the moment you land (or just before: it is remembered for a moment) and you keep your speed, a little more each hop, up to 1.7 times a run. Stop hopping and the extra bleeds away.
+- **Slide:** **C** while running bursts you along the ground; **Space** out of a slide is a long, fast leap (about half as far again as a hop). C still walks or runs when you are standing or walking.
+- **Double jump:** Space again in the air (about 1.6 m up all told).
+- **Wall kicks:** in the air beside a tree, a rock or a wall, Space kicks you up and away from it, keeping your speed along it, and gives your double jump back (three kicks before you land).
+- **Rocks can be stood on**, so the height is worth something: jump, double jump or kick your way up; walk off the edge and you fall.
+- **The paths' launches:** the Berserker presses Space as Skyfall lands and bounces over two metres up; the Sharpshooter looks down in mid-air and shoots, and the recoil throws her up and back (once a jump).
+- Speed is held to twice a run; the server's check allows for exactly that much, and takes your height, so standing on a rock in a shared world is not mistaken for standing inside it. Others see you up there too.
+
 ### Lacuna: the opening lies you down, even from a server world (0.99.34)
 
 - **Lying in the grass, every time.** Started from a server world, the opening re-dressed the hero (as the boy in rags) after he had already been laid down, and the new model stood up; a landing could also get him up early. Now he is laid down again on whatever model arrives, and nothing but the scene's own "rise" gets him up.

@@ -24,6 +24,7 @@ const HOP = {
   land: { clip: 'ual_Jump_Land', keys: [[0, 0.06], [0.1, 0.17], [0.4, 0.62]], fade: 0.25 },
   rise: { clip: 'ual_LayToIdle', keys: [[0, 0], [1.6, 1.53]], fade: 0.3 }, // (the opening) getting up off the ground
   lie: { clip: 'ual_LayToIdle', keys: [[0, 0], [600, 0]], fade: 0.01 }, // (the opening) lying in the grass, until told to rise
+  slide: { clip: 'ual_Crouch_Idle_Loop', keys: [[0, 0.3], [0.7, 0.3]], fade: 0.06 }, // (0.99.35) a slide: low, held
 };
 export const RIGGED = {
   hero_warrior: {

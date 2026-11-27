@@ -110,6 +110,9 @@ function animate(h, ev) {
   else if (ev.skill === 'loose') a.move = 'loose';
   else if (ev.skill === 'oath') a.move = 'cone';
   else if (ev.skill === 'jump') { a.jumpT = 0; a.move = 'hop'; }
+  // (0.99.35) moving well: each push off the air is a hop again; the slide crouches low for its length
+  else if (ev.skill === 'jump2' || ev.skill === 'kick' || ev.skill === 'bounce' || ev.skill === 'recoil' || ev.skill === 'slideJump') { a.jumpT = 0; a.move = 'hop'; }
+  else if (ev.skill === 'slide') { a.move = 'slide'; a.moveDur = ev.dur; }
 }
 /** Height of a hop, t seconds after it began (the sim's own arc, for other players: the server sends no height). */
 function hopAt(t) {
@@ -265,6 +268,7 @@ function joinServer() {
       if (down && !me.dead) { me.dead = true; me.downT = down; me.leap = me.roll = me.whirl = me.draw = null; }
       if (!down && me.dead) me.dead = false;
     } else if (msg.t === 'evs') for (const ev of msg.list) onEvent(ev);
+    else if (msg.t === 'air') for (const [pid, y] of msg.a) airOf.set(pid, { y: y / 100, at: performance.now() }); // (0.99.35) who is off the ground, how high
     else if (msg.t === 'chat') say(msg.name ? `${msg.name}: ${msg.text}` : msg.text, !msg.name);
     else if (msg.t === 'pong') net.ping = performance.now() - msg.at;
   };
@@ -322,6 +326,7 @@ const isMe = (pid) => (net ? pid === net.pid : pid === 1);
 function onEvent(ev) {
   if (trial) trialEvent(ev);
   huntEvent(ev);
+  trickEvent(ev);
   vesperEvent(ev);
   contractEvent(ev);
   if (ev.type === 'shot') {
@@ -461,9 +466,12 @@ addEventListener('keydown', (e) => {
   if (!locked() && e.code !== 'Escape' && !/^F\d+$/.test(e.code)) relock();
   if (e.repeat && (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC')) return;
   keys.add(e.code);
-  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') { walking = !walking; note(walking ? 'Walking (Ctrl or C to run again).' : 'Running.'); }
+  // (0.99.35) C, running: a slide (and Space out of it, a long leap). Otherwise C (or Ctrl) walks, or runs again.
+  if (e.code === 'KeyC' && !walking && me.moving && !cutscene.active && world.slide(1)) { if (net && net.ready) net.send({ t: 'slide' }); }
+  else if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') { walking = !walking; note(walking ? 'Walking (Ctrl or C to run again).' : 'Running.'); }
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
+  if (e.code === 'KeyH') { showTricks(); $('tricks').classList.toggle('hidden'); } // (0.99.35) the tricks
   if (e.code === 'KeyF') { const u = nearestUse(); if (u) u.fn(); }
   if (e.code === 'KeyL') {
     if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
@@ -624,8 +632,10 @@ function act(k) {
   if (!world.ready(me, k)) return;
   hero.anim.em = null;
   const a = attackPoint();
-  world.act(1, k, a.x, a.z); // here at once (together, a guess the server confirms)
-  if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2) });
+  // (0.99.35) a Shot aimed down from the air: the recoil
+  const down = k === 'basic' && me.y > me.g + 0.3 && pitch > 0.45;
+  world.act(1, k, a.x, a.z, false, down); // here at once (together, a guess the server confirms)
+  if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2), ...(down ? { down: true } : {}) });
 }
 
 function wish() {
@@ -1151,7 +1161,8 @@ function choosePath(cls) {
   setTimeout(startAmbush, 2500);
   wear(cls, true);
   bark(cls === 'warrior' ? [['rowan', 'Ha! Knew it. Blood and iron, then.'], ['juni', 'Your loss. Come and shoot with me some time.']] : [['juni', 'Yes! Another one for the bow.'], ['rowan', 'Fine. Someone has to stand behind me.']]);
-  toast('Quest complete: Choosing a Path', 'New quest: When It Counts (coming in the next part)');
+  toast('Quest complete: Choosing a Path', 'New quest: When It Counts');
+  setTimeout(() => note('New: tricks for moving well (bunny hops, slides, wall kicks...). Press H to see them. All optional.'), 9000);
   showQuest();
   relock();
 }
@@ -1326,6 +1337,41 @@ async function playYear() {
   startHunt();
 }
 let hunt = null; // { wolves, left }
+const airOf = new Map(); // (0.99.35) pid -> { y, at }: others' height off the ground (from the server)
+
+// ---- (0.99.35) Moving well: the tricks, learned by doing them (H shows the list; none of it is needed)
+const TRICKS = [
+  { id: 'bhop', text: 'Bunny hop: <span class="k">Space</span> again the moment you land, three times running', need: 3 },
+  { id: 'slideJump', text: 'Slide: <span class="k">C</span> while running, then <span class="k">Space</span> out of it for a long leap' },
+  { id: 'jump2', text: 'Double jump: <span class="k">Space</span> again in the air' },
+  { id: 'kick', text: 'Wall kick: in the air beside a tree, a rock or a wall, <span class="k">Space</span> (it gives your double jump back)' },
+  { id: 'rock', text: 'Stand on top of a rock taller than you' },
+  { id: 'launch', text: 'Berserker: <span class="k">Space</span> as Skyfall lands (a bounce). Sharpshooter: look down in mid-air and shoot (a recoil)' },
+];
+let hopRun = 0;
+function showTricks() {
+  const got = story.tricks || {};
+  $('tricks-list').innerHTML = TRICKS.map((t) => `<span class="step ${got[t.id] ? 'done' : ''}">${got[t.id] ? '✓' : '·'} ${t.text}${t.need && !got[t.id] ? ` (${Math.min(hopRun, t.need)}/${t.need})` : ''}</span>`).join('');
+}
+function learnt(id) {
+  story.tricks = story.tricks || {};
+  if (story.tricks[id]) return;
+  story.tricks[id] = true;
+  saveStory(story);
+  const t = TRICKS.find((q) => q.id === id);
+  const left = TRICKS.filter((q) => !story.tricks[q.id]).length;
+  toast(left ? 'Trick learned' : 'Every trick learned', left ? t.text.replace(/<[^>]+>/g, '') : 'You move like Juni now. She will be furious.');
+  showTricks();
+}
+/** Your own moves, as the sim reports them: which tricks they were. */
+function trickEvent(ev) {
+  if (ev.type !== 'cast' || !isMe(ev.pid)) return;
+  if (ev.skill === 'jump') { hopRun = ev.bhop ? hopRun + 1 : 0; if (hopRun >= 3) learnt('bhop'); else if (!$('tricks').classList.contains('hidden')) showTricks(); }
+  else if (ev.skill === 'slideJump') learnt('slideJump');
+  else if (ev.skill === 'jump2') learnt('jump2');
+  else if (ev.skill === 'kick') learnt('kick');
+  else if (ev.skill === 'bounce' || ev.skill === 'recoil') learnt('launch');
+}
 /**
  * (0.99.29) The Hounds fight alongside you on a hunt: `foes()` the beasts being hunted. Rowan cuts, Juni shoots,
  * Sorrel burns; their blows are smaller than yours (the kills are meant to be yours), and Rowan says so once.
@@ -1658,13 +1704,14 @@ function frame(now) {
   }
   perf.simMs += performance.now() - s0;
   const alpha = acc / TICK;
+  if (me.g >= 1 && me.y <= me.g + 0.01 && !(story.tricks && story.tricks.rock)) learnt('rock'); // (0.99.35) up on a tall rock
   heroX = prev.x + (me.x - prev.x) * alpha;
   heroZ = prev.z + (me.z - prev.z) * alpha;
   const hx = heroX, hz = heroZ;
   // together: say where you are, ten times a second (and see how long the server takes to answer, now and then)
   if (net && net.ready && now - net.sentAt >= 1000 / SEND_HZ) {
     net.sentAt = now;
-    net.send({ t: 'pos', x: +me.x.toFixed(3), z: +me.z.toFixed(3), f: +me.facing.toFixed(3), m: me.moving ? 1 : 0, p: me.pace });
+    net.send({ t: 'pos', x: +me.x.toFixed(3), z: +me.z.toFixed(3), y: +me.y.toFixed(2), f: +me.facing.toFixed(3), m: me.moving ? 1 : 0, p: me.pace });
     if (now - net.pingAt > 2000) { net.pingAt = now; net.send({ t: 'ping', at: now }); }
   }
   // what happened here (together, only your own shots and blows: the server tells you the rest)
@@ -1723,7 +1770,10 @@ function frame(now) {
       if (!s) { o.label.style.display = 'none'; continue; }
       o.hero.group.position.set(s.x, 0, s.z);
       o.hero.group.rotation.y = Math.PI / 2 - s.facing;
-      pose(o.hero, dt, { moving: s.moving, speed: 5.6, dead: s.dead });
+      // (0.99.35) their height, as the server last told it (a rock's top, a double jump), fading if it stops
+      const ay = airOf.get(pid);
+      const y = ay && performance.now() - ay.at < 400 ? ay.y : undefined;
+      pose(o.hero, dt, { moving: s.moving, speed: 5.6, dead: s.dead, y });
       proj.set(s.x, 2.35, s.z).project(view.camera);
       const off = proj.z > 1 || Math.hypot(s.x - hx, s.z - hz) > 60;
       o.label.style.display = off ? 'none' : '';

@@ -1,0 +1,72 @@
+{
+  "id": "l_hero",
+  "prompt": "the young hero of Lacuna, a small boy about seven years old with child proportions (a slightly large head, short limbs, slight thin build), pale fair skin, messy dark brown hair falling over his eyes, large dark eyes, calm neutral expression, mouth closed, not smiling, an oversized torn grey linen shirt hanging to his knees with frayed long sleeves rolled at the wrists, a frayed rope tied as a belt, patched brown trousers rolled up at the ankles, both feet wrapped in strips of cloth, small bandages on one forearm and one knee, fully clothed, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no bag, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, soft muted colours",
+  "started": "2026-11-27T08:31:04.984Z",
+  "creditsBefore": 1695,
+  "steps": {
+    "model": {
+      "task": "d041b71f-9a69-47ae-b419-9cf6e750b73d",
+      "result": {
+        "task_id": "d041b71f-9a69-47ae-b419-9cf6e750b73d",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_hero/1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_hero/1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/model.glb",
+        "preview": "out/models/l_hero/1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/preview.png"
+      }
+    },
+    "check": {
+      "task": "5f1b19c2-8aa0-47cf-8071-e79f8680965a",
+      "result": {
+        "task_id": "5f1b19c2-8aa0-47cf-8071-e79f8680965a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_hero/2-check/tripo-out/rig-check-5f1b19c2",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "a33ce5a2-76ef-43b3-80b9-fffd8276fade",
+      "rigType": "biped",
+      "result": {
+        "task_id": "a33ce5a2-76ef-43b3-80b9-fffd8276fade",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_hero/3-rig/tripo-out/rig-a33ce5a2",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_hero/3-rig/tripo-out/rig-a33ce5a2/model.glb",
+        "preview": "out/models/l_hero/3-rig/tripo-out/rig-a33ce5a2/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 1640,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T08:32:59.076Z",
+  "files": [
+    "1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/generated_image.jpeg",
+    "1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/model.glb",
+    "1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/preview.png",
+    "1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/rendered_image.webp",
+    "1-model/tripo-out/the-young-hero-of-lacuna-a-small-d041b71f/task.json",
+    "2-check/tripo-out/rig-check-5f1b19c2/task.json",
+    "3-rig/tripo-out/rig-a33ce5a2/model.glb",
+    "3-rig/tripo-out/rig-a33ce5a2/preview.png",
+    "3-rig/tripo-out/rig-a33ce5a2/rendered_image.webp",
+    "3-rig/tripo-out/rig-a33ce5a2/task.json",
+    "manifest.json"
+  ]
+}

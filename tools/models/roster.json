@@ -1461,6 +1461,15 @@
       "animations": [
         "preset:biped:laugh_02"
       ]
+    },
+    "l_hero": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "faceLimit": 10000,
+      "style": "Korean manhwa-inspired stylised fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures, soft muted colours",
+      "prompt": "the young hero of Lacuna, a small boy about seven years old with child proportions (a slightly large head, short limbs, slight thin build), pale fair skin, messy dark brown hair falling over his eyes, large dark eyes, calm neutral expression, mouth closed, not smiling, an oversized torn grey linen shirt hanging to his knees with frayed long sleeves rolled at the wrists, a frayed rope tied as a belt, patched brown trousers rolled up at the ankles, both feet wrapped in strips of cloth, small bandages on one forearm and one knee, fully clothed, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no bag, no cape, nothing floating",
+      "animations": [],
+      "note": "0.99.22: the hero as he arrives in Lacuna (about 1 m tall in game; the old hero models are kept for later)."
     }
   }
 }

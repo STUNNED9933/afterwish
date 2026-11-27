@@ -34,6 +34,8 @@ export const TRAINING = {
   line: { x: 60, z: 16 },
   targets: [{ x: 68, z: 13 }, { x: 76, z: 17.5 }, { x: 84, z: 21 }], // staggered: the near ones never block the far one
 };
+// (0.99.24) the plaza's well (the days with the Hounds: water for Ilse)
+export const WELL = { x: 6, z: 4.5, r: 0.85 };
 export const inTraining = (x, z, pad = 0) => x > TRAINING.x0 - pad && x < TRAINING.x1 + pad && z > TRAINING.z0 - pad && z < TRAINING.z1 + pad;
 /** Every post of the training ground: four round the ring, then the three targets (the order the sim makes them in). */
 export function trainingPosts() {
@@ -136,7 +138,8 @@ export class Land {
     this.houses = townHouses(seed);
     // The lake is one big solid circle, in the hash from the start (it spans several chunks).
     this.insert({ kind: 'water', shape: 'circle', x: LAKE.x, z: LAKE.z, r: LAKE.r - 1.2 });
-    this.insert({ kind: 'crystal', shape: 'circle', x: CRYSTAL.x, z: CRYSTAL.z, r: CRYSTAL.r }); // (0.99.20) the Guild's reading crystal
+    this.insert({ kind: 'crystal', shape: 'circle', x: CRYSTAL.x, z: CRYSTAL.z, r: CRYSTAL.r }); // (0.99.20) the Guild's Telling Glass
+    this.insert({ kind: 'well', shape: 'circle', x: WELL.x, z: WELL.z, r: WELL.r }); // (0.99.24) the plaza's well
   }
 
   /** The chunk at (cx, cz), made the first time it is asked for. */

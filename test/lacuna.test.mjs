@@ -526,3 +526,22 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   check('The Link sleeps until the story wakes it: Eternal gear lends nothing before (x1), x3 after', asleep.mult === 1 && Math.abs(awake.mult - 3) < 1e-9);
   console.log(`${pass} passed, ${failed} failed (after the Link)`);
 }
+
+{
+  // (0.99.24) the hero arrives weak and grows stronger with the days
+  const { LandWorld: LW, TICK: T } = await import('../src/lacuna/sim.js');
+  const w = new LW();
+  const weak = w.addPlayer(1, { x: 60, z: 60 }, { cls: 'novice', vigour: 0.55 });
+  const strong = w.addPlayer(2, { x: 60, z: 70 }, { cls: 'novice', vigour: 1 });
+  w.input(1, { mx: 1, mz: 0 }); w.input(2, { mx: 1, mz: 0 });
+  for (let i = 0; i < 30; i++) w.step(T);
+  check('Days with the Hounds: weak through the tear (55% health, slower), whole by the Telling', weak.maxHp === Math.round(150 * 0.55) && strong.maxHp === 150 && weak.x - 60 < (strong.x - 60) * 0.9);
+  w.setVigour(1, 0.85);
+  check('...and stronger each day', weak.maxHp === Math.round(150 * 0.85));
+  const { DAYS, HOME, WOODPILE, WELL_AT, HERBS, HOME_SPOTS } = await import('../src/lacuna/story.js');
+  const land = new Land();
+  land.all();
+  const clear = (x, z) => { const p = { x, z }; land.pushOut(p, 0.4); return Math.hypot(p.x - x, p.z - z) < 0.01; };
+  check('...three days of chores, and every place they happen has room to stand', DAYS.length === 3 && [HOME.door, WOODPILE, WELL_AT, ...HERBS].every((p) => clear(p.x, p.z)) && Object.values(HOME_SPOTS).every(([x, z]) => clear(x, z)));
+  console.log(`${pass} passed, ${failed} failed (after the days)`);
+}

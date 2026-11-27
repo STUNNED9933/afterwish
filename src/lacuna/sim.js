@@ -118,8 +118,8 @@ export class LandWorld {
   }
 
   /** A player arrives (by default at Sunmere's south gate). */
-  addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false } = {}) {
-    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
+  addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false, vigour = 1 } = {}) {
+    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
     this.land.pushOut(p, PLAYER_R);
     this.players.set(pid, p);
     this.refit(p, true);
@@ -136,7 +136,7 @@ export class LandWorld {
     const kit = KITS[p.cls], power = p.linked ? linkPower(p.link) : 0;
     const hpK = full || !p.maxHp ? 1 : p.hp / p.maxHp, mpK = full || !p.maxMp ? 1 : p.mp / p.maxMp;
     p.mult = linkMult(power);
-    p.maxHp = Math.round(kit.hp * p.mult);
+    p.maxHp = Math.round(kit.hp * p.mult * (p.vigour ?? 1)); // (0.99.24) weak when he arrives; stronger day by day
     p.maxMp = Math.round(kit.mp + power * 0.6);
     p.hp = Math.max(1, Math.round(p.maxHp * hpK));
     p.mp = p.maxMp * mpK;
@@ -151,6 +151,14 @@ export class LandWorld {
     p.oath = false;
     p.hasteT = 0;
     p.shotN = 0;
+    this.refit(p);
+  }
+
+  /** (0.99.24) How strong the hero has grown (0.5 just through the tear, 1 once he has his strength back). */
+  setVigour(pid, v) {
+    const p = this.players.get(pid);
+    if (!p) return;
+    p.vigour = Math.max(0.5, Math.min(1, +v || 1));
     this.refit(p);
   }
 
@@ -296,7 +304,8 @@ export class LandWorld {
     // Walking (moves made by the browser itself, on the server, are taken as they come: see room.js)
     if (!p.driven && !p.leap && !p.roll) {
       const len = dHypot(p.mx, p.mz);
-      const slow = p.draw ? 0.45 : p.whirl ? 0.8 : 1; // (0.99.21) a Whirlwind keeps running, a drawn bow creeps
+      // (0.99.21) a Whirlwind keeps running, a drawn bow creeps; (0.99.24) and a weak boy is slower
+      const slow = (p.draw ? 0.45 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
       p.moving = len > 0.05;
       p.speed = p.moving ? SPEED[p.pace] * len * slow : 0;
       if (p.moving) {

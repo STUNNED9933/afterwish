@@ -5,7 +5,7 @@
 // The opening: the crack on the Verge opens, a husk runs into it, the hero follows; wakes in a glade in the
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
-import { GLADE, TOWN, CRYSTAL, TRAINING, roadDist } from './land.js';
+import { GLADE, TOWN, CRYSTAL, TRAINING, WELL, townHouses, roadDist } from './land.js';
 import { separate } from './actor.js';
 
 export const STORY_KEY = 'lacuna-story-v1';
@@ -13,6 +13,7 @@ export const QUESTS = {
   stumble: { name: 'Waking Up', goal: 'Find a way out of the glade' },
   rescued: { name: 'Waking Up', goal: 'Sorrel is studying the crack. Go and see.' },
   waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
+  days: { name: 'Days with the Hounds', goal: 'Get your strength back' },
   crystal: { name: 'The Telling Glass', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
   ambush: { name: 'When It Counts', goal: 'The Iron Hounds will take you on your first hunt (the next part of the story is coming)' },
@@ -518,3 +519,110 @@ export const TRIALS = {
     end: [['juni', 'You\'ve got good hands.'], ['rowan', 'Both ways, then. Now choose.']],
   },
 };
+
+// ---- (0.99.24) Days with the Hounds: between the walk into town and the Telling Glass
+// Their lodging: the house on the west side of the plaza (its door toward the plaza)
+const lodging = townHouses().filter((h) => !h.guild).sort((a, b) => Math.hypot(a.x + 18, a.z - 10.8) - Math.hypot(b.x + 18, b.z - 10.8))[0];
+const inward = Math.atan2(TOWN.z - lodging.z, TOWN.x - lodging.x);
+export const HOME = { x: lodging.x, z: lodging.z, door: { x: lodging.x + Math.cos(inward) * (Math.max(lodging.hw, lodging.hd) + 1.4), z: lodging.z + Math.sin(inward) * (Math.max(lodging.hw, lodging.hd) + 1.4) } };
+const side = inward + Math.PI / 2;
+export const WOODPILE = { x: lodging.x + Math.cos(side) * (lodging.hw + 2.2) + Math.cos(inward) * 1.2, z: lodging.z + Math.sin(side) * (lodging.hw + 2.2) + Math.sin(inward) * 1.2 };
+export const WELL_AT = { x: WELL.x - 1.4, z: WELL.z - 0.4 };
+export const HERBS = [{ x: 9, z: -54 }, { x: -5, z: -58 }, { x: 5, z: -64 }]; // in the meadow past the north gate
+/** Rowan's morning run: twice round the plaza (a ring of points), from the lodging's door. */
+export const RUN_ROUTE = (() => {
+  const out = [];
+  const a0 = Math.atan2(HOME.door.z, HOME.door.x);
+  for (let lap = 0; lap < 2; lap++) for (let i = 1; i <= 10; i++) { const a = a0 + (i / 10) * Math.PI * 2; out.push({ x: Math.cos(a) * 11, z: Math.sin(a) * 11 }); }
+  out.push({ x: HOME.door.x, z: HOME.door.z });
+  return out;
+})();
+/** Where each of the Hounds is through the days (by the lodging, each about their own business). */
+export const HOME_SPOTS = {
+  ilse: [HOME.door.x + Math.cos(side) * 1.2, HOME.door.z + Math.sin(side) * 1.2],
+  rowan: [HOME.door.x - Math.cos(side) * 1.4 + Math.cos(inward) * 0.8, HOME.door.z - Math.sin(side) * 1.4 + Math.sin(inward) * 0.8],
+  juni: [WOODPILE.x + Math.cos(inward) * 1.4, WOODPILE.z + Math.sin(inward) * 1.4],
+  sorrel: [WELL.x + 1.6, WELL.z + 1.2],
+};
+/** How strong he is (0.5 just through the tear) and how thick the fog, by day. */
+export const VIGOUR = [0.55, 0.7, 0.85, 1];
+export const DAY_FOG = [0.34, 0.26, 0.18, 0.12];
+/**
+ * The days. Each task: fetch (go to `from`, F to pick up, carry it to `to`, F to hand over; `need` times), follow
+ * (keep up with Rowan round his route), gather (F at each of `at`), lesson (F by Sorrel: a short scene), sleep (F at
+ * the lodging's door: night, and the next morning).
+ */
+export const DAYS = [
+  {
+    title: 'Day 1: Getting your legs back',
+    morning: ['Sunmere. The Iron Hounds\' lodging, a room over the street.', 'You slept through most of a day. The fog was still there when you woke.'],
+    tasks: [
+      { id: 'water', kind: 'fetch', text: 'Fetch a bucket of water from the plaza\'s well for Ilse', from: 'well', to: 'ilse', need: 1, carry: true,
+        start: [['ilse', 'You\'re up! Good. Feel like being useful? The well\'s in the middle of the plaza. One bucket. Slowly.']],
+        got: [['', 'It is heavier than it looks. Your arms shake all the way back.']],
+        done: [['ilse', 'Thank you, Sprout. Now sit down before you fall down.'], ['juni', 'One bucket and he\'s finished! We\'ll make a Hound of you yet.']] },
+      { id: 'sleep', kind: 'sleep', text: 'Sleep (the Hounds\' door)', start: [['rowan', 'Bed. All of you. We\'re up early.']] },
+    ],
+    night: { text: 'That night: the same dream. White stone, and a voice, and a door you are not allowed to open.', flash: 'A door of white stone. A hand on it, small, like yours. "Not this one."' },
+  },
+  {
+    title: 'Day 2: Rowan\'s morning',
+    morning: ['Day 2.', 'The fog is a little thinner this morning. Rowan is already outside, stretching.'],
+    tasks: [
+      { id: 'run', kind: 'follow', text: 'Keep up with Rowan: twice round the plaza',
+        start: [['rowan', 'Morning. Twice round the plaza, with me. Don\'t stop, and don\'t fall over.']],
+        wait: [['rowan', 'Come on. I\'m not even running yet.'], ['rowan', 'Breathe. Then catch up.']],
+        done: [['rowan', 'Not bad. Tomorrow you won\'t be wheezing.'], ['juni', 'He was wheezing.']] },
+      { id: 'wood', kind: 'fetch', text: 'Carry firewood from the pile to Juni', from: 'wood', to: 'juni', need: 3, carry: true,
+        start: [['juni', 'Sprout! Firewood. Three armfuls, pile to me. I\'ll supervise.']],
+        got: [['', 'An armful of split logs. You can see over it, just.']],
+        each: [['juni', 'Two more. You\'re slower than Sorrel, and Sorrel is a hundred.'], ['sorrel', 'I am thirty-four.'], ['juni', 'One more! Then you can rest your tiny arms.']],
+        done: [['juni', 'Done! Look at that. A whole fire\'s worth.'], ['ilse', 'Juni, he\'s about to fall over.'], ['juni', 'He is not. Are you? ...Sit down, Sprout.']] },
+      { id: 'sleep', kind: 'sleep', text: 'Sleep (the Hounds\' door)', start: [['ilse', 'Early night. You\'ve earned it.']] },
+    ],
+    night: { text: 'You wake once in the dark. For a moment you know your own name. Then it is gone again.', flash: 'Someone laughing, kneeling to your height. A gold thread on a white sleeve.' },
+  },
+  {
+    title: 'Day 3: Herbs and a lesson',
+    morning: ['Day 3.', 'The fog has thinned to the very edges. Your legs feel like your own.'],
+    tasks: [
+      { id: 'herbs', kind: 'gather', text: 'Gather herbs in the meadow past the north gate', at: 'herbs',
+        start: [['ilse', 'Come with me today. Silverleaf grows past the north gate; I\'ll show you which. Three bunches.']],
+        each: [['ilse', 'That\'s it, silverleaf. See the white underneath?'], ['ilse', 'One more. You\'ve got good eyes.']],
+        done: [['ilse', 'Perfect. You know, you\'re steadier than you were. Much.']] },
+      { id: 'lesson', kind: 'lesson', text: 'Sorrel wants a word (by the well)', start: [['sorrel', 'When you have a moment. By the well.']] },
+      { id: 'sleep', kind: 'sleep', text: 'Sleep (the Hounds\' door)', start: [['rowan', 'Tomorrow, the Guild. Get some sleep.']] },
+    ],
+    night: { text: 'You sleep without dreaming, for once.' },
+  },
+];
+
+/** Sorrel's lesson (Day 3): mana, the Telling Glass, and the thing he will not say out loud. */
+export async function lessonScene(a) {
+  const me = a.ctx.me;
+  a.bars(true);
+  a.talkCam(true);
+  a.actor('sorrel');
+  a.walk('sorrel', me.x + 1.6, me.z + 0.4);
+  await a.say('sorrel', 'Sit. You\'re going to the Guild tomorrow, and nobody has told you what happens there.');
+  await a.say('sorrel', 'Everyone has mana. Some a cupful, some a lake. You spend it, it comes back. Training makes you spend it better, never have more.');
+  await a.say('sorrel', 'And everyone has an element, the shape their mana takes. Fire, ice, wind, earth. A few rarer ones.');
+  await a.say('sorrel', 'At the Guild there\'s a glass of sand. You put your hands on it, and it tells everyone both. Your element, and how much you\'ve got. It\'s never wrong.');
+  await a.say('', 'Something in the way he says "never" sounds like a question.');
+  await a.say('sorrel', 'That tear in the forest. When I found it, the air round it was cold. Not winter cold. Empty.', { to: 'hero' });
+  await a.say('sorrel', 'You feel like that, sometimes. When I look at you.', { to: 'hero' });
+  await a.say('sorrel', '...Never mind. Get some sleep.');
+  a.talkCam(false);
+  a.quiet();
+  a.bars(false);
+}
+
+/** A night: dark, a line, perhaps a memory, then the next morning's cards. */
+export async function nightScene(a, night, morning) {
+  a.bars(true);
+  await a.fade(1, 1.0);
+  await a.card([night.text]);
+  if (night.flash) await a.flash(night.flash, 2.6);
+  if (morning) await a.card(morning);
+  a.bars(false);
+}

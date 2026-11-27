@@ -10,7 +10,8 @@ import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, link
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
-import { groundAt, BEASTS, CRYSTAL, TRAINING } from './land.js';
+import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL } from './land.js';
+import { placeBuilding } from '../render/buildings.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
 import { LACUNA_NET } from './room.js';
@@ -18,7 +19,7 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrack } from '../render/gates.js';
 import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
@@ -48,7 +49,9 @@ const ownCls = saved.path || (saved.trial === 'warrior' || saved.trial === 'arch
 const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : ownCls;
 // (0.99.22) the Link sleeps until the story wakes it (?link=1 wakes it early, for testing)
 const linkAwake = params.get('link') === '1' || !!saved.linked;
-const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake });
+// (0.99.24) how strong he has grown: weak through the tear, stronger each day with the Hounds
+const startVig = ['new', 'stumble', 'rescued', 'waking'].includes(saved.stage || 'new') ? VIGOUR[0] : saved.stage === 'days' ? VIGOUR[Math.min(VIGOUR.length - 1, saved.day || 0)] : 1;
+const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake, vigour: startVig });
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
 const fx = new Fx(view.scene, $('fxlayer'));
@@ -142,7 +145,7 @@ function pose(h, dt, s) {
       }
     }
   }
-  h.rig.update(dt, { ...s, emote, emoteOnce, emoteStart, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
+  h.rig.update(dt, { ...s, emote, emoteOnce, emoteStart, walkAs: a.carry ? 'ual_Walk_Carry_Loop' : null, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
   a.start = false;
   a.move = null;
   a.hit = false;
@@ -211,7 +214,7 @@ function joinServer() {
   try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -444,7 +447,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') { walking = !walking; note(walking ? 'Walking (Ctrl or C to run again).' : 'Running.'); }
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
-  if (e.code === 'KeyF') takeKeepsake();
+  if (e.code === 'KeyF') { const u = nearestUse(); if (u) u.fn(); }
   if (e.code === 'KeyL') {
     if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
     else if (net && net.ready) note('Together, the server decides your Link (your account\'s Eternal gear if you are signed in).');
@@ -596,7 +599,7 @@ function wish() {
   const len = Math.hypot(mx, mz);
   if (len > 1) { mx /= len; mz /= len; }
   const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'sprint' : walking ? 'walk' : 'run';
-  if (story.stage === 'stumble') return { mx, mz, pace: 'walk' }; // (0.99.22) just through the tear: he can barely walk
+  if (story.stage === 'stumble' || hero.anim.carry) return { mx, mz, pace: 'walk' }; // (0.99.22) just through the tear he can barely walk; (0.99.24) nor run carrying
   return { mx, mz, pace: scoped ? 'walk' : pace };
 }
 
@@ -734,6 +737,12 @@ function showQuest() {
   $('quest').classList.toggle('hidden', !q);
   if (!q) return;
   $('quest-name').textContent = q.name;
+  if (story.stage === 'days' && day) {
+    // (0.99.24) the day's chores, ticked off as you go
+    const D = DAYS[day.n];
+    $('quest-goal').innerHTML = `<span class="step now">${D.title}</span>` + D.tasks.map((t, i) => `<span class="step ${i < day.at ? 'done' : i === day.at ? 'now' : ''}">${i < day.at ? '✓' : '·'} ${t.text}${i === day.at && (t.need > 1 || t.kind === 'gather') ? ` (${day.n2 || 0}/${t.need || 3})` : ''}</span>`).join('');
+    return;
+  }
   if (trial) {
     // (0.99.21) a trial's steps, ticked off as you go
     const T = TRIALS[trial.cls];
@@ -773,10 +782,11 @@ function companyAt(spots) {
 function startWalk() {
   setStage('waking');
   questRun = walkToTown(company, bark, () => {
-    setStage('crystal');
-    toast('Quest complete: Waking Up', 'New quest: The Telling Glass');
-    bark([['rowan', 'Welcome to Sunmere. The Guild hall is the stone one with the red banners, north of the plaza. Meet us there.']]);
-    toGuild(true);
+    toast('Quest complete: Waking Up', 'New quest: Days with the Hounds');
+    bark([['rowan', 'Welcome to Sunmere. Our lodging\'s just there. You\'re staying with us until you\'re on your feet.']]);
+    story.day = 0;
+    setStage('days');
+    startDay(0, true);
   }, { x: me.x, z: me.z }, world.land);
 }
 /** A scene: the HUD away, the Company handed in (and back after), the skip button. */
@@ -817,7 +827,7 @@ function drawFog(dt, t) {
   if (l > 0.005) $('fog').style.background = `radial-gradient(ellipse at center, rgba(236,239,245,0) ${Math.round(72 - 58 * l)}%, rgba(236,239,245,${(0.5 + 0.45 * l).toFixed(2)}) 100%)`;
 }
 /** How thick the fog is out of the scenes, by how far the story has come. */
-const FOG_AT = { new: 0.7, stumble: 0.7, rescued: 0.5, waking: 0.38, crystal: 0.22, path: 0.12, ambush: 0.08 };
+const FOG_AT = { new: 0.7, stumble: 0.7, rescued: 0.5, waking: 0.38, days: 0.34, crystal: 0.1, path: 0.06, ambush: 0.04 };
 let flashT = null;
 function memoryFlash(text, hold = 2.8) {
   $('flash-text').textContent = text;
@@ -847,6 +857,8 @@ async function playOpening() {
   crystal.mark(false);
   if (net) net.ws.close(1000, 'The opening is played alone');
   hero.anim.lie = true; hero.anim.lieSent = false;
+  setVigour(VIGOUR[0]);
+  if (hero.cls !== 'novice') { story.path = null; wear('novice', true); }
   setStage('new');
   await runScene(openingPull);
   hero.anim.move = cutscene.skipping ? 'land' : null;
@@ -936,7 +948,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -946,7 +958,7 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  const what = story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  const what = story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
   $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
@@ -1081,6 +1093,151 @@ function choosePath(cls) {
 }
 $('choose-warrior').addEventListener('click', () => choosePath('warrior'));
 $('choose-archer').addEventListener('click', () => choosePath('archer'));
+// ---- (0.99.24) things you can do with F (the keepsake, the chores): the nearest in reach is shown
+const uses = new Set();
+function nearestUse() {
+  if (cutscene.active || me.dead) return null;
+  let best = null, bd = Infinity;
+  if (nearKeepsake()) return { label: 'Pick it up', fn: takeKeepsake };
+  for (const u of uses) {
+    const at = typeof u.at === 'function' ? u.at() : u.at;
+    if (!at) continue;
+    const d = Math.hypot(me.x - at.x, me.z - at.z);
+    if (d < (u.r || 2.2) && d < bd && (!u.when || u.when())) { bd = d; best = u; }
+  }
+  return best;
+}
+
+// ---- (0.99.24) Days with the Hounds: chores while they look after him; stronger and less fogged each day
+const well = placeBuilding('well_blue', { x: WELL.x, z: WELL.z, fw: 1.9, fd: 1.9 });
+well.then((b) => b && view.scene.add(b));
+{
+  // the woodpile by the lodging: a few split logs stacked
+  const g = new THREE.Group();
+  const bark = new THREE.MeshLambertMaterial({ color: 0x6a4a2e, flatShading: true }), cut = new THREE.MeshLambertMaterial({ color: 0xc9a46a, flatShading: true });
+  for (let i = 0; i < 9; i++) {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.9, 6), [bark, cut, cut]);
+    log.rotation.z = Math.PI / 2;
+    log.position.set(0, 0.12 + Math.floor(i / 3) * 0.2, (i % 3) * 0.23 - 0.23 + (Math.floor(i / 3) % 2) * 0.1);
+    log.castShadow = true;
+    g.add(log);
+  }
+  g.position.set(WOODPILE.x, 0, WOODPILE.z);
+  view.scene.add(g);
+}
+function setVigour(v) {
+  world.setVigour(1, v);
+  if (net && net.ready) net.send({ t: 'vig', v });
+}
+let day = null; // { n, at (task), task state }
+const herbMeshes = [];
+function glint(x, z, size = 0.32) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  r.addColorStop(0, 'rgba(240,255,240,1)'); r.addColorStop(0.3, 'rgba(190,240,190,0.55)'); r.addColorStop(1, 'rgba(190,240,190,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  sp.scale.setScalar(size);
+  sp.position.set(x, 0.25, z);
+  view.scene.add(sp);
+  return sp;
+}
+function companyHome() {
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) {
+    if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+    const [x, z] = HOME_SPOTS[who];
+    company[who].place(x, z).face(HOME.door.x, HOME.door.z);
+    company[who].loop(who === 'rowan' ? 'arms' : who === 'sorrel' ? 'look' : 'idle');
+  }
+  if (company.odile) company.odile.place(...atGuildOdile());
+}
+const atGuildOdile = () => [CRYSTAL.x + Math.cos(CRYSTAL.a) * 1.45, CRYSTAL.z + Math.sin(CRYSTAL.a) * 1.45];
+async function startDay(n, first = false) {
+  day = { n, at: 0 };
+  story.day = n;
+  saveStory(story);
+  setVigour(VIGOUR[n]);
+  setFog(DAY_FOG[n], 2);
+  companyHome();
+  questRun = { update(dt) { for (const a of Object.values(company)) a.update(dt); if (day && day.tick) day.tick(dt); } };
+  if (!first) { me.x = HOME.door.x + 1.5; me.z = HOME.door.z; prev.x = me.x; prev.z = me.z; }
+  showQuest();
+  startTask();
+}
+function startTask() {
+  uses.clear();
+  for (const m of herbMeshes.splice(0)) view.scene.remove(m);
+  hero.anim.carry = false;
+  const D = DAYS[day.n], T = D.tasks[day.at];
+  day.tick = null;
+  if (T.start) bark(T.start);
+  showQuest();
+  const finish = () => { if (T.done) bark(T.done); day.at++; startTask(); };
+  if (T.kind === 'fetch') {
+    let n = 0, carrying = false;
+    const from = T.from === 'well' ? WELL_AT : WOODPILE;
+    uses.add({ at: from, r: 2.4, label: T.from === 'well' ? 'Fill the bucket' : 'Pick up firewood', when: () => !carrying, fn: () => { carrying = true; hero.anim.carry = true; if (n === 0 && T.got) bark(T.got); } });
+    uses.add({ at: () => company[T.to], r: 2.4, label: 'Hand it over', when: () => carrying, fn: () => {
+      carrying = false; hero.anim.carry = false; n++; day.n2 = n;
+      if (n >= T.need) finish(); else { if (T.each && T.each[n - 1]) bark(T.each.slice(n - 1, n + (n === 1 ? 1 : 0))); showQuest(); }
+    } });
+    day.marker = () => (carrying ? company[T.to] : from);
+  } else if (T.kind === 'follow') {
+    // Rowan runs the route; he waits (and calls) if you fall behind
+    const r = company.rowan;
+    let i = 0, waitT = 0, waits = 0, going = false;
+    day.marker = () => r;
+    day.tick = (dt) => {
+      if (going) return;
+      const d = Math.hypot(me.x - r.x, me.z - r.z);
+      if (d > 9) { waitT -= dt; if (waitT <= 0) { bark([T.wait[waits++ % T.wait.length]]); waitT = 6; } r.loop('idle'); return; }
+      if (i >= RUN_ROUTE.length) { day.tick = null; r.loop('arms'); return finish(); }
+      const p = RUN_ROUTE[i++];
+      going = true;
+      r.walkTo(p.x, p.z, { run: true, speed: 3.4 + VIGOUR[day.n] }).then(() => { going = false; });
+    };
+  } else if (T.kind === 'gather') {
+    let n = 0;
+    const ilse = company.ilse;
+    ilse.walkTo(HERBS[0].x - 2, HERBS[0].z + 2, { run: false }).then(() => ilse.loop('crouch'));
+    for (const [k, h] of HERBS.entries()) {
+      const m = glint(h.x, h.z);
+      herbMeshes.push(m);
+      const u = { at: h, r: 1.9, label: 'Pick the silverleaf', fn: () => { view.scene.remove(m); uses.delete(u); n++; day.n2 = n; if (n >= HERBS.length) { ilse.loop('idle'); finish(); } else { if (T.each && T.each[n - 1]) bark([T.each[n - 1]]); showQuest(); } } };
+      uses.add(u);
+      void k;
+    }
+    day.marker = () => HERBS.find((h, k) => herbMeshes[k] && herbMeshes[k].parent) || HERBS[0];
+  } else if (T.kind === 'lesson') {
+    const s2 = company.sorrel;
+    s2.place(...HOME_SPOTS.sorrel).face(WELL.x, WELL.z);
+    uses.add({ at: () => s2, r: 2.6, label: 'Sit with Sorrel', fn: async () => { uses.clear(); await runScene(lessonScene); questRun = { update(dt) { for (const a of Object.values(company)) a.update(dt); } }; finish(); } });
+    day.marker = () => s2;
+  } else if (T.kind === 'sleep') {
+    companyHome(); // everyone home for the night (Ilse back from the meadow)
+    uses.add({ at: HOME.door, r: 2.4, label: 'Sleep', fn: () => sleep() });
+    day.marker = () => HOME.door;
+  }
+}
+async function sleep() {
+  uses.clear();
+  const D = DAYS[day.n], next = day.n + 1;
+  const last = next >= DAYS.length;
+  await runScene(nightScene, D.night, last ? ['The morning of the Telling.', 'Rowan is at the door before the sun is up.'] : DAYS[next].morning);
+  if (!last) return startDay(next);
+  // the days are done: to the Guild
+  day = null;
+  setVigour(1);
+  me.x = HOME.door.x + 1.5; me.z = HOME.door.z; prev.x = me.x; prev.z = me.z;
+  setStage('crystal');
+  toast('Quest complete: Days with the Hounds', 'New quest: The Telling Glass');
+  companyHome();
+  bark([['rowan', 'Today\'s the day. The Guild hall\'s the stone one with the red banners, north of the plaza. We\'ll walk you over.']]);
+  toGuild(true);
+}
+
 // where the story stands when the page opens
 if (story.stage === 'new') setTimeout(playOpening, 300);
 else if (story.stage === 'stumble') {
@@ -1099,6 +1256,9 @@ else if (story.stage === 'stumble') {
   companyAt({ juni: [ROAD_IN.x + 3, ROAD_IN.z], rowan: [ROAD_IN.x, ROAD_IN.z], ilse: [ROAD_IN.x - 2, ROAD_IN.z + 1], sorrel: [ROAD_IN.x - 3, ROAD_IN.z - 1] });
   yaw = 0;
   startWalk();
+} else if (story.stage === 'days') {
+  toGuild();
+  setTimeout(() => startDay(story.day || 0), 0); // (after the page has finished setting up)
 } else if (story.stage === 'crystal') {
   toGuild();
   showQuest();
@@ -1237,8 +1397,9 @@ function frame(now) {
   drawFog(dt, performance.now() / 1000);
   drawRift(dt);
   if (keepsakeMesh) { const tw = 0.28 + Math.abs(Math.sin(performance.now() / 380)) * 0.18; keepsakeMesh.scale.setScalar(tw); } // it twinkles
-  $('hint').classList.toggle('hidden', !nearKeepsake());
-  if (nearKeepsake()) $('hint').innerHTML = '<b>F</b>Pick it up';
+  const near = nearestUse();
+  $('hint').classList.toggle('hidden', !near);
+  if (near) $('hint').innerHTML = `<b>F</b>${near.label}`;
   drawMarker();
   if (barkT > 0 && (barkT -= dt) <= 0) nextBark();
   if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.add('hidden');
@@ -1286,4 +1447,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
-window.land = { world, view, crowd, me, fx, hero, __company: company, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

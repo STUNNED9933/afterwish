@@ -105,7 +105,7 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 | # | Quest | Goal | Beat |
 | --- | --- | --- | --- |
 | 1 | Waking Up | Survive; follow rescuers to town | Meet the party |
-| 1b | Days with the Hounds | Chores while they look after you | Growing stronger; teasing; attachment (0.99.23) |
+| 1b | Days with the Hounds | Three days of chores while they look after you | Growing stronger; teasing; attachment; Sorrel's lesson (0.99.24) |
 | 2 | The Telling Glass | Element and aptitude read at the Guild | Three, no element: pity and laughter; the black line |
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
 | 4 | When It Counts | About a year on: an enemy far beyond the party | A Hound dies; grief wakes the Link; stronger skills |

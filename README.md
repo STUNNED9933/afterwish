@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: Days with the Hounds (0.99.24)
+
+- **Between the walk into town and the Guild, three days with the Iron Hounds** at their lodging on the west side of the plaza. Each day a few chores (press **F** at the right place; the marker and the tracker show what is next), then **sleep** at their door: night, sometimes a memory, and the next morning.
+  - **Day 1:** fetch a bucket of water from the plaza's new well for Ilse (he can only walk carrying it, arms shaking).
+  - **Day 2:** keep up with Rowan's morning run, twice round the plaza (he waits, and calls, if you fall behind); then carry three armfuls of firewood to Juni, who supervises and teases.
+  - **Day 3:** gather silverleaf with Ilse in the meadow past the north gate; then a lesson with Sorrel by the well: mana, elements, the Telling Glass, and the cold, empty air round the tear ("You feel like that, sometimes. When I look at you.").
+  - The morning after: the Guild.
+- **He gets stronger day by day:** 55% of his health and slower through the tear and on Day 1, 70% on Day 2, 85% on Day 3, whole by the Telling. The fog thins each morning.
+
 ### Lacuna: the hero arrives small, in rags (0.99.23)
 
 - **A new hero for Lacuna** (Tripo, run 45966236093): a small boy, about a metre tall, in an oversized torn linen shirt, a rope belt, patched trousers and cloth-wrapped feet. Next to the Iron Hounds he is tiny, and he is meant to be. The older hero models are kept for later.

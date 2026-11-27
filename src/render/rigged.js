@@ -962,6 +962,11 @@ export function instantiate(tpl) {
           if (k > 0.3 && k < 0.7) slash = 0.55;
         } else if (flinching) {
           // let the flinch play out
+        } else if (s.moving && s.walkAs && clips[s.walkAs]) {
+          // (0.99.24) walking some other way (carrying a bucket or an armful of wood, in Lacuna)
+          const wa = emotes[s.walkAs] || (emotes[s.walkAs] = act(s.walkAs));
+          wa.timeScale = Math.max(0.7, Math.min(1.6, (s.speed || 1.4) / 1.4));
+          fadeTo(wa, endFade || 0.25);
         } else if (s.emote && !s.moving && clips[s.emote]) {
           // (0.99.19) an emote (Lacuna): a clip by name, looped or once, until the player moves or acts
           const key = s.emote + (s.emoteOnce ? '#1' : '');

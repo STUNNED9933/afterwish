@@ -49,6 +49,7 @@ export class LandRoom {
     if (!m) return msg.t === 'hello' ? this.hello(conn, msg) : undefined;
     if (msg.t === 'pos') this.pos(m, msg);
     else if (msg.t === 'cls' && CLASSES.includes(msg.cls) && msg.cls !== m.cls) { m.cls = msg.cls; this.world.setClass(m.pid, m.cls); this.roster(); }
+    else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
     else if (msg.t === 'act') {
       const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF);
       if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true);
@@ -83,7 +84,7 @@ export class LandRoom {
     const src = fromAccount || (msg.link && typeof msg.link === 'object' ? msg.link : {});
     for (const slot of LINK_SLOTS) { const v = num(src[slot], 0, 30); if (v) link[slot] = Math.floor(v); }
     // (0.99.22) the Link sleeps until the story wakes it (the page says so for now; with accounts, the server will)
-    const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true });
+    const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true, vigour: num(msg.vigour, 0.5, 1) ?? 1 });
     p.driven = true; // moved by its own browser (checked), not by the sim
     const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page' };
     this.byConn.set(conn, m);

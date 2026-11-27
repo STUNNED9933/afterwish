@@ -688,7 +688,11 @@ export class LandWorld {
     if (b.state === 'chase') {
       tx = p.x; tz = p.z; speed = def.speed;
       b.swipeT -= dt;
-      if (d < SWIPE_REACH + def.r) {
+      // (0.99.32) in reach, it stays put until you are clearly out of it again: it used to step in and stop on
+      // alternate beats as you edged about, and its body flickered between walking and standing (a violent shake)
+      const reach = SWIPE_REACH + def.r + (b.inReach ? 0.45 : 0);
+      b.inReach = d < reach;
+      if (b.inReach) {
         speed = 0;
         b.facing = dAtan2(p.z - b.z, p.x - b.x);
         if (b.swipeT <= 0) {

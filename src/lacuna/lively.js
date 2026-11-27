@@ -65,7 +65,11 @@ export class Lively {
       }
       const g = l.body.outer;
       g.position.set(w.x, w.y || 0, w.z);
-      g.rotation.y = Math.PI / 2 - w.facing; // as the cheap shapes are turned (+Z to the facing)
+      // as the cheap shapes are turned (+Z to the facing), (0.99.32) eased: a body never snaps round in a frame
+      const want = Math.PI / 2 - w.facing;
+      if (l.yaw === undefined || dt <= 0) l.yaw = want;
+      else { const d = Math.atan2(Math.sin(want - l.yaw), Math.cos(want - l.yaw)); l.yaw += d * Math.min(1, dt * 12); }
+      g.rotation.y = l.yaw;
       g.scale.setScalar(w.scale || 1);
       l.body.update(dt, w.state);
       drawn.add(w.key);

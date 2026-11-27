@@ -299,9 +299,22 @@ export class LandView {
       key: n.b.id,
       spec: liveSpec(n.b),
       x: n.x, z: n.z, facing: n.b.facing,
-      state: { moving: !!n.b.moving, speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), gesture: n.b.swipeT > time - 0.1 ? 'chop' : null },
+      state: { moving: this.steady(n.b, time), speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), gesture: n.b.swipeT > time - 0.1 ? 'chop' : null },
     }));
     return this.lively.frame(dt, want);
+  }
+
+  /**
+   * (0.99.32) Whether a beast's body walks: the sim's word, held a moment either way, so a beast that stops and
+   * starts on alternate steps does not flicker between its walk and its stand (each change restarts the clip).
+   */
+  steady(b, time) {
+    const was = !!b.drawnMoving;
+    if (!!b.moving !== was) {
+      b.flipAt = b.flipAt ?? time;
+      if (time - b.flipAt > (was ? 0.3 : 0.12)) { b.drawnMoving = !!b.moving; b.flipAt = null; }
+    } else b.flipAt = null;
+    return !!b.drawnMoving;
   }
 
   /** (0.99.29) A beast struck at someone: its body (if it has one) swings. */

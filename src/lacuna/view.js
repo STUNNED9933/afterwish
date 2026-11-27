@@ -8,6 +8,26 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { LAND, HALF, CHUNKS, groundAt, LAKE, noise } from './land.js';
 import { placeBuilding, TOWN_SET } from '../render/buildings.js';
+import { CREATURES } from '../render/creatures.js';
+import { RIGGED } from '../render/rigged.js';
+// (0.99.29) the Thornhog's own model (made for Lacuna; registered here, as the main game does its own)
+if (!RIGGED.e_thornhog) RIGGED.e_thornhog = { url: 'models/e_thornhog.glb', height: 1, turn: -Math.PI / 2, recentre: '*', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis', 'Hips'] };
+import { Lively } from './lively.js';
+
+// (0.99.29) beasts drawn close up as the main game's own animated models (and the Thornhog's own)
+const LIVE_BEAST = {
+  wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
+  golem: { ...CREATURES.golem, height: 2.6 },
+  hog: { model: 'e_thornhog', height: 0.95, beast: true },
+};
+const ASHEN = new Map(); // (Quest 4 and 5) ash in their fur or their cracks: the same body, greyed and darkened
+const liveSpec = (b) => {
+  const base = LIVE_BEAST[b.type];
+  if (!base || b.story !== 'ashen') return base;
+  if (!ASHEN.has(b.type)) ASHEN.set(b.type, { ...base, tint: 0x3a3436, dark: 0.55 });
+  return ASHEN.get(b.type);
+};
+const LIVE_R = 45, LIVE_N = 12;
 
 export const DRAW = 150; // metres of land drawn round you
 const DROP = DRAW + 50; // past this, a built chunk is taken down
@@ -133,6 +153,8 @@ export class LandView {
       this.beastMeshes[type] = m;
     }
     this.prev = new Map(); // beast id -> last position drawn (for smooth motion between sim steps)
+    this.lively = new Lively(this.scene);
+    this.liveT = null;
     this.tmpM = new THREE.Matrix4();
     this.tmpQ = new THREE.Quaternion();
     this.tmpS = new THREE.Vector3();
@@ -266,11 +288,34 @@ export class LandView {
     for (const m of touched) m.instanceMatrix.needsUpdate = true;
   }
 
+  /**
+   * (0.99.29) The nearest beasts (of the kinds that have a model) as animated bodies: `near` is [{ b, x, z, d }].
+   * Returns the ids drawn that way (their cheap shapes are left out).
+   */
+  liveBeasts(near, time) {
+    const dt = this.liveT === null ? 0 : Math.min(0.1, Math.max(0, time - this.liveT));
+    this.liveT = time;
+    const want = near.filter((n) => n.d < LIVE_R && !n.b.hidden && LIVE_BEAST[n.b.type]).sort((p, q) => p.d - q.d).slice(0, LIVE_N).map((n) => ({
+      key: n.b.id,
+      spec: liveSpec(n.b),
+      x: n.x, z: n.z, facing: n.b.facing,
+      state: { moving: !!n.b.moving, speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), gesture: n.b.swipeT > time - 0.1 ? 'chop' : null },
+    }));
+    return this.lively.frame(dt, want);
+  }
+
+  /** (0.99.29) A beast struck at someone: its body (if it has one) swings. */
+  swiped(id) {
+    const b = this.world.beasts.find((q) => q.id === id);
+    if (b) b.swipeT = this.liveT || 0;
+  }
+
   /** Put every beast near (x, z) where the sim has it (eased between steps by `alpha`). */
   drawBeasts(x, z, alpha, time) {
     const fill = {};
     for (const type in this.beastMeshes) fill[type] = 0;
     const far2 = DRAW * DRAW;
+    const near = [];
     for (const b of this.world.beasts) {
       if (b.dead) continue;
       const dx = b.x - x, dz = b.z - z;
@@ -278,7 +323,11 @@ export class LandView {
       let pv = this.prev.get(b.id);
       if (!pv) this.prev.set(b.id, (pv = { x: b.x, z: b.z, fx: b.x, fz: b.z }));
       if (pv.fx !== b.x || pv.fz !== b.z) { pv.x = pv.fx; pv.z = pv.fz; pv.fx = b.x; pv.fz = b.z; }
-      const bx = pv.x + (b.x - pv.x) * alpha, bz = pv.z + (b.z - pv.z) * alpha;
+      near.push({ b, x: pv.x + (b.x - pv.x) * alpha, z: pv.z + (b.z - pv.z) * alpha, d: Math.sqrt(dx * dx + dz * dz) });
+    }
+    const real = this.liveBeasts(near, time);
+    for (const { b, x: bx, z: bz } of near) {
+      if (real.has(b.id)) continue;
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
       this.tmpM.compose(this.tmpP.set(bx, bob, bz), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
       const m = this.beastMeshes[b.type];
@@ -293,11 +342,12 @@ export class LandView {
   }
 
   /** (together) Draw the beasts the server says are in sight: { type, x, z, facing, moving, id } (already eased). */
-  drawSeen(list, time) {
+  drawSeen(list, time, hx = 0, hz = 0) {
     const fill = {};
     for (const type in this.beastMeshes) fill[type] = 0;
+    const real = this.liveBeasts(list.filter((b) => !b.dead).map((b) => ({ b, x: b.x, z: b.z, d: Math.hypot(b.x - hx, b.z - hz) })), time);
     for (const b of list) {
-      if (b.dead) continue;
+      if (b.dead || real.has(b.id)) continue;
       const m = this.beastMeshes[b.type];
       if (!m || fill[b.type] >= m.instanceMatrix.count) continue;
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;

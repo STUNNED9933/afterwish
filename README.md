@@ -160,6 +160,16 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: Quest 5, Word Gets Around; real townsfolk and beasts (0.99.29)
+
+- **Quest 5, Word Gets Around.** Spring, after the winter without Ilse. Rowan has three contracts from the Guild's board, posted for the Hounds by name ("Half of Sunmere thinks you killed a dragon"): a **cairn golem walking** in the stony north, **Thornhogs at Brightwater** that don't run, and **wolves howling past the east gate** in daylight. Do them in any order; the tracker and the marker show what's left. Every one of the beasts is grey with the same ash. Back at the Guild, Sorrel lays ash on four places on a map (the three, and the glade) and they make a ring with Sunmere in the middle. Odile won't rank you by the glass any more: **rank E, provisional**, a first in her years there. Dace manages "Don't let it go to your head, stray" and says Wren hasn't been well since the glass. Across the plaza a woman in a grey cape is watching; when you look again, she's gone. Next: Quest 6, An Invitation.
+- **The Hounds fight beside you** on hunts (the ash wolves, the contracts): Rowan cuts, Juni shoots, Sorrel burns. Their blows are smaller than yours, and Rowan says why: "The kill's yours, Sprout: that's how you learn."
+- **Real townsfolk.** The nearest dozen or so people in Sunmere are drawn as the main game's villagers (farmers, elders, a miner, children), each in their own clothes' colour, walking and standing with real animations. Further off they're the simple figures, as before.
+- **Real beasts.** Close up, wolves are the main game's wolf, golems its golem, and **Thornhogs have a model of their own** (new, made with Tripo). Ashen beasts are the same bodies, greyed and darkened. The wolves in the opening are real wolves too.
+- **Vesper has his own model**: slicked-back black hair with a streak of grey, a black and violet officer's coat. He used to be the old mage model darkened, and looked like Sorrel.
+- **Choose your path from the keyboard**: 1 for the Berserker, 2 for the Sharpshooter (the mouse belongs to the camera until Alt is held).
+- "A year." is now "A year passed in what felt like a single breath."
+
 ### Lacuna: hands, blades and arrows (0.99.28)
 
 - **Palms face the body.** Every story character stood and walked with their palms turned forward, like a statue. Tripo makes its models with the palms forward; the animation library's are down, and the difference was carried into every clip. The animation tool now reads which way each hand faces from the hand itself and turns the forearm to match before moving the clips across. Everyone was rebuilt: the Hounds, Odile, Dace, Wren, Vesper (from his original model) and Thessaly.

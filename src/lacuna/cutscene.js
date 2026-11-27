@@ -325,7 +325,7 @@ export class Cutscene {
     const S = this.talk && this.talk.who !== 'hero' ? this.actors.get(this.talk.who) : null;
     const T = this.talk ? this.where(this.talk.to) : null;
     for (const a of this.actors.values()) {
-      if (a.spec.beast) continue;
+      if (a.spec.beast || a.spec.animal) continue;
       if (a.dead) { a.lookTarget = null; continue; } // (0.99.26) she does not look up again
       if (a === S && T) {
         a.lookTarget = T;

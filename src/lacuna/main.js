@@ -12,14 +12,14 @@ import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
 import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL } from './land.js';
 import { placeBuilding } from '../render/buildings.js';
-import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js';
+import { loadRigged, loadWeapon, instantiate, RIGGED, preload } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
 import { LACUNA_NET } from './room.js';
 import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, thessalyScene, askingScene, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, thessalyScene, askingScene, springScene, reportScene, CONTRACTS, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrack } from '../render/gates.js';
 import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
@@ -317,6 +317,7 @@ function onEvent(ev) {
   if (trial) trialEvent(ev);
   huntEvent(ev);
   vesperEvent(ev);
+  contractEvent(ev);
   if (ev.type === 'shot') {
     // (0.99.27) from his bow, jumping or not; (0.99.28) yours climb onto the crosshair's line
     const h = heroOf(ev.pid);
@@ -334,6 +335,7 @@ function onEvent(ev) {
   else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
   else if (ev.type === 'aggro' && isMe(ev.pid)) { const t = net ? seen.get(ev.id) : world.beasts[ev.id - 1]; note(`A ${t && t.type ? BEASTS[t.type].name : 'beast'} is coming for you.`); }
   else if (ev.type === 'swipe') {
+    if (ev.id) view.swiped(ev.id); // (0.99.29) a beast with a body swings it
     const h = heroOf(ev.pid);
     if (h) h.anim.hit = true;
     if (isMe(ev.pid)) { if (ev.dmg) { hurtT = 0.35; fx.number(heroX, heroZ, `-${ev.dmg}`, 'taken'); } else fx.number(heroX, heroZ, 'dodged', 'heal'); }
@@ -772,6 +774,12 @@ function showQuest() {
     $('quest-goal').innerHTML = hunt.done ? 'Sorrel says something is wrong at the glade' : `Hunt the ashen wolves near the glade (${hunt.wolves.length - hunt.left}/${hunt.wolves.length})`;
     return;
   }
+  if (story.stage === 'contracts' && job) {
+    // (0.99.29) the three contracts, ticked off as they are done
+    const done = new Set(story.done || []);
+    $('quest-goal').innerHTML = CONTRACTS.map((c) => { const j = job.list.find((q) => q.c.id === c.id); const ok = done.has(c.id); return `<span class="step ${ok ? 'done' : 'now'}">${ok ? '✓' : '·'} ${c.title}, ${c.where}${!ok && j && j.foes.length > 1 ? ` (${j.foes.length - j.left}/${j.foes.length})` : ''}</span>`; }).join('');
+    return;
+  }
   if (story.stage === 'days' && day) {
     // (0.99.24) the day's chores, ticked off as you go
     const D = DAYS[day.n];
@@ -994,7 +1002,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead).sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead).sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -1143,6 +1151,12 @@ function choosePath(cls) {
 }
 $('choose-warrior').addEventListener('click', () => choosePath('warrior'));
 $('choose-archer').addEventListener('click', () => choosePath('archer'));
+// (0.99.29) and from the keyboard (the mouse is the camera's until Alt is held: not everyone knows)
+addEventListener('keydown', (e) => {
+  if ($('choose').classList.contains('hidden')) return;
+  if (e.code === 'Digit1' || e.code === 'Numpad1') { e.preventDefault(); e.stopImmediatePropagation(); choosePath('warrior'); }
+  else if (e.code === 'Digit2' || e.code === 'Numpad2') { e.preventDefault(); e.stopImmediatePropagation(); choosePath('archer'); }
+}, true);
 // ---- (0.99.24) things you can do with F (the keepsake, the chores): the nearest in reach is shown
 const uses = new Set();
 function nearestUse() {
@@ -1306,6 +1320,23 @@ async function playYear() {
   startHunt();
 }
 let hunt = null; // { wolves, left }
+/**
+ * (0.99.29) The Hounds fight alongside you on a hunt: `foes()` the beasts being hunted. Rowan cuts, Juni shoots,
+ * Sorrel burns; their blows are smaller than yours (the kills are meant to be yours), and Rowan says so once.
+ */
+const HOUND_HIT = { rowan: 10, juni: 8, sorrel: 9 };
+function houndsFight(foes) {
+  return {
+    foes,
+    call: () => bark([['rowan', 'We\'ll hold the flanks. The kill\'s yours, Sprout: that\'s how you learn.']]),
+    strike(who, b, a) {
+      if (b.dead || !world.players.get(1)) return;
+      if (who === 'juni') { const d = Math.hypot(b.x - a.x, b.z - a.z) || 1; fx.shot({ x: a.x, z: a.z, dx: (b.x - a.x) / d, dz: (b.z - a.z) / d, speed: 45, range: Math.max(0, d - 0.6), kind: 'arrow', y: 1.3 }); }
+      if (who === 'sorrel') fx.ring(b.x, b.z, 1.2, 0xff8a3a, 0.4);
+      world.hurt(b, world.players.get(1), HOUND_HIT[who]);
+    },
+  };
+}
 function startHunt() {
   // set out along the west road, the Hounds behind you
   me.x = ROAD_IN.x + 16; me.z = ROAD_IN.z + 2; prev.x = me.x; prev.z = me.z;
@@ -1318,7 +1349,7 @@ function startHunt() {
   setVigour(1);
   const wolves = ASHEN_AT.map((p) => world.borrowBeast('wolf', p.x, p.z, { story: 'ashen' })).filter(Boolean);
   hunt = { wolves, left: wolves.length, done: false };
-  const f = follow(company, world.land);
+  const f = follow(company, world.land, houndsFight(() => hunt.wolves));
   questRun = { update(dt) { f.update(dt, me); } };
   toast('When It Counts', 'Four ashen wolves, near the glade');
   bark([['juni', 'Ash in the air. Smell that? Like a cold fireplace.'], ['rowan', 'Spread out. Not too far. Sprout, with me.']]);
@@ -1428,11 +1459,84 @@ async function playAfter() {
 }
 /** (0.99.27) Weeks later: Thessaly of the Ninth Hand, at the training ground. */
 async function playThessaly() {
-  if (story.thessaly) return;
+  if (story.thessaly) return startSpring();
   await runScene(thessalyScene);
   story.thessaly = true;
   saveStory(story);
   toMourning();
+  showQuest();
+  startSpring();
+}
+
+// ---- (0.99.29) Quest 5, Word Gets Around: three contracts across the land, then the Guild
+function startSpring() {
+  uses.clear();
+  setTimeout(() => bark([['rowan', 'Sprout. When you\'re ready. The Guild\'s been asking for us.']]), 2500);
+  uses.add({ at: () => company.rowan, r: 2.6, label: 'Talk to Rowan', fn: playSpring });
+}
+async function playSpring() {
+  uses.clear();
+  if (net) net.ws.close(1000, 'This part of the story is played alone');
+  await runScene(springScene);
+  story.done = [];
+  setStage('contracts');
+  startContracts();
+}
+let job = null; // { c (the contract), foes, left }
+function startContracts() {
+  for (const who of ['rowan', 'juni', 'sorrel']) {
+    if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+    if (Math.hypot(company[who].x - me.x, company[who].z - me.z) > 8) company[who].place(me.x + 2 + Math.random() * 2, me.z + (Math.random() - 0.5) * 3);
+  }
+  company.rowan.draw(true);
+  setVigour(1);
+  const done = new Set(story.done || []);
+  const left = CONTRACTS.filter((c) => !done.has(c.id));
+  if (!left.length) return toReport();
+  job = { list: left.map((c) => ({ c, foes: c.at.map((p) => world.borrowBeast(c.type, p.x, p.z, { story: 'ashen', job: c.id, def: c.def })).filter(Boolean), said: false })) };
+  for (const j of job.list) j.left = j.foes.length;
+  const f = follow(company, world.land, houndsFight(() => job.list.flatMap((q) => q.foes)));
+  questRun = { update(dt) {
+    f.update(dt, me);
+    for (const j of job.list) if (!j.said && j.left > 0 && j.foes.some((b) => !b.dead && Math.hypot(b.x - me.x, b.z - me.z) < 22)) { j.said = true; bark(j.c.near); }
+  } };
+  toast('Word Gets Around', left.map((c) => c.title).join(' · '));
+  showQuest();
+}
+function contractEvent(ev) {
+  if (!job || ev.type !== 'die' || ev.story !== 'ashen') return;
+  const j = job.list.find((q) => q.foes.some((b) => b.id === ev.id));
+  if (!j || j.left <= 0) return;
+  j.left--;
+  if (j.left > 0) return showQuest();
+  story.done = [...(story.done || []), j.c.id];
+  saveStory(story);
+  bark(j.c.done);
+  toast('Contract done', j.c.title);
+  if (job.list.every((q) => q.left <= 0)) setTimeout(toReport, 4000);
+  showQuest();
+}
+function toReport() {
+  job = null;
+  setStage('report');
+  toast('Word Gets Around', 'Report to Magistra Odile at the Guild');
+  bark([['rowan', 'That\'s all three. Back to the Guild, and Sorrel can tell Odile what he\'s been muttering about.']]);
+  const f = follow(company, world.land);
+  questRun = { update(dt) { f.update(dt, me); if (Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 9) playReport(); } };
+  showQuest();
+}
+async function playReport() {
+  questRun = null;
+  if (!company.odile) company.odile = new Actor(view.scene, 'odile', { beastMesh: () => new THREE.Group() });
+  crowd.keepOut = { x: CRYSTAL.x, z: CRYSTAL.z, r: 7.5 };
+  await runScene(reportScene);
+  crowd.keepOut = null;
+  story.rank = 'E';
+  setStage('invitation');
+  toast('Quest complete: Word Gets Around', 'Guild rank E (provisional)');
+  for (const who of ['rowan', 'juni', 'sorrel', 'odile']) if (company[who]) company[who] = cutscene.keep(who) || company[who];
+  if (company.dace) { company.dace.remove(); delete company.dace; }
+  questRun = atGuild(company);
   showQuest();
 }
 function toMourning() {
@@ -1442,6 +1546,16 @@ function toMourning() {
   questRun = atTraining(company);
   company.rowan.sheathe(true);
   company.rowan.loop('idle');
+}
+
+// (0.99.29) the townsfolk's and the beasts' bodies start loading now, a couple at a time (they appear close up)
+setTimeout(() => preload(['e_wolf', 'e_thornhog', 'v_farmer_m', 'v_farmer_f', 'v_elder_m', 'v_elder_f', 'v_miner_m', 'v_child', 'e_golem']), 1500);
+
+/** (0.99.29) The nearest beast still to be hunted for a contract. */
+function nearestFoe() {
+  let best = null, bd = Infinity;
+  for (const j of job.list) for (const b of j.foes) if (!b.dead) { const d = Math.hypot(b.x - me.x, b.z - me.z); if (d < bd) { bd = d; best = b; } }
+  return best;
 }
 
 // where the story stands when the page opens
@@ -1476,6 +1590,14 @@ else if (story.stage === 'stumble') {
   setTimeout(playAsking, 300);
 } else if (story.stage === 'mourning') {
   setTimeout(() => { toMourning(); playThessaly(); }, 0);
+} else if (story.stage === 'contracts') {
+  setTimeout(() => { toMourning(); startContracts(); }, 0);
+} else if (story.stage === 'report') {
+  setTimeout(() => { toMourning(); toReport(); }, 0);
+} else if (story.stage === 'invitation') {
+  toGuild();
+  crystal.mark(true);
+  showQuest();
   crystal.mark(true);
   showQuest();
 } else if (story.stage === 'path' || story.stage === 'ambush') {
@@ -1585,7 +1707,7 @@ function frame(now) {
       s.z = s.fz + (s.tz - s.fz) * k;
       if (!s.player) seenBeasts.push(s);
     }
-    view.drawSeen(seenBeasts, time);
+    view.drawSeen(seenBeasts, time, hx, hz);
     fxBeasts = seenBeasts;
     for (const [pid, o] of others) {
       const s = seen.get(PLAYER_ID + pid);
@@ -1665,4 +1787,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
-window.land = { world, view, crowd, me, fx, hero, __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

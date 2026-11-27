@@ -16,11 +16,13 @@ export const CAST = {
   odile: { model: 'l_odile', name: 'Magistra Odile', height: 1.68, colour: 0x2a3f7a },
   dace: { model: 'l_dace', name: 'Dace', height: 1.84, colour: 0xc8ccd6 },
   wren: { model: 'l_wren', name: 'Wren', height: 1.68, colour: 0x5a3a7a },
-  // (0.99.26) Vesper of the Unbound: the first Company's mage (always smiling), darkened and turned cold
-  vesper: { model: 'x_vesper', name: 'Vesper', height: 1.95, colour: 0x2a2a3a, tint: { mul: 0.55, toward: 0x2a1a40, by: 0.35 } },
+  // (0.99.26) Vesper of the Unbound
+  // (0.99.29) his own model now (he was the first Company's mage, darkened: he looked like Sorrel)
+  vesper: { model: 'l_vesper', name: 'Vesper', height: 1.9, colour: 0x2a2a3a },
   // (0.99.27) Thessaly, of the Ninth Hand (the crown's hand that is in no ledger)
   thessaly: { model: 'l_thessaly', name: 'Thessaly', height: 1.72, colour: 0x3a3c44 },
-  wolf: { beast: 'wolf' },
+  // (0.99.29) the main game's wolf (it has a walk and nothing else: standing, it barely moves)
+  wolf: { model: 'e_wolf', name: 'Wolf', height: 1.05, colour: 0x6a6e74, animal: true },
 };
 for (const k in CAST) {
   const c = CAST[k];
@@ -267,13 +269,14 @@ export class Actor {
     if (!this.mixer || this.once || this.held) return;
     const rest = this.looping && !MOVING.has(this.looping) ? this.looping : 'idle';
     const base = v > 3.3 ? 'run' : v > 0.35 ? (this.looping === 'stride' ? 'stride' : 'walk') : rest;
-    const a = this.action(base) || this.action('idle');
+    const a = this.action(base) || (MOVING.has(base) && this.action('walk')) || this.action('idle') || this.action('walk');
     if (!a) return;
     if (a !== this.current) {
       a.setLoop(THREE.LoopRepeat, Infinity);
       this.fadeTo(a, this.fade ?? 0.25);
     }
-    a.timeScale = base === 'run' ? Math.max(0.7, Math.min(1.5, v / 4.6)) : base === 'walk' || base === 'stride' ? Math.max(0.6, Math.min(1.6, v / 1.6)) : 1;
+    const still = !MOVING.has(base) && !this.action(base) && !this.action('idle'); // (an animal with only a walk: breathing)
+    a.timeScale = still ? 0.12 : this.spec.animal && MOVING.has(base) ? Math.max(0.6, Math.min(2.2, v / 3.5)) : base === 'run' ? Math.max(0.7, Math.min(1.5, v / 4.6)) : base === 'walk' || base === 'stride' ? Math.max(0.6, Math.min(1.6, v / 1.6)) : 1;
   }
 
   /** A clip once (a slash, a wave): resolves when it ends. hold: stay on its last pose. */

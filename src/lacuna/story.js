@@ -35,7 +35,10 @@ export const QUESTS = {
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
   ambush: { name: 'When It Counts', goal: 'Rowan wants a word (the training ground)' },
   hunt: { name: 'When It Counts', goal: 'Hunt the ashen wolves in the Wakewood, near the glade where they found you' },
-  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now (the next part of the story is coming)' },
+  mourning: { name: 'Word Gets Around', goal: 'The winter is over. Rowan wants a word (the training ground)' },
+  contracts: { name: 'Word Gets Around', goal: 'Three contracts from the Guild board' },
+  report: { name: 'Word Gets Around', goal: 'Report to Magistra Odile at the Guild' },
+  invitation: { name: 'An Invitation', goal: 'Something is watching Sunmere (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -794,7 +797,7 @@ export async function yearScene(a) {
     'Every morning, the training ground. Every evening, the lodging, loud and warm. You learned the streets, the Guild\'s board, how each of the Hounds takes their tea.',
     'Whatever they showed you, you only ever needed to see once. Rowan stopped saying "again" in the first month. Juni stopped grumbling about it in the second.',
     'The fog never quite left. Neither did the name Sprout.',
-    'A year.',
+    'A year passed in what felt like a single breath.',
   ]);
   const me = a.ctx.me;
   for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who);
@@ -1071,23 +1074,47 @@ export async function thessalyScene(a) {
   a.bars(false);
 }
 
-/** The Hounds follow the hero (on the hunt): each a few steps behind and to one side, walking or running to keep up. */
-export function follow(actors, land) {
+/**
+ * The Hounds follow the hero (on the hunt): each a few steps behind and to one side, walking or running to keep up.
+ * (0.99.29) And they fight: `opts.foes()` the beasts being hunted; when one is near the hero, each Hound goes for the
+ * nearest (Rowan up close with his sword, Juni and Sorrel from range) and `opts.strike(who, beast)` lands the blow.
+ */
+const REACH = { rowan: 1.5, juni: 9, sorrel: 7 };
+const SWING = { rowan: 'slash', juni: 'shoot', sorrel: 'cast' };
+const EVERY = { rowan: 1.7, juni: 2.0, sorrel: 2.4 };
+export function follow(actors, land, opts = {}) {
   const slot = { rowan: [-2.2, -1.4], ilse: [-2.6, 1.3], juni: [-1.2, 2.4], sorrel: [-3.6, 0.2] };
+  const cd = { rowan: 0.6, juni: 0.9, sorrel: 1.3 };
   return {
     update(dt, me) {
       const fx = Math.cos(me.facing), fz = Math.sin(me.facing);
+      const foes = opts.foes ? opts.foes().filter((b) => !b.dead && Math.hypot(b.x - me.x, b.z - me.z) < 16) : [];
+      if (foes.length && !this.called && opts.call) { this.called = true; opts.call(); }
       for (const [who, [back, side]] of Object.entries(slot)) {
         const a = actors[who];
         if (!a) continue;
-        const tx = me.x + fx * back - fz * side, tz = me.z + fz * back + fx * side;
+        let tx = me.x + fx * back - fz * side, tz = me.z + fz * back + fx * side, stop = 0.6, foe = null;
+        if (foes.length && REACH[who]) {
+          foe = foes.reduce((p, q) => (Math.hypot(q.x - a.x, q.z - a.z) < Math.hypot(p.x - a.x, p.z - a.z) ? q : p));
+          const r = REACH[who] + (foe.r || 0.6), dd = Math.hypot(foe.x - a.x, foe.z - a.z) || 1;
+          tx = foe.x - ((foe.x - a.x) / dd) * r; tz = foe.z - ((foe.z - a.z) / dd) * r; stop = 0.4;
+        }
         const d = Math.hypot(tx - a.x, tz - a.z);
-        if (d > 0.6) {
+        if (d > stop && !a.once) {
           const sp = d > 5 ? 5.4 : d > 2 ? 3.2 : 1.6;
           a.x += ((tx - a.x) / d) * Math.min(d, sp * dt);
           a.z += ((tz - a.z) / d) * Math.min(d, sp * dt);
           a.facing = Math.atan2(tz - a.z, tx - a.x);
           a.sync();
+        } else if (foe) {
+          a.face(foe.x, foe.z);
+          cd[who] -= dt;
+          if (cd[who] <= 0 && !a.once) {
+            cd[who] = EVERY[who];
+            a.play(SWING[who], { speed: 1.2 });
+            const f = foe;
+            setTimeout(() => { if (!f.dead && opts.strike) opts.strike(who, f, a); }, who === 'rowan' ? 280 : 380);
+          }
         }
       }
       separate(Object.keys(slot).map((w) => actors[w]).filter(Boolean), me, 1.0, land);
@@ -1099,4 +1126,98 @@ export function follow(actors, land) {
       }
     },
   };
+}
+
+
+// ---- (0.99.29) Quest 5, Word Gets Around: spring; the Guild's board; three bigger hunts across the land, each beast
+// touched by the same ash; the Guild ranks the hero by what he does, not by the glass
+/** The three contracts: where, what, and what the Hounds say when it is done. */
+export const CONTRACTS = [
+  { id: 'cairn', title: 'The Cairn That Walked', where: 'in the stony north', type: 'golem', at: [{ x: 30, z: -186 }], def: { name: 'Ashen Cairn', speed: 2.6, aggro: 14, leash: 30, r: 1.1, hp: 1100, dmg: 30, every: 2.2, xp: 0 },
+    near: [['juni', 'That one\'s been walking. Cairns don\'t walk.'], ['sorrel', 'Ash in the cracks. Watch the arms.']],
+    done: [['rowan', 'Down. Good work.'], ['sorrel', 'The same ash as the wolves. Exactly the same.']] },
+  { id: 'brightwater', title: 'Thornhogs at Brightwater', where: 'on the lake shore, south-east', type: 'hog', at: [{ x: 101, z: 117 }, { x: 103, z: 110 }, { x: 99, z: 124 }], def: { name: 'Ashen Thornhog', speed: 4.4, aggro: 14, leash: 30, r: 0.75, hp: 300, dmg: 14, every: 1.4, xp: 0 },
+    near: [['juni', 'Three of them, and not one running from us. Same as the wolves.']],
+    done: [['juni', 'She\'d have told me to stop showing off. ...I wasn\'t showing off.'], ['rowan', 'I know, Juni.']] },
+  { id: 'eastroad', title: 'Howling Past the East Gate', where: 'past the training ground, east', type: 'wolf', at: [{ x: 162, z: -58 }, { x: 166, z: -52 }, { x: 158, z: -50 }], def: { name: 'Ashen Wolf', speed: 5.2, aggro: 16, leash: 34, r: 0.6, hp: 230, dmg: 16, every: 1.3, xp: 0 },
+    near: [['rowan', 'Ash wolves. Again. Stay together.']],
+    done: [['sorrel', 'Three places, three kinds of beast, one kind of ash. Somebody is doing this on purpose.']] },
+];
+
+/** Spring, at the training ground: the winter after Ilse, and the Guild's board. */
+export async function springScene(a) {
+  const me = a.ctx.me;
+  const R = TRAINING.ring;
+  a.bars(true);
+  await a.fade(1, 0.6);
+  await a.card([
+    'The winter was long, and very quiet.',
+    'Juni started talking again. Rowan kept training you every morning, the same as before, and stood a little closer than he used to.',
+    'Sorrel spent his evenings with the closed-eye clasp and a stack of old books, and told nobody what he was looking for.',
+    'Then the snow went, and the Guild\'s board filled up.',
+  ]);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who);
+  a.actor('rowan').place(R.x + 1.0, R.z - 2.0).face(me.x, me.z);
+  a.actor('juni').place(R.x - 1.4, R.z - 2.6).face(me.x, me.z);
+  a.actor('sorrel').place(R.x + 2.4, R.z - 0.2).face(me.x, me.z);
+  a.hero(R.x - 0.2, R.z - 0.4, Math.atan2(-2.0 + 0.4, 1.2));
+  a.sheathe('rowan', true);
+  await a.fade(0, 1);
+  a.talkCam(true);
+  await a.say('rowan', 'The Guild\'s posted bigger work. Three contracts, all over the land. They asked for us by name.');
+  await a.say('juni', 'They asked for him by name. Word gets around.', { to: 'rowan' });
+  await a.say('rowan', 'Word gets around wrong, mostly. Half of Sunmere thinks you killed a dragon.', { to: 'hero' });
+  await a.say('hero', 'I didn\'t kill a dragon.', { to: 'rowan' });
+  await a.say('rowan', 'No. You killed something worse, and you came up to its belt.', { to: 'hero' });
+  await a.say('sorrel', 'Read the contracts again. A cairn golem walking in the north. Thornhogs at Brightwater that don\'t run. Wolves howling past the east gate in daylight.', { to: 'rowan' });
+  await a.say('sorrel', 'I may be wrong. I\'d like to be wrong. But I think we\'ll find ash on every one of them.');
+  await a.say('rowan', 'Then we go and see. All three. Any order you like, Sprout. We\'re behind you.', { to: 'hero' });
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.6);
+  a.bars(false);
+}
+
+/** Back at the Guild: Sorrel's map, Odile's ranking, and someone watching. */
+export async function reportScene(a) {
+  const me = a.ctx.me;
+  const P = atCrystal;
+  const F = CRYSTAL.a;
+  a.bars(true);
+  await a.fade(1, 0.6);
+  a.actor('odile', ...ODILE, F + Math.PI);
+  a.actor('rowan', ...P(-2.4, -1.3), F); a.actor('juni', ...P(-2.2, -2.7), F); a.actor('sorrel', ...P(-1.6, 1.2), F);
+  a.actor('dace', ...P(-4.6, 2.6), F);
+  a.hero(...P(-1.6, -0.2), F);
+  a.sheathe('rowan', true);
+  await a.fade(0, 1);
+  a.talkCam(true);
+  await a.say('odile', 'Three contracts in nine days. The Guild has had rank C parties take a season over less.', { to: 'rowan' });
+  await a.say('sorrel', 'Before you file them, Magistra. Look.', { to: 'odile' });
+  await a.say('', 'Sorrel unrolls a map of the land on the stand by the glass, and sets a pinch of grey ash on four places: the north stones, Brightwater, the east road, and the glade where they found you.');
+  await a.say('sorrel', 'Four places, a long way apart. Draw a line through them and it comes back on itself. A ring. And Sunmere sits in the middle of it.', { to: 'odile' });
+  await a.say('odile', '...That could be chance.', { to: 'sorrel' });
+  await a.say('sorrel', 'It could. I don\'t think it is.', { to: 'odile' });
+  await a.say('odile', 'I will send it to the Guildmaster tonight. Quietly.', { to: 'sorrel' });
+  await a.say('odile', 'And you. The glass gave you a three, and the glass is never wrong. So the Guild will not rank you by the glass.', { to: 'hero' });
+  await a.say('odile', 'It will rank you by what you bring back. Rank E. Provisional. The first time in my years here I have written that.', { to: 'hero' });
+  await a.say('juni', 'Rank E! From F! In one spring!', { to: 'rowan' });
+  await a.say('rowan', 'I heard, Juni. The whole yard heard.', { to: 'juni' });
+  await a.say('dace', '...Rank E. Huh. Don\'t let it go to your head, stray.', { to: 'hero' });
+  await a.say('dace', 'Wren says well done. She\'d say it herself, but she\'s... not been well. Since the glass.', { to: 'rowan' });
+  await a.say('rowan', 'Tell her we asked after her.', { to: 'dace' });
+  a.talkCam(false);
+  a.quiet();
+  // across the plaza: someone watching (and then not)
+  const W = P(-19, -5), E = P(-3.2, 0.4);
+  a.actor('thessaly', W[0], W[1]).face(me.x, me.z);
+  await a.camera([E[0], 1.25, E[1]], [W[0], 1.3, W[1]], 1.4);
+  await a.say('', 'Across the plaza, a woman in a grey cape is watching the Guild\'s yard. Watching you.');
+  await a.camera([me.x + 1.2, 1.0, me.z + 1.2], [me.x, 0.9, me.z], 0.4);
+  a.remove('thessaly');
+  await a.say('juni', 'Sprout? What is it?', { to: 'hero', cam: false });
+  await a.camera([E[0], 1.25, E[1]], [W[0], 1.3, W[1]], 0.5);
+  await a.say('', 'When you look again, there is nobody there.');
+  await a.fade(1, 0.8);
+  a.bars(false);
 }

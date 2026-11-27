@@ -124,7 +124,7 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 | 2 | The Telling Glass | Element and aptitude read at the Guild | Three, no element: pity and laughter; the black line |
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
 | 4 | When It Counts | A year on: ashen wolves; Vesper of the Unbound | Ilse dies taking the blow meant to kill him; grief wakes the Link; the hero kills Vesper; Thessaly of the Ninth Hand (0.99.27) |
-| 5 | Word Gets Around | Bigger hunts across the land | Guild ranks; strange beasts point to the movement |
+| 5 | Word Gets Around | Three contracts across the land (a walking cairn, Brightwater's thornhogs, the east road's wolves) | All ashen; the ash sites ring Sunmere; Guild rank E by deeds, not the glass; Thessaly watching (0.99.29) |
 | 6 | An Invitation | A secret mission, watched | The Ninth Hand asks you to join. End of Act I |
 
 ## Power

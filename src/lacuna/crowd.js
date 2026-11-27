@@ -7,6 +7,12 @@
 // Two draws for the whole crowd (bodies and heads, instanced).
 import * as THREE from 'three';
 import { TOWN, CRYSTAL, GUILD, roadDist } from './land.js';
+import { PEOPLE } from '../render/creatures.js';
+import { Lively } from './lively.js';
+
+// (0.99.29) the nearest townsfolk are drawn as the main game's villagers, in their own clothes' colour
+const FOLK = ['v_farmer_m', 'v_farmer_f', 'v_elder_m', 'v_elder_f', 'v_miner_m', 'v_farmer_f', 'v_farmer_m'];
+const CLOSE = 30, CLOSE_N = 14;
 
 const RINGS = [{ r: 9, n: 8 }, { r: 16, n: 12 }, { r: 27, n: 20 }, { r: 38, n: 24 }];
 const SPOKES = [0, Math.PI / 2, Math.PI, -Math.PI / 2]; // along the four roads
@@ -76,9 +82,11 @@ export class Crowd {
       const at = Math.floor(rnd() * this.nodes.length);
       const n = this.nodes[at];
       const p = { at, to: n.links[Math.floor(rnd() * n.links.length)], x: n.x, z: n.z, side: (rnd() - 0.5) * 2.2, speed: 1.0 + rnd() * 0.6, pause: rnd() * 3, h: 0.85 + rnd() * 0.25, facing: 0, saved: 0, moving: false, phase: rnd() * 6 };
-      if (rnd() < 0.12) p.h *= 0.72; // children
+      if (rnd() < 0.12) { p.h *= 0.72; p.child = true; } // children
       this.people.push(p);
-      this.bodies.setColorAt(i, c.setHex(cloth[Math.floor(rnd() * cloth.length)]));
+      const coat = cloth[Math.floor(rnd() * cloth.length)];
+      p.look = { ...PEOPLE[p.child ? 'v_child' : FOLK[Math.floor(rnd() * FOLK.length)]], vary: coat, varyK: 0.3 };
+      this.bodies.setColorAt(i, c.setHex(coat));
       this.heads.setColorAt(i, c.setHex(skin[Math.floor(rnd() * skin.length)]));
     }
     this.frame = 0;
@@ -89,6 +97,7 @@ export class Crowd {
     this.sc = new THREE.Vector3();
     this.up = new THREE.Vector3(0, 1, 0);
     this.hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+    this.lively = new Lively(scene);
   }
 
   walk(p, dt) {
@@ -141,8 +150,22 @@ export class Crowd {
       this.bodies.setMatrixAt(i, this.m);
       this.heads.setMatrixAt(i, this.m);
     });
+    // (0.99.29) the nearest, as real people (their cheap shapes hidden)
+    const close = [];
+    this.people.forEach((p, i) => {
+      const d = Math.hypot(p.x - cx, p.z - cz);
+      const k = this.keepOut;
+      if (d < CLOSE && !(k && Math.hypot(p.x - k.x, p.z - k.z) < k.r)) close.push({ i, d });
+    });
+    close.sort((a, b) => a.d - b.d);
+    const want = close.slice(0, CLOSE_N).map(({ i }) => {
+      const p = this.people[i];
+      return { key: i, spec: p.look, x: p.x, z: p.z, facing: p.facing, scale: p.child ? 1 : p.h / 0.97, state: { moving: p.moving, speed: p.speed } };
+    });
+    const real = this.lively.frame(dt, want);
+    for (const i of real) { this.bodies.setMatrixAt(i, this.hidden); this.heads.setMatrixAt(i, this.hidden); }
     this.bodies.instanceMatrix.needsUpdate = true;
     this.heads.instanceMatrix.needsUpdate = true;
-    this.stats = { near, mid, far, moved };
+    this.stats = { near, mid, far, moved, real: real.size };
   }
 }

@@ -98,6 +98,8 @@
   #choose { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(6, 8, 14, 0.72); z-index: 20; color: #e8eefc; }
   #choose h2 { margin: 0; color: #ffd24a; font: 700 26px system-ui; letter-spacing: 0.04em; }
   #choose p { margin: 0; max-width: 560px; text-align: center; font-size: 14px; color: #c8d2ea; }
+  #choose kbd { display: inline-block; min-width: 20px; padding: 1px 7px; margin: 0 2px; background: #ffd24a; color: #1a1406; border-radius: 5px; font: 800 13px system-ui; text-align: center; box-shadow: 0 2px 0 #9a7a1a; }
+  #choose .keys { color: #ffe9a8; }
   #choose .paths { display: flex; gap: 18px; }
   #choose button { width: 260px; padding: 16px 18px; text-align: left; background: rgba(16, 22, 38, 0.95); color: #e8eefc; border: 2px solid #3a4560; border-radius: 10px; cursor: pointer; font: 13px system-ui; }
   #choose button:hover { border-color: #ffd24a; }
@@ -161,9 +163,10 @@
 <div id="choose" class="hidden">
   <h2>Choose your path</h2>
   <p>Rowan's way or Juni's. It is where you start, not where you must stay: you can change your path at any time (1 and 2), and the Guild will teach you both.</p>
+  <p class="keys">Press <kbd>1</kbd> for Rowan's way or <kbd>2</kbd> for Juni's (or hold <kbd>Alt</kbd> and click).</p>
   <div class="paths">
-    <button id="choose-warrior"><b>Berserker</b>Get close, pay in blood, and win anyway. A small pool of mana, won back by hitting; out of it, your skills take your health instead. Under half health you hit harder and heal by hitting.<i>Cleave · Skyfall · Whirlwind · Crimson Oath</i></button>
-    <button id="choose-archer"><b>Sharpshooter</b>Stay far, breathe, one arrow. A deep pool of mana that comes back fastest when you stand still; arrows land harder the further they fly, and Deadeye drinks as much mana as you pour in.<i>Shot · Ricochet · Evasive Roll · Deadeye</i></button>
+    <button id="choose-warrior"><b>Berserker <kbd>1</kbd></b>Get close, pay in blood, and win anyway. A small pool of mana, won back by hitting; out of it, your skills take your health instead. Under half health you hit harder and heal by hitting.<i>Cleave · Skyfall · Whirlwind · Crimson Oath</i></button>
+    <button id="choose-archer"><b>Sharpshooter <kbd>2</kbd></b>Stay far, breathe, one arrow. A deep pool of mana that comes back fastest when you stand still; arrows land harder the further they fly, and Deadeye drinks as much mana as you pour in.<i>Shot · Ricochet · Evasive Roll · Deadeye</i></button>
   </div>
 </div>
 <div id="marker" class="hidden"></div>

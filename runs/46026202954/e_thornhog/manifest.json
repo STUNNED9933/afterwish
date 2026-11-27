@@ -1,0 +1,92 @@
+{
+  "id": "e_thornhog",
+  "prompt": "a Thornhog of the meadows, a stocky wild boar with coarse dark brown bristles, a ridge of short thorny spines along its back, small curved tusks, small dark eyes, sturdy short legs, standing on all fours, side view proportions of a real boar. stylised-realistic fantasy game creature, full body, clean readable silhouette, hand-painted PBR-style textures, natural and wild, not gory",
+  "started": "2026-11-27T15:35:20.546Z",
+  "creditsBefore": 1420,
+  "steps": {
+    "model": {
+      "task": "f43e6acf-67b5-4144-8e40-7f8b00fd574b",
+      "result": {
+        "task_id": "f43e6acf-67b5-4144-8e40-7f8b00fd574b",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/e_thornhog/1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_thornhog/1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/model.glb",
+        "preview": "out/models/e_thornhog/1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/preview.png"
+      }
+    },
+    "check": {
+      "task": "0a45b1c1-af6e-4518-9e92-92677cf4cc4a",
+      "result": {
+        "task_id": "0a45b1c1-af6e-4518-9e92-92677cf4cc4a",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/e_thornhog/2-check/tripo-out/rig-check-0a45b1c1",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "b4f5c8f9-6901-44c5-905f-922e7ee7d5e2",
+      "rigType": "quadruped",
+      "result": {
+        "task_id": "b4f5c8f9-6901-44c5-905f-922e7ee7d5e2",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/e_thornhog/3-rig/tripo-out/rig-b4f5c8f9",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/e_thornhog/3-rig/tripo-out/rig-b4f5c8f9/model.glb",
+        "preview": "out/models/e_thornhog/3-rig/tripo-out/rig-b4f5c8f9/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "f6fe9c49-74ad-4eb0-9518-3ba52c01b05c",
+        "presets": [
+          "preset:quadruped:walk"
+        ],
+        "result": {
+          "task_id": "f6fe9c49-74ad-4eb0-9518-3ba52c01b05c",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/e_thornhog/4-anim-1/tripo-out/retarget-f6fe9c49",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/e_thornhog/4-anim-1/tripo-out/retarget-f6fe9c49/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1355,
+  "creditsUsed": 65,
+  "finished": "2026-11-27T15:38:04.099Z",
+  "files": [
+    "1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/generated_image.jpeg",
+    "1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/model.glb",
+    "1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/preview.png",
+    "1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/rendered_image.webp",
+    "1-model/tripo-out/a-thornhog-of-the-meadows-a-stoc-f43e6acf/task.json",
+    "2-check/tripo-out/rig-check-0a45b1c1/task.json",
+    "3-rig/tripo-out/rig-b4f5c8f9/model.glb",
+    "3-rig/tripo-out/rig-b4f5c8f9/preview.png",
+    "3-rig/tripo-out/rig-b4f5c8f9/rendered_image.webp",
+    "3-rig/tripo-out/rig-b4f5c8f9/task.json",
+    "4-anim-1/tripo-out/retarget-f6fe9c49/model.glb",
+    "4-anim-1/tripo-out/retarget-f6fe9c49/task.json",
+    "manifest.json"
+  ]
+}

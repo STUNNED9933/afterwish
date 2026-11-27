@@ -1403,8 +1403,9 @@ function fightTick(dt) {
       me.hp = Math.min(me.maxHp, me.hp + me.maxHp * 0.22);
       if (boss.t < 9) bark([['ilse', 'I\'ve got you, Sprout! Keep moving!']]);
     }
-    if (boss.t > 7 && !boss.warned) { boss.warned = true; bark([['', 'Nothing you do so much as marks him.']]); }
-    if (boss.t > 22 || me.hp < me.maxHp * 0.35) { boss.stage = 0; playDeath(); }
+    if ((boss.t > 7 || boss.hits >= 3) && !boss.warned) { boss.warned = true; bark([['', 'Nothing you do so much as marks him.']]); }
+    // (0.99.30) it ends when he has had enough of being hit (an archer keeping her distance is never hurt), or he of you
+    if (boss.t > 20 || (boss.hits || 0) >= 8 || me.hp < me.maxHp * 0.35) { boss.stage = 0; playDeath(); }
   } else if (boss.stage === 2) {
     if (me.hp < me.maxHp * 0.25) me.hp = me.maxHp * 0.25; // the Link holds him up
     if (boss.b.hp < boss.b.maxHp * 0.1) { boss.stage = 0; playAfter(); }
@@ -1414,7 +1415,8 @@ function fightTick(dt) {
 }
 function vesperEvent(ev) {
   if (!boss || ev.id !== boss.b.id) return;
-  if (ev.type === 'swipe' && company.vesper) { company.vesper.play('cast', { speed: 1.4 }); fx.ring(boss.b.x, boss.b.z, 2.2, 0x2a0a3a, 0.35); }
+  if (ev.type === 'hit' && boss.stage === 1) boss.hits = (boss.hits || 0) + 1;
+  if (ev.type === 'swipe' && company.vesper) { company.vesper.play('cast', { speed: 0.9, fade: 0.2 }); fx.ring(boss.b.x, boss.b.z, 2.2, 0x2a0a3a, 0.35); } // (0.99.30) unhurried, blended in (it snapped)
 }
 async function playDeath() {
   boss.b.state = 'idle';

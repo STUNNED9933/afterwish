@@ -33,6 +33,9 @@ export class Lively {
     body.group.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     body.outer = new THREE.Group(); // (the creature's own group turns its model to face +Z: this one turns and sizes it)
     body.outer.add(body.group);
+    // (0.99.30) a long body (a boar, a wolf) set back so its snout, not its middle, is at the edge of its reach:
+    // otherwise it stands with its head inside whoever it is biting
+    if (spec.back) body.group.position.z = -spec.back;
     return { body, key };
   }
 

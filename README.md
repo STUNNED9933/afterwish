@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: fixes from playing (0.99.30)
+
+- **Boars and wolves no longer bite from inside you.** Their bodies are longer than their reach, so they stood with their heads in whoever they attacked; each is now set back so its snout is at the edge of its reach, and the Thornhog is a little smaller.
+- **Vesper's first fight ends on hits, too.** It used to end only when he had hurt you badly (or after a while), so an archer keeping her distance had to wait it out; now it also ends once you have landed eight blows on him. His cast is slower and blends in instead of snapping.
+
 ### Lacuna: Quest 5, Word Gets Around; real townsfolk and beasts (0.99.29)
 
 - **Quest 5, Word Gets Around.** Spring, after the winter without Ilse. Rowan has three contracts from the Guild's board, posted for the Hounds by name ("Half of Sunmere thinks you killed a dragon"): a **cairn golem walking** in the stony north, **Thornhogs at Brightwater** that don't run, and **wolves howling past the east gate** in daylight. Do them in any order; the tracker and the marker show what's left. Every one of the beasts is grey with the same ash. Back at the Guild, Sorrel lays ash on four places on a map (the three, and the glade) and they make a ring with Sunmere in the middle. Odile won't rank you by the glass any more: **rank E, provisional**, a first in her years there. Dace manages "Don't let it go to your head, stray" and says Wren hasn't been well since the glass. Across the plaza a woman in a grey cape is watching; when you look again, she's gone. Next: Quest 6, An Invitation.

@@ -16,9 +16,9 @@ import { Lively } from './lively.js';
 
 // (0.99.29) beasts drawn close up as the main game's own animated models (and the Thornhog's own)
 const LIVE_BEAST = {
-  wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
+  wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a, back: 0.35 }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
   golem: { ...CREATURES.golem, height: 2.6 },
-  hog: { model: 'e_thornhog', height: 0.95, beast: true },
+  hog: { model: 'e_thornhog', height: 0.8, beast: true, back: 0.45 },
 };
 const ASHEN = new Map(); // (Quest 4 and 5) ash in their fur or their cracks: the same body, greyed and darkened
 const liveSpec = (b) => {

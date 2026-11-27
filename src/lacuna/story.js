@@ -129,6 +129,7 @@ export async function openingWolves(a, at) {
   a.remove('wolf1');
   await a.say('juni', 'Got one! Rowan, there\'s someone down here! A little one!');
   a.actor('rowan', juniAt.x + 2, juniAt.z + 1);
+  a.draw('rowan'); // (0.99.25) drawn as he comes
   a.actor('sorrel', juniAt.x + 3, juniAt.z - 1);
   a.actor('ilse', juniAt.x + 1, juniAt.z - 1.5);
   a.camera([R.x - Math.cos(away) * 6 + 3, 2.6, R.z - Math.sin(away) * 6 + 3], [R.x, 1, R.z], 1.2);
@@ -137,6 +138,7 @@ export async function openingWolves(a, at) {
   await a.anim('rowan', 'slash', { speed: 1.2 });
   fx.puff(wolves[1].x, wolves[1].z);
   a.remove('wolf2');
+  a.sheathe('rowan'); // (0.99.25) put away as soon as it is done
   await a.walk('sorrel', R.x - Math.cos(away) * 5, R.z - Math.sin(away) * 5 + 2);
   a.actor('sorrel').face(wolves[2].x, wolves[2].z);
   a.anim('sorrel', 'cast');
@@ -246,6 +248,7 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
     { at: total - 36, lines: [['rowan', 'There she is. Sunmere.'], ['rowan', 'We\'ll take you to the Guild in the morning. They\'ll want to read you.'], ['', 'Read you?'], ['juni', 'It doesn\'t hurt! Mostly.']] },
   ];
   let lead = 0, said = 0, waiting = false, finished = false;
+  if (actors.rowan && actors.rowan.sheathe) actors.rowan.sheathe(); // (0.99.25) on the road, the sword at his hip
   const st = {
     get done() {
       return finished;
@@ -270,9 +273,11 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
         if (said < talk.length && lead >= talk[said].at) bark(talk[said++].lines);
         if (lead >= total && Math.hypot(me.x - here.x, me.z - here.z) < 9) { finished = true; onDone(); }
       }
+      const from = {};
       for (const who of order) {
         const a = actors[who];
         if (!a) continue;
+        from[who] = { x: a.x, z: a.z };
         const p = at(lead - lag[who] - 3.5);
         const tx = p.x + p.nx * side[who], tz = p.z + p.nz * side[who];
         const d = Math.hypot(tx - a.x, tz - a.z);
@@ -282,16 +287,25 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
           a.z += ((tz - a.z) / d) * Math.min(d, sp * dt);
           a.facing = Math.atan2(tz - a.z, tx - a.x);
           a.sync();
-          if (a.looping !== (sp > 3.5 ? 'run' : 'walk') && !a.once) a.loop(sp > 3.5 ? 'run' : 'walk');
-        } else if (a.looping !== 'idle' && !a.once) {
-          a.loop('idle');
-          a.face(me.x, me.z);
+        }
+      }
+      separate(order.map((w) => actors[w]).filter(Boolean), me, 1.0, land);
+      for (const who of order) {
+        const a = actors[who];
+        if (!a) continue;
+        // (0.99.25) the clip follows how fast they really went: held back (by the hero standing on their spot, or
+        // each other), they stand, not run on the spot
+        const v = Math.hypot(a.x - from[who].x, a.z - from[who].z) / Math.max(dt, 1e-3);
+        a.vel = (a.vel || 0) + (v - (a.vel || 0)) * Math.min(1, dt * 8);
+        const want = a.vel > 3.3 ? 'run' : a.vel > 0.45 ? 'walk' : 'idle';
+        if (a.looping !== want && !a.once) {
+          a.loop(want);
+          if (want === 'idle') a.face(me.x, me.z, false);
         }
         // near the hero, they look at them now and then (stopped, or waiting)
         a.lookTarget = Math.hypot(me.x - a.x, me.z - a.z) < 7 ? { x: me.x, z: me.z } : null;
         a.update(dt);
       }
-      separate(order.map((w) => actors[w]).filter(Boolean), me, 1.0, land);
     },
   };
   return st;
@@ -323,6 +337,7 @@ export const YARD = { rowan: atCrystal(-4.6, -1.3), ilse: atCrystal(-5.3, -0.1),
 export const ODILE = atCrystal(1.45, 0);
 /** The Company waits in the yard, facing the Telling Glass; Odile by it. */
 export function atGuild(actors, { walk = false } = {}) {
+  if (actors.rowan && actors.rowan.sheathe) actors.rowan.sheathe(true); // (0.99.25) in town his sword stays at his hip
   const what = { rowan: 'arms', ilse: 'idle', juni: 'look', sorrel: 'wait', odile: 'idle' };
   for (const [who, a] of Object.entries(actors)) {
     if (!a) continue;
@@ -355,7 +370,8 @@ export async function crystalScene(a) {
   a.loop('wren', 'arms');
   a.loop('odile', 'idle');
   cr.rest();
-  cr.mark(false);
+  cr.spend(false);
+  cr.crack(false);
   await a.camera(V(-12, 3.4, 3.4), V(1.5, 0, 2.4), 0);
   await a.fade(0, 1.2);
   a.camera(V(-9, 2.2, 2.6), V(0.5, 0, 2.2), 5);
@@ -408,14 +424,46 @@ export async function crystalScene(a) {
   await a.camera(V(-0.6, 1.0, 1.65), V(-2.6, 2.3, 1.35), 0.7);
   await a.say('', 'Laughter goes round the yard. Not all of it is unkind, and somehow that is worse.');
   cr.rest();
+  cr.spend(true); // (nobody looks: the sand settles a shade greyer than it was)
   a.talkCam(true);
   await a.say('odile', 'Aptitude is set at birth, child. I am sorry. The Guild registers anyone, so you may take work here, but you will be rank F, and rank F does not change.');
   a.walk('juni', ...P(-2.7, -1.5));
   await a.say('juni', 'Say it again, Dace. Go on. To my face.', { to: 'dace' });
   await a.say('dace', 'Easy, Hound. Keep your stray on a leash.', { to: 'juni' });
+  // Rowan steps up, and his hand goes to his sword
+  a.walk('rowan', ...P(-2.4, 1.0));
+  await a.wait(0.4);
+  a.draw('rowan');
+  await a.say('rowan', 'Walk away, Dace.', { to: 'dace' });
+  await a.say('dace', '...Touchy.', { to: 'rowan' });
+  a.walk('dace', ...P(-2.8, 3.6));
   await a.say('rowan', 'Juni. Leave it.', { to: 'juni' });
+  a.sheathe('rowan');
+  a.quiet();
+  // Wren next: and the glass gives her nothing at all
+  a.talkCam(true);
+  await a.say('odile', 'Wren, of the Silver Sash. You may as well go now, while we are all here.', { to: 'wren' });
+  a.talkCam(false);
+  a.quiet();
+  await a.walk('wren', ...P(-1.2, 0.1));
+  a.actor('wren').face(CRYSTAL.x, CRYSTAL.z);
+  await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.8);
+  cr.read('frost', 0);
+  await a.wait(2.2);
+  await a.say('', 'Nothing. Not a grain moves.');
+  await a.say('wren', '...That\'s not right. Last year it frosted to the brim.', { to: 'odile', cam: false });
+  a.shake(0.08, 0.3);
+  cr.crack(true);
+  await a.camera(V(-1.6, 0.7, 1.7), V(0, 0, 1.7), 0.5);
+  await a.say('', 'A small, sharp sound, like ice on a pond. A hairline crack runs up the side of the glass.');
+  await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.8);
+  await a.say('wren', 'I didn\'t... I didn\'t do that.', { to: 'odile', cam: false });
+  a.anim('odile', 'no');
+  await a.say('odile', 'No. No, you didn\'t.', { to: 'wren', cam: false });
+  await a.say('odile', 'The telling is closed for today. The glass is old; it wants seeing to. Come back tomorrow, all of you.', { cam: false });
+  a.talkCam(true);
+  await a.say('dace', 'Brilliant. Thanks a lot, stray.', { to: 'hero' });
   a.walk('dace', ...P(-1.2, 10));
-  await a.say('wren', 'Good luck. I mean it.');
   a.walk('wren', ...P(-0.3, 10.6));
   a.quiet();
   // the Company closes round the hero
@@ -426,21 +474,15 @@ export async function crystalScene(a) {
   await a.say('rowan', 'The number tells you where you start. Not where you stop. We\'ll train you ourselves.');
   a.remove('dace');
   a.remove('wren');
-  // Sorrel, at the glass: the grains the hero stirred have turned black, and stand in a line
+  // Sorrel lingers at the glass
   a.walk('sorrel', ...P(-1.0, -0.9));
   a.talkCam(false);
   a.quiet();
-  await a.camera(V(-2.6, -2.2, 1.9), V(0, 0, 1.75), 1.2);
-  cr.mark(true);
-  await a.wait(2.6);
-  await a.say('sorrel', 'Rowan.', { to: 'rowan', cam: false });
-  await a.camera(V(-1.5, 0.6, 1.85), V(0, 0, 1.75), 1.4);
-  await a.say('', 'The grains you stirred have turned black. They have drawn themselves into a thin, upright line in the middle of the glass, and they are not moving.');
-  await a.say('sorrel', 'Sand settles. That isn\'t settling. That\'s not an element.', { to: 'rowan', cam: false });
-  a.talkCam(true);
-  await a.say('rowan', 'Then what is it?', { to: 'sorrel' });
-  await a.say('sorrel', 'It looks like the tear in the forest. And I don\'t like that I know that.', { to: 'rowan' });
-  await a.say('odile', 'The glass is old. It does that, now and then. Off you go, all of you. Next!');
+  await a.camera(V(-2.4, -1.8, 1.8), V(0, -0.4, 1.6), 1.2);
+  await a.say('', 'Sorrel is the last to leave. He takes a pinch of sand from the top of the glass and rubs it between his fingers.');
+  await a.say('', 'It doesn\'t run like sand any more. It clings, like ash.');
+  await a.say('rowan', 'Sorrel.', { to: 'sorrel', cam: false });
+  await a.say('sorrel', '...Coming.', { to: 'rowan', cam: false });
   a.talkCam(false);
   a.quiet();
   await a.fade(1, 0.8);
@@ -458,6 +500,7 @@ export const DRILL = {
 /** The Company at the training ground; Magistra Odile back at her crystal. */
 export function atTraining(actors) {
   const what = { rowan: 'arms', ilse: 'idle', juni: 'look', sorrel: 'wait', odile: 'idle' };
+  if (actors.rowan && actors.rowan.draw) actors.rowan.draw(true); // (0.99.25) on the training ground his sword is out
   for (const [who, a] of Object.entries(actors)) {
     if (!a) continue;
     const at = who === 'odile' ? ODILE : DRILL[who];

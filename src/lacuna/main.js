@@ -571,8 +571,18 @@ function aimPoint() {
 /** A held skill let go (Whirlwind stops, Deadeye looses). */
 function letGo(k) {
   if (!(k === 'E' && me.whirl) && !(k === 'R' && me.draw)) return;
-  world.act(1, k, 0, 0, true);
-  if (net && net.ready) net.send({ t: 'act', k, ax: 0, az: 0, up: true });
+  const a = aimPoint(); // (0.99.25) a Deadeye flies where you point when you let go (scoped or not)
+  world.act(1, k, a.x, a.z, true);
+  if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2), up: true });
+}
+// while a Deadeye is drawn, it follows the aim (ten times a second to the server)
+let aimSent = 0;
+function followAim(dt) {
+  if (!me.draw) return;
+  const a = aimPoint();
+  world.aim(1, a.x, a.z);
+  aimSent -= dt;
+  if (net && net.ready && aimSent <= 0) { aimSent = 0.1; net.send({ t: 'aim', ax: +a.x.toFixed(2), az: +a.z.toFixed(2) }); }
 }
 function act(k) {
   // the Oath is a toggle: pressed again, it ends (no mana, nothing to aim)
@@ -990,7 +1000,7 @@ async function playCrystal() {
   for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile']) company[who] = cutscene.keep(who) || company[who];
   cutscene.clear();
   crystal.rest();
-  crystal.mark(true); // the black line stays in the glass
+  crystal.mark(true); // the sand stays spent, the glass cracked
   setStage('path');
   questRun = atTraining(company); // (they go on ahead while the screen is dark)
   bark([['rowan', 'Training ground, outside the east gate. We\'ll be waiting.']]);
@@ -1108,6 +1118,8 @@ function nearestUse() {
   return best;
 }
 
+Actor.land = world.land; // (0.99.25) people in the story keep out of houses, walls and trees
+
 // ---- (0.99.24) Days with the Hounds: chores while they look after him; stronger and less fogged each day
 const well = placeBuilding('well_blue', { x: WELL.x, z: WELL.z, fw: 1.9, fd: 1.9 });
 well.then((b) => b && view.scene.add(b));
@@ -1145,6 +1157,7 @@ function glint(x, z, size = 0.32) {
   return sp;
 }
 function companyHome() {
+  if (company.rowan) company.rowan.sheathe(true); // (0.99.25) in town his sword stays at his hip
   for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) {
     if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
     const [x, z] = HOME_SPOTS[who];
@@ -1201,7 +1214,8 @@ function startTask() {
   } else if (T.kind === 'gather') {
     let n = 0;
     const ilse = company.ilse;
-    ilse.walkTo(HERBS[0].x - 2, HERBS[0].z + 2, { run: false }).then(() => ilse.loop('crouch'));
+    // out through the plaza and up the north road (not through the houses), to the meadow
+    ilse.walkPath([{ x: -6, z: 2 }, { x: 2, z: -6 }, { x: 2.2, z: -16 }, { x: 1.8, z: -30 }, { x: 0.5, z: -44 }, { x: HERBS[0].x - 2, z: HERBS[0].z + 2 }]).then(() => ilse.loop('crouch'));
     for (const [k, h] of HERBS.entries()) {
       const m = glint(h.x, h.z);
       herbMeshes.push(m);
@@ -1394,6 +1408,7 @@ function frame(now) {
   if (story.stage === 'crystal' && !cutscene.active && questRun && Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 6.5) playCrystal();
   if (story.stage === 'path' && !story.trial && !trial && !cutscene.active && questRun && Math.hypot(me.x - TRAINING.ring.x, me.z - TRAINING.ring.z) < 12) playTraining();
   updateBubbles(dt);
+  followAim(dt);
   drawFog(dt, performance.now() / 1000);
   drawRift(dt);
   if (keepsakeMesh) { const tw = 0.28 + Math.abs(Math.sin(performance.now() / 380)) * 0.18; keepsakeMesh.scale.setScalar(tw); } // it twinkles

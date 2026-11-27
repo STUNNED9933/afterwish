@@ -545,3 +545,19 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   check('...three days of chores, and every place they happen has room to stand', DAYS.length === 3 && [HOME.door, WOODPILE, WELL_AT, ...HERBS].every((p) => clear(p.x, p.z)) && Object.values(HOME_SPOTS).every(([x, z]) => clear(x, z)));
   console.log(`${pass} passed, ${failed} failed (after the days)`);
 }
+
+{
+  // (0.99.25) a drawn Deadeye follows the aim (looking down the scope after drawing): it flies where you point at the end
+  const { LandWorld: LW, TICK: T } = await import('../src/lacuna/sim.js');
+  const w = new LW();
+  const p = w.addPlayer(1, { x: 60, z: 60 }, { cls: 'archer' });
+  p.x = 60; p.z = 60;
+  w.act(1, 'R', 80, 60);
+  for (let i = 0; i < 6; i++) w.step(T);
+  w.aim(1, 60, 80); // turned to look the other way, scoped
+  w.act(1, 'R', 60, 80, true);
+  for (let i = 0; i < 30; i++) w.step(T);
+  const shot = w.events.find((e) => e.type === 'shot' && e.kind === 'deadeye');
+  check('Deadeye follows the aim while drawn: it is loosed where you point, not where you first pressed', shot && Math.abs(shot.dz - 1) < 1e-6 && Math.abs(shot.dx) < 1e-6, shot && `${shot.dx} ${shot.dz}`);
+  console.log(`${pass} passed, ${failed} failed (after the aim)`);
+}

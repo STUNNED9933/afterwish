@@ -189,6 +189,17 @@ export class LandWorld {
     p.acts.push({ k, ax, az, up: !!up });
   }
 
+  /** (0.99.25) Where a drawn Deadeye points now: it follows the aim (the scope, the crosshair) until it is loosed. */
+  aim(pid, ax, az) {
+    const p = this.players.get(pid);
+    if (!p || !p.draw || !Number.isFinite(ax) || !Number.isFinite(az)) return;
+    const dx = ax - p.x, dz = az - p.z, d = dHypot(dx, dz);
+    if (!(d > 0.01)) return;
+    p.draw.dx = dx / d;
+    p.draw.dz = dz / d;
+    p.facing = dAtan2(dz, dx);
+  }
+
   /** Could this hero pay `cost` mana now (a Berserker may pay what he lacks in blood)? */
   canPay(p, cost) {
     if (p.mp >= cost) return true;
@@ -387,7 +398,7 @@ export class LandWorld {
     if (up) {
       // a held skill let go: the spin winds down, the arrow flies (once drawn)
       if (k === 'E' && p.whirl) p.whirl.held = false;
-      if (k === 'R' && p.draw) p.draw.held = false;
+      if (k === 'R' && p.draw) { p.draw.held = false; if (ax || az) this.aim(p.pid, ax, az); } // loosed where it points now
       return;
     }
     if (k === 'R' && p.cls === 'warrior' && p.oath && p.cd.R <= 0 && !p.dead) {

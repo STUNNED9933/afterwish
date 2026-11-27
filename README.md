@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: fixes from playing (0.99.25)
+
+- **Deadeye follows your aim while you hold it.** Its direction was fixed when you pressed R, so scoping in mid-draw changed nothing; now the arrow flies wherever you point when you let go (or when it looses itself at full draw), scoped or not. (The server is told where you aim ten times a second while you draw.)
+- **Rowan keeps his sword at his left hip** in town, on the road and in the Guild's yard, so he can fold his arms. He **draws it when it is needed**, his right hand reaching across to the hilt and pulling it out: coming at the wolves, on the training ground, and in the Guild's yard when Dace calls the hero a stray ("Walk away, Dace."). Then back it goes.
+- **The Telling Glass's secret is quieter.** No black line: the sand the hero stirred just settles a shade greyer. Then **Wren** puts her hands on the glass and gets nothing at all, not a grain, and a hairline crack runs up it. Odile closes the telling for the day. Dace blames the stray. Only Sorrel, last to leave, rubs a pinch of the sand between his fingers: it clings, like ash. The glass stays cracked.
+- **Ilse no longer walks on hooves.** Her model was made with her feet pointing up and a knee bent; the animation tools now straighten a bent knee and set an upturned foot flat before measuring (as they already did for arms). Juni, Dace, Wren and the hero, a little bent at the knee too, were rebuilt the same way.
+- **Nobody walks through houses.** People in the story are kept out of walls and trees everywhere now (not only in the scenes), and Ilse goes to the meadow by the north road.
+- **The Hounds no longer run on the spot** on the walk into town: held back (by the hero standing where they want to be), they stand instead.
+
 ### Lacuna: Days with the Hounds (0.99.24)
 
 - **Between the walk into town and the Guild, three days with the Iron Hounds** at their lodging on the west side of the plaza. Each day a few chores (press **F** at the right place; the marker and the tracker show what is next), then **sleep** at their door: night, sometimes a memory, and the next morning.

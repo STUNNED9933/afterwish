@@ -64,6 +64,7 @@ function findClip(clips, what) {
 const UP = new THREE.Vector3(0, 1, 0);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _wq = new THREE.Quaternion(), _v = new THREE.Vector3();
+const _p = new THREE.Vector3(), _s = new THREE.Vector3(), _d = new THREE.Vector3(), _z = new THREE.Vector3(0, 0, 1), _one = new THREE.Vector3(1, 1, 1), _gq = new THREE.Quaternion(), _id = new THREE.Quaternion(), _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4();
 /** The neck and head of a rig, to turn toward someone (after the clip has posed them, each frame). */
 export function makeLook(root) {
   const head = root && root.getObjectByName('Head');
@@ -171,10 +172,29 @@ export class Actor {
           if (!w || !hand || !this.alive) return;
           w.scale.setScalar(this.spec.weapon.size / holder.scale.x);
           holder.add(w);
-          this.blade = { w, hand, grip: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 4) };
+          this.blade = { w, hand, grip: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 4), upper: root.getObjectByName('R_Upperarm'), fore: root.getObjectByName('R_Forearm'), pelvis: root.getObjectByName('Pelvis') || root.getObjectByName('Hip') };
         });
       }
     });
+  }
+
+  /**
+   * (0.99.25) The sword: at his left hip until he needs it. draw(): his right hand reaches across to the hilt and
+   * brings it out; sheathe(): back it goes. Instantly when `now` (a scene starting with it drawn).
+   */
+  draw(now = false) {
+    if (this.armed && !this.sheathing) return;
+    this.armed = true;
+    this.sheathing = false;
+    this.swordT = now ? 1 : 0;
+    if (this.asked === 'arms') this.loop('arms', 0.2); // arms unfold to draw
+  }
+
+  sheathe(now = false) {
+    if (!this.armed) return;
+    this.armed = false;
+    this.sheathing = true;
+    this.swordT = now ? 1 : 0;
   }
 
   place(x, z, facing = this.facing) {
@@ -210,6 +230,8 @@ export class Actor {
 
   /** A looping clip (idle, walk, talk, kneel...). */
   loop(what, fade = 0.25) {
+    this.asked = what;
+    if (what === 'arms' && this.armed) what = 'idle'; // (0.99.25) no folding his arms round a drawn sword
     this.looping = what;
     if (this.once) return;
     const a = this.action(what) || this.action('idle');
@@ -218,6 +240,7 @@ export class Actor {
 
   /** A clip once (a slash, a wave): resolves when it ends. hold: stay on its last pose. */
   play(what, { hold = false, speed = 1, fade = 0.15 } = {}) {
+    if (what === 'slash' && this.spec.weapon && !this.armed) this.draw(true); // no cutting with a sheathed sword
     const a = this.action(what);
     if (!a) return new Promise((r) => setTimeout(r, 400));
     a.setLoop(THREE.LoopOnce, 1);
@@ -226,6 +249,14 @@ export class Actor {
     this.current = null;
     this.fadeTo(a, fade);
     return new Promise((resolve) => { this.once = { action: a, resolve, hold, left: a.getClip().duration / speed }; });
+  }
+
+  /** (0.99.25) Walk a route, point after point (round buildings rather than through them). */
+  async walkPath(points, opts = {}) {
+    for (const p of points) {
+      if (!this.alive) return;
+      await this.walkTo(p.x, p.z, opts);
+    }
   }
 
   /** Walk (or run) to a spot; resolves on arrival. */
@@ -249,6 +280,7 @@ export class Actor {
         const step = Math.min(d, p.speed * dt);
         this.x += (dx / d) * step;
         this.z += (dz / d) * step;
+        if (Actor.land && !this.spec.beast) Actor.land.pushOut(this, 0.35); // (0.99.25) never through a house
         this.facing = Math.atan2(dz, dx);
         if (this.spec.beast) this.body.position.y = Math.abs(Math.sin(performance.now() / 70)) * 0.08;
         this.sync();
@@ -283,15 +315,83 @@ export class Actor {
       this.lift += (want - this.lift) * Math.min(1, dt * 12);
       this.holder.position.y = this.lift;
     }
-    if (this.blade) {
-      // in the hand each frame, at a fixed size (the hand bone's own scale changes with the pose)
-      this.holder.updateMatrixWorld(true);
-      const m = new THREE.Matrix4().copy(this.holder.matrixWorld).invert().multiply(this.blade.hand.matrixWorld);
-      const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
-      m.decompose(p, q, s);
-      this.blade.w.position.copy(p);
-      this.blade.w.quaternion.copy(q).multiply(this.blade.grip);
+    if (this.blade) this.placeBlade(dt);
+  }
+
+  /** Where the sword hangs (world space): his left hip, hilt forward and up, blade down and back. */
+  hipPose(pos, quat) {
+    const B = this.blade;
+    this.group.updateMatrixWorld(true);
+    B.pelvis.getWorldPosition(pos);
+    this.group.worldToLocal(pos);
+    // the group's own frame: +Z forward, +X to his left
+    pos.x += 0.24; pos.z += 0.06; pos.y -= 0.02;
+    this.group.localToWorld(pos);
+    const dir = _d.set(0.12, -0.78, -0.62).normalize(); // down and back
+    quat.setFromUnitVectors(_z, dir).premultiply(this.group.getWorldQuaternion(_gq));
+  }
+
+  /** Where the hand holds the hilt (world space). */
+  handPose(pos, quat) {
+    const B = this.blade;
+    B.hand.updateWorldMatrix(true, false);
+    B.hand.getWorldPosition(pos);
+    B.hand.getWorldQuaternion(quat).multiply(B.grip);
+  }
+
+  /** Put the right arm's hand at `target` (world), weight w (two bones: upper arm and forearm). */
+  reach(target, w) {
+    const B = this.blade;
+    if (!B.upper || !B.fore || w <= 0.001) return;
+    this.holder.updateMatrixWorld(true);
+    const S = B.upper.getWorldPosition(new THREE.Vector3()), E = B.fore.getWorldPosition(new THREE.Vector3()), W = B.hand.getWorldPosition(new THREE.Vector3());
+    const a = S.distanceTo(E), b = E.distanceTo(W);
+    const toT = target.clone().sub(S);
+    const d = Math.min(a + b - 0.001, Math.max(Math.abs(a - b) + 0.001, toT.length()));
+    toT.normalize();
+    // keep the elbow bending the way it already bends
+    const pole = E.clone().sub(S).projectOnPlane(toT);
+    if (pole.lengthSq() < 1e-8) pole.set(0, -1, 0).projectOnPlane(toT);
+    pole.normalize();
+    const cosA = (a * a + d * d - b * b) / (2 * a * d), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+    const E2 = S.clone().addScaledVector(toT, a * cosA).addScaledVector(pole, a * sinA);
+    const turn = (bone, from, to) => {
+      const q = new THREE.Quaternion().setFromUnitVectors(from.normalize(), to.normalize());
+      q.slerp(_id, 1 - w);
+      const wq = bone.getWorldQuaternion(new THREE.Quaternion()).premultiply(q);
+      const pq = bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+      bone.quaternion.copy(pq.multiply(wq));
+      bone.updateMatrixWorld(true);
+    };
+    turn(B.upper, E.clone().sub(S), E2.clone().sub(S));
+    const E3 = B.fore.getWorldPosition(new THREE.Vector3()), W3 = B.hand.getWorldPosition(new THREE.Vector3());
+    turn(B.fore, W3.sub(E3), target.clone().sub(E3));
+  }
+
+  /** Each frame: the sword in his hand, at his hip, or on its way between (a reach, then the blade moves with the hand). */
+  placeBlade(dt) {
+    const B = this.blade;
+    if (this.armed === undefined) this.armed = !!this.spec.drawn;
+    let inHand = this.armed;
+    if (this.swordT < 1) {
+      this.swordT = Math.min(1, this.swordT + dt / (this.swordDur || 0.6));
+      const t = this.swordT;
+      // the hand goes to the hip (t to 0.4), the blade changes hands there, the hand comes back (to 1)
+      const w = t < 0.4 ? t / 0.4 : 1 - (t - 0.4) / 0.6;
+      const ease = w * w * (3 - 2 * w);
+      this.hipPose(_p, _q);
+      this.reach(_p, ease);
+      inHand = this.armed ? t >= 0.4 : t < 0.4;
+      if (t >= 1) { this.sheathing = false; if (!this.armed && this.asked === 'arms') this.loop('arms', 0.35); } // put away: arms folded again
     }
+    this.holder.updateMatrixWorld(true);
+    if (inHand) this.handPose(_p, _q);
+    else this.hipPose(_p, _q);
+    // into the holder's space (it is scaled and turned)
+    const m = _m.copy(this.holder.matrixWorld).invert().multiply(_m2.compose(_p, _q, _one));
+    m.decompose(_p, _q, _s);
+    B.w.position.copy(_p);
+    B.w.quaternion.copy(_q);
   }
 
   remove() {

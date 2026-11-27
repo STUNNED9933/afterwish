@@ -69,6 +69,34 @@ function straightArms(t) {
     over.set(b, pw.clone().invert().multiply(wq).normalize());
   };
   for (const side of ['L_', 'R_']) { turn(side + 'Upperarm', side + 'Forearm'); turn(side + 'Forearm', side + 'Hand'); }
+  // (0.99.25) the legs too (see retarget.js straightenLegs): a bent knee straightened, a foot pointing up set forward
+  const pos = (n) => new THREE.Vector3().setFromMatrixPosition(world(n));
+  const turnTo = (bn, cn, want) => {
+    const b = t.byName.get(bn), c = t.byName.get(cn);
+    if (!b || !c) return;
+    const dir = pos(c).sub(pos(b)).normalize();
+    if (dir.angleTo(want) < 0.1) return;
+    const C = new THREE.Quaternion().setFromUnitVectors(dir, want);
+    const rots = worldRot(t, over);
+    const wq = C.multiply(rots.get(b));
+    const pw = t.parent.get(b) ? rots.get(t.parent.get(b)) : new THREE.Quaternion();
+    over.set(b, pw.clone().invert().multiply(wq).normalize());
+  };
+  for (const side of ['L_', 'R_']) {
+    const T = t.byName.get(side + 'Thigh'), K = t.byName.get(side + 'Calf');
+    if (!T || !K) continue;
+    turnTo(side + 'Calf', side + 'Foot', pos(K).sub(pos(T)).normalize());
+    const F = t.byName.get(side + 'Foot'), Toe = t.byName.get(side + 'ToeBase');
+    if (!F || !Toe) continue;
+    const d = pos(Toe).sub(pos(F)).normalize();
+    const pitch = Math.asin(-d.y);
+    if (pitch < -0.05 || pitch > 0.6) {
+      const flat = new THREE.Vector3(d.x, 0, d.z);
+      if (flat.lengthSq() < 0.04 || flat.x < 0) flat.set(1, 0, 0);
+      flat.normalize();
+      turnTo(side + 'Foot', side + 'ToeBase', flat.multiplyScalar(Math.cos(0.2)).add(new THREE.Vector3(0, -Math.sin(0.2), 0)).normalize());
+    }
+  }
   return over;
 }
 const sBind = worldRot(S, straightArms(S));

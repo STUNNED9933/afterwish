@@ -55,6 +55,7 @@ export class LandRoom {
       if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true);
     }
     else if (msg.t === 'jump') this.world.jump(m.pid);
+    else if (msg.t === 'aim') { const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF); if (ax !== null && az !== null) this.world.aim(m.pid, ax, az); } // (0.99.25) a drawn Deadeye following the aim
     else if ((msg.t === 'emote' && EMOTE_IDS.includes(msg.id)) || (msg.t === 'face' && EMOTICONS.includes(msg.id))) {
       // (0.99.19) an emote or an emoticon: for everyone near to see (not too often)
       const p = this.world.players.get(m.pid);

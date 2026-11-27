@@ -1,9 +1,10 @@
 // Lacuna: the Adventurers' Guild's Telling Glass (Quest 2). A tall glass of pale sand on a stone stand in the Guild's
 // yard. Two hands on the glass and your mana goes into the sand, which answers in the way of your element (a
 // spiral for wind, embers rising for fire, frost climbing the glass for ice, the sand heaving up for earth); how
-// much of it answers is your aptitude. For the hero, a few grains stir and no element at all. Afterwards the grains
-// he stirred turn black and settle into a thin upright line, like the tear he came through, and stay that way.
-//   const g = buildTellingGlass(CRYSTAL); scene.add(g.group); g.read('wind', 0.8); g.rest(); g.mark(true); g.update(dt)
+// much of it answers is your aptitude. For the hero, a few grains stir and no element at all. (0.99.25) Afterwards
+// the sand he stirred has gone a little dull, and it never answers anyone again: the next hands on the glass get
+// nothing, and a hairline crack runs up it.
+//   const g = buildTellingGlass(CRYSTAL); scene.add(g.group); g.read('wind', 0.8); g.rest(); g.spend(true); g.crack(true)
 import * as THREE from 'three';
 
 const N = 420; // grains
@@ -16,7 +17,7 @@ const LOOK = {
   earth: new THREE.Color(0x8a6a3a),
   none: new THREE.Color(0xe8d9b0),
 };
-const BLACK = new THREE.Color(0x0a0610);
+const DULL = new THREE.Color(0xa8a194); // spent sand: greyer, flatter, like ash
 
 export function buildTellingGlass(at) {
   const group = new THREE.Group();
@@ -71,12 +72,29 @@ export function buildTellingGlass(at) {
   grains.renderOrder = 2;
   grains.frustumCulled = false;
   group.add(grains);
+  // (0.99.25) the hairline crack: a thin jagged dark line up one side of the glass
+  const crackPts = [];
+  {
+    let a = 0.6, y = 0.08;
+    for (let i = 0; i < 14; i++) {
+      const a2 = a + (Math.sin(i * 2.3) * 0.09), y2 = y + 0.065 + (i % 3) * 0.02;
+      crackPts.push(Math.cos(a) * (GLASS.r + 0.003), y, Math.sin(a) * (GLASS.r + 0.003), Math.cos(a2) * (GLASS.r + 0.003), y2, Math.sin(a2) * (GLASS.r + 0.003));
+      if (i === 6) crackPts.push(Math.cos(a2) * (GLASS.r + 0.003), y2, Math.sin(a2) * (GLASS.r + 0.003), Math.cos(a2 + 0.16) * (GLASS.r + 0.003), y2 + 0.05, Math.sin(a2 + 0.16) * (GLASS.r + 0.003)); // a branch
+      a = a2; y = y2;
+    }
+  }
+  const crackGeo = new THREE.BufferGeometry();
+  crackGeo.setAttribute('position', new THREE.Float32BufferAttribute(crackPts, 3));
+  const crackLine = new THREE.LineSegments(crackGeo, new THREE.LineBasicMaterial({ color: 0x2a2a30, transparent: true, opacity: 0.85 }));
+  crackLine.position.y = GLASS.y;
+  crackLine.visible = false;
+  group.add(crackLine);
   // a faint light over the glass while a reading is strong
   const light = new THREE.PointLight(0xffe7a0, 0, 6, 1.6);
   light.position.y = GLASS.y + 0.8;
   group.add(light);
 
-  let element = 'none', power = 0, want = 0, t = 0, mark = 0, markWant = 0;
+  let element = 'none', power = 0, want = 0, t = 0, mark = 0, markWant = 0, crackT = -1;
   const c = new THREE.Color();
   const api = {
     group,
@@ -89,9 +107,19 @@ export function buildTellingGlass(at) {
     rest() {
       want = 0;
     },
-    /** The hero's grains: black, standing in a thin upright line in the middle of the glass. */
+    /** (0.99.25) The sand the hero stirred, spent: a shade greyer and flatter (easy to miss). */
+    spend(on) {
+      markWant = on ? 1 : 0;
+    },
+    /** (0.99.25) The hairline crack up the glass (it runs up quickly when it first comes). */
+    crack(on) {
+      crackLine.visible = !!on;
+      crackT = on ? 0 : -1;
+    },
+    /** The old name for spend (the sand is still marked). */
     mark(on) {
       markWant = on ? 1 : 0;
+      crackLine.visible = !!on;
     },
     get level() {
       return power;
@@ -126,17 +154,21 @@ export function buildTellingGlass(at) {
           }
         }
         let colr = SAND;
-        if (p.marked >= 0 && mark > 0.01) {
-          // a thin black line standing up the middle
-          const ly = 0.08 + (p.marked / MARKED) * (GLASS.h * 0.62);
-          x += (0 - x) * mark; z += (0.004 * Math.sin(p.marked) - z) * mark; y += (ly - y) * mark;
-          colr = c.copy(SAND).lerp(BLACK, mark);
+        if (mark > 0.01) {
+          // spent: the whole bed a shade greyer and settled a little lower, the grains he stirred most of all
+          const k2 = p.marked >= 0 ? 1 : 0.45;
+          y *= 1 - 0.12 * mark * k2;
+          colr = c.copy(SAND).lerp(DULL, mark * k2);
         } else if (on > 0 && element !== 'none') colr = c.copy(SAND).lerp(LOOK[element], on * 0.85);
         pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
         col[i * 3] = colr.r; col[i * 3 + 1] = colr.g; col[i * 3 + 2] = colr.b;
       }
       geo.attributes.position.needsUpdate = true;
       geo.attributes.color.needsUpdate = true;
+      if (crackT >= 0 && crackT < 1) {
+        crackT = Math.min(1, crackT + dt * 2.5);
+        crackGeo.setDrawRange(0, Math.floor((crackPts.length / 3) * crackT));
+      }
       light.color.copy(LOOK[element]);
       light.intensity = power > 0.2 ? power * 4 : 0;
     },

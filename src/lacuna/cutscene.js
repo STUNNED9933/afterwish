@@ -273,6 +273,15 @@ export class Cutscene {
           cs.heroPath = { fx: me.x, fz: me.z, tx: x, tz: z, t: 0, dur, resolve };
         });
       },
+      /** (0.99.25) A sword drawn (the hand to the hip and out), or put away. */
+      draw(who, now = false) {
+        const a = cs.actors.get(who);
+        if (a) a.draw(now || cs.skipping);
+      },
+      sheathe(who, now = false) {
+        const a = cs.actors.get(who);
+        if (a) a.sheathe(now || cs.skipping);
+      },
       /** (0.99.22) The white fog at the edge of the hero's sight: 0 none, 1 almost all. */
       fog(level, dur = 1) {
         if (cs.ctx.fog) cs.ctx.fog(level, cs.skipping ? 0 : dur);

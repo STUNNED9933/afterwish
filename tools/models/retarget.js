@@ -37,6 +37,41 @@ export function straightenArms(root) {
     root.updateMatrixWorld(true);
   };
   for (const s of ['L_', 'R_']) { turn(s + 'Upperarm', s + 'Forearm'); turn(s + 'Forearm', s + 'Hand'); }
+  straightenLegs(root);
+}
+
+/**
+ * (0.99.25) And the legs: a knee made bent (the shin turned back into line with the thigh), and a foot made pointing
+ * up or straight down (turned to point forward and a little down, as a foot stands). Tripo models face +X.
+ */
+export function straightenLegs(root) {
+  const at = (n) => { const o = root.getObjectByName(n); return o ? o.getWorldPosition(new THREE.Vector3()) : null; };
+  const turnTo = (boneName, childName, want) => {
+    const b = root.getObjectByName(boneName), c = root.getObjectByName(childName);
+    if (!b || !c) return;
+    root.updateMatrixWorld(true);
+    const dir = at(childName).sub(at(boneName)).normalize();
+    if (dir.angleTo(want) < 0.1) return;
+    const C = new THREE.Quaternion().setFromUnitVectors(dir, want);
+    const wq = b.getWorldQuaternion(new THREE.Quaternion()).premultiply(C);
+    b.quaternion.copy(b.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(wq));
+    root.updateMatrixWorld(true);
+  };
+  for (const s of ['L_', 'R_']) {
+    const T = at(s + 'Thigh'), K = at(s + 'Calf');
+    if (!T || !K) continue;
+    turnTo(s + 'Calf', s + 'Foot', K.clone().sub(T).normalize()); // the shin in line with the thigh
+    const F = at(s + 'Foot'), Toe = at(s + 'ToeBase');
+    if (!F || !Toe) continue;
+    const d = Toe.clone().sub(F).normalize();
+    const pitch = Math.asin(-d.y);
+    if (pitch < -0.05 || pitch > 0.6) {
+      const flat = new THREE.Vector3(d.x, 0, d.z);
+      if (flat.lengthSq() < 0.04 || flat.x < 0) flat.set(1, 0, 0); // no sensible heading: forward (+X)
+      flat.normalize();
+      turnTo(s + 'Foot', s + 'ToeBase', flat.multiplyScalar(Math.cos(0.2)).add(new THREE.Vector3(0, -Math.sin(0.2), 0)).normalize());
+    }
+  }
 }
 
 window.run = async (targetUrl, sources, fps = 30) => {

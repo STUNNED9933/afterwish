@@ -1338,7 +1338,7 @@
       "rigModel": "v1.0",
       "animations": []
     },
-    "l_rowan": {
+    "x_marigold_rowan": {
       "prompt": "Rowan, leader of an adventuring company, a handsome rugged man in his early thirties, broad shoulders and a muscular athletic build, short swept-back dark auburn hair, a short trimmed beard, confident warm smile, a fitted sleeveless brown leather jerkin worn open at the collar showing a toned chest, a marigold-yellow scarf knotted at his neck, leather bracers, a wide belt with a sword frog, dark fitted trousers, sturdy knee boots, a small marigold flower badge on the jerkin, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
@@ -1349,9 +1349,10 @@
         "preset:biped:walk",
         "preset:biped:fold_arms",
         "preset:biped:greet_02"
-      ]
+      ],
+      "note": "(0.99.19) the Marigold Company first looks, made 2026-11-27 (run 45861558001); kept for future enemies"
     },
-    "l_ilse": {
+    "x_marigold_ilse": {
       "prompt": "Ilse, the healer of an adventuring company, a beautiful kind woman in her late twenties, curvy figure, long wavy honey-blonde hair over one shoulder, gentle smile, a fitted white and marigold-yellow healer's dress with a laced corset bodice and a low sweetheart neckline, a long flowing skirt slit at the side over soft leggings, a satchel of herbs at her hip, a small golden sun pendant, soft leather boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
@@ -1362,9 +1363,10 @@
         "preset:biped:walk",
         "preset:biped:cast_a_spell",
         "preset:biped:greet_01"
-      ]
+      ],
+      "note": "(0.99.19) the Marigold Company first looks, made 2026-11-27 (run 45861558001); kept for future enemies"
     },
-    "l_juni": {
+    "x_marigold_juni": {
       "prompt": "Juni, the scout of an adventuring company, an energetic grinning adult woman in her early twenties, lean athletic toned build, short choppy black hair with a marigold-yellow headband, freckles, a cropped fitted dark-green leather top showing a toned midriff, a short hooded capelet on her shoulders with the hood down, fingerless gloves, several small belts with pouches and a knife sheath, fitted brown trousers, light short boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
@@ -1375,9 +1377,10 @@
         "preset:biped:walk",
         "preset:biped:jump",
         "preset:biped:look_around"
-      ]
+      ],
+      "note": "(0.99.19) the Marigold Company first looks, made 2026-11-27 (run 45861558001); kept for future enemies"
     },
-    "l_sorrel": {
+    "x_marigold_sorrel": {
       "prompt": "Sorrel, the mage of an adventuring company, a tall slender elegant man in his thirties, long straight silver-white hair tied low, sharp handsome features, a calm faint smile, a long deep-green coat with gold trim and a high collar worn open over a fitted black shirt, a marigold-yellow sash, faint glowing arcane tattoos on his forearms, a small book on a chain at his belt, dark trousers, polished tall boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
@@ -1388,7 +1391,45 @@
         "preset:biped:walk",
         "preset:biped:cast_a_spell",
         "preset:biped:wait"
+      ],
+      "note": "(0.99.19) the Marigold Company first looks, made 2026-11-27 (run 45861558001); kept for future enemies"
+    },
+    "l_rowan": {
+      "prompt": "Rowan, leader of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a tall broad-shouldered handsome man in his early thirties, fair skin, swept-back dark brown hair with one loose strand over his forehead, light stubble, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted sleeveless gunmetal-grey long coat with crimson lining worn open over a bare toned chest and abs, a crimson sash at the waist, forearms wrapped in dark leather, a wide belt with a sword frog and the hound's-head badge, dark fitted trousers, heavy boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": []
+    },
+    "l_ilse": {
+      "prompt": "Ilse, the healer of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a beautiful woman in her late twenties, fair skin with light freckles, wavy copper hair to her shoulders, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted off-shoulder ivory healer's dress with crimson trim and a laced bodice, a long skirt with a high side slit over white tights, a crimson ribbon at her throat with the hound's-head badge, a leather herb satchel on her hip, soft knee boots, curvy figure, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": []
+    },
+    "l_juni": {
+      "prompt": "Juni, the scout of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean athletic adult woman in her early twenties, fair skin, a long ash-blonde braid over one shoulder, calm neutral expression, relaxed face, mouth closed, not smiling, a cropped sleeveless dark leather vest showing a toned midriff, a crimson neckerchief with the hound's-head badge, fingerless gloves, a belt of small pouches and a knife sheath, fitted dark shorts over black leggings, tall laced boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": [
+        "preset:biped:greet_02",
+        "preset:biped:bow",
+        "preset:biped:sob",
+        "preset:biped:swagger"
       ]
+    },
+    "l_sorrel": {
+      "prompt": "Sorrel, the mage of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean tall handsome man in his thirties, fair skin, untidy black hair with a single silver streak, round wire spectacles, calm neutral expression, relaxed face, mouth closed, not smiling, a long charcoal coat with gold trim and crimson lining worn open over a fitted dark waistcoat and white shirt, a crimson scarf, the hound's-head badge on his lapel, dark trousers, polished boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "animations": []
     }
   }
 }

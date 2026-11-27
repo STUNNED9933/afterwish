@@ -102,17 +102,30 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
   the wish magic of Votum still in him, and it forms the Link: the door to far stronger skills. The Hounds grieve.
   (0.99.26, decided by Claude while Ko Ko was away; easy to change: **Ilse** dies, shielding him from Vesper's blow.
   Her rescue words come back as her last.) The enemy: **Vesper of the Unbound**, who had watched the tear for a year,
-  put the ash in the wolves, and wants the boy who 'broke the sand'. He escapes through the tear: a recurring villain.
+  put the ash in the wolves, and wants the boy who 'broke the sand'.
+  (0.99.27, agreed with Ko Ko 27 Nov) Vesper is **curious, not certain**: he does not know what came through, and he
+  wants the body to study, not the boy. His blow is meant to kill; Ilse takes it, so it must not be for nothing:
+  **the hero kills Vesper** in the awakening fight. Arrogant to the end ("nothing in this world can touch me"), he
+  does not run. **The tear is no door**: it tore the hero's prime out of him, and no villain uses it as a way out.
+  Weeks later **Thessaly of the Ninth Hand** (the crown's hand that is in no ledger: a shadow arm of the government,
+  fantasy dress, not a modern agency) tells them, hedged, what little is known: Vesper (Ashgrave) was probably a
+  high-ranking officer of the Unbound, who want to call the Primordials into this world so their members rise as the
+  gifted (the Granted) did in Votum, bringing chaos to Lacuna. Names kept apart: no more Marens.
+- **Nobody is sure, and everyone is curious.** The Hounds hedge (Ilse cannot explain his memory, his slow healing,
+  why he does not grow). They do not take him in at once: they ask the watch, the temple, the records hall and the
+  Guild's board for his family for five days first. Then they keep him, and the chores begin. They are proud of him:
+  he is strong for his size, and he copies any technique after seeing it once (the trials show it).
 
 | # | Quest | Goal | Beat |
 | --- | --- | --- | --- |
 | 1 | Waking Up | Survive; follow rescuers to town | Meet the party |
+| 1a | Someone Must Be Looking | Five days asking after his family | Nobody comes; they keep him (0.99.27) |
 | 1b | Days with the Hounds | Three days of chores while they look after you | Growing stronger; teasing; attachment; Sorrel's lesson (0.99.24) |
 | 2 | The Telling Glass | Element and aptitude read at the Guild | Three, no element: pity and laughter; the black line |
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
-| 4 | When It Counts | A year on: ashen wolves; Vesper of the Unbound | Ilse dies shielding him; grief wakes the Link; Vesper flees through the tear (0.99.26) |
+| 4 | When It Counts | A year on: ashen wolves; Vesper of the Unbound | Ilse dies taking the blow meant to kill him; grief wakes the Link; the hero kills Vesper; Thessaly of the Ninth Hand (0.99.27) |
 | 5 | Word Gets Around | Bigger hunts across the land | Guild ranks; strange beasts point to the movement |
-| 6 | An Invitation | A secret mission, watched | The secret service asks you to join. End of Act I |
+| 6 | An Invitation | A secret mission, watched | The Ninth Hand asks you to join. End of Act I |
 
 ## Power
 

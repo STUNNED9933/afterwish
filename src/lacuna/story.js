@@ -13,12 +13,13 @@ export const QUESTS = {
   stumble: { name: 'Waking Up', goal: 'Find a way out of the glade' },
   rescued: { name: 'Waking Up', goal: 'Sorrel is studying the crack. Go and see.' },
   waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
+  asking: { name: 'Someone Must Be Looking', goal: 'The Iron Hounds are asking round Sunmere for your family' },
   days: { name: 'Days with the Hounds', goal: 'Get your strength back' },
   crystal: { name: 'The Telling Glass', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
   ambush: { name: 'When It Counts', goal: 'Rowan wants a word (the training ground)' },
   hunt: { name: 'When It Counts', goal: 'Hunt the ashen wolves in the Wakewood, near the glade where they found you' },
-  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now (the next part of the story is coming)' },
+  mourning: { name: 'Word Gets Around', goal: 'The Iron Hounds go on, three of them now. (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -162,17 +163,19 @@ export async function openingWolves(a, at) {
   a.loop('ilse', 'kneel');
   await a.camera([R.x - 2.6, 1.25, R.z + 1.4], [R.x - 0.2, 0.75, R.z - 0.5], 0.6);
   await a.say('ilse', 'Hey. Hey, look at me. Stay with me.', { cam: false });
-  await a.say('ilse', 'You\'re scraped up, but nothing\'s broken. And you\'re pale as milk. When did you last eat?', { cam: false });
+  await a.say('ilse', 'Scraped up. Nothing broken, I think. ...You\'re cold as a stone, though. How long have you been out here?', { cam: false });
   fx.ring(R.x, R.z, 1.4, 0x8fff9a, 1.2);
   a.ctx.heal();
   a.fog(0.5, 2);
   await a.say('', 'Warmth, from her hands. The fog draws back a little. Not all the way.');
   await a.say('ilse', '...There. Better?', { cam: false });
+  await a.say('ilse', 'That should have closed in a breath. It\'s taking its time. Odd.', { to: 'rowan', cam: false });
   a.loop('ilse', 'idle');
   ilse.stay = false;
   await a.walk('juni', R.x + 2.4, R.z + 1.2, { run: true });
   await a.say('juni', 'Did you see that? One arrow! From all the way up on the bank!');
   await a.say('rowan', 'We saw, Juni.', { to: 'juni' });
+  await a.say('juni', 'And you! You rolled clear of a wolf. Grown men freeze when they do that.', { to: 'hero' });
   await a.say('rowan', 'Sit a moment. Then we move.');
   a.talkCam(false);
   a.quiet();
@@ -208,9 +211,9 @@ export async function openingTear(a) {
   await a.say('juni', 'No name? Then you\'re Sprout. Until you remember. Or until I think of something worse.', { to: 'hero' });
   await a.say('ilse', 'Juni.');
   await a.say('juni', 'What? Look at him. It suits him.', { to: 'ilse' });
-  await a.say('rowan', 'Leave it. Whoever you are, you\'re coming with us.');
+  await a.say('rowan', 'Leave it, Juni. Whoever you are, you\'re not staying out here.');
   a.anim('rowan', 'wave');
-  await a.say('rowan', 'We\'re the Iron Hounds. Sellswords, out of Sunmere. It\'s not far, and there\'s a hot meal at the end of it.');
+  await a.say('rowan', 'We\'re the Iron Hounds. Sellswords, out of Sunmere. If somebody\'s missing a boy your size, Sunmere\'s where they\'ll come asking.');
   await a.say('ilse', 'And a bath. Please, a bath.');
   a.talkCam(false);
   a.quiet();
@@ -247,7 +250,7 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
     { at: lens[1] + 6, lines: [['juni', 'Wolves don\'t come this close to the road. Not usually.'], ['rowan', 'Nothing\'s been usual this week.']] },
     { at: 34, lines: [['sorrel', 'You went at them with your bare hands. Or tried to.'], ['sorrel', 'Either you\'re very brave, or you didn\'t know you couldn\'t win.'], ['ilse', 'Sorrel.'], ['sorrel', 'It was a compliment.']] },
     { at: 62, lines: [['ilse', 'Sunmere\'s a good town. Loud, but good. Everyone there is busy being something.'], ['juni', 'Busy being whatever the sand told them they are, you mean.'], ['rowan', 'Juni.']] },
-    { at: total - 36, lines: [['rowan', 'There she is. Sunmere.'], ['rowan', 'We\'ll take you to the Guild in the morning. They\'ll want to read you.'], ['', 'Read you?'], ['juni', 'It doesn\'t hurt! Mostly.']] },
+    { at: total - 36, lines: [['rowan', 'There she is. Sunmere.'], ['rowan', 'First thing, we ask around. The watch keeps a roll of lost children, and the temple hears everything.'], ['juni', 'Someone\'s turning the town upside down for you right now. Bet you anything.'], ['', 'You hope she\'s right. You can\'t remember anyone to hope for.']] },
   ];
   let lead = 0, said = 0, waiting = false, finished = false;
   if (actors.rowan && actors.rowan.sheathe) actors.rowan.sheathe(); // (0.99.25) on the road, the sword at his hip
@@ -297,13 +300,11 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
         if (!a) continue;
         // (0.99.25) the clip follows how fast they really went: held back (by the hero standing on their spot, or
         // each other), they stand, not run on the spot
-        const v = Math.hypot(a.x - from[who].x, a.z - from[who].z) / Math.max(dt, 1e-3);
-        a.vel = (a.vel || 0) + (v - (a.vel || 0)) * Math.min(1, dt * 8);
-        const want = a.vel > 3.3 ? 'run' : a.vel > 0.45 ? 'walk' : 'idle';
-        if (a.looping !== want && !a.once) {
-          a.loop(want);
-          if (want === 'idle') a.face(me.x, me.z, false);
-        }
+        // (0.99.27) the actor picks walk, run or idle itself from this; here only: stopped, they turn to the hero
+        const stopped = (a.vel || 0) < 0.35;
+        if (a.looping !== 'idle' && !a.once && !a.held) a.loop('idle');
+        if (stopped && !a.wasStopped) a.face(me.x, me.z, false);
+        a.wasStopped = stopped;
         // near the hero, they look at them now and then (stopped, or waiting)
         a.lookTarget = Math.hypot(me.x - a.x, me.z - a.z) < 7 ? { x: me.x, z: me.z } : null;
         a.update(dt);
@@ -311,6 +312,94 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
     },
   };
   return st;
+}
+
+/**
+ * (0.99.27) Before they take him in: a few days of asking. The watch, the temple, the Guild's board, the records hall.
+ * Nobody is sure of anything (what is wrong with him, whether anyone is looking); only after nobody comes do they
+ * decide, and then he is one of them, and does the chores like one.
+ */
+export async function askingScene(a) {
+  const me = a.ctx.me;
+  const D = HOME.door, I = Math.atan2(TOWN.z - HOME.z, TOWN.x - HOME.x), S = I + Math.PI / 2;
+  const at = (out, across) => [D.x + Math.cos(I) * out + Math.cos(S) * across, D.z + Math.sin(I) * out + Math.sin(S) * across];
+  // (framed from out in the street, looking back at the door: never from inside the house)
+  const view = (o1, c1, o2, c2, dur = 0) => { const p = at(o1, c1), q = at(o2, c2); return a.camera([p[0], 1.55, p[1]], [q[0], 0.95, q[1]], dur); };
+  a.bars(true);
+  await a.fade(1, 0.5);
+  a.actor('rowan', ...at(1.6, -1.2)); a.actor('ilse', ...at(1.4, 1.3)); a.actor('juni', ...at(2.9, 0.9)); a.actor('sorrel', ...at(2.6, -2.2));
+  a.hero(...at(2.4, -0.1), I + Math.PI);
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who).face(me.x, me.z);
+  a.sheathe('rowan', true);
+  await a.fade(0, 0.8);
+  await view(6.2, -1.6, 1.8, -0.2);
+  await a.say('rowan', 'Right. Ilse, the temple. Juni, the Guild\'s board. I\'ll take the watch-house.', { cam: false });
+  await a.say('sorrel', 'The records hall. If a boy your age was born within a week\'s ride, there\'s ink on it somewhere.', { to: 'hero', cam: false });
+  await a.say('rowan', 'You stay with us until we find your people. The spare room\'s small, but it\'s dry.', { to: 'hero', cam: false });
+  await a.say('juni', 'And it has a window. You can watch for them.', { to: 'hero', cam: false });
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.8);
+  await a.card([
+    'You spent the first days at that window, watching the street for anyone who looked as if they had lost something.',
+    'Plenty of people did. None of them looked up.',
+  ]);
+  // the first night: Ilse, and what she cannot explain
+  a.hero(...at(0.9, 0.2), I + Math.PI);
+  a.actor('ilse').place(...at(0.4, 0.9)).face(me.x, me.z);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who).place(...at(40, 0)); // (out on their errands)
+  await a.fade(0, 0.8);
+  await view(4.2, 2.6, 0.6, 0.4);
+  await a.say('ilse', 'Still no fever. Good.', { to: 'hero', cam: false });
+  await a.say('ilse', 'If it were a knock on the head, your memory would be coming back in pieces by now. A face. A street. Is anything?', { to: 'hero', cam: false });
+  await a.say('', 'Only the fog. And a keep of white stone you cannot place.');
+  await a.say('ilse', 'Then I don\'t think it\'s a knock on the head. I don\'t know what it is.', { to: 'hero', cam: false });
+  await a.say('ilse', 'I\'m sorry. I wish I did. ...But you\'re eating, and you\'re sleeping, and you\'re a little stronger every morning. That I do know.', { to: 'hero', cam: false });
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.8);
+  await a.card([
+    'Day three. Juni\'s notice on the Guild board went unanswered: FOUND, ONE BOY, SMALL, NO NAME. ASK FOR THE IRON HOUNDS.',
+    'Somebody had added, in pencil: HAVE YOU TRIED THE WELL?',
+  ]);
+  // what they found (and did not)
+  for (const [who, o, c] of [['rowan', 1.6, -1.2], ['sorrel', 2.6, -2.2], ['juni', 2.9, 0.9]]) a.actor(who).place(...at(o, c));
+  a.hero(...at(2.4, -0.1), I + Math.PI);
+  for (const who of ['rowan', 'sorrel', 'juni']) a.actor(who).face(me.x, me.z);
+  await a.fade(0, 0.8);
+  await view(6.0, 1.4, 2.0, -0.6);
+  await a.say('rowan', 'The watch has four children on its roll. None of them fits. Two have been found already.', { cam: false });
+  await a.say('sorrel', 'Nothing in the records hall either. Which proves less than it sounds: half the villages out east don\'t keep any.', { cam: false });
+  await a.say('juni', 'Somebody must be missing you. People don\'t just... turn up.', { to: 'hero', cam: false });
+  await a.say('sorrel', 'No. They don\'t, usually.', { to: 'juni', cam: false });
+  await a.say('', 'He says it lightly. He is looking at you the way he looked at the tear.');
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.8);
+  await a.card(['Day five. Nobody came.']);
+  // the fifth night: voices through the door (they think he is asleep)
+  a.hero(...at(-0.2, 0.3), I);
+  for (const [who, o, c] of [['rowan', 1.5, -0.9], ['ilse', 1.2, 1.1], ['juni', 2.4, 0.4], ['sorrel', 2.3, -1.6]]) a.actor(who).place(...at(o, c));
+  for (const who of ['rowan', 'ilse', 'sorrel']) a.actor(who).face(...at(2.4, 0.4));
+  a.actor('juni').face(...at(1.4, 0));
+  a.loop('rowan', 'arms');
+  const c1 = at(4.6, 3.4), c2 = at(1.4, -0.2);
+  await a.camera([c1[0], 1.7, c1[1]], [c2[0], 1.0, c2[1]], 0);
+  await a.fade(0, 1.0);
+  await a.say('', 'Voices on the step outside. They think you\'re asleep. From the dark of the doorway, you can hear every word.');
+  await a.say('juni', 'Five days. If he had people, they\'d have come by now.', { cam: false });
+  await a.say('rowan', 'Or they\'re somewhere he can\'t tell us about. We don\'t know, Juni.', { cam: false });
+  await a.say('ilse', 'Then we don\'t hand him to the orphan house on a guess.', { cam: false });
+  await a.say('sorrel', 'I\'d rather he stayed where I can see him.', { cam: false });
+  await a.say('ilse', 'Sorrel.', { cam: false });
+  await a.say('sorrel', 'Not like that. I\'m curious, that\'s all. No name, no village, hardly a spark of mana, and he rolled clear of a wolf with his legs shaking. Something about him doesn\'t add up.', { cam: false });
+  await a.say('rowan', 'Then it\'s settled. He stays. If someone comes for him one day, we\'ll be glad for him.', { cam: false });
+  await a.say('juni', 'And until then he carries water like the rest of us.', { cam: false });
+  await a.say('ilse', 'Juni.', { cam: false });
+  await a.say('juni', 'What? He\'ll want to. You watch.', { cam: false });
+  await a.fade(1, 1.0);
+  a.loop('rowan', 'idle');
+  a.bars(false);
 }
 
 /** After Quest 1: the Company waits by the plaza (until the Guild opens in the next part). */
@@ -545,23 +634,23 @@ export const TRIALS = {
     teacher: 'rowan',
     title: 'Rowan\'s trial: the Berserker',
     steps: [
-      { id: 'cleave', text: 'Cleave the posts in the ring', need: 6, done: 'Good. Feel that? Every post you hit gives you a little mana back. Battle Rhythm: the fight feeds you.' },
-      { id: 'skyfall', text: 'Skyfall (Q) into the ring: two posts with one landing', need: 1, done: 'That\'s it. Land in the middle of them; they never see it coming.' },
+      { id: 'cleave', text: 'Cleave the posts in the ring', need: 6, done: 'Wait. Where did you learn to turn your hips like that? ...You watched me do it once. Huh. Feel that? Every post you hit gives you a little mana back. Battle Rhythm: the fight feeds you.' },
+      { id: 'skyfall', text: 'Skyfall (Q) into the ring: two posts with one landing', need: 1, done: 'First try. It took me a month to land that without falling over. Land in the middle of them; they never see it coming.' },
       { id: 'blood', text: 'Hold Whirlwind (E) until your mana runs dry, and keep spinning on blood (Skyfall first burns mana faster)', need: 1, done: 'There. That\'s the Blood Price. Out of mana, you pay in blood, and under half you hit harder and heal by hitting. Mind you don\'t pay it all.' },
     ],
-    start: [['rowan', 'Into the ring. Cut. Don\'t think, cut.']],
-    end: [['rowan', 'Not bad for a three.'], ['juni', 'My turn! Bow\'s by the line. Come on!']],
+    start: [['rowan', 'Watch once. Then you do it.'], ['rowan', 'Into the ring. Cut. Don\'t think, cut.']],
+    end: [['rowan', 'Rank F, my foot. I\'ve trained grown men who took a season to get that far.'], ['sorrel', 'Three, the glass said. I\'m starting to wonder what it was measuring.'], ['juni', 'My turn! Bow\'s by the line. Come on!']],
   },
   archer: {
     teacher: 'juni',
     title: 'Juni\'s trial: the Sharpshooter',
     steps: [
-      { id: 'far', text: 'From the line, hit the far target (25 m off)', need: 1, done: 'See how hard that one landed? The further an arrow flies, the harder it hits. Long Watch.' },
+      { id: 'far', text: 'From the line, hit the far target (25 m off)', need: 1, done: 'You held the string exactly like I did. Exactly. ...See how hard that one landed? The further an arrow flies, the harder it hits. Long Watch.' },
       { id: 'ricochet', text: 'One Ricochet (Q) through all three targets', need: 1, done: 'Ha! One arrow, three targets. That\'s how you clear a road.' },
       { id: 'deadeye', text: 'Hold Deadeye (R): pour in 30 mana or more, then let go at a target', need: 1, done: 'Now that\'s a shot. The longer you hold, the more you pour in. Stand still and breathe between, and your mana comes back faster.' },
     ],
-    start: [['juni', 'Stand on the line. Bow up. The far one first.']],
-    end: [['juni', 'You\'ve got good hands.'], ['rowan', 'Both ways, then. Now choose.']],
+    start: [['juni', 'Watch me. Once. Apparently that\'s all you need.'], ['juni', 'Stand on the line. Bow up. The far one first.']],
+    end: [['juni', 'It took me two summers to shoot like that. Two!'], ['ilse', 'Then be proud of him, Juni, not cross.'], ['juni', 'I can be both.'], ['rowan', 'Both ways, then. Now choose.']],
   },
 };
 
@@ -600,12 +689,12 @@ export const DAY_FOG = [0.34, 0.26, 0.18, 0.12];
 export const DAYS = [
   {
     title: 'Day 1: Getting your legs back',
-    morning: ['Sunmere. The Iron Hounds\' lodging, a room over the street.', 'You slept through most of a day. The fog was still there when you woke.'],
+    morning: ['Sunmere. The Iron Hounds\' lodging, the small room over the street.', 'Your first morning as one of them. The fog was still there when you woke.'],
     tasks: [
       { id: 'water', kind: 'fetch', text: 'Fetch a bucket of water from the plaza\'s well for Ilse', from: 'well', to: 'ilse', need: 1, carry: true,
-        start: [['ilse', 'You\'re up! Good. Feel like being useful? The well\'s in the middle of the plaza. One bucket. Slowly.']],
+        start: [['ilse', 'You\'re up! Good. Feel like being useful? The well\'s in the middle of the plaza. One bucket. Half full is fine.']],
         got: [['', 'It is heavier than it looks. Your arms shake all the way back.']],
-        done: [['ilse', 'Thank you, Sprout. Now sit down before you fall down.'], ['juni', 'One bucket and he\'s finished! We\'ll make a Hound of you yet.']] },
+        done: [['ilse', 'That\'s full to the brim. Rowan, he carried it full. At his size I\'d have spilled half.'], ['rowan', 'Huh. So he did.'], ['juni', 'One bucket and he\'s finished! ...Fine. One full bucket. We\'ll make a Hound of you yet.']] },
       { id: 'sleep', kind: 'sleep', text: 'Sleep (the Hounds\' door)', start: [['rowan', 'Bed. All of you. We\'re up early.']] },
     ],
     night: { text: 'That night: the same dream. White stone, and a voice, and a door you are not allowed to open.', flash: 'A door of white stone. A hand on it, small, like yours. "Not this one."' },
@@ -617,7 +706,7 @@ export const DAYS = [
       { id: 'run', kind: 'follow', text: 'Keep up with Rowan: twice round the plaza',
         start: [['rowan', 'Morning. Twice round the plaza, with me. Don\'t stop, and don\'t fall over.']],
         wait: [['rowan', 'Come on. I\'m not even running yet.'], ['rowan', 'Breathe. Then catch up.']],
-        done: [['rowan', 'Not bad. Tomorrow you won\'t be wheezing.'], ['juni', 'He was wheezing.']] },
+        done: [['rowan', 'Twice round, and you never stopped. Most boys your size don\'t make it once.'], ['juni', 'He was wheezing.'], ['rowan', 'He was. And he kept going. That\'s the part that counts.']] },
       { id: 'wood', kind: 'fetch', text: 'Carry firewood from the pile to Juni', from: 'wood', to: 'juni', need: 3, carry: true,
         start: [['juni', 'Sprout! Firewood. Three armfuls, pile to me. I\'ll supervise.']],
         got: [['', 'An armful of split logs. You can see over it, just.']],
@@ -633,8 +722,8 @@ export const DAYS = [
     tasks: [
       { id: 'herbs', kind: 'gather', text: 'Gather herbs in the meadow past the north gate', at: 'herbs',
         start: [['ilse', 'Come with me today. Silverleaf grows past the north gate; I\'ll show you which. Three bunches.']],
-        each: [['ilse', 'That\'s it, silverleaf. See the white underneath?'], ['ilse', 'One more. You\'ve got good eyes.']],
-        done: [['ilse', 'Perfect. You know, you\'re steadier than you were. Much.']] },
+        each: [['ilse', 'That\'s it, silverleaf. See the white underneath?'], ['ilse', 'You found that one before I did. Good eyes.']],
+        done: [['ilse', 'Perfect. And I only showed you once. My apprentices took a week to tell silverleaf from nettle.'], ['ilse', 'You\'re steadier than you were, too. Much.']] },
       { id: 'lesson', kind: 'lesson', text: 'Sorrel wants a word (by the well)', start: [['sorrel', 'When you have a moment. By the well.']] },
       { id: 'sleep', kind: 'sleep', text: 'Sleep (the Hounds\' door)', start: [['rowan', 'Tomorrow, the Guild. Get some sleep.']] },
     ],
@@ -685,6 +774,7 @@ export async function yearScene(a) {
   await a.card([
     'The days became weeks.',
     'Every morning, the training ground. Every evening, the lodging, loud and warm. You learned the streets, the Guild\'s board, how each of the Hounds takes their tea.',
+    'Whatever they showed you, you only ever needed to see once. Rowan stopped saying "again" in the first month. Juni stopped grumbling about it in the second.',
     'The fog never quite left. Neither did the name Sprout.',
     'A year.',
   ]);
@@ -697,6 +787,8 @@ export async function yearScene(a) {
   await a.say('ilse', '...', { auto: 1.2 });
   await a.say('ilse', 'That\'s odd. You haven\'t grown. Not a hair, since last spring.');
   await a.say('juni', 'Sprout doesn\'t sprout. I said that a year ago and nobody laughed.');
+  await a.say('ilse', 'Maybe it\'s the food. Maybe it\'s whatever happened in that forest. I honestly don\'t know.', { to: 'juni' });
+  await a.say('rowan', 'Small or not, he took me off my feet this morning. Rank F, the glass says. I\'ve had rank Cs who couldn\'t do what he did today.');
   await a.say('', 'Sorrel says nothing. He is watching you the way he watched the tear.');
   await a.say('rowan', 'Enough. Work. The Guild\'s posted a contract: wolves in the Wakewood again. The wrong kind. Ash in their fur, and eyes like coals.');
   await a.say('sorrel', 'Where?');
@@ -733,16 +825,16 @@ export async function vesperScene(a) {
   await a.walk('vesper', VESPER_FROM.x, VESPER_FROM.z);
   v.face(me.x, me.z);
   a.talkCam(true);
-  await a.say('vesper', 'There you are.', { to: 'hero' });
-  await a.say('vesper', 'A year I\'ve sat by this little scar in the air, waiting to see what had come through it. And it was you. So small.', { to: 'hero' });
+  await a.say('vesper', 'Is it you? ...It might be you.', { to: 'hero' });
+  await a.say('vesper', 'A year I\'ve watched this little scar in the air, wondering what came through it. A beast, I thought. A weapon. Something worth the wait.', { to: 'hero' });
+  await a.say('vesper', 'And here is a child who doesn\'t grow, who broke a Telling Glass by touching it. How very interesting.', { to: 'hero' });
   a.draw('rowan');
   await a.say('rowan', 'That\'s far enough. Who are you?', { to: 'vesper' });
-  await a.say('vesper', 'Vesper. Of the Unbound. We take the limits the sand puts on people, and we break them.', { to: 'rowan' });
-  await a.say('vesper', 'And this one broke the sand. Didn\'t you, little one?', { to: 'hero' });
+  await a.say('vesper', 'Vesper. Of the Unbound. Not that it will matter to you for long.', { to: 'rowan' });
   await a.say('sorrel', 'The ash on the wolves. That was you.', { to: 'vesper' });
-  await a.say('vesper', 'A little desire, a little malice. They take to it so well. So do people.', { to: 'sorrel' });
-  await a.say('vesper', 'Come with me. You don\'t belong to them. You never did.', { to: 'hero' });
-  await a.say('ilse', 'He\'s not going anywhere with you.', { to: 'vesper' });
+  await a.say('vesper', 'A little desire, a little malice. They take to it so well. I wanted to see if the tear would answer. It did. It gave me him.', { to: 'sorrel' });
+  await a.say('vesper', 'I don\'t know what you are, little one. I\'d like to. I\'d like to open you up and find out.', { to: 'hero' });
+  await a.say('ilse', 'You\'ll not lay a finger on him.', { to: 'vesper' });
   await a.say('rowan', 'Hounds!', { to: 'vesper' });
   a.talkCam(false);
   a.quiet();
@@ -760,7 +852,7 @@ export async function vesperScene(a) {
   await a.walk('rowan', v.x + 1.4, v.z + 0.3, { run: true });
   await a.anim('rowan', 'slash', { speed: 1.2 });
   await a.say('', 'Sorrel\'s fire goes out against him like a candle in a cellar. Rowan\'s blade stops in the air, as if it struck stone.');
-  await a.say('vesper', 'Rank C adventurers. All of you? How sweet.', { to: 'rowan' });
+  await a.say('vesper', 'Rank C adventurers. All of you? How sweet. There is nothing in this world that can touch me.', { to: 'rowan' });
   // and then he only lifts a hand
   a.anim('vesper', 'cast');
   await a.wait(0.4);
@@ -786,9 +878,11 @@ export async function deathScene(a) {
   v.face(me.x, me.z);
   for (const who of ['rowan', 'juni', 'sorrel']) a.loop(who, 'idle');
   await a.camera([me.x + 3, 1.6, me.z + 3], [v.x, 1.4, v.z], 0.5);
-  await a.say('vesper', 'Enough. You\'re coming with me, in one piece or in several.', { to: 'hero', cam: false });
+  await a.say('vesper', 'Enough. I\'ve seen what you do alive. Let\'s see what you\'re made of.', { to: 'hero', cam: false });
+  await a.say('vesper', 'Hold still. The body is all I need, and I\'d rather it in one piece.', { to: 'hero', cam: false });
   a.anim('vesper', 'cast', { hold: true });
-  await a.wait(0.6);
+  fx.ring(v.x, v.z, 0.8, 0x1a0a2a, 0.6);
+  await a.say('', 'Black light gathers in his hand, narrow as a needle, aimed at your heart. It isn\'t meant to stop you. It\'s meant to kill you.', { auto: 2.6 });
   // Ilse runs between them
   const mid = { x: me.x + (v.x - me.x) * 0.25, z: me.z + (v.z - me.z) * 0.25 };
   await a.walk('ilse', mid.x, mid.z, { run: true });
@@ -801,7 +895,7 @@ export async function deathScene(a) {
   a.anim('ilse', 'die', { hold: true });
   a.actor('ilse').dead = true;
   a.fog(0.95, 0.3);
-  await a.say('', 'She is between you before you see her move.');
+  await a.say('', 'She is between you before you see her move. It was meant for you. It goes through her instead.');
   a.fog(0.5, 2);
   // from the side away from Vesper (he is not in this shot)
   const ax = mid.x - v.x, az = mid.z - v.z, al = Math.hypot(ax, az) || 1;
@@ -830,50 +924,121 @@ export async function deathScene(a) {
   await a.say('', 'The Dimension Link wakes.');
   a.talkCam(true);
   await a.say('vesper', '...Oh.', { to: 'hero' });
-  await a.say('vesper', 'Oh, there you are.', { to: 'hero' });
+  await a.say('vesper', 'There. That\'s what I came for. Show me more.', { to: 'hero' });
+  await a.say('vesper', 'Come on, then. You can\'t hurt me. Nothing here can.', { to: 'hero' });
   a.talkCam(false);
   a.quiet();
   await a.prompt('Space', 'Fight', { label: 'Space' });
   a.bars(false);
 }
 
-/** Vesper, hurt for the first time, steps back through the tear; then the Hounds and Ilse. */
+/**
+ * (0.99.27) The end of Vesper: sure to the last that nothing in this world can touch him, he does not run (the tear
+ * is no door: it tore everything out of the hero once, and it would do the same to him). The hero ends it, for her.
+ * Then the Hounds, round Ilse.
+ */
 export async function afterScene(a) {
+  const { fx } = a;
   const me = a.ctx.me;
   a.bars(true);
   for (const who of ['rowan', 'juni', 'sorrel', 'ilse', 'vesper']) a.actor(who);
   const v = a.actor('vesper');
   v.face(me.x, me.z);
+  a.anim('vesper', 'knock', { hold: true });
+  a.shake(0.25, 0.4);
+  await a.wait(0.8);
   a.talkCam(true);
-  await a.say('vesper', 'So that\'s what came through. Not a stray at all.', { to: 'hero' });
-  await a.say('vesper', 'We\'ll meet again, little one. Grieve well.', { to: 'hero' });
+  await a.say('vesper', 'No. No, that isn\'t... Nothing in this world can—', { to: 'hero' });
+  await a.say('vesper', 'What are you? Tell me what you are.', { to: 'hero' });
   a.talkCam(false);
   a.quiet();
-  await a.walk('vesper', TEAR.x, TEAR.z, { run: true });
-  a.ctx.rift.open();
-  await a.camera([TEAR.x + 5, 2, TEAR.z + 4], [TEAR.x, 2, TEAR.z], 0.4);
-  a.shake(0.3, 0.6);
-  a.remove('vesper');
+  await a.prompt('Space', 'For Ilse', { label: 'Space' });
+  const d = Math.hypot(v.x - me.x, v.z - me.z) || 1;
+  await a.heroWalk(v.x - ((v.x - me.x) / d) * 1.1, v.z - ((v.z - me.z) / d) * 1.1, 0.35);
+  a.hero(undefined, undefined, Math.atan2(v.z - me.z, v.x - me.x));
+  if (a.ctx.heroStrike) a.ctx.heroStrike();
+  await a.wait(0.25);
+  a.fog(0.6, 0.1);
+  a.shake(0.5, 0.6);
+  fx.ring(v.x, v.z, 3, 0xffd24a, 0.6);
+  fx.ring(v.x, v.z, 1.4, 0xffe9a0, 0.5);
+  a.anim('vesper', 'die', { hold: true });
+  await a.camera([v.x + 2.6, 1.2, v.z + 2.2], [v.x, 0.5, v.z], 0.5);
+  a.fog(0.2, 1.2);
+  await a.say('vesper', '...So small.', { auto: 1.6, cam: false });
   await a.wait(0.6);
-  a.ctx.rift.close();
+  fx.puff(v.x, v.z, 0x6a6470);
+  a.remove('vesper');
   a.ctx.rift.stir(false);
-  await a.say('', 'The tear swallows him, and closes again to a sliver.');
+  await a.say('', 'He comes apart into ash, the way Juni\'s arrow did. The wind takes him. The tear behind you is a sliver again, and quiet.');
   // the Hounds, round her
   const ilse = a.actor('ilse');
-  await Promise.all([a.walk('rowan', ilse.x + 1.0, ilse.z - 0.8), a.walk('juni', ilse.x - 0.9, ilse.z - 0.7), a.walk('sorrel', ilse.x + 0.4, ilse.z + 1.1)]);
+  a.loop('rowan', 'idle'); a.loop('juni', 'idle'); a.loop('sorrel', 'idle');
+  await Promise.all([a.walk('rowan', ilse.x + 1.0, ilse.z - 0.8, { run: true }), a.walk('juni', ilse.x - 0.9, ilse.z - 0.7, { run: true }), a.walk('sorrel', ilse.x + 0.4, ilse.z + 1.1)]);
   a.loop('rowan', 'kneel'); a.loop('juni', 'crouch');
   a.sheathe('rowan');
+  await a.heroWalk(ilse.x - 0.3, ilse.z + 0.9, 1.2);
   await a.camera([ilse.x + 2.6, 1.3, ilse.z + 2.2], [ilse.x, 0.3, ilse.z], 1.4);
   await a.say('', 'Nobody says anything for a long time.');
+  await a.say('juni', 'She said she\'d be right there if it went wrong. She said that. Every time.', { cam: false });
   await a.say('sorrel', 'Your eyes. When you went for him. They were gold.', { to: 'hero', cam: false });
   await a.say('rowan', 'Later, Sorrel.', { to: 'sorrel', cam: false });
-  await a.say('rowan', 'We take her home.', { cam: false });
+  await a.say('rowan', 'You did what none of us could. She\'d have... she\'d be so...', { to: 'hero', cam: false });
+  await a.say('rowan', '...We take her home.', { cam: false });
   await a.fade(1, 1.6);
   await a.card([
     'They buried Ilse on the hill above Sunmere, where the silverleaf grows.',
-    'Juni didn\'t speak for three days. Rowan stopped folding his arms.',
+    'Juni didn\'t speak for three days. Rowan kept setting out five cups every morning, and every morning it took him a long moment to put one back.',
     'Nobody called you Sprout that winter.',
   ], { hold: 3.6 });
+  a.bars(false);
+}
+
+/**
+ * (0.99.27) A few weeks on, at the training ground: Thessaly, of the Ninth Hand (the crown's hand that is in no
+ * ledger). What Vesper was, as far as anyone knows; what the Unbound want. Nobody is certain of much.
+ */
+export async function thessalyScene(a) {
+  const me = a.ctx.me;
+  const R = TRAINING.ring;
+  a.bars(true);
+  await a.fade(1, 0);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who);
+  a.actor('rowan').place(R.x + 1.0, R.z - 2.2).face(R.x, R.z);
+  a.actor('juni').place(R.x - 1.6, R.z - 2.6).face(R.x, R.z);
+  a.actor('sorrel').place(R.x + 2.6, R.z - 0.4).face(R.x, R.z);
+  a.sheathe('rowan', true);
+  a.hero(R.x - 0.2, R.z - 0.6, -Math.PI / 2);
+  const T = { x: R.x - 0.7, z: R.z + 2.6 };
+  a.actor('thessaly', T.x - 1, T.z + 9).face(me.x, me.z);
+  await a.card(['Weeks went by. You trained, because Rowan said to, and because it was easier than not.']);
+  await a.camera([R.x + 4, 2.2, R.z - 4], [R.x - 0.4, 1.0, R.z + 2], 0);
+  await a.fade(0, 1.0);
+  await a.walk('thessaly', T.x, T.z);
+  a.actor('thessaly').face(me.x, me.z);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who).face(T.x, T.z);
+  a.hero(undefined, undefined, Math.atan2(T.z - me.z, T.x - me.x));
+  a.talkCam(true);
+  await a.say('rowan', 'Training ground\'s closed.', { to: 'thessaly' });
+  await a.say('thessaly', 'I won\'t keep you long. My name is Thessaly. I\'m with the Ninth Hand.', { to: 'rowan' });
+  await a.say('juni', 'There\'s no such thing as the Ninth Hand. Everyone knows that.', { to: 'thessaly' });
+  await a.say('thessaly', 'Good. That\'s rather the idea.', { to: 'juni' });
+  await a.say('thessaly', 'The man in the Wakewood. We believe his name was Vesper Ashgrave. We think he was an officer of the Unbound, and not a junior one. A captain, perhaps. Possibly higher.', { to: 'hero' });
+  await a.say('sorrel', 'You believe. You think. You don\'t sound very sure of anything.', { to: 'thessaly' });
+  await a.say('thessaly', 'We aren\'t. The Unbound leave very little behind. Ash, mostly.', { to: 'sorrel' });
+  await a.say('thessaly', 'What we have is pieces. They are searching for the Primordials: old powers, from a world before this one, grown out of everything people ever wanted badly enough.', { to: 'sorrel' });
+  await a.say('thessaly', 'In that world, a few who drank from them were gifted beyond anything the sand allows. The Granted, their old texts say. The Unbound want to call the Primordials here, so their own can rise the same way.', { to: 'sorrel' });
+  await a.say('rowan', 'And if they manage it?', { to: 'thessaly' });
+  await a.say('thessaly', 'Then I expect Lacuna burns. Though I would very much like to be wrong.', { to: 'rowan' });
+  await a.say('thessaly', 'He came a long way for you. We don\'t know why. I\'d like to.', { to: 'hero' });
+  await a.say('thessaly', 'I\'m not here to take you anywhere. Only to say this: if they sent one, they may send another. When you\'re ready to ask questions, find me.', { to: 'hero' });
+  await a.say('', 'She sets something on the fence post: a silver clasp shaped like a closed eye. Then she is gone, as if she was never there.');
+  await a.say('juni', '...I still say there\'s no such thing.', { to: 'rowan' });
+  await a.say('rowan', 'Then put it somewhere safe, Juni. For nothing.', { to: 'juni' });
+  a.talkCam(false);
+  a.quiet();
+  a.remove('thessaly');
+  await a.fade(1, 0.8);
   a.bars(false);
 }
 
@@ -883,11 +1048,9 @@ export function follow(actors, land) {
   return {
     update(dt, me) {
       const fx = Math.cos(me.facing), fz = Math.sin(me.facing);
-      const from = {};
       for (const [who, [back, side]] of Object.entries(slot)) {
         const a = actors[who];
         if (!a) continue;
-        from[who] = { x: a.x, z: a.z };
         const tx = me.x + fx * back - fz * side, tz = me.z + fz * back + fx * side;
         const d = Math.hypot(tx - a.x, tz - a.z);
         if (d > 0.6) {
@@ -902,10 +1065,7 @@ export function follow(actors, land) {
       for (const who of Object.keys(slot)) {
         const a = actors[who];
         if (!a) continue;
-        const v = Math.hypot(a.x - from[who].x, a.z - from[who].z) / Math.max(dt, 1e-3);
-        a.vel = (a.vel || 0) + (v - (a.vel || 0)) * Math.min(1, dt * 8);
-        const want = a.vel > 3.3 ? 'run' : a.vel > 0.45 ? 'walk' : 'idle';
-        if (a.looping !== want && !a.once) a.loop(want);
+        if (a.looping !== 'idle' && !a.once && !a.held) a.loop('idle'); // (0.99.27) walk or run: the actor's own feet decide
         a.update(dt);
       }
     },

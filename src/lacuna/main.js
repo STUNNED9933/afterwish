@@ -19,7 +19,7 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, thessalyScene, askingScene, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrack } from '../render/gates.js';
 import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
@@ -317,11 +317,12 @@ function onEvent(ev) {
   if (trial) trialEvent(ev);
   huntEvent(ev);
   vesperEvent(ev);
-  if (ev.type === 'shot') fx.shot(ev);
-  else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); }
+  if (ev.type === 'shot') { const h = heroOf(ev.pid); fx.shot(h ? { ...ev, y: h.group.position.y + 0.62 } : ev); } // (0.99.27) from his bow, jumping or not
+  else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); if (ev.arc) fx.arc(ev.x, ev.z, ev.f, ev.r, ev.arc); }
   else if (ev.type === 'emote') { const h = heroOf(ev.pid); if (h) startEmote(h, ev.id); }
   else if (ev.type === 'face') { const h = heroOf(ev.pid); if (h) showFace(h, ev.id); }
   else if (ev.type === 'slam') fx.ring(ev.x, ev.z, ev.r, 0xffb347, 0.5);
+  else if (ev.type === 'hit' && ev.shot) { fx.landed(ev.x, ev.z); fx.number(ev.x, ev.z, ev.crit ? `${ev.dmg}!` : String(ev.dmg), isMe(ev.pid) && (ev.crit || ev.dmg > 300) ? 'big' : 'dealt'); }
   else if (ev.type === 'hit') fx.number(ev.x, ev.z, ev.crit ? `${ev.dmg}!` : String(ev.dmg), isMe(ev.pid) && (ev.crit || (ev.shot && ev.dmg > 300)) ? 'big' : 'dealt');
   else if (ev.type === 'blood' && isMe(ev.pid)) fx.number(heroX, heroZ, `-${ev.n}`, 'taken'); // (0.99.21) a Berserker's blood price
   else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
@@ -570,10 +571,22 @@ function aimPoint() {
   const h = Math.hypot(aimDir.x, aimDir.z) || 1;
   return { x: me.x + (aimDir.x / h) * 45, z: me.z + (aimDir.z / h) * 45 };
 }
+/**
+ * (0.99.27) Where an attack goes: where the crosshair points, but never behind the hero or at his feet. (Looking
+ * down from close behind him, the crosshair met the ground between him and the camera: his cut swung ahead and
+ * landed on whatever was at his back.) Too near or behind, it is straight ahead along the camera's look instead.
+ */
+function attackPoint() {
+  const a = aimPoint();
+  view.camera.getWorldDirection(aimDir);
+  const h = Math.hypot(aimDir.x, aimDir.z) || 1, fx0 = aimDir.x / h, fz0 = aimDir.z / h;
+  if ((a.x - me.x) * fx0 + (a.z - me.z) * fz0 < 2) return { x: me.x + fx0 * 45, z: me.z + fz0 * 45 };
+  return a;
+}
 /** A held skill let go (Whirlwind stops, Deadeye looses). */
 function letGo(k) {
   if (!(k === 'E' && me.whirl) && !(k === 'R' && me.draw)) return;
-  const a = aimPoint(); // (0.99.25) a Deadeye flies where you point when you let go (scoped or not)
+  const a = attackPoint(); // (0.99.25) a Deadeye flies where you point when you let go (scoped or not)
   world.act(1, k, a.x, a.z, true);
   if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2), up: true });
 }
@@ -581,7 +594,7 @@ function letGo(k) {
 let aimSent = 0;
 function followAim(dt) {
   if (!me.draw) return;
-  const a = aimPoint();
+  const a = attackPoint();
   world.aim(1, a.x, a.z);
   aimSent -= dt;
   if (net && net.ready && aimSent <= 0) { aimSent = 0.1; net.send({ t: 'aim', ax: +a.x.toFixed(2), az: +a.z.toFixed(2) }); }
@@ -596,7 +609,7 @@ function act(k) {
   }
   if (!world.ready(me, k)) return;
   hero.anim.em = null;
-  const a = aimPoint();
+  const a = attackPoint();
   world.act(1, k, a.x, a.z); // here at once (together, a guess the server confirms)
   if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2) });
 }
@@ -798,12 +811,21 @@ function companyAt(spots) {
 function startWalk() {
   setStage('waking');
   questRun = walkToTown(company, bark, () => {
-    toast('Quest complete: Waking Up', 'New quest: Days with the Hounds');
-    bark([['rowan', 'Welcome to Sunmere. Our lodging\'s just there. You\'re staying with us until you\'re on your feet.']]);
-    story.day = 0;
-    setStage('days');
-    startDay(0, true);
+    toast('Quest complete: Waking Up', 'New quest: Someone Must Be Looking');
+    playAsking();
   }, { x: me.x, z: me.z }, world.land);
+}
+/** (0.99.27) A few days of asking after his family, before the Hounds take him in; then the chores. */
+async function playAsking() {
+  setStage('asking');
+  companyHome();
+  crowd.keepOut = { x: HOME.door.x, z: HOME.door.z, r: 9 }; // (the townsfolk give the Hounds' step a wide berth)
+  await runScene(askingScene);
+  crowd.keepOut = null;
+  story.day = 0;
+  setStage('days');
+  toast('Days with the Hounds', 'Nobody came. You\'re one of them now');
+  startDay(0);
 }
 /** A scene: the HUD away, the Company handed in (and back after), the skip button. */
 async function runScene(script, ...args) {
@@ -1055,6 +1077,9 @@ function startTrial(cls) {
   wear(cls, true);
   me.mp = me.maxMp;
   bark(TRIALS[cls].start);
+  // (0.99.27) the teacher shows it once (that is all he will need)
+  const t = company[TRIALS[cls].teacher];
+  if (t) setTimeout(() => { if (!t.alive) return; t.face(cls === 'warrior' ? TRAINING.ring.x : TRAINING.targets[2].x, cls === 'warrior' ? TRAINING.ring.z : TRAINING.targets[2].z); t.play(cls === 'warrior' ? 'slash' : 'shoot'); }, 900);
   showQuest();
 }
 function stepDone() {
@@ -1311,7 +1336,8 @@ function syncVesper(dt) {
   if (!v || !b) return;
   const d = Math.hypot(b.x - v.x, b.z - v.z);
   v.place(b.x, b.z, b.facing);
-  if (!v.once) { const want = b.moving ? (d / Math.max(dt, 1e-3) > 2.6 ? 'run' : 'walk') : 'idle'; if (v.looping !== want) v.loop(want); }
+  void d;
+  if (v.looping !== 'idle' && !v.once && !v.held) v.loop('idle'); // (0.99.27) walking or running: his own feet decide
 }
 const fightRun = { update(dt) { for (const [who, a] of Object.entries(company)) if (who !== 'vesper') a.update(dt); if (company.vesper) company.vesper.update(dt); syncVesper(dt); fightTick(dt); } };
 async function playVesper() {
@@ -1344,8 +1370,9 @@ function fightTick(dt) {
     if (boss.t > 22 || me.hp < me.maxHp * 0.35) { boss.stage = 0; playDeath(); }
   } else if (boss.stage === 2) {
     if (me.hp < me.maxHp * 0.25) me.hp = me.maxHp * 0.25; // the Link holds him up
-    if (boss.b.hp < boss.b.maxHp * 0.45) { boss.stage = 0; playAfter(); }
-    else if (boss.b.hp < boss.b.maxHp * 0.75 && !boss.said) { boss.said = true; bark([['vesper', 'Ha! There it is. Again!']]); }
+    if (boss.b.hp < boss.b.maxHp * 0.1) { boss.stage = 0; playAfter(); }
+    else if (boss.b.hp < boss.b.maxHp * 0.4 && !boss.said2) { boss.said2 = true; bark([['vesper', 'Stop. That\'s... enough. I said that\'s enough!']]); }
+    else if (boss.b.hp < boss.b.maxHp * 0.75 && !boss.said) { boss.said = true; bark([['vesper', 'Ha! A scratch. Do it again. I want to see how.']]); }
   }
 }
 function vesperEvent(ev) {
@@ -1375,19 +1402,32 @@ function wakeLink() {
   toast('The Dimension Link wakes', 'Your Eternal gear lends you its strength in Lacuna now');
 }
 cutscene.ctx.wakeLink = wakeLink;
+cutscene.ctx.heroStrike = () => { hero.anim.start = true; hero.anim.period = 0.5; }; // (0.99.27) a blow, in a scene
 async function playAfter() {
   boss.b.state = 'idle'; boss.b.target = 0; boss.b.stunUntil = world.time + 1e6;
+  boss.b.hp = Math.max(1, boss.b.hp); // (he does not fall to a stray hit while the scene plays: the hero ends it)
   await runScene(afterScene);
-  // done: he is gone through the tear, and Ilse with the Hounds' grief
+  // done: Vesper is dead, by the hero's hand; Ilse is gone
   boss.b.dead = true; boss.b.diedAt = 1e12; boss.b.hidden = false;
+  story.vesper = 'dead';
   boss = null;
   me.surge = 0;
   if (company.vesper) { company.vesper.remove(); delete company.vesper; }
   if (company.ilse) { company.ilse.remove(); delete company.ilse; }
   story.ilse = 'gone';
   setStage('mourning');
-  toast('Quest complete: When It Counts', 'New quest: Word Gets Around (coming in the next part)');
+  toast('Quest complete: When It Counts', 'New quest: Word Gets Around');
   toMourning();
+  playThessaly();
+}
+/** (0.99.27) Weeks later: Thessaly of the Ninth Hand, at the training ground. */
+async function playThessaly() {
+  if (story.thessaly) return;
+  await runScene(thessalyScene);
+  story.thessaly = true;
+  saveStory(story);
+  toMourning();
+  showQuest();
 }
 function toMourning() {
   for (const who of ['rowan', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
@@ -1425,8 +1465,11 @@ else if (story.stage === 'stumble') {
 } else if (story.stage === 'hunt') {
   toGuild();
   setTimeout(startHunt, 0);
+} else if (story.stage === 'asking') {
+  toGuild();
+  setTimeout(playAsking, 300);
 } else if (story.stage === 'mourning') {
-  setTimeout(toMourning, 0);
+  setTimeout(() => { toMourning(); playThessaly(); }, 0);
   crystal.mark(true);
   showQuest();
 } else if (story.stage === 'path' || story.stage === 'ambush') {

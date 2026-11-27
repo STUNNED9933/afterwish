@@ -18,6 +18,8 @@ export const CAST = {
   wren: { model: 'l_wren', name: 'Wren', height: 1.68, colour: 0x5a3a7a },
   // (0.99.26) Vesper of the Unbound: the first Company's mage (always smiling), darkened and turned cold
   vesper: { model: 'x_vesper', name: 'Vesper', height: 1.95, colour: 0x2a2a3a, tint: { mul: 0.55, toward: 0x2a1a40, by: 0.35 } },
+  // (0.99.27) Thessaly, of the Ninth Hand (the crown's hand that is in no ledger)
+  thessaly: { model: 'l_thessaly', name: 'Thessaly', height: 1.72, colour: 0x3a3c44 },
   wolf: { beast: 'wolf' },
 };
 for (const k in CAST) {
@@ -57,14 +59,17 @@ const WORDS = {
 };
 function findClip(clips, what) {
   const names = Object.keys(clips);
-  const exact = names.find((n) => n.toLowerCase() === String(what).toLowerCase());
-  if (exact) return clips[exact];
-  for (const w of WORDS[what] || [what]) {
+  // (0.99.27) the chosen clips first (the library's walk before a model's own palms-forward 'walk'), then the name
+  for (const w of WORDS[what] || []) {
     const hit = names.find((n) => n.toLowerCase().includes(w));
     if (hit) return clips[hit];
   }
-  return null;
+  const exact = names.find((n) => n.toLowerCase() === String(what).toLowerCase());
+  if (exact) return clips[exact];
+  const part = names.find((n) => n.toLowerCase().includes(String(what).toLowerCase()));
+  return part ? clips[part] : null;
 }
+const MOVING = new Set(['walk', 'run', 'stride']); // clips that are for moving, never for standing still in
 
 const UP = new THREE.Vector3(0, 1, 0);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -178,7 +183,8 @@ export class Actor {
       this.group.updateMatrixWorld(true);
       this.footRest = this.feet.length ? Math.min(...this.feet.map((f) => f.getWorldPosition(_v).y)) : null;
       this.lift = 0;
-      this.loop('idle', 0);
+      this.loop(this.looping || 'idle', 0); // (0.99.27) whatever they were asked to do before the model arrived
+      this.settle(0, 0);
       if (this.spec.weapon) {
         loadWeapon(this.spec.weapon.cls, 1).then((w) => {
           const hand = root.getObjectByName('R_Hand');
@@ -246,9 +252,27 @@ export class Actor {
     this.asked = what;
     if (what === 'arms' && this.armed) what = 'idle'; // (0.99.25) no folding his arms round a drawn sword
     this.looping = what;
-    if (this.once) return;
-    const a = this.action(what) || this.action('idle');
-    if (a) { a.setLoop(THREE.LoopRepeat, Infinity); a.timeScale = 1; this.fadeTo(a, fade); }
+    this.fade = fade;
+    this.held = false; // a held pose (a kneel, a fall) lasts until they are asked for something else
+    // the clip itself is chosen each frame (settle), from this and how fast they are really moving
+  }
+
+  /**
+   * (0.99.27) Each frame: the clip that fits what they are really doing. Moving (however they were moved: a walk,
+   * a scene, the hero's company), a walk or a run, its steps sped up or slowed to the ground covered; standing, the
+   * clip they were asked for (never a walk on the spot). A clip once (a cut, a wave) is left to finish.
+   */
+  settle(dt, v) {
+    if (!this.mixer || this.once || this.held) return;
+    const rest = this.looping && !MOVING.has(this.looping) ? this.looping : 'idle';
+    const base = v > 3.3 ? 'run' : v > 0.35 ? (this.looping === 'stride' ? 'stride' : 'walk') : rest;
+    const a = this.action(base) || this.action('idle');
+    if (!a) return;
+    if (a !== this.current) {
+      a.setLoop(THREE.LoopRepeat, Infinity);
+      this.fadeTo(a, this.fade ?? 0.25);
+    }
+    a.timeScale = base === 'run' ? Math.max(0.7, Math.min(1.5, v / 4.6)) : base === 'walk' || base === 'stride' ? Math.max(0.6, Math.min(1.6, v / 1.6)) : 1;
   }
 
   /** A clip once (a slash, a wave): resolves when it ends. hold: stay on its last pose. */
@@ -256,6 +280,7 @@ export class Actor {
     if (what === 'slash' && this.spec.weapon && !this.armed) this.draw(true); // no cutting with a sheathed sword
     const a = this.action(what);
     if (!a) return new Promise((r) => setTimeout(r, 400));
+    this.held = false;
     a.setLoop(THREE.LoopOnce, 1);
     a.clampWhenFinished = true;
     a.timeScale = speed;
@@ -292,7 +317,8 @@ export class Actor {
       const p = this.path, dx = p.x - this.x, dz = p.z - this.z, d = Math.hypot(dx, dz);
       // arrived, or as near as they can get (someone is standing there): not stuck walking on the spot
       if (d < p.best - 0.02) { p.best = d; p.still = 0; } else p.still += dt;
-      if (d < 0.08 || (p.still > 0.5 && d < 1.5)) {
+      // (0.99.27) or no nearer for most of a second, wherever they are (a wall, a house): they stop, not run on the spot
+      if (d < 0.08 || (p.still > 0.5 && d < 1.5) || p.still > 0.9) {
         this.path = null;
         this.loop('idle', 0.3);
         p.resolve();
@@ -311,7 +337,7 @@ export class Actor {
       if (this.once.left <= 0) {
         const o = this.once;
         this.once = null;
-        if (!o.hold) this.loop(this.path ? (this.path.speed > 3 ? 'run' : 'walk') : this.looping || 'idle', 0.25);
+        if (o.hold) this.held = true; else this.fade = 0.25;
         o.resolve();
       }
     }
@@ -323,6 +349,13 @@ export class Actor {
       if (Math.abs(d) < 0.01) { this.facing = this.want; this.want = null; }
       this.sync();
     }
+    // how fast they really went this frame (a jump in place, a scene setting them down, is not a run)
+    if (this.lastX !== undefined && dt > 0) {
+      const v = Math.hypot(this.x - this.lastX, this.z - this.lastZ) / dt;
+      this.vel = v > 14 ? 0 : (this.vel || 0) + (v - (this.vel || 0)) * Math.min(1, dt * 10);
+    }
+    this.lastX = this.x; this.lastZ = this.z;
+    this.settle(dt, this.vel || 0);
     lookRest(this.look);
     if (this.mixer) this.mixer.update(dt);
     if (this.look) { this.group.updateMatrixWorld(true); lookAt(this.look, this.x, this.z, this.facing, this.lookTarget, dt); }

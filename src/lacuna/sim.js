@@ -338,10 +338,11 @@ export class LandWorld {
       if (p.moving) {
         p.x += p.mx * SPEED[p.pace] * slow * dt;
         p.z += p.mz * SPEED[p.pace] * slow * dt;
-        if (!p.draw) p.facing = dAtan2(p.mz, p.mx);
+        if (!p.draw && !(p.faceT > 0)) p.facing = dAtan2(p.mz, p.mx); // (0.99.27) not mid-swing: a cut faces its way
         this.land.pushOut(p, PLAYER_R);
       }
     }
+    if (p.faceT > 0) p.faceT -= dt;
     for (const a of p.acts.splice(0)) this.doAct(p, a);
     // What is under way
     if (p.leap) {
@@ -436,7 +437,9 @@ export class LandWorld {
       const every = kit.basic.every / haste;
       p.basicT = every;
       p.facing = dAtan2(dz, dx);
-      this.emit('cast', { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every });
+      p.faceT = Math.min(0.45, every * 0.8); // (0.99.27) he turns to the cut and holds it while it lands
+      const melee = p.cls === 'warrior' || p.cls === 'novice';
+      this.emit('cast', melee ? { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every, f: p.facing, arc: kit.basic.arc, r: kit.basic.range } : { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every });
       if (p.cls === 'warrior') this.rhythm(p, this.cleave(p, dx, dz));
       else if (p.cls === 'novice') this.cleave(p, dx, dz);
       else {
@@ -452,7 +455,7 @@ export class LandWorld {
     const s = kit[k];
     if (!this.pay(p, s.mana)) return;
     if (s.id !== 'whirl') p.cd[k] = s.cd; // (a Whirlwind's cooldown starts when it ends)
-    if (s.id !== 'roll') p.facing = dAtan2(dz, dx);
+    if (s.id !== 'roll') { p.facing = dAtan2(dz, dx); p.faceT = 0.4; }
     if (s.id === 'skyfall') {
       const far = Math.min(s.range, d);
       const t = { x: p.x + dx * far, z: p.z + dz * far };
@@ -547,7 +550,7 @@ export class LandWorld {
         let best = null, bt = 2;
         for (const b of this.beastsNear((s.x + x1) / 2, (s.z + z1) / 2, step / 2 + 2)) {
           if (s.hit && s.hit.includes(b.id)) continue;
-          const t = segHit(s.x, s.z, x1, z1, b.x, b.z, BEASTS[b.type].r + 0.25);
+          const t = segHit(s.x, s.z, x1, z1, b.x, b.z, BEASTS[b.type].r + 0.08); // (0.99.27) was +0.25: hits that looked like misses
           if (t !== null && t < bt) { bt = t; best = b; }
         }
         if (best) {

@@ -4,7 +4,7 @@
 // Bloodrage, and a puff where a beast falls.
 import * as THREE from 'three';
 
-const ARROW_Y = 1.35;
+const ARROW_Y = 0.62; // (0.99.27) the bow of a boy a metre tall (it was a grown man's: arrows over his head)
 
 export class Fx {
   constructor(scene, layer) {
@@ -33,7 +33,7 @@ export class Fx {
   }
 
   /** An arrow leaving (x, z) along (dx, dz). */
-  shot({ x, z, dx, dz, speed, range, kind }) {
+  shot({ x, z, dx, dz, speed, range, kind, y = ARROW_Y }) {
     const g = new THREE.Group();
     const big = kind === 'deadeye';
     const shaft = new THREE.Mesh(this.arrowGeo.shaft, big ? this.mats.deadeye : this.mats.shaft);
@@ -44,10 +44,40 @@ export class Fx {
       g.add(trail);
       g.scale.setScalar(1.6);
     }
-    g.position.set(x, ARROW_Y, z);
-    g.lookAt(x + dx, ARROW_Y, z + dz);
+    g.position.set(x, y, z);
+    g.lookAt(x + dx, y, z + dz);
     this.scene.add(g);
-    this.arrows.push({ g, x, z, dx, dz, speed, left: range, big });
+    this.arrows.push({ g, x, z, y, dx, dz, speed, left: range, big });
+  }
+
+  /**
+   * (0.99.27) An arrow struck at (x, z) (the sim says so): the one in flight nearest there stops in it, there. So an
+   * arrow that hits is seen to hit, even when the beast drawn is a step behind the beast the sim moved.
+   */
+  landed(x, z) {
+    let best = -1, bd = 3.5 * 3.5;
+    for (let i = 0; i < this.arrows.length; i++) {
+      const a = this.arrows[i];
+      if (a.big || a.stuck !== undefined) continue;
+      // nearest, and not yet far past it
+      const d = (a.x - x) ** 2 + (a.z - z) ** 2, ahead = (x - a.x) * a.dx + (z - a.z) * a.dz;
+      if (d < bd && ahead > -1.5) { bd = d; best = i; }
+    }
+    if (best < 0) return;
+    const a = this.arrows[best];
+    a.x = x - a.dx * 0.35; a.z = z - a.dz * 0.35;
+    a.g.position.set(a.x, a.y, a.z);
+    a.stuck = 0.18; // a beat in the beast, then gone
+  }
+
+  /** (0.99.27) Where a cut lands: a pale fan on the ground, its true reach and width, gone in a moment. */
+  arc(x, z, facing, r, width) {
+    const geo = new THREE.RingGeometry(0.25, r, 24, 1, -facing - width / 2, width).rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.set(x, 0.07, z);
+    this.scene.add(m);
+    this.fans = this.fans || [];
+    this.fans.push({ m, t: 0 });
   }
 
   ring(x, z, r, colour = 0xffd27a, life = 0.45) {
@@ -82,14 +112,25 @@ export class Fx {
   update(dt, beasts, camera, w, h, rageOn, heroX, heroZ) {
     for (let i = this.arrows.length - 1; i >= 0; i--) {
       const a = this.arrows[i];
+      if (a.stuck !== undefined) {
+        a.stuck -= dt;
+        if (a.stuck <= 0) { this.scene.remove(a.g); this.arrows.splice(i, 1); }
+        continue;
+      }
       const step = Math.min(a.left, a.speed * dt);
       a.x += a.dx * step;
       a.z += a.dz * step;
       a.left -= step;
-      a.g.position.set(a.x, ARROW_Y, a.z);
-      let stop = a.left <= 0;
-      if (!stop && !a.big) for (const b of beasts) if (!b.dead && (b.x - a.x) ** 2 + (b.z - a.z) ** 2 < (b.r + 0.2) ** 2) { stop = true; break; }
-      if (stop) { this.scene.remove(a.g); this.arrows.splice(i, 1); }
+      a.g.position.set(a.x, a.y, a.z);
+      // (0.99.27) the arrow goes where it goes: it stops in a beast only when the sim says it struck (landed), so a
+      // miss is seen to miss. (Out of range, it is gone.)
+      if (a.left <= 0) { this.scene.remove(a.g); this.arrows.splice(i, 1); }
+    }
+    for (let i = (this.fans || []).length - 1; i >= 0; i--) {
+      const f = this.fans[i];
+      f.t += dt;
+      f.m.material.opacity = f.t < 0.06 ? 0.32 * (f.t / 0.06) : 0.32 * Math.max(0, 1 - (f.t - 0.06) / 0.3);
+      if (f.t >= 0.36) { this.scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); this.fans.splice(i, 1); }
     }
     for (let i = this.rings.length - 1; i >= 0; i--) {
       const r = this.rings[i];

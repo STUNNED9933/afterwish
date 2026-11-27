@@ -1431,6 +1431,36 @@
       "faceLimit": 10000,
       "animations": [],
       "note": "Remade in 0.99.19: the first one (run 45939994405) was made with one knee bent, which stayed bent in every animation."
+    },
+    "l_odile": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "prompt": "Magistra Odile, the crystal-reader of the Adventurers' Guild of Sunmere, a dignified stern woman in her fifties, fair skin, silver hair in a tight neat bun, half-moon reading glasses, calm neutral expression, relaxed face, mouth closed, not smiling, a high-collared floor-length deep-blue Guild robe with brass clasps down the front and a brass Guild crest on the chest, a thin chain at her waist, soft leather shoes, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no staff, no cape, nothing floating",
+      "animations": []
+    },
+    "l_dace": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "prompt": "Dace, a cocky young adventurer in his early twenties, a rising star of the Adventurers' Guild, fair skin, handsome, slicked-back blond hair, calm neutral expression, relaxed face, mouth closed, not smiling, polished silver half-plate armour over a fitted navy doublet, a blue Guild sash across the chest, fingerless leather gloves, dark trousers, tall polished boots, a slim rapier sheathed at his left hip, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no cape, nothing floating",
+      "animations": [
+        "preset:biped:laugh_01",
+        "preset:biped:clap",
+        "preset:biped:cheer"
+      ]
+    },
+    "l_wren": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "prompt": "Wren, a sharp young mage in her early twenties, Dace's partner in the Adventurers' Guild, fair skin, pretty, a sleek black bob haircut, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted knee-length dark-violet mage coat with silver embroidery and a high collar, buttoned closed, a blue Guild sash, black gloves, dark leggings, ankle boots, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no staff, no weapon, no cape, nothing floating",
+      "animations": [
+        "preset:biped:laugh_02"
+      ]
     }
   }
 }

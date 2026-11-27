@@ -1403,12 +1403,13 @@
       "animations": []
     },
     "l_ilse": {
-      "prompt": "Ilse, the healer of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a beautiful woman in her late twenties, fair skin with light freckles, wavy copper hair to her shoulders, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted off-shoulder ivory healer's dress with crimson trim and a laced bodice, a long skirt with a high side slit over white tights, a crimson ribbon at her throat with the hound's-head badge, a leather herb satchel on her hip, soft knee boots, curvy figure, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "prompt": "Ilse, the healer of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a beautiful woman in her late twenties, fair skin with light freckles, wavy copper hair to her shoulders, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted off-shoulder ivory healer's tunic-dress with crimson trim and a laced bodice, the skirt ending above the knee, fitted dark grey trousers underneath, a crimson ribbon at her throat with the hound's-head badge, a leather herb satchel on her hip, sturdy brown leather ankle boots with flat soles, curvy figure, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground pointing forward, each boot clearly separate, arms straight out to the sides, open empty hands, no weapon, no cape, no long skirt, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
       "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
       "faceLimit": 10000,
-      "animations": []
+      "animations": [],
+      "note": "0.99.27: remade (the long skirt fused her feet: they bent up like hooves). Shorter skirt over trousers, plain ankle boots."
     },
     "l_juni": {
       "prompt": "Juni, the scout of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean athletic adult woman in her early twenties, fair skin, a long ash-blonde braid over one shoulder, calm neutral expression, relaxed face, mouth closed, not smiling, a cropped sleeveless dark leather vest showing a toned midriff, a crimson neckerchief with the hound's-head badge, fingerless gloves, a belt of small pouches and a knife sheath, fitted dark shorts over black leggings, tall laced boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",

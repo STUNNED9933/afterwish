@@ -49,6 +49,7 @@ export class LandRoom {
     if (!m) return msg.t === 'hello' ? this.hello(conn, msg) : undefined;
     if (msg.t === 'pos') this.pos(m, msg);
     else if (msg.t === 'cls' && CLASSES.includes(msg.cls) && msg.cls !== m.cls) { m.cls = msg.cls; this.world.setClass(m.pid, m.cls); this.roster(); }
+    else if (msg.t === 'web') this.world.setWeb(m.pid, msg.ids); // (0.99.37) talents (checked: joined up, no more than the level allows)
     else if (msg.t === 'lvl') { const L = num(msg.L, 1, 60); if (L !== null) this.world.setLevel(m.pid, L); } // (0.99.36) the page's level (for now; with accounts, the server's)
     else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
     else if (msg.t === 'act') {
@@ -89,6 +90,7 @@ export class LandRoom {
     // (0.99.22) the Link sleeps until the story wakes it (the page says so for now; with accounts, the server will)
     const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true, vigour: num(msg.vigour, 0.5, 1) ?? 1, level: num(msg.level, 1, 60) ?? 1 });
     p.driven = true; // moved by its own browser (checked), not by the sim
+    if (Array.isArray(msg.web)) this.world.setWeb(pid, msg.web); // (0.99.37) talents
     const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page' };
     this.byConn.set(conn, m);
     this.send(conn, { t: 'welcome', pid, name, at: { x: p.x, z: p.z }, v: LACUNA_NET, hz: SEND_HZ, link, linkFrom: m.linkFrom });
@@ -105,7 +107,7 @@ export class LandRoom {
     const far = Math.hypot(x - m.last.x, z - m.last.z);
     if (p.dead) return; // down: you stay where you fell (the server brings you back to the gate)
     // faster than anyone can go (a leap or a roll allows for itself; (0.99.35) a bunny hop or a slide-jump is held to MOVE.cap)
-    if (far > Math.max(SPEED.sprint, MOVE.cap * SPEED.run) * dt * 1.3 + 1.5 + p.burst) { p.burst = 0; return this.snap(m, p); }
+    if (far > Math.max(SPEED.sprint, (MOVE.cap + Math.max(0, (p.web && p.web.mods.move) || 0)) * SPEED.run) * dt * 1.3 + 1.5 + p.burst) { p.burst = 0; return this.snap(m, p); }
     p.burst = Math.max(0, p.burst - far);
     p.x = x; p.z = z;
     p.y = num(msg.y, 0, 6) ?? 0; // (0.99.35) how high (a jump, a rock's top): over a rock is not inside it

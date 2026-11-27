@@ -5,7 +5,8 @@
 // Keys: WASD move, mouse look (click to capture), left click attack (hold), Q E R skills, right click (hold)
 // scope (Sharpshooter), Shift sprint, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
-import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST } from './levels.js';
+import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST, pointsAt } from './levels.js';
+import { WebUI } from './webui.js';
 import * as THREE from 'three';
 import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP } from './sim.js';
 import { LandView, DRAW } from './view.js';
@@ -178,6 +179,7 @@ function wear(cls, force = false) {
   dress(hero, cls);
   world.setClass(1, cls);
   if (net && net.ready) net.send({ t: 'cls', cls });
+  applyWeb(); // (0.99.37) that path's talents
   drawSkills();
   note(`Now a ${NAMES[cls]} (working name). ${KITS[cls].passive}`);
 }
@@ -233,7 +235,7 @@ function joinServer() {
   try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour, level: me.level });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour, level: me.level, web: webOf() });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -454,7 +456,7 @@ const locked = () => document.pointerLockElement === canvas;
 const chatOpen = () => !$('chat-in').classList.contains('hidden');
 /** Take the mouse back for looking (needs a key or a click: browsers only allow it then). */
 function relock() {
-  if (locked() || altFree || chatOpen() || !canvas.requestPointerLock) return;
+  if (locked() || altFree || chatOpen() || webUI.open || !canvas.requestPointerLock) return;
   try {
     const r = canvas.requestPointerLock();
     if (r && r.catch) r.catch(() => {});
@@ -476,7 +478,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   // back from another tab or window: any game key takes the mouse again (Esc and the F keys do not)
-  if (!locked() && e.code !== 'Escape' && !/^F\d+$/.test(e.code)) relock();
+  if (!locked() && e.code !== 'Escape' && e.code !== 'KeyP' && !webUI.open && !/^F\d+$/.test(e.code)) relock(); // ((0.99.37) not for the talent web: it wants the mouse)
   if (e.repeat && (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC')) return;
   keys.add(e.code);
   // (0.99.35) C, running: a slide (and Space out of it, a long leap). Otherwise C (or Ctrl) walks, or runs again.
@@ -485,6 +487,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
   if (e.code === 'KeyH') { showTricks(); $('tricks').classList.toggle('hidden'); } // (0.99.35) the tricks
+  if (e.code === 'KeyP') toggleWeb(); // (0.99.37) the talent web
   if (e.code === 'KeyF') { const u = nearestUse(); if (u) u.fn(); }
   if (e.code === 'KeyL') {
     if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
@@ -528,6 +531,7 @@ function drawLookHint() {
   $('look-hint').classList.toggle('hidden', locked() || chatOpen());
 }
 document.addEventListener('pointerlockchange', () => {
+  if (webUI.open && locked()) { document.exitPointerLock(); return; } // (0.99.37) the talent web keeps the mouse
   if (!locked()) { firing = false; scoped = false; }
   drawLookHint();
 });
@@ -793,6 +797,7 @@ const cutscene = new Cutscene({
 });
 let story = params.get('story') === 'new' ? { stage: 'new' } : loadStory();
 if (story.xp === undefined) { story.xp = saved.xp || 0; story.xpq = saved.xpq || {}; } // (0.99.36) filled in from the story so far
+setTimeout(() => applyWeb(), 0); // (0.99.37) your talents
 let questRun = null;
 const company = {};
 function showQuest() {
@@ -963,12 +968,37 @@ function gainXp(n, why = '') {
     if (net && net.ready) net.send({ t: 'lvl', L: now });
     fx.ring(me.x, me.z, 2.4, 0xffd24a, 0.7);
     fx.ring(me.x, me.z, 1.2, 0xfff0b0, 0.5);
-    $('lvlup').innerHTML = `Level ${now}<small>A little stronger. A talent point (the talent web is coming).</small>`;
+    $('lvlup').innerHTML = `Level ${now}<small>A little stronger, and a talent point: press P</small>`;
+    if (webUI.open) webUI.draw();
     $('lvlup').style.opacity = '1';
     clearTimeout(gainXp.t);
     gainXp.t = setTimeout(() => { $('lvlup').style.opacity = '0'; }, 2600);
   }
 }
+// ---- (0.99.37) the talent web: what you have taken, per path; P opens it
+function webOf(cls = me.cls) { return ((story.web || {})[cls] || []).slice(); }
+function applyWeb() {
+  const ok = world.setWeb(1, webOf());
+  if (!ok && webOf().length) { story.web[me.cls] = []; saveStory(story); world.setWeb(1, []); } // (a set the web no longer allows: given back)
+  if (net && net.ready) net.send({ t: 'web', ids: webOf() });
+}
+const webUI = new WebUI($('web'), {
+  cls: () => me.cls,
+  have: () => webOf(),
+  points: () => pointsAt(me.level || 1),
+  set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); },
+});
+function toggleWeb() {
+  if (webUI.open) { webUI.hide(); relock(); return; }
+  if (cutscene.active) return;
+  if (me.cls !== 'warrior' && me.cls !== 'archer') return note('The talent web opens once you have a path (Rowan\'s or Juni\'s). Your points wait for you.');
+  document.exitPointerLock();
+  webUI.show();
+}
+$('web-close').addEventListener('click', () => toggleWeb());
+$('web-reset').addEventListener('click', () => { if (webOf().length && confirmReset()) { story.web[me.cls] = []; saveStory(story); applyWeb(); webUI.draw(); } });
+function confirmReset() { const b = $('web-reset'); if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Give all back'; return true; } b.dataset.sure = '1'; b.textContent = 'Sure? Click again'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Give all back'; }, 2500); return false; }
+
 function setStage(stage) {
   // (0.99.36) leaving a part of the story: its experience, once
   const from = story.stage;
@@ -1883,4 +1913,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
-window.land = { world, view, crowd, me, fx, hero, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

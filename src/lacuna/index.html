@@ -52,6 +52,18 @@
   #hud #xpb { height: 8px; } #xpb span { line-height: 8px !important; font-size: 9px !important; }
   #xpb i { background: linear-gradient(#ffd24a, #c0901a); transition: width 0.4s; }
   #lvlup { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); color: #ffd24a; font: 900 34px system-ui; text-shadow: 0 2px 8px #000, 0 0 24px #ffb020; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
+  #web { position: fixed; inset: 0; z-index: 40; background: #0b0f1a; }
+  #web canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  #web-top { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 12px; align-items: center; padding: 10px 14px; background: linear-gradient(rgba(5, 8, 16, 0.95), rgba(5, 8, 16, 0)); color: #dfe6f8; font: 13px system-ui; }
+  #web-top b { color: #ffd24a; font-size: 16px; }
+  #web-top #web-info b { color: #ffd24a; font-size: 14px; }
+  #web-top input { margin-left: auto; width: 230px; padding: 5px 8px; border-radius: 5px; border: 1px solid #3a4560; background: #121a2c; color: #fff; }
+  #web-top button { padding: 5px 10px; border-radius: 5px; border: 1px solid #3a4560; background: #1a2440; color: #fff; cursor: pointer; }
+  #web-top kbd { padding: 0 4px; background: #ffd24a; color: #1a1406; border-radius: 3px; font: 700 11px system-ui; }
+  #web-tip { position: absolute; display: none; max-width: 290px; padding: 8px 10px; background: rgba(12, 16, 28, 0.96); border: 1px solid #44507a; border-radius: 6px; color: #dfe6f8; font: 12px system-ui; pointer-events: none; }
+  #web-tip b { display: block; color: #fff; font-size: 13px; margin-bottom: 3px; } #web-tip b.notable { color: #ffd98a; } #web-tip b.keystone { color: #ffcf4a; font-size: 14px; }
+  #web-tip b small { color: #8a96b4; font-weight: 400; }
+  #web-tip span { display: block; color: #9fd0ff; } #web-tip em { display: block; margin-top: 5px; color: #8a96b4; font-size: 11px; }
   #lvlup small { display: block; text-align: center; font-size: 14px; color: #fff4d0; font-weight: 600; }
   #hud .skills { display: flex; gap: 6px; }
   #hud .sk { position: relative; width: 74px; height: 50px; padding: 4px 5px; box-sizing: border-box; background: rgba(10, 14, 24, 0.8); border: 1px solid #3a4560; border-radius: 6px; overflow: hidden; }
@@ -171,6 +183,9 @@
 </div>
 <div id="quest" class="hidden"><b id="quest-name"></b><span id="quest-goal"></span></div>
 <div id="lvlup"></div>
+<div id="web" class="hidden"><canvas></canvas>
+  <div id="web-top"><b>Talent web</b><span id="web-info"></span><input id="web-search" placeholder="Search (e.g. crit, jump, Cleave)"><button id="web-reset">Give all back</button><button id="web-close">Close <kbd>P</kbd></button></div>
+  <div id="web-tip"></div></div>
 <div id="tricks" class="hidden"><b>Moving well <kbd>H</kbd></b><span id="tricks-list"></span><em>All optional. Walk and jump as you like.</em></div>
 <div id="choose" class="hidden">
   <h2>Choose your path</h2>

@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the talent web (0.99.37)
+
+- **P opens the talent web**: one great web of about 450 passive talents, shared by both paths (after Path of Exile's passive tree), the Berserker starting on its west side (reds: blood, fury, quakes, storms, iron), the Sharpshooter on its east (greens: precision, fletching, the wind, the hunt, stillness). North are the acrobats (jump height, damage in the air, faster bunny hops, more wall kicks), south vitality and the mind, between them ferocity and focus. Either path can wander anywhere.
+- **Small nodes** give a little (4% health, 5% damage with arrows...); **notables** (named, bigger) give more or change a skill: *Wide Arc* (Cleave sweeps wider), *Split Shaft* (your Shots split into three), *Bank Shot* (Ricochet glances once more), *Earthshaker* (Skyfall stuns longer), *Eye of the Storm* (Whirlwind costs less), *Wall Runner* (another wall kick), *Slipstream* (bunny hops build faster)...
+- **Keystones** at the edge change the rules: *Featherfall* (a third jump), *Skyborn* (more damage in the air, less on the ground), *Momentum* (damage from speed), *Glass Cannon*, *Unbreakable*, *Blood Magic* (skills cost health), *Vampiric*, *Eagle Eye*, *Dervish*, *Patience*.
+- **A point a level.** Click a node to take it (and the way to it, if it is further out: the way lights up as you hover); right-click to give one back (as long as what is left is still joined to your start); "Give all back" starts again. Drag to move about, wheel to zoom; search lights up the nodes that match (crit, jump, Cleave...).
+- Each path keeps its own web. In a server world your web goes with you, and the server checks it (joined up from your start, no more points than your level).
+
 ### Lacuna: levels (0.99.36)
 
 - **Experience and levels, 1 to 60.** A gold bar under your mana. Beasts give experience (a wolf 12, a Thornhog 14, a Cairn Golem 30; a story's beast, ashen or a contract's quarry, twice that), each part of the story gives some once as you finish it, and each trick learned gives 40.

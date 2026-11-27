@@ -691,3 +691,38 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   }
   console.log(`${pass} passed, ${failed} failed (after moving well)`);
 }
+
+// ---- (0.99.37) the talent web
+{
+  const { WEB, valid, compile, pathTo, canRefund, describe, KEYSTONES } = await import('../src/lacuna/tree.js');
+  const { LandWorld: LW, TICK: T } = await import('../src/lacuna/sim.js');
+  const n = WEB.nodes;
+  const kinds = {}; for (const x of n) kinds[x.kind] = (kinds[x.kind] || 0) + 1;
+  const seen = new Set([WEB.starts.warrior]), todo = [WEB.starts.warrior];
+  while (todo.length) for (const l of n[todo.pop()].links) if (!seen.has(l)) { seen.add(l); todo.push(l); }
+  check('the web: hundreds of nodes, notables and keystones, all joined up', n.length > 350 && kinds.notable > 40 && kinds.keystone >= 10 && seen.size === n.length, JSON.stringify(kinds));
+  check('...every node says what it does', n.every((x) => describe(x).length > 0 && describe(x).every((t) => typeof t === 'string' && !t.includes('undefined'))));
+  const ks = n.find((x) => x.key === 'glass');
+  const way = pathTo([], 'warrior', ks.id);
+  check('...a way to a keystone from the Berserker\'s start, taken one joined node at a time', way && way.length > 8 && valid(way, 'warrior', 60), way && way.length);
+  check('...too many for your level is refused', !valid(way, 'warrior', 3));
+  check('...and so is a node not joined to your start', !valid([way[way.length - 1]], 'warrior', 60));
+  check('...a node in the middle of a path cannot be given back, the end one can', !canRefund(way, 'warrior', way[0]) && canRefund(way, 'warrior', way[way.length - 1]));
+  check('...Glass Cannon: more damage, less health', compile([ks.id]).mods.dmg === 0.4 && compile([ks.id]).mods.hp === -0.35);
+  // in the sim: health and damage follow the web; a dishonest set is refused
+  const w = new LW(), p = w.addPlayer(1, undefined, { cls: 'warrior', level: 60 });
+  const hp0 = p.maxHp, m0 = w.might(p, 'melee');
+  const ok = w.setWeb(1, way);
+  check('...in the sim: Glass Cannon and the way to it change health and might', ok && p.maxHp < hp0 && w.might(p, 'melee') > m0, `${hp0} -> ${p.maxHp}, ${m0.toFixed(1)} -> ${w.might(p, 'melee').toFixed(1)}`);
+  check('...and a set that is not joined up is refused (no talents at all)', !w.setWeb(1, [way[way.length - 1]]) && !p.web && p.maxHp === hp0);
+  // Featherfall: a third jump
+  const fk = n.find((x) => x.key === 'featherfall');
+  const w2 = new LW(), q = w2.addPlayer(1, { x: 0, z: -60 }, { cls: 'archer', level: 60 });
+  w2.setWeb(1, pathTo([], 'archer', fk.id));
+  w2.jump(1); for (let i = 0; i < 8; i++) w2.step(T);
+  w2.jump(1); for (let i = 0; i < 8; i++) w2.step(T);
+  w2.jump(1);
+  check('...Featherfall gives a third jump', w2.events.filter((e) => e.skill === 'jump2').length === 2);
+  check('...every keystone is in the web', Object.keys(KEYSTONES).every((k) => n.some((x) => x.key === k)));
+  console.log(`${pass} passed, ${failed} failed (after the web)`);
+}

@@ -11,6 +11,11 @@
 // every slot. Deterministic (sim/dmath.js only, one seeded rng): the server and a browser agree.
 import { makeRng } from '../sim/rng.js';
 import { levelHp, levelDmg, MAX_LEVEL } from './levels.js';
+import { compile, valid } from './tree.js';
+
+// (0.99.37) a hero's talents: a number from the web (0 if none), and whether a keystone is taken
+const M = (p, k) => (p && p.web && p.web.mods[k]) || 0;
+const KEY = (p, k) => !!(p && p.web && p.web.keys.has(k));
 import { dHypot, dAtan2, dCos, dSin } from '../sim/dmath.js';
 import { Land, LAND, CHUNKS, BEASTS, chunkOf, TOWN , trainingPosts } from './land.js';
 
@@ -170,8 +175,8 @@ export class LandWorld {
     const kit = KITS[p.cls], power = p.linked ? linkPower(p.link) : 0;
     const hpK = full || !p.maxHp ? 1 : p.hp / p.maxHp, mpK = full || !p.maxMp ? 1 : p.mp / p.maxMp;
     p.mult = linkMult(power);
-    p.maxHp = Math.round(kit.hp * p.mult * (p.vigour ?? 1) * levelHp(p.level || 1)); // (0.99.24) weak when he arrives; stronger day by day; (0.99.36) and by level
-    p.maxMp = Math.round(kit.mp + power * 0.6);
+    p.maxHp = Math.round(kit.hp * p.mult * (p.vigour ?? 1) * levelHp(p.level || 1) * Math.max(0.3, 1 + M(p, 'hp'))); // (0.99.24) weak when he arrives; stronger day by day; (0.99.36) and by level; (0.99.37) talents
+    p.maxMp = KEY(p, 'bloodMagic') ? 0 : Math.round((kit.mp + power * 0.6) * (1 + M(p, 'mana')));
     p.hp = Math.max(1, Math.round(p.maxHp * hpK));
     p.mp = p.maxMp * mpK;
   }
@@ -189,6 +194,21 @@ export class LandWorld {
   }
 
   /** (0.99.24) How strong the hero has grown (0.5 just through the tear, 1 once he has his strength back). */
+  /**
+   * (0.99.37) A hero's talents: the nodes of the web they have taken (checked: joined up from their path's start, no
+   * more than their level allows; a set that is not is refused, and they have none).
+   */
+  setWeb(pid, ids) {
+    const p = this.players.get(pid);
+    if (!p) return false;
+    const list = Array.isArray(ids) ? ids.filter((i) => Number.isInteger(i)).slice(0, 80) : [];
+    const ok = valid(list, p.cls, p.level || 1);
+    p.web = ok && list.length ? compile(list) : null;
+    p.webIds = ok ? list : [];
+    this.refit(p);
+    return ok;
+  }
+
   /** (0.99.36) A hero's level (health and might). */
   setLevel(pid, L) {
     const p = this.players.get(pid);
@@ -244,6 +264,7 @@ export class LandWorld {
 
   /** Could this hero pay `cost` mana now (a Berserker may pay what he lacks in blood)? */
   canPay(p, cost) {
+    if (KEY(p, 'bloodMagic')) return p.hp > cost + 1; // (0.99.37) Blood Magic: health for mana, one for one
     if (p.mp >= cost) return true;
     if (p.cls !== 'warrior') return false;
     const B = KITS.warrior.blood;
@@ -253,6 +274,7 @@ export class LandWorld {
   /** Pay `cost` mana (or, for a Berserker, what he lacks in blood). False if it cannot be paid. */
   pay(p, cost) {
     if (!this.canPay(p, cost)) return false;
+    if (KEY(p, 'bloodMagic')) { p.hp -= cost; if (cost > 0) this.emit('blood', { pid: p.pid, n: Math.round(cost), x: p.x, z: p.z }); return true; }
     if (p.mp >= cost) { p.mp -= cost; return true; }
     const blood = Math.round((cost - p.mp) * KITS.warrior.blood.perMana * p.maxHp);
     p.mp = 0;
@@ -288,7 +310,7 @@ export class LandWorld {
   /** (0.99.35) C: a slide, running, on the ground. */
   slide(pid) {
     const p = this.players.get(pid);
-    if (!p || p.dead || p.leap || p.roll || p.draw || p.whirl || p.slide || p.slideCd > 0) return false;
+    if (!p || p.dead || p.leap || p.roll || p.draw || (p.whirl && !KEY(p, 'dervish')) || p.slide || p.slideCd > 0) return false;
     if (p.y > p.g + 0.01 || p.vy > 0) return false;
     const run = SPEED.run, sp = dHypot(p.vx, p.vz);
     if (sp < run * 0.7) return false;
@@ -300,7 +322,7 @@ export class LandWorld {
   }
 
   /** (0.99.35) Speed over the ground, held to the cap. */
-  capSpeed(p, most = MOVE.cap * SPEED.run) {
+  capSpeed(p, most = (MOVE.cap + Math.max(0, M(p, 'move'))) * SPEED.run) {
     const sp = dHypot(p.vx, p.vz);
     if (sp > most) { p.vx *= most / sp; p.vz *= most / sp; }
   }
@@ -308,7 +330,7 @@ export class LandWorld {
   /** (0.99.35) A remembered jump, if it can go now. */
   tryJump(p) {
     if (!(p.jumpBuf > 0) || p.dead || p.leap || p.roll) return;
-    const run = SPEED.run, U = JUMP.up;
+    const run = SPEED.run, U = JUMP.up * (1 + M(p, 'jump')); // (0.99.37) talents: higher
     const ground = p.y <= p.g + 0.01 && p.vy <= 0;
     let kind = null;
     if (ground) {
@@ -322,10 +344,10 @@ export class LandWorld {
       } else if (p.cls === 'warrior' && this.time - p.slamAt <= MOVE.bounceWindow) {
         kind = 'bounce';
         p.vy = U * MOVE.bounceUp;
-      } else if (p.landT <= MOVE.hopWindow && sp > run * 0.9) {
+      } else if (p.landT <= MOVE.hopWindow && sp > run * 0.9 && !KEY(p, 'unbreakable')) {
         kind = 'bhop';
         p.vy = U;
-        const k = Math.min(sp * MOVE.hopGain, run * MOVE.hopCap) / sp;
+        const k = Math.min(sp * MOVE.hopGain, run * (MOVE.hopCap + M(p, 'hopCap'))) / sp;
         if (k > 1) { p.vx *= k; p.vz *= k; }
       } else {
         kind = 'jump';
@@ -336,7 +358,7 @@ export class LandWorld {
       // near the ground and falling: keep it for the landing (a bunny hop); just off it, rising: not yet
       if (p.vy < 0 && p.y - p.g < 0.4) return;
       if (p.vy > 0 && p.y - p.g < 0.15) return;
-      const wall = p.kicks < MOVE.kicks ? this.land.wallAt(p.x, p.z, p.y, PLAYER_R) : null;
+      const wall = p.kicks < MOVE.kicks + M(p, 'kicks') ? this.land.wallAt(p.x, p.z, p.y, PLAYER_R) : null;
       if (wall) {
         kind = 'kick';
         // off the wall: out from it, keeping the speed along it
@@ -347,10 +369,11 @@ export class LandWorld {
         p.kicks++;
         p.air2 = false; // a kick gives the double jump back
         p.facing = dAtan2(p.vz, p.vx);
-      } else if (!p.air2) {
+      } else if (!p.air2 || (KEY(p, 'featherfall') && p.air2 === true)) {
+        // (0.99.37) Featherfall: a third jump
         kind = 'jump2';
         p.vy = U * MOVE.doubleUp;
-        p.air2 = true;
+        p.air2 = p.air2 ? 2 : true;
       } else return;
     }
     this.capSpeed(p);
@@ -425,11 +448,11 @@ export class LandWorld {
     const kit = KITS[p.cls];
     p.still = p.moving || p.leap || p.roll || p.whirl ? 0 : p.still + dt;
     const breath = kit.still && p.still >= kit.still.after ? kit.still.regen : 1;
-    p.mp = Math.min(p.maxMp, p.mp + kit.regen * breath * dt);
+    p.mp = Math.min(p.maxMp, p.mp + kit.regen * breath * (1 + M(p, 'regen')) * dt);
     p.jumpBuf -= dt;
     p.slideCd -= dt;
     if (!p.driven) this.fall(p, dt);
-    if (p.calm > CALM && p.hp < this.hpCap(p)) p.hp = Math.min(this.hpCap(p), p.hp + p.maxHp * 0.05 * dt);
+    if (p.calm > CALM && p.hp < this.hpCap(p) && !KEY(p, 'vampire')) p.hp = Math.min(this.hpCap(p), p.hp + p.maxHp * 0.05 * (1 + M(p, 'life')) * dt);
     // Walking (moves made by the browser itself, on the server, are taken as they come: see room.js)
     if (!p.driven && !p.leap && !p.roll) this.walk(p, dt);
     else if (!p.driven) { p.vx = p.vz = 0; p.slide = null; }
@@ -449,7 +472,7 @@ export class LandWorld {
         p.vx = p.vz = 0;
         this.tryJump(p);
         this.emit('slam', { pid: p.pid, x: L.tx, z: L.tz, r: s.radius });
-        this.area(p, L.tx, L.tz, s.radius, s.mult, s.stun);
+        this.area(p, L.tx, L.tz, s.radius * (1 + M(p, 'area')), s.mult, s.stun);
       }
     }
     if (p.roll) {
@@ -467,11 +490,12 @@ export class LandWorld {
       W.next -= dt;
       if (W.next <= 0) {
         const done = (!W.held && W.beats >= 2) || W.t > s.most;
-        if (done || (W.beats > 0 && !this.pay(p, s.beat))) this.endWhirl(p);
+        const free = KEY(p, 'dervish') && W.t <= 1; // (0.99.37) Dervish: the first second is free
+        if (done || (W.beats > 0 && !free && !this.pay(p, s.beat * (1 - Math.min(0.6, M(p, 'whirlCost')))))) this.endWhirl(p);
         else {
           W.next += s.every;
           W.beats++;
-          this.area(p, p.x, p.z, s.radius, s.mult); // (Whirlwind spends; only Cleave wins mana back)
+          this.area(p, p.x, p.z, s.radius * (1 + M(p, 'area')), s.mult); // (Whirlwind spends; only Cleave wins mana back)
         }
       }
     }
@@ -480,7 +504,7 @@ export class LandWorld {
       const D = p.draw, s = KITS.archer.R;
       D.t += dt;
       if (D.t > s.draw && D.held && D.t <= s.draw + s.pourFor) {
-        const more = Math.min(p.mp, s.pour * dt);
+        const more = Math.min(p.mp, s.pour * (1 + M(p, 'pour')) * dt);
         p.mp -= more;
         D.poured += more;
       }
@@ -524,7 +548,7 @@ export class LandWorld {
     const len = Math.min(1, dHypot(p.mx, p.mz));
     // (0.99.21) a Whirlwind keeps running, a drawn bow creeps; (0.99.24) and a weak boy is slower
     const slow = (p.draw ? 0.45 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
-    const stride = SPEED[p.pace] * slow;
+    const stride = SPEED[p.pace] * slow * Math.max(0.5, 1 + M(p, 'move')); // (0.99.37) talents: faster
     const wx = len > 0.05 ? (p.mx / dHypot(p.mx, p.mz)) * stride * len : 0, wz = len > 0.05 ? (p.mz / dHypot(p.mx, p.mz)) * stride * len : 0;
     const ground = p.y <= p.g + 0.01 && p.vy <= 0;
     let sp = dHypot(p.vx, p.vz);
@@ -540,7 +564,7 @@ export class LandWorld {
     } else if (ground) {
       if (sp > stride + 0.05 && len > 0.05 && p.landT > MOVE.hopWindow) {
         // faster than your stride: steer, and lose the extra
-        const ns = Math.max(stride, sp - MOVE.friction * dt), k = Math.min(1, dt * 10);
+        const ns = Math.max(stride, sp - MOVE.friction * (KEY(p, 'momentum') ? 0.5 : 1) * dt), k = Math.min(1, dt * 10); // (0.99.37) Momentum: kept longer
         const nx = p.vx / sp + (wx / stride - p.vx / sp) * k, nz = p.vz / sp + (wz / stride - p.vz / sp) * k, n = dHypot(nx, nz) || 1;
         p.vx = (nx / n) * ns; p.vz = (nz / n) * ns;
       } else if (sp > stride + 0.05 && len > 0.05) {
@@ -574,7 +598,7 @@ export class LandWorld {
 
   endWhirl(p) {
     p.whirl = null;
-    p.cd.E = KITS.warrior.E.cd;
+    p.cd.E = KITS.warrior.E.cd * (1 - Math.min(0.4, M(p, 'cdr')));
     this.emit('cast', { pid: p.pid, skill: 'whirlEnd', x: p.x, z: p.z });
   }
 
@@ -608,7 +632,7 @@ export class LandWorld {
     if (k === 'basic') {
       // faster when Bloodied (Berserker) or just after a roll (Sharpshooter)
       const haste = 1 + (this.bloodied(p) ? KITS.warrior.bloodied.haste : 0) + (p.hasteT > 0 ? KITS.archer.E.haste : 0);
-      const every = kit.basic.every / haste;
+      const every = kit.basic.every / (haste * Math.max(0.4, 1 + M(p, 'aspd'))); // (0.99.37) talents: attack speed
       p.basicT = every;
       p.facing = dAtan2(dz, dx);
       p.faceT = Math.min(0.45, every * 0.8); // (0.99.27) he turns to the cut and holds it while it lands
@@ -620,9 +644,16 @@ export class LandWorld {
         // Steady Aim: every third Shot a crit, and a little mana back
         const A = kit.steadyAim;
         p.shotN++;
-        const crit = p.shotN % A.every === 0;
+        // (0.99.37) Patience: not every third Shot, but any after a second without shooting
+        const crit = KEY(p, 'patience') ? this.time - (p.lastShot ?? -9) >= 1 : p.shotN % A.every === 0;
+        p.lastShot = this.time;
         if (crit) p.mp = Math.min(p.maxMp, p.mp + A.mana);
         this.shoot(p, dx, dz, kit.basic.speed, kit.basic.range, kit.basic.mult * (crit ? A.mult : 1), false, 'arrow', { crit });
+        // (0.99.37) talents: split arrows, either side, a third as strong
+        for (let f = 1; f <= M(p, 'fork'); f++) for (const sgn of [-1, 1]) {
+          const a = sgn * 0.2 * f, c = dCos(a), sn = dSin(a);
+          this.shoot(p, dx * c - dz * sn, dx * sn + dz * c, kit.basic.speed, kit.basic.range, (kit.basic.mult / 3) * (crit ? A.mult : 1), false, 'arrow', { crit });
+        }
         // (0.99.35) the recoil: a Shot down from the air throws you up and back (once a jump)
         if (down && !p.recoil && p.y > p.g + 0.3 && !p.driven) {
           p.recoil = true;
@@ -636,7 +667,7 @@ export class LandWorld {
     }
     const s = kit[k];
     if (!this.pay(p, s.mana)) return;
-    if (s.id !== 'whirl') p.cd[k] = s.cd; // (a Whirlwind's cooldown starts when it ends)
+    if (s.id !== 'whirl') p.cd[k] = s.cd * (1 - Math.min(0.4, M(p, 'cdr'))); // (a Whirlwind's cooldown starts when it ends; (0.99.37) talents: faster)
     if (s.id !== 'roll') { p.facing = dAtan2(dz, dx); p.faceT = 0.4; }
     if (s.id === 'skyfall') {
       const far = Math.min(s.range, d);
@@ -659,19 +690,20 @@ export class LandWorld {
       this.emit('cast', { pid: p.pid, skill: 'oath', x: p.x, z: p.z });
       this.area(p, p.x, p.z, s.roar, s.mult);
     } else if (s.id === 'ricochet') {
-      this.shoot(p, dx, dz, s.speed, s.range, s.mult, false, 'arrow', { bounce: s.bounces });
+      this.shoot(p, dx, dz, s.speed, s.range, s.mult, false, 'arrow', { bounce: s.bounces + M(p, 'bounce') });
       this.emit('cast', { pid: p.pid, skill: 'ricochet', x: p.x, z: p.z });
     } else if (s.id === 'roll') {
       // the way you are moving; standing still, back away from where you look
       let rx = p.mx, rz = p.mz;
       const m = dHypot(rx, rz);
       if (m > 0.1) { rx /= m; rz /= m; } else { rx = -dx; rz = -dz; }
-      const t = { x: p.x + rx * s.dist, z: p.z + rz * s.dist };
+      const dist = s.dist * (1 + M(p, 'rollFar')); // (0.99.37) talents: further
+      const t = { x: p.x + rx * dist, z: p.z + rz * dist };
       this.land.pushOut(t, PLAYER_R);
       p.roll = { fx: p.x, fz: p.z, tx: t.x, tz: t.z, t: 0, dur: s.time };
       p.guard = s.time;
       p.hasteT = s.time + s.hasteFor;
-      p.burst += s.dist + 1;
+      p.burst += dist + 1;
       this.emit('cast', { pid: p.pid, skill: 'roll', x: p.x, z: p.z, tx: t.x, tz: t.z, dur: s.time });
     } else if (s.id === 'deadeye') {
       p.draw = { t: 0, dx, dz, poured: 0, held: true };
@@ -680,21 +712,28 @@ export class LandWorld {
   }
 
   /** How hard this hero hits now: the Link, and (Berserker) Bloodied. */
-  might(p) {
+  might(p, kind = '') {
     let m = KITS[p.cls].dmg * p.mult * (p.surge || 1) * levelDmg(p.level || 1); // (0.99.26) the Link's first waking, in the story; (0.99.36) a level's might
-    if (this.bloodied(p)) m *= 1 + KITS.warrior.bloodied.dmg;
-    return m;
+    if (this.bloodied(p)) m *= 1 + KITS.warrior.bloodied.dmg + M(p, 'bloodDmg');
+    if (!p.web) return m;
+    // (0.99.37) talents
+    const airborne = p.y > (p.g || 0) + 0.05;
+    let more = M(p, 'dmg') + (kind === 'melee' ? M(p, 'melee') : kind === 'proj' ? M(p, 'proj') : 0) + (airborne ? M(p, 'air') : 0) + (p.still >= 0.6 ? M(p, 'stillDmg') : 0);
+    if (KEY(p, 'skyborn')) more += airborne ? 0.35 : -0.15;
+    if (KEY(p, 'momentum')) more += p.still >= 0.6 ? -0.2 : Math.min(0.4, Math.max(0, (dHypot(p.vx || 0, p.vz || 0) / SPEED.run - 1) * 0.5));
+    return m * Math.max(0.2, 1 + more);
   }
 
   cleave(p, dx, dz) {
     const s = KITS[p.cls].basic; // a sword's cut, or (unarmed) a punch
-    const cosHalf = dCos(s.arc / 2);
+    const range = s.range * (1 + M(p, 'area') * 0.5); // (0.99.37) talents: wider, further
+    const cosHalf = dCos(Math.min(Math.PI * 0.95, (s.arc * (1 + M(p, 'cleaveArc'))) / 2));
     let n = 0;
-    for (const b of this.beastsNear(p.x, p.z, s.range + 1.2)) {
+    for (const b of this.beastsNear(p.x, p.z, range + 1.2)) {
       const ex = b.x - p.x, ez = b.z - p.z, d = dHypot(ex, ez);
-      if (d > s.range + BEASTS[b.type].r) continue;
+      if (d > range + BEASTS[b.type].r) continue;
       if (d > 0.5 && (ex * dx + ez * dz) / d < cosHalf) continue;
-      this.hurt(b, p, this.might(p) * s.mult);
+      this.hurt(b, p, this.might(p, 'melee') * s.mult);
       n++;
     }
     return n;
@@ -705,8 +744,8 @@ export class LandWorld {
     let n = 0;
     for (const b of this.beastsNear(x, z, r + 1.2)) {
       if (dHypot(b.x - x, b.z - z) > r + BEASTS[b.type].r) continue;
-      this.hurt(b, p, this.might(p) * mult);
-      if (stun && !b.dead) b.stunUntil = Math.max(b.stunUntil || 0, this.time + stun);
+      this.hurt(b, p, this.might(p, 'melee') * mult);
+      if (stun && !b.dead) b.stunUntil = Math.max(b.stunUntil || 0, this.time + stun * (1 + M(p, 'skyStun')));
       n++;
     }
     return n;
@@ -716,7 +755,10 @@ export class LandWorld {
   shoot(p, dx, dz, speed, range, mult, pierce, kind, extra = {}, from = null) {
     const id = ++this.shotId;
     const ox = from ? from.x : p.x + dx * 0.7, oz = from ? from.z : p.z + dz * 0.7;
-    const sh = { id, by: p.pid, x: ox, z: oz, ox: p.x, oz: p.z, dx, dz, speed, left: range, dmg: (extra.dmg ?? this.might(p) * mult), pierce, hit: pierce || extra.bounce ? [...(extra.hit || [])] : null, kind, crit: !!extra.crit, bounce: extra.bounce || 0, n: 0 };
+    // (0.99.37) talents: a chance to fly on through (pierce), further (Eagle Eye)
+    if (!pierce && M(p, 'pierce') && this.rng() < M(p, 'pierce')) { pierce = true; extra = { ...extra, hit: extra.hit || [] }; }
+    if (KEY(p, 'eagleEye')) range *= 1.5;
+    const sh = { id, by: p.pid, x: ox, z: oz, ox: p.x, oz: p.z, dx, dz, speed, left: range, dmg: (extra.dmg ?? this.might(p, 'proj') * mult), pierce, hit: pierce || extra.bounce ? [...(extra.hit || [])] : null, kind, crit: !!extra.crit, bounce: extra.bounce || 0, n: 0 };
     this.shots.push(sh);
     this.emit('shot', { id, pid: p.pid, x: sh.x, z: sh.z, dx, dz, speed, range, kind });
   }
@@ -740,13 +782,14 @@ export class LandWorld {
           // Long Watch: further flown, harder it lands
           const L = KITS.archer.longWatch;
           const far = dHypot(best.x - s.ox, best.z - s.oz);
-          let dmg = s.dmg * (1 + Math.min(L.most, L.per * Math.max(0, far - L.from)));
+          const lw = KEY(p, 'eagleEye') ? 2 : 1; // (0.99.37) Eagle Eye: Long Watch twice as strong
+          let dmg = s.dmg * (1 + lw * Math.min(L.most, L.per * Math.max(0, far - L.from)));
           if (s.kind === 'deadeye') dmg *= KITS.archer.R.falloff[s.n] || 0; // through up to three: full, 70%, 50%
           this.hurt(best, p, dmg, s.id, s.crit);
           if (s.kind === 'deadeye' && !best.dead) {
             // the second is Marked (20% more from everything after), the third Pinned
             const R = KITS.archer.R;
-            if (s.n === 1) best.markUntil = this.time + R.markFor;
+            if (s.n === 1) best.markUntil = this.time + R.markFor * (1 + M(p, 'markLen'));
             if (s.n === 2) best.stunUntil = Math.max(best.stunUntil || 0, this.time + R.pin);
           }
           s.n++;
@@ -788,6 +831,11 @@ export class LandWorld {
 
   hurt(b, p, dmg, shot = 0, crit = false) {
     if (b.dead) return;
+    // (0.99.37) talents: a chance to strike critically, and harder crits
+    if (p.web) {
+      if (!crit && M(p, 'crit') && this.rng() < M(p, 'crit')) { crit = true; dmg *= 1.5; }
+      if (crit) dmg *= 1 + M(p, 'critMult');
+    }
     if (b.markUntil > this.time) dmg *= 1 + KITS.archer.R.mark; // Marked by a Deadeye
     if (b.ward) dmg *= b.ward; // (0.99.26) a foe far beyond you: your blows barely mark him
     const n = Math.max(1, Math.round(dmg));
@@ -797,8 +845,9 @@ export class LandWorld {
     b.hitAt = this.time;
     this.emit('hit', { id: b.id, pid: p.pid, dmg: n, x: b.x, z: b.z, shot, hp: Math.max(0, b.hp) / b.maxHp, crit: crit ? 1 : 0 });
     // a Bloodied Berserker heals by hitting (a quarter under his Oath, never above 49% then)
+    if (this.players.has(p.pid) && M(p, 'leech') && !p.dead) p.hp = Math.min(this.hpCap(p), p.hp + n * M(p, 'leech')); // (0.99.37) talents
     if (this.players.has(p.pid) && this.bloodied(p) && !p.dead) {
-      const leech = p.oath ? KITS.warrior.R.leech : KITS.warrior.bloodied.leech;
+      const leech = p.oath ? KITS.warrior.R.leech * (1 + M(p, 'oathLeech')) : KITS.warrior.bloodied.leech;
       const cap = this.hpCap(p);
       if (p.hp < cap) p.hp = Math.min(cap, p.hp + n * leech);
     }
@@ -881,7 +930,7 @@ export class LandWorld {
           b.swipeT = def.every;
           const dodged = p.guard > 0;
           if (!dodged) {
-            p.hp -= def.dmg;
+            p.hp -= def.dmg * (1 - Math.min(0.6, M(p, 'armour'))); // (0.99.37) talents: less taken
             p.calm = 0;
           }
           this.emit('swipe', { id: b.id, pid: p.pid, dmg: dodged ? 0 : def.dmg, x: b.x, z: b.z });

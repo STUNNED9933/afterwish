@@ -1,0 +1,95 @@
+{
+  "id": "l_juni",
+  "prompt": "Juni, the scout of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean athletic adult woman in her early twenties, fair skin, a long ash-blonde braid over one shoulder, calm neutral expression, relaxed face, mouth closed, not smiling, a cropped sleeveless dark leather vest showing a toned midriff, a crimson neckerchief with the hound's-head badge, fingerless gloves, a belt of small pouches and a knife sheath, fitted dark shorts over black leggings, tall laced boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T04:30:31.851Z",
+  "creditsBefore": 2105,
+  "steps": {
+    "model": {
+      "task": "0bdf7b80-4350-454d-b4c8-94c42efd2597",
+      "result": {
+        "task_id": "0bdf7b80-4350-454d-b4c8-94c42efd2597",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/model.glb",
+        "preview": "out/models/l_juni/1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/preview.png"
+      }
+    },
+    "check": {
+      "task": "10247e11-9e8c-4f03-a72d-5d457ac60c8f",
+      "result": {
+        "task_id": "10247e11-9e8c-4f03-a72d-5d457ac60c8f",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_juni/2-check/tripo-out/rig-check-3-10247e11",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "26ba2965-a0f5-4e22-84df-242164918ffd",
+      "rigType": "biped",
+      "result": {
+        "task_id": "26ba2965-a0f5-4e22-84df-242164918ffd",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_juni/3-rig/tripo-out/rig-3-26ba2965",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_juni/3-rig/tripo-out/rig-3-26ba2965/model.glb",
+        "preview": "out/models/l_juni/3-rig/tripo-out/rig-3-26ba2965/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "054a4c5b-99c4-4974-878c-5d1a338bab0a",
+        "presets": [
+          "preset:biped:greet_02",
+          "preset:biped:bow",
+          "preset:biped:sob",
+          "preset:biped:swagger"
+        ],
+        "result": {
+          "task_id": "054a4c5b-99c4-4974-878c-5d1a338bab0a",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 40,
+          "output_dir": "out/models/l_juni/4-anim-1/tripo-out/retarget-054a4c5b",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_juni/4-anim-1/tripo-out/retarget-054a4c5b/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 2010,
+  "creditsUsed": 95,
+  "finished": "2026-11-27T04:32:08.179Z",
+  "files": [
+    "1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/generated_image.jpeg",
+    "1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/model.glb",
+    "1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/preview.png",
+    "1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/rendered_image.webp",
+    "1-model/tripo-out/juni-the-scout-of-the-iron-hound-0bdf7b80/task.json",
+    "2-check/tripo-out/rig-check-3-10247e11/task.json",
+    "3-rig/tripo-out/rig-3-26ba2965/model.glb",
+    "3-rig/tripo-out/rig-3-26ba2965/preview.png",
+    "3-rig/tripo-out/rig-3-26ba2965/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-26ba2965/task.json",
+    "4-anim-1/tripo-out/retarget-054a4c5b/model.glb",
+    "4-anim-1/tripo-out/retarget-054a4c5b/task.json",
+    "manifest.json"
+  ]
+}

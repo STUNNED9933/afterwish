@@ -1,0 +1,72 @@
+{
+  "id": "l_rowan",
+  "prompt": "Rowan, leader of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a tall broad-shouldered handsome man in his early thirties, fair skin, swept-back dark brown hair with one loose strand over his forehead, light stubble, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted sleeveless gunmetal-grey long coat with crimson lining worn open over a bare toned chest and abs, a crimson sash at the waist, forearms wrapped in dark leather, a wide belt with a sword frog and the hound's-head badge, dark fitted trousers, heavy boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T04:27:09.772Z",
+  "creditsBefore": 2215,
+  "steps": {
+    "model": {
+      "task": "78d2faf1-16a3-4567-bcd3-ea0cc7929d53",
+      "result": {
+        "task_id": "78d2faf1-16a3-4567-bcd3-ea0cc7929d53",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/model.glb",
+        "preview": "out/models/l_rowan/1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/preview.png"
+      }
+    },
+    "check": {
+      "task": "e20a5bf7-8b97-4110-9cda-52e4a2254d6c",
+      "result": {
+        "task_id": "e20a5bf7-8b97-4110-9cda-52e4a2254d6c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_rowan/2-check/tripo-out/rig-check-e20a5bf7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "f1a164d5-9e55-4353-a97c-6d59e3b61013",
+      "rigType": "biped",
+      "result": {
+        "task_id": "f1a164d5-9e55-4353-a97c-6d59e3b61013",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_rowan/3-rig/tripo-out/rig-f1a164d5",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_rowan/3-rig/tripo-out/rig-f1a164d5/model.glb",
+        "preview": "out/models/l_rowan/3-rig/tripo-out/rig-f1a164d5/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2160,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T04:29:06.528Z",
+  "files": [
+    "1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/generated_image.jpeg",
+    "1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/model.glb",
+    "1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/preview.png",
+    "1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/rendered_image.webp",
+    "1-model/tripo-out/rowan-leader-of-the-iron-hounds-78d2faf1/task.json",
+    "2-check/tripo-out/rig-check-e20a5bf7/task.json",
+    "3-rig/tripo-out/rig-f1a164d5/model.glb",
+    "3-rig/tripo-out/rig-f1a164d5/preview.png",
+    "3-rig/tripo-out/rig-f1a164d5/rendered_image.webp",
+    "3-rig/tripo-out/rig-f1a164d5/task.json",
+    "manifest.json"
+  ]
+}

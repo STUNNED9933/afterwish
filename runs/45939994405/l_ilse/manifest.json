@@ -1,0 +1,72 @@
+{
+  "id": "l_ilse",
+  "prompt": "Ilse, the healer of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a beautiful woman in her late twenties, fair skin with light freckles, wavy copper hair to her shoulders, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted off-shoulder ivory healer's dress with crimson trim and a laced bodice, a long skirt with a high side slit over white tights, a crimson ribbon at her throat with the hound's-head badge, a leather herb satchel on her hip, soft knee boots, curvy figure, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T04:29:06.530Z",
+  "creditsBefore": 2160,
+  "steps": {
+    "model": {
+      "task": "b8724887-b525-4f9d-ad66-e58a3adf8161",
+      "result": {
+        "task_id": "b8724887-b525-4f9d-ad66-e58a3adf8161",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_ilse/1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_ilse/1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/model.glb",
+        "preview": "out/models/l_ilse/1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/preview.png"
+      }
+    },
+    "check": {
+      "task": "b18418a9-eeff-440a-88d8-f00715813ab5",
+      "result": {
+        "task_id": "b18418a9-eeff-440a-88d8-f00715813ab5",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_ilse/2-check/tripo-out/rig-check-2-b18418a9",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "95a2923a-73d6-4250-9cde-18196b65c8b1",
+      "rigType": "biped",
+      "result": {
+        "task_id": "95a2923a-73d6-4250-9cde-18196b65c8b1",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_ilse/3-rig/tripo-out/rig-2-95a2923a",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_ilse/3-rig/tripo-out/rig-2-95a2923a/model.glb",
+        "preview": "out/models/l_ilse/3-rig/tripo-out/rig-2-95a2923a/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 2105,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T04:30:31.850Z",
+  "files": [
+    "1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/generated_image.jpeg",
+    "1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/model.glb",
+    "1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/preview.png",
+    "1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/rendered_image.webp",
+    "1-model/tripo-out/ilse-the-healer-of-the-iron-houn-b8724887/task.json",
+    "2-check/tripo-out/rig-check-2-b18418a9/task.json",
+    "3-rig/tripo-out/rig-2-95a2923a/model.glb",
+    "3-rig/tripo-out/rig-2-95a2923a/preview.png",
+    "3-rig/tripo-out/rig-2-95a2923a/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-95a2923a/task.json",
+    "manifest.json"
+  ]
+}

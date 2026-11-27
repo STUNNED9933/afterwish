@@ -1,0 +1,32 @@
+{
+  "task_id": "78d2faf1-16a3-4567-bcd3-ea0cc7929d53",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Rowan, leader of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a tall broad-shouldered handsome man in his early thirties, fair skin, swept-back dark brown hair with one loose strand over his forehead, light stubble, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted sleeveless gunmetal-grey long coat with crimson lining worn open over a bare toned chest and abs, a crimson sash at the waist, forearms wrapped in dark leather, a wide belt with a sword frog and the hound's-head badge, dark fitted trousers, heavy boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-27T04:27:11.447728Z",
+  "completed_at": "2026-11-27T04:28:34.949851Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

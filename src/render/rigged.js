@@ -98,7 +98,9 @@ export const RIGGED = {
     moves: {
       line: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
       deadeye: { clip: 'arc_power', keys: [[0, 0], [0.9, 0.9]], fade: 0.25 },
-      aim: { clip: 'arc_deadeye', keys: [[0, 0.5], [0.5, 1.0], [0.95, 1.45]], fade: 0.35 }, // (0.52) Deadeye: from the nock (the arrow is already in hand), drawn in half a second, loosed at 0.5 s
+      aim: { clip: 'arc_deadeye', keys: [[0, 0.5], [0.5, 1.0], [0.95, 1.45]], fade: 0.35 },
+      aimHold: { clip: 'arc_deadeye', keys: [[0, 0.5], [0.5, 1.0], [2.2, 1.0]], fade: 0.35 }, // (0.99.21) Lacuna's Deadeye: held drawn while mana pours in
+      loose: { clip: 'arc_deadeye', keys: [[0, 1.0], [0.45, 1.45]], fade: 0.04 }, // (0.52) Deadeye: from the nock (the arrow is already in hand), drawn in half a second, loosed at 0.5 s
       ricochet: { clip: 'arc_power', keys: [[0, 0.2], [0.6, 0.85]], fade: 0.2 },
       barrage: { clip: 'arc_barrage', keys: [[0, 0], [0.85, 0.85]], fade: 0.25 },
       zone: { clip: 'arc_storm', keys: [[0, 0], [1.45, 1.45]], fade: 0.35 }, // (0.51) drawn for a second, loosed at 1 s with the game's shot

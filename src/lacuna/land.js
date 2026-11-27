@@ -26,6 +26,23 @@ const GUILD_A = -1.84;
 export const GUILD = { x: TOWN.x + dCos(GUILD_A) * 21.5, z: TOWN.z + dSin(GUILD_A) * 21.5, a: GUILD_A, hw: 4.4, hd: 3.4 };
 export const CRYSTAL = { x: TOWN.x + dCos(GUILD_A) * 16, z: TOWN.z + dSin(GUILD_A) * 16, a: GUILD_A, r: 0.7 };
 export const LAKE = { x: 132, z: 118, r: 26 };
+// (0.99.21) the Iron Hounds' training ground, outside Sunmere's east gate: a ring of posts (Rowan's) and a range of
+// three targets at 8, 16 and 24 m from the shooting line (Juni's). Packed earth: nothing grows there, no beast lives there.
+export const TRAINING = {
+  x0: 46, x1: 90, z0: 11, z1: 32,
+  ring: { x: 54, z: 25, r: 2.4 },
+  line: { x: 60, z: 16 },
+  targets: [{ x: 68, z: 13 }, { x: 76, z: 17.5 }, { x: 84, z: 21 }], // staggered: the near ones never block the far one
+};
+export const inTraining = (x, z, pad = 0) => x > TRAINING.x0 - pad && x < TRAINING.x1 + pad && z > TRAINING.z0 - pad && z < TRAINING.z1 + pad;
+/** Every post of the training ground: four round the ring, then the three targets (the order the sim makes them in). */
+export function trainingPosts() {
+  const R = TRAINING.ring;
+  const out = [];
+  for (let i = 0; i < 4; i++) out.push({ x: R.x + dCos((i * Math.PI) / 2) * R.r, z: R.z + dSin((i * Math.PI) / 2) * R.r, ring: true });
+  for (const t of TRAINING.targets) out.push({ x: t.x, z: t.z, ring: false });
+  return out;
+}
 export const GLADE = { x: -150, z: 34, r: 11 }; // (phase 2) where the hero wakes, in the Wakewood: open grass, no beasts near
 export const ROAD_W = 3.2; // half the width of a road
 
@@ -58,6 +75,7 @@ export function groundAt(x, z, seed = LAND.seed) {
   if (town < TOWN.plaza) return 'plaza';
   if (dHypot(x - (CRYSTAL.x + GUILD.x) / 2, z - (CRYSTAL.z + GUILD.z) / 2) < 6.2) return 'plaza'; // the Guild's yard, paved
   if (dHypot(x - GLADE.x, z - GLADE.z) < GLADE.r) return 'glade';
+  if (inTraining(x, z)) return 'yard';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return 'water';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return 'shore';
   if (roadDist(x, z) < ROAD_W) return town < TOWN.r + 4 ? 'street' : 'road';
@@ -103,6 +121,8 @@ export const BEASTS = {
   wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest', hp: 420, dmg: 42, every: 1.3, xp: 12 },
   hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow', hp: 560, dmg: 36, every: 1.5, xp: 14 },
   golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony', hp: 1500, dmg: 95, every: 2.1, xp: 30 },
+  // (0.99.21) not a beast: the training ground's posts and targets (they never move, fight back or fall)
+  dummy: { name: 'Training Post', speed: 0, aggro: 0, leash: 0, r: 0.45, where: 'none', hp: 5000, dmg: 0, every: 99, xp: 0, post: true },
 };
 
 /** The land: chunks made on demand, and a spatial hash of everything solid on what has been made. */
@@ -172,7 +192,7 @@ export class Land {
       const g = groundAt(x, z, this.seed);
       const type = g === 'forest' ? 'wolf' : g === 'meadow' ? 'hog' : g === 'stony' ? 'golem' : null;
       if (!type || !free(x, z, 1.2, 1) || spawns.some((s) => dHypot(s.x - x, s.z - z) < 4)) continue;
-      if (roadDist(x, z) < 16 || dHypot(x - GLADE.x, z - GLADE.z) < 45) continue; // (phase 2) the roads and the glade are safe to walk
+      if (roadDist(x, z) < 16 || dHypot(x - GLADE.x, z - GLADE.z) < 45 || inTraining(x, z, 22)) continue; // (phase 2) the roads, the glade and the training ground are safe
       spawns.push({ type, x, z });
     }
     return { cx, cz, x0, z0, trees, rocks, houses, solid, spawns };

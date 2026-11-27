@@ -57,6 +57,11 @@
   #hud .sk .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.62); }
   #hud .sk .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 16px system-ui; }
   #hud .sk.dry { border-color: #6a2a30; }
+  #hud .sk.blood { border-color: #c8323a; }
+  #hud .sk.blood em { color: #ff7a7a; }
+  #hud .sk.on { border-color: #ffd24a; box-shadow: 0 0 8px rgba(255, 210, 74, 0.6); }
+  #hp.bloodied i { background: linear-gradient(#e0484e, #8a1c22); }
+  #hp.bloodied { box-shadow: 0 0 10px rgba(255, 60, 60, 0.55); }
   #hud .link { font-size: 11px; color: #c9b8ff; }
   #down { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(40, 40, 50, 0.45); backdrop-filter: grayscale(1); color: #fff; font: 600 22px system-ui; text-shadow: 0 2px 6px #000; pointer-events: none; }
   #down small { font: 14px system-ui; margin-top: 6px; }
@@ -87,6 +92,17 @@
   #bark.thought { font-style: italic; color: #dfe6f4; }
   #quest { position: fixed; right: 10px; top: 34px; width: 250px; padding: 8px 11px; background: rgba(10, 14, 24, 0.72); border-left: 3px solid #ffd24a; border-radius: 4px; color: #e8eefc; font-size: 12px; pointer-events: none; }
   #quest b { display: block; color: #ffd24a; font-size: 13px; }
+  #quest .step { display: block; margin-top: 3px; color: #c8d2ea; }
+  #quest .step.done { color: #7fd88a; text-decoration: line-through; opacity: 0.75; }
+  #quest .step.now { color: #fff; }
+  #choose { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(6, 8, 14, 0.72); z-index: 20; color: #e8eefc; }
+  #choose h2 { margin: 0; color: #ffd24a; font: 700 26px system-ui; letter-spacing: 0.04em; }
+  #choose p { margin: 0; max-width: 560px; text-align: center; font-size: 14px; color: #c8d2ea; }
+  #choose .paths { display: flex; gap: 18px; }
+  #choose button { width: 260px; padding: 16px 18px; text-align: left; background: rgba(16, 22, 38, 0.95); color: #e8eefc; border: 2px solid #3a4560; border-radius: 10px; cursor: pointer; font: 13px system-ui; }
+  #choose button:hover { border-color: #ffd24a; }
+  #choose button b { display: block; margin-bottom: 6px; font-size: 18px; color: #ffd24a; }
+  #choose button i { display: block; margin-top: 8px; font-style: normal; color: #9fb8ff; }
   #marker { position: fixed; left: 0; top: 0; padding: 2px 7px; background: rgba(255, 210, 74, 0.9); color: #1a1406; font: 700 11px system-ui; border-radius: 10px; pointer-events: none; white-space: nowrap; }
   #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 10px 20px; background: rgba(8, 10, 18, 0.85); border: 1px solid #ffd24a; border-radius: 8px; color: #fff; font: 600 16px system-ui; text-align: center; pointer-events: none; }
   #toast small { display: block; font-weight: 400; font-size: 13px; color: #cfd6e4; }
@@ -134,6 +150,14 @@
   <div id="mp-status" class="s">Alone: everything runs on this computer. Join to walk with friends (same passcode as Haven).</div>
 </div>
 <div id="quest" class="hidden"><b id="quest-name"></b><span id="quest-goal"></span></div>
+<div id="choose" class="hidden">
+  <h2>Choose your path</h2>
+  <p>Rowan's way or Juni's. It is where you start, not where you must stay: you can change your path at any time (1 and 2), and the Guild will teach you both.</p>
+  <div class="paths">
+    <button id="choose-warrior"><b>Berserker</b>Get close, pay in blood, and win anyway. A small pool of mana, won back by hitting; out of it, your skills take your health instead. Under half health you hit harder and heal by hitting.<i>Cleave · Skyfall · Whirlwind · Crimson Oath</i></button>
+    <button id="choose-archer"><b>Sharpshooter</b>Stay far, breathe, one arrow. A deep pool of mana that comes back fastest when you stand still; arrows land harder the further they fly, and Deadeye drinks as much mana as you pour in.<i>Shot · Ricochet · Evasive Roll · Deadeye</i></button>
+  </div>
+</div>
 <div id="marker" class="hidden"></div>
 <div id="bark" class="hidden"></div>
 <div id="toast" class="hidden"></div>

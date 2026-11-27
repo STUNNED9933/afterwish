@@ -51,7 +51,7 @@ export class LandRoom {
     else if (msg.t === 'cls' && CLASSES.includes(msg.cls) && msg.cls !== m.cls) { m.cls = msg.cls; this.world.setClass(m.pid, m.cls); this.roster(); }
     else if (msg.t === 'act') {
       const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF);
-      if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az);
+      if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true);
     }
     else if (msg.t === 'jump') this.world.jump(m.pid);
     else if ((msg.t === 'emote' && EMOTE_IDS.includes(msg.id)) || (msg.t === 'face' && EMOTICONS.includes(msg.id))) {
@@ -169,7 +169,7 @@ export class LandRoom {
       }
       if (evs.length) this.send(m.conn, { t: 'evs', list: evs });
       // your health, mana and cooldowns, when they change
-      const me = [Math.round(p.hp), p.maxHp, Math.floor(p.mp), p.maxMp, ...['Q', 'E', 'R'].map((k) => Math.max(0, Math.ceil(p.cd[k] * 10) / 10)), Math.max(0, Math.ceil(p.rage * 10) / 10), p.dead ? Math.ceil(p.downT) : 0, +p.mult.toFixed(2)];
+      const me = [Math.round(p.hp), p.maxHp, Math.floor(p.mp), p.maxMp, ...['Q', 'E', 'R'].map((k) => Math.max(0, Math.ceil(p.cd[k] * 10) / 10)), p.oath ? 1 : 0, p.dead ? Math.ceil(p.downT) : 0, +p.mult.toFixed(2)];
       const key = me.join();
       if (key !== m.me) { m.me = key; this.send(m.conn, { t: 'me', v: me }); }
     }

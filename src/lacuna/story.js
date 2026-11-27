@@ -5,7 +5,7 @@
 // The opening: the crack on the Verge opens, a husk runs into it, the hero follows; wakes in a glade in the
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
-import { GLADE, TOWN, CRYSTAL, roadDist } from './land.js';
+import { GLADE, TOWN, CRYSTAL, TRAINING, roadDist } from './land.js';
 import { buildCrack } from '../render/gates.js';
 import { separate } from './actor.js';
 
@@ -13,7 +13,8 @@ export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
   waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
   crystal: { name: 'The Crystal', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
-  path: { name: 'Choosing a Path', goal: 'Train with the Iron Hounds (the next part of the story is coming)' },
+  path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
+  ambush: { name: 'When It Counts', goal: 'The Iron Hounds will take you on your first hunt (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -417,3 +418,76 @@ export async function crystalScene(a) {
   await a.fade(1, 0.8);
   a.bars(false);
 }
+
+// ---- Quest 3, Choosing a Path (0.99.21): the Hounds' training ground outside the east gate
+/** Where each of the Company stands at the training ground (Rowan by his ring, Juni at her line, the others watching). */
+export const DRILL = {
+  rowan: [TRAINING.ring.x + 1.2, TRAINING.ring.z - 3.6],
+  juni: [TRAINING.line.x - 0.8, TRAINING.line.z - 2.2],
+  ilse: [TRAINING.ring.x + 6.5, TRAINING.ring.z + 3.2],
+  sorrel: [TRAINING.ring.x + 8, TRAINING.ring.z + 2.2],
+};
+/** The Company at the training ground; Magistra Odile back at her crystal. */
+export function atTraining(actors) {
+  const what = { rowan: 'arms', ilse: 'idle', juni: 'look', sorrel: 'wait', odile: 'idle' };
+  for (const [who, a] of Object.entries(actors)) {
+    if (!a) continue;
+    const at = who === 'odile' ? ODILE : DRILL[who];
+    if (!at) continue;
+    const f = who === 'odile' ? CRYSTAL.a + Math.PI : Math.atan2(TRAINING.ring.z - at[1], TRAINING.ring.x - at[0]);
+    a.place(at[0], at[1], f);
+    a.loop(what[who] || 'idle');
+  }
+  return { update(dt) { for (const a of Object.values(actors)) if (a) a.update(dt); } };
+}
+
+/** The scene at the training ground, before the trials. */
+export async function trainingScene(a) {
+  const R = TRAINING.ring;
+  a.bars(true);
+  a.talkCam(false);
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who, ...DRILL[who]);
+  const me = a.ctx.me;
+  a.camera([R.x - 9, 3.2, R.z - 7], [R.x + 2, 1.2, R.z - 1], 0);
+  a.camera([R.x - 6, 2.4, R.z - 5.5], [R.x + 1, 1.3, R.z - 1.5], 4);
+  await a.say('', 'Packed earth, a ring of straw posts, and a row of painted targets running off toward the hills: the Iron Hounds\' training ground.');
+  a.talkCam(true);
+  a.watch('rowan');
+  await a.say('rowan', 'The crystal measures what you were born with. Out here we measure what you do with it.');
+  await a.say('juni', 'The Hounds fight two ways. His way: get close, get hurt, win anyway. Mine: stay far, breathe, one arrow.', { to: 'hero' });
+  await a.say('sorrel', 'Your mana will always be small. So spend it the way that suits you. He pays the difference in blood. She pays in patience.');
+  await a.say('ilse', 'And whichever you try, I\'m right here if it goes wrong.');
+  await a.say('rowan', 'Try both, then choose. Me first. Take a blade, and come into the ring.');
+  a.talkCam(false);
+  a.quiet();
+  a.watch(null);
+  void me;
+  await a.fade(1, 0.5);
+  a.bars(false);
+}
+
+/** The two trials: what to do, step by step, and what the teacher says. */
+export const TRIALS = {
+  warrior: {
+    teacher: 'rowan',
+    title: 'Rowan\'s trial: the Berserker',
+    steps: [
+      { id: 'cleave', text: 'Cleave the posts in the ring', need: 6, done: 'Good. Feel that? Every post you hit gives you a little mana back. Battle Rhythm: the fight feeds you.' },
+      { id: 'skyfall', text: 'Skyfall (Q) into the ring: two posts with one landing', need: 1, done: 'That\'s it. Land in the middle of them; they never see it coming.' },
+      { id: 'blood', text: 'Hold Whirlwind (E) until your mana runs dry, and keep spinning on blood (Skyfall first burns mana faster)', need: 1, done: 'There. That\'s the Blood Price. Out of mana, you pay in blood, and under half you hit harder and heal by hitting. Mind you don\'t pay it all.' },
+    ],
+    start: [['rowan', 'Into the ring. Cut. Don\'t think, cut.']],
+    end: [['rowan', 'Not bad for a three.'], ['juni', 'My turn! Bow\'s by the line. Come on!']],
+  },
+  archer: {
+    teacher: 'juni',
+    title: 'Juni\'s trial: the Sharpshooter',
+    steps: [
+      { id: 'far', text: 'From the line, hit the far target (25 m off)', need: 1, done: 'See how hard that one landed? The further an arrow flies, the harder it hits. Long Watch.' },
+      { id: 'ricochet', text: 'One Ricochet (Q) through all three targets', need: 1, done: 'Ha! One arrow, three targets. That\'s how you clear a road.' },
+      { id: 'deadeye', text: 'Hold Deadeye (R): pour in 30 mana or more, then let go at a target', need: 1, done: 'Now that\'s a shot. The longer you hold, the more you pour in. Stand still and breathe between, and your mana comes back faster.' },
+    ],
+    start: [['juni', 'Stand on the line. Bow up. The far one first.']],
+    end: [['juni', 'You\'ve got good hands.'], ['rowan', 'Both ways, then. Now choose.']],
+  },
+};

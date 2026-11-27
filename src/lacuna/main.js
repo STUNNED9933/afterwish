@@ -10,7 +10,7 @@ import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, link
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
-import { groundAt, BEASTS, CRYSTAL } from './land.js';
+import { groundAt, BEASTS, CRYSTAL, TRAINING } from './land.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
 import { LACUNA_NET } from './room.js';
@@ -18,7 +18,7 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { opening, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene } from './story.js';
+import { opening, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrystal } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
 
@@ -93,10 +93,12 @@ function animate(h, ev) {
   if (ev.skill === 'basic') { a.start = true; a.period = ev.every || 0.6; }
   else if (ev.skill === 'leap') { a.move = 'leap'; a.moveDur = ev.dur; }
   else if (ev.skill === 'whirl') a.spinT = ev.dur;
+  else if (ev.skill === 'whirlEnd') a.spinT = 0;
   else if (ev.skill === 'roll') { a.move = 'dash'; a.moveDur = ev.dur; }
-  else if (ev.skill === 'volley') a.move = 'barrage';
-  else if (ev.skill === 'deadeye') a.move = 'aim';
-  else if (ev.skill === 'rage') a.move = 'cone';
+  else if (ev.skill === 'ricochet') { a.start = true; a.period = 0.6; }
+  else if (ev.skill === 'deadeye') a.move = 'aimHold';
+  else if (ev.skill === 'loose') a.move = 'loose';
+  else if (ev.skill === 'oath') a.move = 'cone';
   else if (ev.skill === 'jump') { a.jumpT = 0; a.move = 'hop'; }
 }
 /** Height of a hop, t seconds after it began (the sim's own arc, for other players: the server sends no height). */
@@ -139,7 +141,8 @@ function pose(h, dt, s) {
   a.hit = false;
 }
 const hero = makeHero();
-function wear(cls) {
+function wear(cls, force = false) {
+  if (trial && !force) return note('Finish the trial first (your teacher has handed you the weapon).');
   if (!KITS[cls]) return note('Pyromancer, Assassin and the other classes come later: the opening has the Berserker and the Sharpshooter.');
   if (hero.cls === cls) return;
   dress(hero, cls);
@@ -239,8 +242,8 @@ function joinServer() {
     else if (msg.t === 'snap') { me.x = prev.x = msg.x; me.z = prev.z = msg.z; }
     else if (msg.t === 'me') {
       // the server's word on your health, mana and cooldowns (your page guessed them a moment early)
-      const [hp, maxHp, mp, maxMp, q, e, r, rage, down, mult] = msg.v;
-      Object.assign(me, { hp, maxHp, mp, maxMp, rage, mult });
+      const [hp, maxHp, mp, maxMp, q, e, r, oath, down, mult] = msg.v;
+      Object.assign(me, { hp, maxHp, mp, maxMp, oath: !!oath, mult });
       for (const [k, v] of [['Q', q], ['E', e], ['R', r]]) if (Math.abs(me.cd[k] - v) > 0.35) me.cd[k] = v;
       if (down && !me.dead) { me.dead = true; me.downT = down; me.leap = me.roll = me.whirl = me.draw = null; }
       if (!down && me.dead) me.dead = false;
@@ -300,12 +303,14 @@ function heroOf(pid) {
 }
 const isMe = (pid) => (net ? pid === net.pid : pid === 1);
 function onEvent(ev) {
+  if (trial) trialEvent(ev);
   if (ev.type === 'shot') fx.shot(ev);
   else if (ev.type === 'cast') { const h = heroOf(ev.pid); if (h) animate(h, ev); }
   else if (ev.type === 'emote') { const h = heroOf(ev.pid); if (h) startEmote(h, ev.id); }
   else if (ev.type === 'face') { const h = heroOf(ev.pid); if (h) showFace(h, ev.id); }
   else if (ev.type === 'slam') fx.ring(ev.x, ev.z, ev.r, 0xffb347, 0.5);
-  else if (ev.type === 'hit') fx.number(ev.x, ev.z, String(ev.dmg), isMe(ev.pid) ? (ev.shot && ev.dmg > 300 ? 'big' : 'dealt') : 'dealt');
+  else if (ev.type === 'hit') fx.number(ev.x, ev.z, ev.crit ? `${ev.dmg}!` : String(ev.dmg), isMe(ev.pid) && (ev.crit || (ev.shot && ev.dmg > 300)) ? 'big' : 'dealt');
+  else if (ev.type === 'blood' && isMe(ev.pid)) fx.number(heroX, heroZ, `-${ev.n}`, 'taken'); // (0.99.21) a Berserker's blood price
   else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
   else if (ev.type === 'aggro' && isMe(ev.pid)) { const t = net ? seen.get(ev.id) : world.beasts[ev.id - 1]; note(`A ${t && t.type ? BEASTS[t.type].name : 'beast'} is coming for you.`); }
   else if (ev.type === 'swipe') {
@@ -355,7 +360,7 @@ function drawSkills() {
     d.className = 'sk';
     d.id = 'sk-' + k;
     d.title = s.text || '';
-    d.innerHTML = `<span class="k">${key}</span><b>${s.name}</b><em>${k === 'basic' ? 'no mana' : `${s.mana} mana`}</em><div class="cd"></div><div class="n"></div>`;
+    d.innerHTML = `<span class="k">${key}</span><b>${s.name}</b><em>${k === 'basic' ? 'no mana' : s.manaText ? (s.mana ? `${s.mana}+ mana` : 'toggle') : `${s.mana} mana`}</em><div class="cd"></div><div class="n"></div>`;
     $('skills').appendChild(d);
   }
 }
@@ -378,9 +383,15 @@ function drawHud() {
     const left = k === 'basic' ? Math.max(0, me.basicT) : Math.max(0, me.cd[k]);
     const full = k === 'basic' ? kit.basic.every : s.cd;
     el.querySelector('.cd').style.height = `${Math.min(1, left / full) * 100}%`;
-    el.querySelector('.n').textContent = left > 0.95 ? Math.ceil(left) : '';
-    el.classList.toggle('dry', k !== 'basic' && me.mp < s.mana);
+    // (0.99.21) a Deadeye being drawn shows the mana poured in; a skill only blood can pay for shows red
+    const pouring = k === 'R' && me.draw;
+    el.querySelector('.n').textContent = pouring ? `+${Math.round(me.draw.poured)}` : left > 0.95 ? Math.ceil(left) : '';
+    const short = k !== 'basic' && me.mp < s.mana;
+    el.classList.toggle('dry', short && !world.canPay(me, s.mana));
+    el.classList.toggle('blood', short && world.canPay(me, s.mana));
+    el.classList.toggle('on', (k === 'E' && !!me.whirl) || (k === 'R' && (!!me.oath || !!me.draw)));
   }
+  $('hp').classList.toggle('bloodied', world.bloodied(me));
   $('down').style.display = me.dead ? 'flex' : 'none';
   if (me.dead) $('down-t').textContent = `Getting up at Sunmere's gate in ${Math.max(0, Math.ceil(me.downT))} s`;
 }
@@ -433,7 +444,7 @@ addEventListener('keydown', (e) => {
     if (d >= 0 && d < wheel.items.length) { pick(d); closeWheel(true); }
     return;
   }
-  if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyR') act(e.code.slice(3));
+  if ((e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyR') && !e.repeat) act(e.code.slice(3));
   if (e.code === 'Enter' && net && net.ready) {
     keys.clear();
     if (locked()) document.exitPointerLock();
@@ -448,6 +459,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys.delete(e.code);
+  if (e.code === 'KeyE' || e.code === 'KeyR') letGo(e.code.slice(3)); // (0.99.21) a held Whirlwind or Deadeye
   if ((e.code === 'KeyT' && wheel && wheel.kind === 'emote') || (e.code === 'KeyY' && wheel && wheel.kind === 'face')) closeWheel(true);
   if (e.key === 'Alt') {
     e.preventDefault();
@@ -457,7 +469,7 @@ addEventListener('keyup', (e) => {
     drawLookHint();
   }
 });
-addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; altFree = false; hideTip(); closeWheel(false); });
+addEventListener('blur', () => { keys.clear(); firing = false; scoped = false; altFree = false; hideTip(); closeWheel(false); letGo('E'); letGo('R'); });
 function drawLookHint() {
   $('look-hint').textContent = altFree ? 'Hover for descriptions · let go of Alt to look around' : 'Click, or press any key, to look around · hold Alt to use the mouse';
   $('look-hint').classList.toggle('hidden', locked() || chatOpen());
@@ -523,7 +535,7 @@ $('skills').addEventListener('mouseover', (e) => {
   const s = k === 'basic' ? kit.basic : kit[k];
   const r = sk.getBoundingClientRect();
   const what = k === 'basic' ? (me.cls === 'warrior' ? 'Cut in front of you (hold left click).' : 'Shoot where the crosshair is (hold left click).') : s.text;
-  showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? `every ${s.every} s · no mana` : `${s.mana} mana · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left, r.top);
+  showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? `every ${s.every} s · no mana` : `${s.manaText || `${s.mana} mana`} · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left, r.top);
 });
 $('skills').addEventListener('mouseout', hideTip);
 addEventListener('wheel', (e) => { dist = Math.max(2.4, Math.min(11, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
@@ -541,7 +553,20 @@ function aimPoint() {
   const h = Math.hypot(aimDir.x, aimDir.z) || 1;
   return { x: me.x + (aimDir.x / h) * 45, z: me.z + (aimDir.z / h) * 45 };
 }
+/** A held skill let go (Whirlwind stops, Deadeye looses). */
+function letGo(k) {
+  if (!(k === 'E' && me.whirl) && !(k === 'R' && me.draw)) return;
+  world.act(1, k, 0, 0, true);
+  if (net && net.ready) net.send({ t: 'act', k, ax: 0, az: 0, up: true });
+}
 function act(k) {
+  // the Oath is a toggle: pressed again, it ends (no mana, nothing to aim)
+  if (k === 'R' && me.oath) {
+    if (me.cd.R > 0) return;
+    world.act(1, k, me.x, me.z);
+    if (net && net.ready) net.send({ t: 'act', k, ax: +me.x.toFixed(2), az: +me.z.toFixed(2) });
+    return;
+  }
   if (!world.ready(me, k)) return;
   hero.anim.em = null;
   const a = aimPoint();
@@ -694,7 +719,13 @@ const company = {};
 function showQuest() {
   const q = QUESTS[story.stage] || null;
   $('quest').classList.toggle('hidden', !q);
-  if (q) { $('quest-name').textContent = q.name; $('quest-goal').textContent = q.goal; }
+  if (!q) return;
+  $('quest-name').textContent = q.name;
+  if (trial) {
+    // (0.99.21) a trial's steps, ticked off as you go
+    const T = TRIALS[trial.cls];
+    $('quest-goal').innerHTML = `<span class="step now">${T.title}</span>` + T.steps.map((st, i) => `<span class="step ${i < trial.at ? 'done' : i === trial.at ? 'now' : ''}">${i < trial.at ? '✓' : '·'} ${st.text}${i === trial.at && st.need > 1 ? ` (${trial.n}/${st.need})` : ''}</span>`).join('');
+  } else $('quest-goal').textContent = story.trial === 'choose' ? 'Choose your path' : q.goal;
 }
 let toastT = 0;
 function toast(title, sub) {
@@ -769,10 +800,10 @@ async function playOpening() {
 }
 $('cs-skip').addEventListener('click', () => cutscene.skip());
 for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () => cutscene.key('Click'));
-$('replay').addEventListener('click', () => { story = { stage: 'new' }; saveStory(story); playOpening(); });
+$('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : null;
+  const lead = story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -782,7 +813,8 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  $('marker').textContent = `◆ ${story.stage === 'crystal' ? 'The Guild' : 'Rowan'} · ${Math.round(d)} m`;
+  const what = story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
 }
@@ -816,13 +848,108 @@ async function playCrystal() {
   crystal.ember(true); // it never quite goes out
   story.stage = 'path';
   saveStory(story);
-  questRun = atGuild(company);
+  questRun = atTraining(company); // (they go on ahead while the screen is dark)
+  bark([['rowan', 'Training ground, outside the east gate. We\'ll be waiting.']]);
   yaw = CRYSTAL.a + Math.PI; pitch = 0.2;
   $('fade').style.transition = 'opacity 0.8s';
   $('fade').style.opacity = '0';
   toast('Quest complete: The Crystal', 'New quest: Choosing a Path');
   showQuest();
 }
+// ---- (0.99.21) Quest 3, Choosing a Path: the trials at the training ground, then the choice
+let trial = null; // { cls, at (step), n (count), slamT, ricoT, ricoHit, looseT }
+const posts = world.beasts.filter((b) => b.type === 'dummy');
+const ringIds = new Set(posts.filter((b) => b.ring).map((b) => b.id));
+const targetIds = posts.filter((b) => !b.ring).map((b) => b.id);
+async function playTraining() {
+  if (cutscene.active) return;
+  questRun = null;
+  if (locked()) document.exitPointerLock();
+  document.body.classList.add('scene');
+  $('cs-skip').classList.remove('hidden');
+  closeWheel(false);
+  hero.anim.em = null;
+  cutscene.adopt({ rowan: company.rowan, ilse: company.ilse, juni: company.juni, sorrel: company.sorrel });
+  try {
+    await cutscene.run(trainingScene);
+  } finally {
+    if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
+    document.body.classList.remove('scene');
+    $('cs-skip').classList.add('hidden');
+  }
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) company[who] = cutscene.keep(who) || company[who];
+  cutscene.clear();
+  questRun = atTraining(company);
+  me.x = TRAINING.ring.x - 3.5; me.z = TRAINING.ring.z - 3.5; prev.x = me.x; prev.z = me.z;
+  yaw = Math.atan2(TRAINING.ring.z - me.z, TRAINING.ring.x - me.x); pitch = 0.25;
+  $('fade').style.transition = 'opacity 0.8s';
+  $('fade').style.opacity = '0';
+  startTrial('warrior');
+}
+function startTrial(cls) {
+  trial = { cls, at: 0, n: 0, slamT: null, ricoT: -99, ricoHit: new Set(), looseT: -99 };
+  story.trial = cls;
+  saveStory(story);
+  wear(cls, true);
+  me.mp = me.maxMp;
+  bark(TRIALS[cls].start);
+  showQuest();
+}
+function stepDone() {
+  const T = TRIALS[trial.cls];
+  const st = T.steps[trial.at];
+  bark([[T.teacher, st.done]]);
+  trial.at++;
+  trial.n = 0;
+  if (trial.at < T.steps.length) return showQuest();
+  // the trial is over
+  bark(T.end);
+  const was = trial.cls;
+  trial = null;
+  if (was === 'warrior') return setTimeout(() => { startTrial('archer'); toast('Juni\'s trial', 'Go to the shooting line'); }, 3500);
+  story.trial = 'choose';
+  saveStory(story);
+  showQuest();
+  setTimeout(showChoose, 3000);
+}
+/** What happened, for the trial (hits on the posts, a Skyfall, blood paid, a Ricochet, a Deadeye loosed). */
+function trialEvent(ev) {
+  if (!trial || !isMe(ev.pid)) return;
+  const id = TRIALS[trial.cls].steps[trial.at].id;
+  const now = performance.now() / 1000;
+  if (id === 'cleave' && ev.type === 'hit' && !ev.shot && ringIds.has(ev.id)) { if (++trial.n >= 6) stepDone(); else showQuest(); }
+  else if (id === 'skyfall') {
+    if (ev.type === 'slam') { trial.slamT = ev.t; trial.slamHit = new Set(); }
+    else if (ev.type === 'hit' && ev.t === trial.slamT && ringIds.has(ev.id)) { trial.slamHit.add(ev.id); if (trial.slamHit.size >= 2) stepDone(); }
+  } else if (id === 'blood' && ev.type === 'blood') stepDone();
+  else if (id === 'far' && ev.type === 'hit' && ev.shot && ev.id === targetIds[2] && me.x < TRAINING.line.x + 3) stepDone();
+  else if (id === 'ricochet') {
+    if (ev.type === 'cast' && ev.skill === 'ricochet') { trial.ricoT = now; trial.ricoHit = new Set(); }
+    else if (ev.type === 'hit' && ev.shot && now - trial.ricoT < 3 && targetIds.includes(ev.id)) { trial.ricoHit.add(ev.id); if (trial.ricoHit.size >= 3) stepDone(); }
+  } else if (id === 'deadeye') {
+    if (ev.type === 'cast' && ev.skill === 'loose') trial.looseT = ev.poured >= 30 ? now : -99;
+    else if (ev.type === 'hit' && ev.shot && now - trial.looseT < 2.5 && targetIds.includes(ev.id)) stepDone();
+  }
+}
+function showChoose() {
+  if (story.trial !== 'choose') return;
+  if (locked()) document.exitPointerLock();
+  $('choose').classList.remove('hidden');
+}
+function choosePath(cls) {
+  $('choose').classList.add('hidden');
+  story.trial = null;
+  story.path = cls;
+  story.stage = 'ambush';
+  saveStory(story);
+  wear(cls, true);
+  bark(cls === 'warrior' ? [['rowan', 'Ha! Knew it. Blood and iron, then.'], ['juni', 'Your loss. Come and shoot with me some time.']] : [['juni', 'Yes! Another one for the bow.'], ['rowan', 'Fine. Someone has to stand behind me.']]);
+  toast('Quest complete: Choosing a Path', 'New quest: When It Counts (coming in the next part)');
+  showQuest();
+  relock();
+}
+$('choose-warrior').addEventListener('click', () => choosePath('warrior'));
+$('choose-archer').addEventListener('click', () => choosePath('archer'));
 // where the story stands when the page opens
 if (story.stage === 'new') setTimeout(playOpening, 300);
 else if (story.stage === 'waking') {
@@ -830,9 +957,15 @@ else if (story.stage === 'waking') {
   companyAt({ juni: [ROAD_IN.x + 3, ROAD_IN.z], rowan: [ROAD_IN.x, ROAD_IN.z], ilse: [ROAD_IN.x - 2, ROAD_IN.z + 1], sorrel: [ROAD_IN.x - 3, ROAD_IN.z - 1] });
   yaw = 0;
   startWalk();
-} else if (story.stage === 'crystal' || story.stage === 'path') {
+} else if (story.stage === 'crystal') {
   toGuild();
-  if (story.stage === 'path') crystal.ember(true);
+  showQuest();
+} else if (story.stage === 'path' || story.stage === 'ambush') {
+  toGuild();
+  questRun = atTraining(company);
+  crystal.ember(true);
+  if (story.stage === 'path' && (story.trial === 'warrior' || story.trial === 'archer')) startTrial(story.trial);
+  else if (story.stage === 'path' && story.trial === 'choose') setTimeout(showChoose, 600);
   showQuest();
 }
 
@@ -950,10 +1083,11 @@ function frame(now) {
     for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8 });
     fxBeasts = nearBeasts;
   }
-  fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, me.rage > 0, hx, hz);
+  fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);
   if (questRun && !cutscene.active) questRun.update(dt, me);
   crystal.update(dt);
   if (story.stage === 'crystal' && !cutscene.active && questRun && Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 6.5) playCrystal();
+  if (story.stage === 'path' && !story.trial && !trial && !cutscene.active && questRun && Math.hypot(me.x - TRAINING.ring.x, me.z - TRAINING.ring.z) < 12) playTraining();
   updateBubbles(dt);
   drawMarker();
   if (barkT > 0 && (barkT -= dt) <= 0) nextBark();

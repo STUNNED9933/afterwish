@@ -160,6 +160,22 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the classes rebuilt round mana, and Quest 3, Choosing a Path (0.99.21)
+
+Both classes keep the feel of their Afterwish versions (the Warrior's Berserker and the Archer's Sharpshooter) but are rebuilt round Lacuna's mana: one has little and pays in blood, the other has plenty and pours it into one shot.
+
+- **Berserker:** a small pool of mana (60, plus the Link) that barely refills on its own. **Battle Rhythm:** every beast a Cleave hits gives back 3 mana. **Blood Price:** short of mana, a skill takes the rest from your health (never below a tenth; the skill bar turns red when it would). **Bloodied** under half health: +25% damage, 20% faster blows, and your hits heal you (8%).
+  - **Skyfall** (Q): leap where you look, crash down, stun what is under you for a second.
+  - **Whirlwind** (E): *hold* to spin, cutting everything round you every 0.3 s while you keep running; 10 mana, then 6 a beat (or blood), up to 4 s. Let go to stop; the cooldown starts then.
+  - **Crimson Oath** (R): a toggle. Cut yourself to 40% health with a roar that hurts everything near; the blood becomes mana. While it lasts you are always Bloodied, your hits heal a quarter of what they deal, and nothing lifts you above 49%. Press again to end it.
+- **Sharpshooter:** a deep pool (120, plus the Link). **Steady breath:** standing still, mana comes back two and a half times as fast. **Long Watch:** +4% damage for every metre past the first two (up to +40%). **Steady Aim:** every third Shot is a crit for double and gives back 5 mana.
+  - **Ricochet** (Q): an arrow that glances from beast to beast within 10 m: up to four.
+  - **Evasive Roll** (E): roll away, untouchable, then shoot 50% faster for 3 s.
+  - **Deadeye** (R): *hold* to draw. After half a second every moment held pours more mana in (up to 1.5 s more, 40 a second), each point +10% damage. Let go to loose it through up to three beasts: full, then 70% and **Marked** (+20% damage taken for 5 s), then 50% and **Pinned** (stunned 1.5 s).
+- **The Iron Hounds' training ground**, outside Sunmere's east gate: a ring of straw posts and three painted targets at 8, 16 and 25 m. The posts are on the shared land: anyone can practise on them (they never fall and heal a few seconds after the last blow).
+- **Quest 3, Choosing a Path:** after the crystal the Hounds go on ahead to the training ground. A short scene, then **Rowan's trial** (Cleave the posts; Skyfall into the ring; Whirlwind until the mana runs dry and spin on blood) and **Juni's trial** (the far target from the line; one Ricochet through all three; a Deadeye with 30+ mana poured in). The tracker ticks each step off. Then **choose your path**. It is where you start: 1 and 2 still change it any time.
+- Quest 4, When It Counts, is next.
+
 ### Lacuna: Quest 2, The Crystal (0.99.20)
 
 - **The Adventurers' Guild** now stands on the north side of Sunmere's plaza (a stone hall with red banners), with a paved yard and a **reading crystal** taller than a man. Walk round it; townsfolk walk round it too.

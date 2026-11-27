@@ -112,7 +112,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   const inSight = [...w.players.values()].map((p) => [PLAYER_ID + p.pid, p]).concat(w.beasts.map((b) => [b.id, b])).filter(([, e]) => Math.hypot(e.x - me.x, e.z - me.z) <= SEE);
   const match = inSight.every(([id, e]) => mine.has(id) && Math.abs(mine.get(id).x - e.x) < 0.02 && Math.abs(mine.get(id).z - e.z) < 0.02);
   check('...and what a player holds is everything within sight, where it is', match && [...mine.keys()].length <= inSight.length + 2, `${mine.size} held, ${inSight.length} in sight`);
-  check('...a beast\'s kind and mood come through', [...mine.values()].filter((e) => !e.player).every((e) => ['wolf', 'hog', 'golem'].includes(e.type)));
+  check('...a beast\'s kind and mood come through', [...mine.values()].filter((e) => !e.player).every((e) => ['wolf', 'hog', 'golem', 'dummy'].includes(e.type)));
 }
 
 // ---- the crowd's streets keep clear of houses
@@ -152,22 +152,50 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
     w.act(1, 'basic', hog.x, hog.z);
     steps(w, 0.5);
     const hit = w.events.find((e) => e.type === 'hit');
-    check('Lacuna combat: a Sharpshooter\'s arrow flies and lands, for her damage times the Link (20 x 3)', hit && hit.dmg === 60 && hog.hp === hog.maxHp - 60, hit && hit.dmg);
+    check('Lacuna combat: a Sharpshooter\'s arrow flies and lands: her damage times the Link (20 x 3), +40% from 15 m off (Long Watch)', hit && hit.dmg === 84 && hog.hp === hog.maxHp - 84, hit && hit.dmg);
     check('...and the beast comes for whoever shot it', hog.state === 'chase' && hog.target === 1);
-    const mp = p.mp;
-    w.act(1, 'Q', hog.x, hog.z);
-    w.step(TICK);
-    check('...Volley: five arrows, its mana paid, and not again until its cooldown is done', w.shots.length === 5 && Math.abs(p.mp - (Math.min(p.maxMp, mp + 7 * TICK) - 20)) < 0.01 && !w.ready(p, 'Q'), `${w.shots.length} shots, mana ${mp} -> ${p.mp}`);
+    const near = put('golem', 62, 60);
+    p.shotN = 0; w.events.length = 0;
+    for (let i = 0; i < 3; i++) { p.basicT = 0; w.act(1, 'basic', near.x, near.z); steps(w, 0.2); }
+    const hs = w.events.filter((e) => e.type === 'hit' && e.id === near.id);
+    check('...Steady Aim: every third Shot is a crit for double', hs.length === 3 && !hs[0].crit && !hs[1].crit && hs[2].crit === 1 && hs[2].dmg === hs[0].dmg * 2, hs.map((h) => h.dmg + (h.crit ? '!' : '')).join());
   }
   {
     const { w, p, put } = setup('archer');
-    const a = put('wolf', 70, 60), b = put('wolf', 76, 60);
-    w.act(1, 'R', 90, 60);
-    steps(w, 0.4);
-    check('...Deadeye: drawn first (nothing yet)', !w.events.some((e) => e.type === 'hit'));
+    const a = put('hog', 68, 60), b = put('hog', 74, 63), c = put('hog', 80, 60), far = put('hog', 110, 60);
+    const mp = p.mp;
+    w.act(1, 'Q', a.x, a.z);
+    w.step(TICK);
+    const paid = p.mp < mp - 17;
+    steps(w, 1.2);
+    const ids = new Set(w.events.filter((e) => e.type === 'hit').map((e) => e.id));
+    check('...Ricochet: one arrow glances from beast to beast (three here), never to one out of reach; its mana paid', ids.has(a.id) && ids.has(b.id) && ids.has(c.id) && !ids.has(far.id) && paid && !w.ready(p, 'Q'), [...ids].join());
+  }
+  {
+    const { w, p, put } = setup('archer');
+    const a = put('wolf', 68, 60), b = put('wolf', 74, 60), c = put('wolf', 80, 60), d = put('wolf', 86, 60);
+    for (const x of [a, b, c, d]) { x.hp = x.maxHp = 1e6; x.stunUntil = 1e9; } // (held still: Long Watch counts the distance)
+    w.act(1, 'R', 95, 60);
+    steps(w, 0.3);
+    w.act(1, 'R', 0, 0, true); // let go early: it still waits to be drawn
+    steps(w, 0.15);
+    check('...Deadeye: drawn first (let go early, nothing yet)', !w.events.some((e) => e.type === 'hit'));
     steps(w, 0.6);
     const hits = w.events.filter((e) => e.type === 'hit');
-    check('...then one shot through both wolves, six times as hard', hits.length === 2 && hits.every((h) => h.dmg === 360) && hits.map((h) => h.id).sort().join() === [a.id, b.id].sort().join(), hits.map((h) => h.dmg).join());
+    const by = (x) => hits.find((h) => h.id === x.id);
+    // 300 (20 x 3 x 5), with Long Watch: 8 m +24%, 14 m and 20 m +40%
+    check('...then through three wolves: full, then 70%, then 50% (the fourth is spared)', by(a) && by(b) && by(c) && !by(d) && by(a).dmg === 372 && by(b).dmg === 294 && by(c).dmg === 210, hits.map((h) => h.dmg).join());
+    check('...the second Marked, the third Pinned (it cannot move)', b.markUntil > w.time && c.stunUntil > w.time);
+    const quick = by(a).dmg;
+    // held to the end: more mana poured, a harder shot
+    const s2 = setup('archer');
+    const t = s2.put('wolf', 68, 60);
+    t.hp = t.maxHp = 1e6; t.stunUntil = 1e9;
+    const mp = s2.p.mp;
+    s2.w.act(1, 'R', 95, 60);
+    steps(s2.w, 2.4);
+    const held = s2.w.events.find((e) => e.type === 'hit');
+    check('...held to the full two seconds it drinks more mana and hits far harder', held && held.dmg > quick * 1.5 && s2.p.mp < mp - 60, `${quick} -> ${held && held.dmg}, mana ${mp} -> ${s2.p.mp.toFixed(0)}`);
   }
   {
     const { w, p, put } = setup('archer');
@@ -178,7 +206,14 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
     w.step(TICK);
     const hp = p.hp;
     steps(w, 0.3);
-    check('...Roll: away she goes, and a swipe while rolling misses', p.x < 58 && p.hp === hp && w.events.some((e) => e.type === 'swipe' && e.dmg === 0));
+    check('...Evasive Roll: away she goes, a swipe while rolling misses, and she shoots faster after', p.x < 58 && p.hp === hp && w.events.some((e) => e.type === 'swipe' && e.dmg === 0) && p.hasteT > 2);
+    w.input(1, { mx: 0, mz: 0 });
+    p.mp = 0;
+    steps(w, 2);
+    const standing = p.mp;
+    p.mp = 0; w.input(1, { mx: 1, mz: 0 });
+    steps(w, 2);
+    check('...standing still she breathes her mana back faster', standing > p.mp * 1.8, `${standing.toFixed(1)} vs ${p.mp.toFixed(1)}`);
   }
   {
     const { w, p, put } = setup('warrior');
@@ -186,27 +221,50 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
     w.act(1, 'Q', 70, 60);
     steps(w, 0.7);
     const hits = w.events.filter((e) => e.type === 'hit');
-    check('...a Berserker leaps where he looks (landing beside it, not inside) and smashes what is round him', Math.hypot(p.x - 70, p.z - 60) < 2 && hits.some((h) => h.id === near.id) && !hits.some((h) => h.id === far.id) && p.burst > 8);
+    check('...a Berserker\'s Skyfall: leaps where he looks (landing beside it, not inside), smashes what is round him and stuns it', Math.hypot(p.x - 70, p.z - 60) < 2 && hits.some((h) => h.id === near.id) && !hits.some((h) => h.id === far.id) && p.burst > 8 && near.stunUntil > w.time);
     w.events.length = 0;
+    p.mp = p.maxMp;
     w.act(1, 'E', 70, 60);
     steps(w, 1.8);
-    check('...Whirlwind: cuts round him again and again', w.events.filter((e) => e.type === 'hit' && e.id === near.id).length >= 4 || near.dead);
+    const beats = w.events.filter((e) => e.type === 'hit' && e.id === near.id).length;
+    check('...Whirlwind, held: cuts round him beat after beat, paying as it goes', (beats >= 5 || near.dead) && !!p.whirl && p.mp < p.maxMp);
+    w.act(1, 'E', 0, 0, true);
+    steps(w, 0.5);
+    check('...let go, it stops, and only then its cooldown starts', !p.whirl && p.cd.E > 5);
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const g = put('golem', 62, 60), g2 = put('golem', 62, 61.5);
+    g.hp = g.maxHp = g2.hp = g2.maxHp = 1e6;
+    p.mp = 10;
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    const plain = w.events.find((e) => e.type === 'hit').dmg;
+    check('...Battle Rhythm: a Cleave through two beasts gives back 6 mana', Math.abs(p.mp - (10 + 6 + KITS.warrior.regen * TICK)) < 0.01, p.mp);
+    p.hp = p.maxHp * 0.25; p.basicT = 0; w.events.length = 0;
+    w.act(1, 'basic', 62, 60); w.step(TICK);
+    const hurt = w.events.find((e) => e.type === 'hit').dmg;
+    check('...Bloodied under half health: +25% damage, faster blows, and his hits heal him', plain === 84 && hurt === 105 && p.basicT < KITS.warrior.basic.every / 1.15 && p.hp > p.maxHp * 0.25, `${plain} ${hurt}`);
+    // the Blood Price: no mana, Skyfall still goes, paid from his health
+    p.hp = p.maxHp; p.mp = 0; p.cd.Q = 0;
+    w.act(1, 'Q', 66, 60); w.step(TICK);
+    const price = Math.round(25 * 0.006 * p.maxHp);
+    check('...the Blood Price: out of mana, a skill takes the rest from his health', !!p.leap && Math.abs(p.maxHp - p.hp - price) <= 1, `${p.maxHp - p.hp} vs ${price}`);
+    steps(w, 1);
+    p.hp = Math.floor(p.maxHp * 0.12); p.mp = 0; p.cd.Q = 0;
+    check('...but never below a tenth of it', !w.ready(p, 'Q'));
   }
   {
     const { w, p, put } = setup('warrior');
     const g = put('golem', 62, 60);
-    w.act(1, 'basic', 62, 60); w.step(TICK);
-    const plain = w.events.find((e) => e.type === 'hit').dmg;
-    p.hp = p.maxHp * 0.25; p.basicT = 0; w.events.length = 0;
-    w.act(1, 'basic', 62, 60); w.step(TICK);
-    const hurt = w.events.find((e) => e.type === 'hit').dmg;
-    p.hp = p.maxHp * 0.5; p.basicT = 0; w.events.length = 0;
-    w.act(1, 'R', 62, 60); w.step(TICK); p.basicT = 0;
-    const before = p.hp;
-    w.act(1, 'basic', 62, 60); w.step(TICK);
-    const raged = w.events.filter((e) => e.type === 'hit').pop().dmg;
-    check('...harder when hurt (a quarter health: +45%), harder still in Bloodrage, and its blows heal him', plain === 84 && hurt === Math.round(84 * 1.45) && raged > Math.round(84 * 1.3 * 1.4) - 2 && p.hp > before, `${plain} ${hurt} ${raged}`);
-    void g;
+    g.hp = g.maxHp = 1e6; g.stunUntil = 1e9; // (it does not hit back here)
+    p.mp = 0;
+    w.act(1, 'R', 62, 60); w.step(TICK);
+    check('...Crimson Oath: cut down to 40% (the roar\'s own blows heal a little back), the blood become mana, a roar that hurts', p.oath && p.hp / p.maxHp >= 0.4 && p.hp / p.maxHp <= 0.49 && p.mp > 50 && w.events.some((e) => e.type === 'hit' && e.id === g.id), `${p.oath} ${(p.hp / p.maxHp).toFixed(3)} ${p.mp.toFixed(0)} ${w.events.map((e) => e.type).join()}`);
+    for (let i = 0; i < 40; i++) { p.basicT = 0; w.act(1, 'basic', 62, 60); w.step(TICK); }
+    check('...under it his blows heal him, but never above 49%', p.hp <= Math.floor(p.maxHp * 0.49) && p.hp > p.maxHp * 0.45, (p.hp / p.maxHp).toFixed(3));
+    steps(w, 3);
+    w.act(1, 'R', 62, 60); w.step(TICK);
+    check('...pressed again, it ends', !p.oath);
   }
   {
     const { w, p, put } = setup('warrior', {});

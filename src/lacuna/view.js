@@ -13,7 +13,7 @@ export const DRAW = 150; // metres of land drawn round you
 const DROP = DRAW + 50; // past this, a built chunk is taken down
 const SKY = 0xbfd9ec;
 
-const GROUND = { glade: 0x8fbf5a, plaza: 0xbdae8e, street: 0xae9470, road: 0xa3865c, town: 0x86a75c, meadow: 0x7cab50, forest: 0x557f3b, stony: 0x8f927c, shore: 0xcbbb8b, water: 0x4f7f99 };
+const GROUND = { glade: 0x8fbf5a, yard: 0xb39a72, plaza: 0xbdae8e, street: 0xae9470, road: 0xa3865c, town: 0x86a75c, meadow: 0x7cab50, forest: 0x557f3b, stony: 0x8f927c, shore: 0xcbbb8b, water: 0x4f7f99 };
 
 /** One low-poly creature (facing +z, feet on y = 0) per beast kind, coloured by vertex. */
 export function beastGeometry(type) {
@@ -46,6 +46,17 @@ export function beastGeometry(type) {
     add(box, 0xd9c7a0, -0.13, 0.5, 1.0, 0.05, 0.05, 0.2);
     for (let i = 0; i < 5; i++) add(cone, 0x5c7a3a, 0, 1.0 + (i % 2) * 0.05, -0.5 + i * 0.24, 0.1, 0.35, 0.1);
     for (const [x, z] of [[0.3, 0.38], [-0.3, 0.38], [0.3, -0.38], [-0.3, -0.38]]) add(box, 0x5a3e2e, x, 0.15, z, 0.14, 0.3, 0.14);
+  } else if (type === 'dummy') {
+    // a training post: a wooden stake, a straw body bound with rope, a crossbar for arms, a painted target
+    add(box, 0x7a5a3a, 0, 0.9, 0, 0.14, 1.8, 0.14);
+    add(box, 0xd8c27a, 0, 1.25, 0, 0.5, 0.75, 0.36);
+    add(box, 0x8a6a3a, 0, 1.0, 0, 0.52, 0.06, 0.38);
+    add(box, 0x8a6a3a, 0, 1.5, 0, 0.52, 0.06, 0.38);
+    add(ball, 0xe0cf8a, 0, 1.85, 0, 0.2, 0.22, 0.2);
+    add(box, 0x7a5a3a, 0, 1.5, 0, 1.2, 0.1, 0.1);
+    add(box, 0xd8d0c0, 0, 1.3, -0.2, 0.34, 0.34, 0.03);
+    add(box, 0xc83a32, 0, 1.3, -0.215, 0.2, 0.2, 0.03);
+    add(box, 0xf2ead8, 0, 1.3, -0.23, 0.07, 0.07, 0.03);
   } else {
     add(rock, 0x8b8c80, 0, 1.25, 0, 0.82, 0.78, 0.7);
     add(rock, 0x9a9b8e, 0, 2.15, 0.12, 0.42, 0.38, 0.4);

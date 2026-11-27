@@ -1,0 +1,92 @@
+{
+  "id": "l_wren",
+  "prompt": "Wren, a sharp young mage in her early twenties, Dace's partner in the Adventurers' Guild, fair skin, pretty, a sleek black bob haircut, calm neutral expression, relaxed face, mouth closed, not smiling, a fitted knee-length dark-violet mage coat with silver embroidery and a high collar, buttoned closed, a blue Guild sash, black gloves, dark leggings, ankle boots, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no staff, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T06:47:56.692Z",
+  "creditsBefore": 1760,
+  "steps": {
+    "model": {
+      "task": "22b8e12f-657f-49f5-a697-1da9273e4fc4",
+      "result": {
+        "task_id": "22b8e12f-657f-49f5-a697-1da9273e4fc4",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_wren/1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_wren/1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/model.glb",
+        "preview": "out/models/l_wren/1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/preview.png"
+      }
+    },
+    "check": {
+      "task": "f87535a7-8f41-4b3f-957e-b2ea954f3e16",
+      "result": {
+        "task_id": "f87535a7-8f41-4b3f-957e-b2ea954f3e16",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_wren/2-check/tripo-out/rig-check-3-f87535a7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "025ebca6-d423-4a0d-bd46-b36fcca789d5",
+      "rigType": "biped",
+      "result": {
+        "task_id": "025ebca6-d423-4a0d-bd46-b36fcca789d5",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_wren/3-rig/tripo-out/rig-3-025ebca6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_wren/3-rig/tripo-out/rig-3-025ebca6/model.glb",
+        "preview": "out/models/l_wren/3-rig/tripo-out/rig-3-025ebca6/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "4c424584-ab95-4ef3-b96c-b4d3000955f2",
+        "presets": [
+          "preset:biped:laugh_02"
+        ],
+        "result": {
+          "task_id": "4c424584-ab95-4ef3-b96c-b4d3000955f2",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/l_wren/4-anim-1/tripo-out/retarget-2-4c424584",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_wren/4-anim-1/tripo-out/retarget-2-4c424584/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1695,
+  "creditsUsed": 65,
+  "finished": "2026-11-27T06:49:52.094Z",
+  "files": [
+    "1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/generated_image.jpeg",
+    "1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/model.glb",
+    "1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/preview.png",
+    "1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/rendered_image.webp",
+    "1-model/tripo-out/wren-a-sharp-young-mage-in-her-e-22b8e12f/task.json",
+    "2-check/tripo-out/rig-check-3-f87535a7/task.json",
+    "3-rig/tripo-out/rig-3-025ebca6/model.glb",
+    "3-rig/tripo-out/rig-3-025ebca6/preview.png",
+    "3-rig/tripo-out/rig-3-025ebca6/rendered_image.webp",
+    "3-rig/tripo-out/rig-3-025ebca6/task.json",
+    "4-anim-1/tripo-out/retarget-2-4c424584/model.glb",
+    "4-anim-1/tripo-out/retarget-2-4c424584/task.json",
+    "manifest.json"
+  ]
+}

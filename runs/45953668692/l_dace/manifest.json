@@ -1,0 +1,94 @@
+{
+  "id": "l_dace",
+  "prompt": "Dace, a cocky young adventurer in his early twenties, a rising star of the Adventurers' Guild, fair skin, handsome, slicked-back blond hair, calm neutral expression, relaxed face, mouth closed, not smiling, polished silver half-plate armour over a fitted navy doublet, a blue Guild sash across the chest, fingerless leather gloves, dark trousers, tall polished boots, a slim rapier sheathed at his left hip, standing upright in T-pose, both legs straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T06:46:09.893Z",
+  "creditsBefore": 1845,
+  "steps": {
+    "model": {
+      "task": "01f6a9f6-5647-4986-b3d7-eac9fa6b0347",
+      "result": {
+        "task_id": "01f6a9f6-5647-4986-b3d7-eac9fa6b0347",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_dace/1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_dace/1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/model.glb",
+        "preview": "out/models/l_dace/1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/preview.png"
+      }
+    },
+    "check": {
+      "task": "c41db8f3-715c-4459-a843-10c4cb62a62d",
+      "result": {
+        "task_id": "c41db8f3-715c-4459-a843-10c4cb62a62d",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_dace/2-check/tripo-out/rig-check-2-c41db8f3",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "5e95fef8-8266-4e46-b287-5c1ef64aa1b6",
+      "rigType": "biped",
+      "result": {
+        "task_id": "5e95fef8-8266-4e46-b287-5c1ef64aa1b6",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_dace/3-rig/tripo-out/rig-2-5e95fef8",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_dace/3-rig/tripo-out/rig-2-5e95fef8/model.glb",
+        "preview": "out/models/l_dace/3-rig/tripo-out/rig-2-5e95fef8/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "67a2ee0c-aa69-41f4-9a0d-fc26d64a524d",
+        "presets": [
+          "preset:biped:laugh_01",
+          "preset:biped:clap",
+          "preset:biped:cheer"
+        ],
+        "result": {
+          "task_id": "67a2ee0c-aa69-41f4-9a0d-fc26d64a524d",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 30,
+          "output_dir": "out/models/l_dace/4-anim-1/tripo-out/retarget-67a2ee0c",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/l_dace/4-anim-1/tripo-out/retarget-67a2ee0c/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1760,
+  "creditsUsed": 85,
+  "finished": "2026-11-27T06:47:56.691Z",
+  "files": [
+    "1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/generated_image.jpeg",
+    "1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/model.glb",
+    "1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/preview.png",
+    "1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/rendered_image.webp",
+    "1-model/tripo-out/dace-a-cocky-young-adventurer-in-01f6a9f6/task.json",
+    "2-check/tripo-out/rig-check-2-c41db8f3/task.json",
+    "3-rig/tripo-out/rig-2-5e95fef8/model.glb",
+    "3-rig/tripo-out/rig-2-5e95fef8/preview.png",
+    "3-rig/tripo-out/rig-2-5e95fef8/rendered_image.webp",
+    "3-rig/tripo-out/rig-2-5e95fef8/task.json",
+    "4-anim-1/tripo-out/retarget-67a2ee0c/model.glb",
+    "4-anim-1/tripo-out/retarget-67a2ee0c/task.json",
+    "manifest.json"
+  ]
+}

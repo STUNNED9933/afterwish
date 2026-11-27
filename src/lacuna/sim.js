@@ -638,6 +638,8 @@ export class LandWorld {
 
   revive(b) {
     b.dead = false;
+    // (0.99.30) a story's beast (an ashen wolf, a contract's quarry) comes back as an ordinary one of its kind
+    if (b.story) { b.story = undefined; b.def = undefined; b.job = undefined; b.ward = null; b.hidden = false; b.maxHp = BEASTS[b.type].hp; }
     b.hp = b.maxHp;
     b.x = b.hx; b.z = b.hz;
     b.state = 'idle';

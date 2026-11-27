@@ -1002,7 +1002,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead).sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -1012,7 +1012,7 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  const what = story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  const what = story.stage === 'contracts' ? (lead.def && lead.def.name) || 'The quarry' : story.stage === 'report' ? 'The Guild' : story.stage === 'mourning' ? 'Rowan' : story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
   $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
@@ -1349,7 +1349,7 @@ function startHunt() {
   setVigour(1);
   const wolves = ASHEN_AT.map((p) => world.borrowBeast('wolf', p.x, p.z, { story: 'ashen' })).filter(Boolean);
   hunt = { wolves, left: wolves.length, done: false };
-  const f = follow(company, world.land, houndsFight(() => hunt.wolves));
+  const f = follow(company, world.land, houndsFight(() => hunt.wolves.filter((b) => b.story === 'ashen')));
   questRun = { update(dt) { f.update(dt, me); } };
   toast('When It Counts', 'Four ashen wolves, near the glade');
   bark([['juni', 'Ash in the air. Smell that? Like a cold fireplace.'], ['rowan', 'Spread out. Not too far. Sprout, with me.']]);
@@ -1497,10 +1497,10 @@ function startContracts() {
   if (!left.length) return toReport();
   job = { list: left.map((c) => ({ c, foes: c.at.map((p) => world.borrowBeast(c.type, p.x, p.z, { story: 'ashen', job: c.id, def: c.def })).filter(Boolean), said: false })) };
   for (const j of job.list) j.left = j.foes.length;
-  const f = follow(company, world.land, houndsFight(() => job.list.flatMap((q) => q.foes)));
+  const f = follow(company, world.land, houndsFight(() => job.list.filter((q) => q.left > 0).flatMap((q) => q.foes).filter((b) => b.story === 'ashen')));
   questRun = { update(dt) {
     f.update(dt, me);
-    for (const j of job.list) if (!j.said && j.left > 0 && j.foes.some((b) => !b.dead && Math.hypot(b.x - me.x, b.z - me.z) < 22)) { j.said = true; bark(j.c.near); }
+    for (const j of job.list) if (!j.said && j.left > 0 && j.foes.some((b) => !b.dead && b.story === 'ashen' && Math.hypot(b.x - me.x, b.z - me.z) < 22)) { j.said = true; bark(j.c.near); }
   } };
   toast('Word Gets Around', left.map((c) => c.title).join(' · '));
   showQuest();
@@ -1556,7 +1556,7 @@ setTimeout(() => preload(['e_wolf', 'e_thornhog', 'v_farmer_m', 'v_farmer_f', 'v
 /** (0.99.29) The nearest beast still to be hunted for a contract. */
 function nearestFoe() {
   let best = null, bd = Infinity;
-  for (const j of job.list) for (const b of j.foes) if (!b.dead) { const d = Math.hypot(b.x - me.x, b.z - me.z); if (d < bd) { bd = d; best = b; } }
+  for (const j of job.list) if (j.left > 0) for (const b of j.foes) if (!b.dead && b.story === 'ashen') { const d = Math.hypot(b.x - me.x, b.z - me.z); if (d < bd) { bd = d; best = b; } }
   return best;
 }
 

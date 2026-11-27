@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the contracts can be finished in any order (0.99.31)
+
+- **A contract's beasts no longer come back as its quarry.** When a hunted beast fell, the land brought it back after a while still marked as the hunt's, and the marker led you to it (a boar at Brightwater, long after that contract was done) instead of the contract still open. Fallen story beasts now come back as ordinary ones, and the marker names what it points at (the Ashen Cairn, an Ashen Thornhog...).
+
 ### Lacuna: fixes from playing (0.99.30)
 
 - **Boars and wolves no longer bite from inside you.** Their bodies are longer than their reach, so they stood with their heads in whoever they attacked; each is now set back so its snout is at the edge of its reach, and the Thornhog is a little smaller.

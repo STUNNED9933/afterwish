@@ -264,6 +264,7 @@ export class Cutscene {
         const me = cs.ctx.me;
         if (x !== undefined) { me.x = x; me.z = z; cs.ctx.snapHero && cs.ctx.snapHero(); }
         if (facing !== undefined) me.facing = facing;
+        if (move === 'rise') cs.ctx.hero.anim.lie = false; // (0.99.34) up, and no longer held down
         if (move) cs.ctx.hero.anim.move = move;
       },
       /** (0.99.20) The hero walks to (x, z) over `dur` seconds (a scene's own walk: no input, no sim). */

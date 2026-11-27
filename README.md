@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: the opening lies you down, even from a server world (0.99.34)
+
+- **Lying in the grass, every time.** Started from a server world, the opening re-dressed the hero (as the boy in rags) after he had already been laid down, and the new model stood up; a landing could also get him up early. Now he is laid down again on whatever model arrives, and nothing but the scene's own "rise" gets him up.
+
 ### Lacuna: the real cause of the shaking (0.99.33)
 
 - **A beast that stopped next to you kept shuddering.** Beasts are drawn eased between the sim's last two steps, and that pair only moved on when the beast did: one that had stopped was drawn sliding from where it stood a step ago to where it stands, again and again, thirty times a second (about 8 cm each way). Now it moves on every step, moved or not: a beast standing still is drawn standing still.

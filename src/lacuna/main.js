@@ -120,8 +120,14 @@ function pose(h, dt, s) {
   const a = h.anim;
   // in the air: a little forward lean (no jump clip in these models yet)
   if (a.jumpT >= 0) { a.jumpT += dt; if (a.jumpT > (2 * JUMP.up) / JUMP.gravity) a.jumpT = -1; }
-  if (a.lie && h.rig && !a.lieSent) { a.move = 'lie'; a.lieSent = true; } // (the opening) lying in the grass, once the model is in
-  const air = s.y !== undefined ? s.y : a.jumpT >= 0 ? hopAt(a.jumpT) : 0;
+  // (the opening) lying in the grass, once the model is in. (0.99.34) Kept so: laid down again on any new model
+  // (leaving a server world re-dresses him as he was there), and nothing else (a landing, a hop) gets him up
+  // before the scene says 'rise'
+  if (a.lie) {
+    if (h.rig && a.lieRig !== h.rig) { a.move = 'lie'; a.lieRig = h.rig; }
+    else if (a.move && a.move !== 'lie') a.move = null;
+  } else a.lieRig = null;
+  const air = a.lie ? 0 : s.y !== undefined ? s.y : a.jumpT >= 0 ? hopAt(a.jumpT) : 0;
   h.body.position.y = air;
   if (a.air > 0.05 && air <= 0.001 && !a.move) a.move = 'land'; // touching down
   a.air = air;
@@ -910,7 +916,7 @@ async function playOpening() {
   questRun = null;
   crystal.mark(false);
   if (net) net.ws.close(1000, 'The opening is played alone');
-  hero.anim.lie = true; hero.anim.lieSent = false;
+  hero.anim.lie = true; hero.anim.lieRig = null;
   setVigour(VIGOUR[0]);
   if (hero.cls !== 'novice') { story.path = null; wear('novice', true); }
   setStage('new');

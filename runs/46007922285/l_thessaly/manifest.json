@@ -1,0 +1,72 @@
+{
+  "id": "l_thessaly",
+  "prompt": "Thessaly of the Ninth Hand, the crown's hidden hand, a composed watchful woman in her thirties, fair skin, sharp features, dark hair braided and pinned in a low crown, calm neutral expression, relaxed face, mouth closed, not smiling, a hooded deep-grey travelling cloak hanging open over a fitted dark leather jerkin, a long dark riding skirt split at the sides over fitted trousers, tall dark boots, leather gloves, a silver cloak clasp shaped like a closed eye, a slim dagger sheathed at her belt, fully clothed, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, hood down, no bag, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T13:32:17.278Z",
+  "creditsBefore": 1640,
+  "steps": {
+    "model": {
+      "task": "f43e5757-354b-466b-8c85-04e5bd625658",
+      "result": {
+        "task_id": "f43e5757-354b-466b-8c85-04e5bd625658",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_thessaly/1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_thessaly/1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/model.glb",
+        "preview": "out/models/l_thessaly/1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/preview.png"
+      }
+    },
+    "check": {
+      "task": "7c9be3ec-f1ff-4b06-95a3-ebd2a6992376",
+      "result": {
+        "task_id": "7c9be3ec-f1ff-4b06-95a3-ebd2a6992376",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_thessaly/2-check/tripo-out/rig-check-7c9be3ec",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "aff2d4ba-7dcf-4b40-ac34-5cedae212dd8",
+      "rigType": "biped",
+      "result": {
+        "task_id": "aff2d4ba-7dcf-4b40-ac34-5cedae212dd8",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_thessaly/3-rig/tripo-out/rig-aff2d4ba",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_thessaly/3-rig/tripo-out/rig-aff2d4ba/model.glb",
+        "preview": "out/models/l_thessaly/3-rig/tripo-out/rig-aff2d4ba/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 1585,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T13:35:24.827Z",
+  "files": [
+    "1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/generated_image.jpeg",
+    "1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/model.glb",
+    "1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/preview.png",
+    "1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/rendered_image.webp",
+    "1-model/tripo-out/thessaly-of-the-ninth-hand-the-c-f43e5757/task.json",
+    "2-check/tripo-out/rig-check-7c9be3ec/task.json",
+    "3-rig/tripo-out/rig-aff2d4ba/model.glb",
+    "3-rig/tripo-out/rig-aff2d4ba/preview.png",
+    "3-rig/tripo-out/rig-aff2d4ba/rendered_image.webp",
+    "3-rig/tripo-out/rig-aff2d4ba/task.json",
+    "manifest.json"
+  ]
+}

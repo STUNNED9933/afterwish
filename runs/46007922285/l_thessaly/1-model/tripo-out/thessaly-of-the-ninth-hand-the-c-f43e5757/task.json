@@ -1,0 +1,32 @@
+{
+  "task_id": "f43e5757-354b-466b-8c85-04e5bd625658",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Thessaly of the Ninth Hand, the crown's hidden hand, a composed watchful woman in her thirties, fair skin, sharp features, dark hair braided and pinned in a low crown, calm neutral expression, relaxed face, mouth closed, not smiling, a hooded deep-grey travelling cloak hanging open over a fitted dark leather jerkin, a long dark riding skirt split at the sides over fitted trousers, tall dark boots, leather gloves, a silver cloak clasp shaped like a closed eye, a slim dagger sheathed at her belt, fully clothed, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, hood down, no bag, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-27T13:32:18.603993Z",
+  "completed_at": "2026-11-27T13:34:27.530178Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -10,6 +10,7 @@
 // level across their classes), which multiplies their health and damage; beasts are tuned for level 10 in
 // every slot. Deterministic (sim/dmath.js only, one seeded rng): the server and a browser agree.
 import { makeRng } from '../sim/rng.js';
+import { levelHp, levelDmg, MAX_LEVEL } from './levels.js';
 import { dHypot, dAtan2, dCos, dSin } from '../sim/dmath.js';
 import { Land, LAND, CHUNKS, BEASTS, chunkOf, TOWN , trainingPosts } from './land.js';
 
@@ -151,8 +152,8 @@ export class LandWorld {
   }
 
   /** A player arrives (by default at Sunmere's south gate). */
-  addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false, vigour = 1 } = {}) {
-    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0, vx: 0, vz: 0, g: 0, landT: 1, jumpBuf: 0, air2: false, kicks: 0, recoil: false, slide: null, slideCd: 0, slamAt: -9 };
+  addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false, vigour = 1, level = 1 } = {}) {
+    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, vigour: Math.max(0.5, Math.min(1, vigour)), acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0, vx: 0, vz: 0, g: 0, landT: 1, jumpBuf: 0, air2: false, kicks: 0, recoil: false, slide: null, slideCd: 0, slamAt: -9, level: Math.max(1, Math.min(MAX_LEVEL, Math.floor(level) || 1)) };
     this.land.pushOut(p, PLAYER_R);
     this.players.set(pid, p);
     this.refit(p, true);
@@ -169,7 +170,7 @@ export class LandWorld {
     const kit = KITS[p.cls], power = p.linked ? linkPower(p.link) : 0;
     const hpK = full || !p.maxHp ? 1 : p.hp / p.maxHp, mpK = full || !p.maxMp ? 1 : p.mp / p.maxMp;
     p.mult = linkMult(power);
-    p.maxHp = Math.round(kit.hp * p.mult * (p.vigour ?? 1)); // (0.99.24) weak when he arrives; stronger day by day
+    p.maxHp = Math.round(kit.hp * p.mult * (p.vigour ?? 1) * levelHp(p.level || 1)); // (0.99.24) weak when he arrives; stronger day by day; (0.99.36) and by level
     p.maxMp = Math.round(kit.mp + power * 0.6);
     p.hp = Math.max(1, Math.round(p.maxHp * hpK));
     p.mp = p.maxMp * mpK;
@@ -188,6 +189,14 @@ export class LandWorld {
   }
 
   /** (0.99.24) How strong the hero has grown (0.5 just through the tear, 1 once he has his strength back). */
+  /** (0.99.36) A hero's level (health and might). */
+  setLevel(pid, L) {
+    const p = this.players.get(pid);
+    if (!p) return;
+    p.level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(+L) || 1));
+    this.refit(p);
+  }
+
   setVigour(pid, v) {
     const p = this.players.get(pid);
     if (!p) return;
@@ -672,7 +681,7 @@ export class LandWorld {
 
   /** How hard this hero hits now: the Link, and (Berserker) Bloodied. */
   might(p) {
-    let m = KITS[p.cls].dmg * p.mult * (p.surge || 1); // (0.99.26) the Link's first waking, in the story
+    let m = KITS[p.cls].dmg * p.mult * (p.surge || 1) * levelDmg(p.level || 1); // (0.99.26) the Link's first waking, in the story; (0.99.36) a level's might
     if (this.bloodied(p)) m *= 1 + KITS.warrior.bloodied.dmg;
     return m;
   }

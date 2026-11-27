@@ -49,6 +49,10 @@
   #hud .b span { position: relative; display: block; text-align: center; line-height: 14px; font-size: 11px; }
   #hp i { background: linear-gradient(#58c46a, #2f8a3e); }
   #mpb i { background: linear-gradient(#5a8cff, #2c56c4); }
+  #hud #xpb { height: 8px; } #xpb span { line-height: 8px !important; font-size: 9px !important; }
+  #xpb i { background: linear-gradient(#ffd24a, #c0901a); transition: width 0.4s; }
+  #lvlup { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); color: #ffd24a; font: 900 34px system-ui; text-shadow: 0 2px 8px #000, 0 0 24px #ffb020; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
+  #lvlup small { display: block; text-align: center; font-size: 14px; color: #fff4d0; font-weight: 600; }
   #hud .skills { display: flex; gap: 6px; }
   #hud .sk { position: relative; width: 74px; height: 50px; padding: 4px 5px; box-sizing: border-box; background: rgba(10, 14, 24, 0.8); border: 1px solid #3a4560; border-radius: 6px; overflow: hidden; }
   #hud .sk b { display: block; font-size: 11px; color: #ffd24a; }
@@ -151,7 +155,7 @@
 <div id="hud">
   <div class="link" id="link"></div>
   <div class="skills" id="skills"></div>
-  <div class="bars"><div class="b" id="hp"><i></i><span></span></div><div class="b" id="mpb"><i></i><span></span></div></div>
+  <div class="bars"><div class="b" id="hp"><i></i><span></span></div><div class="b" id="mpb"><i></i><span></span></div><div class="b" id="xpb"><i></i><span></span></div></div>
 </div>
 <div id="chat"><div id="chat-log"></div><input id="chat-in" class="hidden" maxlength="140" placeholder="Say something (Enter to send, Esc to close)"></div>
 <div id="mp">
@@ -166,6 +170,7 @@
   <div id="mp-status" class="s">Alone: everything runs on this computer. Join to walk with friends (same passcode as Haven).</div>
 </div>
 <div id="quest" class="hidden"><b id="quest-name"></b><span id="quest-goal"></span></div>
+<div id="lvlup"></div>
 <div id="tricks" class="hidden"><b>Moving well <kbd>H</kbd></b><span id="tricks-list"></span><em>All optional. Walk and jump as you like.</em></div>
 <div id="choose" class="hidden">
   <h2>Choose your path</h2>

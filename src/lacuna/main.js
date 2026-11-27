@@ -5,6 +5,7 @@
 // Keys: WASD move, mouse look (click to capture), left click attack (hold), Q E R skills, right click (hold)
 // scope (Sharpshooter), Shift sprint, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
+import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST } from './levels.js';
 import * as THREE from 'three';
 import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP } from './sim.js';
 import { LandView, DRAW } from './view.js';
@@ -51,7 +52,16 @@ const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') 
 let linkAwake = params.get('link') === '1' || !!saved.linked;
 // (0.99.24) how strong he has grown: weak through the tear, stronger each day with the Hounds
 const startVig = ['new', 'stumble', 'rescued', 'waking'].includes(saved.stage || 'new') ? VIGOUR[0] : saved.stage === 'days' ? VIGOUR[Math.min(VIGOUR.length - 1, saved.day || 0)] : 1;
-const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake, vigour: startVig });
+// (0.99.36) experience and level: from the story so far, for a save made before there were levels
+const STAGE_ORDER = ['new', 'stumble', 'rescued', 'waking', 'asking', 'days', 'crystal', 'path', 'ambush', 'hunt', 'mourning', 'contracts', 'report', 'invitation'];
+if (saved.xp === undefined) {
+  const at = STAGE_ORDER.indexOf(saved.stage || 'new');
+  saved.xpq = {};
+  saved.xp = 0;
+  for (const st of STAGE_ORDER.slice(0, Math.max(0, at))) if (QUEST_XP[st]) { saved.xp += QUEST_XP[st]; saved.xpq[st] = true; }
+  saved.xp += Object.keys(saved.tricks || {}).length * TRICK_XP;
+}
+const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake, vigour: startVig, level: levelOf(saved.xp).level });
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
 const fx = new Fx(view.scene, $('fxlayer'));
@@ -223,7 +233,7 @@ function joinServer() {
   try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour, level: me.level });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -343,7 +353,7 @@ function onEvent(ev) {
   else if (ev.type === 'hit' && ev.shot) { fx.landed(ev.x, ev.z); fx.number(ev.x, ev.z, ev.crit ? `${ev.dmg}!` : String(ev.dmg), isMe(ev.pid) && (ev.crit || ev.dmg > 300) ? 'big' : 'dealt'); }
   else if (ev.type === 'hit') fx.number(ev.x, ev.z, ev.crit ? `${ev.dmg}!` : String(ev.dmg), isMe(ev.pid) && (ev.crit || (ev.shot && ev.dmg > 300)) ? 'big' : 'dealt');
   else if (ev.type === 'blood' && isMe(ev.pid)) fx.number(heroX, heroZ, `-${ev.n}`, 'taken'); // (0.99.21) a Berserker's blood price
-  else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); }
+  else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) { note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); gainXp((ev.xp || 0) * (ev.story ? STORY_BEAST : 1)); } } // (0.99.36) and its experience
   else if (ev.type === 'aggro' && isMe(ev.pid)) { const t = net ? seen.get(ev.id) : world.beasts[ev.id - 1]; note(`A ${t && t.type ? BEASTS[t.type].name : 'beast'} is coming for you.`); }
   else if (ev.type === 'swipe') {
     if (ev.id) view.swiped(ev.id); // (0.99.29) a beast with a body swings it
@@ -411,6 +421,9 @@ function drawHud() {
   $('hp').lastChild.textContent = `${Math.ceil(me.hp)} / ${me.maxHp}`;
   $('mpb').firstChild.style.width = `${(me.mp / me.maxMp) * 100}%`;
   $('mpb').lastChild.textContent = `${Math.floor(me.mp)} / ${me.maxMp} mana`;
+  const lv = levelOf(story.xp || 0);
+  $('xpb').firstChild.style.width = `${lv.need ? (lv.into / lv.need) * 100 : 100}%`;
+  $('xpb').lastChild.textContent = lv.need ? `Level ${lv.level} · ${lv.into} / ${lv.need} xp` : `Level ${lv.level} (the most there is)`;
   for (const k of ['basic', 'Q', 'E', 'R']) {
     const el = $('sk-' + k);
     if (!el) continue;
@@ -779,6 +792,7 @@ const cutscene = new Cutscene({
   onEnd(fn) { cutscene.endFn = fn; },
 });
 let story = params.get('story') === 'new' ? { stage: 'new' } : loadStory();
+if (story.xp === undefined) { story.xp = saved.xp || 0; story.xpq = saved.xpq || {}; } // (0.99.36) filled in from the story so far
 let questRun = null;
 const company = {};
 function showQuest() {
@@ -936,7 +950,30 @@ async function playOpening() {
   setStage('stumble');
   startStumble();
 }
+/** (0.99.36) Experience: the bar fills; a new level is a little more health and might, and a talent point. */
+function gainXp(n, why = '') {
+  if (!(n > 0)) return;
+  const was = levelOf(story.xp || 0).level;
+  story.xp = (story.xp || 0) + Math.round(n);
+  saveStory(story);
+  const now = levelOf(story.xp).level;
+  if (why) note(`+${Math.round(n)} xp · ${why}`);
+  if (now > was) {
+    world.setLevel(1, now);
+    if (net && net.ready) net.send({ t: 'lvl', L: now });
+    fx.ring(me.x, me.z, 2.4, 0xffd24a, 0.7);
+    fx.ring(me.x, me.z, 1.2, 0xfff0b0, 0.5);
+    $('lvlup').innerHTML = `Level ${now}<small>A little stronger. A talent point (the talent web is coming).</small>`;
+    $('lvlup').style.opacity = '1';
+    clearTimeout(gainXp.t);
+    gainXp.t = setTimeout(() => { $('lvlup').style.opacity = '0'; }, 2600);
+  }
+}
 function setStage(stage) {
+  // (0.99.36) leaving a part of the story: its experience, once
+  const from = story.stage;
+  story.xpq = story.xpq || {};
+  if (from && from !== stage && QUEST_XP[from] && !story.xpq[from]) { story.xpq[from] = true; gainXp(QUEST_XP[from], 'the story'); }
   story.stage = stage;
   saveStory(story);
   setFog(FOG_AT[stage] ?? 0, 1.5);
@@ -1358,6 +1395,7 @@ function learnt(id) {
   if (story.tricks[id]) return;
   story.tricks[id] = true;
   saveStory(story);
+  gainXp(TRICK_XP, 'a trick learned');
   const t = TRICKS.find((q) => q.id === id);
   const left = TRICKS.filter((q) => !story.tricks[q.id]).length;
   toast(left ? 'Trick learned' : 'Every trick learned', left ? t.text.replace(/<[^>]+>/g, '') : 'You move like Juni now. She will be furious.');

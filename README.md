@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: levels (0.99.36)
+
+- **Experience and levels, 1 to 60.** A gold bar under your mana. Beasts give experience (a wolf 12, a Thornhog 14, a Cairn Golem 30; a story's beast, ashen or a contract's quarry, twice that), each part of the story gives some once as you finish it, and each trick learned gives 40.
+- **A level** is 4% more health and 2% more might (the Link multiplies them again), and a talent point for the talent web (coming next). Levels come quickly at first (a few wolves) and slow down.
+- A save from before levels is given the experience for the story so far: Quest 5 done is about level 8.
+- In a server world your level comes with you (for now, as the page says; with accounts, the server will keep it).
+
 ### Lacuna: moving well (0.99.35)
 
 Tricks for those who want them, none of them needed (walk and jump as before and nothing changes). **H** shows the list, ticked off as you do each one.

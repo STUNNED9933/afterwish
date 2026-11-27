@@ -1480,6 +1480,15 @@
       "prompt": "Thessaly of the Ninth Hand, the crown's hidden hand, a composed watchful woman in her thirties, fair skin, sharp features, dark hair braided and pinned up, calm neutral expression, relaxed face, mouth closed, not smiling, a short deep-grey hooded shoulder cape ending at the waist, hood down, a fitted dark leather jerkin buttoned to the collar, a silver clasp shaped like a closed eye at her throat, a plain belt with a slim sheathed dagger at the hip, fitted dark grey trousers, tall dark riding boots, leather gloves, fully clothed, no skirt, no coat tails, no long cloak, nothing hanging between the legs, exactly two legs clearly separate, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no bag, nothing floating",
       "animations": [],
       "note": "0.99.28: remade (the long open cloak hung between her legs like a third leg; the first one is kept as archive/x_hooded_agent.glb for a future enemy)."
+    },
+    "l_vesper": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+      "faceLimit": 10000,
+      "prompt": "Vesper of the Unbound, an elegant arrogant man in his thirties, pale skin, sharp handsome features, slicked-back black hair with a single streak of ash grey, thin amused smile with mouth closed, calm cold eyes, a fitted high-collared double-breasted coat of black and deep violet ending at the hips, silver buttons, a thin silver chain across the chest, a dark violet sash, black leather gloves, fitted black trousers, tall polished black boots, fully clothed, no cape, no coat tails, no long skirt, nothing hanging between the legs, exactly two legs clearly separate, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, nothing floating",
+      "animations": [],
+      "note": "0.99.29: Vesper's own model (he was the old Sorrel model darkened, and looked like Sorrel)."
     }
   }
 }

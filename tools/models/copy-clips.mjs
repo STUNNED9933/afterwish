@@ -44,8 +44,35 @@ function worldRot(t, local) {
   }
   return w;
 }
-const sBind = worldRot(S, new Map());
-const tBind = worldRot(T, new Map());
+/**
+ * (0.99.22) Rest rotations with the arms turned level, for a rig made in an A-pose (see retarget.js): each upper
+ * arm, then each forearm, turned so the next bone along lies level. Returns node -> local rotation overrides.
+ */
+function straightArms(t) {
+  const over = new Map();
+  const world = (n) => {
+    const m = new THREE.Matrix4();
+    for (let c = n; c; c = t.parent.get(c)) m.premultiply(new THREE.Matrix4().compose(new THREE.Vector3(...c.getTranslation()), over.get(c) || q(c.getRotation()), new THREE.Vector3(...c.getScale())));
+    return m;
+  };
+  const turn = (bn, cn) => {
+    const b = t.byName.get(bn), c = t.byName.get(cn);
+    if (!b || !c) return;
+    const p0 = new THREE.Vector3().setFromMatrixPosition(world(b)), p1 = new THREE.Vector3().setFromMatrixPosition(world(c));
+    const dir = p1.sub(p0).normalize();
+    const level = new THREE.Vector3(dir.x, 0, dir.z);
+    if (level.lengthSq() < 1e-6 || dir.angleTo(level.normalize()) < 0.1) return;
+    const C = new THREE.Quaternion().setFromUnitVectors(dir, level);
+    const rots = worldRot(t, over);
+    const wq = C.multiply(rots.get(b));
+    const pw = t.parent.get(b) ? rots.get(t.parent.get(b)) : new THREE.Quaternion();
+    over.set(b, pw.clone().invert().multiply(wq).normalize());
+  };
+  for (const side of ['L_', 'R_']) { turn(side + 'Upperarm', side + 'Forearm'); turn(side + 'Forearm', side + 'Hand'); }
+  return over;
+}
+const sBind = worldRot(S, straightArms(S));
+const tBind = worldRot(T, straightArms(T));
 const hipS = S.byName.get('Hip'), hipT = T.byName.get('Hip');
 const hipH = (t, n) => {
   // the hip's height above the rig's root, in the root's space (bind pose)

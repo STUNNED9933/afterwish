@@ -63,7 +63,7 @@ function findClip(clips, what) {
 
 const UP = new THREE.Vector3(0, 1, 0);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _wq = new THREE.Quaternion();
+const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _wq = new THREE.Quaternion(), _v = new THREE.Vector3();
 /** The neck and head of a rig, to turn toward someone (after the clip has posed them, each frame). */
 export function makeLook(root) {
   const head = root && root.getObjectByName('Head');
@@ -159,6 +159,11 @@ export class Actor {
       this.clips = tpl.clips;
       this.mixer = new THREE.AnimationMixer(root);
       this.look = makeLook(root);
+      // (0.99.22) the feet: where they rest in the model's own pose, so a clip that sinks them can be lifted back
+      this.feet = ['L_Foot', 'R_Foot', 'L_ToeBase', 'R_ToeBase'].map((n) => root.getObjectByName(n)).filter(Boolean);
+      this.group.updateMatrixWorld(true);
+      this.footRest = this.feet.length ? Math.min(...this.feet.map((f) => f.getWorldPosition(_v).y)) : null;
+      this.lift = 0;
       this.loop('idle', 0);
       if (this.spec.weapon) {
         loadWeapon(this.spec.weapon.cls, 1).then((w) => {
@@ -269,6 +274,15 @@ export class Actor {
     lookRest(this.look);
     if (this.mixer) this.mixer.update(dt);
     if (this.look) { this.group.updateMatrixWorld(true); lookAt(this.look, this.x, this.z, this.facing, this.lookTarget, dt); }
+    if (this.footRest !== null && this.feet && this.feet.length) {
+      // never through the ground: if the lowest foot has sunk below where it rests, the body comes up by as much
+      this.holder.position.y = 0;
+      this.holder.updateMatrixWorld(true);
+      const low = Math.min(...this.feet.map((f) => f.getWorldPosition(_v).y));
+      const want = Math.max(0, this.footRest - low);
+      this.lift += (want - this.lift) * Math.min(1, dt * 12);
+      this.holder.position.y = this.lift;
+    }
     if (this.blade) {
       // in the hand each frame, at a fixed size (the hand bone's own scale changes with the pose)
       this.holder.updateMatrixWorld(true);

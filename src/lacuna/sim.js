@@ -112,8 +112,8 @@ export class LandWorld {
   }
 
   /** A player arrives (by default at Sunmere's south gate). */
-  addPlayer(pid, at = GATE, { cls = 'warrior', link = null } = {}) {
-    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
+  addPlayer(pid, at = GATE, { cls = 'warrior', link = null, linked = false } = {}) {
+    const p = { pid, x: at.x, z: at.z, facing: -Math.PI / 2, mx: 0, mz: 0, pace: 'run', moving: false, speed: 0, cls: KITS[cls] ? cls : 'warrior', link: link || {}, linked: !!linked, acts: [], y: 0, vy: 0, cd: { Q: 0, E: 0, R: 0 }, basicT: 0, dead: false, downT: 0, oath: false, guard: 0, calm: 99, burst: 0, leap: null, roll: null, whirl: null, draw: null, shotN: 0, still: 0, hasteT: 0 };
     this.land.pushOut(p, PLAYER_R);
     this.players.set(pid, p);
     this.refit(p, true);
@@ -126,7 +126,8 @@ export class LandWorld {
 
   /** Health, mana and damage from class and Link (keeping how full they were). */
   refit(p, full = false) {
-    const kit = KITS[p.cls], power = linkPower(p.link);
+    // (0.99.22) the Link sleeps until the story wakes it: until then Eternal gear lends nothing here
+    const kit = KITS[p.cls], power = p.linked ? linkPower(p.link) : 0;
     const hpK = full || !p.maxHp ? 1 : p.hp / p.maxHp, mpK = full || !p.maxMp ? 1 : p.mp / p.maxMp;
     p.mult = linkMult(power);
     p.maxHp = Math.round(kit.hp * p.mult);

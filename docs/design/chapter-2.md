@@ -58,29 +58,57 @@ more life (Dimension Link = the pull between them). Told in Ysolde's chapters an
    themselves gods: the Granted of Caelum.
 2. End of Chapter 1: the hero (high affinity for wishes, the old world's magic) defeats the Granted, takes their
    power, becomes almighty and cares for those returned from the curse: the Wishkeep.
-3. A portal opens; a husk runs through; the hero chases it into Lacuna.
+3. (revised 27 Nov) A crack opens on the Verge. For weeks it only whispers; one night it pulls, like a hook behind the
+   ribs, and the hero walks into it without deciding to. Nothing is chased. The crossing tears his power out of him.
 4. Two timelines: the Wishkeep stays playable but the story treats it as the past (flashback); Lacuna is now.
 Old world: Votum.
 
 ## Lacuna, the world
 
-Sunny, busy, magic is ordinary. Everyone's magic aptitude is fixed at birth (read by crystal); people only refine
+Sunny, busy, magic is ordinary. Everyone's element and magic aptitude are fixed at birth (read by the Guild's Telling Glass); people only refine
 technique; rank and work follow the number: the politics. Working factions: the Crown and council (aptitude as
 law), the Adventurers' Guild (your first home), the secret service (recruits you at the end of Act I), a rising
 movement to break the aptitude limit (feeding magic on desire and malice: the old tragedy beginning again).
-The hero is an anomaly (crystal reads almost nothing, yet skills grow and get cheaper); the husk is somewhere here.
+The hero is an anomaly (the glass reads almost nothing, yet skills grow and get cheaper).
 
 ## Act I story
 
 Opening: a MapleStory-style playable cutscene (prompts to dodge, struggle, reach); woken in a forest, attacked by
-beasts, saved by a party of four adventurers (leader, healer, scout, mage).
+beasts, saved by a party of four adventurers (leader, healer, scout, mage). (0.99.22) Split into short scenes with
+play between: the pull and waking; stumbling out of the glade; the wolves and the rescue; the tear and a name.
+
+### Story decisions (Ko Ko, 27 Nov 2026)
+
+- **The hero arrives small and broken.** A young child (about 1 m in game; the wish kept him as he was), in rags,
+  no weapon: fists until Rowan hands him a blade at the trial. Small on purpose: vulnerable, someone to look after.
+  The older hero models are kept for later.
+- **Partial amnesia.** The crossing ripped his power out of him and most of his memory with it. A white fog at the
+  edge of sight is its sign; it thins as the days go by. Memories surface as brief white flashes (a keep of white
+  stone, a name being called, "keep it safe"). The struggle to remember is a thread through the story.
+- **Weak, then stronger.** He starts fragile (walks, cannot run at first) and grows stronger physically in the days
+  with the Hounds before the Telling.
+- **Slower pacing.** Days with the Iron Hounds between the rescue and the Guild: chores while they look after him
+  (water, firewood, herbs with Ilse, Rowan's morning run, a lesson with Sorrel), teasing, growing attached. Juni names
+  him Sprout until he remembers his own name. Each scene short, play in between.
+- **Mysteries to keep adding.** So far: the torn air Sorrel studies; the sliver of the tear that never quite closes;
+  a scrap of white cloth threaded with gold, burned at one edge, in the grass where he woke (whose?); the Telling
+  Glass's black line; the memory flashes.
+- **The Telling Glass, not a crystal** (inspired by Hunter x Hunter's water divination, in sand): both hands on a
+  tall glass of pale sand; the sand answers your element (a spiral for wind, embers for fire, frost climbing the
+  glass for ice, a heaving column for earth) and how much answers is your aptitude. The hero: three, and no
+  element. Afterwards the grains he stirred turn black and stand in a thin upright line, like the tear.
+- **The Link sleeps.** No Dimension Link at the start (beasts tuned for an unlinked hero). About a year after the
+  Telling, one of the Iron Hounds is killed by an enemy far beyond them; the hero's grief and determination ionise
+  the wish magic of Votum still in him, and it forms the Link: the door to far stronger skills. The Hounds grieve.
+  (Who dies: not decided.)
 
 | # | Quest | Goal | Beat |
 | --- | --- | --- | --- |
 | 1 | Waking Up | Survive; follow rescuers to town | Meet the party |
-| 2 | The Crystal | Aptitude read at the Guild | Barely glows: pity and laughter |
+| 1b | Days with the Hounds | Chores while they look after you | Growing stronger; teasing; attachment (0.99.23) |
+| 2 | The Telling Glass | Element and aptitude read at the Guild | Three, no element: pity and laughter; the black line |
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
-| 4 | When It Counts | A beast far beyond the party ambushes them | You unlock skills you should not have and save them |
+| 4 | When It Counts | About a year on: an enemy far beyond the party | A Hound dies; grief wakes the Link; stronger skills |
 | 5 | Word Gets Around | Bigger hunts across the land | Guild ranks; strange beasts point to the movement |
 | 6 | An Invitation | A secret mission, watched | The secret service asks you to join. End of Act I |
 

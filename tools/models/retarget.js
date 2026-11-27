@@ -16,12 +16,37 @@ const MAP = Object.fromEntries([
   ...SIDE('Clavicle', 'clavicle'), ...SIDE('Upperarm', 'upperarm'), ...SIDE('Forearm', 'lowerarm'), ...SIDE('Hand', 'hand'),
   ...SIDE('Thigh', 'thigh'), ...SIDE('Calf', 'calf'), ...SIDE('Foot', 'foot'), ...SIDE('ToeBase', 'ball'),
 ]);
+/**
+ * (0.99.22) Some Tripo models come in an A-pose (arms angled down), and every clip, measured against the bind pose
+ * as if it were a T-pose, pushed the arms down a second time: into the body. Turn each upper arm, then each
+ * forearm, so the next bone along lies level (keeping its direction round the body), only for the measuring.
+ */
+export function straightenArms(root) {
+  const turn = (boneName, childName) => {
+    const b = root.getObjectByName(boneName), c = root.getObjectByName(childName);
+    if (!b || !c) return;
+    root.updateMatrixWorld(true);
+    const p0 = b.getWorldPosition(new THREE.Vector3()), p1 = c.getWorldPosition(new THREE.Vector3());
+    const dir = p1.sub(p0).normalize();
+    const level = new THREE.Vector3(dir.x, 0, dir.z);
+    if (level.lengthSq() < 1e-6 || dir.angleTo(level.normalize()) < 0.1) return; // already level (under 6 degrees)
+    const C = new THREE.Quaternion().setFromUnitVectors(dir, level);
+    const wq = b.getWorldQuaternion(new THREE.Quaternion()).premultiply(C);
+    const pq = b.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+    b.quaternion.copy(pq.multiply(wq));
+    root.updateMatrixWorld(true);
+  };
+  for (const s of ['L_', 'R_']) { turn(s + 'Upperarm', s + 'Forearm'); turn(s + 'Forearm', s + 'Hand'); }
+}
+
 window.run = async (targetUrl, sources, fps = 30) => {
   const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
   const tg = await l.loadAsync(targetUrl); const T = tg.scene; T.updateMatrixWorld(true);
   const bones = []; T.traverse((o) => { if (o.isBone) bones.push(o); }); // parents come before children
   const Tref = new Map(), restLocal = new Map();
-  for (const b of bones) { Tref.set(b.name, b.getWorldQuaternion(new THREE.Quaternion())); restLocal.set(b.name, b.quaternion.clone()); }
+  for (const b of bones) restLocal.set(b.name, b.quaternion.clone());
+  straightenArms(T); // (0.99.22) a model made in an A-pose: measured as if its arms were out level (a T-pose)
+  for (const b of bones) Tref.set(b.name, b.getWorldQuaternion(new THREE.Quaternion()));
   const hip = T.getObjectByName('Hip'); const hipRefPos = hip.getWorldPosition(new THREE.Vector3());
   const hipParentInv = new THREE.Matrix4().copy(hip.parent.matrixWorld).invert();
   const A = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2), Ai = A.clone().invert();

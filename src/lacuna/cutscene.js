@@ -271,6 +271,16 @@ export class Cutscene {
           cs.heroPath = { fx: me.x, fz: me.z, tx: x, tz: z, t: 0, dur, resolve };
         });
       },
+      /** (0.99.22) The white fog at the edge of the hero's sight: 0 none, 1 almost all. */
+      fog(level, dur = 1) {
+        if (cs.ctx.fog) cs.ctx.fog(level, cs.skipping ? 0 : dur);
+      },
+      /** (0.99.22) A memory surfacing through the fog: a white flash with a few words, then gone. */
+      async flash(text, hold = 2.8) {
+        if (cs.skipping || !cs.ctx.flash) return;
+        cs.ctx.flash(text, hold);
+        await cs.wait(hold + 0.9);
+      },
       fx: cs.ctx.fx,
       get ctx() {
         return cs.ctx;

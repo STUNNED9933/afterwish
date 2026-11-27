@@ -139,7 +139,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   // a clear spot on the meadow, a beast placed there by hand
   const setup = (cls, link = all(10)) => {
     const w = new LandWorld();
-    const p = w.addPlayer(1, { x: 60, z: 60 }, { cls, link });
+    const p = w.addPlayer(1, { x: 60, z: 60 }, { cls, link, linked: true });
     p.x = 60; p.z = 60;
     for (const b of w.beasts) { b.dead = true; b.diedAt = 1e9; } // the land emptied for the test
     const put = (type, x, z) => { const b = w.beasts.find((q) => q.type === type && q.dead && q.diedAt === 1e9); b.dead = false; b.hp = b.maxHp; b.x = b.hx = x; b.z = b.hz = z; b.state = 'idle'; b.chunk = chunkOf(x, z).i; w.byChunk.forEach((l) => { const i = l.indexOf(b); if (i >= 0) l.splice(i, 1); }); w.byChunk[b.chunk].push(b); return b; };
@@ -268,10 +268,11 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   }
   {
     const { w, p, put } = setup('warrior', {});
+    p.linked = false; w.refit(p, true); // (0.99.22) no Link: beasts are tuned for this
     const wolf = put('wolf', 61.5, 60);
     wolf.state = 'chase'; wolf.target = 1;
-    steps(w, 12);
-    check('...with no Eternal gear a wolf is a real danger: it puts you down', w.events.some((e) => e.type === 'down' && e.pid === 1) && p.dead);
+    steps(w, 34); // 25 bites of 14 (about half a minute), and down for 6 s
+    check('...with no Link a wolf is still a danger: stand there and it puts you down', w.events.some((e) => e.type === 'down' && e.pid === 1) && p.dead);
     steps(w, 7);
     check('...and you get up at Sunmere\'s gate, whole', !p.dead && p.hp === p.maxHp && Math.hypot(p.x - GATE.x, p.z - GATE.z) < 2);
   }
@@ -310,7 +311,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   const conn = () => { const c = {}; box.set(c, []); return c; };
   const run = (sec) => { for (let i = 0; i < Math.round(sec * 60); i++) room.tick(1 / 60); };
   const a = conn(), b = conn();
-  room.message(a, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Signed', cls: 'archer', session: 'good', link: { weapon: 30, helm: 30, chest: 30, boots: 30, ring: 30 } });
+  room.message(a, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Signed', cls: 'archer', session: 'good', linked: true, link: { weapon: 30, helm: 30, chest: 30, boots: 30, ring: 30 } });
   room.message(b, { t: 'hello', v: LACUNA_NET, pass: 'stun', name: 'Guest', cls: 'warrior', session: 'nope', link: { weapon: 99, helm: 'x' } });
   const wa = box.get(a).find((m) => m.t === 'welcome'), wb = box.get(b).find((m) => m.t === 'welcome');
   check('Lacuna server combat: signed in, the Link is your account\'s own Eternal gear (not what the page claims)', wa.linkFrom === 'account' && wa.link.weapon === 15 && room.world.players.get(wa.pid).mult > 3);
@@ -514,3 +515,14 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
 console.log(`${pass} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;
 void LAND; void CHUNKS; void TOWN; void chunkOf;
+
+{
+  // (0.99.22) the Link sleeps until the story wakes it
+  const { LandWorld: LW } = await import('../src/lacuna/sim.js');
+  const w = new LW();
+  const all = { weapon: 10, helm: 10, chest: 10, boots: 10, ring: 10 };
+  const asleep = w.addPlayer(1, undefined, { cls: 'warrior', link: all });
+  const awake = w.addPlayer(2, undefined, { cls: 'warrior', link: all, linked: true });
+  check('The Link sleeps until the story wakes it: Eternal gear lends nothing before (x1), x3 after', asleep.mult === 1 && Math.abs(awake.mult - 3) < 1e-9);
+  console.log(`${pass} passed, ${failed} failed (after the Link)`);
+}

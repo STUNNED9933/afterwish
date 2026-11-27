@@ -82,7 +82,8 @@ export class LandRoom {
     const link = {};
     const src = fromAccount || (msg.link && typeof msg.link === 'object' ? msg.link : {});
     for (const slot of LINK_SLOTS) { const v = num(src[slot], 0, 30); if (v) link[slot] = Math.floor(v); }
-    const p = this.world.addPlayer(pid, at, { cls, link });
+    // (0.99.22) the Link sleeps until the story wakes it (the page says so for now; with accounts, the server will)
+    const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true });
     p.driven = true; // moved by its own browser (checked), not by the sim
     const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page' };
     this.byConn.set(conn, m);

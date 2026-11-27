@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: a darker rift, a new opening, the Telling Glass, the Link asleep (0.99.22)
+
+- **The rift is sinister now** (Lacuna's tear and the crack on the Verge): a black wound in the air with a thin pale-violet rim, lightning crawling off it, dark tendrils clawing out of its edges, scorched ground and ash rising.
+- **A new opening, in three short scenes with play between.** No husk: the crack had whispered for weeks, and one night it *pulled*, and the hero walked in. He wakes with most of his memory gone: a **white fog** at the edge of sight (it thins as the story goes on) and **memories** that flash up white for a moment and are gone. Then: get up; **stumble out of the glade** yourself (walking only, he is too weak to run); the wolves and the rescue; then **go and see what Sorrel has found at the tear**, a memory, and a name: Juni calls him **Sprout** until he remembers his own.
+- **A mystery in the grass** where he wakes: something glints. **F** to pick it up.
+- **The Telling Glass replaces the crystal.** Both hands on a tall glass of pale sand: it answers your element (Dace's spirals up into a whirlwind: wind) and how much of it answers is your aptitude. The hero's: a few grains stir. Three, and no element. Then the grains he stirred turn black and draw themselves into a thin upright line, like the tear, and stay that way.
+- **The Dimension Link is asleep** until the story wakes it (later: a Hound's death). Eternal gear lends nothing in Lacuna for now, and the beasts are a third as strong to match (a lone wolf: 140 health, bites for 14). Testing: add `?link=1` to the address to wake it.
+- **Ilse's arms are back.** She (and Dace) were made in an A-pose, arms angled down, and every clip pushed them down again, into the body: only her hands showed, flat on her skirt. The animation tools now level the arms of a model made that way before measuring; all seven story characters were rebuilt. And nobody's feet sink into the ground any more (a clip that would sink them lifts the body back up).
+
 ### Lacuna: the classes rebuilt round mana, and Quest 3, Choosing a Path (0.99.21)
 
 Both classes keep the feel of their Afterwish versions (the Warrior's Berserker and the Archer's Sharpshooter) but are rebuilt round Lacuna's mana: one has little and pays in blood, the other has plenty and pours it into one shot.

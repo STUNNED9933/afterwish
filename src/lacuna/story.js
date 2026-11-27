@@ -6,13 +6,14 @@
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
 import { GLADE, TOWN, CRYSTAL, TRAINING, roadDist } from './land.js';
-import { buildCrack } from '../render/gates.js';
 import { separate } from './actor.js';
 
 export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
+  stumble: { name: 'Waking Up', goal: 'Find a way out of the glade' },
+  rescued: { name: 'Waking Up', goal: 'Sorrel is studying the crack. Go and see.' },
   waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
-  crystal: { name: 'The Crystal', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
+  crystal: { name: 'The Telling Glass', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
   path: { name: 'Choosing a Path', goal: 'Meet the Iron Hounds at their training ground, outside Sunmere\'s east gate' },
   ambush: { name: 'When It Counts', goal: 'The Iron Hounds will take you on your first hunt (the next part of the story is coming)' },
 };
@@ -28,162 +29,186 @@ const TEAR = { x: GLADE.x + 1.2, z: GLADE.z - 2.5 };
 const roadZ = (x) => 7 * Math.sin(x / 37);
 export const ROAD_IN = { x: GLADE.x + 6, z: roadZ(GLADE.x + 6) }; // where the Company comes down from the road
 
-/** The opening scene. `a`: the cutscene api. */
-export async function opening(a) {
-  const { fx } = a;
-  const scene = a.ctx.view.scene;
+// ---- the opening (0.99.22): three short scenes, with walking in between
+// The hero did not chase anything through: the crack pulled him in, and tore what he was out of him on the way.
+// He wakes with most of his memory gone and a white fog at the edge of everything (it thins as the days go by).
+export const KEEPSAKE = { x: H.x + 3.6, z: H.z - 2.2 }; // something in the grass by where he woke
+const toRoad = Math.atan2(ROAD_IN.z - H.z, ROAD_IN.x - H.x);
+export const GLADE_EDGE = { x: H.x + Math.cos(toRoad) * 10, z: H.z + Math.sin(toRoad) * 10 }; // where the trees begin, toward the road
+export { TEAR };
+
+/** Scene 1, the pull: the cards, then waking in the fog, and getting up. a.ctx.rift: the tear (close(), its state). */
+export async function openingPull(a) {
   a.bars(true);
   await a.fade(1, 0);
+  a.fog(0.95, 0);
   a.hero(H.x, H.z, -Math.PI / 2 + 0.4, 'lie');
-  const tear = buildCrack(TEAR);
-  tear.group.scale.setScalar(1.25);
-  scene.add(tear.group);
-  let tearT = 0, closing = 0;
-  const tearTick = setInterval(() => {
-    tearT += 0.033;
-    tear.anim(0.033, tearT);
-    if (closing > 0) {
-      // it closes to a thin, faint sliver: what is left of a door
-      closing = Math.min(0.93, closing + 0.05);
-      tear.group.scale.set(1.25 * (1 - closing), 1.25 * (1 - closing * 0.35), 1.25 * (1 - closing));
-    }
-  }, 33);
-  a.ctx.onEnd(() => { clearInterval(tearTick); scene.remove(tear.group); });
-
+  a.ctx.rift.open();
   await a.card([
     'Votum. The Verge, where the keep\'s road ends.',
-    'For weeks the crack in the air had only hummed. That night it opened, and a husk ran straight into it, as if something on the other side had called its name.',
-    'You went after it.',
-    'The light was very bright. Then it was nothing at all.',
+    'For weeks the crack in the air had only whispered.',
+    'That night it pulled. Not at your arm, or your clothes: at something underneath them, like a hook set behind the ribs.',
+    'You walked into it. You don\'t remember deciding to.',
+    'Then it took hold of everything you were, and pulled.',
   ]);
-  // Waking: low in the grass, the world blurred
+  // waking: low in the grass, everything white at the edges
   a.blur(9);
   await a.camera([H.x + 1.4, 0.45, H.z + 0.9], [H.x - 0.2, 0.25, H.z], 0);
-  await a.fade(0, 2.2);
+  await a.fade(0, 2.6);
   await a.say('', '...Grass. Warm grass.');
+  await a.flash('A keep of white stone. Someone calling a name, over and over. Yours?');
+  await a.say('', 'You had a name a moment ago. You can feel the shape of where it was.');
   a.blur(5, 2);
+  a.fog(0.8, 3);
   await a.camera([H.x + 1.6, 0.7, H.z + 1.4], [TEAR.x, 2.6, TEAR.z], 3);
-  await a.say('', 'The air smells of pine and something sweet. Not ash. Not the keep\'s smoke.');
-  await a.say('', 'The crack. It\'s still there, right above you, and it\'s closing.');
-  closing = 0.01;
+  await a.say('', 'Above you the air is split open: black, and crawling with pale light. And it is closing.');
+  a.ctx.rift.close();
   a.shake(0.2, 0.5);
   await a.wait(0.8);
   await a.prompt('Space', 'Get up', { times: 4, onTap: () => { a.shake(0.12, 0.2); } });
-  a.blur(0, 1.2);
+  a.blur(0, 1.6);
   a.hero(undefined, undefined, -Math.PI / 2 + 0.4, 'rise');
   await a.camera([H.x + 3.2, 1.9, H.z + 4.2], [H.x, 1.2, H.z], 1.8);
-  await a.say('', 'No husk. No Verge. A forest you have never seen, and a sky so blue it looks painted.');
-  // Wolves
-  const wolves = [
-    a.actor('wolf1', GLADE.x - 16, GLADE.z - 3), a.actor('wolf2', GLADE.x - 13, GLADE.z + 10), a.actor('wolf3', GLADE.x - 17, GLADE.z + 4),
-  ];
-  wolves.forEach((w) => w.face(H.x, H.z));
-  a.hero(undefined, undefined, Math.atan2(wolves[2].z - H.z, wolves[2].x - H.x)); // toward the sound
+  await a.say('', 'Your legs barely hold you. A forest you have never seen; a sky so blue it looks painted; and a white fog at the edge of everything that will not clear.');
+  a.fog(0.7, 2);
+  await a.fade(1, 0.5);
+  a.bars(false);
+}
+
+/** Scene 2, the wolves and the rescue, wherever the hero has got to (`at`). */
+export async function openingWolves(a, at) {
+  const { fx } = a;
+  const W = { x: at.x, z: at.z };
+  a.bars(true);
+  a.fog(0.7, 0);
+  // the wolves come from the deep wood, the side away from the road
+  const away = Math.atan2(W.z - ROAD_IN.z, W.x - ROAD_IN.x);
+  const out = (d, side) => [W.x + Math.cos(away) * d - Math.sin(away) * side, W.z + Math.sin(away) * d + Math.cos(away) * side];
+  const wolves = [a.actor('wolf1', ...out(14, -4)), a.actor('wolf2', ...out(13, 6)), a.actor('wolf3', ...out(16, 1))];
+  wolves.forEach((w) => w.face(W.x, W.z));
+  a.hero(W.x, W.z, away);
+  await a.camera([W.x - Math.cos(away) * 4 + 1, 2.2, W.z - Math.sin(away) * 4 + 1], [W.x + Math.cos(away) * 6, 0.9, W.z + Math.sin(away) * 6], 0);
+  await a.fade(0, 0.8);
   await a.say('', 'Something growls in the trees.');
-  a.camera([H.x + 4, 2.4, H.z + 3], [GLADE.x - 9, 0.8, GLADE.z + 2], 1.6);
-  await Promise.all([a.walk('wolf1', H.x - 6, H.z - 3), a.walk('wolf2', H.x - 5, H.z + 4), a.walk('wolf3', H.x - 7, H.z + 1)]);
-  a.watch('wolf3'); // eyes on the wolves from here until help comes
-  wolves.forEach((w) => w.face(H.x, H.z));
-  await a.say('', 'You reach for a sword that isn\'t there. You reach for the Link, for the wish, for anything at all.');
-  await a.say('', 'Nothing answers. Whatever you were in Votum, you are not it here.');
-  // The first lunge: roll away
-  a.walk('wolf1', H.x - 1.2, H.z - 0.8, { run: true });
+  await Promise.all([a.walk('wolf1', ...out(6, -3)), a.walk('wolf2', ...out(5, 4)), a.walk('wolf3', ...out(7, 1))]);
+  a.watch('wolf3');
+  wolves.forEach((w) => w.face(W.x, W.z));
+  await a.say('', 'You reach for something: a blade, a word, a power you are sure you had. Whatever it was, it was torn out of you on the way here.');
+  await a.say('', 'Your hands are empty. They\'re shaking.');
+  // the first lunge: roll away
+  a.walk('wolf1', ...out(1.2, -0.8), { run: true });
   await a.wait(0.25);
   await a.prompt('KeyE', 'Roll away!', { label: 'E' });
   a.busy(true);
-  a.hero(H.x + 3, H.z + 1.5, Math.PI, 'hop');
+  const R = { x: W.x - Math.cos(away) * 3 + Math.sin(away) * 1.5, z: W.z - Math.sin(away) * 3 - Math.cos(away) * 1.5 };
+  a.hero(R.x, R.z, away, 'hop');
   a.shake(0.1, 0.2);
   await a.wait(0.6);
-  wolves[0].face(H.x + 3, H.z + 1.5);
-  // The second: too slow (seen from further off: the hero and the wolves in one shot)
-  a.camera([H.x + 10, 2.6, H.z + 6.5], [H.x - 1.5, 0.8, H.z + 0.5], 0.5);
-  a.walk('wolf2', H.x + 2, H.z + 2.6, { run: true });
+  wolves[0].face(R.x, R.z);
+  // the second: too slow
+  a.camera([R.x - Math.cos(away) * 8 + 4, 2.6, R.z - Math.sin(away) * 8 + 4], [R.x + Math.cos(away) * 2, 0.8, R.z + Math.sin(away) * 2], 0.5);
+  a.walk('wolf2', R.x + Math.cos(away) * 1.2, R.z + Math.sin(away) * 1.2, { run: true });
   await a.wait(0.45);
   a.shake(0.35, 0.45);
   a.ctx.hurt();
+  a.fog(0.95, 0.2);
   a.hero(undefined, undefined, undefined, 'land');
-  await a.say('', 'Too slow.');
-  await a.walk('wolf3', H.x + 1.4, H.z - 0.2, { run: true });
-  // The Marigold Company
-  const juniAt = { x: H.x + 7, z: H.z - 9 }; // at the edge of the glade, bow up
-  a.actor('juni', juniAt.x, juniAt.z).face(H.x, H.z);
+  await a.say('', 'Too slow. The fog rushes in.');
+  a.fog(0.8, 1.5);
+  await a.walk('wolf3', R.x + Math.cos(away) * 1.4, R.z + Math.sin(away) * 1.4 + 0.6, { run: true });
+  // the Iron Hounds
+  const juniAt = { x: R.x - Math.cos(away) * 9 + 6, z: R.z - Math.sin(away) * 9 - 4 };
+  a.actor('juni', juniAt.x, juniAt.z).face(R.x, R.z);
   a.watch(null);
-  a.camera([H.x + 1.5, 2.2, H.z + 7], [juniAt.x - 1, 1.3, juniAt.z + 1], 0.4); // the hero down in front, Juni at the trees
-  fx.shot({ x: juniAt.x, z: juniAt.z, dx: (wolves[0].x - juniAt.x) / Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), dz: (wolves[0].z - juniAt.z) / Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), speed: 70, range: Math.hypot(wolves[0].x - juniAt.x, wolves[0].z - juniAt.z), kind: 'arrow' });
+  a.camera([R.x - Math.cos(away) * 2 + 1.5, 2.0, R.z - Math.sin(away) * 2 + 1.5], [juniAt.x, 1.3, juniAt.z], 0.4);
+  const shoot = (from, to, speed, kind) => { const d = Math.hypot(to.x - from.x, to.z - from.z) || 1; fx.shot({ x: from.x, z: from.z, dx: (to.x - from.x) / d, dz: (to.z - from.z) / d, speed, range: d, kind }); return d / speed; };
+  shoot(juniAt, wolves[0], 70, 'arrow');
   await a.wait(0.35);
   fx.puff(wolves[0].x, wolves[0].z);
   a.remove('wolf1');
-  await a.say('juni', 'Got one! Rowan, there\'s someone down here!');
-  a.actor('rowan', ROAD_IN.x, ROAD_IN.z + 2);
-  a.actor('sorrel', ROAD_IN.x + 2, ROAD_IN.z + 1);
-  a.actor('ilse', ROAD_IN.x + 1, ROAD_IN.z);
-  a.camera([H.x + 7, 2.6, H.z - 2], [H.x + 1, 1, H.z + 1.5], 1.2);
-  await a.walk('rowan', wolves[1].x - 1.4, wolves[1].z + 1.2, { run: true }); // to the wolf's far side from the hero
+  await a.say('juni', 'Got one! Rowan, there\'s someone down here! A little one!');
+  a.actor('rowan', juniAt.x + 2, juniAt.z + 1);
+  a.actor('sorrel', juniAt.x + 3, juniAt.z - 1);
+  a.actor('ilse', juniAt.x + 1, juniAt.z - 1.5);
+  a.camera([R.x - Math.cos(away) * 6 + 3, 2.6, R.z - Math.sin(away) * 6 + 3], [R.x, 1, R.z], 1.2);
+  await a.walk('rowan', wolves[1].x + Math.cos(away) * 1.4, wolves[1].z + Math.sin(away) * 1.4, { run: true });
   a.actor('rowan').face(wolves[1].x, wolves[1].z);
   await a.anim('rowan', 'slash', { speed: 1.2 });
   fx.puff(wolves[1].x, wolves[1].z);
   a.remove('wolf2');
-  a.walk('sorrel', ROAD_IN.x - 1, ROAD_IN.z + 7);
-  await a.wait(0.9);
+  await a.walk('sorrel', R.x - Math.cos(away) * 5, R.z - Math.sin(away) * 5 + 2);
   a.actor('sorrel').face(wolves[2].x, wolves[2].z);
   a.anim('sorrel', 'cast');
   await a.wait(0.5);
-  const s = a.actor('sorrel'), w3 = wolves[2];
-  const d = Math.hypot(w3.x - s.x, w3.z - s.z) || 1;
-  fx.shot({ x: s.x, z: s.z, dx: (w3.x - s.x) / d, dz: (w3.z - s.z) / d, speed: 30, range: d, kind: 'deadeye' });
-  await a.wait(d / 30);
-  fx.ring(w3.x, w3.z, 2.2, 0xff8a3a, 0.5);
-  await a.walk('wolf3', GLADE.x - 24, GLADE.z + 6, { run: true, speed: 8 });
+  await a.wait(shoot(a.actor('sorrel'), wolves[2], 30, 'deadeye'));
+  fx.ring(wolves[2].x, wolves[2].z, 2.2, 0xff8a3a, 0.5);
+  await a.walk('wolf3', ...out(22, 2), { run: true, speed: 8 });
   a.remove('wolf3');
-  // Safe. They gather round: Rowan in front, Ilse kneeling at your side, Juni a little off, Sorrel at the tear.
-  const HR = { x: H.x + 3, z: H.z + 1.5 };
+  // safe: Ilse at his side
   a.busy(false);
-  a.hero(undefined, undefined, Math.atan2(ROAD_IN.z - HR.z, ROAD_IN.x - HR.x));
-  await a.walk('rowan', HR.x + 1.7, HR.z - 0.9);
+  a.hero(undefined, undefined, Math.atan2(juniAt.z - R.z, juniAt.x - R.x));
+  await a.walk('rowan', R.x + 1.4, R.z - 1.2);
   a.talkCam(true);
-  await a.say('rowan', 'Easy. Easy, friend. You\'re all right now.');
-  await a.walk('ilse', HR.x - 0.2, HR.z - 1.05, { run: true });
+  await a.say('rowan', 'Easy. Easy. You\'re all right now.');
+  await a.walk('ilse', R.x - 0.4, R.z - 1.0, { run: true });
   const ilse = a.actor('ilse');
   ilse.stay = true;
-  ilse.face(HR.x, HR.z);
+  ilse.face(R.x, R.z);
   a.loop('ilse', 'kneel');
-  // a two-shot from the side for the healing: both of them in view
-  await a.camera([HR.x - 2.6, 1.25, HR.z + 1.4], [HR.x - 0.1, 0.75, HR.z - 0.5], 0.6);
-  await a.say('ilse', 'Hold still. You\'re scraped up, but nothing\'s broken.', { cam: false });
-  fx.ring(HR.x, HR.z, 1.4, 0x8fff9a, 1.2);
+  await a.camera([R.x - 2.6, 1.25, R.z + 1.4], [R.x - 0.2, 0.75, R.z - 0.5], 0.6);
+  await a.say('ilse', 'Hey. Hey, look at me. Stay with me.', { cam: false });
+  await a.say('ilse', 'You\'re scraped up, but nothing\'s broken. And you\'re pale as milk. When did you last eat?', { cam: false });
+  fx.ring(R.x, R.z, 1.4, 0x8fff9a, 1.2);
   a.ctx.heal();
+  a.fog(0.5, 2);
+  await a.say('', 'Warmth, from her hands. The fog draws back a little. Not all the way.');
   await a.say('ilse', '...There. Better?', { cam: false });
   a.loop('ilse', 'idle');
   ilse.stay = false;
-  await a.walk('juni', HR.x + 2.6, HR.z + 1.4, { run: true });
+  await a.walk('juni', R.x + 2.4, R.z + 1.2, { run: true });
   await a.say('juni', 'Did you see that? One arrow! From all the way up on the bank!');
   await a.say('rowan', 'We saw, Juni.', { to: 'juni' });
-  // Sorrel, at the tear: he calls Rowan over without taking his eyes off it
-  await a.walk('sorrel', TEAR.x + 1.1, TEAR.z + 0.9);
+  await a.say('rowan', 'Sit a moment. Then we move.');
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.5);
+  a.bars(false);
+}
+
+/** Scene 3, the tear: Sorrel studying what is left of it, a memory, a name. */
+export async function openingTear(a) {
+  const me = a.ctx.me;
+  a.bars(true);
+  a.talkCam(false);
   const sorrel = a.actor('sorrel');
   sorrel.stay = true;
   sorrel.face(TEAR.x, TEAR.z);
+  for (const who of ['rowan', 'ilse', 'juni']) a.actor(who);
+  a.fog(0.95, 0.8);
+  await a.camera([TEAR.x - 2.0, 1.75, TEAR.z - 1.5], [TEAR.x + 0.5, 1.8, TEAR.z + 0.4], 0.8);
+  await a.flash('Light, everywhere. A voice, very far away: "...keep it safe. Whatever happens, keep it—"');
+  a.fog(0.5, 1.5);
   a.quiet();
-  // from beyond the sliver, onto his face
-  await a.camera([TEAR.x - 2.0, 1.75, TEAR.z - 1.5], [TEAR.x + 1.1, 1.55, TEAR.z + 0.9], 1.1);
-  await a.say('sorrel', 'Rowan. Come and look at this. The air here has been torn, and not long ago.', { to: 'rowan', cam: false });
+  await a.say('sorrel', 'Not too close. The air here has been torn, and not long ago.', { to: 'hero', cam: false });
+  sorrel.stay = false;
+  a.talkCam(true);
+  await a.say('sorrel', 'Things don\'t tear by themselves. Something did this. Or someone came through it.');
+  await a.say('', 'It pulled you here. You are sure of that, and of almost nothing else.');
   await a.walk('rowan', TEAR.x + 2.5, TEAR.z + 2.3);
   await a.say('rowan', 'Can it wait until we\'re out of the wolves\' woods?', { to: 'sorrel' });
-  sorrel.stay = false;
   await a.say('sorrel', 'It can wait. I\'m not sure it should.', { to: 'rowan' });
-  a.quiet();
-  await Promise.all([a.walk('sorrel', HR.x + 1.4, HR.z - 2.4), a.walk('rowan', HR.x + 1.7, HR.z - 0.9)]);
-  await a.say('juni', 'So where did you come from? You weren\'t here when we came down the road. Then you were.');
-  await a.say('', 'You open your mouth to explain, and realise you don\'t know how.');
+  a.walk('juni', me.x + 1.8, me.z + 1.4);
+  await a.say('juni', 'So. Where did you come from? And what do we call you?', { to: 'hero' });
+  await a.say('', 'You open your mouth. Nothing comes. Not the place, not the name.');
+  await a.say('juni', 'No name? Then you\'re Sprout. Until you remember. Or until I think of something worse.', { to: 'hero' });
+  await a.say('ilse', 'Juni.');
+  await a.say('juni', 'What? Look at him. It suits him.', { to: 'ilse' });
   await a.say('rowan', 'Leave it. Whoever you are, you\'re coming with us.');
   a.anim('rowan', 'wave');
   await a.say('rowan', 'We\'re the Iron Hounds. Sellswords, out of Sunmere. It\'s not far, and there\'s a hot meal at the end of it.');
   await a.say('ilse', 'And a bath. Please, a bath.');
   a.talkCam(false);
   a.quiet();
-  a.ctx.onEnd(null);
-  clearInterval(tearTick);
-  scene.remove(tear.group);
   await a.fade(1, 0.6);
   a.bars(false);
 }
@@ -216,7 +241,7 @@ export function walkToTown(actors, bark, onDone, from = ROAD_IN, land = null) {
   const talk = [
     { at: lens[1] + 6, lines: [['juni', 'Wolves don\'t come this close to the road. Not usually.'], ['rowan', 'Nothing\'s been usual this week.']] },
     { at: 34, lines: [['sorrel', 'You went at them with your bare hands. Or tried to.'], ['sorrel', 'Either you\'re very brave, or you didn\'t know you couldn\'t win.'], ['ilse', 'Sorrel.'], ['sorrel', 'It was a compliment.']] },
-    { at: 62, lines: [['ilse', 'Sunmere\'s a good town. Loud, but good. Everyone there is busy being something.'], ['juni', 'Busy being whatever the crystal told them they are, you mean.'], ['rowan', 'Juni.']] },
+    { at: 62, lines: [['ilse', 'Sunmere\'s a good town. Loud, but good. Everyone there is busy being something.'], ['juni', 'Busy being whatever the sand told them they are, you mean.'], ['rowan', 'Juni.']] },
     { at: total - 36, lines: [['rowan', 'There she is. Sunmere.'], ['rowan', 'We\'ll take you to the Guild in the morning. They\'ll want to read you.'], ['', 'Read you?'], ['juni', 'It doesn\'t hurt! Mostly.']] },
   ];
   let lead = 0, said = 0, waiting = false, finished = false;
@@ -295,7 +320,7 @@ export function atCrystal(back, side) {
 /** Where the Company waits in the Guild's yard (Quest 2), and where Magistra Odile stands by her crystal. */
 export const YARD = { rowan: atCrystal(-4.6, -1.3), ilse: atCrystal(-5.3, -0.1), juni: atCrystal(-4.2, -2.6), sorrel: atCrystal(-5.7, -2.2) };
 export const ODILE = atCrystal(1.45, 0);
-/** The Company waits in the yard, facing the crystal; Odile by it. */
+/** The Company waits in the yard, facing the Telling Glass; Odile by it. */
 export function atGuild(actors, { walk = false } = {}) {
   const what = { rowan: 'arms', ilse: 'idle', juni: 'look', sorrel: 'wait', odile: 'idle' };
   for (const [who, a] of Object.entries(actors)) {
@@ -310,7 +335,7 @@ export function atGuild(actors, { walk = false } = {}) {
   return { update(dt) { for (const a of Object.values(actors)) if (a) a.update(dt); } };
 }
 
-/** Quest 2, The Crystal: the hero's aptitude is read at the Guild. `a`: the cutscene api; a.ctx.crystal: the crystal. */
+/** Quest 2, The Telling Glass: the hero's element and aptitude are read at the Guild. a.ctx.crystal: the glass. */
 export async function crystalScene(a) {
   const P = atCrystal;
   const V = (back, side, y) => { const [x, z] = P(back, side); return [x, y, z]; };
@@ -329,25 +354,25 @@ export async function crystalScene(a) {
   a.loop('wren', 'arms');
   a.loop('odile', 'idle');
   cr.rest();
-  cr.ember(false);
+  cr.mark(false);
   await a.camera(V(-12, 3.4, 3.4), V(1.5, 0, 2.4), 0);
   await a.fade(0, 1.2);
   a.camera(V(-9, 2.2, 2.6), V(0.5, 0, 2.2), 5);
-  await a.say('', 'The Adventurers\' Guild of Sunmere: a grey stone hall hung with red banners, a yard full of people, and in the middle of the yard a crystal taller than a man.');
+  await a.say('', 'The Adventurers\' Guild of Sunmere: a grey stone hall hung with red banners, a yard full of people, and in the middle of the yard a tall glass of pale sand on a stone stand.');
   a.talkCam(true);
-  await a.say('juni', 'Everyone who wants to be an adventurer starts here. One hand on the crystal, and it shows what you were born with.');
-  await a.say('ilse', 'It doesn\'t hurt. It just... knows.');
-  await a.say('sorrel', 'Aptitude is fixed at birth. Training sharpens technique, nothing more. The number is the number.');
+  await a.say('juni', 'The Telling Glass. Both hands on it, and the sand tells everyone what you are. Spins for wind, burns for fire, frosts over for ice.');
+  await a.say('ilse', 'And how much of it moves is how much you\'ve got. It doesn\'t hurt. It just... tells.');
+  await a.say('sorrel', 'Element and aptitude, both fixed at birth. Training sharpens technique, nothing more. The sand is the sand.');
   a.talkCam(false);
   a.quiet();
-  // Dace first: the crystal blazes
+  // Dace first: the sand rises into a spinning column
   await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.9);
-  await a.say('odile', 'Dace, of the Silver Sash. Your yearly reading. Your hand on the crystal, if you please.', { to: 'dace', cam: false });
-  cr.read(0.95, 0xffe7a0);
-  a.shake(0.04, 0.5);
-  await a.camera(V(-3.4, 1.4, 1.3), V(0, 0, 2.6), 1.6);
-  await a.wait(0.6);
-  await a.say('odile', 'Eighty-one. The same as last year, and the year before. Well done.', { to: 'dace', cam: false });
+  await a.say('odile', 'Dace, of the Silver Sash. Your yearly telling. Both hands on the glass, if you please.', { to: 'dace', cam: false });
+  cr.read('wind', 0.85);
+  a.shake(0.03, 0.4);
+  await a.camera(V(-2.2, 1.0, 1.6), V(0, 0, 1.9), 1.6);
+  await a.wait(1.2);
+  await a.say('odile', 'Wind. Eighty-one. The same as last year, and the year before. Well done.', { to: 'dace', cam: false });
   a.anim('dace', 'cheer');
   await a.say('', 'Applause round the yard. Somebody whistles.');
   cr.rest();
@@ -355,7 +380,7 @@ export async function crystalScene(a) {
   await a.say('dace', 'Just making sure it still likes me.', { to: 'wren' });
   a.walk('dace', ...P(-2.6, 2.9));
   await a.say('wren', 'It likes everyone over seventy, Dace. Move.', { to: 'dace' });
-  await a.say('odile', 'Next. You, with the Iron Hounds. Your hand on the crystal.');
+  await a.say('odile', 'Next. You, with the Iron Hounds. Both hands on the glass.');
   await a.say('rowan', 'Go on. We\'re right behind you.');
   a.talkCam(false);
   a.quiet();
@@ -364,14 +389,15 @@ export async function crystalScene(a) {
   await a.heroWalk(...P(-1.2, 0), 2.4);
   a.hero(undefined, undefined, F);
   await a.camera(V(-2.7, 1.0, 1.8), V(0.2, -0.1, 1.95), 0.9);
-  await a.say('', 'The crystal is cold. Colder than it looks.');
-  await a.prompt('KeyE', 'Place your hand on the crystal', { label: 'E' });
-  cr.read(0.03, 0x9fd0ff);
-  await a.wait(1.8);
-  await a.say('', 'For a moment, nothing at all. Then a flicker, faint as a candle across a field.');
+  await a.say('', 'The glass is cold. Colder than it looks.');
+  await a.prompt('KeyE', 'Both hands on the glass', { label: 'E' });
+  cr.read('none', 0.035);
+  await a.wait(2.0);
+  await a.say('', 'For a moment, nothing at all. Then a few grains stir, as if someone breathed on them.');
   await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.8);
   await a.wait(0.8);
   await a.say('odile', 'Three.', { to: 'hero', cam: false });
+  await a.say('odile', 'And no element I can see.', { to: 'hero', cam: false });
   a.talkCam(true);
   await a.say('dace', 'Three? My boots have more magic than that!', { to: 'hero' });
   a.talkCam(false);
@@ -399,20 +425,21 @@ export async function crystalScene(a) {
   await a.say('rowan', 'The number tells you where you start. Not where you stop. We\'ll train you ourselves.');
   a.remove('dace');
   a.remove('wren');
-  // Sorrel, at the crystal: it has not gone out
+  // Sorrel, at the glass: the grains the hero stirred have turned black, and stand in a line
   a.walk('sorrel', ...P(-1.0, -0.9));
   a.talkCam(false);
   a.quiet();
-  await a.camera(V(-2.6, -2.2, 1.9), V(0, 0, 2.05), 1.2);
-  cr.ember(true);
-  await a.wait(2.2);
+  await a.camera(V(-2.6, -2.2, 1.9), V(0, 0, 1.75), 1.2);
+  cr.mark(true);
+  await a.wait(2.6);
   await a.say('sorrel', 'Rowan.', { to: 'rowan', cam: false });
-  await a.camera(V(-1.9, 0.9, 2.2), V(0, 0, 2.05), 1.4);
-  await a.say('sorrel', 'It\'s still glowing. A reading ends when the hand comes away. This one hasn\'t.', { to: 'rowan', cam: false });
+  await a.camera(V(-1.5, 0.6, 1.85), V(0, 0, 1.75), 1.4);
+  await a.say('', 'The grains you stirred have turned black. They have drawn themselves into a thin, upright line in the middle of the glass, and they are not moving.');
+  await a.say('sorrel', 'Sand settles. That isn\'t settling. That\'s not an element.', { to: 'rowan', cam: false });
   a.talkCam(true);
-  await a.say('rowan', 'Meaning?', { to: 'sorrel' });
-  await a.say('sorrel', 'Meaning I don\'t know. And I don\'t like not knowing.', { to: 'rowan' });
-  await a.say('odile', 'The crystal is old. It does that, now and then. Off you go, all of you. Next!');
+  await a.say('rowan', 'Then what is it?', { to: 'sorrel' });
+  await a.say('sorrel', 'It looks like the tear in the forest. And I don\'t like that I know that.', { to: 'rowan' });
+  await a.say('odile', 'The glass is old. It does that, now and then. Off you go, all of you. Next!');
   a.talkCam(false);
   a.quiet();
   await a.fade(1, 0.8);
@@ -453,7 +480,7 @@ export async function trainingScene(a) {
   await a.say('', 'Packed earth, a ring of straw posts, and a row of painted targets running off toward the hills: the Iron Hounds\' training ground.');
   a.talkCam(true);
   a.watch('rowan');
-  await a.say('rowan', 'The crystal measures what you were born with. Out here we measure what you do with it.');
+  await a.say('rowan', 'The glass measures what you were born with. Out here we measure what you do with it.');
   await a.say('juni', 'The Hounds fight two ways. His way: get close, get hurt, win anyway. Mine: stay far, breathe, one arrow.', { to: 'hero' });
   await a.say('sorrel', 'Your mana will always be small. So spend it the way that suits you. He pays the difference in blood. She pays in patience.');
   await a.say('ilse', 'And whichever you try, I\'m right here if it goes wrong.');

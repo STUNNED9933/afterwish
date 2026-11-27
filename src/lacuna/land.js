@@ -116,11 +116,12 @@ export function chunkOf(x, z) {
 }
 
 /** Enemy kinds of the test land (placeholder beasts: real ones come with phase 2). */
-// (phase 2) hp and dmg are tuned for a hero whose Eternal gear is level 10 in every slot (see sim.js linkMult)
+// (0.99.22) hp and dmg are tuned for a hero with no Link (it sleeps until the story wakes it): a third of what they
+// were when they were tuned for Eternal level 10 in every slot
 export const BEASTS = {
-  wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest', hp: 420, dmg: 42, every: 1.3, xp: 12 },
-  hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow', hp: 560, dmg: 36, every: 1.5, xp: 14 },
-  golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony', hp: 1500, dmg: 95, every: 2.1, xp: 30 },
+  wolf: { name: 'Mossback Wolf', speed: 5.0, aggro: 11, leash: 30, r: 0.6, where: 'forest', hp: 140, dmg: 14, every: 1.3, xp: 12 },
+  hog: { name: 'Thornhog', speed: 4.2, aggro: 8, leash: 24, r: 0.7, where: 'meadow', hp: 190, dmg: 12, every: 1.5, xp: 14 },
+  golem: { name: 'Cairn Golem', speed: 2.8, aggro: 9, leash: 20, r: 1.0, where: 'stony', hp: 500, dmg: 32, every: 2.1, xp: 30 },
   // (0.99.21) not a beast: the training ground's posts and targets (they never move, fight back or fall)
   dummy: { name: 'Training Post', speed: 0, aggro: 0, leash: 0, r: 0.45, where: 'none', hp: 5000, dmg: 0, every: 99, xp: 0, post: true },
 };

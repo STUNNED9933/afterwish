@@ -18,8 +18,9 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { opening, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
-import { buildCrystal } from './guild.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { buildCrack } from '../render/gates.js';
+import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -42,7 +43,9 @@ const TRY = [null, 0, 10, 20, 30]; // L cycles: your own, then every slot at the
 let tryAt = 0;
 const linkNow = () => (TRY[tryAt] === null ? ownLink : Object.fromEntries(LINK_SLOTS.map((s) => [s, TRY[tryAt]])));
 const startCls = LACUNA_CLASSES.includes(params.get('cls')) ? params.get('cls') : 'warrior';
-const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow() });
+// (0.99.22) the Link sleeps until the story wakes it (?link=1 wakes it early, for testing)
+const linkAwake = params.get('link') === '1' || !!loadStory().linked;
+const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake });
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
 const fx = new Fx(view.scene, $('fxlayer'));
@@ -203,7 +206,7 @@ function joinServer() {
   try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow() });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -365,6 +368,7 @@ function drawSkills() {
   }
 }
 function drawLink() {
+  if (!linkAwake) { $('link').textContent = 'Dimension Link: asleep · something is missing'; return; }
   const L = net && net.ready ? me.link : linkNow();
   const lv = LINK_SLOTS.map((s) => (L && L[s]) || 0);
   const from = TRY[tryAt] !== null && !(net && net.ready && linkFromLabel) ? `trying level ${TRY[tryAt]} in every slot (L)` : linkFromLabel || 'your Eternal gear';
@@ -434,8 +438,10 @@ addEventListener('keydown', (e) => {
   if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC') { walking = !walking; note(walking ? 'Walking (Ctrl or C to run again).' : 'Running.'); }
   if (e.code === 'F3') { overlay = !overlay; $('stats').classList.toggle('hidden', !overlay); e.preventDefault(); }
   if (e.code === 'KeyB') addBot();
+  if (e.code === 'KeyF') takeKeepsake();
   if (e.code === 'KeyL') {
-    if (net && net.ready) note('Together, the server decides your Link (your account\'s Eternal gear if you are signed in).');
+    if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
+    else if (net && net.ready) note('Together, the server decides your Link (your account\'s Eternal gear if you are signed in).');
     else { tryAt = (tryAt + 1) % TRY.length; world.setLink(1, linkNow()); linkFromLabel = TRY[tryAt] === null ? 'your Eternal gear on this browser' : ''; drawLink(); note(TRY[tryAt] === null ? 'Your own Eternal gear again.' : `Trying Eternal level ${TRY[tryAt]} in every slot (beasts are tuned for 10).`); }
   }
   if ((e.code === 'KeyT' || e.code === 'KeyY') && !e.repeat && !wheel) { openWheel(e.code === 'KeyT' ? 'emote' : 'face'); return; }
@@ -584,6 +590,7 @@ function wish() {
   const len = Math.hypot(mx, mz);
   if (len > 1) { mx /= len; mz /= len; }
   const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'sprint' : walking ? 'walk' : 'run';
+  if (story.stage === 'stumble') return { mx, mz, pace: 'walk' }; // (0.99.22) just through the tear: he can barely walk
   return { mx, mz, pace: scoped ? 'walk' : pace };
 }
 
@@ -703,10 +710,10 @@ function wheelMove(dx, dy) {
 
 // ---- the story (Act I): the opening, then the Iron Hounds walking you to Sunmere
 // (0.99.20) the Guild's reading crystal, in its yard north of the plaza
-const crystal = buildCrystal(CRYSTAL);
+const crystal = buildTellingGlass(CRYSTAL); // (0.99.22) the Telling Glass (where the crystal stood)
 view.scene.add(crystal.group);
 const cutscene = new Cutscene({
-  view, fx, $, me, hero, land: world.land, crystal,
+  view, fx, $, me, hero, land: world.land, crystal, rift: null, fog: (l, d) => setFog(l, d), flash: (t, h) => memoryFlash(t, h),
   beastMesh: (type) => { const m = new THREE.Mesh(beastGeometry(type), view.mats.beast); m.castShadow = true; return m; },
   snapHero: () => { prev.x = me.x; prev.z = me.z; },
   hurt: () => { hurtT = 0.5; },
@@ -758,52 +765,172 @@ function companyAt(spots) {
   }
 }
 function startWalk() {
-  story.stage = 'waking';
-  saveStory(story);
-  showQuest();
+  setStage('waking');
   questRun = walkToTown(company, bark, () => {
-    story.stage = 'crystal';
-    saveStory(story);
-    toast('Quest complete: Waking Up', 'New quest: The Crystal');
-    bark([['rowan', 'Welcome to Sunmere. The Guild hall is the red one, north of the plaza. Meet us there.']]);
-    showQuest();
+    setStage('crystal');
+    toast('Quest complete: Waking Up', 'New quest: The Telling Glass');
+    bark([['rowan', 'Welcome to Sunmere. The Guild hall is the stone one with the red banners, north of the plaza. Meet us there.']]);
     toGuild(true);
   }, { x: me.x, z: me.z }, world.land);
 }
+/** A scene: the HUD away, the Company handed in (and back after), the skip button. */
+async function runScene(script, ...args) {
+  if (cutscene.active) return;
+  questRun = null;
+  if (locked()) document.exitPointerLock();
+  document.body.classList.add('scene');
+  $('cs-skip').classList.remove('hidden');
+  closeWheel(false);
+  hero.anim.em = null;
+  cutscene.adopt(company);
+  try {
+    await cutscene.run((a) => script(a, ...args));
+  } finally {
+    if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
+    hero.anim.lie = false;
+    document.body.classList.remove('scene');
+    $('cs-skip').classList.add('hidden');
+  }
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile']) { const k = cutscene.keep(who); if (k) company[who] = k; }
+  cutscene.clear();
+  $('fade').style.transition = 'opacity 0.8s';
+  $('fade').style.opacity = '0';
+}
+
+// ---- (0.99.22) the white fog at the edge of sight (the crossing's price: it thins as the days go by), and memories
+const fog = { now: 0, want: 0, speed: 1 };
+function setFog(level, dur = 1) {
+  fog.want = Math.max(0, Math.min(1, level));
+  fog.speed = dur > 0 ? Math.abs(fog.want - fog.now) / dur : 1e9;
+}
+function drawFog(dt, t) {
+  const d = fog.want - fog.now;
+  fog.now += Math.sign(d) * Math.min(Math.abs(d), fog.speed * dt);
+  const l = Math.max(0, fog.now + (fog.now > 0.05 ? Math.sin(t * 0.9) * 0.04 : 0)); // it breathes
+  $('fog').style.opacity = l > 0.005 ? '1' : '0';
+  if (l > 0.005) $('fog').style.background = `radial-gradient(ellipse at center, rgba(236,239,245,0) ${Math.round(72 - 58 * l)}%, rgba(236,239,245,${(0.5 + 0.45 * l).toFixed(2)}) 100%)`;
+}
+/** How thick the fog is out of the scenes, by how far the story has come. */
+const FOG_AT = { new: 0.7, stumble: 0.7, rescued: 0.5, waking: 0.38, crystal: 0.22, path: 0.12, ambush: 0.08 };
+let flashT = null;
+function memoryFlash(text, hold = 2.8) {
+  $('flash-text').textContent = text;
+  $('flash').style.opacity = '1';
+  clearTimeout(flashT);
+  flashT = setTimeout(() => { $('flash').style.opacity = '0'; }, hold * 1000);
+}
+
+// ---- (0.99.22) the tear in the glade: open when he comes through, then a sliver that never quite closes
+const rift = buildCrack(TEAR);
+view.scene.add(rift.group);
+let riftT = 0, riftClosing = 1;
+cutscene.ctx.rift = { open: () => { riftClosing = 0; }, close: () => { riftClosing = Math.max(riftClosing, 0.01); } };
+function drawRift(dt) {
+  riftT += dt;
+  if (riftClosing > 0 && riftClosing < 0.93) riftClosing = Math.min(0.93, riftClosing + dt * 1.5);
+  const k = Math.min(riftClosing, 0.93);
+  rift.group.scale.set(1.25 * (1 - k), 1.25 * (1 - k * 0.35), 1.25 * (1 - k));
+  if (Math.hypot(TEAR.x - me.x, TEAR.z - me.z) < 120) rift.anim(dt, riftT);
+}
+
+// ---- the opening, in three scenes with walking between
 async function playOpening() {
   if (cutscene.active) return;
   for (const who of Object.keys(company)) { company[who].remove(); delete company[who]; }
   questRun = null;
-  crystal.ember(false);
+  crystal.mark(false);
   if (net) net.ws.close(1000, 'The opening is played alone');
-  if (locked()) document.exitPointerLock();
-  document.body.classList.add('scene');
-  $('cs-skip').classList.remove('hidden');
   hero.anim.lie = true; hero.anim.lieSent = false;
-  try {
-    await cutscene.run(opening);
-  } finally {
-    if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
-    hero.anim.lie = false;
-    if (hero.rig) hero.anim.move = cutscene.skipping ? 'land' : null;
-    document.body.classList.remove('scene');
-    $('cs-skip').classList.add('hidden');
-  }
-  // the Company stays: they walk you to town
-  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) company[who] = cutscene.keep(who) || new Actor(view.scene, who, {});
-  cutscene.clear();
+  setStage('new');
+  await runScene(openingPull);
+  hero.anim.move = cutscene.skipping ? 'land' : null;
+  yaw = Math.atan2(GLADE_EDGE.z - me.z, GLADE_EDGE.x - me.x); pitch = 0.22;
+  setStage('stumble');
+  startStumble();
+}
+function setStage(stage) {
+  story.stage = stage;
+  saveStory(story);
+  setFog(FOG_AT[stage] ?? 0, 1.5);
+  showQuest();
+}
+// stumbling out of the glade: slow (he can only walk), memories coming and going, something in the grass
+let stumbleFlash = false;
+function startStumble() {
+  bark([['', 'Somewhere past the fog: trees, and maybe a way out.']]);
+  questRun = {
+    update() {
+      const d = Math.hypot(me.x - TEAR.x, me.z - TEAR.z);
+      if (!stumbleFlash && d > 5) { stumbleFlash = true; memoryFlash('A hand on your shoulder. "Not yet. You\'re not ready yet."', 2.6); }
+      if (Math.hypot(me.x - GLADE_EDGE.x, me.z - GLADE_EDGE.z) < 3 || d > 11) playWolves();
+    },
+  };
+}
+async function playWolves() {
+  await runScene(openingWolves, { x: me.x, z: me.z });
+  setStage('rescued');
+  startRescued();
+}
+// rescued: the Company round you; Sorrel by the tear, studying it
+function startRescued() {
+  const near = { rowan: [me.x + 1.6, me.z - 1.2], ilse: [me.x - 0.6, me.z - 1.3], juni: [me.x + 2.2, me.z + 1.4] };
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  for (const [who, at] of Object.entries(near)) if (Math.hypot(company[who].x - me.x, company[who].z - me.z) > 6) company[who].place(at[0], at[1]);
+  company.sorrel.place(TEAR.x + 1.1, TEAR.z + 0.9).face(TEAR.x, TEAR.z);
+  company.sorrel.loop('look');
+  for (const who of ['rowan', 'ilse', 'juni']) company[who].face(me.x, me.z).loop('idle');
+  bark([['juni', 'He\'s staring at it again. Sorrel stares at everything.'], ['ilse', 'Take your time. Get your legs back.']]);
+  questRun = {
+    update(dt) {
+      for (const a of Object.values(company)) a.update(dt);
+      if (Math.hypot(me.x - TEAR.x, me.z - TEAR.z) < 3.4) playTear();
+    },
+  };
+}
+async function playTear() {
+  await runScene(openingTear);
   yaw = Math.atan2(ROAD_IN.z - me.z, ROAD_IN.x - me.x); pitch = 0.28;
-  $('fade').style.transition = 'opacity 0.8s';
-  $('fade').style.opacity = '0';
   toast('New quest: Waking Up', QUESTS.waking.goal);
   startWalk();
+}
+// the keepsake: something in the grass where he woke (a mystery for later)
+let keepsakeMesh = null;
+if (!story.keepsake) {
+  // a glint in the grass: a small four-pointed spark
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(0.25, 'rgba(255,230,160,0.6)'); r.addColorStop(1, 'rgba(255,220,140,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(255,255,240,0.95)';
+  g.beginPath(); g.moveTo(32, 2); g.lineTo(35, 29); g.lineTo(62, 32); g.lineTo(35, 35); g.lineTo(32, 62); g.lineTo(29, 35); g.lineTo(2, 32); g.lineTo(29, 29); g.closePath(); g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  keepsakeMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  keepsakeMesh.scale.setScalar(0.35);
+  keepsakeMesh.position.set(KEEPSAKE.x, 0.12, KEEPSAKE.z);
+  view.scene.add(keepsakeMesh);
+}
+function nearKeepsake() {
+  return keepsakeMesh && !cutscene.active && Math.hypot(me.x - KEEPSAKE.x, me.z - KEEPSAKE.z) < 1.8;
+}
+function takeKeepsake() {
+  if (!nearKeepsake()) return false;
+  view.scene.remove(keepsakeMesh);
+  keepsakeMesh = null;
+  story.keepsake = true;
+  saveStory(story);
+  memoryFlash('A white sleeve, a gold thread, a laugh. Then nothing.', 2.2);
+  toast('A scrap of white cloth', 'Threaded with gold, burned at one edge. You don\'t know whose it was. You keep it.');
+  return true;
 }
 $('cs-skip').addEventListener('click', () => cutscene.skip());
 for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () => cutscene.key('Click'));
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -813,7 +940,7 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  const what = story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  const what = story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
   $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
@@ -845,15 +972,14 @@ async function playCrystal() {
   for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile']) company[who] = cutscene.keep(who) || company[who];
   cutscene.clear();
   crystal.rest();
-  crystal.ember(true); // it never quite goes out
-  story.stage = 'path';
-  saveStory(story);
+  crystal.mark(true); // the black line stays in the glass
+  setStage('path');
   questRun = atTraining(company); // (they go on ahead while the screen is dark)
   bark([['rowan', 'Training ground, outside the east gate. We\'ll be waiting.']]);
   yaw = CRYSTAL.a + Math.PI; pitch = 0.2;
   $('fade').style.transition = 'opacity 0.8s';
   $('fade').style.opacity = '0';
-  toast('Quest complete: The Crystal', 'New quest: Choosing a Path');
+  toast('Quest complete: The Telling Glass', 'New quest: Choosing a Path');
   showQuest();
 }
 // ---- (0.99.21) Quest 3, Choosing a Path: the trials at the training ground, then the choice
@@ -940,8 +1066,7 @@ function choosePath(cls) {
   $('choose').classList.add('hidden');
   story.trial = null;
   story.path = cls;
-  story.stage = 'ambush';
-  saveStory(story);
+  setStage('ambush');
   wear(cls, true);
   bark(cls === 'warrior' ? [['rowan', 'Ha! Knew it. Blood and iron, then.'], ['juni', 'Your loss. Come and shoot with me some time.']] : [['juni', 'Yes! Another one for the bow.'], ['rowan', 'Fine. Someone has to stand behind me.']]);
   toast('Quest complete: Choosing a Path', 'New quest: When It Counts (coming in the next part)');
@@ -952,7 +1077,18 @@ $('choose-warrior').addEventListener('click', () => choosePath('warrior'));
 $('choose-archer').addEventListener('click', () => choosePath('archer'));
 // where the story stands when the page opens
 if (story.stage === 'new') setTimeout(playOpening, 300);
-else if (story.stage === 'waking') {
+else if (story.stage === 'stumble') {
+  me.x = TEAR.x + 1.5; me.z = TEAR.z + 3.5;
+  riftClosing = 0.93;
+  setFog(FOG_AT.stumble, 0);
+  startStumble();
+  showQuest();
+} else if (story.stage === 'rescued') {
+  me.x = GLADE_EDGE.x; me.z = GLADE_EDGE.z;
+  setFog(FOG_AT.rescued, 0);
+  startRescued();
+  showQuest();
+} else if (story.stage === 'waking') {
   me.x = ROAD_IN.x - 2; me.z = ROAD_IN.z + 3;
   companyAt({ juni: [ROAD_IN.x + 3, ROAD_IN.z], rowan: [ROAD_IN.x, ROAD_IN.z], ilse: [ROAD_IN.x - 2, ROAD_IN.z + 1], sorrel: [ROAD_IN.x - 3, ROAD_IN.z - 1] });
   yaw = 0;
@@ -963,11 +1099,14 @@ else if (story.stage === 'waking') {
 } else if (story.stage === 'path' || story.stage === 'ambush') {
   toGuild();
   questRun = atTraining(company);
-  crystal.ember(true);
+  crystal.mark(true);
   if (story.stage === 'path' && (story.trial === 'warrior' || story.trial === 'archer')) startTrial(story.trial);
   else if (story.stage === 'path' && story.trial === 'choose') setTimeout(showChoose, 600);
   showQuest();
 }
+
+if (story.stage !== 'new') riftClosing = 0.93; // what is left of the tear
+setFog(FOG_AT[story.stage] ?? 0, 0);
 
 // ---- the loop
 function resize() {
@@ -1089,6 +1228,11 @@ function frame(now) {
   if (story.stage === 'crystal' && !cutscene.active && questRun && Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 6.5) playCrystal();
   if (story.stage === 'path' && !story.trial && !trial && !cutscene.active && questRun && Math.hypot(me.x - TRAINING.ring.x, me.z - TRAINING.ring.z) < 12) playTraining();
   updateBubbles(dt);
+  drawFog(dt, performance.now() / 1000);
+  drawRift(dt);
+  if (keepsakeMesh) { const tw = 0.28 + Math.abs(Math.sin(performance.now() / 380)) * 0.18; keepsakeMesh.scale.setScalar(tw); } // it twinkles
+  $('hint').classList.toggle('hidden', !nearKeepsake());
+  if (nearKeepsake()) $('hint').innerHTML = '<b>F</b>Pick it up';
   drawMarker();
   if (barkT > 0 && (barkT -= dt) <= 0) nextBark();
   if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.add('hidden');

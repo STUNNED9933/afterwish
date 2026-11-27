@@ -1,0 +1,72 @@
+{
+  "id": "l_vesper",
+  "prompt": "Vesper of the Unbound, an elegant arrogant man in his thirties, pale skin, sharp handsome features, slicked-back black hair with a single streak of ash grey, thin amused smile with mouth closed, calm cold eyes, a fitted high-collared double-breasted coat of black and deep violet ending at the hips, silver buttons, a thin silver chain across the chest, a dark violet sash, black leather gloves, fitted black trousers, tall polished black boots, fully clothed, no cape, no coat tails, no long skirt, nothing hanging between the legs, exactly two legs clearly separate, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T15:24:35.703Z",
+  "creditsBefore": 1475,
+  "steps": {
+    "model": {
+      "task": "d1e7b19d-a9ac-4d5c-ad8d-31d404aad7a9",
+      "result": {
+        "task_id": "d1e7b19d-a9ac-4d5c-ad8d-31d404aad7a9",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_vesper/1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_vesper/1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/model.glb",
+        "preview": "out/models/l_vesper/1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/preview.png"
+      }
+    },
+    "check": {
+      "task": "6301e516-2c94-460b-ba2f-1b90ab21d641",
+      "result": {
+        "task_id": "6301e516-2c94-460b-ba2f-1b90ab21d641",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_vesper/2-check/tripo-out/rig-check-6301e516",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "37e36230-9b46-4dce-95d7-230bae721529",
+      "rigType": "biped",
+      "result": {
+        "task_id": "37e36230-9b46-4dce-95d7-230bae721529",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_vesper/3-rig/tripo-out/rig-37e36230",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_vesper/3-rig/tripo-out/rig-37e36230/model.glb",
+        "preview": "out/models/l_vesper/3-rig/tripo-out/rig-37e36230/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 1420,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T15:26:01.184Z",
+  "files": [
+    "1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/generated_image.jpeg",
+    "1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/model.glb",
+    "1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/preview.png",
+    "1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/rendered_image.webp",
+    "1-model/tripo-out/vesper-of-the-unbound-an-elegant-d1e7b19d/task.json",
+    "2-check/tripo-out/rig-check-6301e516/task.json",
+    "3-rig/tripo-out/rig-37e36230/model.glb",
+    "3-rig/tripo-out/rig-37e36230/preview.png",
+    "3-rig/tripo-out/rig-37e36230/rendered_image.webp",
+    "3-rig/tripo-out/rig-37e36230/task.json",
+    "manifest.json"
+  ]
+}

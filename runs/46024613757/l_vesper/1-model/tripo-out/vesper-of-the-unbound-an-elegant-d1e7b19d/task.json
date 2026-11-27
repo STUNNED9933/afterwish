@@ -1,0 +1,32 @@
+{
+  "task_id": "d1e7b19d-a9ac-4d5c-ad8d-31d404aad7a9",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "Vesper of the Unbound, an elegant arrogant man in his thirties, pale skin, sharp handsome features, slicked-back black hair with a single streak of ash grey, thin amused smile with mouth closed, calm cold eyes, a fitted high-collared double-breasted coat of black and deep violet ending at the hips, silver buttons, a thin silver chain across the chest, a dark violet sash, black leather gloves, fitted black trousers, tall polished black boots, fully clothed, no cape, no coat tails, no long skirt, nothing hanging between the legs, exactly two legs clearly separate, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 10000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-27T15:24:37.815536Z",
+  "completed_at": "2026-11-27T15:25:28.520957Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "id": "l_sorrel",
+  "prompt": "Sorrel, the mage of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean tall handsome man in his thirties, fair skin, untidy black hair with a single silver streak, round wire spectacles, calm neutral expression, relaxed face, mouth closed, not smiling, a knee-length charcoal coat with gold trim and crimson lining worn open over a fitted dark waistcoat and white shirt, a crimson scarf, the hound's-head badge on his lapel, dark trousers, polished boots, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating. Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
+  "started": "2026-11-27T04:39:19.218Z",
+  "creditsBefore": 1955,
+  "steps": {
+    "model": {
+      "task": "0966ac81-e3d2-4cfa-b27c-912298f0bf26",
+      "result": {
+        "task_id": "0966ac81-e3d2-4cfa-b27c-912298f0bf26",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/model.glb",
+        "preview": "out/models/l_sorrel/1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/preview.png"
+      }
+    },
+    "check": {
+      "task": "7e5596a9-155c-4f08-ad05-7053c3c9464c",
+      "result": {
+        "task_id": "7e5596a9-155c-4f08-ad05-7053c3c9464c",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/l_sorrel/2-check/tripo-out/rig-check-7e5596a9",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "c0a02cf6-8634-40e2-8714-13b7efd8c52a",
+      "rigType": "biped",
+      "result": {
+        "task_id": "c0a02cf6-8634-40e2-8714-13b7efd8c52a",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/l_sorrel/3-rig/tripo-out/rig-c0a02cf6",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/l_sorrel/3-rig/tripo-out/rig-c0a02cf6/model.glb",
+        "preview": "out/models/l_sorrel/3-rig/tripo-out/rig-c0a02cf6/preview.png"
+      }
+    },
+    "animations": []
+  },
+  "creditsAfter": 1900,
+  "creditsUsed": 55,
+  "finished": "2026-11-27T04:40:33.217Z",
+  "files": [
+    "1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/generated_image.jpeg",
+    "1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/model.glb",
+    "1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/preview.png",
+    "1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/rendered_image.webp",
+    "1-model/tripo-out/sorrel-the-mage-of-the-iron-houn-0966ac81/task.json",
+    "2-check/tripo-out/rig-check-7e5596a9/task.json",
+    "3-rig/tripo-out/rig-c0a02cf6/model.glb",
+    "3-rig/tripo-out/rig-c0a02cf6/preview.png",
+    "3-rig/tripo-out/rig-c0a02cf6/rendered_image.webp",
+    "3-rig/tripo-out/rig-c0a02cf6/task.json",
+    "manifest.json"
+  ]
+}

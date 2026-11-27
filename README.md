@@ -160,6 +160,15 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: Quest 2, The Crystal (0.99.20)
+
+- **The Adventurers' Guild** now stands on the north side of Sunmere's plaza (a stone hall with red banners), with a paved yard and a **reading crystal** taller than a man. Walk round it; townsfolk walk round it too.
+- **Quest 2, The Crystal:** after the walk into town the Iron Hounds go up to the Guild's yard and wait (the marker shows the way). Walk up to the crystal for the scene: Magistra Odile reads Dace of the Silver Sash (eighty-one: the crystal blazes), then you put your hand on it (press E) and it barely flickers. Three. Dace and Wren laugh; Juni nearly starts a fight; Rowan says they will train you themselves. And Sorrel notices the crystal has not gone out: a small amber ember still burns inside it, and stays there for you afterwards.
+- **New characters** made with Tripo (run 45953668692): Magistra Odile, the Guild's crystal-reader; Dace and Wren of the Silver Sash, a high-aptitude pair who will be back as rivals. Dace's and Wren's laughing, clapping and cheering are Tripo's.
+- **Quest 3, Choosing a Path** is next (the tracker says so).
+- **Two more emotes:** Laugh and Clap (from Dace's clips), so the T wheel has ten, one for each number key.
+- The cutscene player can walk the hero to a spot, and a scene can clear the townsfolk out of its shots.
+
 ### Lacuna: the Iron Hounds, emotes and emoticons (0.99.19)
 
 - **The Company is remade and renamed: the Iron Hounds** (gunmetal and crimson, a hound's-head badge): Rowan (leader, sword), Ilse (healer), Juni (scout), Sorrel (mage), in a Korean-manhwa look, with calm, neutral faces instead of the old fixed smiles. Made with Tripo (Iron Hounds run 45939994405, and Sorrel remade standing straight in run 45941171305). The Marigold models are kept, unshipped, for enemies later (`assets/models/archive/`).

@@ -21,6 +21,10 @@ export const CHUNKS = LAND.size / LAND.chunk; // chunks along a side
 const CELLS = LAND.size / LAND.cell; // hash cells along a side
 
 export const TOWN = { x: 0, z: 0, plaza: 14, r: 44 }; // Sunmere
+// (0.99.20) the Adventurers' Guild on the plaza's north side, and its reading crystal in the yard before it
+const GUILD_A = -1.84;
+export const GUILD = { x: TOWN.x + dCos(GUILD_A) * 21.5, z: TOWN.z + dSin(GUILD_A) * 21.5, a: GUILD_A, hw: 4.4, hd: 3.4 };
+export const CRYSTAL = { x: TOWN.x + dCos(GUILD_A) * 16, z: TOWN.z + dSin(GUILD_A) * 16, a: GUILD_A, r: 0.7 };
 export const LAKE = { x: 132, z: 118, r: 26 };
 export const GLADE = { x: -150, z: 34, r: 11 }; // (phase 2) where the hero wakes, in the Wakewood: open grass, no beasts near
 export const ROAD_W = 3.2; // half the width of a road
@@ -52,6 +56,7 @@ export function roadDist(x, z) {
 export function groundAt(x, z, seed = LAND.seed) {
   const town = dHypot(x - TOWN.x, z - TOWN.z);
   if (town < TOWN.plaza) return 'plaza';
+  if (dHypot(x - (CRYSTAL.x + GUILD.x) / 2, z - (CRYSTAL.z + GUILD.z) / 2) < 6.2) return 'plaza'; // the Guild's yard, paved
   if (dHypot(x - GLADE.x, z - GLADE.z) < GLADE.r) return 'glade';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return 'water';
   if (dHypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return 'shore';
@@ -76,10 +81,12 @@ export function townHouses(seed = LAND.seed) {
       const a = (i / ring.n) * Math.PI * 2 + ri * 0.21 + 0.09;
       const x = TOWN.x + dCos(a) * ring.r, z = TOWN.z + dSin(a) * ring.r;
       if (roadDist(x, z) < ROAD_W + 4.2) continue; // leave the streets open
+      if (dHypot(x - GUILD.x, z - GUILD.z) < 9) continue; // the Guild stands here
       const big = hash2(i, ri, seed + 31) < 0.3;
       out.push({ kind: 'house', shape: 'box', x, z, hw: big ? 3.2 : 2.5, hd: big ? 2.6 : 2.1, rot: a + Math.PI / 2, r: big ? 4.2 : 3.3, v: Math.floor(hash2(i, ri, seed + 37) * 1000) });
     }
   }
+  out.push({ kind: 'house', guild: true, id: 'barracks_red', shape: 'box', x: GUILD.x, z: GUILD.z, hw: GUILD.hw, hd: GUILD.hd, rot: GUILD.a + Math.PI / 2, r: 5.6, v: 0 });
   return out;
 }
 
@@ -108,6 +115,7 @@ export class Land {
     this.houses = townHouses(seed);
     // The lake is one big solid circle, in the hash from the start (it spans several chunks).
     this.insert({ kind: 'water', shape: 'circle', x: LAKE.x, z: LAKE.z, r: LAKE.r - 1.2 });
+    this.insert({ kind: 'crystal', shape: 'circle', x: CRYSTAL.x, z: CRYSTAL.z, r: CRYSTAL.r }); // (0.99.20) the Guild's reading crystal
   }
 
   /** The chunk at (cx, cz), made the first time it is asked for. */

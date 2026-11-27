@@ -89,6 +89,7 @@ export class Cutscene {
     if (this.cam) { const c = this.cam; this.cam = null; this.camNow.at.copy(c.to.at); this.camNow.look.copy(c.to.look); c.resolve(); }
     for (const a of this.actors.values()) if (a.path) { a.place(a.path.x, a.path.z); const r = a.path.resolve; a.path = null; a.loop('idle', 0); r(); }
     for (const a of this.actors.values()) if (a.once) { const o = a.once; a.once = null; o.resolve(); }
+    if (this.heroPath) { const hp = this.heroPath; this.heroPath = null; this.ctx.me.x = hp.tx; this.ctx.me.z = hp.tz; this.ctx.snapHero && this.ctx.snapHero(); hp.resolve(); }
     if (this.line) this.endLine();
     if (this.prompt) this.endPrompt();
   }
@@ -262,6 +263,14 @@ export class Cutscene {
         if (facing !== undefined) me.facing = facing;
         if (move) cs.ctx.hero.anim.move = move;
       },
+      /** (0.99.20) The hero walks to (x, z) over `dur` seconds (a scene's own walk: no input, no sim). */
+      heroWalk(x, z, dur = 2) {
+        const me = cs.ctx.me;
+        if (cs.skipping) { me.x = x; me.z = z; cs.ctx.snapHero && cs.ctx.snapHero(); return Promise.resolve(); }
+        return new Promise((resolve) => {
+          cs.heroPath = { fx: me.x, fz: me.z, tx: x, tz: z, t: 0, dur, resolve };
+        });
+      },
       fx: cs.ctx.fx,
       get ctx() {
         return cs.ctx;
@@ -275,6 +284,19 @@ export class Cutscene {
       const w = this.waits[i];
       w.left -= dt;
       if (w.left <= 0) { this.waits.splice(i, 1); w.resolve(); }
+    }
+    // the hero's scripted walk
+    const hp = this.heroPath;
+    this.ctx.hero.anim.sceneWalk = !!hp;
+    if (hp) {
+      const me = this.ctx.me;
+      hp.t += dt;
+      const k = Math.min(1, hp.t / hp.dur);
+      me.x = hp.fx + (hp.tx - hp.fx) * k;
+      me.z = hp.fz + (hp.tz - hp.fz) * k;
+      me.facing = Math.atan2(hp.tz - hp.fz, hp.tx - hp.fx);
+      this.ctx.snapHero && this.ctx.snapHero();
+      if (k >= 1) { this.heroPath = null; hp.resolve(); }
     }
     // who looks at whom: the speaker at their listener (and turns to them), the rest at the speaker
     const me = this.ctx.me;
@@ -340,6 +362,11 @@ export class Cutscene {
   }
 
   /** Actors who stay after a scene (the Company, walking to town): handed over to the story. */
+  /** (0.99.20) Actors already in the land (the Company in town) join the scene as they are, without a pop. */
+  adopt(actors) {
+    for (const [who, a] of Object.entries(actors)) if (a) this.actors.set(who, a);
+  }
+
   keep(who) {
     const a = this.actors.get(who);
     this.actors.delete(who);

@@ -6,7 +6,7 @@
 //   far (past 100 m)    not drawn; moved every sixteenth frame
 // Two draws for the whole crowd (bodies and heads, instanced).
 import * as THREE from 'three';
-import { TOWN, roadDist } from './land.js';
+import { TOWN, CRYSTAL, GUILD, roadDist } from './land.js';
 
 const RINGS = [{ r: 9, n: 8 }, { r: 16, n: 12 }, { r: 27, n: 20 }, { r: 38, n: 24 }];
 const SPOKES = [0, Math.PI / 2, Math.PI, -Math.PI / 2]; // along the four roads
@@ -19,7 +19,11 @@ export function streets() {
     ringStart.push(nodes.length);
     for (let i = 0; i < ring.n; i++) {
       const a = (i / ring.n) * Math.PI * 2;
-      nodes.push({ x: TOWN.x + Math.cos(a) * ring.r, z: TOWN.z + Math.sin(a) * ring.r, a, ring: ring.r, links: [] });
+      let r = ring.r;
+      // (0.99.20) round the Guild's crystal, not through it: corners near it move in onto the plaza
+      if (Math.hypot(TOWN.x + Math.cos(a) * r - CRYSTAL.x, TOWN.z + Math.sin(a) * r - CRYSTAL.z) < 5) r = 12;
+      if (Math.hypot(TOWN.x + Math.cos(a) * r - GUILD.x, TOWN.z + Math.sin(a) * r - GUILD.z) < 8) r = 28.5; // and round the back of the Guild hall
+      nodes.push({ x: TOWN.x + Math.cos(a) * r, z: TOWN.z + Math.sin(a) * r, a, ring: ring.r, links: [] });
     }
   }
   const link = (a, b) => { if (a !== b && !nodes[a].links.includes(b)) { nodes[a].links.push(b); nodes[b].links.push(a); } };
@@ -123,8 +127,10 @@ export class Crowd {
         p.saved = 0;
         moved++;
       }
-      if (d >= 100) {
-        far++;
+      // (0.99.20) a scene may want a stretch of town to itself: nobody is drawn inside `keepOut`
+      const k = this.keepOut;
+      if (d >= 100 || (k && Math.hypot(p.x - k.x, p.z - k.z) < k.r)) {
+        if (d >= 100) far++;
         this.bodies.setMatrixAt(i, this.hidden);
         this.heads.setMatrixAt(i, this.hidden);
         return;

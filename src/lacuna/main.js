@@ -10,7 +10,7 @@ import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, link
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
-import { groundAt, BEASTS } from './land.js';
+import { groundAt, BEASTS, CRYSTAL } from './land.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
 import { LACUNA_NET } from './room.js';
@@ -18,7 +18,8 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { opening, walkToTown, inTown, loadStory, saveStory, QUESTS, ROAD_IN } from './story.js';
+import { opening, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene } from './story.js';
+import { buildCrystal } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -676,8 +677,11 @@ function wheelMove(dx, dy) {
 }
 
 // ---- the story (Act I): the opening, then the Iron Hounds walking you to Sunmere
+// (0.99.20) the Guild's reading crystal, in its yard north of the plaza
+const crystal = buildCrystal(CRYSTAL);
+view.scene.add(crystal.group);
 const cutscene = new Cutscene({
-  view, fx, $, me, hero, land: world.land,
+  view, fx, $, me, hero, land: world.land, crystal,
   beastMesh: (type) => { const m = new THREE.Mesh(beastGeometry(type), view.mats.beast); m.castShadow = true; return m; },
   snapHero: () => { prev.x = me.x; prev.z = me.z; },
   hurt: () => { hurtT = 0.5; },
@@ -688,7 +692,7 @@ let story = params.get('story') === 'new' ? { stage: 'new' } : loadStory();
 let questRun = null;
 const company = {};
 function showQuest() {
-  const q = story.stage === 'waking' ? QUESTS.waking : story.stage === 'crystal' ? QUESTS.crystal : null;
+  const q = QUESTS[story.stage] || null;
   $('quest').classList.toggle('hidden', !q);
   if (q) { $('quest-name').textContent = q.name; $('quest-goal').textContent = q.goal; }
 }
@@ -729,16 +733,17 @@ function startWalk() {
   questRun = walkToTown(company, bark, () => {
     story.stage = 'crystal';
     saveStory(story);
-    toast('Quest complete: Waking Up', 'Next: The Crystal (coming in the next part)');
-    bark([['rowan', 'Welcome to Sunmere. Stay close tonight; the Guild opens at first light.']]);
+    toast('Quest complete: Waking Up', 'New quest: The Crystal');
+    bark([['rowan', 'Welcome to Sunmere. The Guild hall is the red one, north of the plaza. Meet us there.']]);
     showQuest();
-    questRun = inTown(company);
+    toGuild(true);
   }, { x: me.x, z: me.z }, world.land);
 }
 async function playOpening() {
   if (cutscene.active) return;
   for (const who of Object.keys(company)) { company[who].remove(); delete company[who]; }
   questRun = null;
+  crystal.ember(false);
   if (net) net.ws.close(1000, 'The opening is played alone');
   if (locked()) document.exitPointerLock();
   document.body.classList.add('scene');
@@ -767,7 +772,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'waking' && questRun && questRun.leader;
+  const lead = story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -777,9 +782,46 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  $('marker').textContent = `◆ Rowan · ${Math.round(d)} m`;
+  $('marker').textContent = `◆ ${story.stage === 'crystal' ? 'The Guild' : 'Rowan'} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
+}
+// (0.99.20) Quest 2: the Company and Magistra Odile wait in the Guild's yard; walk up to the crystal
+function toGuild(walk = false) {
+  if (!company.odile) company.odile = new Actor(view.scene, 'odile', { beastMesh: () => new THREE.Group() });
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  questRun = atGuild(company, { walk });
+}
+async function playCrystal() {
+  if (cutscene.active) return;
+  questRun = null;
+  if (locked()) document.exitPointerLock();
+  document.body.classList.add('scene');
+  $('cs-skip').classList.remove('hidden');
+  closeWheel(false);
+  hero.anim.em = null;
+  cutscene.adopt(company);
+  crowd.keepOut = { x: CRYSTAL.x, z: CRYSTAL.z, r: 7.5 }; // nobody wanders through the shots (the onlookers stay round the edge)
+  try {
+    await cutscene.run(crystalScene);
+  } finally {
+    crowd.keepOut = null;
+    if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
+    document.body.classList.remove('scene');
+    $('cs-skip').classList.add('hidden');
+  }
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel', 'odile']) company[who] = cutscene.keep(who) || company[who];
+  cutscene.clear();
+  crystal.rest();
+  crystal.ember(true); // it never quite goes out
+  story.stage = 'path';
+  saveStory(story);
+  questRun = atGuild(company);
+  yaw = CRYSTAL.a + Math.PI; pitch = 0.2;
+  $('fade').style.transition = 'opacity 0.8s';
+  $('fade').style.opacity = '0';
+  toast('Quest complete: The Crystal', 'New quest: Choosing a Path');
+  showQuest();
 }
 // where the story stands when the page opens
 if (story.stage === 'new') setTimeout(playOpening, 300);
@@ -788,9 +830,9 @@ else if (story.stage === 'waking') {
   companyAt({ juni: [ROAD_IN.x + 3, ROAD_IN.z], rowan: [ROAD_IN.x, ROAD_IN.z], ilse: [ROAD_IN.x - 2, ROAD_IN.z + 1], sorrel: [ROAD_IN.x - 3, ROAD_IN.z - 1] });
   yaw = 0;
   startWalk();
-} else if (story.stage === 'crystal') {
-  companyAt({ rowan: [-8, -3], ilse: [-9.5, -1.2], juni: [-7.2, -0.6], sorrel: [-10.4, -3.4] });
-  questRun = inTown(company);
+} else if (story.stage === 'crystal' || story.stage === 'path') {
+  toGuild();
+  if (story.stage === 'path') crystal.ember(true);
   showQuest();
 }
 
@@ -853,7 +895,7 @@ function frame(now) {
   hero.group.visible = !scoped;
   heroY = prevY + (me.y - prevY) * alpha;
   if (cutscene.active) cutscene.beforePose();
-  pose(hero, dt, { moving: me.moving, speed: me.speed, walk: me.pace === 'walk' && me.moving, dead: me.dead, y: heroY });
+  pose(hero, dt, { moving: me.moving || !!hero.anim.sceneWalk, speed: hero.anim.sceneWalk ? 1.6 : me.speed, walk: (me.pace === 'walk' && me.moving) || !!hero.anim.sceneWalk, dead: me.dead, y: heroY });
   // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
@@ -910,6 +952,8 @@ function frame(now) {
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, me.rage > 0, hx, hz);
   if (questRun && !cutscene.active) questRun.update(dt, me);
+  crystal.update(dt);
+  if (story.stage === 'crystal' && !cutscene.active && questRun && Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 6.5) playCrystal();
   updateBubbles(dt);
   drawMarker();
   if (barkT > 0 && (barkT -= dt) <= 0) nextBark();

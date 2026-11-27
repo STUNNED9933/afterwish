@@ -426,13 +426,31 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
 {
   const { EMOTES, EMOTICONS, emoteClip, drawEmoticon } = await import('../src/lacuna/emotes.js');
   check('Emotes: a clip is found by exact name or by part of it', emoteClip(['ual_Yes', 'x|greet_02|y'], 'greet_02') === 'x|greet_02|y' && emoteClip(['ual_Yes'], 'ual_Yes') === 'ual_Yes' && emoteClip(['a'], 'bow') === null);
-  check('...eight emotes and ten emoticons, each with its own id', new Set(EMOTES.map((e) => e.id)).size === 8 && new Set(EMOTICONS).size === 10);
+  check('...ten emotes and ten emoticons (one number key each), each with its own id', new Set(EMOTES.map((e) => e.id)).size === 10 && new Set(EMOTICONS).size === 10);
   let calls = 0;
   const g = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => { calls++; }), set: (t, k, v) => { t[k] = v; return true; } });
   for (const id of EMOTICONS) drawEmoticon(g, id, 64);
   check('...every emoticon draws without error', calls > 100);
   const heroes = ['warrior', 'archer'].map((n) => fs.readFileSync(`assets/models/${n}.glb`).toString('latin1'));
-  check('...both heroes carry the dance, sit, nod and head-shake clips', heroes.every((t) => ['ual_Dance_Loop', 'ual_Sitting_Enter', 'ual_Sitting_Idle_Loop', 'ual_Yes', 'ual_Idle_No_Loop'].every((c) => t.includes(c))));
+  check('...both heroes carry every emote\'s clip', heroes.every((t) => ['ual_Dance_Loop', 'ual_Sitting_Enter', 'ual_Sitting_Idle_Loop', 'ual_Yes', 'ual_Idle_No_Loop', 'greet_02', 'bow', 'swagger', 'sob', 'laugh_01', 'clap'].every((c) => t.includes(c))));
+}
+
+{
+  // (0.99.20) Quest 2: the Guild hall on the plaza's north side, its crystal, and room round it for the scene
+  const { GUILD, CRYSTAL, groundAt: ga, roadDist: rd } = await import('../src/lacuna/land.js');
+  const { YARD, ODILE, atCrystal, QUESTS: Q } = await import('../src/lacuna/story.js');
+  const land = new Land();
+  land.all();
+  const guild = land.houses.filter((h) => h.guild);
+  check('Quest 2: Sunmere has one Guild hall, off the roads, and no house in its way', guild.length === 1 && rd(GUILD.x, GUILD.z) > 6 && land.houses.every((h) => h.guild || Math.hypot(h.x - GUILD.x, h.z - GUILD.z) > 8));
+  const solid = land.near(CRYSTAL.x, CRYSTAL.z, 1).some((o) => o.kind === 'crystal');
+  const probe = { x: CRYSTAL.x + 0.1, z: CRYSTAL.z };
+  land.pushOut(probe, 0.4);
+  check('...its crystal is solid (you walk round it), in a paved yard', solid && Math.hypot(probe.x - CRYSTAL.x, probe.z - CRYSTAL.z) >= CRYSTAL.r + 0.39 && ga(...atCrystal(1, 0)) === 'plaza');
+  const clear = (x, z) => { const p = { x, z }; land.pushOut(p, 0.4); return Math.hypot(p.x - x, p.z - z) < 0.01; };
+  const spots = [...Object.values(YARD), ODILE, atCrystal(-1.2, 0), atCrystal(-2.0, 0.35), atCrystal(-1.0, -0.9), atCrystal(-2.6, 2.9)];
+  check('...everyone in the scene has room to stand (nobody inside the hall, the crystal or a house)', spots.every(([x, z]) => clear(x, z)));
+  check('...and the quests run on: The Crystal, then Choosing a Path', !!Q.crystal && !!Q.path && /Guild/.test(Q.crystal.goal));
 }
 
 console.log(`${pass} passed, ${failed} failed`);

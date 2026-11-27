@@ -1,18 +1,19 @@
-// Lacuna (Chapter 2), Act I: the opening and Quest 1, "Waking Up". Played in this browser (the scene and the
+// Lacuna (Chapter 2), Act I: the opening, Quest 1 "Waking Up" and Quest 2 "The Crystal". Played in this browser (the scene and the
 // Company walking you to town are yours alone, even on the shared land). Progress is kept in this browser for
 // now (STORY_KEY); with accounts it moves to the server.
 //
 // The opening: the crack on the Verge opens, a husk runs into it, the hero follows; wakes in a glade in the
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
-import { GLADE, TOWN, roadDist } from './land.js';
+import { GLADE, TOWN, CRYSTAL, roadDist } from './land.js';
 import { buildCrack } from '../render/gates.js';
 import { separate } from './actor.js';
 
 export const STORY_KEY = 'lacuna-story-v1';
 export const QUESTS = {
   waking: { name: 'Waking Up', goal: 'Follow the Iron Hounds to Sunmere' },
-  crystal: { name: 'The Crystal', goal: 'The Adventurers\' Guild reads you in the morning (the next part of the story is coming)' },
+  crystal: { name: 'The Crystal', goal: 'Meet the Iron Hounds at the Adventurers\' Guild, on the north side of the plaza' },
+  path: { name: 'Choosing a Path', goal: 'Train with the Iron Hounds (the next part of the story is coming)' },
 };
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
@@ -282,4 +283,137 @@ export function inTown(actors) {
   return { update(dt) { for (const a of Object.values(actors)) a.update(dt); } };
 }
 
-void roadDist;
+/**
+ * Places round the Guild's crystal: `back` metres from it toward the Guild (negative: toward the plaza), `side`
+ * metres across. Returns [x, z].
+ */
+export function atCrystal(back, side) {
+  const ux = Math.cos(CRYSTAL.a), uz = Math.sin(CRYSTAL.a);
+  return [CRYSTAL.x + ux * back - uz * side, CRYSTAL.z + uz * back + ux * side];
+}
+/** Where the Company waits in the Guild's yard (Quest 2), and where Magistra Odile stands by her crystal. */
+export const YARD = { rowan: atCrystal(-4.6, -1.3), ilse: atCrystal(-5.3, -0.1), juni: atCrystal(-4.2, -2.6), sorrel: atCrystal(-5.7, -2.2) };
+export const ODILE = atCrystal(1.45, 0);
+/** The Company waits in the yard, facing the crystal; Odile by it. */
+export function atGuild(actors, { walk = false } = {}) {
+  const what = { rowan: 'arms', ilse: 'idle', juni: 'look', sorrel: 'wait', odile: 'idle' };
+  for (const [who, a] of Object.entries(actors)) {
+    if (!a) continue;
+    const at = who === 'odile' ? ODILE : YARD[who];
+    const f = who === 'odile' ? CRYSTAL.a + Math.PI : CRYSTAL.a;
+    const settle = () => { a.face(Math.cos(f) + a.x, Math.sin(f) + a.z); a.loop(what[who] || 'idle'); };
+    // (after Quest 1) they walk up from the plaza; otherwise they are simply there
+    if (walk && at && who !== 'odile' && Math.hypot(a.x - at[0], a.z - at[1]) > 1) a.walkTo(at[0], at[1]).then(settle);
+    else { if (at) a.place(at[0], at[1], f); a.loop(what[who] || 'idle'); }
+  }
+  return { update(dt) { for (const a of Object.values(actors)) if (a) a.update(dt); } };
+}
+
+/** Quest 2, The Crystal: the hero's aptitude is read at the Guild. `a`: the cutscene api; a.ctx.crystal: the crystal. */
+export async function crystalScene(a) {
+  const P = atCrystal;
+  const V = (back, side, y) => { const [x, z] = P(back, side); return [x, y, z]; };
+  const F = CRYSTAL.a; // facing the crystal (and the Guild) from the plaza
+  const cr = a.ctx.crystal;
+  a.bars(true);
+  a.talkCam(false);
+  a.busy(false);
+  await a.fade(1, 0.6);
+  a.actor('odile', ...ODILE, F + Math.PI);
+  a.actor('dace', ...P(-1.2, 0.1), F);
+  a.actor('wren', ...P(-2.6, 1.7), F);
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) a.actor(who, ...YARD[who], F);
+  a.hero(...P(-4.3, 0.8), F);
+  a.loop('rowan', 'arms');
+  a.loop('wren', 'arms');
+  a.loop('odile', 'idle');
+  cr.rest();
+  cr.ember(false);
+  await a.camera(V(-12, 3.4, 3.4), V(1.5, 0, 2.4), 0);
+  await a.fade(0, 1.2);
+  a.camera(V(-9, 2.2, 2.6), V(0.5, 0, 2.2), 5);
+  await a.say('', 'The Adventurers\' Guild of Sunmere: a grey stone hall hung with red banners, a yard full of people, and in the middle of the yard a crystal taller than a man.');
+  a.talkCam(true);
+  await a.say('juni', 'Everyone who wants to be an adventurer starts here. One hand on the crystal, and it shows what you were born with.');
+  await a.say('ilse', 'It doesn\'t hurt. It just... knows.');
+  await a.say('sorrel', 'Aptitude is fixed at birth. Training sharpens technique, nothing more. The number is the number.');
+  a.talkCam(false);
+  a.quiet();
+  // Dace first: the crystal blazes
+  await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.9);
+  await a.say('odile', 'Dace, of the Silver Sash. Your yearly reading. Your hand on the crystal, if you please.', { to: 'dace', cam: false });
+  cr.read(0.95, 0xffe7a0);
+  a.shake(0.04, 0.5);
+  await a.camera(V(-3.4, 1.4, 1.3), V(0, 0, 2.6), 1.6);
+  await a.wait(0.6);
+  await a.say('odile', 'Eighty-one. The same as last year, and the year before. Well done.', { to: 'dace', cam: false });
+  a.anim('dace', 'cheer');
+  await a.say('', 'Applause round the yard. Somebody whistles.');
+  cr.rest();
+  a.talkCam(true);
+  await a.say('dace', 'Just making sure it still likes me.', { to: 'wren' });
+  a.walk('dace', ...P(-2.6, 2.9));
+  await a.say('wren', 'It likes everyone over seventy, Dace. Move.', { to: 'dace' });
+  await a.say('odile', 'Next. You, with the Iron Hounds. Your hand on the crystal.');
+  await a.say('rowan', 'Go on. We\'re right behind you.');
+  a.talkCam(false);
+  a.quiet();
+  // the hero walks up
+  a.camera(V(-6.6, -1.8, 2.3), V(-1, 0, 1.6), 2.4);
+  await a.heroWalk(...P(-1.2, 0), 2.4);
+  a.hero(undefined, undefined, F);
+  await a.camera(V(-2.7, 1.0, 1.8), V(0.2, -0.1, 1.95), 0.9);
+  await a.say('', 'The crystal is cold. Colder than it looks.');
+  await a.prompt('KeyE', 'Place your hand on the crystal', { label: 'E' });
+  cr.read(0.03, 0x9fd0ff);
+  await a.wait(1.8);
+  await a.say('', 'For a moment, nothing at all. Then a flicker, faint as a candle across a field.');
+  await a.camera(V(-0.4, 4.2, 1.8), V(-0.1, 0, 1.75), 0.8);
+  await a.wait(0.8);
+  await a.say('odile', 'Three.', { to: 'hero', cam: false });
+  a.talkCam(true);
+  await a.say('dace', 'Three? My boots have more magic than that!', { to: 'hero' });
+  a.talkCam(false);
+  a.quiet();
+  a.anim('dace', 'laugh');
+  a.anim('wren', 'laugh');
+  await a.camera(V(-0.6, 1.0, 1.65), V(-2.6, 2.3, 1.35), 0.7);
+  await a.say('', 'Laughter goes round the yard. Not all of it is unkind, and somehow that is worse.');
+  cr.rest();
+  a.talkCam(true);
+  await a.say('odile', 'Aptitude is set at birth, child. I am sorry. The Guild registers anyone, so you may take work here, but you will be rank F, and rank F does not change.');
+  a.walk('juni', ...P(-2.7, -1.5));
+  await a.say('juni', 'Say it again, Dace. Go on. To my face.', { to: 'dace' });
+  await a.say('dace', 'Easy, Hound. Keep your stray on a leash.', { to: 'juni' });
+  await a.say('rowan', 'Juni. Leave it.', { to: 'juni' });
+  a.walk('dace', ...P(-1.2, 10));
+  await a.say('wren', 'Good luck. I mean it.');
+  a.walk('wren', ...P(-0.3, 10.6));
+  a.quiet();
+  // the Company closes round the hero
+  a.walk('ilse', ...P(-2.5, 1.3));
+  a.walk('rowan', ...P(-2.9, -0.4));
+  await a.heroWalk(...P(-2.0, 0.35), 0.9);
+  await a.say('ilse', 'Three or three hundred, you\'re still the one who got up off that grass with wolves all round.');
+  await a.say('rowan', 'The number tells you where you start. Not where you stop. We\'ll train you ourselves.');
+  a.remove('dace');
+  a.remove('wren');
+  // Sorrel, at the crystal: it has not gone out
+  a.walk('sorrel', ...P(-1.0, -0.9));
+  a.talkCam(false);
+  a.quiet();
+  await a.camera(V(-2.6, -2.2, 1.9), V(0, 0, 2.05), 1.2);
+  cr.ember(true);
+  await a.wait(2.2);
+  await a.say('sorrel', 'Rowan.', { to: 'rowan', cam: false });
+  await a.camera(V(-1.9, 0.9, 2.2), V(0, 0, 2.05), 1.4);
+  await a.say('sorrel', 'It\'s still glowing. A reading ends when the hand comes away. This one hasn\'t.', { to: 'rowan', cam: false });
+  a.talkCam(true);
+  await a.say('rowan', 'Meaning?', { to: 'sorrel' });
+  await a.say('sorrel', 'Meaning I don\'t know. And I don\'t like not knowing.', { to: 'rowan' });
+  await a.say('odile', 'The crystal is old. It does that, now and then. Off you go, all of you. Next!');
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.8);
+  a.bars(false);
+}

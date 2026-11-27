@@ -212,7 +212,7 @@ export class LandView {
     inst(this.geo.rock, this.mats.rock, ch.rocks, (rk) => this.tmpM.compose(this.tmpP.set(rk.x, rk.r * 0.25, rk.z), this.tmpQ.setFromAxisAngle(this.up, rk.turn), this.tmpS.set(rk.r, rk.r * 0.75, rk.r)), (rk) => c.setHSL(0.12, 0.06, 0.48 + ((rk.x * 2.3) % 1 + 1) % 1 * 0.12));
     // Houses: a KayKit building each (the plain box until it has loaded, or if it cannot)
     for (const h of ch.houses) {
-      const id = TOWN_SET[h.v % TOWN_SET.length];
+      const id = h.id || TOWN_SET[h.v % TOWN_SET.length];
       const stand = new THREE.Group();
       const body = new THREE.Mesh(this.geo.house, this.mats.house);
       body.scale.set(h.hw * 2, 3, h.hd * 2);

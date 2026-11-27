@@ -9,6 +9,8 @@ export const EMOTES = [
   { id: 'bow', name: 'Bow', clip: 'bow', once: true },
   { id: 'nod', name: 'Nod', clip: 'ual_Yes', once: true },
   { id: 'no', name: 'No', clip: 'ual_Idle_No_Loop', once: true, len: 2.5 },
+  { id: 'laugh', name: 'Laugh', clip: 'laugh_01', once: true },
+  { id: 'clap', name: 'Clap', clip: 'clap' },
   { id: 'dance', name: 'Dance', clip: 'ual_Dance_Loop' },
   { id: 'sit', name: 'Sit', clip: 'ual_Sitting_Enter', then: 'ual_Sitting_Idle_Loop' },
   { id: 'swagger', name: 'Show off', clip: 'swagger', once: true },

@@ -6,12 +6,16 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RIGGED, loadRigged, loadWeapon } from '../render/rigged.js';
 
-/** The Marigold Company and the opening's beasts: their models and how they look in the land. */
+/** The Iron Hounds, the Guild's people and the opening's beasts: their models and how they look in the land. */
 export const CAST = {
   rowan: { model: 'l_rowan', name: 'Rowan', height: 1.88, weapon: { cls: 'warrior', size: 1.15 }, colour: 0xc9783a },
   ilse: { model: 'l_ilse', name: 'Ilse', height: 1.7, colour: 0xf2e6c8 },
   juni: { model: 'l_juni', name: 'Juni', height: 1.66, colour: 0x4f7a3a },
   sorrel: { model: 'l_sorrel', name: 'Sorrel', height: 1.92, colour: 0x2f5a3a }, // (his staff waits for a grip of its own)
+  // (0.99.20) the Adventurers' Guild: the crystal-reader, and the Silver Sash pair (rivals to come)
+  odile: { model: 'l_odile', name: 'Magistra Odile', height: 1.68, colour: 0x2a3f7a },
+  dace: { model: 'l_dace', name: 'Dace', height: 1.84, colour: 0xc8ccd6 },
+  wren: { model: 'l_wren', name: 'Wren', height: 1.68, colour: 0x5a3a7a },
   wolf: { beast: 'wolf' },
 };
 for (const k in CAST) {
@@ -39,6 +43,12 @@ const WORDS = {
   shoot: ['arc_shot', 'shoot', 'fire'],
   jump: ['jump'],
   wait: ['wait', 'ual_idle_loop', 'standing_relax'],
+  laugh: ['laugh_01', 'laugh_02', 'laugh'],
+  clap: ['clap'],
+  cheer: ['cheer', 'clap'],
+  bow: ['bow'],
+  sob: ['sob'],
+  swagger: ['swagger'],
 };
 function findClip(clips, what) {
   const names = Object.keys(clips);

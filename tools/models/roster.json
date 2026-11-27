@@ -1424,12 +1424,13 @@
       ]
     },
     "l_sorrel": {
-      "prompt": "Sorrel, the mage of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean tall handsome man in his thirties, fair skin, untidy black hair with a single silver streak, round wire spectacles, calm neutral expression, relaxed face, mouth closed, not smiling, a long charcoal coat with gold trim and crimson lining worn open over a fitted dark waistcoat and white shirt, a crimson scarf, the hound's-head badge on his lapel, dark trousers, polished boots, standing in T-pose with arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
+      "prompt": "Sorrel, the mage of the Iron Hounds adventuring company (colours gunmetal grey and crimson, a small silver hound's-head badge), a lean tall handsome man in his thirties, fair skin, untidy black hair with a single silver streak, round wire spectacles, calm neutral expression, relaxed face, mouth closed, not smiling, a knee-length charcoal coat with gold trim and crimson lining worn open over a fitted dark waistcoat and white shirt, a crimson scarf, the hound's-head badge on his lapel, dark trousers, polished boots, standing upright in T-pose, both legs perfectly straight and slightly apart, both feet flat on the ground, arms straight out to the sides, open empty hands, no weapon, no cape, nothing floating",
       "rigType": "biped",
       "rigModel": "v1.0",
       "style": "Korean manhwa-inspired stylised fantasy game character, fair skin, sharp handsome features, full body, clean readable silhouette, hand-painted PBR-style textures, bright fantasy adventure, attractive adult character design",
       "faceLimit": 10000,
-      "animations": []
+      "animations": [],
+      "note": "Remade in 0.99.19: the first one (run 45939994405) was made with one knee bent, which stayed bent in every animation."
     }
   }
 }

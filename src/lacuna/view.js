@@ -17,9 +17,10 @@ import { Lively } from './lively.js';
 
 // (0.99.29) beasts drawn close up as the main game's own animated models (and the Thornhog's own)
 const LIVE_BEAST = {
-  wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a, back: 0.35 }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
+  // (1.1.5) wolves and thornhogs have a bite of their own now (tools/models/gait.mjs): drawn back, then the lunge
+  wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a, back: 0.35, attack: { kind: 'slash', from: 0, strike: 0.45, to: 0.9 } }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
   golem: { ...CREATURES.golem, height: 2.6, attack: { kind: 'chop', from: 0.19, strike: 0.318, to: 0.43 } }, // (1.1.2) where its swing is (measured from the hands)
-  hog: { model: 'e_thornhog', height: 0.8, beast: true, back: 0.45 },
+  hog: { model: 'e_thornhog', height: 0.8, beast: true, back: 0.45, attack: { kind: 'slash', from: 0, strike: 0.45, to: 0.9 } },
 };
 const ASHEN = new Map(); // (Quest 4 and 5) ash in their fur or their cracks: the same body, greyed and darkened
 // (1.0) a story's foe can wear another body: the Unbound's ash-thralls and acolytes (the main game's ashwalker and

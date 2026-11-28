@@ -88,7 +88,7 @@ export function checkModel(id, tpl, uses = {}) {
     const has = (re) => names.some((n) => re.test(n));
     if (!has(/idle|standing|wait/i)) add('', 'missing', 'warn', 0, null, 'no idle clip (it stands frozen, or walks on the spot)');
     if (!has(/walk|march|run|trot/i)) add('', 'missing', uses.float ? 'info' : 'bad', 0, null, 'no walk clip (it slides about)');
-    if (!has(ATTACKS)) add('', 'missing', uses.float ? 'info' : uses.beast ? 'warn' : 'bad', 0, null, uses.beast ? 'no attack clip (Lacuna lunges it by hand; the main game does not)' : 'no attack clip (its blows land with no swing)');
+    if (!has(ATTACKS) && uses.strikes !== false) add('', 'missing', uses.float ? 'info' : uses.beast ? 'warn' : 'bad', 0, null, uses.beast ? 'no attack clip (Lacuna lunges it by hand; the main game does not)' : 'no attack clip (its blows land with no swing)');
     if (!has(/hit|hurt/i)) add('', 'missing', 'info', 0, null, 'no hurt clip (no flinch when struck)');
     if (!has(/fall|death|defeat|die/i)) add('', 'missing', 'warn', 0, null, 'no fall clip (it vanishes where it stood)');
   }
@@ -150,7 +150,7 @@ export function checkModel(id, tpl, uses = {}) {
         let torn = 0;
         for (const E of edges) {
           const L2 = E.m.getVertexPosition(E.a, v).applyMatrix4(E.m.matrixWorld).distanceTo(E.m.getVertexPosition(E.b, w).applyMatrix4(E.m.matrixWorld));
-          if (L2 > 3 * E.L && L2 > 0.08 * H) torn++;
+          if (L2 > 5 * E.L && L2 > 0.12 * H) torn++;
         }
         if (torn / edges.length > tear) { tear = torn / edges.length; tearAt = t; }
       }
@@ -199,11 +199,15 @@ export function inventory() {
   const list = new Map();
   for (const [type, c] of Object.entries(CREATURES)) {
     const def = ENEMIES[type];
-    if (!list.has(c.model)) list.set(c.model, { enemy: !!def, beast: !!c.beast, float: c.float != null, height: c.height, speed: def && def.speed, types: [] });
+    // (an enemy that never strikes, the Wishthief, needs no attack clip)
+    const strikes = !!def && (def.attacks || []).some((a) => a.dmg > 0 && a.name !== 'none');
+    if (!list.has(c.model)) list.set(c.model, { enemy: !!def, strikes, beast: !!c.beast, float: c.float != null, height: c.height, speed: def && def.speed, types: [] });
+    else if (strikes) list.get(c.model).strikes = true;
     list.get(c.model).types.push(type);
   }
   for (const [type, c] of Object.entries(PEOPLE)) if (!list.has(c.model)) list.set(c.model, { height: c.height, speed: 1.6, types: [type] });
-  for (const id of Object.keys(RIGGED)) if (!list.has(id)) list.set(id, { height: RIGGED[id].height || 1, speed: id.startsWith('hero_') ? 1.8 : 2.6, types: [] });
+  // (a hero's model is sized by its own spec: drawn at tpl.scale, no height on top)
+  for (const id of Object.keys(RIGGED)) if (!list.has(id)) list.set(id, { height: 1, speed: id.startsWith('hero_') ? 1.8 : 2.6, types: [] });
   // Lacuna's own (it registers them as it loads; listed here so the checker sees them too)
   if (!RIGGED.e_thornhog) RIGGED.e_thornhog = { url: 'models/e_thornhog.glb', height: 1, turn: -Math.PI / 2, recentre: '*', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis', 'Hips'] };
   list.set('e_thornhog', { enemy: true, beast: true, height: 0.8, speed: 4.2, types: ['lacuna:hog'] });

@@ -82,7 +82,7 @@ export class Lively {
       // (1.1.2) a blow: a four-legged body lunges (forward, a little up, nose down, then back); one with an attack of
       // its own plays it (see creatures.js)
       const sw = w.state && w.state.swung, wd = w.state && w.state.wind;
-      if (w.spec.beast && wd >= 0 && !(sw >= 0)) {
+      if (w.spec.beast && !w.spec.attack && wd >= 0 && !(sw >= 0)) {
         // the wind-up: drawing back and down, head up, haunches set
         const k = Math.min(1, wd / 0.4), s = (w.scale || 1) * (w.spec.height || 1), e = k * k * (3 - 2 * k);
         g.position.x -= Math.cos(w.facing) * 0.28 * s * e;
@@ -94,7 +94,7 @@ export class Lively {
         drawn.add(w.key);
         continue;
       }
-      if (w.spec.beast && sw >= 0 && sw < 0.55) {
+      if (w.spec.beast && !w.spec.attack && sw >= 0 && sw < 0.55) {
         const k = sw < 0.16 ? sw / 0.16 : Math.max(0, 1 - (sw - 0.16) / 0.39), s = (w.scale || 1) * (w.spec.height || 1);
         const ease = k * k * (3 - 2 * k);
         g.position.x += Math.cos(w.facing) * 0.85 * s * ease;

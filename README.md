@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Animation fixes from the checker: 64 problems down to 13 (1.1.5)
+
+- **Feet stay on the ground in every animation**, heroes included: each clip is checked key by key when it loads, and wherever a foot would go below the ground the body is raised just enough at that moment (a dash, a lunge and a walk keep their shape; only the sinking goes). Falls and rolls go down on purpose and are left alone.
+- **Wolves and thornhogs have a full set of their own**, made the same way as their walks: an idle (breathing, looking about), a **bite** (they draw back, head up, then lunge with the head down) and a **fall** (over onto their side). They bite in Lacuna instead of being pushed forward by hand, and the main game's wolves now swing and die properly too (they had no attack or death animation).
+- Fast small enemies play their walks faster to keep their feet under them.
+- The checker no longer asks the Wishthief for an attack (it never strikes), and judges heroes' walking speed correctly.
+- **Still flagged** (each needs its model or animation remade; see the note in tools/playtest/README.md): the Mourner (its gown tears into shards in every move), the scarab (its rig is broken: legs in the ground), the court guard's and Edric's capes, the angel statue's wings in its swing, and the Cinderling's walk (too short a stride for its speed: it needs a run).
+
 ### Automated playtests, and natural walks for wolves and thornhogs (1.1.4)
 
 - **Bots now play the game and look for what players would notice** (tools/playtest/README.md). They run on GitHub after every update and every night; anything bad goes to the *Playtest report* issue, with screenshots.

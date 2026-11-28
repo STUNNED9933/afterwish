@@ -49,4 +49,12 @@ any error.
 Not a check, but it fixes what the checker found worst: Tripo's four-legged walks. It writes a natural `walk`
 (lateral sequence) and `trot` (diagonal pairs) onto a Tripo quadruped rig with planted feet and inverse
 kinematics; the game plays them at exactly the speed the body moves (see `stepSpeed` in `src/render/rigged.js`).
-Used for the wolf and the thornhog.
+Used for the wolf and the thornhog. Since 1.1.5 it also writes an `idle`, an `attack_bite` (strike at 45%) and a
+`fall` for them, the same way.
+
+## What the checker cannot fix by itself
+
+Torn skin (`tear`) is in the model's own skin weights: a cape or a gown weighted to the legs stretches into shards.
+Copying the weights of the nearest good vertex was tried (1.1.5) and made the Mourner worse, so these need the model
+re-rigged or remade (Tripo, or by hand in Blender). A walk too short in stride for its speed (`slide`, "it glides")
+needs a run clip (Tripo can add a preset run to a model already rigged: `fromRig` in tools/models/roster.json).

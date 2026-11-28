@@ -27,6 +27,21 @@ export const GAITS = {
   walk: { period: 1.0, stride: 0.95, duty: 0.66, lift: 0.17, bob: 0.012, nod: 0.05, tail: 0.14, phase: { hindLeft: 0, frontLeft: 0.25, hindRight: 0.5, frontRight: 0.75 } },
   trot: { period: 0.6, stride: 1.35, duty: 0.44, lift: 0.24, bob: 0.03, nod: 0.03, tail: 0.1, phase: { hindLeft: 0, frontRight: 0, hindRight: 0.5, frontLeft: 0.5 } },
 };
+/**
+ * (1.1.5) And the rest of what a four-legged enemy needs, built the same way (feet planted by IK where they stand):
+ *   idle: standing, breathing, the head looking about; bite: a draw back and a lunge, the head down at the strike
+ *   (its strike at 45%: the checker and the games read it so); fall: it goes over onto its side and stays.
+ */
+const ease = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+export const MOVES = {
+  idle: { period: 3.2, move: (t) => ({ body: [0, -0.01 * (1 - Math.cos(2 * Math.PI * t))], nod: 0.06 * Math.sin(2 * Math.PI * t * 2), yaw: 0.35 * Math.sin(2 * Math.PI * t), tail: 0.12 * Math.sin(2 * Math.PI * t * 2), legs: 'plant' }) },
+  attack_bite: { period: 0.9, loop: false, move: (t) => {
+    const back = t < 0.4 ? ease(t / 0.4) : 1 - ease((t - 0.4) / 0.12);
+    const lunge = t < 0.4 ? 0 : t < 0.52 ? ease((t - 0.4) / 0.12) : 1 - ease((t - 0.52) / 0.48);
+    return { body: [-0.16 * back + 0.42 * lunge, -0.07 * back - 0.03 * lunge], pitch: -0.1 * back + 0.16 * lunge, nod: -0.25 * back + 0.45 * lunge, tail: 0.3 * back, legs: 'plant' };
+  } },
+  fall: { period: 1.3, loop: false, move: (t) => ({ roll: 1.5 * ease(t / 0.7), body: [-0.1 * ease(t / 0.7), 0], nod: 0.4 * ease((t - 0.4) / 0.6), legs: t < 0.15 ? 'plant' : 'limp', ground: true }) },
+};
 const FPS = 30;
 
 /** A three.js copy of the document's node tree (rest pose), with a map back to the glTF nodes. */
@@ -110,7 +125,9 @@ function fabrik(P, L, target, plane) {
 
 /** Build the samples of one gait clip. Returns { times, tracks: [{ node, path, values }] , speed } */
 export function buildGait(scene, rig, G) {
-  const N = Math.round(G.period * FPS);
+  const N = Math.round(G.period * FPS) + (G.loop === false ? 1 : 0);
+  const joints = new Set();
+  scene.traverse((o) => { if (/tripo|bone_|Limb|Spine|Head|Tail/.test(o.name)) joints.add(o); });
   const rest = new Map();
   scene.traverse((o) => rest.set(o, { p: o.position.clone(), q: o.quaternion.clone() }));
   const reset = () => { for (const [o, r] of rest) { o.position.copy(r.p); o.quaternion.copy(r.q); } scene.updateMatrixWorld(true); };
@@ -148,8 +165,42 @@ export function buildGait(scene, rig, G) {
   const times = [];
   for (let f = 0; f < N; f++) {
     const t = f / N;
-    times.push((f / N) * G.period);
+    times.push(G.loop === false ? (f / (N - 1)) * G.period : (f / N) * G.period);
     reset();
+    const mv = G.move ? G.move(G.loop === false ? f / (N - 1) : t) : null;
+    if (mv) {
+      // a move: the body shifted (in leg-heights, along the body and up), tipped and rolled; the head and tail turned
+      const r0 = rest.get(rig.root);
+      const [dx, dy] = mv.body || [0, 0];
+      rig.root.position.copy(r0.p).addScaledVector(fwd, dx * legH).addScaledVector(up, dy * legH);
+      rig.root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(fwd, mv.roll || 0).multiply(new THREE.Quaternion().setFromAxisAngle(side, mv.pitch || 0)).multiply(r0.q));
+      if (rig.head[0]) rig.head[0].quaternion.copy(rest.get(rig.head[0]).q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), mv.nod || 0)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), mv.yaw || 0));
+      if (rig.tail[0]) rig.tail[0].quaternion.copy(rest.get(rig.tail[0]).q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), mv.tail || 0));
+      scene.updateMatrixWorld(true);
+      if (mv.ground) {
+        // lying down: the lowest bone kept on the ground
+        let low = Infinity;
+        scene.traverse((o) => { if (o !== rig.root && joints.has(o)) low = Math.min(low, wpos(o).y); });
+        rig.root.position.y += ground + 0.03 * legH - low;
+        scene.updateMatrixWorld(true);
+      }
+      if (mv.legs === 'plant') for (const l of legs) {
+        const P = l.J.slice(0, l.ankle + 1).map(wpos);
+        fabrik(P, l.L, l.restP[l.ankle].clone(), new THREE.Plane().setFromNormalAndCoplanarPoint(l.normal, P[0]));
+        for (let i = 1; i < l.ankle; i++) {
+          const axis = P[l.ankle].clone().sub(P[0]), rel = P[i].clone().sub(P[0]);
+          if ((Math.sign(new THREE.Vector3().crossVectors(rel, axis).dot(l.normal)) || 1) !== l.bendSide[i]) { const ax = axis.clone().normalize(), along = ax.clone().multiplyScalar(rel.dot(ax)); P[i].copy(P[0]).add(along).sub(rel.clone().sub(along)); }
+        }
+        for (let i = 0; i < l.ankle; i++) aim(l.J[i], l.J[i + 1], P[i + 1].clone().sub(P[i]));
+        aim(l.J[l.ankle], l.J[l.ankle + 1], l.pawDir.clone());
+      }
+      if (rig.root) keep(rig.root, true);
+      for (const l of legs) for (let i = 0; i <= l.ankle; i++) keep(l.J[i]);
+      if (rig.head[0]) keep(rig.head[0]);
+      if (rig.tail[0]) keep(rig.tail[0]);
+      for (const [o, tr] of tracks) { tr.q.push(...o.quaternion.toArray()); if (tr.p) tr.p.push(...o.position.toArray()); }
+      continue;
+    }
     // the body: down a little as each foot takes the weight (twice a cycle)
     if (rig.root) {
       rig.root.position.y = rest.get(rig.root).p.y - G.bob * legH * Math.cos(4 * Math.PI * t);
@@ -202,7 +253,7 @@ export function buildGait(scene, rig, G) {
     }
   }
   reset();
-  return { times, tracks, speed: S / (G.duty * G.period), legH, ground };
+  return { times, tracks, speed: G.move ? 0 : S / (G.duty * G.period), legH, ground };
 }
 
 function isUnder(o, anc) { for (let p = o.parent; p; p = p.parent) if (p === anc) return true; return false; }
@@ -235,8 +286,9 @@ async function main() {
   const rig = findRig(scene);
   const made = {};
   for (const [name, G] of Object.entries(GAITS)) made[name] = buildGait(scene, rig, G);
+  for (const [name, G] of Object.entries(MOVES)) made[name] = buildGait(scene, rig, G);
   for (const a of root.listAnimations()) {
-    if (!/walk|run|trot/i.test(a.getName())) continue;
+    if (!/walk|run|trot|idle|bite|fall/i.test(a.getName())) continue;
     if (flags.includes('--keep-old')) a.setName('tripo_walk_old');
     else a.dispose();
   }

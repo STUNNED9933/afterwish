@@ -510,7 +510,8 @@ function prepare(spec, gltf) {
   });
   // (1.1.4) clips that stand their feet in the ground (Tripo's often do, by a few per cent of the body): lifted so the
   // lowest foot over the clip is on the ground (falls, rolls and the like go down on purpose and are left)
-  if (spec.recentre === '*') for (const name in clips) if (!/fall|death|defeat|die|lay|roll|knock|kneel|sit|crouch|dodge|slide|lunge|land|jump/i.test(name)) groundClip(scene, clips[name], h);
+  // (creatures stand with their model's origin on the ground; the rest on their rest pose's lowest point)
+  for (const name in clips) if (!/fall|death|defeat|die|lay|roll|knock|kneel|sit|crouch|dodge|slide|lunge|land|jump/i.test(name)) groundClip(scene, clips[name], h, spec.recentre === '*' ? 0 : box.min.y);
     // (1.1.4) a generated gait (tools/models/gait.mjs): how fast each one's planted feet go back, so it is played at
   // exactly the speed the body moves (nothing slides)
   const gait = {};
@@ -537,46 +538,49 @@ function feetOf(scene) {
 }
 
 /**
- * (1.1.4) Lift a clip whose feet go into the ground: the lowest foot over the clip (sampled) is put back on the
- * ground of the rest pose, by moving the top bone's track up (in its parent's space). Only when it sinks by more
- * than 2% of the height `h`.
+ * (1.1.4) Keep a clip's feet out of the ground: at each key of the hips' (or root's) position track, the lowest
+ * foot is found, and where it is below `ground` the body is raised by that much at that key (in its parent's space).
+ * A clip that never goes below is left exactly as it was. Only when it sinks by more than 1.5% of the height `h`.
  */
-function groundClip(scene, clip, h) {
+function groundClip(scene, clip, h, ground = 0) {
   const feet = feetOf(scene);
   if (!feet.length) return;
-  let top = null;
-  scene.traverse((o) => { if (!top && o.isBone && !(o.parent && o.parent.isBone)) top = o; });
-  const track = top && clip.tracks.find((t) => t.name === `${top.name}.position`);
-  if (!track) return;
-  scene.updateMatrixWorld(true);
-  const v = new THREE.Vector3();
-  const ground = 0; // (a creature stands with its model's origin on the ground)
+  // the highest bone that moves the whole body (the first with a position track, from the top down)
+  let carrier = null;
+  const tracks = new Map(clip.tracks.filter((t) => t.name.endsWith('.position')).map((t) => [t.name.slice(0, -9), t]));
+  scene.traverse((o) => { if (!carrier && o.isBone && tracks.has(o.name) && feet.some((f) => isAbove(o, f))) carrier = o; });
+  if (!carrier) return;
+  const track = tracks.get(carrier.name);
   const saved = [];
   scene.traverse((o) => { if (o.isBone) saved.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
   const mixer = new THREE.AnimationMixer(scene);
   const act = mixer.clipAction(clip);
   act.play();
-  let low = Infinity;
-  for (let i = 0; i <= 24; i++) {
-    act.time = Math.min(clip.duration - 1e-4, (i / 24) * clip.duration);
+  const v = new THREE.Vector3(), pw = new THREE.Vector3(), pq = new THREE.Quaternion(), ps = new THREE.Vector3();
+  const lifts = [];
+  let worst = 0;
+  for (let k = 0; k < track.times.length; k++) {
+    act.time = Math.min(clip.duration - 1e-4, track.times[k]);
     mixer.update(0);
     scene.updateMatrixWorld(true);
+    let low = Infinity;
     for (const f of feet) low = Math.min(low, f.getWorldPosition(v).y);
+    const sink = ground - low;
+    worst = Math.max(worst, sink);
+    if (sink > 0.004 * h) {
+      carrier.parent.matrixWorld.decompose(pw, pq, ps);
+      lifts.push([k, new THREE.Vector3(0, sink, 0).applyQuaternion(pq.invert()).divide(ps)]);
+    }
   }
   act.stop();
   mixer.uncacheRoot(scene);
   for (const [o, p, q, sc] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); }
   scene.updateMatrixWorld(true);
-  const sink = ground - low;
-  if (!(sink > 0.02 * h)) return;
-  // world up, in the top bone's parent's space
-  const local = new THREE.Vector3(0, sink, 0);
-  const pw = new THREE.Vector3(), pq = new THREE.Quaternion(), ps = new THREE.Vector3();
-  top.parent.matrixWorld.decompose(pw, pq, ps);
-  local.applyQuaternion(pq.invert()).divide(ps);
+  if (!(worst > 0.015 * h)) return;
   const val = track.values;
-  for (let i = 0; i < val.length; i += 3) { val[i] += local.x; val[i + 1] += local.y; val[i + 2] += local.z; }
+  for (const [k, d] of lifts) { val[k * 3] += d.x; val[k * 3 + 1] += d.y; val[k * 3 + 2] += d.z; }
 }
+const isAbove = (a, b) => { for (let p = b.parent; p; p = p.parent) if (p === a) return true; return false; };
 
 /**
  * (1.1.4) How fast a walk's planted feet move back under the body (scene units a second): at each moment the lowest

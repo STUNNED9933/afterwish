@@ -5,7 +5,7 @@
 // The opening: the crack on the Verge opens, a husk runs into it, the hero follows; wakes in a glade in the
 // Wakewood, powerless; wolves; the Iron Hounds (Rowan, Ilse, Juni, Sorrel) cut them down. Then they walk
 // the hero along the road to Sunmere, talking on the way, waiting if the hero falls behind.
-import { GLADE, TOWN, CRYSTAL, TRAINING, WELL, townHouses, roadDist } from './land.js';
+import { GLADE, TOWN, CRYSTAL, TRAINING, WELL, WATCHTOWER, townHouses, roadDist } from './land.js';
 import { separate, Actor } from './actor.js';
 import { segHit } from './sim.js';
 
@@ -38,8 +38,34 @@ export const QUESTS = {
   mourning: { name: 'Word Gets Around', goal: 'The winter is over. Rowan wants a word (the training ground)' },
   contracts: { name: 'Word Gets Around', goal: 'Three contracts from the Guild board' },
   report: { name: 'Word Gets Around', goal: 'Report to Magistra Odile at the Guild' },
-  invitation: { name: 'An Invitation', goal: 'Something is watching Sunmere (the next part of the story is coming)' },
+  invitation: { name: 'An Invitation', goal: 'Something has come for you at the Hounds\' lodging' },
+  tower: { name: 'An Invitation', goal: 'The old watchtower on the north ridge, at dusk (with the Hounds)' },
+  wards: { name: 'An Invitation', goal: 'Break the three ash-wards round the watchtower' },
+  act2: { name: 'Act II', goal: 'The End of Act I. Act II is coming: meanwhile, the Guild\'s bounties, the tricks and your talent web' },
 };
+// (1.0) every stage above is the Main Story (the ✦ in the tracker); the others are kinds of their own
+export const MAIN_STORY = new Set(Object.keys(QUESTS));
+
+/**
+ * (1.0) Lacuna's other quests, by kind (as in the main game, after FFXIV's markers):
+ *   feature: New Content (learn something new once); side: Side Quests (experience; safe to skip); repeat: Repeatable
+ */
+export const SIDE_QUESTS = {
+  tricks: { cat: 'feature', name: 'Moving Well', where: 'Anywhere (press H)', goal: 'Learn the tricks: bunny hops, slides, wall kicks... (press H for the list)', opens: (s) => ['warrior', 'archer'].includes(s.path) },
+  web: { cat: 'feature', name: 'The Talent Web', where: 'Anywhere (press P)', goal: 'Spend a talent point in the web (press P)', opens: (s) => ['warrior', 'archer'].includes(s.path) },
+  bounty: { cat: 'repeat', name: 'Guild Bounties', where: 'The Guild\'s board, by the Telling Glass', goal: 'Take a bounty from the Guild\'s board: beasts to cull, for experience', opens: (s) => (s.xpq && s.xpq.path) || ['ambush', 'hunt', 'mourning', 'contracts', 'report', 'invitation', 'tower', 'wards', 'act2'].includes(s.stage) },
+};
+/** (1.0) The Guild's bounties: one at a time, a fresh three on the board each day (of the page's clock). */
+export const BOUNTIES = [
+  { id: 'wolves', type: 'wolf', n: 6, name: 'Thin the Mossbacks', where: 'in the Wakewood (west)' },
+  { id: 'hogs', type: 'hog', n: 5, name: 'Thornhogs in the Barley', where: 'in the meadows (south and east)' },
+  { id: 'golems', type: 'golem', n: 2, name: 'Cairns on the Move', where: 'on the stony ground (north)' },
+  { id: 'wolves2', type: 'wolf', n: 10, name: 'A Bad Year for Wolves', where: 'in the Wakewood (west)' },
+  { id: 'hogs2', type: 'hog', n: 8, name: 'Fences Down at Brightwater', where: 'round the lake (south-east)' },
+  { id: 'golems2', type: 'golem', n: 4, name: 'Clear the Quarry Road', where: 'on the stony ground (north)' },
+];
+/** Experience for a bounty: a good part of a level, whatever your level. */
+export const bountyXp = (b, level) => Math.round((40 + 22 * Math.pow(Math.max(0, level - 1), 1.3)) * b.n / 6);
 export function loadStory() {
   try { return JSON.parse(localStorage.getItem(STORY_KEY) || 'null') || { stage: 'new' }; } catch (err) { return { stage: 'new' }; }
 }
@@ -1219,5 +1245,150 @@ export async function reportScene(a) {
   await a.camera([E[0], 1.25, E[1]], [W[0], 1.3, W[1]], 0.5);
   await a.say('', 'When you look again, there is nobody there.');
   await a.fade(1, 0.8);
+  a.bars(false);
+}
+
+
+// ---- (1.0) Quest 6, An Invitation (the end of Act I): a letter; the old watchtower on the north ridge, where Sorrel's
+// ring of ash closes; three ash-wards, the Unbound's thralls and an acolyte; the circle under the tower, and what
+// looks back through it; Thessaly, who was watching; the Ninth Hand's offer, and the Hounds
+export const WARDS = [
+  { x: WATCHTOWER.x - 9, z: WATCHTOWER.z + 6, foes: [['thrall', 2]] },
+  { x: WATCHTOWER.x + 10, z: WATCHTOWER.z + 4, foes: [['thrall', 3]] },
+  { x: WATCHTOWER.x + 1, z: WATCHTOWER.z - 10, foes: [['thrall', 1], ['acolyte', 1]] },
+];
+export const FOES = {
+  thrall: { type: 'wolf', look: 'thrall', def: { name: 'Ash Thrall', speed: 3.4, aggro: 13, leash: 26, r: 0.5, hp: 360, dmg: 18, every: 1.4, xp: 40 } },
+  acolyte: { type: 'golem', look: 'acolyte', def: { name: 'Unbound Acolyte', speed: 3.0, aggro: 15, leash: 28, r: 0.6, hp: 1400, dmg: 28, every: 1.7, xp: 160 } },
+};
+/** Where the Hounds wait for you by the tower. */
+const T0 = { x: WATCHTOWER.x - 2, z: WATCHTOWER.z + 9 };
+
+/** At the lodging: the letter. */
+export async function letterScene(a) {
+  const me = a.ctx.me;
+  const D = HOME.door, I = Math.atan2(TOWN.z - HOME.z, TOWN.x - HOME.x), S = I + Math.PI / 2;
+  const at = (out, across) => [D.x + Math.cos(I) * out + Math.cos(S) * across, D.z + Math.sin(I) * out + Math.sin(S) * across];
+  a.bars(true);
+  await a.fade(1, 0.5);
+  a.actor('rowan', ...at(1.6, -1.2)); a.actor('juni', ...at(1.3, 1.2)); a.actor('sorrel', ...at(2.7, -0.4));
+  a.hero(...at(2.4, 0.9), I + Math.PI);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who).face(me.x, me.z);
+  a.sheathe('rowan', true);
+  const c1 = at(6.2, 1.6), c2 = at(1.8, 0.1);
+  await a.camera([c1[0], 1.6, c1[1]], [c2[0], 1.0, c2[1]], 0);
+  await a.fade(0, 0.9);
+  await a.say('', 'Under the lodging\'s door, folded small: a letter with your name on it. Sealed in grey wax, pressed with a closed eye.', { cam: false });
+  await a.say('juni', 'Nobody sends you letters. Nobody sends any of us letters. Open it!', { to: 'hero', cam: false });
+  await a.say('', '"The old watchtower on the north ridge. Tomorrow, at dusk. Come as you are. Bring the clasp. Burn this. T."', { cam: false });
+  await a.say('rowan', 'No.', { to: 'hero', cam: false });
+  await a.say('rowan', '...Not without us, I mean. Whoever she is, she doesn\'t get you alone on a hill at dusk.', { to: 'hero', cam: false });
+  await a.say('sorrel', 'The north ridge. Rowan, the watchtower stands right where my ring closes. The fifth point.', { to: 'rowan', cam: false });
+  await a.say('sorrel', 'I don\'t know what that means. I\'d very much like to.', { cam: false });
+  await a.say('juni', 'Then we all go. She said "come as you are". We\'re how he is.', { cam: false });
+  await a.say('hero', 'Together, then.', { cam: false });
+  await a.fade(1, 0.8);
+  a.bars(false);
+}
+
+/** At the watchtower, at dusk: Thessaly, and what she asks. */
+export async function towerScene(a) {
+  const me = a.ctx.me;
+  const W = WATCHTOWER;
+  a.bars(true);
+  await a.fade(1, 0.5);
+  a.fog(0.35, 0);
+  a.actor('rowan', T0.x + 1.6, T0.z + 0.6); a.actor('juni', T0.x - 1.6, T0.z + 0.8); a.actor('sorrel', T0.x + 0.2, T0.z + 2.2);
+  a.hero(T0.x, T0.z, -Math.PI / 2);
+  const th = a.actor('thessaly', W.x + 0.5, W.z + 3.4);
+  th.face(me.x, me.z);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who).face(th.x, th.z);
+  a.draw('rowan');
+  await a.camera([T0.x + 5, 2.6, T0.z + 5], [W.x, 2.6, W.z], 0);
+  await a.fade(0, 1.2);
+  await a.say('', 'The tower is older than Sunmere. Its stones are black with something that is not soot.', { cam: false });
+  a.talkCam(true);
+  await a.say('thessaly', 'You brought them. Good. I\'d have been disappointed if you hadn\'t.', { to: 'hero' });
+  await a.say('rowan', 'Say what you came to say.', { to: 'thessaly' });
+  await a.say('thessaly', 'Your Sorrel found a ring of ash with Sunmere in the middle. He was right, and he was nearly too late. This is where it closes.', { to: 'rowan' });
+  await a.say('thessaly', 'There are three wards round this tower, and a circle under it. Tonight they finish it. A small calling. A test, we think, of whether the ring will hold.', { to: 'rowan' });
+  await a.say('sorrel', 'A test calling. Of what?', { to: 'thessaly' });
+  await a.say('thessaly', 'We don\'t know. That is rather the problem with the Unbound: by the time you know, it\'s too late to ask.', { to: 'sorrel' });
+  await a.say('juni', 'So go and stop it. You\'re the secret army.', { to: 'thessaly' });
+  await a.say('thessaly', 'The crown does not know the Unbound exist. Officially. If the Ninth Hand is seen breaking their wards, the crown has to know, and then so does everyone else.', { to: 'juni' });
+  await a.say('thessaly', 'Three adventurers and a boy, out after a contract, are only that. Break the wards. I\'ll be watching.', { to: 'hero' });
+  await a.say('rowan', 'You\'ll be watching.', { to: 'thessaly' });
+  await a.say('thessaly', 'It\'s what I\'m for.', { to: 'rowan' });
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 0.6);
+  a.remove('thessaly');
+  a.fog(0, 0);
+  a.bars(false);
+}
+
+/** The wards broken: the circle under the tower, what looks back, and Thessaly's offer. */
+export async function circleScene(a) {
+  const { fx } = a;
+  const me = a.ctx.me;
+  const W = WATCHTOWER;
+  const C = { x: W.x, z: W.z + 4.2 };
+  a.bars(true);
+  await a.fade(1, 0.5);
+  a.actor('rowan', C.x + 2.2, C.z + 1.4); a.actor('juni', C.x - 2.2, C.z + 1.8); a.actor('sorrel', C.x + 0.6, C.z + 2.8);
+  a.hero(C.x, C.z + 1.2, -Math.PI / 2);
+  for (const who of ['rowan', 'juni', 'sorrel']) a.actor(who).face(C.x, C.z);
+  a.draw('rowan');
+  await a.camera([C.x + 4.5, 2.4, C.z + 4.5], [C.x, 0.4, C.z], 0);
+  await a.fade(0, 0.9);
+  await a.say('', 'With the third ward broken, the ground at the tower\'s foot cracks open in a ring, and the cracks glow the colour of old embers.', { cam: false });
+  fx.ring(C.x, C.z, 3.2, 0x5a1a8a, 1.2);
+  fx.ring(C.x, C.z, 1.6, 0x8a3ac0, 0.9);
+  a.shake(0.25, 1.2);
+  await a.say('sorrel', 'It\'s still going. Breaking the wards didn\'t stop it, it only made it unsteady. Everyone back!', { cam: false });
+  a.fog(0.65, 0.6);
+  await a.wait(0.4);
+  if (a.ctx.flash) a.ctx.flash('A white keep. A gold thread pulled tight. Someone calling a name that is nearly yours.', 2.4);
+  await a.say('', 'Something on the other side of the ring opens an eye. It is very far away, and very large, and it is not looking at the Hounds.', { cam: false });
+  await a.say('', 'It is looking at you. The same thing that turned to look at you the day Ilse died.', { cam: false });
+  await a.say('hero', 'No.', { cam: false });
+  await a.prompt('Space', 'Shut it', { label: 'Space' });
+  if (a.ctx.heroStrike) a.ctx.heroStrike();
+  a.flash(0.6);
+  fx.ring(C.x, C.z, 5, 0xffd24a, 0.8);
+  fx.ring(C.x, C.z, 2.6, 0xfff0b0, 0.6);
+  a.shake(0.5, 0.6);
+  a.fog(0.1, 1.4);
+  await a.say('', 'The Link answers before you ask it. Gold runs down your arms and into the cracks, and the ring goes dark, and the eye is gone.', { cam: false });
+  await a.wait(0.5);
+  a.talkCam(true);
+  await a.say('juni', '...Sprout? Sprout, say something.', { to: 'hero' });
+  await a.say('hero', 'It knew me.', { to: 'juni' });
+  await a.say('sorrel', 'Your eyes are gold again. They\'re fading. ...Rowan, he shut a calling. On his own.', { to: 'rowan' });
+  // Thessaly, out of the dark
+  const th = a.actor('thessaly', C.x - 5, C.z - 2);
+  th.face(me.x, me.z);
+  await a.walk('thessaly', C.x - 2.6, C.z + 0.4);
+  th.face(me.x, me.z);
+  await a.say('thessaly', 'Well. That was not the test I thought I was watching.', { to: 'hero' });
+  await a.say('rowan', 'A test. This was a test.', { to: 'thessaly' });
+  await a.say('thessaly', 'Of them, I told myself. I\'m sorry. I needed to see what he does when it counts, and so did my masters. Now we have.', { to: 'rowan' });
+  await a.say('thessaly', 'The Ninth Hand would like you. Not instead of the Hounds. Alongside them. Contracts that pay well and are never written down. Someone to tell you what we know about what looked at you tonight. Which is very little.', { to: 'hero' });
+  await a.say('juni', 'He\'s a child!', { to: 'thessaly' });
+  await a.say('thessaly', 'He is. And something very old just learned his face. I would rather it found him with friends.', { to: 'juni' });
+  await a.say('rowan', '...He decides. Not you, not me.', { to: 'thessaly' });
+  await a.say('rowan', 'Whatever you choose, Sprout, you come home to us. Every time. That part isn\'t a contract.', { to: 'hero' });
+  await a.say('hero', 'I want to know what it is. What I am. ...Alongside. Not instead.', { to: 'thessaly' });
+  await a.say('thessaly', 'Alongside. Welcome to the Ninth Hand. It doesn\'t exist, so you can\'t tell anyone.', { to: 'hero' });
+  await a.say('juni', 'I still say there\'s no such thing.', { to: 'rowan' });
+  a.talkCam(false);
+  a.quiet();
+  await a.fade(1, 1.2);
+  await a.card([
+    'End of Act I: The Boy from the Tear.',
+    'He came through a wound in the world with nothing but a white keep in his memory and a fog where the rest should be.',
+    'He found a family. He lost one of them. Something on the far side of the world has learned his face.',
+    'Act II is coming. Until then: the Guild\'s bounties, the tricks, the talent web, and the land, which is larger than it looks.',
+  ], { hold: 4 });
   a.bars(false);
 }

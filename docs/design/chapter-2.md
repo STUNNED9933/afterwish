@@ -125,7 +125,9 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 | 3 | Choosing a Path | Train; pick a class | The world and its magic; class trial |
 | 4 | When It Counts | A year on: ashen wolves; Vesper of the Unbound | Ilse dies taking the blow meant to kill him; grief wakes the Link; the hero kills Vesper; Thessaly of the Ninth Hand (0.99.27) |
 | 5 | Word Gets Around | Three contracts across the land (a walking cairn, Brightwater's thornhogs, the east road's wolves) | All ashen; the ash sites ring Sunmere; Guild rank E by deeds, not the glass; Thessaly watching (0.99.29) |
-| 6 | An Invitation | A secret mission, watched | The Ninth Hand asks you to join. End of Act I |
+| 6 | An Invitation | A letter signed T.; the old watchtower on the north ridge at dusk; three ash-wards guarded by thralls and an acolyte | Breaking the wards only unsteadies the circle; something vast looks at the hero and the Link shuts it; Thessaly admits it was a test and asks him into the Ninth Hand, alongside the Hounds. End of Act I (1.0) |
+
+Quest kinds, as in the main game: **✦ Main Story** (the quests above), **✚ New Content** (Moving Well, the talent web), **↻ Repeatable** (the Guild's bounties, three a day on the board by the Telling Glass). J opens the journal: what is in hand, and everything available.
 
 ## Power
 

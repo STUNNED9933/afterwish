@@ -654,6 +654,33 @@ export const QUESTS = {
   },
 };
 for (const id in QUESTS) QUESTS[id].id = id;
+
+/**
+ * (1.0) What kind of quest each is (after FFXIV's markers), so a player can tell what to follow and what can wait:
+ *   main     the Main Story: follow these to see what happens (and to reach new places)
+ *   feature  New Content: unlocks something (a mode, a place, a system); worth doing once
+ *   story    Side Stories: someone's own story, with a choice; for the telling, and good rewards
+ *   side     Side Quests: experience and rewards; safe to skip
+ *   repeat   Repeatable: done again for rewards
+ */
+export const QUEST_CATS = {
+  main: { name: 'Main Story', icon: '✦', note: 'Follow these to see what happens next, and to reach new places.' },
+  feature: { name: 'New Content', icon: '✚', note: 'Unlocks something new (a mode, a place, a system). Worth doing once.' },
+  story: { name: 'Side Story', icon: '❖', note: 'Someone\'s own story, often with a choice. For the telling, and good rewards.' },
+  side: { name: 'Side Quest', icon: '!', note: 'Experience and rewards. Safe to skip.' },
+  repeat: { name: 'Repeatable', icon: '↻', note: 'Can be done again for rewards.' },
+};
+const FEATURE = new Set(['ringglass', 'ringlast', 'havengrows']);
+export function questCat(q) {
+  if (!q) return 'side';
+  if (q.repeat) return 'repeat';
+  if (FEATURE.has(q.id)) return 'feature';
+  if (q.giver === 'wren' || q.act3 || ['survey', 'breath', 'deep3', 'deep4', 'deep5'].includes(q.id)) return 'main';
+  if (q.side) return 'story';
+  if (q.id === 'scarf') return 'story';
+  return 'side';
+}
+for (const id in QUESTS) QUESTS[id].cat = questCat(QUESTS[id]);
 export const QUEST_IDS = Object.keys(QUESTS);
 
 /** What a boss gives when it falls out in the world (see World.bossRewards). */

@@ -12,7 +12,7 @@ import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, link
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
-import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL } from './land.js';
+import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL, WATCHTOWER } from './land.js';
 import { placeBuilding } from '../render/buildings.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED, preload } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
@@ -21,7 +21,7 @@ import { SERVERS } from '../net/servers.js';
 import { Cutscene } from './cutscene.js';
 import { Actor } from './actor.js';
 import { beastGeometry } from './view.js';
-import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, thessalyScene, askingScene, springScene, reportScene, CONTRACTS, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
+import { openingPull, openingWolves, openingTear, TEAR, KEEPSAKE, GLADE_EDGE, HOME, WOODPILE, WELL_AT, HERBS, RUN_ROUTE, HOME_SPOTS, VIGOUR, DAY_FOG, DAYS, lessonScene, nightScene, yearScene, vesperScene, deathScene, afterScene, thessalyScene, askingScene, springScene, reportScene, CONTRACTS, letterScene, towerScene, circleScene, WARDS, FOES, MAIN_STORY, SIDE_QUESTS, BOUNTIES, bountyXp, follow, ASHEN_AT, VESPER, VESPER_FROM, walkToTown, loadStory, saveStory, QUESTS, ROAD_IN, atGuild, crystalScene, atTraining, trainingScene, TRIALS } from './story.js';
 import { buildCrack } from '../render/gates.js';
 import { buildTellingGlass } from './guild.js';
 import { EMOTES, EMOTICONS, EMOTICON_NAMES, emoteClip, drawEmoticon } from './emotes.js';
@@ -54,7 +54,7 @@ let linkAwake = params.get('link') === '1' || !!saved.linked;
 // (0.99.24) how strong he has grown: weak through the tear, stronger each day with the Hounds
 const startVig = ['new', 'stumble', 'rescued', 'waking'].includes(saved.stage || 'new') ? VIGOUR[0] : saved.stage === 'days' ? VIGOUR[Math.min(VIGOUR.length - 1, saved.day || 0)] : 1;
 // (0.99.36) experience and level: from the story so far, for a save made before there were levels
-const STAGE_ORDER = ['new', 'stumble', 'rescued', 'waking', 'asking', 'days', 'crystal', 'path', 'ambush', 'hunt', 'mourning', 'contracts', 'report', 'invitation'];
+const STAGE_ORDER = ['new', 'stumble', 'rescued', 'waking', 'asking', 'days', 'crystal', 'path', 'ambush', 'hunt', 'mourning', 'contracts', 'report', 'invitation', 'tower', 'wards', 'act2'];
 if (saved.xp === undefined) {
   const at = STAGE_ORDER.indexOf(saved.stage || 'new');
   saved.xpq = {};
@@ -341,6 +341,8 @@ function onEvent(ev) {
   if (trial) trialEvent(ev);
   huntEvent(ev);
   trickEvent(ev);
+  bountyEvent(ev);
+  if (ev.type === 'die' && ev.story === 'unbound') showQuest(); // (1.0) a ward's guard down
   vesperEvent(ev);
   contractEvent(ev);
   if (ev.type === 'shot') {
@@ -458,7 +460,7 @@ const locked = () => document.pointerLockElement === canvas;
 const chatOpen = () => !$('chat-in').classList.contains('hidden');
 /** Take the mouse back for looking (needs a key or a click: browsers only allow it then). */
 function relock() {
-  if (locked() || altFree || chatOpen() || webUI.open || !canvas.requestPointerLock) return;
+  if (locked() || altFree || chatOpen() || webUI.open || !$('journal').classList.contains('hidden') || !$('board').classList.contains('hidden') || !canvas.requestPointerLock) return;
   try {
     const r = canvas.requestPointerLock();
     if (r && r.catch) r.catch(() => {});
@@ -480,7 +482,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   // back from another tab or window: any game key takes the mouse again (Esc and the F keys do not)
-  if (!locked() && e.code !== 'Escape' && e.code !== 'KeyP' && !webUI.open && !/^F\d+$/.test(e.code)) relock(); // ((0.99.37) not for the talent web: it wants the mouse)
+  if (!locked() && e.code !== 'Escape' && e.code !== 'KeyP' && e.code !== 'KeyJ' && !webUI.open && !/^F\d+$/.test(e.code)) relock(); // ((0.99.37) not for the talent web: it wants the mouse)
   if (e.repeat && (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC')) return;
   keys.add(e.code);
   // (0.99.35) C, running: a slide (and Space out of it, a long leap). Otherwise C (or Ctrl) walks, or runs again.
@@ -490,6 +492,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') addBot();
   if (e.code === 'KeyH') { showTricks(); $('tricks').classList.toggle('hidden'); } // (0.99.35) the tricks
   if (e.code === 'KeyP') toggleWeb(); // (0.99.37) the talent web
+  if (e.code === 'KeyJ') toggleJournal(); // (1.0) the journal: what you are doing, and what you could
   if (e.code === 'KeyF') { const u = nearestUse(); if (u) u.fn(); }
   if (e.code === 'KeyL') {
     if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
@@ -802,13 +805,38 @@ if (story.xp === undefined) { story.xp = saved.xp || 0; story.xpq = saved.xpq ||
 setTimeout(() => applyWeb(), 0); // (0.99.37) your talents
 let questRun = null;
 const company = {};
+// ---- (1.0) quest kinds, the journal (J), the Guild's board and its bounties
+const KIND = {
+  main: { name: 'Main Story', icon: '✦', note: 'Follow these to see what happens next.' },
+  feature: { name: 'New Content', icon: '✚', note: 'Something new to learn or use. Worth doing once.' },
+  side: { name: 'Side Quest', icon: '!', note: 'Experience and rewards. Safe to skip.' },
+  repeat: { name: 'Repeatable', icon: '↻', note: 'Can be done again and again, for experience.' },
+};
+const many = (t) => ({ wolf: 'Mossback Wolves', hog: 'Thornhogs', golem: 'Cairn Golems' })[t] || `${BEASTS[t].name}s`;
+const kindTag = (k) => `<i class="qk ${k}">${KIND[k].icon}</i>`;
 function showQuest() {
+  showMain();
+  showSide();
+  if (!$('journal').classList.contains('hidden')) drawJournal();
+}
+/** The side tracker: a bounty in hand (and how far along). */
+function showSide() {
+  const b = story.bounty;
+  $('side-quest').classList.toggle('hidden', !b || cutscene.active);
+  if (!b) return;
+  $('side-quest').innerHTML = `<b>${kindTag('repeat')} ${b.name}</b>${b.got >= b.n ? 'Done: back to the Guild\'s board for your reward' : `${many(b.type)} ${b.where}: ${b.got}/${b.n}`}`;
+}
+function showMain() {
   const q = QUESTS[story.stage] || null;
   $('quest').classList.toggle('hidden', !q);
   if (!q) return;
-  $('quest-name').textContent = q.name;
+  $('quest-name').innerHTML = `${kindTag('main')}${q.name}`;
   if (story.stage === 'hunt' && hunt) {
     $('quest-goal').innerHTML = hunt.done ? 'Sorrel says something is wrong at the glade' : `Hunt the ashen wolves near the glade (${hunt.wolves.length - hunt.left}/${hunt.wolves.length})`;
+    return;
+  }
+  if (story.stage === 'wards' && wards) {
+    $('quest-goal').innerHTML = wards.map((W, k) => { const left = W.foes.filter((b) => !b.dead && b.story === 'unbound').length; return `<span class="step ${W.broken ? 'done' : 'now'}">${W.broken ? '✓' : '·'} The ${['west', 'east', 'north'][k]} ward${W.broken ? '' : left ? ` (${left} guarding it)` : ' (unguarded: F to break it)'}</span>`; }).join('');
     return;
   }
   if (story.stage === 'contracts' && job) {
@@ -1020,6 +1048,93 @@ function takeProgress(msg) {
   toast('Progress from your account', `Level ${L}, and your talents`);
 }
 
+/** The tricks, the web: done once you have learned every trick, or spent a point. */
+const featureDone = { tricks: () => Object.keys(story.tricks || {}).length >= TRICKS.length, web: () => Object.values(story.web || {}).some((l) => l.length) };
+function drawJournal() {
+  const q = QUESTS[story.stage];
+  const hand = [];
+  if (q) hand.push(`<div class="jq main"><span class="qkind qk main">${KIND.main.icon} Main Story</span><b>${q.name}</b><span>${$('quest-goal').textContent || q.goal}</span></div>`);
+  if (story.bounty) { const b = story.bounty; hand.push(`<div class="jq repeat"><span class="qkind qk repeat">${KIND.repeat.icon} Repeatable</span><b>${b.name}</b><span>${b.got >= b.n ? 'Done: back to the Guild\'s board for your reward' : `${many(b.type)} ${b.where}: ${b.got}/${b.n}`}</span></div>`); }
+  for (const [id, sq] of Object.entries(SIDE_QUESTS)) if (sq.cat === 'feature' && sq.opens(story) && !featureDone[id]()) hand.push(`<div class="jq feature"><span class="qkind qk feature">${KIND.feature.icon} New Content</span><b>${sq.name}</b><span>${sq.goal}</span><small>${sq.where}</small></div>`);
+  $('j-hand').innerHTML = hand.join('') || '<div class="jq">Nothing in hand.</div>';
+  const av = [];
+  // the main story: where it goes on
+  av.push(`<div class="jgroup qk main">${KIND.main.icon} Main Story<small>${KIND.main.note}</small></div>`);
+  av.push(q ? `<div class="jq main"><b>${q.name}</b><span>${q.goal}</span></div>` : '<div class="jq">The story begins in the glade.</div>');
+  const feats = Object.entries(SIDE_QUESTS).filter(([id, sq]) => sq.cat === 'feature');
+  av.push(`<div class="jgroup qk feature">${KIND.feature.icon} New Content<small>${KIND.feature.note}</small></div>`);
+  for (const [id, sq] of feats) av.push(sq.opens(story) ? `<div class="jq feature ${featureDone[id]() ? 'done' : ''}"><b>${sq.name}${featureDone[id]() ? ' ✓' : ''}</b><span>${sq.goal}</span><small>${sq.where}</small></div>` : `<div class="jq feature done"><b>${sq.name}</b><span>Opens once you have chosen a path (Quest 3)</span></div>`);
+  av.push(`<div class="jgroup qk repeat">${KIND.repeat.icon} Repeatable<small>${KIND.repeat.note}</small></div>`);
+  const bq = SIDE_QUESTS.bounty;
+  av.push(bq.opens(story) ? `<div class="jq repeat"><b>${bq.name}</b><span>${bq.goal}</span><small>${bq.where} · ${story.bountiesDone || 0} done so far</small></div>` : `<div class="jq repeat done"><b>${bq.name}</b><span>Opens once you have chosen a path (Quest 3)</span></div>`);
+  $('j-avail').innerHTML = av.join('');
+}
+function toggleJournal() {
+  const open = $('journal').classList.contains('hidden');
+  $('journal').classList.toggle('hidden', !open);
+  if (open) { if (locked()) document.exitPointerLock(); drawJournal(); } else relock();
+}
+/** Today's three bounties (the same for everyone on a given day). */
+function todaysBounties() {
+  const day = Math.floor(Date.now() / 86400000);
+  return [0, 1, 2].map((k) => BOUNTIES[(day + k * 2) % BOUNTIES.length]);
+}
+function openBoard() {
+  if (locked()) document.exitPointerLock();
+  const L = me.level || 1, b = story.bounty;
+  let html;
+  if (b && b.got >= b.n) {
+    const xp = bountyXp(b, L);
+    story.bounty = null;
+    story.bountiesDone = (story.bountiesDone || 0) + 1;
+    saveStory(story);
+    gainXp(xp, `bounty: ${b.name}`);
+    toast('Bounty done', `${b.name} · +${xp} xp`);
+    showQuest();
+    html = `<div class="jq repeat"><b>${b.name} ✓</b><span>Odile's clerk counts your tokens and pays out: ${xp} experience.</span></div>`;
+  } else if (b) {
+    html = `<div class="jq repeat"><b>${b.name}</b><span>${many(b.type)} ${b.where}: ${b.got}/${b.n}</span><small>One at a time. Press <kbd>X</kbd> to give it up.</small></div>`;
+  } else html = '';
+  if (!story.bounty) html += todaysBounties().map((q, k) => `<div class="jq repeat pick" data-k="${k}"><b><kbd>${k + 1}</kbd> ${q.name}</b><span>${q.n} ${many(q.type)}, ${q.where}</span><small>Reward: ${bountyXp(q, L)} experience · a fresh board each day</small></div>`).join('');
+  $('board-list').innerHTML = html;
+  $('board').classList.remove('hidden');
+  for (const el of $('board-list').querySelectorAll('.pick')) el.addEventListener('click', () => takeBounty(+el.dataset.k));
+}
+function takeBounty(k) {
+  if (story.bounty) return;
+  const q = todaysBounties()[k];
+  if (!q) return;
+  story.bounty = { id: q.id, type: q.type, n: q.n, got: 0, name: q.name, where: q.where };
+  saveStory(story);
+  closeBoard();
+  toast('Bounty taken', `${q.name}: ${q.n} ${many(q.type)} ${q.where}`);
+  showQuest();
+}
+function closeBoard() { $('board').classList.add('hidden'); relock(); }
+/** A beast of the bounty's kind falls to you: counted. */
+function bountyEvent(ev) {
+  const b = story.bounty;
+  if (!b || ev.type !== 'die' || !isMe(ev.pid) || ev.kind !== b.type || ev.story || b.got >= b.n) return;
+  b.got++;
+  saveStory(story);
+  if (b.got >= b.n) toast('Bounty done', 'Back to the Guild\'s board (by the Telling Glass) for your reward');
+  showQuest();
+}
+const BOARD_AT = { x: CRYSTAL.x, z: CRYSTAL.z };
+// the board and the journal have the keys while open (numbers pick, not change your path)
+addEventListener('keydown', (e) => {
+  if (!$('board').classList.contains('hidden')) {
+    const k = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
+    if (k !== undefined) takeBounty(k);
+    else if (e.code === 'KeyX' && story.bounty) { story.bounty = null; saveStory(story); showQuest(); openBoard(); }
+    else if (e.code === 'Escape' || e.code === 'KeyF') closeBoard();
+    e.preventDefault(); e.stopImmediatePropagation();
+  } else if (!$('journal').classList.contains('hidden') && (e.code === 'Escape' || e.code === 'KeyJ')) {
+    toggleJournal();
+    e.preventDefault(); e.stopImmediatePropagation();
+  }
+}, true);
+
 function setStage(stage) {
   // (0.99.36) leaving a part of the story: its experience, once
   const from = story.stage;
@@ -1106,7 +1221,7 @@ for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () =
 $('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
 const markV = new THREE.Vector3();
 function drawMarker() {
-  const lead = story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = story.stage === 'invitation' ? HOME.door : story.stage === 'tower' ? WATCHTOWER : story.stage === 'wards' && wards ? nextWard() : story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -1116,7 +1231,7 @@ function drawMarker() {
   const m = 24;
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
   y = Math.max(m + 20, Math.min(innerHeight - 180, y));
-  const what = story.stage === 'contracts' ? (lead.def && lead.def.name) || 'The quarry' : story.stage === 'report' ? 'The Guild' : story.stage === 'mourning' ? 'Rowan' : story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
+  const what = story.stage === 'invitation' ? 'The lodging' : story.stage === 'tower' ? 'The watchtower' : story.stage === 'wards' ? 'An ash-ward' : story.stage === 'contracts' ? (lead.def && lead.def.name) || 'The quarry' : story.stage === 'report' ? 'The Guild' : story.stage === 'mourning' ? 'Rowan' : story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
   $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
@@ -1124,7 +1239,7 @@ function drawMarker() {
 // (0.99.20) Quest 2: the Company and Magistra Odile wait in the Guild's yard; walk up to the crystal
 function toGuild(walk = false) {
   if (!company.odile) company.odile = new Actor(view.scene, 'odile', { beastMesh: () => new THREE.Group() });
-  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  for (const who of ['rowan', 'ilse', 'juni', 'sorrel']) if (!company[who] && !(who === 'ilse' && story.ilse === 'gone')) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
   questRun = atGuild(company, { walk });
 }
 async function playCrystal() {
@@ -1268,6 +1383,8 @@ function nearestUse() {
   if (cutscene.active || me.dead) return null;
   let best = null, bd = Infinity;
   if (nearKeepsake()) return { label: 'Pick it up', fn: takeKeepsake };
+  // (1.0) the Guild's board, once its bounties are open (unless a scene here wants the glass)
+  if (SIDE_QUESTS.bounty.opens(story) && story.stage !== 'crystal' && Math.hypot(me.x - BOARD_AT.x, me.z - BOARD_AT.z) < 3) best = { label: story.bounty && story.bounty.got >= story.bounty.n ? 'Hand in your bounty' : 'The Guild\'s board (bounties)', fn: openBoard }, bd = Math.hypot(me.x - BOARD_AT.x, me.z - BOARD_AT.z);
   for (const u of uses) {
     const at = typeof u.at === 'function' ? u.at() : u.at;
     if (!at) continue;
@@ -1681,7 +1798,106 @@ async function playReport() {
   if (company.dace) { company.dace.remove(); delete company.dace; }
   questRun = atGuild(company);
   showQuest();
+  startInvitation();
 }
+
+// ---- (1.0) Quest 6, An Invitation: the letter, the watchtower, the wards, the circle (the end of Act I)
+function hounds() {
+  for (const who of ['rowan', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  if (company.ilse) { company.ilse.remove(); delete company.ilse; }
+}
+function startInvitation() {
+  uses.add({ at: HOME.door, r: 2.6, label: 'Pick up the letter', fn: playLetter });
+  setTimeout(() => bark([['juni', 'Sprout! There\'s something under the lodging door with your name on it!']]), 4000);
+}
+async function playLetter() {
+  uses.clear();
+  if (net) net.ws.close(1000, 'This part of the story is played alone');
+  hounds();
+  await runScene(letterScene);
+  setStage('tower');
+  startTower();
+}
+function startTower() {
+  hounds();
+  company.rowan.draw(true);
+  const f = follow(company, world.land);
+  questRun = { update(dt) { f.update(dt, me); if (Math.hypot(me.x - WATCHTOWER.x, me.z - WATCHTOWER.z) < 16) playTower(); } };
+  toast('An Invitation', 'The old watchtower on the north ridge');
+  showQuest();
+}
+async function playTower() {
+  questRun = null;
+  if (net) net.ws.close(1000, 'This part of the story is played alone');
+  await runScene(towerScene);
+  setStage('wards');
+  startWards();
+}
+const wardMeshes = [];
+let wards = null; // [{ w, foes, broken }]
+function startWards() {
+  hounds();
+  company.rowan.draw(true);
+  story.wardsDone = story.wardsDone || [];
+  wards = WARDS.map((w, i) => {
+    const broken = story.wardsDone.includes(i);
+    const foes = [];
+    if (!broken) for (const [kind, n] of w.foes) for (let k = 0; k < n; k++) {
+      const F = FOES[kind], a = (k / n) * Math.PI * 2;
+      const b = world.borrowBeast(F.type, w.x + Math.cos(a) * 2.6, w.z + Math.sin(a) * 2.6, { story: 'unbound', look: F.look, def: F.def });
+      if (b) foes.push(b);
+    }
+    if (!broken && !wardMeshes[i]) {
+      // a ward: a black standing stone, a violet glow round its foot
+      const g = new THREE.Group();
+      const stone = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 2.2, 6), new THREE.MeshStandardMaterial({ color: 0x15121a, roughness: 0.9, emissive: 0x2a0a40, emissiveIntensity: 0.6 }));
+      stone.position.y = 1.1;
+      const glow = new THREE.Mesh(new THREE.RingGeometry(0.6, 1.3, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a3ac0, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+      glow.position.y = 0.06;
+      g.add(stone, glow);
+      g.position.set(w.x, 0, w.z);
+      view.scene.add(g);
+      wardMeshes[i] = g;
+    }
+    return { w, i, foes, broken };
+  });
+  uses.clear();
+  wards.forEach((W) => uses.add({ at: W.w, r: 2.4, label: 'Break the ward', when: () => !W.broken && W.foes.every((b) => b.dead || b.story !== 'unbound'), fn: () => breakWard(W) }));
+  const f = follow(company, world.land, houndsFight(() => wards.flatMap((W) => W.foes).filter((b) => !b.dead && b.story === 'unbound')));
+  let said = false;
+  questRun = { update(dt) {
+    f.update(dt, me);
+    for (const m of wardMeshes) if (m) m.children[1].material.opacity = 0.35 + 0.2 * Math.sin(performance.now() / 300);
+    if (!said && wards.some((W) => W.foes.some((b) => !b.dead && Math.hypot(b.x - me.x, b.z - me.z) < 18))) { said = true; bark([['sorrel', 'Those aren\'t beasts. Those were people, once. Ash all the way through.'], ['rowan', 'Then we put them down kindly. The kill\'s yours where you can, Sprout.']]); }
+  } };
+  showQuest();
+}
+function breakWard(W) {
+  W.broken = true;
+  story.wardsDone = [...(story.wardsDone || []), W.i];
+  saveStory(story);
+  fx.ring(W.w.x, W.w.z, 3, 0xffd24a, 0.6);
+  fx.puff(W.w.x, W.w.z, 0x3a2a4a);
+  if (wardMeshes[W.i]) { view.scene.remove(wardMeshes[W.i]); wardMeshes[W.i] = null; }
+  const left = wards.filter((q) => !q.broken).length;
+  toast('A ward broken', left ? `${left} left` : 'The last of them');
+  if (!left) setTimeout(playCircle, 1500);
+  else bark([[['juni', 'sorrel', 'rowan'][W.i % 3], ['One down. Two to go.', 'That\'s two. The last one\'s on the far side.', 'Last one. Stay close.'][3 - left - 1] || 'Next.']]);
+  showQuest();
+}
+async function playCircle() {
+  questRun = null;
+  uses.clear();
+  await runScene(circleScene);
+  story.ninth = true;
+  setStage('act2');
+  toast('Quest complete: An Invitation', 'The End of Act I · you have joined the Ninth Hand');
+  hounds();
+  const f = follow(company, world.land);
+  questRun = { update(dt) { f.update(dt, me); } };
+  showQuest();
+}
+
 function toMourning() {
   for (const who of ['rowan', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
   if (company.ilse) { company.ilse.remove(); delete company.ilse; }
@@ -1693,6 +1909,12 @@ function toMourning() {
 
 // (0.99.29) the townsfolk's and the beasts' bodies start loading now, a couple at a time (they appear close up)
 setTimeout(() => preload(['e_wolf', 'e_thornhog', 'v_farmer_m', 'v_farmer_f', 'v_elder_m', 'v_elder_f', 'v_miner_m', 'v_child', 'e_golem']), 1500);
+
+/** (1.0) The nearest ward still standing. */
+function nextWard() {
+  const left = wards.filter((W) => !W.broken).sort((p, q) => Math.hypot(p.w.x - me.x, p.w.z - me.z) - Math.hypot(q.w.x - me.x, q.w.z - me.z));
+  return left.length ? left[0].w : null;
+}
 
 /** (0.99.29) The nearest beast still to be hunted for a contract. */
 function nearestFoe() {
@@ -1741,6 +1963,14 @@ else if (story.stage === 'stumble') {
   toGuild();
   crystal.mark(true);
   showQuest();
+  startInvitation();
+} else if (story.stage === 'tower') {
+  setTimeout(startTower, 0);
+} else if (story.stage === 'wards') {
+  me.x = WATCHTOWER.x - 2; me.z = WATCHTOWER.z + 16; prev.x = me.x; prev.z = me.z;
+  setTimeout(startWards, 0);
+} else if (story.stage === 'act2') {
+  toGuild();
   crystal.mark(true);
   showQuest();
 } else if (story.stage === 'path' || story.stage === 'ambush') {
@@ -1934,4 +2164,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
-window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

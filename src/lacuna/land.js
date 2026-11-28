@@ -36,6 +36,8 @@ export const TRAINING = {
 };
 // (0.99.24) the plaza's well (the days with the Hounds: water for Ilse)
 export const WELL = { x: 6, z: 4.5, r: 0.85 };
+// (1.0) the old watchtower on the north ridge, on the stony ground (Quest 6): solid, and nothing grows on it
+export const WATCHTOWER = { x: 62, z: -205, hw: 2.4, hd: 2.4 };
 export const inTraining = (x, z, pad = 0) => x > TRAINING.x0 - pad && x < TRAINING.x1 + pad && z > TRAINING.z0 - pad && z < TRAINING.z1 + pad;
 /** Every post of the training ground: four round the ring, then the three targets (the order the sim makes them in). */
 export function trainingPosts() {
@@ -140,6 +142,7 @@ export class Land {
     this.insert({ kind: 'water', shape: 'circle', x: LAKE.x, z: LAKE.z, r: LAKE.r - 1.2 });
     this.insert({ kind: 'crystal', shape: 'circle', x: CRYSTAL.x, z: CRYSTAL.z, r: CRYSTAL.r }); // (0.99.20) the Guild's Telling Glass
     this.insert({ kind: 'well', shape: 'circle', x: WELL.x, z: WELL.z, r: WELL.r }); // (0.99.24) the plaza's well
+    this.insert({ kind: 'tower', shape: 'box', x: WATCHTOWER.x, z: WATCHTOWER.z, hw: WATCHTOWER.hw, hd: WATCHTOWER.hd, rot: 0, r: 3.4 }); // (1.0) the watchtower
   }
 
   /** The chunk at (cx, cz), made the first time it is asked for. */
@@ -163,7 +166,7 @@ export class Land {
     const x0 = -HALF + cx * LAND.chunk, z0 = -HALF + cz * LAND.chunk;
     const solid = [];
     const trees = [], rocks = [];
-    const free = (x, z, r, gap) => solid.every((o) => o.shape === 'box' || dHypot(o.x - x, o.z - z) > o.r + r + gap) && !this.housesNear(x, z, r + 1.5);
+    const free = (x, z, r, gap) => solid.every((o) => o.shape === 'box' || dHypot(o.x - x, o.z - z) > o.r + r + gap) && !this.housesNear(x, z, r + 1.5) && dHypot(x - WATCHTOWER.x, z - WATCHTOWER.z) > 12;
     // Trees: many tries, kept where the land is wooded enough and there is room.
     for (let k = 0; k < 220; k++) {
       const x = x0 + rng() * LAND.chunk, z = z0 + rng() * LAND.chunk, roll = rng(), size = rng(), kind = rng();
@@ -197,7 +200,7 @@ export class Land {
       const g = groundAt(x, z, this.seed);
       const type = g === 'forest' ? 'wolf' : g === 'meadow' ? 'hog' : g === 'stony' ? 'golem' : null;
       if (!type || !free(x, z, 1.2, 1) || spawns.some((s) => dHypot(s.x - x, s.z - z) < 4)) continue;
-      if (roadDist(x, z) < 16 || dHypot(x - GLADE.x, z - GLADE.z) < 45 || inTraining(x, z, 22)) continue; // (phase 2) the roads, the glade and the training ground are safe
+      if (roadDist(x, z) < 16 || dHypot(x - GLADE.x, z - GLADE.z) < 45 || inTraining(x, z, 22) || dHypot(x - WATCHTOWER.x, z - WATCHTOWER.z) < 48) continue; // (phase 2) the roads, the glade and the training ground are safe; (1.0) and the watchtower's hill is left to the Unbound
       spawns.push({ type, x, z });
     }
     return { cx, cz, x0, z0, trees, rocks, houses, solid, spawns };

@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Quest kinds, an Available Quests list, and the end of Lacuna's Act I (1.0)
+
+- **Every quest is labelled with its kind**, as in FFXIV, so you know what you can leave for later: **✦ Main Story** (gold: follow these to see what happens next), **✚ New Content** (blue: unlocks something new, such as the Ring Glass or Haven), **❖ Side Story** (purple: optional stories), **! Side Quest** (pale: experience and rewards, safe to skip) and **↻ Repeatable** (green). The label shows when a quest is offered, in the journal and in the quest tracker.
+- **The journal's right page now opens on Available Quests** (the old signboard logs are one tab across, under Lore): every quest you could take right now, grouped by kind, with who gives it and where, and a note of the level the main story picks up again at when it is waiting on you.
+- **Lacuna, Quest 6: An Invitation.** A letter under the Hounds' door, signed T. The old watchtower on the north ridge at dusk, Thessaly, and three ash-wards round the tower, guarded by thralls (people, once) and an acolyte of the Unbound. Break the wards (F, once their guards are down) with the Hounds at your side, and find out what is under the tower. **The end of Act I.**
+- **Lacuna's journal (J)**: what you are doing, and what you could be: the main story, new content (Moving Well with H, the talent web with P) and the Guild's bounties.
+- **The Guild's bounties** (repeatable): the board by the Telling Glass has three a day (wolves in the Wakewood, thornhogs in the meadows, cairns on the stony north...). Take one, hunt them, hand it in for a good part of a level's experience. One at a time; X at the board gives one up.
+
 ### Lacuna: progress kept with your account (0.99.38)
 
 - Signed in and joining a server world, your Lacuna progress (experience and so your level, each path's talent web, the tricks you have learned) is sent to the server and kept with your account, and sent again now and then as it grows. On another browser, joining hands it back: whichever has seen more experience wins (the story is played alone in the browser, so the browser earns it; the account keeps it safe and carries it about).

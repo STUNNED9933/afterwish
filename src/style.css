@@ -696,6 +696,20 @@ body[data-mode="title"] #quest-track, body[data-mode="town"] #quest-track, body[
 .lore small { color: var(--muted); font-size: 12px; }
 .lore p { margin: 4px 0 0; font: italic 400 15px/1.5 var(--body); color: #d8dce6; white-space: pre-line; }
 .lore.missing { opacity: 0.5; border-left-style: dashed; }
+/* (1.0) quest kinds, after FFXIV: the main story gold, new content blue, side stories violet, side quests pale, repeatables green */
+.qcat { align-self: flex-start; display: inline-block; padding: 1px 8px; border-radius: 10px; font: 600 11px var(--body); letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid currentColor; }
+.qcat-main { color: #ffcf4a; } .qcat-feature { color: #6ec0ff; } .qcat-story { color: #d6a4ff; } .qcat-side { color: #e8dcb0; } .qcat-repeat { color: #8fdca0; }
+.jtabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.jtabs button { padding: 5px 12px; font: 600 12px var(--body); letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 4px; cursor: pointer; }
+.jtabs button.on { color: var(--gold); border-color: var(--gold); }
+.avail-head { margin: 12px 0 6px; font: 600 13px var(--body); letter-spacing: 0.1em; text-transform: uppercase; }
+.avail-head:first-child { margin-top: 0; }
+.avail-head small { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); font-size: 12px; }
+.avail { padding: 7px 12px; border-left: 2px solid var(--line); background: rgba(255, 255, 255, 0.03); margin-bottom: 5px; }
+.avail b { display: block; font: 600 15px var(--body); color: var(--bone); }
+.avail small { color: var(--muted); font-size: 12px; }
+.avail.locked { opacity: 0.6; border-left-style: dashed; }
+.qt b i { font-style: normal; }
 @media (max-width: 760px) { .journal-cols { grid-template-columns: 1fr; } }
 /* The Casebook (0.56) */
 #casebook { align-items: flex-start; justify-content: center; padding: 16px; background: rgba(6, 8, 14, 0.8); }

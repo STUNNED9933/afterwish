@@ -1,3 +1,6 @@
+// (1.0) a quest's kind, as its icon in the tracker (the colours as in the journal)
+import { QUEST_CATS } from '../sim/story.js';
+const qIcon = (q) => `<i class="qcat-${q.cat || 'side'}" title="${(QUEST_CATS[q.cat] || QUEST_CATS.side).name}">${(QUEST_CATS[q.cat] || QUEST_CATS.side).icon}</i> `;
 import { holdToRank } from '../input.js'; // (0.91.1)
 // The heads-up display: health and EXP bars, ability bar with ranks, wave and
 // boss status, enemy health bars, floating combat text, banners and hints.
@@ -995,8 +998,8 @@ export class Hud {
         const q = QUESTS[id];
         if (!q || st.s === 'done') continue;
         quests.push(st.s === 'ready'
-          ? `<div class="qt ready"><b>${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name} in Haven</span></div>`
-          : `<div class="qt"><b>${q.name}</b><span>${goalText(q, st.tier)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
+          ? `<div class="qt ready"><b>${qIcon(q)}${q.name}</b><span>Return to ${NPCS[world.questTaker(q.giver)].name} in Haven</span></div>`
+          : `<div class="qt"><b>${qIcon(q)}${q.name}</b><span>${goalText(q, st.tier)}${world.questNeed(q) > 1 ? ` · ${st.n}/${world.questNeed(q)}` : ''}</span></div>`);
       }
       if (quests.length) groups.push({ id: 'quests', name: 'Quests', rows: quests, ready: quests.filter((r) => r.includes('qt ready')).length });
       const jobs = (p.bounties || []).filter(Boolean).map((b) => b.done

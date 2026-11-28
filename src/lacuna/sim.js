@@ -856,7 +856,7 @@ export class LandWorld {
       b.awake = false;
       b.moving = false;
       b.diedAt = this.time;
-      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: BEASTS[b.type].xp, story: b.story || '' });
+      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: (b.def && b.def.xp) || BEASTS[b.type].xp, story: b.story || '' });
       return;
     }
     // struck from afar, it comes for whoever struck it
@@ -870,7 +870,7 @@ export class LandWorld {
   revive(b) {
     b.dead = false;
     // (0.99.30) a story's beast (an ashen wolf, a contract's quarry) comes back as an ordinary one of its kind
-    if (b.story) { b.story = undefined; b.def = undefined; b.job = undefined; b.ward = null; b.hidden = false; b.maxHp = BEASTS[b.type].hp; }
+    if (b.story) { b.story = undefined; b.def = undefined; b.job = undefined; b.look = undefined; b.ward = null; b.hidden = false; b.maxHp = BEASTS[b.type].hp; }
     b.hp = b.maxHp;
     b.x = b.hx; b.z = b.hz;
     b.state = 'idle';

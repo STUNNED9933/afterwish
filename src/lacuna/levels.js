@@ -26,7 +26,7 @@ export const pointsAt = (L) => Math.max(0, Math.min(MAX_LEVEL, L) - 1);
 /** Experience for finishing each part of the story (the stage being left), once. */
 export const QUEST_XP = {
   stumble: 30, rescued: 30, waking: 40, asking: 40, days: 180, crystal: 80, path: 120, ambush: 60, hunt: 150,
-  mourning: 300, contracts: 450, report: 200,
+  mourning: 300, contracts: 450, report: 200, invitation: 80, tower: 120, wards: 600,
 };
 /** For each trick learned (moving well). */
 export const TRICK_XP = 40;

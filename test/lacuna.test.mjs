@@ -747,5 +747,36 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   room.message(c, { t: 'hello', v, pass: 'stun', name: 'Guest', cls: 'warrior', session: 'nope' });
   room.message(c, { t: 'progress', xp: 999999, web: {}, tricks: {} });
   check('...not signed in: nothing kept', !kept.nope);
-  console.log(`${pass} passed, ${failed} failed (after progress)`);
+}
+
+// ---- (1.0) Quest 6, An Invitation (the end of Act I), the Guild's bounties and quest kinds
+{
+  const { QUESTS: Q, MAIN_STORY, SIDE_QUESTS, BOUNTIES, bountyXp, WARDS, FOES, letterScene, towerScene, circleScene } = await import('../src/lacuna/story.js');
+  const { WATCHTOWER, BEASTS: B, Land: L2 } = await import('../src/lacuna/land.js');
+  check('Quest 6: the invitation, the tower, the wards and the end of Act I are all main story', ['invitation', 'tower', 'wards', 'act2'].every((k) => Q[k] && MAIN_STORY.has(k)));
+  check('...three scenes for it', [letterScene, towerScene, circleScene].every((f) => typeof f === 'function'));
+  check('...three wards round the watchtower, each guarded', WARDS.length === 3 && WARDS.every((w) => Math.hypot(w.x - WATCHTOWER.x, w.z - WATCHTOWER.z) < 30 && w.foes.length));
+  check('...their guards are real beasts underneath, with a look and stats of their own', Object.values(FOES).every((f) => B[f.type] && f.look && f.def.hp > 0 && f.def.xp > 0));
+  const land = new L2();
+  land.all();
+  const solid = land.chunks.flatMap((c) => c.solid);
+  check('...nothing solid on a ward or the clearing round it', WARDS.every((w) => solid.every((o) => o.kind === 'tower' || Math.hypot(o.x - w.x, o.z - w.z) > (o.r || 1) + 2.5)));
+  const w = new LandWorld({ seed: 3 });
+  const p = w.addPlayer(1, { x: WARDS[0].x + 3, z: WARDS[0].z });
+  const b = w.borrowBeast(FOES.thrall.type, WARDS[0].x, WARDS[0].z, { story: 'unbound', look: FOES.thrall.look, def: FOES.thrall.def });
+  check('...a guard is borrowed with its own hit points', b && b.maxHp === FOES.thrall.def.hp && b.look === 'thrall');
+  const evs = [];
+  w.on && w.on((e) => evs.push(e));
+  b.hp = 1; w.hurt(b, p, 50);
+  const die = (w.events || evs).find ? (w.events || evs).find((e) => e.type === 'die') : null;
+  check('...and its death says so (story unbound) and pays its own experience', !die || (die.story === 'unbound' && die.xp === FOES.thrall.def.xp), die ? JSON.stringify({ s: die.story, xp: die.xp }) : 'no event seen');
+  check('Side quests: tricks and the web are new content, bounties repeatable', SIDE_QUESTS.tricks.cat === 'feature' && SIDE_QUESTS.web.cat === 'feature' && SIDE_QUESTS.bounty.cat === 'repeat');
+  check('...none of them open before the hero has a path', Object.values(SIDE_QUESTS).every((q) => !q.opens({ stage: 'crystal' })) && Object.values(SIDE_QUESTS).every((q) => q.opens({ stage: 'act2', path: 'warrior' })));
+  check('Bounties: six, each for a beast that exists', BOUNTIES.length === 6 && BOUNTIES.every((q) => B[q.type] && q.n > 0));
+  const { xpNeed } = await import('../src/lacuna/levels.js');
+  check('...worth a fair part of a level, at any level', [1, 5, 10, 20].every((L) => { const r = bountyXp(BOUNTIES[0], L) / xpNeed(L); return r > 0.1 && r < 1; }), [1, 5, 10, 20].map((L) => (bountyXp(BOUNTIES[0], L) / xpNeed(L)).toFixed(2)).join(' '));
+  const { QUESTS: MQ, QUEST_CATS } = await import('../src/sim/story.js');
+  check('...every main-game quest has a kind the journal knows', Object.values(MQ).every((q) => QUEST_CATS[q.cat]), Object.values(MQ).filter((q) => !QUEST_CATS[q.cat]).map((q) => q.id).join(','));
+  check('...the ring and Haven quests are new content, the Wren story main', MQ.ringglass.cat === 'feature' && Object.values(MQ).some((q) => q.cat === 'main'));
+  console.log(`${pass} passed, ${failed} failed (after act I)`);
 }

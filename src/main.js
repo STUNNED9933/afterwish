@@ -22,7 +22,7 @@ import { Music } from './music/player.js';
 import { MAP_SONG, BOSS_SONG, MAP_ID_SONG, fightSong } from './music/songs.js';
 import { MAPS, MAP_IDS } from './sim/maps.js';
 import { BOSSES, ENEMIES } from './sim/defs.js';
-import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES } from './sim/story.js';
+import { QUESTS, QUEST_IDS, NPCS, SIGNS, SIGN_IDS, HERALD_LINES, QUEST_CATS } from './sim/story.js';
 import { SPECS, specsFor, ROW_NEED, talentPointsAt } from './sim/talents.js';
 import { BORROWED, BORROW_SLOTS, OATH } from './sim/borrowed.js';
 import { goalText, setGearClass } from './ui/hud.js';
@@ -2466,7 +2466,7 @@ function start(hot = {}) {
       el.className = 'quest' + (st === 'ready' ? ' ready' : '');
       const need = world.questNeed(q);
       const prog = st === 'active' && need > 1 ? ` · ${world.player.quests[id].n}/${need}` : '';
-      el.innerHTML = `<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? (id === 'scarf2' && world.player.choices && world.player.choices.scarf === 'walk' ? q.doneAlt : q.done) : q.offer)}</p><div class="goal">${goalText(q, q.perTier ? world.questTier(id) : 0)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
+      el.innerHTML = `${catBadge(q)}<h4>${esc(q.name)}<small>level ${q.level}</small></h4><p>${esc(st === 'ready' ? (id === 'scarf2' && world.player.choices && world.player.choices.scarf === 'walk' ? q.doneAlt : q.done) : q.offer)}</p><div class="goal">${goalText(q, q.perTier ? world.questTier(id) : 0)}${prog}</div><div class="rewards">Reward: ${rewardText(id)}</div>`;
       const btn = document.createElement('button');
       btn.type = 'button';
       if (st === 'ready') {
@@ -2615,6 +2615,45 @@ function start(hot = {}) {
     $('read-note').textContent = `A sliver of the fallen star, and it remembers what it saw. Kept in your journal for every class and every life (${world.player.signs.length} of ${SIGN_IDS.length} found). Press J to see them again.`;
   }
 
+  /** (1.0) A quest's kind, as a small coloured tag (Main Story, New Content, Side Story, Side Quest, Repeatable). */
+  function catBadge(q) {
+    const c = QUEST_CATS[q.cat] || QUEST_CATS.side;
+    return `<span class="qcat qcat-${q.cat}" title="${esc(c.note)}">${c.icon} ${c.name}</span>`;
+  }
+  /**
+   * (1.0) What you could take up now, by kind (the main story first), who gives it and where; and when the main
+   * story next goes on, if it is waiting for a level.
+   */
+  function renderAvailable() {
+    const p = world.player;
+    const groups = {};
+    for (const id of QUEST_IDS) {
+      const q = QUESTS[id];
+      const st = p.quests[id];
+      if (st && !(q.repeat && st.s === 'done')) continue;
+      if (!world.questOpen(id)) continue;
+      (groups[q.cat] = groups[q.cat] || []).push(q);
+    }
+    // the main story's next step, if it waits for a level
+    let next = null;
+    for (const id of QUEST_IDS) {
+      const q = QUESTS[id];
+      if (q.cat !== 'main' || p.quests[id] || q.act3) continue;
+      if (q.after && world.questState(q.after) !== 'done') continue;
+      if (!world.questOpen(id)) { next = q; break; }
+    }
+    const order = ['main', 'feature', 'story', 'side', 'repeat'];
+    const html = [];
+    for (const cat of order) {
+      const list = groups[cat] || [];
+      if (!list.length && !(cat === 'main' && next)) continue;
+      const c = QUEST_CATS[cat];
+      html.push(`<div class="avail-head qcat-${cat}">${c.icon} ${c.name}<small>${esc(c.note)}</small></div>`);
+      for (const q of list) html.push(`<div class="avail"><b>${esc(q.name)}</b><small>level ${q.level} · ${esc(NPCS[world.questTaker(q.giver)].name)}, in Haven</small></div>`);
+      if (cat === 'main' && next && !list.length) html.push(`<div class="avail locked"><b>${esc(next.name)}</b><small>The main story goes on at level ${next.level - 4} (you are ${p.level}) · ${esc(NPCS[world.questTaker(next.giver)].name)}</small></div>`);
+    }
+    $('journal-avail').innerHTML = html.join('') || '<p class="setting-desc">Nothing new to take up just now. Look again after your next level, or the next part of the main story.</p>';
+  }
   function renderJournal() {
     const p = world.player;
     const qs = [];
@@ -2625,7 +2664,7 @@ function start(hot = {}) {
       if (!st) continue;
       if (st.s === 'done') { done++; continue; }
       const need = world.questNeed(q);
-      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}"><h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q, st.tier) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
+      qs.push(`<div class="quest ${st.s === 'ready' ? 'ready' : ''}">${catBadge(q)}<h4>${esc(q.name)}<small>${NPCS[world.questTaker(q.giver)].name}</small></h4><div class="goal">${st.s === 'ready' ? 'Done. Return to ' + NPCS[world.questTaker(q.giver)].name + ' in Haven.' : goalText(q, st.tier) + (need > 1 ? ` · ${st.n}/${need}` : '')}</div><div class="rewards">Reward: ${rewardText(id)}</div></div>`);
     }
     const waiting = ['wren', 'bram', 'odile', 'lark', 'pip'].filter((n) => world.npcMarker(n) === '!').map((n) => NPCS[n].name);
     const wait = world.actThreeWait ? world.actThreeWait() : null; // (0.70.4) why Wren has nothing yet
@@ -2637,6 +2676,7 @@ function start(hot = {}) {
     $('journal-quests').innerHTML = (waitText ? `<div class="quest next"><h4>What comes next<small>Wren</small></h4><div class="goal">${esc(waitText)}</div></div>` : '') + (qs.join('') || '<p class="setting-desc">No quests in hand.</p>')
       + (waiting.length ? `<p class="setting-desc">Work waiting in Haven: ${waiting.join(', ')}.</p>` : '')
       + `<p class="setting-desc">${done} quest${done === 1 ? '' : 's'} completed.</p>`;
+    renderAvailable();
     $('journal-lore-head').textContent = `What the road remembers · ${p.signs.length} of ${SIGN_IDS.length}`;
     $('journal-lore').innerHTML = SIGN_IDS.map((id) => {
       const sg = SIGNS[id];
@@ -4592,6 +4632,10 @@ function start(hot = {}) {
     tryImport(text); // checks it and asks for one more click on "Import pasted code" to confirm
   });
   for (const id of ['btn-talk-close', 'btn-read-close', 'btn-journal-close', 'btn-casebook-close', 'btn-talents-close']) $(id).addEventListener('click', () => setMode('play'));
+  // (1.0) the journal's right side: the quests you could take up, or what the road remembers
+  for (const [btn, show] of [['jt-avail', 'journal-avail'], ['jt-lore', 'journal-lore-wrap']]) $(btn).addEventListener('click', () => {
+    for (const [b, el] of [['jt-avail', 'journal-avail'], ['jt-lore', 'journal-lore-wrap']]) { $(b).classList.toggle('on', b === btn); $(el).classList.toggle('hidden', el !== show); }
+  });
   $('btn-casebook').addEventListener('click', () => actions.toggleCasebook());
   caseBadge();
   $('btn-journal-casebook').addEventListener('click', () => actions.toggleCasebook());

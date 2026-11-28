@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { LAND, HALF, CHUNKS, groundAt, LAKE, noise } from './land.js';
 import { placeBuilding, TOWN_SET } from '../render/buildings.js';
 import { CREATURES } from '../render/creatures.js';
+import { WATCHTOWER } from './land.js';
 import { RIGGED } from '../render/rigged.js';
 // (0.99.29) the Thornhog's own model (made for Lacuna; registered here, as the main game does its own)
 if (!RIGGED.e_thornhog) RIGGED.e_thornhog = { url: 'models/e_thornhog.glb', height: 1, turn: -Math.PI / 2, recentre: '*', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis', 'Hips'] };
@@ -21,7 +22,14 @@ const LIVE_BEAST = {
   hog: { model: 'e_thornhog', height: 0.8, beast: true, back: 0.45 },
 };
 const ASHEN = new Map(); // (Quest 4 and 5) ash in their fur or their cracks: the same body, greyed and darkened
+// (1.0) a story's foe can wear another body: the Unbound's ash-thralls and acolytes (the main game's ashwalker and
+// thurifer, darkened)
+const LOOKS = {
+  thrall: { ...CREATURES.ashwalker, height: 1.9 },
+  acolyte: { ...CREATURES.thurifer, height: 2.0, tint: 0x2a1840, dark: 0.55 },
+};
 const liveSpec = (b) => {
+  if (b.look && LOOKS[b.look]) return LOOKS[b.look];
   const base = LIVE_BEAST[b.type];
   if (!base || b.story !== 'ashen') return base;
   if (!ASHEN.has(b.type)) ASHEN.set(b.type, { ...base, tint: 0x3a3436, dark: 0.55 });
@@ -154,6 +162,12 @@ export class LandView {
     }
     this.prev = new Map(); // beast id -> last position drawn (for smooth motion between sim steps)
     this.lively = new Lively(this.scene);
+    // (1.0) the old watchtower on the north ridge (weathered grey)
+    placeBuilding('tower_a_yellow', { x: WATCHTOWER.x, z: WATCHTOWER.z, rot: 0, fw: WATCHTOWER.hw * 2 + 0.4, fd: WATCHTOWER.hd * 2 + 0.4, tint: 0x9a968c }).then((b) => {
+      if (!b) return;
+      b.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      this.scene.add(b);
+    });
     this.liveT = null;
     this.tmpM = new THREE.Matrix4();
     this.tmpQ = new THREE.Quaternion();
@@ -295,7 +309,7 @@ export class LandView {
   liveBeasts(near, time) {
     const dt = this.liveT === null ? 0 : Math.min(0.1, Math.max(0, time - this.liveT));
     this.liveT = time;
-    const want = near.filter((n) => n.d < LIVE_R && !n.b.hidden && LIVE_BEAST[n.b.type]).sort((p, q) => p.d - q.d).slice(0, LIVE_N).map((n) => ({
+    const want = near.filter((n) => n.d < LIVE_R && !n.b.hidden && (LIVE_BEAST[n.b.type] || LOOKS[n.b.look])).sort((p, q) => p.d - q.d).slice(0, LIVE_N).map((n) => ({
       key: n.b.id,
       spec: liveSpec(n.b),
       x: n.x, z: n.z, facing: n.b.facing,

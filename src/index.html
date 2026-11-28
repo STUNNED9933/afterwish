@@ -567,7 +567,11 @@
     <div class="card-head"><h2>Journal</h2><button type="button" id="btn-journal-casebook" class="ghost">Ex Voto <kbd>B</kbd></button><button type="button" id="btn-journal-close" class="ghost">Close <kbd>J</kbd></button></div>
     <div class="journal-cols">
       <div><h3>Quests</h3><div id="journal-quests"></div></div>
-      <div><h3 id="journal-lore-head">What the road remembers</h3><div id="journal-lore"></div></div>
+      <div>
+        <div class="jtabs"><button type="button" id="jt-avail" class="on">Available quests</button><button type="button" id="jt-lore">What the road remembers</button></div>
+        <div id="journal-avail"></div>
+        <div id="journal-lore-wrap" class="hidden"><h3 id="journal-lore-head">What the road remembers</h3><div id="journal-lore"></div></div>
+      </div>
     </div>
   </div>
 </section>

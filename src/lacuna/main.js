@@ -1289,6 +1289,7 @@ function setStage(stage) {
   if (from && from !== stage && QUEST_XP[from] && !story.xpq[from]) { story.xpq[from] = true; gainXp(QUEST_XP[from], 'the story'); }
   story.stage = stage;
   saveStory(story);
+  showSkip();
   setFog(FOG_AT[stage] ?? 0, 1.5);
   showQuest();
 }
@@ -1365,7 +1366,29 @@ function takeKeepsake() {
 }
 $('cs-skip').addEventListener('click', () => cutscene.skip());
 for (const id of ['cs-box', 'cs-card']) $(id).addEventListener('mousedown', () => cutscene.key('Click'));
-$('replay').addEventListener('click', () => { story = { stage: 'new' }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
+// (1.1) what is yours, not the story's: kept when the opening is played again (experience, talents, tricks, gear)
+const EARLY = () => STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('path'));
+const KEEP = ['xp', 'xpq', 'web', 'tricks', 'gear', 'featXp', 'bounty', 'bountiesDone'];
+const kept = () => Object.fromEntries(KEEP.filter((k) => story[k] !== undefined).map((k) => [k, story[k]]));
+$('replay').addEventListener('click', () => { story = { stage: 'new', ...kept() }; trial = null; $('choose').classList.add('hidden'); saveStory(story); playOpening(); });
+// (1.1) here to hunt: a minute's read of the story so far, then straight to choosing a path
+function showSkip() { $('skipstory').classList.toggle('hidden', !EARLY().includes(story.stage)); }
+showSkip();
+$('skipstory').addEventListener('click', () => { if (locked()) document.exitPointerLock(); $('recap').classList.remove('hidden'); });
+$('recap-back').addEventListener('click', () => { $('recap').classList.add('hidden'); relock(); });
+$('recap-go').addEventListener('click', () => {
+  if (!EARLY().includes(story.stage)) return;
+  story.xpq = story.xpq || {};
+  let xp = 0;
+  for (const st of EARLY()) if (QUEST_XP[st] && !story.xpq[st]) { story.xpq[st] = true; xp += QUEST_XP[st]; }
+  story.xp = (story.xp || 0) + xp;
+  story.stage = 'path';
+  story.trial = 'choose';
+  story.keepsake = true;
+  story.skipped = true;
+  saveStory(story);
+  location.reload(); // (the page sets itself up at the training ground, the choice open)
+});
 const markV = new THREE.Vector3();
 function drawMarker() {
   const lead = story.stage === 'invitation' ? HOME.door : story.stage === 'tower' ? WATCHTOWER : story.stage === 'wards' && wards ? nextWard() : story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;

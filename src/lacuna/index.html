@@ -112,6 +112,10 @@
   #side-quest { position: fixed; right: 10px; top: 150px; width: 250px; padding: 6px 11px; background: rgba(10, 14, 24, 0.66); border-left: 3px solid #8fdca0; border-radius: 4px; color: #e8eefc; font-size: 12px; pointer-events: none; }
   #side-quest b { display: block; color: #8fdca0; font-size: 12px; }
   /* (1.1) gear */
+  #skipstory { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 34; padding: 6px 12px; background: rgba(10, 14, 24, 0.78); border: 1px solid #44506e; border-radius: 16px; color: #cfd8ee; font: 12px system-ui; cursor: pointer; } #skipstory b { color: #ffd24a; } #skipstory:hover { background: rgba(30, 38, 58, 0.9); } #skipstory.hidden { display: none; }
+  #recap { position: fixed; inset: 0; z-index: 36; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, 0.8); } #recap.hidden { display: none; }
+  .recapcard { width: min(640px, 94vw); line-height: 1.5; } .recapcard p b { color: #ffd24a; }
+  #recap button { padding: 7px 12px; background: #ffd24a; border: 0; border-radius: 4px; color: #1a1406; font: 700 13px system-ui; cursor: pointer; } #recap button.ghost { background: #1d2638; color: #e8eefc; border: 1px solid #44506e; }
   #gear, #riftpick { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, 0.72); }
   #gear.hidden, #riftpick.hidden { display: none; }
   .gearcard { width: min(1080px, 96vw); position: relative; }
@@ -235,6 +239,16 @@
   <div class="jcols"><div><h4>In hand</h4><div id="j-hand"></div></div><div><h4>Available quests</h4><div id="j-avail"></div></div></div>
 </div></div>
 <div id="gear" class="hidden"></div>
+<button id="skipstory" class="hidden" type="button">Here to hunt? <b>Skip to choosing a path</b></button>
+<div id="recap" class="hidden"><div class="jcard recapcard">
+  <div class="jhead"><b>The story so far</b><span class="jkeys">a minute's read</span></div>
+  <p><b>The tear.</b> You woke in a glade in the Wakewood, with no idea how you got there: only a crack in the air where you came through, and a name that is nearly yours. Small, weak, and very far from home.</p>
+  <p><b>The Iron Hounds.</b> Sorrel, a scholar who had come to study the crack, found you there instead. His company took you in: <b>Rowan</b>, who leads them and swings a sword bigger than you; <b>Juni</b>, the archer who never stops talking; <b>Ilse</b>, who carries the shield; and Sorrel. They asked all over Sunmere for your family. Nobody came.</p>
+  <p><b>The Telling Glass.</b> Days with the Hounds got your strength back. At the Adventurers' Guild the Telling Glass judged you: an aptitude of three, and no element at all. Rank F, says Magistra Odile, and rank F does not change. Then the glass cracked under someone else's hands, and nobody could say why.</p>
+  <p><b>Now.</b> The Hounds don't care what the glass says. They'll train you anyway: Rowan's way, or Juni's.</p>
+  <p class="ghelp">You keep the experience the skipped quests would have given you. The story goes on after you choose (it is in your journal, <kbd>J</kbd>, as Main Story, and you can leave it for as long as you like), and you can play the opening any time from the corner.</p>
+  <div class="gbulk"><button id="recap-go" type="button">Skip to choosing a path</button><button id="recap-back" type="button" class="ghost">Back to the story</button></div>
+</div></div>
 <div id="bossbar" class="hidden"><b></b><div><i></i></div></div>
 <div id="riftpick" class="hidden"><div class="jcard">
   <div class="jhead"><b>The Ash Rift</b><span class="jkeys"><kbd>1</kbd>-<kbd>9</kbd> or click a tier · <kbd>Esc</kbd> to close</span></div>

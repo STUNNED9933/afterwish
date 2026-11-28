@@ -160,6 +160,11 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: here to hunt? Skip to choosing a path (1.1.1)
+
+- **A skip for players who would rather hunt.** Until you choose a path, a button at the top of the screen (shown during the opening scenes too) offers to skip ahead. A minute's read of *the story so far* (the tear, the Iron Hounds, the Telling Glass) comes first, then you go straight to choosing Berserker or Sharpshooter, with the experience the skipped quests would have given you. From there everything for hunting gear is open, and the story waits in the journal as Main Story for whenever you want it.
+- **Playing the opening again no longer wipes your experience, talents, tricks or gear.**
+
 ### Lacuna: gear to hunt for (1.1)
 
 For anyone who would rather hunt than follow the story: none of this needs more than choosing a path (Quest 3).

@@ -1,0 +1,32 @@
+{
+  "task_id": "d78e460d-4641-48c0-a0b1-8a68920a1e97",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "ONE single figure alone, nobody else in the scene: a Mourner, the ghost of one grieving widow, slender, in a close-fitting black lace mourning dress that ends just below the knee, bare pale grey shins and feet, a short black veil over her face to the chin, pale grey translucent skin, long white hair tied back, holding one dim violet candle in her right hand, weeping violet light under the veil, arms clear of the body. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 9000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-28T12:00:51.034438Z",
+  "completed_at": "2026-11-28T12:02:28.754912Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

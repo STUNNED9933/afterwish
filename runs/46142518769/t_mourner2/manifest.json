@@ -1,0 +1,96 @@
+{
+  "id": "t_mourner2",
+  "prompt": "ONE single figure alone, nobody else in the scene: a Mourner, the ghost of one grieving widow, slender, in a close-fitting black lace mourning dress that ends just below the knee, bare pale grey shins and feet, a short black veil over her face to the chin, pale grey translucent skin, long white hair tied back, holding one dim violet candle in her right hand, weeping violet light under the veil, arms clear of the body. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+  "started": "2026-11-28T12:00:50.193Z",
+  "creditsBefore": 1325,
+  "steps": {
+    "model": {
+      "task": "d78e460d-4641-48c0-a0b1-8a68920a1e97",
+      "result": {
+        "task_id": "d78e460d-4641-48c0-a0b1-8a68920a1e97",
+        "type": "text_to_model",
+        "status": "success",
+        "credits_consumed": 30,
+        "output_dir": "out/models/t_mourner2/1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "generated_image.jpeg",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_mourner2/1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/model.glb",
+        "preview": "out/models/t_mourner2/1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/preview.png"
+      }
+    },
+    "check": {
+      "task": "bc14b4f7-8cb7-46bd-bbc8-46cd1fdbd173",
+      "result": {
+        "task_id": "bc14b4f7-8cb7-46bd-bbc8-46cd1fdbd173",
+        "type": "animate_prerigcheck",
+        "status": "success",
+        "credits_consumed": 0,
+        "output_dir": "out/models/t_mourner2/2-check/tripo-out/rig-check-bc14b4f7",
+        "files": []
+      }
+    },
+    "rig": {
+      "task": "6e16241e-0af0-44fe-a2e3-39632c11f2b7",
+      "rigType": "biped",
+      "result": {
+        "task_id": "6e16241e-0af0-44fe-a2e3-39632c11f2b7",
+        "type": "animate_rig",
+        "status": "success",
+        "credits_consumed": 25,
+        "output_dir": "out/models/t_mourner2/3-rig/tripo-out/rig-6e16241e",
+        "files": [
+          "model.glb",
+          "rendered_image.webp",
+          "preview.png"
+        ],
+        "model_file": "out/models/t_mourner2/3-rig/tripo-out/rig-6e16241e/model.glb",
+        "preview": "out/models/t_mourner2/3-rig/tripo-out/rig-6e16241e/preview.png"
+      }
+    },
+    "animations": [
+      {
+        "task": "ff17ffe1-49f8-451b-b431-094f8dc45e36",
+        "presets": [
+          "preset:biped:idle",
+          "preset:biped:walk",
+          "preset:biped:cast_a_spell",
+          "preset:biped:hit_to_body_01",
+          "preset:biped:fall"
+        ],
+        "result": {
+          "task_id": "ff17ffe1-49f8-451b-b431-094f8dc45e36",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 50,
+          "output_dir": "out/models/t_mourner2/4-anim-1/tripo-out/retarget-ff17ffe1",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_mourner2/4-anim-1/tripo-out/retarget-ff17ffe1/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 965,
+  "creditsUsed": 360,
+  "finished": "2026-11-28T12:03:25.474Z",
+  "files": [
+    "1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/generated_image.jpeg",
+    "1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/model.glb",
+    "1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/preview.png",
+    "1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/rendered_image.webp",
+    "1-model/tripo-out/one-single-figure-alone-nobody-e-d78e460d/task.json",
+    "2-check/tripo-out/rig-check-bc14b4f7/task.json",
+    "3-rig/tripo-out/rig-6e16241e/model.glb",
+    "3-rig/tripo-out/rig-6e16241e/preview.png",
+    "3-rig/tripo-out/rig-6e16241e/rendered_image.webp",
+    "3-rig/tripo-out/rig-6e16241e/task.json",
+    "4-anim-1/tripo-out/retarget-ff17ffe1/model.glb",
+    "4-anim-1/tripo-out/retarget-ff17ffe1/task.json",
+    "manifest.json"
+  ]
+}

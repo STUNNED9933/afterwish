@@ -57,7 +57,7 @@ jobs:
         if: always()
         run: |
           for f in out/anim/report.md out/main/report.md out/lacuna/report.md; do
-            [ -f "$f" ] && { head -c 60000 "$f" | sed 's/!\[\]([^)]*)//g'; echo; } >> "$GITHUB_STEP_SUMMARY"
+            if [ -f "$f" ]; then { head -c 60000 "$f" | sed 's/!\[\]([^)]*)//g'; echo; } >> "$GITHUB_STEP_SUMMARY"; fi
           done
       - uses: actions/upload-artifact@v4
         if: always()
@@ -75,9 +75,12 @@ jobs:
             echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (screenshots in the playtest-report artifact)"
             echo
             for f in out/anim/report.md out/main/report.md out/lacuna/report.md; do
-              [ -f "$f" ] && grep -E '^(# |- \*\*bad)' "$f" | sed 's/!\[\]([^)]*)//g' | head -40
+              if [ -f "$f" ]; then grep -E '^(# |- \*\*bad)' "$f" | sed 's/!\[\]([^)]*)//g' | head -40; fi
               echo
             done
           } > "$body"
           num=$(gh issue list --state open --search "Playtest report in:title" --json number --jq '.[0].number')
           if [ -z "$num" ]; then gh issue create --title "Playtest report" --body-file "$body"; else gh issue comment "$num" --body-file "$body"; fi
+      - name: Fail the run if anything bad was found
+        if: always() && (steps.anim.outcome == 'failure' || steps.menus.outcome == 'failure' || steps.story.outcome == 'failure')
+        run: exit 1

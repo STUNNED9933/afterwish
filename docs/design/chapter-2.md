@@ -127,6 +127,8 @@ play between: the pull and waking; stumbling out of the glade; the wolves and th
 | 5 | Word Gets Around | Three contracts across the land (a walking cairn, Brightwater's thornhogs, the east road's wolves) | All ashen; the ash sites ring Sunmere; Guild rank E by deeds, not the glass; Thessaly watching (0.99.29) |
 | 6 | An Invitation | A letter signed T.; the old watchtower on the north ridge at dusk; three ash-wards guarded by thralls and an acolyte | Breaking the wards only unsteadies the circle; something vast looks at the hero and the Link shuts it; Thessaly admits it was a test and asks him into the Ninth Hand, alongside the Hounds. End of Act I (1.0) |
 
+Farming (1.1, for players who would rather hunt than follow the story; open from Quest 3): Lacuna gear (src/lacuna/loot.js: 5 slots, 6 rarities, 8 uniques, stars, salvage/reroll), elites and rare named beasts, three world bosses on a 12-minute return with telegraphed slams, and the Ash Rift (tiers, five waves and a chest) at the watchtower's circle. Gear is separate from the main game's Eternal gear, which still powers the Link.
+
 Quest kinds, as in the main game: **✦ Main Story** (the quests above), **✚ New Content** (Moving Well, the talent web), **↻ Repeatable** (the Guild's bounties, three a day on the board by the Telling Glass). J opens the journal: what is in hand, and everything available.
 
 ## Power

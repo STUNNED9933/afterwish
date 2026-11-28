@@ -7,6 +7,9 @@
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
 import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST, pointsAt } from './levels.js';
 import { WebUI } from './webui.js';
+import { GearUI, BAG_MOST } from './gearui.js';
+import { gradeOf, itemName, salvageValue, UNIQUE, RIFT, RIFT_AT, BOSSES } from './loot.js';
+import { makeRng } from '../sim/rng.js';
 import * as THREE from 'three';
 import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP } from './sim.js';
 import { LandView, DRAW } from './view.js';
@@ -235,7 +238,7 @@ function joinServer() {
   try { ws = new WebSocket(serverBase() + '/lacuna'); } catch (err) { return mpStatus('That server address does not look right.'); }
   ws.binaryType = 'arraybuffer';
   net = { ws, ready: false, pid: 0, bytes: 0, ping: 0, sentAt: 0, pingAt: 0, send: (m) => ws.readyState === 1 && ws.send(JSON.stringify(m)) };
-  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour, level: me.level, web: webOf() });
+  ws.onopen = () => net.send({ t: 'hello', v: LACUNA_NET, pass, name, cls: hero.cls, session: session(), link: linkNow(), linked: linkAwake, vigour: me.vigour, level: me.level, web: webOf(), worn: gear().worn });
   ws.onmessage = (e) => {
     if (!net) return;
     if (typeof e.data !== 'string') {
@@ -249,6 +252,7 @@ function joinServer() {
         s.fx = s.x; s.fz = s.z; s.tx = u.x; s.tz = u.z; s.t0 = now;
         if (u.dead && !s.dead) { s.x = s.fx = u.x; s.z = s.fz = u.z; }
         Object.assign(s, { id: u.id, facing: u.facing, moving: u.moving, type: u.type, player: u.player, state: u.state, dead: u.dead, hp: u.hp, r: u.type ? BEASTS[u.type].r : 0.4, tall: u.type === 'golem' ? 2.9 : 1.8 });
+        if (!s.marked && !u.player) { s.marked = true; Object.assign(s, marks.get(u.id) || NO_MARK); }
       }
       for (const id of gone) seen.delete(id);
       return;
@@ -282,6 +286,11 @@ function joinServer() {
       if (!down && me.dead) me.dead = false;
     } else if (msg.t === 'evs') for (const ev of msg.list) onEvent(ev);
     else if (msg.t === 'progress') takeProgress(msg); // (0.99.38) your account's (further on than this browser)
+    else if (msg.t === 'marks') { // (1.1) which beasts in sight are elites, named, bosses or a rift's foes
+      marks.clear();
+      for (const [id, rank, name, look, size, lv] of msg.m || []) marks.set(id, { rank, name, look, size, lv });
+      for (const [id, s] of seen) if (!s.player) Object.assign(s, marks.get(id) || NO_MARK);
+    } else if (msg.t === 'riftNo') toast('The rift will not open', 'Someone\'s rift is already open here, or you are not in the circle');
     else if (msg.t === 'air') for (const [pid, y] of msg.a) airOf.set(pid, { y: y / 100, at: performance.now() }); // (0.99.35) who is off the ground, how high
     else if (msg.t === 'chat') say(msg.name ? `${msg.name}: ${msg.text}` : msg.text, !msg.name);
     else if (msg.t === 'pong') net.ping = performance.now() - msg.at;
@@ -342,6 +351,7 @@ function onEvent(ev) {
   huntEvent(ev);
   trickEvent(ev);
   bountyEvent(ev);
+  gearEvent(ev);
   if (ev.type === 'die' && ev.story === 'unbound') showQuest(); // (1.0) a ward's guard down
   vesperEvent(ev);
   contractEvent(ev);
@@ -460,7 +470,7 @@ const locked = () => document.pointerLockElement === canvas;
 const chatOpen = () => !$('chat-in').classList.contains('hidden');
 /** Take the mouse back for looking (needs a key or a click: browsers only allow it then). */
 function relock() {
-  if (locked() || altFree || chatOpen() || webUI.open || !$('journal').classList.contains('hidden') || !$('board').classList.contains('hidden') || !canvas.requestPointerLock) return;
+  if (locked() || altFree || chatOpen() || webUI.open || ['journal', 'board', 'gear', 'riftpick'].some((id) => !$(id).classList.contains('hidden')) || !canvas.requestPointerLock) return;
   try {
     const r = canvas.requestPointerLock();
     if (r && r.catch) r.catch(() => {});
@@ -482,7 +492,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   // back from another tab or window: any game key takes the mouse again (Esc and the F keys do not)
-  if (!locked() && e.code !== 'Escape' && e.code !== 'KeyP' && e.code !== 'KeyJ' && !webUI.open && !/^F\d+$/.test(e.code)) relock(); // ((0.99.37) not for the talent web: it wants the mouse)
+  if (!locked() && e.code !== 'Escape' && e.code !== 'KeyP' && e.code !== 'KeyJ' && e.code !== 'KeyI' && !webUI.open && !/^F\d+$/.test(e.code)) relock(); // ((0.99.37) not for the talent web: it wants the mouse)
   if (e.repeat && (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyC')) return;
   keys.add(e.code);
   // (0.99.35) C, running: a slide (and Space out of it, a long leap). Otherwise C (or Ctrl) walks, or runs again.
@@ -493,6 +503,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyH') { showTricks(); $('tricks').classList.toggle('hidden'); } // (0.99.35) the tricks
   if (e.code === 'KeyP') toggleWeb(); // (0.99.37) the talent web
   if (e.code === 'KeyJ') toggleJournal(); // (1.0) the journal: what you are doing, and what you could
+  if (e.code === 'KeyI') toggleGear(); // (1.1) gear
   if (e.code === 'KeyF') { const u = nearestUse(); if (u) u.fn(); }
   if (e.code === 'KeyL') {
     if (!linkAwake) note('The Link is asleep. Something was torn out of you on the way here. (Testing: add ?link=1 to the address to wake it.)');
@@ -821,6 +832,11 @@ function showQuest() {
 }
 /** The side tracker: a bounty in hand (and how far along). */
 function showSide() {
+  if (ashRift) {
+    $('side-quest').classList.toggle('hidden', cutscene.active);
+    $('side-quest').innerHTML = `<b>${kindTag('repeat')} The Ash Rift · tier ${ashRift.tier}</b>${ashRift.wave ? `Wave ${ashRift.wave} of ${RIFT.waves}: ${ashRift.left} left` : 'It opens...'} · ${Math.floor(ashRift.time / 60)}:${String(Math.floor(ashRift.time % 60)).padStart(2, '0')}<br><small>Stay within ${RIFT.reach} m of the circle</small>`;
+    return;
+  }
   const b = story.bounty;
   $('side-quest').classList.toggle('hidden', !b || cutscene.active);
   if (!b) return;
@@ -1017,7 +1033,7 @@ const webUI = new WebUI($('web'), {
   cls: () => me.cls,
   have: () => webOf(),
   points: () => pointsAt(me.level || 1),
-  set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); clearTimeout(gainXp.sync); gainXp.sync = setTimeout(sendProgress, 2000); },
+  set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); featureCheck(); clearTimeout(gainXp.sync); gainXp.sync = setTimeout(sendProgress, 2000); },
 });
 function toggleWeb() {
   if (webUI.open) { webUI.hide(); relock(); return; }
@@ -1032,7 +1048,7 @@ function confirmReset() { const b = $('web-reset'); if (b.dataset.sure) { delete
 
 /** (0.99.38) Your progress (experience, talent webs, tricks) to the server, to keep with your account. */
 function sendProgress() {
-  if (net && net.ready) net.send({ t: 'progress', xp: story.xp || 0, web: story.web || {}, tricks: story.tricks || {} });
+  if (net && net.ready) net.send({ t: 'progress', xp: story.xp || 0, web: story.web || {}, tricks: story.tricks || {}, gear: story.gear });
 }
 /** (0.99.38) The account's progress, when it is further on than this browser's: taken. */
 function takeProgress(msg) {
@@ -1040,7 +1056,9 @@ function takeProgress(msg) {
   story.xp = msg.xp;
   if (msg.web && typeof msg.web === 'object') story.web = msg.web;
   story.tricks = { ...(story.tricks || {}), ...(msg.tricks || {}) };
+  if (msg.gear && typeof msg.gear === 'object') story.gear = { worn: msg.gear.worn || {}, bag: msg.gear.bag || [], shards: msg.gear.shards || 0, rift: msg.gear.rift || 0 }; // (1.1) and your gear
   saveStory(story);
+  applyGear();
   const L = levelOf(story.xp).level;
   world.setLevel(1, L);
   net.send({ t: 'lvl', L });
@@ -1050,6 +1068,19 @@ function takeProgress(msg) {
 
 /** The tricks, the web: done once you have learned every trick, or spent a point. */
 const featureDone = { tricks: () => Object.keys(story.tricks || {}).length >= TRICKS.length, web: () => Object.values(story.web || {}).some((l) => l.length) };
+/** (1.0) New Content done: a reward, once (Moving Well when every trick is learned; the web at its first point). */
+const FEATURE_XP = { tricks: 200, web: 120 };
+function featureCheck() {
+  story.featXp = story.featXp || {};
+  for (const id of Object.keys(FEATURE_XP)) {
+    if (story.featXp[id] || !SIDE_QUESTS[id].opens(story) || !featureDone[id]()) continue;
+    story.featXp[id] = true;
+    saveStory(story);
+    gainXp(FEATURE_XP[id], SIDE_QUESTS[id].name);
+    toast(`Quest complete: ${SIDE_QUESTS[id].name}`, `New Content · +${FEATURE_XP[id]} xp`);
+  }
+  showQuest();
+}
 function drawJournal() {
   const q = QUESTS[story.stage];
   const hand = [];
@@ -1063,10 +1094,16 @@ function drawJournal() {
   av.push(q ? `<div class="jq main"><b>${q.name}</b><span>${q.goal}</span></div>` : '<div class="jq">The story begins in the glade.</div>');
   const feats = Object.entries(SIDE_QUESTS).filter(([id, sq]) => sq.cat === 'feature');
   av.push(`<div class="jgroup qk feature">${KIND.feature.icon} New Content<small>${KIND.feature.note}</small></div>`);
-  for (const [id, sq] of feats) av.push(sq.opens(story) ? `<div class="jq feature ${featureDone[id]() ? 'done' : ''}"><b>${sq.name}${featureDone[id]() ? ' ✓' : ''}</b><span>${sq.goal}</span><small>${sq.where}</small></div>` : `<div class="jq feature done"><b>${sq.name}</b><span>Opens once you have chosen a path (Quest 3)</span></div>`);
+  for (const [id, sq] of feats) av.push(sq.opens(story) ? `<div class="jq feature ${featureDone[id]() ? 'done' : ''}"><b>${sq.name}${featureDone[id]() ? ' ✓' : ''}</b><span>${sq.goal}</span><small>${sq.where} · reward: ${FEATURE_XP[id]} experience</small></div>` : `<div class="jq feature done"><b>${sq.name}</b><span>Opens once you have chosen a path (Quest 3)</span></div>`);
   av.push(`<div class="jgroup qk repeat">${KIND.repeat.icon} Repeatable<small>${KIND.repeat.note}</small></div>`);
   const bq = SIDE_QUESTS.bounty;
   av.push(bq.opens(story) ? `<div class="jq repeat"><b>${bq.name}</b><span>${bq.goal}</span><small>${bq.where} · ${story.bountiesDone || 0} done so far</small></div>` : `<div class="jq repeat done"><b>${bq.name}</b><span>Opens once you have chosen a path (Quest 3)</span></div>`);
+  // (1.1) farming: none of it needs the story past choosing a path
+  const farm = farmOpen();
+  av.push(`<div class="jgroup qk repeat">${KIND.repeat.icon} Hunting for gear<small>Repeatable. For gear and experience; none of it needs the story. <kbd>I</kbd> opens your gear.</small></div>`);
+  av.push(`<div class="jq repeat ${farm ? '' : 'done'}"><b>The Ash Rift</b><span>Five waves of the Unbound at the circle under the old watchtower (north), then a chest for all who stood in it. Higher tiers, better chests.</span><small>${farm ? `The watchtower's circle · best cleared: tier ${gear().rift || 0} · next: tier ${(gear().rift || 0) + 1}` : 'Opens once you have chosen a path (Quest 3)'}</small></div>`);
+  av.push(`<div class="jq repeat"><b>World bosses</b><span>${Object.values(BOSSES).map((B) => B.name).join(', ')}: one in each wild corner of the land, back every twelve minutes or so. Mind the red circles: get out of them, roll, or jump.</span><small>Ashmaw in the far Wakewood (south-west) · Old Gorge in the far meadows (south-east) · the Cairn King on the far stony ground (north-east)</small></div>`);
+  av.push(`<div class="jq repeat"><b>Elites and rare beasts</b><span>Ash-touched beasts (ember-glowing, bigger) always drop gear. Rarer still, named beasts (violet) drop the best of it, and now and then a unique.</span><small>Anywhere wild: the further from Sunmere, the more beasts there are</small></div>`);
   $('j-avail').innerHTML = av.join('');
 }
 function toggleJournal() {
@@ -1121,6 +1158,116 @@ function bountyEvent(ev) {
   showQuest();
 }
 const BOARD_AT = { x: CRYSTAL.x, z: CRYSTAL.z };
+
+// ---- (1.1) gear: drops, the gear screen (I), world bosses, the Ash Rift
+const marks = new Map(); // (online) id -> { rank, name, look, size, lv }
+const NO_MARK = { rank: 0, name: '', look: '', size: 1, lv: 0 };
+const lootRng = makeRng((Date.now() ^ 0x5eed) >>> 0); // for rerolls (your own; the server checks what results)
+function gear() {
+  if (!story.gear || typeof story.gear !== 'object') story.gear = { worn: {}, bag: [], shards: 0, rift: 0 };
+  const g = story.gear;
+  g.worn = g.worn || {}; g.bag = g.bag || []; g.shards = g.shards || 0; g.rift = g.rift || 0;
+  return g;
+}
+/** What you wear, to the sim (and the server, which checks it). */
+function applyGear() {
+  const worn = gear().worn;
+  world.setGear(1, worn);
+  if (net && net.ready) net.send({ t: 'gear', worn });
+}
+function gearChanged() {
+  saveStory(story);
+  applyGear();
+  clearTimeout(gainXp.sync);
+  gainXp.sync = setTimeout(sendProgress, 2000);
+}
+const farmOpen = () => ['warrior', 'archer'].includes(story.path);
+const gearUI = new GearUI($('gear'), { gear, level: () => me.level || 1, rng: lootRng, changed: gearChanged, toast });
+function toggleGear() {
+  const open = $('gear').classList.contains('hidden');
+  $('gear').classList.toggle('hidden', !open);
+  gearUI.open = open;
+  if (open) { if (locked()) document.exitPointerLock(); gearUI.draw(); } else relock();
+}
+let ashRift = null; // { tier, wave, left, time } while yours is open
+let riftRing = null;
+{
+  // the circle at the tower's foot: it never quite closed (it glows violet, brighter while a rift is open)
+  const m = new THREE.Mesh(new THREE.RingGeometry(2.2, 3.4, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a3ac0, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.position.set(RIFT_AT.x, 0.06, RIFT_AT.z);
+  view.scene.add(m);
+  riftRing = m;
+}
+function openRiftPick() {
+  if (locked()) document.exitPointerLock();
+  const best = gear().rift || 0;
+  $('riftpick-list').innerHTML = Array.from({ length: Math.min(RIFT.most, best + 1) }, (_, k) => k + 1).slice(-10).map((t) => `<button data-t="${t}"><b>Tier ${t}</b><small>${t <= best ? 'cleared' : 'new'} · chest: ${2 + Math.floor(t / 2)} items${t >= 3 ? `, ${['rare', 'rare', 'epic', 'epic', 'epic'][Math.min(4, Math.floor(t / 3) - 1)]} or better` : ''}</small></button>`).join('');
+  for (const b of $('riftpick-list').querySelectorAll('button')) b.addEventListener('click', () => startRift(+b.dataset.t));
+  $('riftpick').classList.remove('hidden');
+}
+function closeRiftPick() { $('riftpick').classList.add('hidden'); relock(); }
+function startRift(tier) {
+  closeRiftPick();
+  if (net && net.ready) net.send({ t: 'rift', tier });
+  else if (!world.openRift(1, tier)) toast('The rift will not open', 'Stand in the circle');
+}
+function drawBossBar(list, hx, hz) {
+  let B = null;
+  for (const b of list || []) if (b.rank === 3 && !b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 50 * 50 && (b.hp < 0.999 || b.state === 'chase')) B = b;
+  $('bossbar').classList.toggle('hidden', !B || cutscene.active);
+  if (!B) return;
+  $('bossbar').firstChild.textContent = `${B.name || 'A world boss'}${B.lv ? ` · level ${B.lv}` : ''}`;
+  $('bossbar').lastChild.firstChild.style.width = `${Math.max(0, B.hp) * 100}%`;
+}
+function lootLine(it) { const g = gradeOf(it); return `<span class="lootnote" style="color:${g.color}">${itemName(it)}</span>`; }
+function gearEvent(ev) {
+  if (ev.type === 'loot' && isMe(ev.pid)) {
+    const g = gear(), it = ev.item;
+    if (!it || !it.slot) return;
+    if (g.bag.length >= BAG_MOST) {
+      // a full bag: the least of it is salvaged to make room (never a unique or a starred piece)
+      const worst = g.bag.filter((i) => i.r !== UNIQUE && !(i.stars > 0)).sort((p, q) => p.r - q.r)[0];
+      if (!worst || worst.r > it.r) { g.shards += salvageValue(it); toast('Bag full', `${itemName(it)} salvaged (+${salvageValue(it)} shards)`); saveStory(story); return; }
+      g.bag = g.bag.filter((i) => i !== worst);
+      g.shards += salvageValue(worst);
+    }
+    g.bag.push(it);
+    saveStory(story);
+    clearTimeout(gainXp.sync);
+    gainXp.sync = setTimeout(sendProgress, 2000);
+    note(`Found: ${lootLine(it)}${ev.from ? ` (${ev.from})` : ''}`);
+    if (it.r >= 3) { toast(it.r === UNIQUE ? 'A unique!' : `${gradeOf(it).name} find`, itemName(it)); fx.ring(ev.x, ev.z, 1.6, parseInt(gradeOf(it).color.slice(1), 16), 1.2); }
+    if (gearUI.open) gearUI.draw();
+  } else if (ev.type === 'boss') { toast('A world boss has risen', `${ev.name}${ev.at ? ` (${compass(ev.at)})` : ''}`); note(`${ev.name} has risen.`); }
+  else if (ev.type === 'tele') fx.warn(ev.x, ev.z, ev.r, ev.warn);
+  else if (ev.type === 'crash') { fx.ring(ev.x, ev.z, ev.r, 0xff5a3a, 0.6); fx.puff(ev.x, ev.z, 0x6a5a4a); }
+  else if (ev.type === 'fade') fx.puff(ev.x, ev.z, 0x3a2a4a);
+  else if (ev.type === 'rift' && isMe(ev.pid)) { ashRift = { tier: ev.tier, wave: ev.wave, left: ev.left, time: ev.time, at: performance.now() }; if (ev.wave) toast(`Wave ${ev.wave} of ${RIFT.waves}`, ev.wave === RIFT.waves ? 'The Rift Warden comes through' : `${ev.left} of the Unbound`); showQuest(); }
+  else if (ev.type === 'riftEnd' && isMe(ev.pid)) {
+    ashRift = null;
+    if (ev.ok) { gear().rift = Math.max(gear().rift || 0, ev.tier); saveStory(story); toast(`Ash Rift, tier ${ev.tier}: cleared`, 'The chest is yours (and everyone\'s who stood in it)'); }
+    else toast('The rift closes', 'On nothing. (You fell, walked away, or ran out of time.)');
+    showQuest();
+  } else if (ev.type === 'die' && ashRift && ev.rift) { ashRift.left = Math.max(0, ashRift.left - 1); showQuest(); }
+}
+/** Which way something is from Sunmere, in words. */
+function compass(at) {
+  const dx = at.x - CRYSTAL.x, dz = at.z - CRYSTAL.z;
+  return `${dz < -60 ? 'far north' : dz > 60 ? 'far south' : ''}${Math.abs(dz) > 60 && Math.abs(dx) > 60 ? '-' : ''}${dx < -60 ? 'west' : dx > 60 ? 'east' : ''}` || 'near Sunmere';
+}
+setInterval(() => { if (ashRift && ashRift.time > 0) { ashRift.time = Math.max(0, ashRift.time - 1); if (!cutscene.active) showSide(); } }, 1000);
+addEventListener('keydown', (e) => {
+  if (!$('riftpick').classList.contains('hidden')) {
+    const n = /^Digit([1-9])$/.exec(e.code);
+    const btns = [...$('riftpick-list').querySelectorAll('button')];
+    if (n && btns[+n[1] - 1]) startRift(+btns[+n[1] - 1].dataset.t);
+    else if (e.code === 'Escape' || e.code === 'KeyF') closeRiftPick();
+    e.preventDefault(); e.stopImmediatePropagation();
+  } else if (!$('gear').classList.contains('hidden') && (e.code === 'Escape' || e.code === 'KeyI')) {
+    toggleGear();
+    e.preventDefault(); e.stopImmediatePropagation();
+  }
+}, true);
 // the board and the journal have the keys while open (numbers pick, not change your path)
 addEventListener('keydown', (e) => {
   if (!$('board').classList.contains('hidden')) {
@@ -1385,6 +1532,8 @@ function nearestUse() {
   if (nearKeepsake()) return { label: 'Pick it up', fn: takeKeepsake };
   // (1.0) the Guild's board, once its bounties are open (unless a scene here wants the glass)
   if (SIDE_QUESTS.bounty.opens(story) && story.stage !== 'crystal' && Math.hypot(me.x - BOARD_AT.x, me.z - BOARD_AT.z) < 3) best = { label: story.bounty && story.bounty.got >= story.bounty.n ? 'Hand in your bounty' : 'The Guild\'s board (bounties)', fn: openBoard }, bd = Math.hypot(me.x - BOARD_AT.x, me.z - BOARD_AT.z);
+  // (1.1) the Ash Rift
+  if (farmOpen() && !ashRift && !['tower', 'wards'].includes(story.stage)) { const d = Math.hypot(me.x - RIFT_AT.x, me.z - RIFT_AT.z); if (d < 4 && d < bd) { best = { label: 'Open the Ash Rift', fn: openRiftPick }; bd = d; } }
   for (const u of uses) {
     const at = typeof u.at === 'function' ? u.at() : u.at;
     if (!at) continue;
@@ -1568,6 +1717,7 @@ function learnt(id) {
   const left = TRICKS.filter((q) => !story.tricks[q.id]).length;
   toast(left ? 'Trick learned' : 'Every trick learned', left ? t.text.replace(/<[^>]+>/g, '') : 'You move like Juni now. She will be furious.');
   showTricks();
+  featureCheck();
 }
 /** Your own moves, as the sim reports them: which tricks they were. */
 function trickEvent(ev) {
@@ -2101,10 +2251,12 @@ function frame(now) {
   } else {
     view.drawBeasts(hx, hz, alpha, time);
     nearBeasts.length = 0;
-    for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8 });
+    for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: (b.def && b.def.r) || BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8, rank: b.rank || 0, name: b.name, size: b.size, lv: b.lv, state: b.state });
     fxBeasts = nearBeasts;
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);
+  drawBossBar(fxBeasts, hx, hz);
+  if (riftRing) riftRing.material.opacity = (ashRift ? 0.75 : 0.32) + 0.12 * Math.sin(performance.now() / 260);
   if (questRun && !cutscene.active) questRun.update(dt, me);
   crystal.update(dt);
   if (story.stage === 'crystal' && !cutscene.active && questRun && Math.hypot(me.x - CRYSTAL.x, me.z - CRYSTAL.z) < 6.5) playCrystal();
@@ -2164,4 +2316,6 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
+setTimeout(featureCheck, 3000); // (1.0) New Content already done in an older save: its reward, once
+applyGear(); // (1.1) what you wear
 window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

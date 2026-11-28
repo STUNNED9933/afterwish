@@ -111,6 +111,18 @@ export class Fx {
     this.puffs.push({ m, t: 0 });
   }
 
+  /** (1.1) A world boss's mark: a red circle on the ground, filling until it strikes (`warn` seconds). */
+  warn(x, z, r, warn) {
+    const g = new THREE.Group();
+    const edge = new THREE.Mesh(new THREE.RingGeometry(r - 0.18, r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.85, depthWrite: false }));
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.28, depthWrite: false }));
+    g.add(edge, fill);
+    g.position.set(x, 0.07, z);
+    this.scene.add(g);
+    this.warns = this.warns || [];
+    this.warns.push({ g, fill, t: 0, warn });
+  }
+
   /** A number rising from (x, z): what was dealt (gold), taken (red), or a heal (green). */
   number(x, z, text, kind = 'dealt') {
     const d = document.createElement('div');
@@ -166,6 +178,12 @@ export class Fx {
       p.m.material.opacity = 0.7 * (1 - p.t / 0.6);
       if (p.t >= 0.6) { this.scene.remove(p.m); p.m.material.dispose(); this.puffs.splice(i, 1); }
     }
+    for (let i = (this.warns || []).length - 1; i >= 0; i--) {
+      const W = this.warns[i];
+      W.t += dt;
+      W.fill.scale.setScalar(Math.min(1, W.t / W.warn));
+      if (W.t >= W.warn + 0.15) { this.scene.remove(W.g); W.g.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); this.warns.splice(i, 1); }
+    }
     // Bloodrage: a red ring at the hero's feet
     this.rage.position.x = heroX;
     this.rage.position.z = heroZ;
@@ -187,18 +205,20 @@ export class Fx {
     // health bars over hurt beasts nearby
     const want = new Set();
     for (const b of beasts) {
-      if (b.dead || b.hp >= 0.999 || (b.x - heroX) ** 2 + (b.z - heroZ) ** 2 > 45 * 45) continue;
+      // (1.1) an elite, a named beast or a boss: its bar and name always shown (an ordinary beast only once hurt)
+      if (b.dead || (b.hp >= 0.999 && !b.rank) || b.rank === 3 || (b.x - heroX) ** 2 + (b.z - heroZ) ** 2 > (b.rank ? 40 : 45) ** 2) continue;
       want.add(b.id);
       let d = this.bars.get(b.id);
       if (!d) {
         d = document.createElement('div');
-        d.className = 'bar';
+        d.className = 'bar' + (b.rank ? ` r${b.rank}` : '');
         d.appendChild(document.createElement('i'));
+        if (b.name) { const n = document.createElement('b'); n.textContent = b.name + (b.lv ? ` · ${b.lv}` : ''); d.appendChild(n); }
         this.layer.appendChild(d);
         this.bars.set(b.id, d);
       }
       d.firstChild.style.width = `${Math.max(0, b.hp) * 100}%`;
-      place(d, b.x, b.tall || 1.9, b.z);
+      place(d, b.x, (b.tall || 1.9) * (b.size || 1), b.z);
     }
     for (const [id, d] of this.bars) if (!want.has(id)) { d.remove(); this.bars.delete(id); }
   }

@@ -28,8 +28,16 @@ const LOOKS = {
   thrall: { ...CREATURES.ashwalker, height: 1.9 },
   acolyte: { ...CREATURES.thurifer, height: 2.0, tint: 0x2a1840, dark: 0.55 },
 };
+// (1.1) an elite (ember), a rare named beast (violet), a world boss (blood red): the same body, tinted
+const RANK_TINT = { 1: 0xd08a4a, 2: 0xa07ae0, 3: 0xb03a2a };
+const RANKED = new Map();
 const liveSpec = (b) => {
   if (b.look && LOOKS[b.look]) return LOOKS[b.look];
+  if (b.rank && LIVE_BEAST[b.type]) {
+    const k = b.type + b.rank;
+    if (!RANKED.has(k)) RANKED.set(k, { ...LIVE_BEAST[b.type], tint: RANK_TINT[b.rank] });
+    return RANKED.get(k);
+  }
   const base = LIVE_BEAST[b.type];
   if (!base || b.story !== 'ashen') return base;
   if (!ASHEN.has(b.type)) ASHEN.set(b.type, { ...base, tint: 0x3a3436, dark: 0.55 });
@@ -312,7 +320,7 @@ export class LandView {
     const want = near.filter((n) => n.d < LIVE_R && !n.b.hidden && (LIVE_BEAST[n.b.type] || LOOKS[n.b.look])).sort((p, q) => p.d - q.d).slice(0, LIVE_N).map((n) => ({
       key: n.b.id,
       spec: liveSpec(n.b),
-      x: n.x, z: n.z, facing: n.b.facing,
+      x: n.x, z: n.z, facing: n.b.facing, scale: n.b.size || 1,
       state: { moving: this.steady(n.b, time), speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), gesture: n.b.swipeT > time - 0.1 ? 'chop' : null },
     }));
     return this.lively.frame(dt, want);
@@ -359,7 +367,7 @@ export class LandView {
     for (const { b, x: bx, z: bz } of near) {
       if (real.has(b.id)) continue;
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
-      this.tmpM.compose(this.tmpP.set(bx, bob, bz), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
+      this.tmpM.compose(this.tmpP.set(bx, bob, bz), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.setScalar(b.size || 1));
       const m = this.beastMeshes[b.type];
       if (!m || b.hidden) continue; // (0.99.26) a story foe drawn as a person instead
       m.setMatrixAt(fill[b.type]++, this.tmpM);
@@ -381,7 +389,7 @@ export class LandView {
       const m = this.beastMeshes[b.type];
       if (!m || fill[b.type] >= m.instanceMatrix.count) continue;
       const bob = b.moving ? Math.abs(Math.sin(time * 9 + b.id)) * 0.08 : 0;
-      this.tmpM.compose(this.tmpP.set(b.x, bob, b.z), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.set(1, 1, 1));
+      this.tmpM.compose(this.tmpP.set(b.x, bob, b.z), this.tmpQ.setFromAxisAngle(this.up, Math.PI / 2 - b.facing), this.tmpS.setScalar(b.size || 1));
       m.setMatrixAt(fill[b.type]++, this.tmpM);
     }
     for (const type in this.beastMeshes) {

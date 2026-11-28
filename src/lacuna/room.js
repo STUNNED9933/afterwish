@@ -15,8 +15,10 @@ import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS, MOVE } from './sim.js';
 import { Interest, SEND_HZ } from './net.js';
 import { TOWN, HALF } from './land.js';
 import { EMOTE_IDS, EMOTICONS } from './emotes.js';
+import { valid as validItem, cleanWorn } from './loot.js';
+import { levelOf } from './levels.js';
 
-export const LACUNA_NET = 'L1';
+export const LACUNA_NET = 'L2'; // (1.1) gear, rifts, elites' marks
 export const LAND_LIMITS = { players: 24, nameLen: 16, chatLen: 140, chatGap: 0.6 };
 const CLASSES = Object.keys(KITS); // (phase 2) the opening's two classes
 const R = 0.4;
@@ -51,6 +53,8 @@ export class LandRoom {
     if (msg.t === 'pos') this.pos(m, msg);
     else if (msg.t === 'cls' && CLASSES.includes(msg.cls) && msg.cls !== m.cls) { m.cls = msg.cls; this.world.setClass(m.pid, m.cls); this.roster(); }
     else if (msg.t === 'web') this.world.setWeb(m.pid, msg.ids);
+    else if (msg.t === 'gear') this.world.setGear(m.pid, msg.worn); // (1.1) what they wear (checked: could have dropped for their level)
+    else if (msg.t === 'rift') { const t = num(msg.tier, 1, 30); if (t === null || !this.world.openRift(m.pid, t)) this.send(conn, { t: 'riftNo' }); } // (1.1) the Ash Rift
     else if (msg.t === 'progress') this.keep(m, msg); // (0.99.38) the page's progress, kept with the account // (0.99.37) talents (checked: joined up, no more than the level allows)
     else if (msg.t === 'lvl') { const L = num(msg.L, 1, 60); if (L !== null) this.world.setLevel(m.pid, L); } // (0.99.36) the page's level (for now; with accounts, the server's)
     else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
@@ -93,6 +97,7 @@ export class LandRoom {
     const p = this.world.addPlayer(pid, at, { cls, link, linked: msg.linked === true, vigour: num(msg.vigour, 0.5, 1) ?? 1, level: num(msg.level, 1, 60) ?? 1 });
     p.driven = true; // moved by its own browser (checked), not by the sim
     if (Array.isArray(msg.web)) this.world.setWeb(pid, msg.web); // (0.99.37) talents
+    if (msg.worn && typeof msg.worn === 'object') this.world.setGear(pid, msg.worn); // (1.1) gear
     const m = { conn, pid, name, cls, wire: new Interest(pid), last: { x: p.x, z: p.z, t: this.world.time }, chatAt: -1e9, me: '', linkFrom: fromAccount ? 'account' : 'page', session: typeof msg.session === 'string' ? msg.session.slice(0, 200) : '' };
     this.byConn.set(conn, m);
     this.send(conn, { t: 'welcome', pid, name, at: { x: p.x, z: p.z }, v: LACUNA_NET, hz: SEND_HZ, link, linkFrom: m.linkFrom });
@@ -138,9 +143,16 @@ export class LandRoom {
     for (const cls of Object.keys(KITS)) if (msg.web && Array.isArray(msg.web[cls])) web[cls] = msg.web[cls].filter((i) => Number.isInteger(i) && i >= 0 && i < 2000).slice(0, 80);
     const tricks = {};
     if (msg.tricks && typeof msg.tricks === 'object') for (const k of Object.keys(msg.tricks).slice(0, 20)) if (/^[a-zA-Z0-9]{1,16}$/.test(k)) tricks[k] = true;
+    // (1.1) gear: what is worn, the bag (up to 80) and the shards; only what could have dropped at their level
+    const level = levelOf(xp).level;
+    let gear;
+    if (msg.gear && typeof msg.gear === 'object') {
+      const bag = Array.isArray(msg.gear.bag) ? msg.gear.bag.slice(0, 80).filter((it) => validItem(it, level)).map((it) => Object.values(cleanWorn({ [it.slot]: it }, level))[0]).filter(Boolean) : [];
+      gear = { worn: cleanWorn(msg.gear.worn, level), bag, shards: num(msg.gear.shards, 0, 1e7) || 0, rift: num(msg.gear.rift, 0, 30) || 0 };
+    }
     const had = this.progress.get(m.session);
     if (had && had.xp > xp) return this.send(m.conn, { t: 'progress', ...had }); // the account is further on: the page takes it
-    this.progress.put(m.session, { xp: Math.floor(xp), web, tricks });
+    this.progress.put(m.session, { xp: Math.floor(xp), web, tricks, ...(gear ? { gear } : had && had.gear ? { gear: had.gear } : {}) });
   }
 
   snap(m, p) {
@@ -203,6 +215,17 @@ export class LandRoom {
       const me = [Math.round(p.hp), p.maxHp, Math.floor(p.mp), p.maxMp, ...['Q', 'E', 'R'].map((k) => Math.max(0, Math.ceil(p.cd[k] * 10) / 10)), p.oath ? 1 : 0, p.dead ? Math.ceil(p.downT) : 0, +p.mult.toFixed(2)];
       const key = me.join();
       if (key !== m.me) { m.me = key; this.send(m.conn, { t: 'me', v: me }); }
+    }
+    // (1.1) which beasts in sight are more than they look (elites, named, bosses, a rift's foes): once a second, if changed
+    if (this.steps % 30 === 0) {
+      for (const m of this.byConn.values()) {
+        const p = this.world.players.get(m.pid);
+        if (!p) continue;
+        const marks = [];
+        for (const b of this.world.beasts) if (!b.dead && (b.rank || b.look) && Math.hypot(b.x - p.x, b.z - p.z) < 150) marks.push([b.id, b.rank || 0, b.name || '', b.look || '', b.size || 1, b.lv || 0]);
+        const key = JSON.stringify(marks);
+        if (key !== m.marks) { m.marks = key; this.send(m.conn, { t: 'marks', m: marks }); }
+      }
     }
     for (const m of this.byConn.values()) {
       const buf = m.wire.delta(this.world);

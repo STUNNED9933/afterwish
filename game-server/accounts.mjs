@@ -166,7 +166,7 @@ export class AccountStore {
     const a = this.accounts[accountId];
     if (!a || !data || typeof data !== 'object') return;
     const text = JSON.stringify(data);
-    if (text.length > 16 * 1024 || text === JSON.stringify(a.lacuna || null)) return;
+    if (text.length > 64 * 1024 || text === JSON.stringify(a.lacuna || null)) return;
     a.lacuna = JSON.parse(text);
     this.touch('accounts');
   }

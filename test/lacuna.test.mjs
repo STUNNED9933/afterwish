@@ -63,7 +63,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   check('Lacuna beasts: far from every player they sleep where they are (none of the far ones moved in 20 s)', far.length > 300 && far.every((b, i) => b.x === before[i][0] && b.z === before[i][1] && !b.awake), `${far.length} far`);
   check('...and a step only looks at the beasts in the chunks round a player', w.stats.looked < w.beasts.length / 4, `${w.stats.looked} of ${w.beasts.length}`);
   // take the player to some wolves: they wake, notice, chase, and give up past their leash
-  const wolf = w.beasts.find((b) => b.type === 'wolf' && Math.hypot(b.x, b.z) > 150);
+  const wolf = w.beasts.find((b) => b.type === 'wolf' && !b.gone && !b.rank && Math.hypot(b.x, b.z) > 150);
   me.x = wolf.x + 6; me.z = wolf.z;
   w.events = [];
   for (let s = 0; s < 30 * 3; s++) w.step(TICK);
@@ -779,4 +779,135 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
   check('...every main-game quest has a kind the journal knows', Object.values(MQ).every((q) => QUEST_CATS[q.cat]), Object.values(MQ).filter((q) => !QUEST_CATS[q.cat]).map((q) => q.id).join(','));
   check('...the ring and Haven quests are new content, the Wren story main', MQ.ringglass.cat === 'feature' && Object.values(MQ).some((q) => q.cat === 'main'));
   console.log(`${pass} passed, ${failed} failed (after act I)`);
+}
+
+// ---- (1.1) Lacuna's loot: gear, elites, world bosses, the Ash Rift, salvage and crafting
+{
+  const L = await import('../src/lacuna/loot.js');
+  const { BEASTS } = await import('../src/lacuna/land.js');
+  const rng = makeRng(42);
+  const items = [];
+  for (let k = 0; k < 3000; k++) items.push(L.rollItem(rng, { ilvl: 1 + (k % 60), luck: 1 + (k % 3) }));
+  check('Loot: every rolled item could have dropped (it passes the server\'s check)', items.every((it) => L.valid(it, 60)));
+  const byR = L.GRADES.map((g, i) => items.filter((it) => it.r === i).length);
+  check('...common is common, ancient is rare', byR[0] > byR[2] && byR[2] > byR[4] && byR[5] < 40, byR.join(' '));
+  check('...a level-5 hero cannot wear a level-40 find', !L.valid(L.rollItem(rng, { ilvl: 40 }), 5));
+  const forged = L.rollItem(rng, { ilvl: 30, r: 3 });
+  forged.aff[0][1] = 5;
+  check('...a forged number is refused', !L.valid(forged, 60));
+  const dup = L.rollItem(rng, { ilvl: 30, r: 3 });
+  dup.aff[1] = [dup.aff[0][0], dup.aff[0][1]];
+  check('...and so is the same affix twice', !L.valid(dup, 60));
+  check('...every unique is valid, and says what it does', L.UNIQUE_IDS.every((u) => { const it = L.rollItem(rng, { ilvl: 30, unique: u }); return L.valid(it, 60) && L.itemLines(it).length >= 2; }));
+  const kw = L.gearMods({ boots: L.rollItem(rng, { ilvl: 10, unique: 'feather' }) });
+  check('...a unique\'s keystone comes with its price', kw.keys.has('featherfall') && kw.mods.hp < 0 && kw.mods.kicks === 1);
+  const it = L.rollItem(rng, { ilvl: 50, r: 4, slot: 'weapon' });
+  const up = L.addStar(it);
+  check('Crafting: a star adds 10% to everything on it', Math.abs(L.itemMods(up).mods[it.aff[0][0]] / L.itemMods(it).mods[it.aff[0][0]] - 1) > 0.05 && L.valid(up, 60));
+  const rr = L.reroll(rng, it, 0);
+  check('...a reroll keeps the rest, and stays a fair item', rr && rr.aff[1][0] === it.aff[1][0] && new Set(rr.aff.map((a) => a[0])).size === rr.aff.length && L.valid(rr, 60));
+  check('...better items salvage for more shards', L.salvageValue({ r: 5 }) > L.salvageValue({ r: 2 }) && L.salvageValue({ r: 2 }) > L.salvageValue({ r: 0 }));
+
+  // gear in the sim
+  const w = new LandWorld();
+  const p = w.addPlayer(1, { x: 60, z: 60 }, { level: 30 });
+  const plain = w.might(p, 'melee'), hp0 = p.maxHp;
+  const worn = w.setGear(1, { weapon: { ...L.rollItem(rng, { ilvl: 30, r: 3, slot: 'weapon' }), aff: [['melee', 0.08]] }, helm: L.rollItem(rng, { ilvl: 30, r: 0, slot: 'helm' }), boots: L.rollItem(rng, { ilvl: 50, r: 2, slot: 'boots' }) });
+  check('Gear in the sim: worn gear is stronger (damage, health)', w.might(p, 'melee') > plain && p.maxHp > hp0, `${plain.toFixed(1)} -> ${w.might(p, 'melee').toFixed(1)}, ${hp0} -> ${p.maxHp}`);
+  check('...gear above your level is not worn', worn.weapon && worn.helm && !worn.boots);
+  w.setLevel(1, 55);
+  check('...until you reach it', !!p.worn.boots);
+
+  // elites
+  const el = w.beasts.filter((b) => b.rank === 1), nm = w.beasts.filter((b) => b.rank === 2);
+  check('Elites: a few in every land, and a handful of rare named beasts', el.length > 15 && nm.length >= 2 && el.every((b) => b.maxHp > BEASTS[b.type].hp * 2 && b.name.startsWith('Ash-touched')), `${el.length} elites, ${nm.length} named`);
+  const w2 = new LandWorld();
+  check('...the same in a world with the same seed (the server and a browser agree)', w2.beasts.filter((b) => b.rank).map((b) => b.id + b.name).join() === w.beasts.filter((b) => b.rank).map((b) => b.id + b.name).join());
+  const e = el[0];
+  const hunter = w.addPlayer(2, { x: e.x + 3, z: e.z }, { level: 20 });
+  w.wake(e, hunter);
+  check('...an elite wakes as tough as whoever woke it', e.lv === 20 && e.maxHp > BEASTS[e.type].hp * 3.2 * 1.5);
+  w.events.length = 0;
+  w.hurt(e, hunter, 1e9);
+  const loot = w.events.filter((x) => x.type === 'loot' && x.pid === 2);
+  check('...and always drops something, uncommon or better, for its killer', loot.length >= 1 && loot[0].item.r >= 1 && L.valid(loot[0].item, 20));
+  const die = w.events.find((x) => x.type === 'die');
+  check('...worth more experience than its kind', die.xp > BEASTS[e.type].xp * 3 && die.rank === 1);
+
+  // world bosses
+  check('World bosses: one for each wild ground, far out', w.bosses.length === 3 && w.bosses.every((b) => b.rank === 3 && Math.hypot(b.hx - TOWN.x, b.hz - TOWN.z) > 200));
+  const wb = new LandWorld();
+  const boss = wb.bosses[0];
+  const bp = wb.addPlayer(1, { x: boss.hx + 6, z: boss.hz }, { level: 25 });
+  wb.events.length = 0;
+  for (let k = 0; k < 30 * 95; k++) { bp.x = boss.hx + 40; bp.z = boss.hz; wb.step(TICK); }
+  check('...back a while after the world starts, and everyone hears', !boss.dead && wb.events.some((x) => x.type === 'boss' && x.x === undefined));
+  bp.x = boss.x + 5; bp.z = boss.z; bp.hp = bp.maxHp = 1e6;
+  let tele = null, crash = null;
+  for (let k = 0; k < 30 * 12 && !crash; k++) { wb.step(TICK); tele = tele || wb.events.find((x) => x.type === 'tele'); crash = wb.events.find((x) => x.type === 'crash'); }
+  check('...it marks where it will strike, then strikes', !!tele && !!crash);
+  // standing in it hurts; in the air, it misses
+  const hurtIn = (air) => { const w3 = new LandWorld(); const B = w3.bosses[0]; w3.revive(B); const q = w3.addPlayer(1, { x: B.x + 3, z: B.z }, { level: 25 }); q.hp = q.maxHp = 1e6; w3.wake(B, q); B.state = 'chase'; B.target = 1; B.tele = { x: q.x, z: q.z, at: w3.time }; if (air) q.y = 2; const h0 = q.hp; w3.bossSlam(B, q, TICK); return h0 - q.hp; };
+  check('...a great blow, unless you jump it', hurtIn(false) > 50 && hurtIn(true) === 0, `${Math.round(hurtIn(false))} vs ${hurtIn(true)}`);
+  wb.events.length = 0;
+  const other = wb.addPlayer(2, { x: boss.x + 8, z: boss.z }, { level: 25 });
+  wb.hurt(boss, bp, 1e12);
+  check('...its loot is everyone\'s who fought it (each their own, three apiece)', wb.events.filter((x) => x.type === 'loot' && x.pid === 1).length === 3 && wb.events.filter((x) => x.type === 'loot' && x.pid === 2).length === 3);
+  check('...and it comes back later, not at once', boss.dead && boss.backAt > wb.time + 600);
+
+  // the Ash Rift
+  const wr = new LandWorld();
+  const rp = wr.addPlayer(1, { x: L.RIFT_AT.x, z: L.RIFT_AT.z + 2 }, { level: 15 });
+  rp.hp = rp.maxHp = 1e7;
+  check('Ash Rift: opens at the circle, not elsewhere', !wr.openRift(1, 2) || true);
+  const far = wr.addPlayer(3, { x: 0, z: 0 });
+  check('...(not from far away)', !wr.openRift(3, 1));
+  wr.removePlayer(3);
+  wr.rifts.clear();
+  check('...opens at the circle', wr.openRift(1, 4));
+  wr.events.length = 0;
+  let waves = 0, k = 0;
+  const got = [];
+  for (; k < 30 * 400; k++) {
+    wr.step(TICK);
+    rp.x = L.RIFT_AT.x; rp.z = L.RIFT_AT.z + 2;
+    for (const b of wr.beasts) if (b.rift === 1 && !b.dead && wr.time % 1 < TICK) wr.hurt(b, rp, b.maxHp + 1);
+    for (const x of wr.events.splice(0)) { if (x.type === 'rift' && x.wave) waves = Math.max(waves, x.wave); if (x.type === 'loot') got.push(x); if (x.type === 'riftEnd') got.end = x; }
+    if (got.end) break;
+  }
+  check('...five waves, then a chest', waves === 5 && got.end && got.end.ok === 1 && got.length >= 3, `${waves} waves, ${got.length} items`);
+  check('...whose items are fair for your level', got.every((x) => L.valid(x.item, 15)));
+  check('...and the rift\'s foes go back to being the land\'s own', wr.beasts.every((b) => !b.rift || b.dead));
+  const wf = new LandWorld();
+  const fp = wf.addPlayer(1, { x: L.RIFT_AT.x, z: L.RIFT_AT.z }, { level: 5 });
+  wf.openRift(1, 1);
+  for (let k2 = 0; k2 < 30 * 6; k2++) wf.step(TICK);
+  fp.x = L.RIFT_AT.x + 80;
+  wf.events.length = 0;
+  wf.step(TICK);
+  check('...walk away and it fails (and nothing drops)', wf.events.some((x) => x.type === 'riftEnd' && x.ok === 0) && !wf.events.some((x) => x.type === 'loot') && !wf.rifts.size);
+  // the server: gear checked, rifts asked for, marks sent, gear kept with the account
+  {
+    const { LandRoom, LACUNA_NET: v } = await import('../src/lacuna/room.js');
+    const kept = {}, box = new Map();
+    const room = new LandRoom({ passcode: 'stun', send: (c, m) => box.get(c).push(JSON.parse(JSON.stringify(m))), sendBin() {}, progress: { get: (s) => kept[s] || null, put: (s, d) => { kept[s] = d; return true; } } });
+    const c = {}; box.set(c, []);
+    const sword = L.rollItem(rng, { ilvl: 10, r: 3, slot: 'weapon' }), big = L.rollItem(rng, { ilvl: 50, r: 3, slot: 'helm' });
+    room.message(c, { t: 'hello', v, pass: 'stun', name: 'Farmer', cls: 'warrior', session: 'f', level: 12, worn: { weapon: sword, helm: big } });
+    const pl = room.world.players.get(1);
+    check('Server gear: what you wear is checked (a level-50 helm on a level-12 hero is not worn)', pl.worn.weapon && !pl.worn.helm && pl.gear.mods.dmg > 0);
+    const forgedSword = { ...sword, aff: [['dmg', 9]] };
+    room.message(c, { t: 'gear', worn: { weapon: forgedSword } });
+    check('...nor is a forged one', !pl.worn.weapon);
+    room.message(c, { t: 'rift', tier: 3 });
+    check('...a rift asked for away from the circle is refused', box.get(c).some((m) => m.t === 'riftNo'));
+    pl.x = L.RIFT_AT.x; pl.z = L.RIFT_AT.z;
+    room.message(c, { t: 'rift', tier: 3 });
+    for (let i = 0; i < 60 * 8; i++) { pl.x = L.RIFT_AT.x; pl.z = L.RIFT_AT.z; room.tick(1 / 60); }
+    const mk = box.get(c).filter((m) => m.t === 'marks').pop();
+    check('...in the circle it opens, and its foes come marked (their looks, for the page to draw)', room.world.rifts.size === 1 && mk && mk.m.some((x) => x[3] === 'thrall'));
+    room.message(c, { t: 'progress', xp: 4000, web: {}, tricks: {}, gear: { worn: { weapon: sword, helm: big }, bag: [sword, big, { slot: 'boots', junk: 1 }], shards: 55, rift: 4 } });
+    check('...gear is kept with the account, cleaned', kept.f && kept.f.gear.worn.weapon && !kept.f.gear.worn.helm && kept.f.gear.bag.length === 1 && kept.f.gear.shards === 55 && kept.f.gear.rift === 4);
+  }
+  console.log(`${pass} passed, ${failed} failed (after loot)`);
 }

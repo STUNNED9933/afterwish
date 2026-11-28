@@ -56,6 +56,14 @@ export class Lively {
     }
     for (const w of want) {
       let l = this.live.get(w.key);
+      // (1.1) the same owner in another body now (an elite where an ordinary beast was): give the old one back
+      if (l && l.key !== w.spec.model + (w.spec.tint ? ':' + w.spec.tint : '') + (w.spec.vary ? ':' + w.spec.vary : '')) {
+        this.scene.remove(l.body.outer);
+        if (!this.pool.has(l.key)) this.pool.set(l.key, []);
+        this.pool.get(l.key).push(l.body);
+        this.live.delete(w.key);
+        l = null;
+      }
       if (!l) {
         const got = this.take(w.spec);
         if (!got) continue;

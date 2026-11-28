@@ -160,6 +160,17 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: gear to hunt for (1.1)
+
+For anyone who would rather hunt than follow the story: none of this needs more than choosing a path (Quest 3).
+
+- **Gear (I).** Five slots (weapon, helm, chest, boots, charm), six rarities (Common to Ancient) and **uniques**, named pieces that change how you play (Juni's Spare String splits your Shots; Featherweight Soles give a third jump; the Crown of Cinders makes you Vampiric...). Affixes are the talent web's own stats, so gear and talents build together. Item level is your level when it drops.
+- **Salvage and craft.** Break gear into ash shards (one at a time, or all below a rarity at once); spend shards to **reroll an affix** or **add a star** (up to five, +10% each to everything on the piece).
+- **Elites.** About one beast in sixteen is Ash-touched (ember glow, bigger, named bar): tougher, worth four times the experience, and it always drops gear. Rarer, **named beasts** (violet: Old Greymuzzle, Mudking, the Leaning Cairn...) drop two pieces, the first rare or better, sometimes a unique. Both wake as strong as whoever finds them.
+- **World bosses.** Ashmaw, Mother of Wolves (far south-west), Old Gorge, the Barley Tyrant (far south-east) and the Cairn King (far north-east). Each comes back about twelve minutes after it falls, and everyone hears when it does. Mind the red circles: get out, roll or jump. Everyone who fought it gets three pieces of their own.
+- **The Ash Rift.** The circle at the old watchtower never quite closed. Press F there and choose a tier: five waves of the Unbound and a Rift Warden, then a chest for everyone who stood in it. Higher tiers are tougher and pay better (more items, better rarities, a chance at a unique).
+- The journal (J) lists all of it under *Hunting for gear*. On a server world, drops are rolled by the server; what you wear is checked against what could have dropped at your level, and your gear is kept with your account.
+
 ### Quest kinds, an Available Quests list, and the end of Lacuna's Act I (1.0)
 
 - **Every quest is labelled with its kind**, as in FFXIV, so you know what you can leave for later: **✦ Main Story** (gold: follow these to see what happens next), **✚ New Content** (blue: unlocks something new, such as the Ring Glass or Haven), **❖ Side Story** (purple: optional stories), **! Side Quest** (pale: experience and rewards, safe to skip) and **↻ Repeatable** (green). The label shows when a quest is offered, in the journal and in the quest tracker.

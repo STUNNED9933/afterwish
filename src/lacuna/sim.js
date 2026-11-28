@@ -14,8 +14,12 @@ import { levelHp, levelDmg, MAX_LEVEL } from './levels.js';
 import { compile, valid } from './tree.js';
 
 // (0.99.37) a hero's talents: a number from the web (0 if none), and whether a keystone is taken
-const M = (p, k) => (p && p.web && p.web.mods[k]) || 0;
-const KEY = (p, k) => !!(p && p.web && p.web.keys.has(k));
+// (1.1) and their gear (loot.js), read the same way
+const M = (p, k) => (p ? ((p.web && p.web.mods[k]) || 0) + ((p.gear && p.gear.mods[k]) || 0) : 0);
+const KEY = (p, k) => !!(p && ((p.web && p.web.keys.has(k)) || (p.gear && p.gear.keys.has(k))));
+import { gearMods, cleanWorn, dropsFor, ELITE, NAMED, NAMES, BOSSES, BOSS_EVERY, BOSS_FIRST, RIFT, RIFT_AT, RIFT_FOES, riftScale } from './loot.js';
+/** (1.1) A beast's body radius (an elite or a boss is bigger). */
+const rad = (b) => (b.def && b.def.r) || BEASTS[b.type].r;
 import { dHypot, dAtan2, dCos, dSin } from '../sim/dmath.js';
 import { Land, LAND, CHUNKS, BEASTS, chunkOf, TOWN , trainingPosts } from './land.js';
 
@@ -122,6 +126,8 @@ export class LandWorld {
     this.shotId = 0;
     this.events = [];
     this.stats = { awake: 0, looked: 0, active: 0 };
+    this.lootRng = makeRng(seed ^ 0x10075eed); // (1.1) drops and elites: their own rng, so the rest of the land is as it was
+    this.rifts = new Map(); // (1.1) pid -> an Ash Rift under way
     this.land.all(); // 64 chunks: a few milliseconds, and every beast's home is known from the start
     for (const ch of this.land.chunks) {
       for (const s of ch.spawns) {
@@ -129,6 +135,7 @@ export class LandWorld {
         const b = { id: this.beasts.length + 1, type: s.type, x: s.x, z: s.z, hx: s.x, hz: s.z, facing: this.rng() * 6.283, state: 'idle', t: this.rng() * 4, tx: s.x, tz: s.z, swipeT: 0, awake: false, hp: def.hp, maxHp: def.hp, dead: false, diedAt: 0, target: 0, chunk: ch.cz * CHUNKS + ch.cx };
         this.beasts.push(b);
         this.byChunk[b.chunk].push(b);
+        this.promote(b);
       }
     }
     // (0.99.21) the training ground's posts: beasts that stand still, never strike back and never fall
@@ -138,6 +145,22 @@ export class LandWorld {
       this.beasts.push(b);
       this.byChunk[b.chunk].push(b);
     }
+    // (1.1) the world bosses: one for each wild ground, where it is wildest (the spawn of its kind furthest from town)
+    this.bosses = [];
+    for (const type of Object.keys(BOSSES)) {
+      const far = this.beasts.filter((q) => q.type === type && !q.rank).sort((p, q) => dHypot(q.hx - TOWN.x, q.hz - TOWN.z) - dHypot(p.hx - TOWN.x, p.hz - TOWN.z))[0];
+      if (!far) continue;
+      // the beast whose home it takes is gone for good (it stood at the boss's feet)
+      far.gone = true; far.dead = true;
+      this.byChunk[far.chunk].splice(this.byChunk[far.chunk].indexOf(far), 1);
+      const B = BOSSES[type], def = BEASTS[type];
+      const { cx, cz } = chunkOf(far.hx, far.hz);
+      const b = { id: this.beasts.length + 1, type, x: far.hx, z: far.hz, hx: far.hx, hz: far.hz, facing: 0, state: 'idle', t: 0, tx: far.hx, tz: far.hz, swipeT: 0, awake: false, dead: true, diedAt: 0, backAt: BOSS_FIRST, target: 0, chunk: cz * CHUNKS + cx, rank: 3, name: B.name, size: B.size, def: { ...def, name: B.name, hp: def.hp * B.hp, dmg: def.dmg * B.dmg, xp: def.xp * B.xp, r: def.r * B.size * 0.8, leash: 45, aggro: 16, every: def.every * 1.15 }, slamT: 3 };
+      b.hp = b.maxHp = b.def.hp;
+      this.beasts.push(b);
+      this.byChunk[b.chunk].push(b);
+      this.bosses.push(b);
+    }
   }
 
   /**
@@ -145,11 +168,11 @@ export class LandWorld {
    * with `extra` laid on it (story: a name for the quest to count it by; def: its own numbers; ward; hidden).
    */
   borrowBeast(type, x, z, extra = {}) {
-    const b = this.beasts.filter((q) => q.type === type && !q.story).sort((p, q) => dHypot(q.x - x, q.z - z) - dHypot(p.x - x, p.z - z))[0];
+    const b = this.beasts.filter((q) => q.type === type && !q.story && !q.rift && q.rank !== 3 && !q.gone).sort((p, q) => dHypot(q.x - x, q.z - z) - dHypot(p.x - x, p.z - z))[0];
     if (!b) return null;
     const list = this.byChunk[b.chunk];
     list.splice(list.indexOf(b), 1);
-    Object.assign(b, { dead: false, x, z, hx: x, hz: z, state: 'idle', target: 0, awake: false, swipeT: 1, stunUntil: 0, markUntil: 0 }, extra);
+    Object.assign(b, { dead: false, x, z, hx: x, hz: z, state: 'idle', target: 0, awake: false, swipeT: 1, stunUntil: 0, markUntil: 0, rank: 0, name: undefined, size: undefined, lv: 0, rift: undefined, def: undefined }, extra);
     b.maxHp = b.hp = (extra.def && extra.def.hp) || BEASTS[type].hp;
     b.chunk = chunkOf(x, z).i;
     this.byChunk[b.chunk].push(b);
@@ -214,6 +237,7 @@ export class LandWorld {
     const p = this.players.get(pid);
     if (!p) return;
     p.level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(+L) || 1));
+    if (p.wornRaw) { this.setGear(pid, p.wornRaw); return; } // (1.1) gear that waited for the level
     this.refit(p);
   }
 
@@ -394,6 +418,8 @@ export class LandWorld {
     for (const p of this.players.values()) this.stepPlayer(p, dt);
     this.stepShots(dt);
     if (this.noBeasts) return; // (online, in a browser) the server runs the beasts
+    for (const b of this.bosses) if (b.dead && this.time >= b.backAt) this.revive(b); // (1.1) a world boss, back
+    if (this.rifts.size) this.stepRifts(dt);
     // Which chunks are live: each player's and the ones round it (WAKE is under a chunk across).
     const live = new Set();
     for (const p of this.players.values()) {
@@ -409,7 +435,7 @@ export class LandWorld {
       for (const b of this.byChunk[i]) {
         looked++;
         if (b.dead) {
-          if (this.time - b.diedAt >= RESPAWN && !this.someoneNear(b.hx, b.hz, 25)) this.revive(b);
+          if (b.rank !== 3 && this.time - b.diedAt >= RESPAWN && !this.someoneNear(b.hx, b.hz, 25)) this.revive(b);
           continue;
         }
         const near = this.nearest(b);
@@ -715,7 +741,7 @@ export class LandWorld {
   might(p, kind = '') {
     let m = KITS[p.cls].dmg * p.mult * (p.surge || 1) * levelDmg(p.level || 1); // (0.99.26) the Link's first waking, in the story; (0.99.36) a level's might
     if (this.bloodied(p)) m *= 1 + KITS.warrior.bloodied.dmg + M(p, 'bloodDmg');
-    if (!p.web) return m;
+    if (!p.web && !p.gear) return m;
     // (0.99.37) talents
     const airborne = p.y > (p.g || 0) + 0.05;
     let more = M(p, 'dmg') + (kind === 'melee' ? M(p, 'melee') : kind === 'proj' ? M(p, 'proj') : 0) + (airborne ? M(p, 'air') : 0) + (p.still >= 0.6 ? M(p, 'stillDmg') : 0);
@@ -731,7 +757,7 @@ export class LandWorld {
     let n = 0;
     for (const b of this.beastsNear(p.x, p.z, range + 1.2)) {
       const ex = b.x - p.x, ez = b.z - p.z, d = dHypot(ex, ez);
-      if (d > range + BEASTS[b.type].r) continue;
+      if (d > range + rad(b)) continue;
       if (d > 0.5 && (ex * dx + ez * dz) / d < cosHalf) continue;
       this.hurt(b, p, this.might(p, 'melee') * s.mult);
       n++;
@@ -743,7 +769,7 @@ export class LandWorld {
   area(p, x, z, r, mult, stun = 0) {
     let n = 0;
     for (const b of this.beastsNear(x, z, r + 1.2)) {
-      if (dHypot(b.x - x, b.z - z) > r + BEASTS[b.type].r) continue;
+      if (dHypot(b.x - x, b.z - z) > r + rad(b)) continue;
       this.hurt(b, p, this.might(p, 'melee') * mult);
       if (stun && !b.dead) b.stunUntil = Math.max(b.stunUntil || 0, this.time + stun * (1 + M(p, 'skyStun')));
       n++;
@@ -774,7 +800,7 @@ export class LandWorld {
         let best = null, bt = 2;
         for (const b of this.beastsNear((s.x + x1) / 2, (s.z + z1) / 2, step / 2 + 2)) {
           if (s.hit && s.hit.includes(b.id)) continue;
-          const t = segHit(s.x, s.z, x1, z1, b.x, b.z, BEASTS[b.type].r + 0.08); // (0.99.27) was +0.25: hits that looked like misses
+          const t = segHit(s.x, s.z, x1, z1, b.x, b.z, rad(b) + 0.08); // (0.99.27) was +0.25: hits that looked like misses
           if (t !== null && t < bt) { bt = t; best = b; }
         }
         if (best) {
@@ -807,7 +833,7 @@ export class LandWorld {
             }
             if (next && this.players.has(s.by)) {
               const ex = (next.x - best.x) / nd, ez = (next.z - best.z) / nd;
-              this.shoot(p, ex, ez, s.speed, reach + 2, 0, false, 'arrow', { dmg: s.dmg, bounce: s.bounce - 1, hit: s.hit }, { x: best.x + ex * (BEASTS[best.type].r + 0.3), z: best.z + ez * (BEASTS[best.type].r + 0.3) });
+              this.shoot(p, ex, ez, s.speed, reach + 2, 0, false, 'arrow', { dmg: s.dmg, bounce: s.bounce - 1, hit: s.hit }, { x: best.x + ex * (rad(best) + 0.3), z: best.z + ez * (rad(best) + 0.3) });
             }
           }
         }
@@ -832,7 +858,7 @@ export class LandWorld {
   hurt(b, p, dmg, shot = 0, crit = false) {
     if (b.dead) return;
     // (0.99.37) talents: a chance to strike critically, and harder crits
-    if (p.web) {
+    if (p.web || p.gear) {
       if (!crit && M(p, 'crit') && this.rng() < M(p, 'crit')) { crit = true; dmg *= 1.5; }
       if (crit) dmg *= 1 + M(p, 'critMult');
     }
@@ -856,13 +882,16 @@ export class LandWorld {
       b.awake = false;
       b.moving = false;
       b.diedAt = this.time;
-      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: (b.def && b.def.xp) || BEASTS[b.type].xp, story: b.story || '' });
+      this.emit('die', { id: b.id, pid: p.pid, x: b.x, z: b.z, kind: b.type, xp: Math.round((b.def && b.def.xp) || BEASTS[b.type].xp), story: b.story || '', rank: b.rank || 0, name: b.name || '', rift: b.rift ? 1 : 0 });
+      if (b.rank === 3) b.backAt = this.time + BOSS_EVERY;
+      if (this.players.has(p.pid)) this.loot(b, p); // (1.1) what it drops
       return;
     }
     // struck from afar, it comes for whoever struck it
     if (b.state !== 'chase' && this.players.has(p.pid) && !BEASTS[b.type].post) {
       b.state = 'chase';
       b.target = p.pid;
+      this.wake(b, p);
       this.emit('aggro', { id: b.id, pid: p.pid, x: b.x, z: b.z });
     }
   }
@@ -870,12 +899,129 @@ export class LandWorld {
   revive(b) {
     b.dead = false;
     // (0.99.30) a story's beast (an ashen wolf, a contract's quarry) comes back as an ordinary one of its kind
-    if (b.story) { b.story = undefined; b.def = undefined; b.job = undefined; b.look = undefined; b.ward = null; b.hidden = false; b.maxHp = BEASTS[b.type].hp; }
+    if (b.story || b.rift) { b.story = undefined; b.def = undefined; b.job = undefined; b.look = undefined; b.ward = null; b.hidden = false; b.maxHp = BEASTS[b.type].hp; b.rift = undefined; b.size = undefined; b.name = undefined; b.rank = 0; }
+    if (b.rank === 3) { b.lv = 0; b.maxHp = b.def.hp; b.slamT = 3; b.tele = null; }
+    else this.promote(b); // (1.1) an elite, now and then
     b.hp = b.maxHp;
     b.x = b.hx; b.z = b.hz;
     b.state = 'idle';
     b.target = 0;
     this.emit('back', { id: b.id, x: b.x, z: b.z });
+    if (b.rank === 3) this.emit('boss', { id: b.id, name: b.name, kind: b.type, at: { x: b.hx, z: b.hz } }); // (no x: everyone hears)
+  }
+
+  /**
+   * (1.1) Now and then a beast is born an elite (Ash-touched: tougher, bigger, better loot) or, rarely, a rare named
+   * one. Its numbers are set again for the level of whoever wakes it (see wake).
+   */
+  promote(b) {
+    if (b.story || b.rank === 3 || BEASTS[b.type].post) return;
+    b.rank = 0; b.def = undefined; b.name = undefined; b.size = undefined; b.lv = 0;
+    b.maxHp = BEASTS[b.type].hp;
+    const r = this.lootRng();
+    if (r >= ELITE.chance) return;
+    const named = r < ELITE.named, K = named ? NAMED : ELITE, def = BEASTS[b.type];
+    b.rank = named ? 2 : 1;
+    b.size = K.size;
+    b.name = named ? NAMES[b.type][Math.floor(this.lootRng() * NAMES[b.type].length)] : `Ash-touched ${def.name}`;
+    b.def = { ...def, name: b.name, hp: def.hp * K.hp, dmg: def.dmg * K.dmg, xp: def.xp * K.xp, r: def.r * K.size, aggro: def.aggro * 1.2 };
+    b.maxHp = b.hp = Math.round(b.def.hp);
+  }
+
+  /** (1.1) An elite, a named beast or a boss, waking for someone: as tough as they are strong (their level). */
+  wake(b, p) {
+    if (!b.rank || b.story || b.lv) return;
+    const L = Math.max(1, p.level || 1), base = b.rank === 3 ? BOSSES[b.type] : b.rank === 2 ? NAMED : ELITE, def = BEASTS[b.type];
+    // (a level's damage is +2%, its health +4%: so beasts keep pace, taking as many blows and dealing as many)
+    const hp = Math.round(def.hp * base.hp * (1 + 0.02 * (L - 1)) * (1 + 0.04 * (L - 1)) * (b.rank === 3 ? 1 + 0.5 * Math.max(0, this.playersNear(b.x, b.z, 40) - 1) : 1));
+    const k = b.hp / b.maxHp;
+    b.lv = L;
+    b.def = { ...b.def, dmg: def.dmg * base.dmg * (1 + 0.04 * (L - 1)), hp };
+    b.maxHp = hp; b.hp = Math.max(1, Math.round(hp * k));
+  }
+
+  playersNear(x, z, r) {
+    let n = 0;
+    for (const p of this.players.values()) if (!p.dead && dHypot(p.x - x, p.z - z) < r) n++;
+    return n;
+  }
+
+  /** (1.1) A hero's gear: what the page says they wear, checked (only what could have dropped for their level). */
+  setGear(pid, worn) {
+    const p = this.players.get(pid);
+    if (!p) return {};
+    p.wornRaw = worn;
+    const clean = cleanWorn(worn, p.level || 1);
+    p.worn = clean;
+    p.gear = Object.keys(clean).length ? gearMods(clean) : null;
+    this.refit(p);
+    return clean;
+  }
+
+  /** (1.1) What falls from something killed: items rolled for each who earned them (their own loot, their own level). */
+  loot(b, killer) {
+    const rank = b.rift ? null : b.rank || 0;
+    if (rank === null || b.story) return;
+    const who = rank === 3 ? [...this.players.values()].filter((p) => !p.dead && dHypot(p.x - b.x, p.z - b.z) < 35) : [killer];
+    for (const p of who) for (const item of dropsFor(rank, this.lootRng, p.level || 1)) this.emit('loot', { pid: p.pid, x: b.x, z: b.z, item, from: b.name || '' });
+  }
+
+  // ---- (1.1) the Ash Rift: waves of the Unbound at the circle under the watchtower, a chest at the end
+  /** Open a rift for `pid` at `tier` (they must be at the circle, and not in one already). */
+  openRift(pid, tier) {
+    const p = this.players.get(pid);
+    tier = Math.max(1, Math.min(RIFT.most, Math.floor(+tier) || 1));
+    if (!p || p.dead || this.rifts.has(pid) || dHypot(p.x - RIFT_AT.x, p.z - RIFT_AT.z) > 8) return false;
+    for (const R of this.rifts.values()) if (R.alive) return false; // one at a time (others can join in)
+    this.rifts.set(pid, { pid, tier, wave: 0, foes: [], t: 0, gap: 2, alive: true, lv: Math.max(1, p.level || 1) });
+    this.emit('rift', { pid, tier, wave: 0, left: 0, time: RIFT.time });
+    return true;
+  }
+
+  stepRifts(dt) {
+    for (const R of this.rifts.values()) {
+      const p = this.players.get(R.pid);
+      R.t += dt;
+      const fail = !p || p.dead || dHypot(p.x - RIFT_AT.x, p.z - RIFT_AT.z) > RIFT.reach || R.t > RIFT.time;
+      if (fail) { this.endRift(R, false); continue; }
+      const left = R.foes.filter((b) => !b.dead && b.rift === R.pid);
+      if (left.length) continue;
+      if (R.wave >= RIFT.waves) { this.endRift(R, true); continue; }
+      R.gap -= dt;
+      if (R.gap > 0) continue;
+      R.gap = 3;
+      R.wave++;
+      R.foes = this.riftWave(R);
+      this.emit('rift', { pid: R.pid, tier: R.tier, wave: R.wave, left: R.foes.length, time: Math.max(0, Math.round(RIFT.time - R.t)) });
+    }
+  }
+
+  /** A wave: thralls, then acolytes among them, and at the last a Rift Warden. */
+  riftWave(R) {
+    const sc = riftScale(R.tier), L = R.lv, out = [];
+    const kinds = [];
+    const n = 3 + R.wave + Math.floor(R.tier / 4);
+    for (let k = 0; k < n; k++) kinds.push(R.wave >= 3 && k < Math.floor(R.wave / 2) ? 'acolyte' : 'thrall');
+    if (R.wave === RIFT.waves) kinds.push('warden');
+    kinds.forEach((kind, k) => {
+      const F = RIFT_FOES[kind], a = (k / kinds.length) * 6.283 + R.wave;
+      const def = { ...F.def, hp: Math.round(F.def.hp * sc.hp * (1 + 0.02 * (L - 1)) * (1 + 0.04 * (L - 1))), dmg: F.def.dmg * sc.dmg * (1 + 0.04 * (L - 1)), xp: Math.round(F.def.xp * (1 + 0.1 * (R.tier - 1))) };
+      const b = this.borrowBeast(F.type, RIFT_AT.x + dCos(a) * 9, RIFT_AT.z + dSin(a) * 9, { story: '', rift: R.pid, look: F.look, def, rank: kind === 'warden' ? 2 : 0, name: kind === 'warden' ? 'Rift Warden' : undefined, size: F.size, lv: L, state: 'chase', target: R.pid, awake: true });
+      if (b) out.push(b);
+    });
+    return out;
+  }
+
+  endRift(R, ok) {
+    this.rifts.delete(R.pid);
+    for (const b of R.foes) if (!b.dead) { b.dead = true; b.diedAt = this.time; b.awake = false; this.emit('fade', { id: b.id, x: b.x, z: b.z }); }
+    this.emit('riftEnd', { pid: R.pid, ok: ok ? 1 : 0, tier: R.tier, x: RIFT_AT.x, z: RIFT_AT.z });
+    if (!ok) return;
+    // the chest: for everyone who stood in it
+    for (const p of this.players.values()) {
+      if (p.dead || dHypot(p.x - RIFT_AT.x, p.z - RIFT_AT.z) > RIFT.reach) continue;
+      for (const item of dropsFor('rift', this.lootRng, p.level || 1, R.tier)) this.emit('loot', { pid: p.pid, x: RIFT_AT.x, z: RIFT_AT.z, item, from: `Ash Rift, tier ${R.tier}` });
+    }
   }
 
   someoneNear(x, z, r) {
@@ -908,11 +1054,14 @@ export class LandWorld {
     const t = b.target && this.players.get(b.target);
     if (b.state === 'chase' && t && !t.dead) { p = t; d = dHypot(t.x - b.x, t.z - b.z); }
     const fromHome = dHypot(b.x - b.hx, b.z - b.hz);
-    if (b.state === 'chase' && (fromHome > def.leash || d > def.aggro * 2.2 || p.dead)) { b.state = 'return'; b.target = 0; }
-    if (b.state === 'return' && fromHome < 2) { b.state = 'idle'; b.t = 1 + this.rng() * 3; b.hp = b.maxHp; }
+    if (b.rift) { const t2 = this.players.get(b.rift); if (t2 && !t2.dead && b.state !== 'chase') { b.state = 'chase'; b.target = b.rift; } } // (1.1) a rift's foes come for whoever opened it
+    else if (b.state === 'chase' && (fromHome > def.leash || d > def.aggro * 2.2 || p.dead)) { b.state = 'return'; b.target = 0; }
+    if (b.state === 'return' && fromHome < 2) { b.state = 'idle'; b.t = 1 + this.rng() * 3; if (b.lv && b.rank) { b.lv = 0; b.def = { ...b.def, hp: b.def.hp }; } b.hp = b.maxHp; b.tele = null; }
+    if (b.rank === 3 && b.state === 'chase') this.bossSlam(b, p, dt); // (1.1) a world boss's great blow
     if (b.state === 'idle' && d < def.aggro && fromHome < def.leash * 0.8) {
       b.state = 'chase';
       b.target = p.pid;
+      this.wake(b, p);
       this.emit('aggro', { id: b.id, pid: p.pid, x: b.x, z: b.z });
     }
     let tx = b.x, tz = b.z, speed = 0;
@@ -933,7 +1082,7 @@ export class LandWorld {
             p.hp -= def.dmg * (1 - Math.min(0.6, M(p, 'armour'))); // (0.99.37) talents: less taken
             p.calm = 0;
           }
-          this.emit('swipe', { id: b.id, pid: p.pid, dmg: dodged ? 0 : def.dmg, x: b.x, z: b.z });
+          this.emit('swipe', { id: b.id, pid: p.pid, dmg: dodged ? 0 : Math.round(def.dmg), x: b.x, z: b.z });
           if (p.hp <= 0 && !p.dead) {
             p.hp = 0;
             p.dead = true;
@@ -976,6 +1125,44 @@ export class LandWorld {
       this.land.pushOut(b, def.r);
       const made = ((b.x - ox) * dx + (b.z - oz) * dz) / (len * step || 1);
       if (made < 0.35 && !(b.detourT > 0)) { b.detour = (b.id % 2 ? 1 : -1) * 1.1; b.detourT = 0.8; }
+    }
+  }
+
+  /**
+   * (1.1) A world boss, every few seconds, marks where it will strike (a ring on the ground, seen at once) and strikes a
+   * moment later: everyone in it is hurt hard, unless they are out of it, rolling, or in the air (jump it!).
+   */
+  bossSlam(b, p, dt) {
+    const S = BOSSES[b.type].slam;
+    if (b.tele) {
+      if (this.time < b.tele.at) return;
+      const T = b.tele;
+      b.tele = null;
+      this.emit('crash', { id: b.id, x: T.x, z: T.z, r: S.r });
+      for (const q of this.players.values()) {
+        if (q.dead || dHypot(q.x - T.x, q.z - T.z) > S.r || q.y > 0.6 || q.roll || q.guard > 0) continue;
+        this.harm(q, b.def.dmg * S.dmg, b);
+      }
+      return;
+    }
+    b.slamT -= dt;
+    if (b.slamT > 0) return;
+    b.slamT = S.every;
+    b.tele = { x: p.x, z: p.z, at: this.time + S.warn };
+    this.emit('tele', { id: b.id, x: p.x, z: p.z, r: S.r, warn: S.warn });
+  }
+
+  /** A blow on a hero from a beast (armour taken off), and their going down. */
+  harm(p, dmg, b) {
+    p.hp -= dmg * (1 - Math.min(0.6, M(p, 'armour')));
+    p.calm = 0;
+    this.emit('swipe', { id: b.id, pid: p.pid, dmg: Math.round(dmg), x: b.x, z: b.z, big: 1 });
+    if (p.hp <= 0 && !p.dead) {
+      p.hp = 0;
+      p.dead = true;
+      p.downT = DOWN;
+      p.leap = p.roll = p.whirl = p.draw = null;
+      this.emit('down', { pid: p.pid, x: p.x, z: p.z, by: b.id });
     }
   }
 

@@ -47,7 +47,7 @@ export class Fx {
     g.position.set(x, y, z);
     g.lookAt(x + dx, y, z + dz);
     this.scene.add(g);
-    this.arrows.push({ g, x, z, y, y0: y, flown: 0, ray, dx, dz, speed, left: range, big });
+    this.arrows.push({ g, x, z, y, y0: y, flown: 0, ray, dx, dz, speed, left: range, big, kind });
   }
 
   /**
@@ -127,7 +127,9 @@ export class Fx {
   number(x, z, text, kind = 'dealt') {
     const d = document.createElement('div');
     d.className = 'num ' + kind;
-    d.textContent = text;
+    const sp = document.createElement('span'); // (1.3) the number pops in (CSS), then rises and fades
+    sp.textContent = text;
+    d.appendChild(sp);
     this.layer.appendChild(d);
     this.nums.push({ d, x: x + (Math.random() - 0.5) * 0.6, z: z + (Math.random() - 0.5) * 0.6, t: 0 });
   }
@@ -151,6 +153,7 @@ export class Fx {
       a.flown += step;
       const y = this.arrowY(a);
       if (a.ray && step > 1e-4) a.g.lookAt(a.x + a.dx * step, y + (y - a.y), a.z + a.dz * step); // pointing the way it climbs
+      if (this.onFly) { const from = (a.last || (a.last = new THREE.Vector3())).copy(a.g.position); a.g.position.set(a.x, y, a.z); this.onFly(from, a.g.position, a); } // (1.3) a glowing streak behind it
       a.y = y;
       a.g.position.set(a.x, a.y, a.z);
       // (0.99.27) the arrow goes where it goes: it stops in a beast only when the sim says it struck (landed), so a
@@ -160,7 +163,7 @@ export class Fx {
     for (let i = (this.fans || []).length - 1; i >= 0; i--) {
       const f = this.fans[i];
       f.t += dt;
-      f.m.material.opacity = f.t < 0.06 ? 0.32 * (f.t / 0.06) : 0.32 * Math.max(0, 1 - (f.t - 0.06) / 0.3);
+      f.m.material.opacity = f.t < 0.06 ? 0.1 * (f.t / 0.06) : 0.1 * Math.max(0, 1 - (f.t - 0.06) / 0.3); // (1.3) fainter: the cut's own light says it now
       if (f.t >= 0.36) { this.scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); this.fans.splice(i, 1); }
     }
     for (let i = this.rings.length - 1; i >= 0; i--) {

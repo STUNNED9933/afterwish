@@ -999,6 +999,7 @@ export function instantiate(tpl) {
           actions.death.time = spec.deathFrom || 0;
         } else fadeTo(actions.death || actions.idle, 0.1);
       } else {
+        if (s.cancelMove && move) { endFade = 0.15; move = null; } // (1.3) a held move let go with nothing after it (a heavy blow let go too soon)
         if (s.move && moves[s.move]) {
           // A skill: its keys, stretched so the strike lands as the dash or leap ends.
           const def = moves[s.move];
@@ -1557,6 +1558,13 @@ export function setWeaponLook(model, cls, look) {
 // the heroes' own clips moved onto him (tools/models/copy-clips.mjs). Smaller blade and bow; nothing stowed on
 // his back or hip (those were placed on the grown heroes' bodies).
 const KID = { url: 'models/l_hero.glb', height: 1.0, idle: 'ual_Idle_Loop', walk: 'ual_Walk_Loop', walkRef: 1.25, runRef: 4.6, hit: 'ual_Hit_Chest', rootBones: ['Hip', 'Root', 'BoneRoot', 'Pelvis'] };
+// (1.3) The fighting moves every kid has (Lacuna's new fighting): the dodge (a quick roll), and a plunge's fall and landing.
+// keys: [seconds since it began, clip time]; stop: a held frame at the impact (the hit-stop); slash: the blade's trail.
+const KID_MOVES = {
+  dodge: { clip: 'arc_roll', keys: [[0, 0.02], [0.26, 0.45], [0.42, 0.55]], land: 1, fade: 0.12 },
+  plunge: { clip: 'ual_Smash', keys: [[0, 2.3], [0.14, 2.5], [0.3, 2.58], [2, 2.6]], fade: 0.06 },
+  plungeLand: { clip: 'ual_Smash', keys: [[0, 2.62], [0.06, 2.72], [0.55, 3.5]], stop: [0.04, 0.09], slash: [0, 0.1], fade: 0.3 },
+};
 RIGGED.kid_novice = {
   ...KID,
   turn: -Math.PI / 2,
@@ -1568,8 +1576,48 @@ RIGGED.kid_novice = {
     { clip: 'ual_Punch_Jab', from: 0.12, to: 0.5 },
     { clip: 'ual_Punch_Cross', from: 0.15, to: 0.6 },
   ],
-  moves: { ...HOP },
+  moves: {
+    ...HOP,
+    ...KID_MOVES,
+    // (1.3) the string: jab, cross, jab, hook; the haymaker (wound up while held); the counter (a lunge)
+    c0: { clip: 'ual_Punch_Jab', keys: [[0, 0.12], [0.1, 0.3], [0.38, 0.6]], stop: [0.1, 0.04], fade: 0.15 },
+    c1: { clip: 'ual_Punch_Cross', keys: [[0, 0.15], [0.12, 0.38], [0.42, 0.7]], stop: [0.12, 0.04], fade: 0.15 },
+    c2: { clip: 'ual_Punch_Jab', keys: [[0, 0.12], [0.1, 0.3], [0.38, 0.6]], stop: [0.1, 0.04], fade: 0.15 },
+    c3: { clip: 'ual_Punch_Cross', keys: [[0, 0.1], [0.16, 0.42], [0.6, 0.95]], stop: [0.16, 0.08], fade: 0.25 },
+    charge: { clip: 'ual_Punch_Cross', keys: [[0, 0.05], [0.3, 0.2], [4, 0.22]], fade: 0.12 },
+    heavy: { clip: 'ual_Punch_Cross', keys: [[0, 0.22], [0.1, 0.42], [0.55, 0.95]], stop: [0.1, 0.1], fade: 0.25 },
+    counter: { clip: 'ual_Lunge', keys: [[0, 0.4], [0.2, 0.9], [0.4, 1.05], [0.7, 1.43]], land: 1, stop: [0.2, 0.08], fade: 0.25 },
+  },
 };
 // (0.99.28) trail: running, his blade is carried back and only a little down (a grown man's angle put a boy's tip in the dirt)
-RIGGED.kid_warrior = { ...RIGGED.hero_warrior, ...KID, run: 'ual_Jog_Fwd_Loop', death: 'ual_Death', weaponScale: 0.55, trail: [-0.86, -0.18, 0.3], attack: { clip: 'ual_SlashA', from: 0.08, to: 0.43 }, stow: undefined, walkCarry: undefined };
-RIGGED.kid_archer = { ...RIGGED.hero_archer, ...KID, run: 'arc_run', runRef: 4.0, bowScale: 0.62, stow: undefined, recentre: ['ual_Idle_Loop', 'arc_run', 'ual_Hit_Chest'] };
+RIGGED.kid_warrior = {
+  ...RIGGED.hero_warrior, ...KID, run: 'ual_Jog_Fwd_Loop', death: 'ual_Death', weaponScale: 0.55, trail: [-0.86, -0.18, 0.3], attack: { clip: 'ual_SlashA', from: 0.08, to: 0.43 }, stow: undefined, walkCarry: undefined,
+  moves: {
+    ...RIGGED.hero_warrior.moves,
+    ...KID_MOVES,
+    // (1.3) the string: across, back, a thrust that steps in, and a wide spinning finisher
+    c0: { clip: 'ual_SlashA', keys: [[0, 0.06], [0.07, 0.16], [0.15, 0.3], [0.4, 0.43]], stop: [0.11, 0.04], slash: [0.04, 0.2], fade: 0.12 },
+    c1: { clip: 'ual_SlashB', keys: [[0, 0.1], [0.09, 0.24], [0.17, 0.4], [0.45, 0.53]], stop: [0.13, 0.04], slash: [0.05, 0.22], fade: 0.12 },
+    c2: { clip: 'ual_Lunge', keys: [[0, 0.32], [0.08, 0.5], [0.16, 0.8], [0.32, 0.95], [0.6, 1.43]], stop: [0.14, 0.05], slash: [0.06, 0.2], fade: 0.2 },
+    c3: { clip: 'ual_Cleave', keys: [[0, 0.75], [0.16, 0.98], [0.28, 1.3], [0.7, 1.5]], stop: [0.26, 0.09], slash: [0.12, 0.34], fade: 0.3 },
+    // the heavy blow: crouched and wound up while held, then up and down onto them
+    charge: { clip: 'ual_Smash', keys: [[0, 1.2], [0.3, 1.9], [4, 2.05]], fade: 0.14 },
+    heavy: { clip: 'ual_Smash', keys: [[0, 2.2], [0.1, 2.5], [0.18, 2.64], [0.7, 3.5]], stop: [0.18, 0.11], slash: [0.06, 0.24], fade: 0.3 },
+    // the counter: a dash in, and a cut at the end of it
+    counter: { clip: 'ual_Lunge', keys: [[0, 0.4], [0.2, 0.88], [0.32, 1.05], [0.65, 1.43]], land: 1, stop: [0.2, 0.09], slash: [0.05, 0.3], fade: 0.25 },
+  },
+};
+RIGGED.kid_archer = {
+  ...RIGGED.hero_archer, ...KID, run: 'arc_run', runRef: 4.0, bowScale: 0.62, stow: undefined, recentre: ['ual_Idle_Loop', 'arc_run', 'ual_Hit_Chest'],
+  moves: {
+    ...RIGGED.hero_archer.moves,
+    ...KID_MOVES,
+    // (1.3) her string: the third a quick pair, the fourth a full draw that flies on through; the charged shot (held
+    // drawn, then loosed); the counter (a fan of arrows)
+    c2: { clip: 'arc_barrage', keys: [[0, 0.1], [0.35, 0.55], [0.6, 0.85]], fade: 0.12 },
+    c3: { clip: 'arc_power', keys: [[0, 0.25], [0.3, 0.6], [0.6, 0.9]], fade: 0.15 },
+    charge: { clip: 'arc_deadeye', keys: [[0, 0.5], [0.4, 1.0], [4, 1.0]], fade: 0.2 },
+    heavy: { clip: 'arc_deadeye', keys: [[0, 1.0], [0.45, 1.45]], fade: 0.04 },
+    counter: { clip: 'arc_barrage', keys: [[0, 0.2], [0.2, 0.55], [0.5, 0.85]], fade: 0.1 },
+  },
+};

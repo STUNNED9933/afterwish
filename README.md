@@ -160,6 +160,40 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Fighting that feels like an action game, and a new HUD (1.3.0)
+
+**Lacuna's fighting, reworked** (both paths, and the fists before them):
+- **Strings of four.** Click, click, click, click: each blow is its own move. The Berserker cuts across, back, thrusts
+  (stepping in) and finishes with a wide spinning cut that staggers; the Sharpshooter shoots twice, looses a pair, then
+  one that flies on through. A moment's pause starts the string again. A whole string hits harder than the old Cleave.
+  Holding the button no longer fires on its own.
+- **Heavy blows.** Hold left click: a ring fills under you (and round the crosshair); let go. Stronger the longer you
+  held, up to 3.2 times at full (the Berserker's Sundering Blow, the Sharpshooter's Charged Shot, a boy's Haymaker).
+- **The dodge (Shift)**, for everyone: a quick dash the way you move (or back), untouchable while it lasts; hold Shift
+  after it to sprint. **Perfect dodge**: dodge just before a blow lands (watch the wind-up, or a world boss's ring) and
+  the attacker staggers, a little mana comes back, time slows for a moment (playing alone), the screen flashes blue and
+  a glowing afterimage stays where you were. Your next blow is a **counter**: the Berserker dashes in for a 3.4 times
+  Riposte, the Sharpshooter looses a fan of three arrows that fly on through.
+- **Plunge**: with a sword or fists, jump and strike in the air to drop onto what is below.
+- **The feel of it**: a bright crescent for every cut (each blow of a string at its own angle), sparks and a flash
+  where a blow lands, hit-stop (a landed blow holds every body still for a few hundredths of a second), the camera
+  shaken and pushed out for big blows, shockwaves for slams and plunges, glowing streaks behind arrows, spinning cuts
+  for the Whirlwind, a pillar of red for the Oath, sounds for each (a finisher, the charge, the heavy blow, the counter,
+  the shimmer of a perfect dodge), damage numbers that pop (crits big and gold), and a hit counter.
+- New tricks in the **H** list: a full string, a heavy blow at full charge, a perfect dodge, a counter, a plunge.
+- The sim (and the server) decide all of it: tests for strings, heavy blows, the perfect dodge, the counter and the
+  plunge. Slowed time is only when alone: together, nobody can slow the server's world.
+
+**A new HUD**, in both Lacuna and Haven:
+- **Skill icons**: one drawn icon per skill (28 of them, `src/ui/skillglyphs.js`) on lit round tiles, each class in its
+  own colour (Berserker amber, Sharpshooter ice-blue, Rogue violet, Mage blue). Cooldowns unwind as a sweep, with the
+  seconds left; a tile flashes as it comes ready.
+- **Lacuna**: the skills bottom right (left click, Shift, Q, E and a big R), with mana costs in chips, COUNTER over the
+  blow after a perfect dodge and a ring while a heavy blow charges; health and mana wide at the bottom with your level
+  in a badge (and a pale trail behind lost health); bigger beast health bars; the testing numbers only on F3; the
+  walk-together and sound panel folded into a button at the top left.
+- **Haven**: the same tiles for its skills (the R bigger), a brighter level badge, rounder bars, quieter buttons.
+
 ### Smoother music, a compass, and beasts that lose patience (1.2.1)
 
 - **Music no longer stutters.** The player queued notes only a fifth of a second ahead, so one slow frame (ground

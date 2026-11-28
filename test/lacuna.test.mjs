@@ -171,7 +171,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
     check('...and the beast comes for whoever shot it', hog.state === 'chase' && hog.target === 1);
     const near = put('golem', 62, 60);
     p.shotN = 0; w.events.length = 0;
-    for (let i = 0; i < 3; i++) { p.basicT = 0; w.act(1, 'basic', near.x, near.z); steps(w, 0.2); }
+    for (let i = 0; i < 3; i++) { p.basicT = 0; p.combo = -1; w.act(1, 'basic', near.x, near.z); steps(w, 0.2); } // (1.3) each the first of a string
     const hs = w.events.filter((e) => e.type === 'hit' && e.id === near.id);
     check('...Steady Aim: every third Shot is a crit for double', hs.length === 3 && !hs[0].crit && !hs[1].crit && hs[2].crit === 1 && hs[2].dmg === hs[0].dmg * 2, hs.map((h) => h.dmg + (h.crit ? '!' : '')).join());
   }
@@ -253,12 +253,86 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
     g.hp = g.maxHp = g2.hp = g2.maxHp = 1e6;
     p.mp = 10;
     w.act(1, 'basic', 62, 60); w.step(TICK);
-    const plain = w.events.find((e) => e.type === 'hit').dmg;
+    const plain = w.events.find((e) => e.type === 'hit').dmg; // (1.3) the first cut of a string: 1.1
     check('...Battle Rhythm: a Cleave through two beasts gives back 6 mana', Math.abs(p.mp - (10 + 6 + KITS.warrior.regen * TICK)) < 0.01, p.mp);
-    p.hp = p.maxHp * 0.25; p.basicT = 0; w.events.length = 0;
+    p.hp = p.maxHp * 0.25; p.basicT = 0; p.combo = -1; w.events.length = 0;
     w.act(1, 'basic', 62, 60); w.step(TICK);
     const hurt = w.events.find((e) => e.type === 'hit').dmg;
-    check('...Bloodied under half health: +25% damage, faster blows, and his hits heal him', plain === 84 && hurt === 105 && p.basicT < KITS.warrior.basic.every / 1.15 && p.hp > p.maxHp * 0.25, `${plain} ${hurt}`);
+    check('...Bloodied under half health: +25% damage, faster blows, and his hits heal him', plain === 66 && hurt === 83 && p.basicT < (KITS.warrior.basic.every * KITS.warrior.basic.combo[0].t) / 1.15 && p.hp > p.maxHp * 0.25, `${plain} ${hurt}`);
+  }
+  // (1.3) the new fighting: strings, heavy blows, the dodge (perfect, and the counter), the plunge
+  {
+    const { w, p, put } = setup('warrior');
+    const g = put('golem', 62, 60);
+    g.hp = g.maxHp = 1e6;
+    const blows = [];
+    for (let i = 0; i < 5; i++) { while (p.basicT > 0 || p.roll) w.step(TICK); w.events.length = 0; w.act(1, 'basic', g.x, g.z); w.step(TICK); while (p.roll) w.step(TICK); const c = w.events.find((e) => e.type === 'cast' && e.skill === 'basic'); const h = w.events.find((e) => e.type === 'hit'); blows.push([c && c.n, h && h.dmg]); p.x = 60; p.z = 60; }
+    check('Strings (1.3): the Berserker\'s cuts go in a string of four (then start again), the fourth the hardest', blows.map((b) => b[0]).join() === '0,1,2,3,0' && blows[3][1] > blows[2][1] && blows[2][1] > blows[0][1], JSON.stringify(blows));
+    steps(w, 1.5);
+    w.events.length = 0;
+    w.act(1, 'basic', g.x, g.z); w.step(TICK);
+    check('...a pause and the string starts again', w.events.some((e) => e.type === 'cast' && e.n === 0));
+    // heavy: held long enough
+    steps(w, 1);
+    w.events.length = 0;
+    w.act(1, 'H', g.x, g.z, false, true); steps(w, 1.0);
+    w.act(1, 'H', g.x, g.z, true); steps(w, 0.4);
+    const hv = w.events.find((e) => e.type === 'cast' && e.skill === 'heavy'), hh = w.events.find((e) => e.type === 'hit');
+    check('...hold the button for a heavy blow: at full charge it hits for 3.2 times', hv && hv.k === 1 && hh && hh.dmg === Math.round(60 * 3.2), hh && hh.dmg);
+    w.events.length = 0;
+    w.act(1, 'H', g.x, g.z, false, true); steps(w, 0.1); w.act(1, 'H', g.x, g.z, true); steps(w, 0.3);
+    check('...let go too soon, there is no heavy blow', !w.events.some((e) => e.type === 'cast' && e.skill === 'heavy'));
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const wf = put('wolf', 61.5, 60);
+    wf.hp = wf.maxHp = 1e6;
+    w.hurt(wf, p, 1);
+    let guard = 0;
+    while (!(wf.wind && wf.swipeT <= 0.2) && guard++ < 300) w.step(TICK);
+    const hp0 = p.hp;
+    w.events.length = 0;
+    p.mx = -1; p.mz = 0;
+    w.act(1, 'D', 0, 0); w.step(TICK);
+    const dg = w.events.find((e) => e.type === 'cast' && e.skill === 'dodge');
+    check('Dodge (1.3): a dodge just before a wolf\'s bite lands is perfect: the wolf staggers, and you are not hurt', dg && dg.perfect === 1 && wf.stunUntil > w.time && p.counterT > 0, JSON.stringify(dg));
+    steps(w, 0.5);
+    check('...and its bite never lands', p.hp >= hp0 && !w.events.some((e) => e.type === 'swipe' && e.dmg > 0));
+    w.events.length = 0;
+    p.mx = p.mz = 0;
+    w.act(1, 'basic', wf.x, wf.z); steps(w, 0.4);
+    const ct = w.events.find((e) => e.type === 'cast' && e.skill === 'counter'), ch = w.events.find((e) => e.type === 'hit' && e.id === wf.id);
+    check('...your next blow is a counter: a dash in and a cut for 3.4 times', ct && ch && ch.dmg === Math.round(60 * 3.4), ch && ch.dmg);
+    steps(w, 2);
+    w.events.length = 0;
+    p.basicT = 0;
+    w.act(1, 'D', 0, 0); w.step(TICK);
+    const plain = w.events.find((e) => e.type === 'cast' && e.skill === 'dodge');
+    check('...a dodge at any other time is only a dodge', plain && plain.perfect === 0);
+    w.act(1, 'D', 0, 0); w.step(TICK);
+    check('...and not again at once (a little over half a second)', w.events.filter((e) => e.type === 'cast' && e.skill === 'dodge').length === 1);
+  }
+  {
+    const { w, p, put } = setup('warrior');
+    const g = put('golem', 61, 60);
+    g.hp = g.maxHp = 1e6;
+    w.jump(1); steps(w, 0.22);
+    w.events.length = 0;
+    w.act(1, 'basic', g.x, g.z);
+    steps(w, 0.6);
+    const pl = w.events.find((e) => e.type === 'cast' && e.skill === 'plunge'), sl = w.events.find((e) => e.type === 'slam' && e.kind === 'plunge'), ph = w.events.find((e) => e.type === 'hit');
+    check('Plunge (1.3): a cut in the air drops you onto what is below, hurting everything round you', pl && sl && ph && ph.dmg === Math.round(60 * 2.0), JSON.stringify({ pl: !!pl, sl: !!sl, d: ph && ph.dmg }));
+  }
+  {
+    const { w, p, put } = setup('archer');
+    const g = put('golem', 70, 60), g2 = put('golem', 75, 60);
+    g.hp = g.maxHp = g2.hp = g2.maxHp = 1e6;
+    const shots = [];
+    for (let i = 0; i < 4; i++) { while (p.basicT > 0) w.step(TICK); w.events.length = 0; w.act(1, 'basic', g.x, g.z); w.step(TICK); shots.push(w.events.filter((e) => e.type === 'shot').map((e) => e.kind).join('+')); }
+    check('...the Sharpshooter\'s string: two Shots, a pair at once, and one that flies on through', shots.join(' ') === 'arrow arrow arrow+arrow pierce', shots.join(' '));
+  }
+  {
+    const { w, p } = setup('warrior');
     // the Blood Price: no mana, Skyfall still goes, paid from his health
     p.hp = p.maxHp; p.mp = 0; p.cd.Q = 0;
     w.act(1, 'Q', 66, 60); w.step(TICK);

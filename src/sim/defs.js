@@ -10,6 +10,7 @@ export const ABILITIES = {
   q: {
     key: 'Q',
     name: 'Cleave',
+    icon: 'cleave', // (1.3)
     unlock: 1,
     cd: 4,
     range: 4.8,
@@ -20,6 +21,7 @@ export const ABILITIES = {
   w: {
     key: 'W',
     name: 'Whirlwind',
+    icon: 'whirl', // (1.3)
     unlock: 2,
     cd: 9,
     radius: 4.2,
@@ -30,6 +32,7 @@ export const ABILITIES = {
   e: {
     key: 'E',
     name: 'Breakthrough',
+    icon: 'breakthrough', // (1.3)
     unlock: 3,
     cd: 9,
     range: 7.5,
@@ -42,6 +45,7 @@ export const ABILITIES = {
   r: {
     key: 'R',
     name: 'Skyfall',
+    icon: 'skyfall', // (1.3)
     unlock: 6,
     cd: 45,
     range: 10,

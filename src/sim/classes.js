@@ -24,7 +24,7 @@ import { ABILITIES } from './defs.js';
 
 for (const [slot, type] of [['q', 'cone'], ['w', 'nova'], ['e', 'dash'], ['r', 'leap']]) {
   ABILITIES[slot].type = type;
-  ABILITIES[slot].icon = slot;
+  ABILITIES[slot].icon = ABILITIES[slot].icon || slot; // (1.3) its own icon (defs.js), else the slot's
 }
 
 export const CLASSES = {
@@ -47,7 +47,7 @@ export const CLASSES = {
     passive: { name: 'Steady Aim', desc: 'Every third basic attack gets +100% crit chance: it always crits, and any crit chance over 100% becomes extra crit damage on that shot.' },
     abilities: {
       q: {
-        key: 'Q', name: 'Piercing Shot', type: 'line', icon: 'line', unlock: 1, cd: 5, range: 15, width: 1.4,
+        key: 'Q', name: 'Piercing Shot', type: 'line', icon: 'pierce', unlock: 1, cd: 5, range: 15, width: 1.4,
         dmg: (s, lvl) => 1.5 * s.ad + 12 + 5 * lvl,
         desc: 'Loose an arrow that pierces every enemy in a line.',
       },
@@ -57,13 +57,13 @@ export const CLASSES = {
         desc: 'Loose 5 arrows at one target in quick succession. Each arrow counts as a basic attack: it advances Steady Aim, can be its guaranteed crit, and steals life.',
       },
       e: {
-        key: 'E', name: 'Evasive Roll', type: 'dash', icon: 'e', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.3, width: 0,
+        key: 'E', name: 'Evasive Roll', type: 'dash', icon: 'roll', unlock: 3, cd: 9, range: 5.5, minRange: 3, duration: 0.3, width: 0,
         rush: { as: 0.5, time: 4 },
         dmg: () => 0,
         desc: 'Roll toward your cursor, then attack 50% faster for 4 seconds. Nothing can hit you mid-roll.',
       },
       r: {
-        key: 'R', name: 'Arrow Storm', type: 'zone', icon: 'zone', unlock: 6, cd: 40, range: 12, radius: 5, duration: 3, tick: 0.5, slow: 0.3, slowDur: 1, channel: 1, channelSlow: 0.6, opening: 0.5, pin: 1.2, // (0.51) drawn for 1 s (slowed 60%), then Skyfall: half the storm lands at once and pins
+        key: 'R', name: 'Arrow Storm', type: 'zone', icon: 'storm', unlock: 6, cd: 40, range: 12, radius: 5, duration: 3, tick: 0.5, slow: 0.3, slowDur: 1, channel: 1, channelSlow: 0.6, opening: 0.5, pin: 1.2, // (0.51) drawn for 1 s (slowed 60%), then Skyfall: half the storm lands at once and pins
         dmg: (s, lvl) => 3.0 * s.ad + 60 + 14 * lvl,
         desc: 'Draw for 1 second (you can walk, slowly), then loose high into the sky. Skyfall: the first arrows land together for half the storm\'s damage again and pin everything inside (90% slower for 1.2 s), then arrows rain on the area for 3 seconds, slowing everything inside.',
       },
@@ -79,23 +79,23 @@ export const CLASSES = {
     passive: { name: 'Opportunist', loot: 0.35, desc: '+15% crit chance. Mercy Stroke hits far harder from behind or on a stunned enemy. Treasure Sense (0.94): you, and everyone in your party, find gear 35% more often (several Rogues do not add up).' },
     abilities: {
       q: {
-        key: 'Q', name: 'Mercy Stroke', type: 'strike', icon: 'strike', unlock: 1, cd: 3.5, range: 3.4, behind: 0.6,
+        key: 'Q', name: 'Mercy Stroke', type: 'strike', icon: 'stab', unlock: 1, cd: 3.5, range: 3.4, behind: 0.6,
         dmg: (s, lvl) => 1.9 * s.ad + 12 + 5 * lvl,
         desc: 'Stab the enemy nearest your cursor. 60% more damage from behind or against a stunned enemy.',
       },
       w: {
-        key: 'W', name: 'Fan of Knives', type: 'nova', icon: 'w', unlock: 2, cd: 8, radius: 4.5, knockback: 0, bleed: 0.8,
+        key: 'W', name: 'Fan of Knives', type: 'nova', icon: 'knives', unlock: 2, cd: 8, radius: 4.5, knockback: 0, bleed: 0.8,
         dmg: (s, lvl) => 0.9 * s.ad + 10 + 4 * lvl,
         desc: 'Throw knives all around you. Enemies hit bleed for 80% attack damage over 3 seconds.',
       },
       e: {
-        key: 'E', name: 'Nightstep', type: 'dash', icon: 'e', unlock: 3, cd: 6, range: 8.5, minRange: 2, duration: 0.1, width: 0,
+        key: 'E', name: 'Nightstep', type: 'dash', icon: 'blink', unlock: 3, cd: 6, range: 8.5, minRange: 2, duration: 0.1, width: 0,
         empower: { mult: 1.35, time: 3 },
         dmg: () => 0,
         desc: 'Blink a long way toward your cursor. The next ability you use within 3 seconds deals 35% more.',
       },
       r: {
-        key: 'R', name: 'Last Rites', type: 'strike', icon: 'strike', unlock: 6, cd: 30, range: 10, gap: true, behind: 0, refundOnKill: 0.6,
+        key: 'R', name: 'Last Rites', type: 'strike', icon: 'rites', unlock: 6, cd: 30, range: 10, gap: true, behind: 0, refundOnKill: 0.6,
         dmg: (s, lvl) => 3.6 * s.ad + 70 + 16 * lvl,
         desc: 'Leap to the enemy nearest your cursor and give it the death the mountain denied it. A kill gives back 60% of the cooldown.',
       },
@@ -111,24 +111,24 @@ export const CLASSES = {
     passive: { name: 'Attunement', desc: '+25 ability haste. Basic attacks deal 60% damage. Arcane Ward: a barrier worth 15% of your health takes damage before you do, and comes back 5 seconds after you were last hurt.', ward: 0.15 },
     abilities: {
       q: {
-        key: 'Q', name: 'Fire Bolt', type: 'bolt', icon: 'bolt', unlock: 1, cd: 3, range: 16, speed: 30, splash: 2.6, splashMult: 0.6,
+        key: 'Q', name: 'Fire Bolt', type: 'bolt', icon: 'firebolt', unlock: 1, cd: 3, range: 16, speed: 30, splash: 2.6, splashMult: 0.6,
         dmg: (s, lvl) => 1.7 * s.ad + 18 + 6 * lvl,
         desc: 'Hurl a bolt at your cursor. It bursts on the first enemy and scorches others nearby for 60%.',
       },
       w: {
-        key: 'W', name: 'Frozen Orb', type: 'orb', icon: 'orb', unlock: 2, cd: 9, range: 15, minRange: 2.5, speed: 9.5, radius: 2.9, burst: 4.6,
+        key: 'W', name: 'Frozen Orb', type: 'orb', icon: 'frostorb', unlock: 2, cd: 9, range: 15, minRange: 2.5, speed: 9.5, radius: 2.9, burst: 4.6,
         tick: 0.25, shard: 0.16, chill: 0.3, slow: 0.5, slowDur: 3,
         dmg: (s, lvl) => 1.05 * s.ad + 14 + 5 * lvl,
         desc: 'Send a slow orb of ice drifting to your cursor. Everything it passes is cut by shards and chilled, then it shatters for heavy damage, slowing by 50% and interrupting normal enemies. Press W again to shatter it early.',
       },
       e: {
-        key: 'E', name: 'Starwake', type: 'dash', icon: 'e', unlock: 3, cd: 8, range: 8.5, minRange: 2, duration: 0.08, width: 0,
+        key: 'E', name: 'Starwake', type: 'dash', icon: 'starwake', unlock: 3, cd: 8, range: 8.5, minRange: 2, duration: 0.08, width: 0,
         motes: { count: 3, range: 13, speed: 22 },
         dmg: (s, lvl) => 0.65 * s.ad + 10 + 4 * lvl, // per mote
         desc: 'Blink toward your cursor and loose 3 motes of starlight that seek out the nearest enemies (a different one each, when there are three). They cannot be parried or sent back.',
       },
       r: {
-        key: 'R', name: 'Meteor', type: 'meteor', icon: 'r', unlock: 6, cd: 38, range: 16, radius: 6.2, delay: 0.9, stun: 1,
+        key: 'R', name: 'Meteor', type: 'meteor', icon: 'meteor', unlock: 6, cd: 38, range: 16, radius: 6.2, delay: 0.9, stun: 1,
         dmg: (s, lvl) => 3.8 * s.ad + 80 + 18 * lvl,
         desc: 'Call a meteor onto your cursor. It lands after a moment for heavy damage and a stun.',
       },

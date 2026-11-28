@@ -15,6 +15,7 @@ import { BORROW_SLOTS, OATH } from '../sim/borrowed.js';
 import { SPECS } from '../sim/talents.js';
 import { RARITIES, itemName } from '../sim/items.js';
 import { AUGMENTS } from '../sim/augments.js';
+import { GLYPHS, CLASS_HUE } from './skillglyphs.js';
 
 import { QUESTS, NPCS, SIGNS } from '../sim/story.js';
 import { ENEMIES } from '../sim/defs.js';
@@ -182,6 +183,8 @@ export const gearClassNow = () => gearClass;
 let gearSpec = null;
 /** The subclass being played, for Immortal tooltips (0.32: an Immortal's effect follows it). */
 export const gearSpecNow = () => gearSpec;
+// (1.3) the skill icons shared with Lacuna (src/ui/skillglyphs.js) over the older line art
+Object.assign(ICONS, GLYPHS);
 export const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.hero}</svg>`;
 
 const fmtN = (n) => Math.round(n).toLocaleString('en-US');
@@ -438,6 +441,7 @@ export class Hud {
       // A different class (or a subclass that swaps an ability) is being played: swap the ability icons.
       this.kitKey = kitKey;
       this.cls = world.cls;
+      $('abilities').style.setProperty('--hue', CLASS_HUE[world.cls] || CLASS_HUE.warrior); // (1.3) the class's colour on its skills
       for (const s of ABILITY_SLOTS) {
         this.slots[s].el.querySelector('svg').outerHTML = svg(world.kit[s].icon || s);
         this.slots[s].up.setAttribute('aria-label', `Rank up ${world.kit[s].name}`);

@@ -7,7 +7,7 @@ import { Sampler } from '../music/samples.js';
 
 const KEY = 'lacuna-sound-v1';
 // how much louder (or softer) each effect is made, so they sit together (filtered noise loses most of its energy)
-const LIFT = { swing: 4, whirl: 3.5, dodge: 4, jump: 4, jump2: 3, slide: 3, leap: 3, draw: 8, growl: 4, snort: 3, step: 3, ui: 2, kick: 1.3, stone: 1.6, bite: 1.2, hit: 0.7, crash: 0.75, grind: 1.8 };
+const LIFT = { finisher: 4, charge: 3, heavy: 1.6, counter: 2, perfect: 1.5, swing: 4, whirl: 3.5, dodge: 4, jump: 4, jump2: 3, slide: 3, leap: 3, draw: 8, growl: 4, snort: 3, step: 3, ui: 2, kick: 1.3, stone: 1.6, bite: 1.2, hit: 0.7, crash: 0.75, grind: 1.8 };
 const SFX_SAMPLES = ['taiko', 'nylon', 'celesta', 'bells', 'harp', 'horn', 'woodblock', 'tom', 'cymbal', 'breath', 'birds', 'sea', 'tinkle', 'glock', 'cello', 'timp'];
 
 export class LandSound {
@@ -153,7 +153,7 @@ export class LandSound {
     const lift = LIFT[name] || 1; // (evened out by measuring each: tools test them in lacuna's test)
     const D = (vol, wet = 0) => this.bus(vol * v * lift, pan, wet);
     switch (name) {
-      case 'swing': this.noise(D(0.5), t, 0.18, { from: 700, to: 2600, q: 1.4, vol: 0.6, attack: 0.04 }); break;
+      case 'swing': { const up = 1 + (opt.n || 0) * 0.12; this.noise(D(0.5), t, 0.18, { from: 700 * up, to: 2600 * up, q: 1.4, vol: 0.6, attack: 0.04 }); break; }
       case 'whirl': for (let k = 0; k < 4; k++) this.noise(D(0.4), t + k * 0.16, 0.16, { from: 600, to: 2200, q: 1.2, vol: 0.6, attack: 0.05 }); break;
       case 'shot': { // a bowstring: a low nylon pluck and a snap
         const d = D(0.7, 0.1);
@@ -183,6 +183,18 @@ export class LandSound {
         break;
       }
       case 'dodge': this.noise(D(0.45), t, 0.22, { from: 2400, to: 900, q: 1.5, vol: 0.5, attack: 0.03 }); break;
+      // (1.3) the new fighting
+      case 'finisher': { const d = D(0.6); this.noise(d, t, 0.26, { from: 500, to: 2400, q: 1.2, vol: 0.8, attack: 0.05 }); this.noise(d, t + 0.05, 0.3, { from: 1800, to: 600, q: 1, vol: 0.5, attack: 0.02 }); break; }
+      case 'charge': { const d = D(0.45), w = opt.t || 0.9; this.noise(d, t, w, { from: 300, to: 1800, q: 3, vol: 0.35, attack: w * 0.8 }); this.sample(D(0.4, 0.3), t + w, 'glock', 91, 0.8, 0.35); break; }
+      case 'heavy': { const d = D(0.7); this.noise(d, t, 0.32, { from: 400, to: 1800, q: 1, vol: 0.9, attack: 0.06 }); this.sample(d, t + 0.16, 'taiko', 36, 0.8, 0.6) || this.tone(d, t + 0.16, 0.3, 90, 45, { vol: 0.7 }); this.noise(d, t + 0.16, 0.35, { type: 'lowpass', from: 900, to: 200, vol: 0.6 }); break; }
+      case 'counter': { const d = D(0.7, 0.3); this.noise(d, t, 0.2, { from: 3000, to: 900, q: 1.4, vol: 0.7, attack: 0.02 }); this.sample(d, t + 0.18, 'taiko', 41, 0.6, 0.5); this.sample(d, t + 0.18, 'glock', 96, 0.6, 0.3); break; }
+      case 'perfect': { // time catches: a bright shimmer falling, and a low swell under it
+        const d = D(0.8, 0.5);
+        this.noise(d, t, 0.6, { type: 'highpass', from: 6000, to: 2500, vol: 0.4, attack: 0.01 });
+        [96, 91, 88].forEach((m, i) => this.sample(d, t + i * 0.05, 'glock', m, 1.2, 0.35) || this.tone(d, t + i * 0.05, 0.5, 440 * Math.pow(2, (m - 69) / 12), undefined, { vol: 0.15 }));
+        this.tone(d, t, 0.7, 110, 55, { vol: 0.35, attack: 0.05 });
+        break;
+      }
       case 'growl': { // a wolf's wind-up
         const d = D(0.55), ctx = this.ctx;
         const lfo = ctx.createOscillator(), amt = ctx.createGain(), g = ctx.createGain();

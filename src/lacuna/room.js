@@ -11,7 +11,7 @@
 // hits, falls, casts), chat, pong (JSON), and the state of what is in sight (binary, net.js).
 // (phase 2) The Dimension Link comes from the account's characters when signed in (linkOf), else from the page.
 // No storage and no save: the test land keeps nothing. It is behind the server world's passcode.
-import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS, MOVE } from './sim.js';
+import { LandWorld, TICK, SPEED, KITS, LINK_SLOTS, MOVE, ACTS } from './sim.js';
 import { Interest, SEND_HZ } from './net.js';
 import { TOWN, HALF } from './land.js';
 import { EMOTE_IDS, EMOTICONS } from './emotes.js';
@@ -60,7 +60,7 @@ export class LandRoom {
     else if (msg.t === 'vig') { const v = num(msg.v, 0.5, 1); if (v !== null) this.world.setVigour(m.pid, v); } // (0.99.24) the page says how strong he has grown (for now)
     else if (msg.t === 'act') {
       const ax = num(msg.ax, -HALF, HALF), az = num(msg.az, -HALF, HALF);
-      if (ax !== null && az !== null && (msg.k === 'basic' || msg.k === 'Q' || msg.k === 'E' || msg.k === 'R')) this.world.act(m.pid, msg.k, ax, az, msg.up === true, msg.down === true);
+      if (ax !== null && az !== null && ACTS.has(msg.k)) this.world.act(m.pid, msg.k, ax, az, msg.up === true, msg.down === true);
     }
     else if (msg.t === 'jump') this.world.jump(m.pid);
     else if (msg.t === 'slide') { const p = this.world.players.get(m.pid); if (p && !p.dead) this.world.emit('cast', { pid: m.pid, skill: 'slide', x: p.x, z: p.z, dur: MOVE.slideDur }); } // (0.99.35) for others to draw

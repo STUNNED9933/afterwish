@@ -3,7 +3,7 @@
 // Walk and fight on the land round Sunmere over the shoulder, alone (everything runs here) or together on the
 // server world (the server runs the land, its beasts and every blow: see room.js).
 // Keys: WASD move, mouse look (click to capture), left click attack (hold), Q E R skills, right click (hold)
-// scope (Sharpshooter), Shift sprint, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
+// scope (Sharpshooter), (1.3) Shift dodge (held: sprint), left click held: a heavy blow, Ctrl walk, wheel zoom, 1-2 swap class, L try other Eternal levels
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
 import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST, pointsAt } from './levels.js';
 import { WebUI } from './webui.js';
@@ -13,10 +13,12 @@ import { GearUI, BAG_MOST } from './gearui.js';
 import { gradeOf, itemName, salvageValue, UNIQUE, RIFT, RIFT_AT, BOSSES } from './loot.js';
 import { makeRng } from '../sim/rng.js';
 import * as THREE from 'three';
-import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP } from './sim.js';
+import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, linkPower, linkMult, JUMP, DODGE } from './sim.js';
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
+import { CombatFx, HUES } from './combatfx.js';
+import { glyph, LACUNA_GLYPH, CLASS_HUE } from '../ui/skillglyphs.js';
 import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL, WATCHTOWER, TOWN } from './land.js';
 import { placeBuilding } from '../render/buildings.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED, preload } from '../render/rigged.js';
@@ -82,6 +84,8 @@ for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => sound.un
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
 const fx = new Fx(view.scene, $('fxlayer'));
+const cfx = new CombatFx(view.scene); // (1.3) the look of a fight: cuts, sparks, shockwaves, afterimages
+fx.onFly = (from, to, a) => cfx.streak(from, to, a.big ? 0xffe9a0 : a.kind === 'heavy' || a.kind === 'pierce' ? 0xbff4ff : HUES.archer, a.big ? 0.14 : a.kind === 'heavy' ? 0.1 : 0.045);
 // (alone) what a server would send you: made here 10 times a second and measured
 const wire = new Interest(1), mirror = new Map();
 let wireTick = 0, wireBytes = 0, wireRate = 0;
@@ -127,7 +131,16 @@ function dress(h, cls) {
 /** A blow or skill seen (yours, or someone else's from the server): what the model does. */
 function animate(h, ev) {
   const a = h.anim;
-  if (ev.skill === 'basic') { a.start = true; a.period = ev.every || 0.6; }
+  // (1.3) each blow of a string is its own move (the Sharpshooter's first two are her Shot, timed to her pace)
+  if (ev.skill === 'basic') {
+    const n = ev.n ?? 0;
+    if (h.cls === 'archer' && n < 2) { a.start = true; a.period = ev.every || 0.6; } else { a.move = `c${n}`; a.moveDur = 0; }
+  } else if (ev.skill === 'charge') { a.move = 'charge'; a.moveDur = 0; }
+  else if (ev.skill === 'chargeEnd') a.cancel = true;
+  else if (ev.skill === 'heavy') { a.move = 'heavy'; a.moveDur = 0; }
+  else if (ev.skill === 'counter') { a.move = 'counter'; a.moveDur = ev.dur || 0; }
+  else if (ev.skill === 'plunge') { a.move = 'plunge'; a.moveDur = 0; a.plunging = true; }
+  else if (ev.skill === 'dodge') { a.move = 'dodge'; a.moveDur = ev.dur; }
   else if (ev.skill === 'leap') { a.move = 'leap'; a.moveDur = ev.dur; }
   else if (ev.skill === 'whirl') a.spinT = ev.dur;
   else if (ev.skill === 'whirlEnd') a.spinT = 0;
@@ -159,7 +172,7 @@ function pose(h, dt, s) {
   } else a.lieRig = null;
   const air = a.lie ? 0 : s.y !== undefined ? s.y : a.jumpT >= 0 ? hopAt(a.jumpT) : 0;
   h.body.position.y = air;
-  if (a.air > 0.05 && air <= 0.001 && !a.move) a.move = 'land'; // touching down
+  if (a.air > 0.05 && air <= 0.001 && (!a.move || a.plunging)) { a.move = a.plunging ? 'plungeLand' : 'land'; a.plunging = false; } // touching down ((1.3) a plunge lands hard)
   a.air = air;
   if (a.spinT > 0) { a.spinT -= dt; h.body.rotation.y += dt * 16; } else h.body.rotation.y = 0;
   if (!h.rig) return;
@@ -181,8 +194,9 @@ function pose(h, dt, s) {
       }
     }
   }
-  h.rig.update(dt, { ...s, emote, emoteOnce, emoteStart, walkAs: a.carry ? 'ual_Walk_Carry_Loop' : null, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit });
+  h.rig.update(dt, { ...s, emote, emoteOnce, emoteStart, walkAs: a.carry ? 'ual_Walk_Carry_Loop' : null, attackStart: a.start, attackDur: Math.min(0.4, a.period * 0.6), period: h.cls === 'archer' ? a.period : 0, move: a.move, moveDur: a.moveDur, spinning: a.spinT > 0, hitStart: a.hit, cancelMove: a.cancel });
   a.start = false;
+  a.cancel = false;
   a.move = null;
   a.hit = false;
 }
@@ -359,8 +373,82 @@ function heroOf(pid) {
   return o ? o.hero : null;
 }
 const isMe = (pid) => (net ? pid === net.pid : pid === 1);
+// ---- (1.3) the feel of a fight: hit-stop (a blow that lands holds every body still for a few hundredths of a second),
+// the camera shaken and pushed, the world slowed a moment after a perfect dodge (only alone: together, nobody can slow
+// the server's world), and the screen tinted
+let hitStopT = 0, shakeA = 0, fovKick = 0, slowT = 0, animTime = 0;
+function hitStop(t) { hitStopT = Math.max(hitStopT, t); }
+function shake(a) { shakeA = Math.min(0.5, Math.max(shakeA, a)); }
+function screenFx(kind, ms = 600) {
+  const el = $('screenfx');
+  el.classList.remove(kind);
+  void el.offsetWidth; // (to start it again)
+  el.classList.add(kind);
+  clearTimeout(screenFx[kind]);
+  screenFx[kind] = setTimeout(() => el.classList.remove(kind), ms);
+}
+function heroHue(h) { return !h ? HUES.warrior : h.cls === 'archer' ? HUES.archer : h.cls === 'novice' ? HUES.novice : h === hero && me.oath ? HUES.oath : HUES.warrior; }
+function heroAt(h) { return { x: h.group.position.x, y: h.group.position.y + h.body.position.y, z: h.group.position.z }; }
+function combatEvent(ev) {
+  const mine = isMe(ev.pid);
+  if (ev.type === 'cast') {
+    const h = heroOf(ev.pid);
+    if (!h) return;
+    const melee = h.cls !== 'archer', hue = heroHue(h), at = heroAt(h), small = h.cls === 'novice' ? 0.7 : 1;
+    switch (ev.skill) {
+      case 'basic':
+        if (melee) cfx.slash(ev.x, at.y + 0.52, ev.z, ev.f, ev.r || 2.6, ev.n ?? 0, hue, small);
+        if (mine && ev.n === 3) shake(0.06);
+        break;
+      case 'charge': cfx.charge(ev.pid, ev.x, ev.z, ev.full || 0.9); break;
+      case 'chargeEnd': cfx.chargeEnd(ev.pid); break;
+      case 'heavy':
+        cfx.chargeEnd(ev.pid);
+        if (melee) setTimeout(() => { const p = heroAt(h); cfx.slash(p.x, p.y + 0.55, p.z, ev.f, (ev.r || 3) * 1.05, 'heavy', HUES.heavy, 1.2 * small); cfx.shock(p.x + Math.cos(ev.f) * 1.6, p.z + Math.sin(ev.f) * 1.6, 2.6 * small, HUES.heavy, 0.4); }, 160);
+        else cfx.impact(at.x + Math.cos(ev.f) * 0.6, at.y + 0.62, at.z + Math.sin(ev.f) * 0.6, HUES.archer, true);
+        if (mine) { shake(0.12 + 0.18 * (ev.k || 0)); fovKick = Math.max(fovKick, 3 + 3 * (ev.k || 0)); }
+        break;
+      case 'counter':
+        cfx.ghost(h.rig && h.rig.group, HUES.perfect, 0.45, 0.5);
+        setTimeout(() => { const p = heroAt(h); if (melee) cfx.slash(p.x, p.y + 0.55, p.z, ev.f, (ev.r || 3) * 1.05, 'counter', HUES.perfect, 1.3 * small); else cfx.impact(p.x, p.y + 0.62, p.z, HUES.perfect, true); }, (ev.dur || 0) * 1000);
+        if (mine) { fovKick = Math.max(fovKick, 7); shake(0.16); screenFx('flash', 220); }
+        break;
+      case 'dodge':
+        cfx.ghost(h.rig && h.rig.group, ev.perfect ? HUES.perfect : 0xffffff, ev.perfect ? 0.6 : 0.3, ev.perfect ? 0.6 : 0.22);
+        if (ev.perfect) {
+          cfx.shock(ev.x, ev.z, 3.2, HUES.perfect, 0.55);
+          cfx.pillar(ev.x, ev.z, HUES.perfect, 2.2 * small, 0.5);
+          if (mine) { if (!net) slowT = 0.55; screenFx('perfect', 900); fx.number(ev.x, ev.z, 'PERFECT', 'perfect'); }
+        }
+        break;
+      case 'oath':
+        cfx.pillar(ev.x, ev.z, HUES.oath, 2.6, 0.7);
+        cfx.shock(ev.x, ev.z, 3.6, HUES.oath, 0.55);
+        if (mine) { shake(0.25); screenFx('oath', 700); }
+        break;
+      case 'loose':
+        { const f = Math.PI / 2 - h.group.rotation.y; cfx.impact(at.x + Math.cos(f) * 0.5, at.y + 0.62, at.z + Math.sin(f) * 0.5, 0xffe9a0, true); }
+        if (mine) { shake(0.1 + Math.min(0.25, (ev.poured || 0) / 200)); fovKick = Math.max(fovKick, 5); }
+        break;
+      case 'leap': if (mine) fovKick = Math.max(fovKick, 4); break;
+    }
+  } else if (ev.type === 'slam') {
+    cfx.shock(ev.x, ev.z, ev.r, ev.kind === 'plunge' ? HUES.heavy : 0xffb347, 0.5);
+    cfx.impact(ev.x, 0.3, ev.z, ev.kind === 'plunge' ? HUES.heavy : 0xffb347, true);
+    if (mine) { shake(0.32); hitStop(0.07); }
+  } else if (ev.type === 'hit') {
+    const h = heroOf(ev.pid);
+    const big = !!ev.crit || ev.dmg >= 150;
+    cfx.impact(ev.x, 0.75, ev.z, ev.shot ? (big ? 0xffe9a0 : HUES.archer) : heroHue(h), big);
+    if (mine && !ev.shot) { hitStop(big ? 0.09 : 0.05); shake(big ? 0.12 : 0.05); } else if (mine && big) shake(0.06);
+    if (mine) countHit();
+  } else if (ev.type === 'die') cfx.shock(ev.x, ev.z, 1.8, 0xd8d2c4, 0.45);
+  else if (ev.type === 'swipe' && mine && ev.dmg) shake(0.14);
+  else if (ev.type === 'crash') cfx.shock(ev.x, ev.z, ev.r, 0xff5a3a, 0.6);
+}
 function onEvent(ev) {
   soundEvent(ev);
+  combatEvent(ev);
   if (trial) trialEvent(ev);
   huntEvent(ev);
   trickEvent(ev);
@@ -425,19 +513,41 @@ $('chat-in').addEventListener('keydown', (e) => {
 });
 
 // ---- the battle display: health, mana, skills, the Link
+/**
+ * (1.3) The skill bar: a lit round tile for each, with its icon (src/ui/skillglyphs.js), its key below, its mana cost
+ * in a chip, and its cooldown as a sweep that unwinds. The blow (left click, a ring round it while a heavy blow
+ * charges, and COUNTER over it after a perfect dodge), the dodge (Shift), then Q, E and R (the biggest).
+ */
+const SKILL_SLOTS = [['basic', 'LMB', 'small'], ['D', 'Shift', 'small'], ['Q', 'Q', ''], ['E', 'E', ''], ['R', 'R', 'big']];
+const slotWas = {};
 function drawSkills() {
   const kit = KITS[me.cls];
+  const icons = LACUNA_GLYPH[me.cls] || LACUNA_GLYPH.novice;
   $('skills').innerHTML = '';
-  for (const [k, key] of [['basic', 'LMB'], ['Q', 'Q'], ['E', 'E'], ['R', 'R']]) {
-    const s = k === 'basic' ? kit.basic : kit[k];
+  for (const [k, key, size] of SKILL_SLOTS) {
+    const s = k === 'basic' ? kit.basic : k === 'D' ? { name: 'Dodge' } : kit[k];
     if (!s) continue; // (unarmed: no skills yet)
     const d = document.createElement('div');
-    d.className = 'sk';
+    d.className = `sk ${size}`;
     d.id = 'sk-' + k;
-    d.title = s.text || '';
-    d.innerHTML = `<span class="k">${key}</span><b>${s.name}</b><em>${k === 'basic' ? 'no mana' : s.manaText ? (s.mana ? `${s.mana}+ mana` : 'toggle') : `${s.mana} mana`}</em><div class="cd"></div><div class="n"></div>`;
+    d.style.setProperty('--hue', CLASS_HUE[me.cls] || CLASS_HUE.warrior);
+    const cost = k === 'basic' || k === 'D' ? '' : s.manaText ? (s.mana ? `${s.mana}+` : '') : String(s.mana);
+    d.innerHTML = `<div class="skill-ic">${k === 'basic' ? '<div class="charge"></div>' : ''}${glyph(icons[k])}<div class="cd"></div><div class="n"></div></div><span class="m">${cost}</span><span class="k">${key}</span>`;
     $('skills').appendChild(d);
+    slotWas[k] = 0;
   }
+}
+/** (1.3) Hits in a row (yours), shown big at the right while they keep coming. */
+let comboHits = 0, comboUntil = 0;
+function countHit() {
+  comboHits++;
+  comboUntil = performance.now() + 2400;
+  const el = $('combo');
+  el.firstChild.textContent = comboHits;
+  el.classList.toggle('hidden', comboHits < 2);
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
 }
 function drawLink() {
   if (!linkAwake) { $('link').textContent = 'Dimension Link: asleep · something is missing'; return; }
@@ -448,28 +558,46 @@ function drawLink() {
 }
 function drawHud() {
   const kit = KITS[me.cls];
-  $('hp').firstChild.style.width = `${(me.hp / me.maxHp) * 100}%`;
+  const hpK = Math.max(0, me.hp / me.maxHp);
+  $('hp').querySelector('.v').style.width = `${hpK * 100}%`;
+  $('hp').querySelector('.lag').style.width = `${hpK * 100}%`; // (1.3) a pale trail behind a loss, catching up a moment later
   $('hp').lastChild.textContent = `${Math.ceil(me.hp)} / ${me.maxHp}`;
-  $('mpb').firstChild.style.width = `${(me.mp / me.maxMp) * 100}%`;
-  $('mpb').lastChild.textContent = `${Math.floor(me.mp)} / ${me.maxMp} mana`;
+  $('mpb').querySelector('.v').style.width = `${(me.mp / me.maxMp) * 100}%`;
+  $('mpb').lastChild.textContent = `${Math.floor(me.mp)} / ${me.maxMp}`;
   const lv = levelOf(story.xp || 0);
-  $('xpb').firstChild.style.width = `${lv.need ? (lv.into / lv.need) * 100 : 100}%`;
-  $('xpb').lastChild.textContent = lv.need ? `Level ${lv.level} · ${lv.into} / ${lv.need} xp` : `Level ${lv.level} (the most there is)`;
-  for (const k of ['basic', 'Q', 'E', 'R']) {
+  $('xpb').querySelector('.v').style.width = `${lv.need ? (lv.into / lv.need) * 100 : 100}%`;
+  $('lvl-n').textContent = lv.level;
+  $('lvl').title = lv.need ? `Level ${lv.level} · ${lv.into} / ${lv.need} xp` : `Level ${lv.level} (the most there is)`;
+  for (const [k] of SKILL_SLOTS) {
     const el = $('sk-' + k);
     if (!el) continue;
-    const s = k === 'basic' ? kit.basic : kit[k];
-    const left = k === 'basic' ? Math.max(0, me.basicT) : Math.max(0, me.cd[k]);
-    const full = k === 'basic' ? kit.basic.every : s.cd;
-    el.querySelector('.cd').style.height = `${Math.min(1, left / full) * 100}%`;
+    const s = k === 'basic' ? kit.basic : k === 'D' ? null : kit[k];
+    const left = k === 'basic' ? Math.max(0, me.basicT) : k === 'D' ? Math.max(0, me.dodgeCd || 0) : Math.max(0, me.cd[k]);
+    const full = k === 'basic' ? kit.basic.every : k === 'D' ? DODGE.cd : s.cd;
+    el.style.setProperty('--cd', Math.min(1, left / full).toFixed(3));
     // (0.99.21) a Deadeye being drawn shows the mana poured in; a skill only blood can pay for shows red
     const pouring = k === 'R' && me.draw;
-    el.querySelector('.n').textContent = pouring ? `+${Math.round(me.draw.poured)}` : left > 0.95 ? Math.ceil(left) : '';
-    const short = k !== 'basic' && me.mp < s.mana;
-    el.classList.toggle('dry', short && !world.canPay(me, s.mana));
-    el.classList.toggle('blood', short && world.canPay(me, s.mana));
+    el.querySelector('.n').textContent = pouring ? `+${Math.round(me.draw.poured)}` : left > 0.95 && k !== 'basic' ? Math.ceil(left) : '';
+    el.classList.toggle('cooling', left > 0.05 && k !== 'basic');
+    // (1.3) a flash as it comes ready again
+    if (slotWas[k] > 0.3 && left <= 0) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
+    slotWas[k] = left;
+    if (s && k !== 'basic') {
+      const short = me.mp < s.mana;
+      el.classList.toggle('dry', short && !world.canPay(me, s.mana));
+      el.classList.toggle('blood', short && world.canPay(me, s.mana));
+    }
     el.classList.toggle('on', (k === 'E' && !!me.whirl) || (k === 'R' && (!!me.oath || !!me.draw)));
+    if (k === 'basic') {
+      el.classList.toggle('counter', (me.counterT || 0) > 0);
+      const H = kit.heavy, ch = me.charge && H ? Math.min(1, me.charge.t / H.full) : 0;
+      el.querySelector('.charge').style.setProperty('--ch', ch.toFixed(3));
+      $('chargering').style.display = me.charge ? 'block' : 'none';
+      $('chargering').style.setProperty('--ch', ch.toFixed(3));
+      $('chargering').classList.toggle('full', ch >= 1);
+    }
   }
+  if (comboHits && performance.now() > comboUntil) { comboHits = 0; $('combo').classList.add('hidden'); }
   $('hp').classList.toggle('bloodied', world.bloodied(me));
   $('down').style.display = me.dead ? 'flex' : 'none';
   if (me.dead) $('down-t').textContent = `Getting up at Sunmere's gate in ${Math.max(0, Math.ceil(me.downT))} s`;
@@ -477,7 +605,7 @@ function drawHud() {
 
 // ---- input
 const keys = new Set();
-let yaw = -Math.PI / 2, pitch = 0.26, dist = 3.3, overlay = true, firing = false, scoped = false;
+let yaw = -Math.PI / 2, pitch = 0.26, dist = 3.3, overlay = false, firing = false, scoped = false;
 let walking = false; // Ctrl (or C) toggles walking: held, Ctrl sets off the browser's own shortcuts
 let altFree = false; // Alt held: the mouse is yours (hover for descriptions); let go and it looks around again
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
@@ -542,6 +670,8 @@ addEventListener('keydown', (e) => {
   const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
   if (n >= 0) wear(['warrior', 'archer', 'mage', 'rogue'][n]);
   if (e.code === 'Space' && !e.repeat && world.jump(1) && net && net.ready) net.send({ t: 'jump' });
+  // (1.3) Shift: a dodge as it goes down (held, you sprint on after it)
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !cutscene.active && !me.dead) dodge();
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', (e) => {
@@ -572,10 +702,13 @@ canvas.addEventListener('mousedown', (e) => {
     if (!altFree) relock(); // a click takes the mouse back (it does not also shoot: you were not aiming); with Alt held, clicks are yours
     return;
   }
-  if (e.button === 0) firing = true;
+  if (e.button === 0) { firing = true; heldFor = 0; if (!me.dead) act('basic'); } // (1.3) a blow as it goes down; held, a heavy blow
   if (e.button === 2 && me.cls === 'archer') scoped = true;
 });
-addEventListener('mouseup', (e) => { if (e.button === 0) firing = false; if (e.button === 2) scoped = false; });
+addEventListener('mouseup', (e) => {
+  if (e.button === 0) { firing = false; if (me.charge) letGo('H'); }
+  if (e.button === 2) scoped = false;
+});
 addEventListener('mousemove', (e) => {
   if (wheel && locked()) { wheelMove(e.movementX, e.movementY); return; } // pointing at the wheel, not looking round
   if (!locked()) { if (altFree) hoverAt(e.clientX, e.clientY); return; }
@@ -620,12 +753,16 @@ $('skills').addEventListener('mouseover', (e) => {
   const sk = e.target.closest && e.target.closest('.sk');
   if (!sk) return;
   const k = sk.id.slice(3), kit = KITS[me.cls];
-  const s = k === 'basic' ? kit.basic : kit[k];
   const r = sk.getBoundingClientRect();
-  const what = k === 'basic' ? (me.cls === 'warrior' ? 'Cut in front of you (hold left click).' : me.cls === 'novice' ? 'Punch in front of you (hold left click). Small fists; better than nothing.' : 'Shoot where the crosshair is (hold left click).') : s.text;
-  showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? `every ${s.every} s · no mana` : `${s.manaText || `${s.mana} mana`} · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left, r.top);
+  if (k === 'D') return showTip(`<b>Dodge</b> <span>Shift</span><br>A quick dash the way you are moving (or back): nothing touches you while it lasts. Hold Shift after it to sprint.<br><b>Perfect dodge:</b> just before a blow lands, the attacker staggers, time slows (alone), and your next blow is a <b>counter</b>.<br><span>every ${DODGE.cd} s</span>`, r.left - 160, r.top);
+  const s = k === 'basic' ? kit.basic : kit[k];
+  // (1.3) the blow's tip says how it fights now: a string of four, held for a heavy blow, the counter, the plunge
+  const what = k === 'basic' ? `${me.cls === 'warrior' ? 'Cut in front of you' : me.cls === 'novice' ? 'Punch in front of you (small fists; better than nothing)' : 'Shoot where the crosshair is'}. Click again and again: a <b>string of four</b>, the last the hardest.${kit.heavy ? `<br>Hold: <b>${kit.heavy.name}</b> (stronger the longer you hold, up to ${kit.heavy.full} s).` : ''}${kit.counter ? `<br>After a perfect dodge: <b>${kit.counter.name}</b>.` : ''}${kit.plunge ? `<br>In the air: <b>${kit.plunge.name}</b>, straight down.` : ''}` : s.text;
+  showTip(`<b>${s.name}</b> <span>${k === 'basic' ? 'left click' : k}</span><br>${what}<br><span>${k === 'basic' ? 'no mana' : `${s.manaText || `${s.mana} mana`} · ${s.cd} s cooldown`}</span>${k === 'basic' ? `<br><em>${kit.passive}</em>` : ''}`, r.left - 160, r.top);
 });
 $('skills').addEventListener('mouseout', hideTip);
+$('stats').classList.toggle('hidden', !overlay); // (1.3) the numbers for testing: F3
+$('mp-head').addEventListener('click', () => $('mp').classList.toggle('folded')); // (1.3) walk together and sound: folded until wanted
 addEventListener('wheel', (e) => { dist = Math.max(1.6, Math.min(10, dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
 
 /** Where the crosshair points, on the ground (looking up: straight ahead, 45 m off). */
@@ -653,9 +790,9 @@ function attackPoint() {
   if ((a.x - me.x) * fx0 + (a.z - me.z) * fz0 < 2) return { x: me.x + fx0 * 45, z: me.z + fz0 * 45 };
   return a;
 }
-/** A held skill let go (Whirlwind stops, Deadeye looses). */
+/** A held skill let go (Whirlwind stops, Deadeye looses, (1.3) a heavy blow strikes). */
 function letGo(k) {
-  if (!(k === 'E' && me.whirl) && !(k === 'R' && me.draw)) return;
+  if (!(k === 'E' && me.whirl) && !(k === 'R' && me.draw) && !(k === 'H' && me.charge)) return;
   const a = attackPoint(); // (0.99.25) a Deadeye flies where you point when you let go (scoped or not)
   world.act(1, k, a.x, a.z, true);
   if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2), up: true });
@@ -663,11 +800,21 @@ function letGo(k) {
 // while a Deadeye is drawn, it follows the aim (ten times a second to the server)
 let aimSent = 0;
 function followAim(dt) {
-  if (!me.draw) return;
+  if (!me.draw && !me.charge) return;
   const a = attackPoint();
-  world.aim(1, a.x, a.z);
+  if (me.draw) world.aim(1, a.x, a.z);
+  else world.aimCharge(me, a.x, a.z); // (1.3) a heavy blow being charged turns with you
   aimSent -= dt;
   if (net && net.ready && aimSent <= 0) { aimSent = 0.1; net.send({ t: 'aim', ax: +a.x.toFixed(2), az: +a.z.toFixed(2) }); }
+}
+const HOLD_HEAVY = 0.28; // (1.3) seconds the button is held before it becomes a heavy blow
+let heldFor = 0;
+/** (1.3) Shift: the dodge (see DODGE in sim.js). */
+function dodge() {
+  if (!world.ready(me, 'D')) return;
+  hero.anim.em = null;
+  world.act(1, 'D', me.x, me.z);
+  if (net && net.ready) net.send({ t: 'act', k: 'D', ax: +me.x.toFixed(2), az: +me.z.toFixed(2) });
 }
 function act(k) {
   // the Oath is a toggle: pressed again, it ends (no mana, nothing to aim)
@@ -1041,7 +1188,12 @@ function soundEvent(ev) {
   switch (ev.type) {
     case 'cast': {
       const k = ev.skill;
-      if (k === 'basic') sound.play('swing', ev.x, ev.z);
+      if (k === 'basic') sound.play(ev.n === 3 ? 'finisher' : 'swing', ev.x, ev.z, { n: ev.n || 0 }); // (1.3) each blow of a string a little higher; the fourth heavier
+      else if (k === 'charge') sound.play('charge', ev.x, ev.z, { t: ev.full });
+      else if (k === 'heavy') sound.play('heavy', ev.x, ev.z, { k: ev.k });
+      else if (k === 'counter') sound.play('counter', ev.x, ev.z);
+      else if (k === 'plunge') sound.play('leap', ev.x, ev.z);
+      else if (k === 'dodge') sound.play(ev.perfect ? 'perfect' : 'dodge', ev.x, ev.z);
       else if (k === 'jump') sound.play('jump', ev.x, ev.z);
       else if (k === 'jump2') sound.play('jump2', ev.x, ev.z);
       else if (k === 'kick' || k === 'recoil') sound.play('kick', ev.x, ev.z);
@@ -1883,6 +2035,12 @@ const TRICKS = [
   { id: 'kick', text: 'Wall kick: in the air beside a tree, a rock or a wall, <span class="k">Space</span> (it gives your double jump back)' },
   { id: 'rock', text: 'Stand on top of a rock taller than you' },
   { id: 'launch', text: 'Berserker: <span class="k">Space</span> as Skyfall lands (a bounce). Sharpshooter: look down in mid-air and shoot (a recoil)' },
+  // (1.3) fighting well
+  { id: 'finisher', text: 'A full string: click four times in a row, and the fourth blow is the big one' },
+  { id: 'fullHeavy', text: 'Hold <span class="k">left click</span> until the ring fills, then let go: a heavy blow at full strength' },
+  { id: 'perfect', text: 'Perfect dodge: <span class="k">Shift</span> just before a blow lands (watch for the wind-up)' },
+  { id: 'counter', text: 'Counter: strike straight after a perfect dodge' },
+  { id: 'plunge', text: 'With a sword or fists: jump, and strike in the air to plunge onto what is below' },
 ];
 let hopRun = 0;
 function showTricks() {
@@ -1909,6 +2067,11 @@ function trickEvent(ev) {
   else if (ev.skill === 'jump2') learnt('jump2');
   else if (ev.skill === 'kick') learnt('kick');
   else if (ev.skill === 'bounce' || ev.skill === 'recoil') learnt('launch');
+  else if (ev.skill === 'basic' && ev.n === 3) learnt('finisher');
+  else if (ev.skill === 'heavy' && ev.k >= 1) learnt('fullHeavy');
+  else if (ev.skill === 'dodge' && ev.perfect) learnt('perfect');
+  else if (ev.skill === 'counter') learnt('counter');
+  else if (ev.skill === 'plunge') learnt('plunge');
 }
 /**
  * (0.99.29) The Hounds fight alongside you on a hunt: `foes()` the beasts being hunted. Rowan cuts, Juni shoots,
@@ -2342,8 +2505,24 @@ function frame(now) {
   last = now;
   time += dt;
   perf.worstNow = Math.max(perf.worstNow, dt * 1000);
-  acc += dt;
-  if (firing && !me.dead && !cutscene.active) act('basic');
+  // (1.3) after a perfect dodge (alone), the world runs slow a moment; a landed blow holds the bodies still a moment
+  const slow = slowT > 0 && !net ? 0.28 : 1;
+  if (slowT > 0) slowT -= dt;
+  acc += dt * slow;
+  const adt = hitStopT > 0 ? dt * 0.06 : dt * slow;
+  if (hitStopT > 0) hitStopT -= dt;
+  animTime += adt;
+  // (1.3) the button held: past a moment it becomes a heavy blow's charge (let go to strike). It no longer fires on
+  // its own while held: blows are pressed one by one, a string of four
+  if (firing && !me.dead && !cutscene.active) {
+    heldFor += dt;
+    if (heldFor >= HOLD_HEAVY && !me.charge && KITS[me.cls] && KITS[me.cls].heavy && world.ready(me, 'H')) {
+      const a = attackPoint();
+      world.act(1, 'H', a.x, a.z, false, true);
+      if (net && net.ready) net.send({ t: 'act', k: 'H', ax: +a.x.toFixed(2), az: +a.z.toFixed(2), down: true });
+    }
+    if (me.charge) followAim(dt);
+  }
   if (me.cls !== 'archer') scoped = false;
   const w = wish();
   const s0 = performance.now();
@@ -2385,7 +2564,7 @@ function frame(now) {
   hero.group.visible = !scoped;
   heroY = prevY + (me.y - prevY) * alpha;
   if (cutscene.active) cutscene.beforePose();
-  pose(hero, dt, { moving: me.moving || !!hero.anim.sceneWalk, speed: hero.anim.sceneWalk ? 1.6 : me.speed, walk: (me.pace === 'walk' && me.moving) || !!hero.anim.sceneWalk, dead: me.dead, y: heroY });
+  pose(hero, adt, { moving: me.moving || !!hero.anim.sceneWalk, speed: hero.anim.sceneWalk ? 1.6 : me.speed, walk: (me.pace === 'walk' && me.moving) || !!hero.anim.sceneWalk, dead: me.dead, y: heroY });
   // the camera: over the right shoulder (or, scoped, through the hero's eyes), kept above the ground
   const lx = Math.cos(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
   const rx = -Math.sin(yaw), rz = Math.cos(yaw);
@@ -2401,7 +2580,16 @@ function frame(now) {
     view.camera.position.copy(camPos);
     view.camera.lookAt(camTarget.x + lx * 10, camTarget.y + ly * 10, camTarget.z + lz * 10);
   }
-  fov += ((scoped ? 26 : 62) - fov) * Math.min(1, dt * 12);
+  // (1.3) shaken (it dies away quickly), and pushed out a little for a big blow
+  if (shakeA > 0.002 && !cutscene.active) {
+    const a = shakeA * 0.35;
+    view.camera.position.x += (Math.random() - 0.5) * a;
+    view.camera.position.y += (Math.random() - 0.5) * a;
+    view.camera.position.z += (Math.random() - 0.5) * a;
+  }
+  shakeA *= Math.exp(-dt * 14);
+  fovKick *= Math.exp(-dt * 7);
+  fov += ((scoped ? 26 : 62) + (cutscene.active ? 0 : fovKick) - fov) * Math.min(1, dt * 12);
   if (Math.abs(view.camera.fov - fov) > 0.05) { view.camera.fov = fov; view.camera.updateProjectionMatrix(); }
   $('scope').style.display = scoped ? 'block' : 'none';
   $('cross').classList.toggle('scoped', scoped);
@@ -2420,7 +2608,7 @@ function frame(now) {
       s.z = s.fz + (s.tz - s.fz) * k;
       if (!s.player) seenBeasts.push(s);
     }
-    view.drawSeen(seenBeasts, time, hx, hz);
+    view.drawSeen(seenBeasts, animTime, hx, hz);
     fxBeasts = seenBeasts;
     for (const [pid, o] of others) {
       const s = seen.get(PLAYER_ID + pid);
@@ -2431,19 +2619,27 @@ function frame(now) {
       // (0.99.35) their height, as the server last told it (a rock's top, a double jump), fading if it stops
       const ay = airOf.get(pid);
       const y = ay && performance.now() - ay.at < 400 ? ay.y : undefined;
-      pose(o.hero, dt, { moving: s.moving, speed: 5.6, dead: s.dead, y });
+      pose(o.hero, adt, { moving: s.moving, speed: 5.6, dead: s.dead, y });
       proj.set(s.x, 2.35, s.z).project(view.camera);
       const off = proj.z > 1 || Math.hypot(s.x - hx, s.z - hz) > 60;
       o.label.style.display = off ? 'none' : '';
       if (!off) o.label.style.transform = `translate(${((proj.x + 1) / 2) * innerWidth}px, ${((1 - proj.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
     }
   } else {
-    view.drawBeasts(hx, hz, alpha, time);
+    view.drawBeasts(hx, hz, alpha, animTime);
     nearBeasts.length = 0;
     for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: (b.def && b.def.r) || BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8, rank: b.rank || 0, name: b.name, size: b.size, lv: b.lv, state: b.state, pat: b.state === 'chase' ? b.pat ?? 1 : 1 });
     fxBeasts = nearBeasts;
   }
-  fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);
+  fx.update(dt * slow, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);
+  cfx.update(dt * slow);
+  if (me.charge) cfx.chargeAt(net ? net.pid : 1, hx, hz);
+  // (1.3) a Whirlwind's cuts, round and round
+  for (const h of [hero, ...[...others.values()].map((o) => o.hero)]) {
+    if (!(h.anim.spinT > 0)) continue;
+    h.spinFx = (h.spinFx || 0) - dt;
+    if (h.spinFx <= 0) { h.spinFx = 0.12; const p = heroAt(h); cfx.slash(p.x, p.y + 0.45, p.z, Math.random() * Math.PI * 2, 3.0, 'spin', heroHue(h), 1); }
+  }
   drawBossBar(fxBeasts, hx, hz);
   soundFrame(dt, hx, hz);
   if (riftRing) riftRing.material.opacity = (ashRift ? 0.75 : 0.32) + 0.12 * Math.sin(performance.now() / 260);

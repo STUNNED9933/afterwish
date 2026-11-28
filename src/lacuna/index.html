@@ -15,8 +15,11 @@
   #hurt { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(200, 30, 30, 0.9); opacity: 0; }
   #tag { position: fixed; right: 10px; top: 10px; color: #1c2a3a; font: 12px system-ui; opacity: 0.7; pointer-events: none; }
   #stats b.on { color: #9fd0ff; font-size: 12px; }
-  #mp { position: fixed; right: 10px; bottom: 10px; width: 250px; padding: 10px 12px; background: rgba(10, 14, 24, 0.78); color: #e8eefc; font-size: 13px; border-radius: 8px; }
-  #mp h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  #mp { position: fixed; left: 10px; top: 10px; width: 250px; padding: 10px 12px; background: rgba(10, 14, 24, 0.86); color: #e8eefc; font-size: 13px; border-radius: 8px; z-index: 20; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+  #mp h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; }
+  #mp h3::after { content: '▾'; float: right; opacity: 0.7; }
+  /* (1.3) folded until wanted: only its title, a small pill in the corner */
+  #mp.folded { width: auto; padding: 6px 12px; } #mp.folded > :not(h3) { display: none; } #mp.folded h3 { margin: 0; font-size: 12px; } #mp.folded h3::after { content: ' ▸'; float: none; }
   #mp input { width: 100%; box-sizing: border-box; margin: 3px 0; padding: 5px 7px; border-radius: 4px; border: 1px solid #3a4560; background: #121a2c; color: #fff; font-size: 13px; }
   #mp button { margin-top: 6px; padding: 6px 10px; border-radius: 5px; border: 0; background: #ffd24a; color: #1a1406; font-weight: 600; cursor: pointer; }
   #mp button.ghost { background: #2a3550; color: #e8eefc; }
@@ -32,11 +35,14 @@
   #fxlayer .num { position: fixed; left: 0; top: 0; font: 700 17px system-ui; color: #ffe08a; text-shadow: 0 1px 3px #000, 0 0 2px #000; white-space: nowrap; }
   #fxlayer .num.taken { color: #ff6a5a; font-size: 18px; }
   #fxlayer .num.heal { color: #8fff9a; }
-  #fxlayer .num.big { font-size: 26px; color: #fff2b0; }
-  #fxlayer .bar { position: fixed; left: 0; top: 0; width: 46px; height: 5px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 0, 0, 0.8); border-radius: 2px; }
-  #fxlayer .bar i { display: block; height: 100%; background: #e2463a; border-radius: 1px; }
+  #fxlayer .num.big { font: 900 italic 28px system-ui; color: #ffc65a; text-shadow: 0 0 10px rgba(255, 150, 40, 0.8), 0 2px 3px #000; }
+  #fxlayer .num span { display: inline-block; animation: num-pop 0.28s cubic-bezier(0.2, 1.6, 0.4, 1); }
+  @keyframes num-pop { 0% { transform: scale(1.9); opacity: 0.2; } 100% { transform: scale(1); opacity: 1; } }
+  /* (1.3) a beast's health: wider, with a lit edge */
+  #fxlayer .bar { position: fixed; left: 0; top: 0; width: 64px; height: 7px; background: rgba(6, 8, 14, 0.75); border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  #fxlayer .bar i { display: block; height: 100%; background: linear-gradient(#ff7a62, #d0302a); border-radius: 4px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); transition: width 0.12s; }
   /* (1.2.1) patience: a thin amber line under the health, running down as a beast gives up on you */
-  #fxlayer .bar s { position: absolute; left: -1px; top: 7px; width: 48px; height: 3px; background: rgba(0, 0, 0, 0.6); border-radius: 2px; text-decoration: none; }
+  #fxlayer .bar s { position: absolute; left: 0; top: 10px; width: 64px; height: 3px; background: rgba(0, 0, 0, 0.6); border-radius: 2px; text-decoration: none; }
   #fxlayer .bar s::after { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: var(--p, 100%); background: #ffc23a; border-radius: 2px; }
   #cross { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; pointer-events: none; }
   #cross::before, #cross::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 2px #000; }
@@ -45,15 +51,71 @@
   #cross.scoped { width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #ff4a3a; }
   #cross.scoped::before, #cross.scoped::after { display: none; }
   #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 34vh, rgba(0, 0, 0, 0.88) 35vh); display: none; }
-  #hud { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 5px; pointer-events: none; color: #fff; font-size: 12px; text-shadow: 0 1px 2px #000; }
-  #hud .bars { width: 340px; }
-  #hud .b { position: relative; height: 14px; margin-top: 3px; background: rgba(10, 14, 24, 0.75); border-radius: 3px; overflow: hidden; }
-  #hud .b i { position: absolute; left: 0; top: 0; bottom: 0; }
-  #hud .b span { position: relative; display: block; text-align: center; line-height: 14px; font-size: 11px; }
-  #hp i { background: linear-gradient(#58c46a, #2f8a3e); }
-  #mpb i { background: linear-gradient(#5a8cff, #2c56c4); }
-  #hud #xpb { height: 8px; } #xpb span { line-height: 8px !important; font-size: 9px !important; }
-  #xpb i { background: linear-gradient(#ffd24a, #c0901a); transition: width 0.4s; }
+  /* (1.3) the HUD, redrawn: health and mana wide at the bottom with your level beside them; the skills as lit round
+     tiles bottom right (the big one the R); a hit counter; a ring round the crosshair while a heavy blow charges */
+  #hud { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; color: #fff; font: 12px system-ui; text-shadow: 0 1px 2px #000; }
+  #hud .vitals { display: flex; align-items: center; gap: 10px; }
+  #hud .lvl { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font: 800 17px system-ui; color: #fff6d8;
+    background: radial-gradient(circle at 50% 35%, #3a3220, #12100a 75%); box-shadow: inset 0 0 0 2px #e8b84a, 0 0 10px rgba(232, 184, 74, 0.35), 0 2px 6px #000; }
+  #hud .lvl > div { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+  #hud .lvl small { font: 700 7px system-ui; letter-spacing: 1px; color: #e8b84a; margin-bottom: 1px; }
+  #hud .vbars { width: min(460px, 44vw); }
+  #hud .b { position: relative; overflow: hidden; background: rgba(6, 9, 16, 0.78); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.5); }
+  #hud .b i { position: absolute; left: 0; top: 0; bottom: 0; transition: width 0.08s linear; }
+  #hud .b i.lag { background: #fff3d6 !important; opacity: 0.55; transition: width 0.5s ease-in 0.25s; }
+  #hud .b span { position: relative; display: block; text-align: right; padding-right: 8px; font: 700 11px system-ui; font-variant-numeric: tabular-nums; }
+  #hp { height: 16px; border-radius: 8px 8px 3px 3px; }
+  #hp span { line-height: 16px; }
+  #hp i:not(.lag) { background: linear-gradient(#7be38a, #2f9a48 60%, #227a38); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+  #hp.bloodied i:not(.lag) { background: linear-gradient(#ff7a6a, #c8323a 60%, #8a1c22); }
+  #hp.bloodied { box-shadow: 0 0 12px rgba(255, 60, 60, 0.6), inset 0 0 0 1px rgba(255, 120, 120, 0.4); }
+  #mpb { height: 9px; margin-top: 3px; border-radius: 3px; }
+  #mpb span { line-height: 9px; font-size: 9px !important; margin-top: -1px; }
+  #mpb i { background: linear-gradient(#7aa8ff, #3a64d8); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+  #xpb { height: 3px; margin-top: 3px; border-radius: 2px; background: rgba(6, 9, 16, 0.6) !important; }
+  #xpb span { display: none !important; }
+  #xpb i { background: linear-gradient(90deg, #c0901a, #ffd24a); transition: width 0.4s; }
+  #hud .link { font-size: 10px; color: rgba(201, 184, 255, 0.75); }
+
+  #skillbar { position: fixed; right: 26px; bottom: 22px; display: flex; align-items: flex-end; gap: 12px; pointer-events: none; }
+  #skillbar .skills { display: flex; align-items: flex-end; gap: 12px; }
+  #skillbar .sk { --hue: #ffb35a; position: relative; width: 56px; text-align: center; pointer-events: auto; cursor: help; }
+  #skillbar .sk.big { width: 76px; }
+  #skillbar .sk.small { width: 44px; }
+  .skill-ic { position: relative; width: 100%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+    background: radial-gradient(circle at 50% 32%, color-mix(in srgb, var(--hue) 30%, #1c2436) 0%, #0b101b 74%);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hue) 75%, transparent), inset 0 -10px 18px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.6); transition: box-shadow 0.2s, filter 0.2s; }
+  .skill-ic svg { width: 60%; height: 60%; fill: none; stroke: #f4f7ff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--hue) 85%, transparent)); position: relative; z-index: 1; }
+  .skill-ic svg .a { stroke: var(--hue); }
+  .skill-ic svg .f { fill: var(--hue); stroke: color-mix(in srgb, var(--hue) 55%, #fff); fill-opacity: 0.9; }
+  /* the cooldown: a dark sweep that unwinds clockwise, and the seconds left */
+  #skillbar .sk .cd { position: absolute; inset: 0; border-radius: 50%; z-index: 2; background: conic-gradient(rgba(4, 6, 12, 0.78) calc(var(--cd, 0) * 360deg), transparent 0); }
+  #skillbar .sk .n { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; font: 800 18px system-ui; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+  #skillbar .sk.big .n { font-size: 24px; }
+  #skillbar .sk .k { display: inline-block; margin-top: 4px; min-width: 18px; padding: 1px 5px; border-radius: 4px; background: rgba(6, 9, 16, 0.85); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); font: 700 10px system-ui; color: #e8eefc; }
+  #skillbar .sk .m { position: absolute; top: -6px; right: -6px; z-index: 4; padding: 0 5px; border-radius: 8px; background: #2c4aa8; font: 700 10px/16px system-ui; color: #dfe8ff; box-shadow: 0 1px 3px #000; }
+  #skillbar .sk .m:empty { display: none; }
+  #skillbar .sk.cooling .skill-ic svg { opacity: 0.5; }
+  #skillbar .sk.dry .skill-ic { filter: grayscale(0.85) brightness(0.7); }
+  #skillbar .sk.dry .m { background: #5a2a30; }
+  #skillbar .sk.blood .skill-ic { box-shadow: inset 0 0 0 2px #e0484e, inset 0 -10px 18px rgba(0, 0, 0, 0.55), 0 0 12px rgba(224, 72, 78, 0.6); }
+  #skillbar .sk.blood .m { background: #b0283a; }
+  #skillbar .sk.on .skill-ic { box-shadow: inset 0 0 0 2.5px var(--hue), 0 0 18px color-mix(in srgb, var(--hue) 70%, transparent); animation: sk-on 1s ease-in-out infinite alternate; }
+  #skillbar .sk.ready .skill-ic { animation: sk-ready 0.45s ease-out; }
+  #skillbar .sk.counter .skill-ic { --hue: #7fd8ff; box-shadow: inset 0 0 0 3px #7fd8ff, 0 0 22px #4fb4ff; }
+  #skillbar .sk.counter::after { content: 'COUNTER'; position: absolute; left: 50%; top: -18px; transform: translateX(-50%); font: 900 italic 10px system-ui; letter-spacing: 1.5px; color: #9fe0ff; text-shadow: 0 0 6px #4fb4ff, 0 1px 2px #000; }
+  #skillbar .sk .charge { position: absolute; inset: -5px; border-radius: 50%; z-index: 0; background: conic-gradient(#ffe08a calc(var(--ch, 0) * 360deg), transparent 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%); }
+  @keyframes sk-on { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+  @keyframes sk-ready { 0% { filter: brightness(2.2); transform: scale(1.12); } 100% { filter: brightness(1); transform: scale(1); } }
+
+  #combo { position: fixed; right: 8%; top: 42%; pointer-events: none; text-align: right; font: 900 italic 44px system-ui; color: #fff; line-height: 0.9; text-shadow: 0 0 14px rgba(255, 190, 90, 0.7), 0 2px 4px #000; transition: opacity 0.3s; }
+  #combo span { display: block; font-size: 13px; letter-spacing: 4px; color: #ffcf7a; }
+  #combo.hidden { opacity: 0; }
+  #combo.pop b { animation: combo-pop 0.18s ease-out; display: inline-block; }
+  @keyframes combo-pop { 0% { transform: scale(1.45); color: #ffe9b0; } 100% { transform: scale(1); } }
+  #chargering { position: fixed; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none; display: none;
+    background: conic-gradient(#ffe08a calc(var(--ch, 0) * 360deg), rgba(255, 255, 255, 0.12) 0); -webkit-mask: radial-gradient(circle, transparent 66%, #000 68%); mask: radial-gradient(circle, transparent 66%, #000 68%); }
+  #chargering.full { animation: sk-on 0.25s ease-in-out infinite alternate; filter: drop-shadow(0 0 6px #ffd24a); }
   #lvlup { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); color: #ffd24a; font: 900 34px system-ui; text-shadow: 0 2px 8px #000, 0 0 24px #ffb020; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
   #web { position: fixed; inset: 0; z-index: 40; background: #0b0f1a; }
   #web canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
@@ -68,23 +130,8 @@
   #web-tip b small { color: #8a96b4; font-weight: 400; }
   #web-tip span { display: block; color: #9fd0ff; } #web-tip em { display: block; margin-top: 5px; color: #8a96b4; font-size: 11px; }
   #lvlup small { display: block; text-align: center; font-size: 14px; color: #fff4d0; font-weight: 600; }
-  #hud .skills { display: flex; gap: 6px; }
-  #hud .sk { position: relative; width: 74px; height: 50px; padding: 4px 5px; box-sizing: border-box; background: rgba(10, 14, 24, 0.8); border: 1px solid #3a4560; border-radius: 6px; overflow: hidden; }
-  #hud .sk b { display: block; font-size: 11px; color: #ffd24a; }
-  #hud .sk em { font-style: normal; font-size: 10px; color: #9fb8ff; }
-  #hud .sk .k { position: absolute; right: 4px; top: 2px; font-size: 10px; color: #fff; opacity: 0.8; }
-  #hud .sk .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.62); }
-  #hud .sk .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 16px system-ui; }
-  #hud .sk.dry { border-color: #6a2a30; }
-  #hud .sk.blood { border-color: #c8323a; }
-  #hud .sk.blood em { color: #ff7a7a; }
-  #hud .sk.on { border-color: #ffd24a; box-shadow: 0 0 8px rgba(255, 210, 74, 0.6); }
-  #hp.bloodied i { background: linear-gradient(#e0484e, #8a1c22); }
-  #hp.bloodied { box-shadow: 0 0 10px rgba(255, 60, 60, 0.55); }
-  #hud .link { font-size: 11px; color: #c9b8ff; }
   #down { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(40, 40, 50, 0.45); backdrop-filter: grayscale(1); color: #fff; font: 600 22px system-ui; text-shadow: 0 2px 6px #000; pointer-events: none; }
   #down small { font: 14px system-ui; margin-top: 6px; }
-  #hud .sk { pointer-events: auto; cursor: help; }
   #tip { position: fixed; max-width: 280px; padding: 7px 9px; background: rgba(10, 14, 24, 0.92); border: 1px solid #3a4560; border-radius: 6px; color: #e8eefc; font-size: 12px; line-height: 1.45; pointer-events: none; z-index: 10; }
   #tip b { color: #ffd24a; }
   #tip span { color: #9fb0cc; }
@@ -182,6 +229,15 @@
   #choose button:hover { border-color: #ffd24a; }
   #choose button b { display: block; margin-bottom: 6px; font-size: 18px; color: #ffd24a; }
   #choose button i { display: block; margin-top: 8px; font-style: normal; color: #9fb8ff; }
+  /* (1.3) the screen in a fight: blue at the edges after a perfect dodge (and a little desaturated), red when the Oath is
+     sworn, a white flash for a counter */
+  #screenfx { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; }
+  #screenfx.perfect { animation: sfx-perfect 0.9s ease-out; background: radial-gradient(ellipse at center, rgba(120, 200, 255, 0) 45%, rgba(90, 170, 255, 0.42) 100%); }
+  #screenfx.oath { animation: sfx-fade 0.7s ease-out; background: radial-gradient(ellipse at center, rgba(255, 40, 30, 0) 40%, rgba(200, 20, 10, 0.5) 100%); }
+  #screenfx.flash { animation: sfx-fade 0.22s ease-out; background: rgba(230, 245, 255, 0.35); }
+  @keyframes sfx-perfect { 0% { opacity: 1; backdrop-filter: saturate(0.4) brightness(1.08); } 60% { opacity: 0.85; backdrop-filter: saturate(0.6); } 100% { opacity: 0; backdrop-filter: none; } }
+  @keyframes sfx-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #fxlayer .num.perfect { color: #9fe0ff; font-size: 20px; font-weight: 900; letter-spacing: 3px; font-style: italic; text-shadow: 0 0 10px #4fb4ff, 0 2px 3px #000; }
   /* (1.2.1) the compass along the top: which way you face, and the quest's ◆ (with how far) */
   #compass { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); width: min(440px, 64vw); height: 26px; overflow: hidden; z-index: 19; pointer-events: none;
     background: linear-gradient(90deg, transparent, rgba(10, 14, 24, 0.62) 18%, rgba(10, 14, 24, 0.62) 82%, transparent); border-radius: 4px; }
@@ -194,7 +250,7 @@
   #marker { position: fixed; left: 0; top: 0; padding: 2px 7px; background: rgba(255, 210, 74, 0.9); color: #1a1406; font: 700 11px system-ui; border-radius: 10px; pointer-events: none; white-space: nowrap; }
   #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 10px 20px; background: rgba(8, 10, 18, 0.85); border: 1px solid #ffd24a; border-radius: 8px; color: #fff; font: 600 16px system-ui; text-align: center; pointer-events: none; }
   #toast small { display: block; font-weight: 400; font-size: 13px; color: #cfd6e4; }
-  body.scene #hud, body.scene #cross, body.scene #mp, body.scene #stats, body.scene #quest, body.scene #look-hint, body.scene #chat, body.scene #note, body.scene #tag { display: none !important; }
+  body.scene #hud, body.scene #skillbar, body.scene #combo, body.scene #chargering, body.scene #cross, body.scene #mp, body.scene #stats, body.scene #quest, body.scene #look-hint, body.scene #chat, body.scene #note, body.scene #tag { display: none !important; }
   #wheel { position: fixed; left: 50%; top: 50%; width: 340px; height: 340px; margin: -170px 0 0 -170px; border-radius: 50%; background: radial-gradient(circle, rgba(10, 14, 24, 0.55) 0 30%, rgba(10, 14, 24, 0.78) 31% 70%, transparent 71%); z-index: 15; }
   #wheel .hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #ffd24a; font: 700 14px system-ui; text-align: center; pointer-events: none; }
   #wheel .slot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; min-width: 56px; border-radius: 10px; color: #fff; font-size: 12px; text-align: center; cursor: pointer; }
@@ -230,12 +286,17 @@
 <div id="down"><div>You are down</div><small id="down-t"></small></div>
 <div id="hud">
   <div class="link" id="link"></div>
-  <div class="skills" id="skills"></div>
-  <div class="bars"><div class="b" id="hp"><i></i><span></span></div><div class="b" id="mpb"><i></i><span></span></div><div class="b" id="xpb"><i></i><span></span></div></div>
+  <div class="vitals">
+    <div class="lvl" id="lvl"><div><small>LV</small><span id="lvl-n">1</span></div></div>
+    <div class="vbars"><div class="b" id="hp"><i class="lag"></i><i class="v"></i><span></span></div><div class="b" id="mpb"><i class="v"></i><span></span></div><div class="b" id="xpb"><i class="v"></i><span></span></div></div>
+  </div>
 </div>
+<div id="skillbar"><div class="skills" id="skills"></div></div>
+<div id="combo" class="hidden"><b>0</b><span>HITS</span></div>
+<div id="chargering"></div>
 <div id="chat"><div id="chat-log"></div><input id="chat-in" class="hidden" maxlength="140" placeholder="Say something (Enter to send, Esc to close)"></div>
-<div id="mp">
-  <h3>Walk together</h3>
+<div id="mp" class="folded">
+  <h3 id="mp-head" title="Walk together, sound, and replaying the opening">Walk together · Sound</h3>
   <div class="only-alone">
     <input id="mp-name" maxlength="16" placeholder="Your name">
     <input id="mp-pass" type="password" placeholder="Server world passcode">
@@ -277,7 +338,7 @@
 <div id="web" class="hidden"><canvas></canvas>
   <div id="web-top"><b>Technique web</b><span id="web-info"></span><input id="web-search" placeholder="Search (e.g. crit, jump, Cleave)"><button id="web-reset">Give all back</button><button id="web-close">Close <kbd>P</kbd></button></div>
   <div id="web-tip"></div></div>
-<div id="tricks" class="hidden"><b>Moving well <kbd>H</kbd></b><span id="tricks-list"></span><em>All optional. Walk and jump as you like.</em></div>
+<div id="tricks" class="hidden"><b>Moving and fighting well <kbd>H</kbd></b><span id="tricks-list"></span><em>All optional. Walk and jump as you like.</em></div>
 <div id="choose" class="hidden">
   <h2>Choose your path</h2>
   <p>Rowan's way or Juni's. It is where you start, not where you must stay: you can change your path at any time (1 and 2), and the Guild will teach you both.</p>
@@ -289,6 +350,7 @@
 </div>
 <div id="marker" class="hidden"></div>
 <div id="compass"></div>
+<div id="screenfx"></div>
 <div id="bark" class="hidden"></div>
 <div id="toast" class="hidden"></div>
 <div id="cs" class="hidden"></div>

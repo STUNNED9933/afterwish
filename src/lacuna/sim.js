@@ -66,7 +66,12 @@ export const KITS = {
   novice: {
     name: 'Unarmed', hp: 150, dmg: 8, mp: 30, regen: 3,
     passive: 'No weapon yet, and no skills: only your fists. (Rowan will hand you a blade.)',
-    basic: { name: 'Punch', every: 0.55, range: 1.7, arc: 1.6, mult: 1.0 },
+    basic: { name: 'Punch', every: 0.55, range: 1.7, arc: 1.6, mult: 1.0,
+      // (1.3) a string of four: jab, cross, jab, and a hook that knocks them back a step
+      combo: [{ mult: 1.0, t: 0.85 }, { mult: 1.0, t: 0.85 }, { mult: 1.1, t: 0.85 }, { mult: 1.7, t: 1.2, arc: 2.2, stagger: 0.3 }] },
+    heavy: { name: 'Haymaker', charge: 0.3, full: 0.8, mult: [1.4, 2.2], range: 2.0, arc: 2.0, stagger: 0.4, step: 0.8 },
+    counter: { name: 'Counter', mult: 2.5, range: 2.4, arc: 2.4, dash: 2.0 },
+    plunge: { name: 'Pounce', mult: 1.5, radius: 2.2, fall: 20, stun: 0.3 },
   },
   warrior: {
     name: 'Berserker', hp: 340, dmg: 20, mp: 60, regen: 2.5,
@@ -74,7 +79,18 @@ export const KITS = {
     blood: { perMana: 0.006, floor: 0.1 }, // one mana short costs 0.6% of your health
     rhythm: { mana: 3, most: 9 },
     bloodied: { below: 0.5, dmg: 0.25, haste: 0.2, leech: 0.08 },
-    basic: { name: 'Cleave', every: 0.72, range: 2.9, arc: 1.9, mult: 1.4 },
+    basic: { name: 'Cleave', every: 0.72, range: 2.9, arc: 1.9, mult: 1.4,
+      // (1.3) a string of four cuts, each its own (across, back, a thrust that steps in, and a wide finisher that
+      // staggers); a pause of a moment and it starts again. The string as a whole hits harder than the old Cleave.
+      combo: [
+        { mult: 1.1, t: 0.78 },
+        { mult: 1.2, t: 0.78 },
+        { mult: 1.5, t: 0.85, arc: 1.1, range: 3.7, step: 1.2 },
+        { mult: 2.4, t: 1.2, arc: 2.8, range: 3.3, stagger: 0.4 },
+      ] },
+    heavy: { name: 'Sundering Blow', charge: 0.35, full: 0.9, mult: [1.8, 3.2], range: 3.4, arc: 2.4, stagger: 0.6, step: 1.4 },
+    counter: { name: 'Riposte', mult: 3.4, range: 3.8, arc: 2.8, dash: 3.2 },
+    plunge: { name: 'Falling Cut', mult: 2.0, radius: 2.8, fall: 22, stun: 0.4 },
     Q: { id: 'skyfall', name: 'Skyfall', mana: 25, cd: 8, range: 12, radius: 3.6, mult: 2.2, time: 0.55, stun: 1, text: 'Leap where you look and crash down, stunning what is under you for a second.' },
     E: { id: 'whirl', name: 'Whirlwind', mana: 10, beat: 6, cd: 6, radius: 3.2, every: 0.3, most: 4, mult: 0.6, manaText: '10, then 6 a beat', text: 'Hold to spin, cutting everything round you every beat; you can keep running. Each beat costs mana (or blood). Let go to stop.' },
     R: { id: 'oath', name: 'Crimson Oath', mana: 0, cd: 3, to: 0.4, cap: 0.49, leech: 0.25, roar: 3.6, mult: 1.5, manaText: 'a toggle: costs blood', text: 'A toggle. Cut yourself down to 40% health with a roar that hurts everything near: the blood you lose becomes mana. While it lasts you are always Bloodied, your hits heal a quarter of what they deal, and nothing lifts you above 49%. Press again to end it.' },
@@ -85,19 +101,32 @@ export const KITS = {
     longWatch: { per: 0.04, from: 2, most: 0.4 },
     steadyAim: { every: 3, mult: 2, mana: 5 },
     still: { after: 0.8, regen: 2.5 },
-    basic: { name: 'Shot', every: 0.55, speed: 70, range: 45, mult: 1.0 },
+    basic: { name: 'Shot', every: 0.55, speed: 70, range: 45, mult: 1.0,
+      // (1.3) a string of four: two Shots, a pair at once, and one that flies on through
+      combo: [{ mult: 1.0, t: 0.9 }, { mult: 1.0, t: 0.9 }, { mult: 0.75, t: 1.0, pair: true }, { mult: 1.9, t: 1.25, pierce: true }] },
+    heavy: { name: 'Charged Shot', charge: 0.35, full: 1.0, mult: [1.6, 3.2], speed: 110 },
+    counter: { name: 'Fan of Arrows', mult: 1.5, fan: 3, spread: 0.13 },
     Q: { id: 'ricochet', name: 'Ricochet', mana: 18, cd: 5, speed: 55, range: 40, mult: 1.0, bounces: 3, reach: 10, text: 'An arrow that glances from the beast it hits to the next within 10 m, and the next: up to four beasts.' },
     E: { id: 'roll', name: 'Evasive Roll', mana: 12, cd: 6, dist: 6.5, time: 0.36, haste: 0.5, hasteFor: 3, text: 'Roll away (the way you move, or back): nothing can hit you mid-roll. Then shoot 50% faster for 3 s.' },
     R: { id: 'deadeye', name: 'Deadeye', mana: 30, cd: 16, draw: 0.5, pour: 40, pourFor: 1.5, mult: 5, perMana: 0.1, speed: 140, range: 80, falloff: [1, 0.7, 0.5], mark: 0.2, markFor: 5, pin: 1.5, manaText: '30, and more while you hold', text: 'Hold to draw: the longer you hold (up to 2 s), the more mana you pour into the arrow, each point +10% damage. Let go to loose it through up to three beasts: the second is Marked (takes 20% more for 5 s), the third Pinned (stunned 1.5 s).' },
   },
 };
 export const LACUNA_CLASSES = Object.keys(KITS);
+/** (1.3) What a hero can ask for: a blow, the three skills, a heavy blow (H: down starts the charge, up lets it go), a dodge (D). */
+export const ACTS = new Set(['basic', 'Q', 'E', 'R', 'H', 'D']);
 const CALM = 6; // seconds without a fight before health comes back
 // (1.2.1) Patience: a beast that cannot get at whoever it is after (they are far off, or it has been drawn well away
 // from where they pulled it) gives up over PATIENCE seconds, with a bar to show it, instead of turning for home at once.
 // It is measured from where it was pulled, not from its home, so a beast met at the edge of its ground does not
 // reset the moment the fight starts. Hard stop: its leash again (up to HOME_MOST more) past its leash from home.
 export const PATIENCE = 6;
+/**
+ * (1.3) The dodge (Shift, both paths): a quick dash the way you move (or back), untouchable while it lasts. Timed
+ * just before a blow lands (a beast's swing within `perfect` seconds, or a world boss's slam about to fall on you), it
+ * is a perfect dodge: the attacker staggers, a little mana comes back, and your next attack within `counterFor` is a
+ * counter (much stronger). In a solo game the world slows a moment as well (the page does that).
+ */
+export const DODGE = { dist: 3.6, time: 0.26, guard: 0.28, cd: 0.55, perfect: 0.32, counterFor: 1.5, stagger: 0.9, mana: 0.08 };
 export const HOME_MOST = 40;
 const hardLeash = (def) => def.leash + Math.min(def.leash + 10, HOME_MOST);
 const RESPAWN = 45; // a beast comes back this long after it falls (if nobody is standing on its home)
@@ -280,13 +309,14 @@ export class LandWorld {
    */
   act(pid, k, ax, az, up = false, down = false) {
     const p = this.players.get(pid);
-    if (!p || p.acts.length >= 6 || !(k === 'basic' || k === 'Q' || k === 'E' || k === 'R')) return;
+    if (!p || p.acts.length >= 6 || !ACTS.has(k)) return;
     p.acts.push({ k, ax, az, up: !!up, down: !!down });
   }
 
   /** (0.99.25) Where a drawn Deadeye points now: it follows the aim (the scope, the crosshair) until it is loosed. */
   aim(pid, ax, az) {
     const p = this.players.get(pid);
+    if (p && p.charge) return this.aimCharge(p, ax, az); // (1.3) a heavy blow being charged
     if (!p || !p.draw || !Number.isFinite(ax) || !Number.isFinite(az)) return;
     const dx = ax - p.x, dz = az - p.z, d = dHypot(dx, dz);
     if (!(d > 0.01)) return;
@@ -417,7 +447,9 @@ export class LandWorld {
   /** Could this blow or skill go now (for the browser, to show it ready, and not to send what would be refused)? */
   ready(p, k) {
     if (!p || p.dead || p.leap || p.roll || p.draw) return false;
-    if (k === 'basic') return p.basicT <= 0 && !p.whirl;
+    if (k === 'basic') return p.basicT <= 0 && !p.whirl && !p.charge;
+    if (k === 'D') return p.dodgeCd <= 0 || p.dodgeCd === undefined;
+    if (k === 'H') return !!KITS[p.cls].heavy && !p.whirl && !p.charge && !p.plunge;
     const s = KITS[p.cls][k];
     return !!s && p.cd[k] <= 0 && this.canPay(p, s.mana) && !p.whirl;
   }
@@ -472,6 +504,9 @@ export class LandWorld {
     p.cd.Q -= dt; p.cd.E -= dt; p.cd.R -= dt;
     p.guard -= dt;
     p.calm += dt;
+    p.dodgeCd = (p.dodgeCd || 0) - dt;
+    p.counterT = (p.counterT || 0) - dt;
+    if (p.charge) { p.charge.t += dt; if (p.charge.t > (KITS[p.cls].heavy ? KITS[p.cls].heavy.full : 1) + 1.2) this.heavy(p); } // (1.3) held too long: it goes
     p.hasteT -= dt;
     if (p.dead) {
       p.downT -= dt;
@@ -482,7 +517,8 @@ export class LandWorld {
         p.hp = p.maxHp;
         p.mp = p.maxMp;
         p.x = GATE.x; p.z = GATE.z;
-        p.leap = p.roll = p.whirl = p.draw = null;
+        p.leap = p.roll = p.whirl = p.draw = p.charge = null;
+        p.plunge = false;
         p.oath = false;
         this.land.pushOut(p, PLAYER_R);
         this.emit('up', { pid: p.pid, x: p.x, z: p.z });
@@ -525,7 +561,10 @@ export class LandWorld {
       R.t += dt;
       const k = Math.min(1, R.t / R.dur);
       if (!p.driven) { p.x = R.fx + (R.tx - R.fx) * k; p.z = R.fz + (R.tz - R.fz) * k; this.land.pushOut(p, PLAYER_R); }
-      if (k >= 1) p.roll = null;
+      if (k >= 1) {
+        p.roll = null;
+        if (R.strike) this.strike(p, R.strike); // (1.3) a counter's dash ends in its cut
+      }
     }
     if (p.whirl) {
       // (0.99.21) held: a beat every 0.3 s, each after the first paid for (mana or blood), until let go (two beats
@@ -573,6 +612,13 @@ export class LandWorld {
       p.g = this.land.groundAt(p.x, p.z, p.y);
       if (p.y <= p.g) {
         p.y = p.g; p.vy = 0; p.landT = 0; p.kicks = 0; p.air2 = false; p.recoil = false;
+        if (p.plunge) {
+          // (1.3) a plunge lands: everything round you is hurt and shaken
+          p.plunge = false;
+          const P = KITS[p.cls].plunge;
+          this.emit('slam', { pid: p.pid, x: p.x, z: p.z, r: P.radius, kind: 'plunge' });
+          this.area(p, p.x, p.z, P.radius * (1 + M(p, 'area')), P.mult, P.stun);
+        }
         this.tryJump(p); // pressed just before landing: away again at once
       }
     } else {
@@ -592,7 +638,7 @@ export class LandWorld {
   walk(p, dt) {
     const len = Math.min(1, dHypot(p.mx, p.mz));
     // (0.99.21) a Whirlwind keeps running, a drawn bow creeps; (0.99.24) and a weak boy is slower
-    const slow = (p.draw ? 0.45 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
+    const slow = (p.draw ? 0.45 : p.charge ? 0.5 : p.whirl ? 0.8 : 1) * (0.7 + 0.3 * (p.vigour ?? 1));
     const stride = SPEED[p.pace] * slow * Math.max(0.5, 1 + M(p, 'move')); // (0.99.37) talents: faster
     const wx = len > 0.05 ? (p.mx / dHypot(p.mx, p.mz)) * stride * len : 0, wz = len > 0.05 ? (p.mz / dHypot(p.mx, p.mz)) * stride * len : 0;
     const ground = p.y <= p.g + 0.01 && p.vy <= 0;
@@ -659,6 +705,17 @@ export class LandWorld {
       // a held skill let go: the spin winds down, the arrow flies (once drawn)
       if (k === 'E' && p.whirl) p.whirl.held = false;
       if (k === 'R' && p.draw) { p.draw.held = false; if (ax || az) this.aim(p.pid, ax, az); } // loosed where it points now
+      if (k === 'H' && p.charge) { if (ax || az) this.aimCharge(p, ax, az); this.heavy(p); } // (1.3) a heavy blow let go
+      return;
+    }
+    if (k === 'D') return this.dodge(p, ax, az);
+    if (k === 'H') {
+      // (1.3) the heavy blow's charge begins (the blow itself goes when the button is let go)
+      if (!this.ready(p, 'H')) return;
+      p.charge = { t: 0, dx: dCos(p.facing), dz: dSin(p.facing) };
+      this.aimCharge(p, ax, az);
+      p.calm = 0;
+      this.emit('cast', { pid: p.pid, skill: 'charge', x: p.x, z: p.z, full: KITS[p.cls].heavy.full });
       return;
     }
     if (k === 'R' && p.cls === 'warrior' && p.oath && p.cd.R <= 0 && !p.dead) {
@@ -677,15 +734,36 @@ export class LandWorld {
     if (k === 'basic') {
       // faster when Bloodied (Berserker) or just after a roll (Sharpshooter)
       const haste = 1 + (this.bloodied(p) ? KITS.warrior.bloodied.haste : 0) + (p.hasteT > 0 ? KITS.archer.E.haste : 0);
-      const every = kit.basic.every / (haste * Math.max(0.4, 1 + M(p, 'aspd'))); // (0.99.37) talents: attack speed
+      const melee = p.cls === 'warrior' || p.cls === 'novice';
+      // (1.3) just after a perfect dodge: the counter
+      if (p.counterT > 0 && kit.counter) return this.counter(p, dx, dz, haste);
+      // (1.3) in the air (a sword or fists): a plunge, straight down onto what is below
+      if (melee && kit.plunge && p.y > p.g + 0.6 && !p.plunge && !p.driven) {
+        p.plunge = true;
+        p.vy = -kit.plunge.fall;
+        p.vx *= 0.3; p.vz *= 0.3;
+        p.facing = dAtan2(dz, dx);
+        p.basicT = 0.4;
+        p.combo = -1;
+        this.emit('cast', { pid: p.pid, skill: 'plunge', x: p.x, z: p.z, f: p.facing });
+        return;
+      }
+      // (1.3) the next blow of the string (or the first, after a pause)
+      const C = kit.basic.combo || [{ mult: 1, t: 1 }];
+      const n = this.time - (p.comboAt ?? -9) <= (p.comboEvery || 0) + 0.75 ? ((p.combo ?? -1) + 1) % C.length : 0;
+      const c = C[n];
+      const every = (kit.basic.every * c.t) / (haste * Math.max(0.4, 1 + M(p, 'aspd'))); // (0.99.37) talents: attack speed
+      p.combo = n; p.comboAt = this.time; p.comboEvery = every;
       p.basicT = every;
       p.facing = dAtan2(dz, dx);
       p.faceT = Math.min(0.45, every * 0.8); // (0.99.27) he turns to the cut and holds it while it lands
-      const melee = p.cls === 'warrior' || p.cls === 'novice';
-      this.emit('cast', melee ? { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every, f: p.facing, arc: kit.basic.arc, r: kit.basic.range } : { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every });
-      if (p.cls === 'warrior') this.rhythm(p, this.cleave(p, dx, dz));
-      else if (p.cls === 'novice') this.cleave(p, dx, dz);
-      else {
+      const arc = c.arc ?? kit.basic.arc, range = c.range ?? kit.basic.range;
+      this.emit('cast', melee ? { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every, f: p.facing, arc, r: range, n } : { pid: p.pid, skill: 'basic', x: p.x, z: p.z, every, n });
+      if (melee) {
+        if (c.step) this.lunge(p, dx, dz, c.step, 0.12);
+        const hit = this.cleave(p, dx, dz, { mult: c.mult, arc, range, stagger: c.stagger });
+        if (p.cls === 'warrior') this.rhythm(p, hit);
+      } else {
         // Steady Aim: every third Shot a crit, and a little mana back
         const A = kit.steadyAim;
         p.shotN++;
@@ -693,7 +771,10 @@ export class LandWorld {
         const crit = KEY(p, 'patience') ? this.time - (p.lastShot ?? -9) >= 1 : p.shotN % A.every === 0;
         p.lastShot = this.time;
         if (crit) p.mp = Math.min(p.maxMp, p.mp + A.mana);
-        this.shoot(p, dx, dz, kit.basic.speed, kit.basic.range, kit.basic.mult * (crit ? A.mult : 1), false, 'arrow', { crit });
+        // (1.3) the string: a pair at the third, one that flies on through at the fourth
+        const cm = c.mult * (crit ? A.mult : 1);
+        if (c.pair) for (const sgn of [-1, 1]) { const a = sgn * 0.05, co = dCos(a), sn = dSin(a); this.shoot(p, dx * co - dz * sn, dx * sn + dz * co, kit.basic.speed, kit.basic.range, cm, false, 'arrow', { crit }); }
+        else this.shoot(p, dx, dz, kit.basic.speed * (c.pierce ? 1.3 : 1), kit.basic.range, cm, !!c.pierce, c.pierce ? 'pierce' : 'arrow', { crit, ...(c.pierce ? { hit: [] } : {}) });
         // (0.99.37) talents: split arrows, either side, a third as strong
         for (let f = 1; f <= M(p, 'fork'); f++) for (const sgn of [-1, 1]) {
           const a = sgn * 0.2 * f, c = dCos(a), sn = dSin(a);
@@ -769,19 +850,124 @@ export class LandWorld {
     return m * Math.max(0.2, 1 + more);
   }
 
-  cleave(p, dx, dz) {
+  /** A cut in front (a sword's, or a fist's). o: (1.3) { mult, arc, range, stagger } in place of the basic's own. */
+  cleave(p, dx, dz, o = {}) {
     const s = KITS[p.cls].basic; // a sword's cut, or (unarmed) a punch
-    const range = s.range * (1 + M(p, 'area') * 0.5); // (0.99.37) talents: wider, further
-    const cosHalf = dCos(Math.min(Math.PI * 0.95, (s.arc * (1 + M(p, 'cleaveArc'))) / 2));
+    const range = (o.range ?? s.range) * (1 + M(p, 'area') * 0.5); // (0.99.37) talents: wider, further
+    const cosHalf = dCos(Math.min(Math.PI * 0.95, ((o.arc ?? s.arc) * (1 + M(p, 'cleaveArc'))) / 2));
     let n = 0;
     for (const b of this.beastsNear(p.x, p.z, range + 1.2)) {
       const ex = b.x - p.x, ez = b.z - p.z, d = dHypot(ex, ez);
       if (d > range + rad(b)) continue;
       if (d > 0.5 && (ex * dx + ez * dz) / d < cosHalf) continue;
-      this.hurt(b, p, this.might(p, 'melee') * s.mult);
+      this.hurt(b, p, this.might(p, 'melee') * (o.mult ?? s.mult));
+      if (o.stagger && !b.dead && !BEASTS[b.type].post && b.rank !== 3) { b.stunUntil = Math.max(b.stunUntil || 0, this.time + o.stagger); b.wind = false; }
       n++;
     }
     return n;
+  }
+
+  /** (1.3) A short step forward with a blow (no guard): the thrust of a string, a heavy blow. */
+  lunge(p, dx, dz, dist, dur, strike = null) {
+    if (p.driven) { if (strike) this.strike(p, strike); return; }
+    const t = { x: p.x + dx * dist, z: p.z + dz * dist };
+    this.land.pushOut(t, PLAYER_R);
+    p.roll = { fx: p.x, fz: p.z, tx: t.x, tz: t.z, t: 0, dur, strike };
+  }
+
+  /** (1.3) A blow at the end of a dash (a counter): a cut in front, or (the Sharpshooter's) a fan of arrows. */
+  strike(p, o) {
+    if (o.fan) {
+      const C = KITS[p.cls].counter;
+      for (let i = 0; i < C.fan; i++) {
+        const a = (i - (C.fan - 1) / 2) * C.spread, co = dCos(a), sn = dSin(a);
+        this.shoot(p, o.dx * co - o.dz * sn, o.dx * sn + o.dz * co, KITS[p.cls].basic.speed * 1.3, KITS[p.cls].basic.range, C.mult, true, 'pierce', { hit: [] });
+      }
+      return;
+    }
+    const hit = this.cleave(p, o.dx, o.dz, o);
+    if (p.cls === 'warrior') this.rhythm(p, hit);
+  }
+
+  /** (1.3) Where a heavy blow being charged points. */
+  aimCharge(p, ax, az) {
+    if (!p.charge || !Number.isFinite(ax) || !Number.isFinite(az)) return;
+    const dx = ax - p.x, dz = az - p.z, d = dHypot(dx, dz);
+    if (!(d > 0.01)) return;
+    p.charge.dx = dx / d; p.charge.dz = dz / d;
+    p.facing = dAtan2(p.charge.dz, p.charge.dx);
+  }
+
+  /** (1.3) The heavy blow goes: stronger the longer it was held (from `charge` to `full` seconds). Too short: nothing. */
+  heavy(p) {
+    const C = p.charge, H = KITS[p.cls].heavy;
+    p.charge = null;
+    if (!C || !H || p.dead) return;
+    if (C.t < H.charge) { this.emit('cast', { pid: p.pid, skill: 'chargeEnd', x: p.x, z: p.z }); return; }
+    const k = Math.min(1, (C.t - H.charge) / Math.max(0.01, H.full - H.charge));
+    const mult = H.mult[0] + (H.mult[1] - H.mult[0]) * k;
+    p.facing = dAtan2(C.dz, C.dx);
+    p.faceT = 0.5;
+    p.basicT = 0.5;
+    p.combo = -1;
+    p.calm = 0;
+    this.emit('cast', { pid: p.pid, skill: 'heavy', x: p.x, z: p.z, f: p.facing, k: Math.round(k * 100) / 100, arc: H.arc, r: H.range });
+    if (p.cls === 'archer') {
+      this.shoot(p, C.dx, C.dz, H.speed, KITS.archer.basic.range * 1.3, mult, true, 'heavy', { hit: [] });
+      return;
+    }
+    const o = { dx: C.dx, dz: C.dz, mult, arc: H.arc, range: H.range, stagger: H.stagger * (0.5 + 0.5 * k) };
+    if (H.step) this.lunge(p, C.dx, C.dz, H.step * k, 0.16, o);
+    else this.strike(p, o);
+  }
+
+  /** (1.3) A counter, just after a perfect dodge: a dash in and a great cut, or a fan of arrows that fly on through. */
+  counter(p, dx, dz, haste) {
+    const C = KITS[p.cls].counter;
+    p.counterT = 0;
+    p.combo = -1;
+    p.basicT = (KITS[p.cls].basic.every * 1.1) / haste;
+    p.facing = dAtan2(dz, dx);
+    p.faceT = 0.5;
+    this.emit('cast', { pid: p.pid, skill: 'counter', x: p.x, z: p.z, f: p.facing, arc: C.arc || 0, r: C.range || 0, dur: C.dash ? 0.2 : 0 });
+    const o = C.fan ? { fan: true, dx, dz } : { dx, dz, mult: C.mult, arc: C.arc, range: C.range, stagger: 0.6 };
+    if (C.dash) this.lunge(p, dx, dz, C.dash, 0.2, o);
+    else this.strike(p, o);
+  }
+
+  /**
+   * (1.3) The dodge (see DODGE). Perfect when a beast's swing at you would land within DODGE.perfect seconds, or a world
+   * boss's slam is about to fall where you stand.
+   */
+  dodge(p, ax, az) {
+    if (p.dead || p.leap || p.roll || p.draw || !this.ready(p, 'D')) return;
+    if (p.whirl) this.endWhirl(p);
+    if (p.charge) p.charge = null;
+    let rx = p.mx, rz = p.mz;
+    const m = dHypot(rx, rz);
+    if (m > 0.1) { rx /= m; rz /= m; } else { rx = -dCos(p.facing); rz = -dSin(p.facing); }
+    const t = { x: p.x + rx * DODGE.dist, z: p.z + rz * DODGE.dist };
+    this.land.pushOut(t, PLAYER_R);
+    // perfect?
+    let perfect = null;
+    for (const b of this.beastsNear(p.x, p.z, 10)) {
+      if (b.dead || b.state !== 'chase' || b.target !== p.pid) continue;
+      const soon = b.wind && b.swipeT <= DODGE.perfect && dHypot(b.x - p.x, b.z - p.z) < SWIPE_REACH + (b.def || BEASTS[b.type]).r + 1.2;
+      const slam = b.tele && b.tele.at - this.time <= DODGE.perfect + 0.15 && dHypot(p.x - b.tele.x, p.z - b.tele.z) <= BOSSES[b.type].slam.r + 0.5;
+      if (soon || slam) { perfect = b; break; }
+    }
+    p.roll = { fx: p.x, fz: p.z, tx: t.x, tz: t.z, t: 0, dur: DODGE.time };
+    p.facing = dAtan2(rz, rx); // (he rolls the way he goes)
+    p.guard = Math.max(p.guard, DODGE.guard + (perfect ? 0.25 : 0));
+    p.dodgeCd = DODGE.cd;
+    p.burst += DODGE.dist + 1;
+    p.calm = 0;
+    if (perfect) {
+      p.counterT = DODGE.counterFor;
+      p.mp = Math.min(p.maxMp, p.mp + p.maxMp * DODGE.mana);
+      if (perfect.rank !== 3 && !BEASTS[perfect.type].post) { perfect.wind = false; perfect.swipeT = (perfect.def || BEASTS[perfect.type]).every; perfect.stunUntil = Math.max(perfect.stunUntil || 0, this.time + DODGE.stagger); }
+    }
+    this.emit('cast', { pid: p.pid, skill: 'dodge', x: p.x, z: p.z, tx: t.x, tz: t.z, dur: DODGE.time, perfect: perfect ? 1 : 0, id: perfect ? perfect.id : 0 });
   }
 
   /** Everything within r of (x, z) is hurt (and stunned for `stun` seconds); how many. */

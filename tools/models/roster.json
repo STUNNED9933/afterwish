@@ -1499,6 +1499,69 @@
       "faceLimit": 8000,
       "prompt": "a Thornhog of the meadows, a stocky wild boar with coarse dark brown bristles, a ridge of short thorny spines along its back, small curved tusks, small dark eyes, sturdy short legs, standing on all fours, side view proportions of a real boar",
       "note": "0.99.29: Lacuna's meadow boar (it was a box)."
+    },
+    "t_mourner2": {
+      "prompt": "ONE single figure alone, nobody else in the scene: a Mourner, the ghost of one grieving widow, slender, in a close-fitting black lace mourning dress that ends just below the knee, bare pale grey shins and feet, a short black veil over her face to the chin, pale grey translucent skin, long white hair tied back, holding one dim violet candle in her right hand, weeping violet light under the veil, arms clear of the body",
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:cast_a_spell",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 9000,
+      "_why": "1.1.5: the first Mourner's floor-length gown tore into shards in every move"
+    },
+    "e_scarab2": {
+      "rigType": "hexapod",
+      "animations": [
+        "preset:hexapod:walk"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 8000,
+      "prompt": "a giant Dune Scarab beetle seen in profile, a low wide horizontal body close to the ground, a golden bronze carapace scarred with old royal engravings, six jointed legs spread out wide to the sides and planted on the ground, large curved mandibles at the front, head forward, not standing up",
+      "_why": "1.1.5: the first scarab stood upright and its rig hung the head under a leg"
+    },
+    "e_courtguard2": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "a Court Guard turned to golden glass, ornate ceremonial cream and gold plate armour with a tall plumed helmet, a small round buckler strapped to the left forearm, a halberd held in the right hand, no cape, no cloak, body partly translucent amber glass, standing at attention",
+      "_why": "1.1.5: the first one's tower shield stretched into a slab when it swung"
+    },
+    "e_edric2": {
+      "rigType": "biped",
+      "rigModel": "v1.0",
+      "animations": [
+        "preset:biped:idle",
+        "preset:biped:walk",
+        "preset:biped:slash",
+        "preset:biped:hit_to_body_01",
+        "preset:biped:fall"
+      ],
+      "style": "dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+      "faceLimit": 10000,
+      "prompt": "Edric of the Blue Trim, a tall undead gate captain still standing his watch: proud gaunt knight in polished but battered steel plate trimmed with royal blue cloth, a short royal blue tabard over the breastplate ending at the waist, no cape, no cloak, an open-faced helmet showing a pale noble face with sad glowing blue eyes, a sturdy longsword in the right hand, a small round shield with a gold star strapped to the left forearm",
+      "_why": "1.1.5: the first Edric's cape tore into slabs"
+    },
+    "t_cinderling_run": {
+      "fromRig": "a1afa7ce-4a28-4457-9f67-a999025bb69c",
+      "prompt": "(a run for the Cinderling, on its existing rig)",
+      "animations": [
+        "preset:biped:run"
+      ],
+      "_why": "1.1.5: its walk's stride is too short for its speed (it glides)"
     }
   }
 }

@@ -160,6 +160,26 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Sound and music on real instruments (1.2.0)
+
+- **Recorded instruments.** The music used to be played on synthesised tones. It now plays on samples of real
+  instruments (28 of them, 4.8 MB: flute, oboe, recorder, horn, trumpet, strings, cello, harp, celesta, bells,
+  choir, organ, timpani, taiko and more), loaded the first time a song needs them. Until they load, and when the
+  game is opened straight from a file, the old synthesised voices play instead. The parts were evened out by
+  measuring each one against the old mix, so no song got louder or quieter overall.
+- **Lacuna has its own score**: nine themes. Sunmere Market (recorder and guitar), Under the Wakewood, The Tear,
+  By the Hounds' Fire, Teeth in the Grass (fights, which hold for a few seconds after the last blow), Vesper,
+  The Watchtower at Dusk, The Ash Rift (rifts and world bosses) and Alongside. Story scenes pick their own theme.
+- **Lacuna sound effects**: swings, shots, hits (stone for golems), dodges, hurts, growls, bites, falls,
+  footsteps that change on roads, jumps and landings, slams, level-up, loot by rarity, quest and bounty
+  complete, boss arrival, rift waves, warnings before big attacks, birdsong in the wild and wind on the ridge.
+  Sounds are placed: farther is quieter, and left or right follows the camera.
+- **Lacuna volume controls** in the menu: effects and music sliders, a mute button, and **M** to mute.
+- **The main game** plays its level-up (harp), pickups (celesta, then glockenspiel and bells for rare drops),
+  waves and boss waves (horn and taiko), clears, defeats (cello), augments and rank-ups on the same instruments.
+- Samples: the Fluid R3 GM soundfont by Frank Wen, rendered to notes by gleitz/midi-js-soundfonts, CC BY 3.0
+  (credit in ASSETS.md). `tools/sound/samples.py` rebuilds `assets/sound/`.
+
 ### Animation fixes from the checker: 64 problems down to none (1.1.6)
 
 - **Remade with Tripo** (about 360 credits): the **Mourner** (a knee-length lace dress and a short veil: the floor-length gown tore into shards in every move), the **Dune Scarab** (low and wide, legs planted: the old one stood upright and its rig hung its head under a leg), the **Court Guard** (a buckler instead of a tower shield that stretched into a slab) and **Edric** (a tabard instead of a cape).

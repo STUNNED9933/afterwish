@@ -17,6 +17,16 @@ function copyModels() {
   for (const f of readdirSync('assets/models')) if (f.endsWith('.glb')) copyFileSync(`assets/models/${f}`, `dist/models/${f}`);
 }
 
+/** (1.2) The instrument samples (tools/sound/samples.py): assets/sound/<inst>/<midi>.mp3 and index.json, at sound/. */
+function copySound() {
+  if (!existsSync('assets/sound')) return;
+  mkdirSync('dist/sound', { recursive: true });
+  for (const d of readdirSync('assets/sound', { withFileTypes: true })) {
+    if (d.isFile()) copyFileSync(`assets/sound/${d.name}`, `dist/sound/${d.name}`);
+    else { mkdirSync(`dist/sound/${d.name}`, { recursive: true }); for (const f of readdirSync(`assets/sound/${d.name}`)) copyFileSync(`assets/sound/${d.name}/${f}`, `dist/sound/${d.name}/${f}`); }
+  }
+}
+
 /** (0.99) The game's people, out loud: assets/voice/*.mp3, served at voice/ (tools/voice/make.py). */
 function copyVoice() {
   if (!existsSync('assets/voice')) return;
@@ -70,6 +80,7 @@ writeHtml();
 copyModels();
 copyIcons();
 copyVoice();
+copySound();
 if (watching) {
   const ctx = await context(options);
   await ctx.watch();

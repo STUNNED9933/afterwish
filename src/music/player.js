@@ -2,6 +2,15 @@
 // synthesised instruments, a little reverb, and a scheduler that queues notes
 // slightly ahead of time so the rhythm stays steady even if the game stutters.
 import { SONGS, arrange, freq } from './songs.js';
+import { Sampler } from './samples.js';
+
+// (1.2) Each part's recorded instrument (music/samples.js): the old names map to one, and a song may name any
+// sampled instrument directly (choir, cello, nylon...). Until it has loaded, the synthesised voice plays.
+const SAMPLE = { flute: 'flute', oboe: 'oboe', brass: 'horn', strings: 'strings', organ: 'organ', stab: 'pizz', bell: 'celesta', harp: 'harp', bass: 'bass', timp: 'timp' };
+const OWN = new Set(['flute', 'oboe', 'horn', 'trumpet', 'strings', 'tremolo', 'pizz', 'cello', 'harp', 'celesta', 'glock', 'bells', 'organ', 'choir', 'bass', 'contrabass', 'timp', 'taiko', 'woodblock', 'tom', 'nylon', 'recorder', 'whistle']);
+// how loud each sampled instrument sits in the mix (they are all evened out to the same peak first)
+const SMIX = { flute: 0.42, oboe: 0.36, recorder: 0.36, whistle: 0.25, horn: 0.34, trumpet: 0.28, strings: 0.11, tremolo: 0.1, cello: 0.2, choir: 0.14, organ: 0.16, pizz: 0.065, harp: 0.16, celesta: 0.14, glock: 0.11, bells: 0.14, nylon: 0.17, bass: 0.45, contrabass: 0.35, timp: 0.37, taiko: 0.4, woodblock: 0.14, tom: 0.25 }; // (matched, part by part, to the synthesised mix the songs were written for)
+const SAMPLED_DRIVE = new Set(['pizz', 'taiko', 'tom', 'woodblock']);
 
 // (0.72) The drums and the short string stabs are the "drive": they swell in a fight and sit back when
 // things are calm (setIntensity). Everything else is the core of the song.
@@ -28,6 +37,7 @@ export class Music {
   attach(ctx) {
     if (this.ctx || !ctx) return;
     this.ctx = ctx;
+    this.sampler = this.sampler || new Sampler(ctx); // (1.2)
     this.out = ctx.createGain(); // master music volume
     this.out.connect(ctx.destination);
     // (0.72) the whole mix goes through one gentle low-pass: brighter in a fight, muffled behind a menu
@@ -149,7 +159,22 @@ export class Music {
     this.newBus(0);
     this.songOut.gain.setValueAtTime(0, t + 0.25);
     this.songOut.gain.linearRampToValueAtTime(1, t + 1.6);
-    if (id && !this.paused) this.start(id, 0.25);
+    if (id && !this.paused) {
+      // (1.2) its instruments first (a second or two at most; it starts anyway if they are slow)
+      const go = () => { if (this.current === id && !this.timer && !this.paused) this.start(id, 0.25); };
+      Promise.race([this.preload(id), new Promise((r) => setTimeout(r, 2500))]).then(go);
+    }
+  }
+
+  /** (1.2) The recorded instruments a song uses (loaded before it starts, so it does not begin on synths). */
+  instrumentsOf(id) {
+    const a = this.song(id), set = new Set();
+    for (const ev of a.events) { const k = SAMPLE[ev.inst] || (OWN.has(ev.inst) ? ev.inst : null); if (k) set.add(k); }
+    return [...set];
+  }
+  preload(id) {
+    if (!this.sampler || !id || !SONGS[id]) return Promise.resolve();
+    return Promise.all(this.instrumentsOf(id).map((k) => this.sampler.load(k)));
   }
 
   song(id) {
@@ -252,7 +277,11 @@ export class Music {
   }
 
   note(ev, t, dur) {
-    this.dest = DRIVE.has(ev.inst) ? this.drive || this.bus : this.bus; // (0.72) drums and stabs on the drive bus
+    this.dest = DRIVE.has(ev.inst) || SAMPLED_DRIVE.has(ev.inst) ? this.drive || this.bus : this.bus; // (0.72) drums and stabs on the drive bus
+    // (1.2) a recorded instrument, if it has one and it has loaded
+    const sk = SAMPLE[ev.inst] || (OWN.has(ev.inst) ? ev.inst : null);
+    if (sk && this.sampler && this.sampler.ready(sk) && ev.midi && this.sampler.play(sk, ev.midi, t, dur, (SMIX[sk] || 0.1) * ev.vol, this.dest)) return;
+    if (OWN.has(ev.inst) && !SAMPLE[ev.inst]) ev = { ...ev, inst: { horn: 'brass', trumpet: 'brass', cello: 'strings', tremolo: 'strings', choir: 'organ', contrabass: 'bass', pizz: 'stab', celesta: 'bell', glock: 'bell', bells: 'bell', nylon: 'harp', recorder: 'flute', whistle: 'flute', taiko: 'timp', tom: 'timp', woodblock: 'hat' }[ev.inst] || 'flute' }; // (not loaded yet: the nearest synthesised voice)
     const v = (MIX[ev.inst] || 0.1) * ev.vol;
     const f = ev.midi ? freq(ev.midi) : 0;
     switch (ev.inst) {
@@ -386,17 +415,24 @@ export class Music {
     }
   }
 
+  /** (1.2) Render a few seconds of a song offline into an AudioBuffer (for measuring, or to save and listen to). */
+  static async render(id, seconds = 6, { samples = true } = {}) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const ctx = new OAC(2, Math.floor(44100 * seconds), 44100);
+    const m = new Music(ctx);
+    if (samples) await m.preload(id);
+    else m.sampler = null;
+    m.setVolume(1);
+    m.queue(id, seconds - 0.5);
+    return ctx.startRendering();
+  }
+
   /**
    * Render a few seconds of a song without playing it and measure how loud it is.
    * Used by the browser test to confirm every theme really produces sound.
    */
-  static async measure(id, seconds = 6) {
-    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    const ctx = new OAC(2, Math.floor(44100 * seconds), 44100);
-    const m = new Music(ctx);
-    m.setVolume(1);
-    m.queue(id, seconds - 0.5);
-    const buf = await ctx.startRendering();
+  static async measure(id, seconds = 6, { samples = true } = {}) {
+    const buf = await Music.render(id, seconds, { samples });
     const data = buf.getChannelData(0);
     let peak = 0;
     let sum = 0;

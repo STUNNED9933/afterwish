@@ -113,6 +113,7 @@
   #side-quest b { display: block; color: #8fdca0; font-size: 12px; }
   /* (1.1) gear */
   #skipstory { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 34; padding: 6px 12px; background: rgba(10, 14, 24, 0.78); border: 1px solid #44506e; border-radius: 16px; color: #cfd8ee; font: 12px system-ui; cursor: pointer; } #skipstory b { color: #ffd24a; } #skipstory:hover { background: rgba(30, 38, 58, 0.9); } #skipstory.hidden { display: none; }
+  .sound-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 11px; color: #aeb8d0; } .sound-row label { display: flex; flex-direction: column; flex: 1; } .sound-row input { width: 100%; } .sound-row button { padding: 2px 6px; }
   #recap { position: fixed; inset: 0; z-index: 36; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 12, 0.8); } #recap.hidden { display: none; }
   .recapcard { width: min(640px, 94vw); line-height: 1.5; } .recapcard p b { color: #ffd24a; }
   #recap button { padding: 7px 12px; background: #ffd24a; border: 0; border-radius: 4px; color: #1a1406; font: 700 13px system-ui; cursor: pointer; } #recap button.ghost { background: #1d2638; color: #e8eefc; border: 1px solid #44506e; }
@@ -229,6 +230,7 @@
     <button id="mp-join" type="button">Join the server world's land</button>
   </div>
   <div class="only-joined"><div id="mp-who"></div><button id="mp-leave" class="ghost" type="button">Leave (walk alone)</button></div>
+  <div class="sound-row"><label>Sound <input id="vol-sfx" type="range" min="0" max="1" step="0.05"></label><label>Music <input id="vol-music" type="range" min="0" max="1" step="0.05"></label><button id="mute" type="button" class="ghost" title="Mute (M)">🔊</button></div>
   <button id="replay" class="ghost" type="button" style="margin-top:8px">Play the opening again</button>
   <div id="mp-status" class="s">Alone: everything runs on this computer. Join to walk with friends (same passcode as Haven).</div>
 </div>

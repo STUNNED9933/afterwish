@@ -1,5 +1,6 @@
-// Sound effects synthesised with the Web Audio API, so there are no audio
-// files to download or license. Replace these with real samples later.
+// Sound effects synthesised with the Web Audio API. (1.2) Some are now played on recorded instruments
+// (music/samples.js: harp, celesta, bells, horn, taiko), with the synthesised version until those load.
+import { Sampler } from './music/samples.js';
 
 export class Sfx {
   constructor() {
@@ -34,6 +35,8 @@ export class Sfx {
           this.verb = null;
         }
         this.applyVolume();
+        this.sampler = new Sampler(this.ctx); // (1.2)
+        for (const k of ['harp', 'celesta', 'glock', 'bells', 'horn', 'taiko', 'cello', 'woodblock']) this.sampler.load(k);
       }
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     } catch (err) {
@@ -349,6 +352,7 @@ export class Sfx {
     this.noise(0.08, { vol: 0.12, freq: 5000, type: 'highpass' });
   }
   impact() {
+    this.note('taiko', 36, { vol: 0.35, wet: 0.4 });
     // (0.93) heavier, and the ground's echo
     this.tone(58, 0.9, { type: 'sine', vol: 0.75, slide: -32, wet: 0.3 });
     this.tone(120, 0.4, { type: 'triangle', vol: 0.25, slide: -70 });
@@ -362,13 +366,28 @@ export class Sfx {
     this.tone(640, 0.18, { type: 'square', vol: 0.06, slide: -380 });
   }
   death(boss) {
+    if (boss && this.note('taiko', 36, { vol: 0.7, wet: 0.5 })) { this.noise(0.9, { vol: 0.35, freq: 1400, slide: -1200 }); this.note('bells', 52, { delay: 0.3, dur: 4, vol: 0.4 }); return; }
     this.tone(boss ? 110 : 170, boss ? 1.0 : 0.25, { type: 'sawtooth', vol: boss ? 0.3 : 0.12, slide: boss ? -80 : -110 });
     if (boss) this.noise(0.9, { vol: 0.4, freq: 1400, slide: -1200 });
   }
+  /** (1.2) A recorded note (music/samples.js), if it has loaded; false if not (the caller plays its synth). */
+  note(inst, midi, { delay = 0, dur = 0.6, vol = 0.4, wet = 0.3 } = {}) {
+    if (!this.ctx || !this.sampler || !this.sampler.ready(inst)) return false;
+    const t = this.ctx.currentTime + delay;
+    this.sampler.play(inst, midi, t, dur, vol, this.master);
+    if (wet && this.verbIn) this.sampler.play(inst, midi, t, dur, vol * wet, this.verbIn);
+    return true;
+  }
   levelUp() {
+    if (this.note('harp', 72)) { [72, 76, 79, 84, 88].forEach((m, i) => this.note('harp', m, { delay: i * 0.07, vol: 0.45 })); this.note('celesta', 96, { delay: 0.4, vol: 0.35 }); return; }
     [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.35, { type: 'triangle', vol: 0.2, delay: i * 0.08 }));
   }
   pickup(rarity) {
+    if (this.note('celesta', 84, { vol: 0.3 })) {
+      [88, 91, 96, 100].slice(0, Math.min(4, rarity)).forEach((m, i) => this.note(rarity >= 4 ? 'glock' : 'celesta', m, { delay: 0.06 * (i + 1), vol: 0.3 }));
+      if (rarity >= 5) this.note('bells', rarity >= 6 ? 64 : 67, { delay: 0.3, dur: 3, vol: 0.45 });
+      return;
+    }
     const base = 660 + rarity * 110;
     this.tone(base, 0.12, { type: 'sine', vol: 0.16 });
     this.tone(base * 1.5, 0.2, { type: 'sine', vol: 0.14, delay: 0.07 });
@@ -378,6 +397,8 @@ export class Sfx {
     this.tone(400, 0.25, { type: 'sine', vol: 0.18, slide: 400 });
   }
   wave(boss) {
+    if (boss && this.note('taiko', 36, { vol: 0.6 })) { this.note('taiko', 36, { delay: 0.25, vol: 0.5 }); this.note('horn', 50, { delay: 0.1, dur: 1.4, vol: 0.4 }); this.note('horn', 57, { delay: 0.1, dur: 1.4, vol: 0.3 }); return; }
+    if (!boss && this.note('horn', 62, { dur: 0.25, vol: 0.4 })) { this.note('horn', 67, { delay: 0.16, dur: 0.5, vol: 0.4 }); return; }
     if (boss) {
       this.tone(98, 1.2, { type: 'sawtooth', vol: 0.22 });
       this.tone(147, 1.2, { type: 'sawtooth', vol: 0.14, delay: 0.05 });
@@ -387,9 +408,11 @@ export class Sfx {
     }
   }
   clear() {
+    if (this.note('horn', 67, { dur: 0.3, vol: 0.4 })) { this.note('horn', 72, { delay: 0.1, dur: 0.3, vol: 0.4 }); this.note('horn', 76, { delay: 0.2, dur: 0.9, vol: 0.4 }); return; }
     [392, 523, 659].forEach((f, i) => this.tone(f, 0.3, { type: 'triangle', vol: 0.15, delay: i * 0.1 }));
   }
   defeat() {
+    if (this.note('cello', 52, { dur: 0.5, vol: 0.45 })) { [48, 43, 36].forEach((m, i) => this.note('cello', m, { delay: 0.18 * (i + 1), dur: i === 2 ? 2 : 0.5, vol: 0.45 })); return; }
     [330, 262, 196, 131].forEach((f, i) => this.tone(f, 0.5, { type: 'triangle', vol: 0.2, delay: i * 0.18 }));
   }
   slow() {
@@ -412,9 +435,11 @@ export class Sfx {
     this.tone(110, 0.3, { type: 'sawtooth', vol: 0.2, slide: -60 });
   }
   augment() {
+    if (this.note('celesta', 79, { vol: 0.35 })) { [86, 91, 98].forEach((m, i) => this.note('celesta', m, { delay: 0.06 * (i + 1), vol: 0.35 })); return; }
     [392, 587, 784, 1175].forEach((f, i) => this.tone(f, 0.45, { type: 'sine', vol: 0.18, delay: i * 0.06 }));
   }
   rankUp() {
+    if (this.note('bells', 76, { dur: 2, vol: 0.4 })) { this.note('bells', 83, { delay: 0.09, dur: 2, vol: 0.35 }); return; }
     this.tone(660, 0.14, { type: 'triangle', vol: 0.18 });
     this.tone(990, 0.26, { type: 'triangle', vol: 0.18, delay: 0.09 });
   }

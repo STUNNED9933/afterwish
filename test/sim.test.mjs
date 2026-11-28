@@ -1643,7 +1643,8 @@ const POWER_OF = (w) => classPower(w.cls, w.player.spec, w.player.level);
 {
   const { SONGS, MAP_SONG, arrange, parseBar, BAR } = await import('../src/music/songs.js');
   const { MAPS } = await import('../src/sim/maps.js');
-  const known = new Set(['flute', 'oboe', 'brass', 'square', 'strings', 'organ', 'harp', 'bell', 'stab', 'bass', 'kick', 'snare', 'hat', 'timp']);
+  const known = new Set(['flute', 'oboe', 'brass', 'square', 'strings', 'organ', 'harp', 'bell', 'stab', 'bass', 'kick', 'snare', 'hat', 'timp', // (1.2) and the recorded instruments a song may name
+    'horn', 'trumpet', 'tremolo', 'pizz', 'cello', 'celesta', 'glock', 'bells', 'choir', 'contrabass', 'taiko', 'woodblock', 'tom', 'nylon', 'recorder', 'whistle']);
   for (const id in SONGS) {
     const song = SONGS[id];
     let ok = true, why = '';

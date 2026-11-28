@@ -16,6 +16,8 @@
 //   stabs  short repeated string chords under the tune (true / false)
 //   drums  null | soft | march | battle | timpani | hand
 
+import { LACUNA_SONGS } from './lacuna-songs.js';
+
 export const SONGS = {
   // Haven: warm and unhurried. F major.
   haven: {
@@ -459,6 +461,10 @@ export function arrange(song) {
   song.melody.forEach((bar, b) => {
     for (const n of parseBar(bar)) add(b * BAR + n.step, n.dur, n.midi, st.lead, 1);
   });
+  // (1.2) a second voice under the tune (its own instrument and line), same length as the melody
+  if (song.counter) song.counter.melody.forEach((bar, b) => {
+    for (const n of parseBar(bar)) add(b * BAR + n.step, n.dur, n.midi, song.counter.inst, song.counter.vol ?? 0.7);
+  });
 
   song.chords.forEach((cell, b) => {
     const parts = cell.split(/\s+/).map(parseChord);
@@ -474,6 +480,7 @@ export function arrange(song) {
       const bassNote = 36 + ch.bass + (ch.bass > 7 ? -12 : 0); // keeps the bass between G1 and G2
 
       if (st.pad) for (const m of voiced) add(at, len, m, st.pad, 1);
+      if (st.pad2) for (const m of voiced.slice(0, 2)) add(at, len, m + (st.pad2Up || 0), st.pad2, 0.7); // (1.2) a second layer (choir over strings)
 
       if (st.arp) {
         const div = st.arp === 'harp16' ? 1 : 2;
@@ -489,13 +496,13 @@ export function arrange(song) {
 
       const fifth = bassNote + 7;
       if (st.bass === 'half') {
-        for (let s = 0; s < len; s += 8) add(at + s, 8, bassNote, 'bass', 1);
+        for (let s = 0; s < len; s += 8) add(at + s, 8, bassNote, st.bassInst || 'bass', 1);
       } else if (st.bass === 'walk') {
-        for (let s = 0; s < len; s += 4) add(at + s, 4, (s / 4) % 2 ? fifth : bassNote, 'bass', 1);
+        for (let s = 0; s < len; s += 4) add(at + s, 4, (s / 4) % 2 ? fifth : bassNote, st.bassInst || 'bass', 1);
       } else if (st.bass === 'eighth') {
-        for (let s = 0; s < len; s += 2) add(at + s, 2, bassNote, 'bass', s % 8 === 0 ? 1 : 0.8);
+        for (let s = 0; s < len; s += 2) add(at + s, 2, bassNote, st.bassInst || 'bass', s % 8 === 0 ? 1 : 0.8);
       } else if (st.bass === 'drive') {
-        for (let s = 0; s < len; s += 2) add(at + s, 2, (s / 2) % 4 === 3 ? bassNote + 12 : bassNote, 'bass', s % 8 === 0 ? 1 : 0.8);
+        for (let s = 0; s < len; s += 2) add(at + s, 2, (s / 2) % 4 === 3 ? bassNote + 12 : bassNote, st.bassInst || 'bass', s % 8 === 0 ? 1 : 0.8);
       }
     });
 
@@ -514,3 +521,6 @@ export function arrange(song) {
   events.sort((a, b) => a.step - b.step);
   return { steps: song.melody.length * BAR, stepSeconds: 60 / song.bpm / 4, events };
 }
+
+// (1.2) Lacuna's themes, alongside the main game's
+Object.assign(SONGS, LACUNA_SONGS);

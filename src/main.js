@@ -136,6 +136,7 @@ function start(hot = {}) {
   // Browsers only allow sound after a click, so the first click anywhere switches audio on.
   window.addEventListener('pointerdown', () => {
     sfx.unlock();
+    if (!music.ctx && sfx.sampler) music.sampler = sfx.sampler; // (1.2) one set of recorded instruments for both
     music.attach(sfx.ctx);
   });
   // Graphics quality (0.34). Auto starts on High and steps down once or twice if frames are slow.

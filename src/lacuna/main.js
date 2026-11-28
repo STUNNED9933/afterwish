@@ -7,6 +7,8 @@
 // (alone), Enter chat (together), B add a test player (alone), F3 overlay.
 import { levelOf, QUEST_XP, TRICK_XP, STORY_BEAST, pointsAt } from './levels.js';
 import { WebUI } from './webui.js';
+import { LandSound } from './sound.js';
+import { Music } from '../music/player.js';
 import { GearUI, BAG_MOST } from './gearui.js';
 import { gradeOf, itemName, salvageValue, UNIQUE, RIFT, RIFT_AT, BOSSES } from './loot.js';
 import { makeRng } from '../sim/rng.js';
@@ -15,7 +17,7 @@ import { LandWorld, TICK, WAKE, KITS, LACUNA_CLASSES, LINK_SLOTS, linkFrom, link
 import { LandView, DRAW } from './view.js';
 import { Crowd } from './crowd.js';
 import { Fx } from './fx.js';
-import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL, WATCHTOWER } from './land.js';
+import { groundAt, BEASTS, CRYSTAL, TRAINING, WELL, WATCHTOWER, TOWN } from './land.js';
 import { placeBuilding } from '../render/buildings.js';
 import { loadRigged, loadWeapon, instantiate, RIGGED, preload } from '../render/rigged.js';
 import { Interest, SEND_HZ, apply, decode, PLAYER_ID } from './net.js';
@@ -66,6 +68,17 @@ if (saved.xp === undefined) {
   saved.xp += Object.keys(saved.tricks || {}).length * TRICK_XP;
 }
 const me = world.addPlayer(1, undefined, { cls: startCls, link: linkNow(), linked: linkAwake, vigour: startVig, level: levelOf(saved.xp).level });
+// (1.2) sound: music, effects, ambience (sound.js); audio starts at the first click or key
+const sound = new LandSound();
+for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => sound.unlock(), true);
+{
+  const drawMute = () => { $('mute').textContent = sound.muted ? '🔇' : '🔊'; };
+  $('vol-sfx').value = sound.vol; $('vol-music').value = sound.musicVol; drawMute();
+  $('vol-sfx').addEventListener('input', (e) => { sound.setVolume(+e.target.value); sound.play('ui'); });
+  $('vol-music').addEventListener('input', (e) => sound.setMusic(+e.target.value));
+  $('mute').addEventListener('click', () => { sound.toggleMute(); drawMute(); });
+  addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) { const m = sound.toggleMute(); drawMute(); note(m ? 'Sound off (M)' : 'Sound on (M)'); } });
+}
 const view = new LandView(canvas, world);
 const crowd = new Crowd(view.scene, 150);
 const fx = new Fx(view.scene, $('fxlayer'));
@@ -347,6 +360,7 @@ function heroOf(pid) {
 }
 const isMe = (pid) => (net ? pid === net.pid : pid === 1);
 function onEvent(ev) {
+  soundEvent(ev);
   if (trial) trialEvent(ev);
   huntEvent(ev);
   trickEvent(ev);
@@ -883,6 +897,7 @@ function showMain() {
 }
 let toastT = 0;
 function toast(title, sub) {
+  if (/^Quest complete|^Bounty done|^A ward broken/.test(title)) sound.play(/^A ward/.test(title) ? 'ward' : 'quest');
   $('toast').innerHTML = `${title}${sub ? `<small>${sub}</small>` : ''}`;
   $('toast').classList.remove('hidden');
   toastT = 4;
@@ -931,8 +946,11 @@ async function playAsking() {
   startDay(0);
 }
 /** A scene: the HUD away, the Company handed in (and back after), the skip button. */
+const SCENE_SONG = new Map([[vesperScene, 'l_vesper'], [deathScene, 'l_glade'], [afterScene, 'l_glade'], [yearScene, 'l_hounds'], [springScene, 'l_hounds'], [nightScene, 'l_hounds'], [lessonScene, 'l_hounds'], [letterScene, 'l_hounds'], [askingScene, 'l_sunmere'], [reportScene, 'l_sunmere'], [thessalyScene, 'l_tower'], [towerScene, 'l_tower'], [circleScene, 'l_act1']]); // (1.2)
+let sceneSong = null;
 async function runScene(script, ...args) {
   if (cutscene.active) return;
+  sceneSong = SCENE_SONG.get(script) || null;
   // (1.1.4) a scene never starts with the hero down: up where he fell, whole (else he got up at Sunmere's gate in the
   // middle of it, and the end of Act I played in the town square: the story bot found it)
   if (me.dead) { me.dead = false; me.downT = 0; me.hp = me.maxHp; me.mp = me.maxMp; me.y = me.vy = 0; }
@@ -949,6 +967,7 @@ async function runScene(script, ...args) {
   } finally {
     if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
     me.spared = false;
+    sceneSong = null;
     hero.anim.lie = false;
     document.body.classList.remove('scene');
     $('cs-skip').classList.add('hidden');
@@ -1015,6 +1034,44 @@ async function playOpening() {
   startStumble();
 }
 /** (0.99.36) Experience: the bar fills; a new level is a little more health and might, and a talent point. */
+/** (1.2) What each thing that happens sounds like. */
+function soundEvent(ev) {
+  const beast = (id) => (net ? seen.get(id) : world.beasts[id - 1]) || {};
+  const mine = isMe(ev.pid);
+  switch (ev.type) {
+    case 'cast': {
+      const k = ev.skill;
+      if (k === 'basic') sound.play('swing', ev.x, ev.z);
+      else if (k === 'jump') sound.play('jump', ev.x, ev.z);
+      else if (k === 'jump2') sound.play('jump2', ev.x, ev.z);
+      else if (k === 'kick' || k === 'recoil') sound.play('kick', ev.x, ev.z);
+      else if (k === 'slide') sound.play('slide', ev.x, ev.z);
+      else if (k === 'leap') sound.play('leap', ev.x, ev.z);
+      else if (k === 'whirl') sound.play('whirl', ev.x, ev.z);
+      else if (k === 'oath') sound.play('oath', ev.x, ev.z);
+      else if (k === 'roll') sound.play('dodge', ev.x, ev.z);
+      else if (k === 'deadeye') sound.play('draw', ev.x, ev.z);
+      else if (k === 'loose') sound.play('loose', ev.x, ev.z);
+      else if (k === 'ricochet') { sound.play('shot', ev.x, ev.z); setTimeout(() => sound.play('shot', ev.x, ev.z), 110); }
+      break;
+    }
+    case 'shot': sound.play('shot', ev.x, ev.z); break;
+    case 'hit': { const b = beast(ev.id); sound.play(b.type === 'golem' || b.type === 'dummy' ? 'stone' : 'hit', ev.x, ev.z, { crit: ev.crit && mine }); break; }
+    case 'slam': sound.play('slam', ev.x, ev.z); break;
+    case 'wind': { const b = beast(ev.id); sound.play(b.type === 'golem' ? 'grind' : b.type === 'hog' ? 'snort' : 'growl', ev.x, ev.z); break; }
+    case 'swipe': if (mine) sound.play(ev.dmg ? 'hurt' : 'dodge'); else sound.play('bite', ev.x, ev.z); break;
+    case 'die': sound.play('fall', ev.x, ev.z); break;
+    case 'blood': if (mine) sound.play('blood'); break;
+    case 'down': if (mine) sound.play('down'); break;
+    case 'loot': if (mine && ev.item) sound.play('loot', null, null, { r: ev.item.r }); break;
+    case 'tele': sound.play('tele', ev.x, ev.z, { warn: ev.warn, range: 50 }); break;
+    case 'crash': sound.play('crash', ev.x, ev.z, { range: 60 }); break;
+    case 'boss': sound.play('boss'); break;
+    case 'rift': if (mine) sound.play(ev.wave ? 'wave' : 'rift'); break;
+    case 'riftEnd': if (mine) sound.play(ev.ok ? 'riftWon' : 'riftLost'); break;
+  }
+}
+
 function gainXp(n, why = '') {
   if (!(n > 0)) return;
   const was = levelOf(story.xp || 0).level;
@@ -1028,6 +1085,7 @@ function gainXp(n, why = '') {
     if (net && net.ready) net.send({ t: 'lvl', L: now });
     fx.ring(me.x, me.z, 2.4, 0xffd24a, 0.7);
     fx.ring(me.x, me.z, 1.2, 0xfff0b0, 0.5);
+    sound.play('levelup');
     $('lvlup').innerHTML = `Level ${now}<small>A little stronger, and a talent point: press P</small>`;
     if (webUI.open) webUI.draw();
     $('lvlup').style.opacity = '1';
@@ -1049,6 +1107,7 @@ const webUI = new WebUI($('web'), {
   set(ids) { story.web = story.web || {}; story.web[me.cls] = ids; saveStory(story); applyWeb(); featureCheck(); clearTimeout(gainXp.sync); gainXp.sync = setTimeout(sendProgress, 2000); },
 });
 function toggleWeb() {
+  sound.play('ui');
   if (webUI.open) { webUI.hide(); relock(); return; }
   if (cutscene.active) return;
   if (me.cls !== 'warrior' && me.cls !== 'archer') return note('The talent web opens once you have a path (Rowan\'s or Juni\'s). Your points wait for you.');
@@ -1120,6 +1179,7 @@ function drawJournal() {
   $('j-avail').innerHTML = av.join('');
 }
 function toggleJournal() {
+  sound.play('ui');
   const open = $('journal').classList.contains('hidden');
   $('journal').classList.toggle('hidden', !open);
   if (open) { if (locked()) document.exitPointerLock(); drawJournal(); } else relock();
@@ -1130,6 +1190,7 @@ function todaysBounties() {
   return [0, 1, 2].map((k) => BOUNTIES[(day + k * 2) % BOUNTIES.length]);
 }
 function openBoard() {
+  sound.play('ui');
   if (locked()) document.exitPointerLock();
   const L = me.level || 1, b = story.bounty;
   let html;
@@ -1197,6 +1258,7 @@ function gearChanged() {
 const farmOpen = () => ['warrior', 'archer'].includes(story.path);
 const gearUI = new GearUI($('gear'), { gear, level: () => me.level || 1, rng: lootRng, changed: gearChanged, toast });
 function toggleGear() {
+  sound.play('ui');
   const open = $('gear').classList.contains('hidden');
   $('gear').classList.toggle('hidden', !open);
   gearUI.open = open;
@@ -1212,6 +1274,7 @@ let riftRing = null;
   riftRing = m;
 }
 function openRiftPick() {
+  sound.play('ui');
   if (locked()) document.exitPointerLock();
   const best = gear().rift || 0;
   $('riftpick-list').innerHTML = Array.from({ length: Math.min(RIFT.most, best + 1) }, (_, k) => k + 1).slice(-10).map((t) => `<button data-t="${t}"><b>Tier ${t}</b><small>${t <= best ? 'cleared' : 'new'} · chest: ${2 + Math.floor(t / 2)} items${t >= 3 ? `, ${['rare', 'rare', 'epic', 'epic', 'epic'][Math.min(4, Math.floor(t / 3) - 1)]} or better` : ''}</small></button>`).join('');
@@ -1224,6 +1287,34 @@ function startRift(tier) {
   if (net && net.ready) net.send({ t: 'rift', tier });
   else if (!world.openRift(1, tier)) toast('The rift will not open', 'Stand in the circle');
 }
+/** (1.2) Which theme fits now, and how much of a fight it is. */
+let fightUntil = 0;
+function songNow(hx, hz) {
+  const st = story.stage;
+  const inTown = Math.hypot(hx - TOWN.x, hz - TOWN.z) < TOWN.r;
+  const list = net ? [...seen.values()].filter((b) => !b.player) : world.beasts;
+  const close = list.some((b) => !b.dead && b.type !== 'dummy' && b.state === 'chase' && (net || b.target === 1) && Math.hypot(b.x - hx, b.z - hz) < 24);
+  if (close || (boss && boss.stage)) fightUntil = time + 6;
+  const fight = time < fightUntil;
+  if (cutscene.active && sceneSong) return { song: sceneSong, fight: 0.3 };
+  if (['new', 'stumble', 'rescued'].includes(st)) return { song: 'l_glade', fight: fight ? 0.6 : 0.1 };
+  if (boss && boss.stage) return { song: 'l_vesper', fight: 1 };
+  if (ashRift) return { song: 'l_rift', fight: 1 };
+  if (list.some((b) => b.rank === 3 && !b.dead && b.state === 'chase' && Math.hypot(b.x - hx, b.z - hz) < 45)) return { song: 'l_rift', fight: 1 };
+  if (Math.hypot(hx - WATCHTOWER.x, hz - WATCHTOWER.z) < 60 && ['tower', 'wards'].includes(st)) return { song: fight ? 'l_fight' : 'l_tower', fight: fight ? 1 : 0.3 };
+  if (fight) return { song: 'l_fight', fight: 1 };
+  if (inTown) return { song: ['days', 'waking', 'asking'].includes(st) ? 'l_hounds' : 'l_sunmere', fight: 0.3 };
+  return { song: 'l_wakewood', fight: 0.2 };
+}
+function soundFrame(dt, hx, hz) {
+  const s = songNow(hx, hz), inTown = Math.hypot(hx - TOWN.x, hz - TOWN.z) < TOWN.r;
+  sound.frame(dt, {
+    x: hx, z: hz, yaw, onGround: me.y - (me.g || 0) < 0.08 && !me.dead, moving: !!me.moving && !cutscene.active, speed: Math.hypot(me.vx || 0, me.vz || 0) || (me.moving ? 4 : 0), road: inTown, vy: me.vy,
+    song: s.song, fight: s.fight, wild: !inTown && !cutscene.active && !['new', 'stumble', 'rescued', 'tower', 'wards'].includes(story.stage),
+    wind: Math.hypot(hx - WATCHTOWER.x, hz - WATCHTOWER.z) < 70 || ['new', 'stumble', 'rescued'].includes(story.stage),
+  });
+}
+
 function drawBossBar(list, hx, hz) {
   let B = null;
   for (const b of list || []) if (b.rank === 3 && !b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 50 * 50 && (b.hp < 0.999 || b.state === 'chase')) B = b;
@@ -2298,6 +2389,7 @@ function frame(now) {
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);
   drawBossBar(fxBeasts, hx, hz);
+  soundFrame(dt, hx, hz);
   if (riftRing) riftRing.material.opacity = (ashRift ? 0.75 : 0.32) + 0.12 * Math.sin(performance.now() / 260);
   if (questRun && !cutscene.active) questRun.update(dt, me);
   crystal.update(dt);
@@ -2425,4 +2517,4 @@ const BOT = {
   act(k, x, z) { if (!world.ready(me, k)) return false; world.act(1, k, x, z); if (net && net.ready) net.send({ t: 'act', k, ax: +x.toFixed(2), az: +z.toFixed(2) }); return true; },
   key(code) { dispatchEvent(new KeyboardEvent('keydown', { code, key: code })); dispatchEvent(new KeyboardEvent('keyup', { code, key: code })); },
 };
-window.land = { THREE_V: THREE.Vector3, __bot: BOT, world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), __clip: async (id, word) => { const t = await loadRigged(id); if (!t) return null; const name = Object.keys(t.clips).find((n) => n.toLowerCase().includes(word)); const clip = t.clips[name]; const mx = new THREE.AnimationMixer(t.scene); const act = mx.clipAction(clip); act.play(); const hands = []; t.scene.traverse((o) => { if (o.isBone && /hand/i.test(o.name)) hands.push(o); }); const out = []; const v = new THREE.Vector3(); for (let k = 0; k <= 40; k++) { act.time = clip.duration * k / 40; mx.update(0); t.scene.updateMatrixWorld(true); out.push([+(k / 40).toFixed(3), ...hands.slice(0, 2).map((h) => { h.getWorldPosition(v); return [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)]; })]); } act.stop(); return { name, dur: clip.duration, hands: hands.map((h) => h.name), out }; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { THREE_V: THREE.Vector3, Music, sound, LandSound, __song: () => ({ ...songNow(heroX, heroZ), time, fightUntil }), __bot: BOT, world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), __clip: async (id, word) => { const t = await loadRigged(id); if (!t) return null; const name = Object.keys(t.clips).find((n) => n.toLowerCase().includes(word)); const clip = t.clips[name]; const mx = new THREE.AnimationMixer(t.scene); const act = mx.clipAction(clip); act.play(); const hands = []; t.scene.traverse((o) => { if (o.isBone && /hand/i.test(o.name)) hands.push(o); }); const out = []; const v = new THREE.Vector3(); for (let k = 0; k <= 40; k++) { act.time = clip.duration * k / 40; mx.update(0); t.scene.updateMatrixWorld(true); out.push([+(k / 40).toFixed(3), ...hands.slice(0, 2).map((h) => { h.getWorldPosition(v); return [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)]; })]); } act.stop(); return { name, dur: clip.duration, hands: hands.map((h) => h.name), out }; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

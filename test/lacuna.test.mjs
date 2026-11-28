@@ -200,7 +200,7 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   {
     const { w, p, put } = setup('archer');
     const wolf = put('wolf', 61.5, 60);
-    wolf.state = 'chase'; wolf.target = 1; wolf.swipeT = 0;
+    wolf.state = 'chase'; wolf.target = 1; wolf.swipeT = 0; wolf.wind = true; // (1.1.2) its blow already wound up
     w.input(1, { mx: -1, mz: 0 });
     w.act(1, 'E', 70, 60);
     w.step(TICK);
@@ -908,6 +908,26 @@ void LAND; void CHUNKS; void TOWN; void chunkOf;
     check('...in the circle it opens, and its foes come marked (their looks, for the page to draw)', room.world.rifts.size === 1 && mk && mk.m.some((x) => x[3] === 'thrall'));
     room.message(c, { t: 'progress', xp: 4000, web: {}, tricks: {}, gear: { worn: { weapon: sword, helm: big }, bag: [sword, big, { slot: 'boots', junk: 1 }], shards: 55, rift: 4 } });
     check('...gear is kept with the account, cleaned', kept.f && kept.f.gear.worn.weapon && !kept.f.gear.worn.helm && kept.f.gear.bag.length === 1 && kept.f.gear.shards === 55 && kept.f.gear.rift === 4);
+  }
+  // (1.1.2) every blow is wound up first (seen coming), and lost if you step out of reach in time
+  {
+    const wa = new LandWorld();
+    const ap = wa.addPlayer(1, { x: 60, z: 60 }, { level: 5 });
+    const wolf = wa.borrowBeast('wolf', 61.2, 60, { state: 'chase', target: 1, awake: true });
+    wolf.swipeT = 0;
+    wa.events.length = 0;
+    const seen = [];
+    for (let k = 0; k < 30 * 4; k++) { wa.step(TICK); for (const e of wa.events.splice(0)) if (e.id === wolf.id && (e.type === 'wind' || e.type === 'swipe')) seen.push([e.type, +wa.time.toFixed(2)]); ap.hp = ap.maxHp; ap.x = 60; ap.z = 60; }
+    check('Wind-ups: each blow follows its wind-up by 0.4 s', seen.length >= 4 && seen.every((s, i) => s[0] === (i % 2 ? 'swipe' : 'wind')) && seen.filter((s, i) => i % 2).every((s, i) => Math.abs(s[1] - seen[2 * i][1] - 0.4) < 0.05), JSON.stringify(seen.slice(0, 6)));
+    const wb2 = new LandWorld();
+    const bp2 = wb2.addPlayer(1, { x: 60, z: 60 }, { level: 5 });
+    const wolf2 = wb2.borrowBeast('wolf', 61.2, 60, { state: 'chase', target: 1, awake: true });
+    wolf2.swipeT = 0;
+    wb2.step(TICK);
+    const h0 = bp2.hp;
+    bp2.x = 56; // stepped back during the wind-up
+    for (let k = 0; k < 12; k++) { wb2.step(TICK); bp2.x = 56 - k * 0.2; }
+    check('...step out of reach during it and the blow is lost', bp2.hp === h0 && !wb2.events.some((e) => e.type === 'swipe' && e.id === wolf2.id && e.dmg > 0));
   }
   console.log(`${pass} passed, ${failed} failed (after loot)`);
 }

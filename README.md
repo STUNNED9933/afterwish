@@ -160,6 +160,13 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Lacuna: beasts strike properly, and you can see it coming (1.1.2)
+
+- **Every beast now has an attack animation, with a wind-up before each blow.** Golems raise both fists and smash; ash-thralls swing; acolytes cast; wolves and thornhogs draw back, then lunge. The wind-up lasts 0.4 s, and **stepping out of reach during it makes the blow miss**, so you can now dodge by reading the beast as well as by rolling.
+- **Fixed: beasts were striking only once every minute or so after their first blow** (offline). Drawing the swing wrote the clock into the beast's own attack timer. They now attack at their real pace, so fights are harder than before; tell us if they feel too hard.
+- Online, beasts' swings now show (they never did).
+- Fixed: a page loaded during *An Invitation*'s wards stopped with an error; the Hounds no longer appear far off when the page loads mid-quest.
+
 ### Lacuna: here to hunt? Skip to choosing a path (1.1.1)
 
 - **A skip for players who would rather hunt.** Until you choose a path, a button at the top of the screen (shown during the opening scenes too) offers to skip ahead. A minute's read of *the story so far* (the tear, the Iron Hounds, the Telling Glass) comes first, then you go straight to choosing Berserker or Sharpshooter, with the experience the skipped quests would have given you. From there everything for hunting gear is open, and the story waits in the journal as Main Story for whenever you want it.

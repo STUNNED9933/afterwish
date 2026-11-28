@@ -19,6 +19,7 @@ const M = (p, k) => (p ? ((p.web && p.web.mods[k]) || 0) + ((p.gear && p.gear.mo
 const KEY = (p, k) => !!(p && ((p.web && p.web.keys.has(k)) || (p.gear && p.gear.keys.has(k))));
 import { gearMods, cleanWorn, dropsFor, ELITE, NAMED, NAMES, BOSSES, BOSS_EVERY, BOSS_FIRST, RIFT, RIFT_AT, RIFT_FOES, riftScale } from './loot.js';
 /** (1.1) A beast's body radius (an elite or a boss is bigger). */
+const WIND = 0.4; // (1.1.2) a beast's wind-up before each blow (seconds)
 const rad = (b) => (b.def && b.def.r) || BEASTS[b.type].r;
 import { dHypot, dAtan2, dCos, dSin } from '../sim/dmath.js';
 import { Land, LAND, CHUNKS, BEASTS, chunkOf, TOWN , trainingPosts } from './land.js';
@@ -1072,10 +1073,15 @@ export class LandWorld {
       // alternate beats as you edged about, and its body flickered between walking and standing (a violent shake)
       const reach = SWIPE_REACH + def.r + (b.inReach ? 0.45 : 0);
       b.inReach = d < reach;
+      if (!b.inReach) b.wind = false; // (1.1.2) out of reach mid-swing: the blow is lost (step away from it!)
       if (b.inReach) {
         speed = 0;
         b.facing = dAtan2(p.z - b.z, p.x - b.x);
-        if (b.swipeT <= 0) {
+        // (1.1.2) every blow is wound up first, for WIND seconds, and said so (the body draws back, and you can see it
+        // coming): a beast that arrives with its blow ready still winds up
+        if (!b.wind && b.swipeT <= WIND) { b.wind = true; b.swipeT = Math.max(b.swipeT, WIND); this.emit('wind', { id: b.id, x: b.x, z: b.z, t: WIND }); }
+        if (b.wind && b.swipeT <= 0) {
+          b.wind = false;
           b.swipeT = def.every;
           const dodged = p.guard > 0;
           if (!dodged) {

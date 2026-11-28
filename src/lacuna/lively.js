@@ -79,7 +79,38 @@ export class Lively {
       else { const d = Math.atan2(Math.sin(want - l.yaw), Math.cos(want - l.yaw)); l.yaw += d * Math.min(1, dt * 12); }
       g.rotation.y = l.yaw;
       g.scale.setScalar(w.scale || 1);
-      l.body.update(dt, w.state);
+      // (1.1.2) a blow: a four-legged body lunges (forward, a little up, nose down, then back); one with an attack of
+      // its own plays it (see creatures.js)
+      const sw = w.state && w.state.swung, wd = w.state && w.state.wind;
+      if (w.spec.beast && wd >= 0 && !(sw >= 0)) {
+        // the wind-up: drawing back and down, head up, haunches set
+        const k = Math.min(1, wd / 0.4), s = (w.scale || 1) * (w.spec.height || 1), e = k * k * (3 - 2 * k);
+        g.position.x -= Math.cos(w.facing) * 0.28 * s * e;
+        g.position.z -= Math.sin(w.facing) * 0.28 * s * e;
+        g.position.y -= 0.05 * s * e;
+        g.rotation.order = 'YXZ';
+        g.rotation.x = -0.3 * e;
+        l.body.update(dt, { ...w.state, moving: false });
+        drawn.add(w.key);
+        continue;
+      }
+      if (w.spec.beast && sw >= 0 && sw < 0.55) {
+        const k = sw < 0.16 ? sw / 0.16 : Math.max(0, 1 - (sw - 0.16) / 0.39), s = (w.scale || 1) * (w.spec.height || 1);
+        const ease = k * k * (3 - 2 * k);
+        g.position.x += Math.cos(w.facing) * 0.85 * s * ease;
+        g.position.z += Math.sin(w.facing) * 0.85 * s * ease;
+        g.position.y += 0.12 * s * Math.sin(Math.PI * Math.min(1, sw / 0.32));
+        g.rotation.order = 'YXZ';
+        g.rotation.x = (sw < 0.16 ? 0.38 : 0.38 * ease) * (w.spec.lungeDip || 1);
+        l.body.update(dt, { ...w.state, moving: true, speed: 14 });
+        drawn.add(w.key);
+        continue;
+      }
+      g.rotation.x = 0;
+      // a swing: wound up (from its start to the strike, as the sim winds up), then followed through after the blow
+      const A = w.spec.attack;
+      const at = A && wd >= 0 && !(sw >= 0) ? Math.min(1, wd / 0.4) * 0.5 : A && sw >= 0 && sw < 0.5 ? 0.5 + 0.5 * (sw / 0.5) : -1;
+      l.body.update(dt, at >= 0 ? { ...w.state, attack: A, attackK: at } : w.state);
       drawn.add(w.key);
     }
     return drawn;

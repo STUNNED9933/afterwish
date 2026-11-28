@@ -309,6 +309,22 @@ export function makeCreature(tpl, spec) {
         mixer.update(dt);
         return;
       }
+      // (1.1.2) a blow that has just fallen (Lacuna's beasts strike on the sim's word, with no wind-up to show): the
+      // swing from just before its strike to its follow-through, quickly, whatever the clip's own length
+      // attack: { kind, from, strike, to } (shares of the clip), attackK: 0..0.5 the wind-up, 0.5..1 the follow-through
+      if (s.attack && s.attackK >= 0) {
+        const A = s.attack, a = action(A.kind, true) || action('slash', true);
+        if (a) {
+          if (posed !== a) { fadeTo(a, 0.08); posed = a; }
+          const len = a.getClip().duration, k = s.attackK;
+          a.paused = false;
+          a.timeScale = 0;
+          a.time = len * (k < 0.5 ? A.from + (A.strike - A.from) * (k / 0.5) : A.strike + (A.to - A.strike) * ((k - 0.5) / 0.5));
+          follow = 0;
+          mixer.update(dt);
+          return;
+        }
+      }
       posed = null;
       if (s.gesture && gestureLeft <= 0) {
         const g = action(s.gesture, true);

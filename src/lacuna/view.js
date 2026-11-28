@@ -18,15 +18,15 @@ import { Lively } from './lively.js';
 // (0.99.29) beasts drawn close up as the main game's own animated models (and the Thornhog's own)
 const LIVE_BEAST = {
   wolf: { ...CREATURES.wolf, height: 1.05, tint: 0x6a7a5a, back: 0.35 }, // (the Wakewood's Mossback: smaller, mossier than the frost wolf it is)
-  golem: { ...CREATURES.golem, height: 2.6 },
+  golem: { ...CREATURES.golem, height: 2.6, attack: { kind: 'chop', from: 0.19, strike: 0.318, to: 0.43 } }, // (1.1.2) where its swing is (measured from the hands)
   hog: { model: 'e_thornhog', height: 0.8, beast: true, back: 0.45 },
 };
 const ASHEN = new Map(); // (Quest 4 and 5) ash in their fur or their cracks: the same body, greyed and darkened
 // (1.0) a story's foe can wear another body: the Unbound's ash-thralls and acolytes (the main game's ashwalker and
 // thurifer, darkened)
 const LOOKS = {
-  thrall: { ...CREATURES.ashwalker, height: 1.9 },
-  acolyte: { ...CREATURES.thurifer, height: 2.0, tint: 0x2a1840, dark: 0.55 },
+  thrall: { ...CREATURES.ashwalker, height: 1.9, attack: { kind: 'slash', from: 0.19, strike: 0.318, to: 0.43 } },
+  acolyte: { ...CREATURES.thurifer, height: 2.0, tint: 0x2a1840, dark: 0.55, attack: { kind: 'cast', from: 0.14, strike: 0.24, to: 0.4 } },
 };
 // (1.1) an elite (ember), a rare named beast (violet), a world boss (blood red): the same body, tinted
 const RANK_TINT = { 1: 0xd08a4a, 2: 0xa07ae0, 3: 0xb03a2a };
@@ -321,7 +321,8 @@ export class LandView {
       key: n.b.id,
       spec: liveSpec(n.b),
       x: n.x, z: n.z, facing: n.b.facing, scale: n.b.size || 1,
-      state: { moving: this.steady(n.b, time), speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), gesture: n.b.swipeT > time - 0.1 ? 'chop' : null },
+      // (1.1.2) its blow: a swing (the bodies with an attack of their own) or a lunge (the wolf's and the hog's)
+      state: { moving: this.steady(n.b, time), speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), swung: n.b.swungAt != null && time - n.b.swungAt < 0.9 ? time - n.b.swungAt : -1, wind: n.b.windAt != null && (n.b.swungAt == null || n.b.swungAt < n.b.windAt) && time - n.b.windAt < 0.8 ? time - n.b.windAt : -1 },
     }));
     return this.lively.frame(dt, want);
   }
@@ -340,9 +341,17 @@ export class LandView {
   }
 
   /** (0.99.29) A beast struck at someone: its body (if it has one) swings. */
-  swiped(id) {
-    const b = this.world.beasts.find((q) => q.id === id);
-    if (b) b.swipeT = this.liveT || 0;
+  /** (1.1.2) A beast began to wind up a blow. */
+  winding(id, seen = null) {
+    const b = seen || this.world.beasts[id - 1];
+    if (b && b.id === id) b.windAt = this.liveT || 0;
+  }
+
+  swiped(id, seen = null) {
+    // (1.1.2) its own field: the sim's swipeT is the beast's cooldown, and writing the clock into it stalled the
+    // beast for minutes after its first blow. Online, the beast drawn is the one seen, not the world's.
+    const b = seen || this.world.beasts[id - 1];
+    if (b && b.id === id) b.swungAt = this.liveT || 0;
   }
 
   /** Put every beast near (x, z) where the sim has it (eased between steps by `alpha`). */

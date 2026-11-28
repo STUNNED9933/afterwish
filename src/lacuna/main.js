@@ -371,8 +371,9 @@ function onEvent(ev) {
   else if (ev.type === 'blood' && isMe(ev.pid)) fx.number(heroX, heroZ, `-${ev.n}`, 'taken'); // (0.99.21) a Berserker's blood price
   else if (ev.type === 'die') { fx.puff(ev.x, ev.z); if (isMe(ev.pid)) { note(`${BEASTS[ev.kind] ? BEASTS[ev.kind].name : 'It'} falls.`); gainXp((ev.xp || 0) * (ev.story ? STORY_BEAST : 1)); } } // (0.99.36) and its experience
   else if (ev.type === 'aggro' && isMe(ev.pid)) { const t = net ? seen.get(ev.id) : world.beasts[ev.id - 1]; note(`A ${t && t.type ? BEASTS[t.type].name : 'beast'} is coming for you.`); }
+  else if (ev.type === 'wind') view.winding(ev.id, net ? seen.get(ev.id) : null); // (1.1.2) a blow coming
   else if (ev.type === 'swipe') {
-    if (ev.id) view.swiped(ev.id); // (0.99.29) a beast with a body swings it
+    if (ev.id) view.swiped(ev.id, net ? seen.get(ev.id) : null); // (0.99.29) a beast with a body swings it
     const h = heroOf(ev.pid);
     if (h) h.anim.hit = true;
     if (isMe(ev.pid)) { if (ev.dmg) { hurtT = 0.35; fx.number(heroX, heroZ, `-${ev.dmg}`, 'taken'); } else fx.number(heroX, heroZ, 'dodged', 'heal'); }
@@ -1976,7 +1977,8 @@ async function playReport() {
 
 // ---- (1.0) Quest 6, An Invitation: the letter, the watchtower, the wards, the circle (the end of Act I)
 function hounds() {
-  for (const who of ['rowan', 'juni', 'sorrel']) if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() });
+  // (1.1.2) new ones (a page loaded mid-quest) stand by the hero, not wherever an actor starts
+  ['rowan', 'juni', 'sorrel'].forEach((who, k) => { if (!company[who]) company[who] = new Actor(view.scene, who, { beastMesh: () => new THREE.Group() }).place(me.x + 2 * Math.cos(k * 2.1), me.z + 2 * Math.sin(k * 2.1)); });
   if (company.ilse) { company.ilse.remove(); delete company.ilse; }
 }
 function startInvitation() {
@@ -2140,7 +2142,7 @@ else if (story.stage === 'stumble') {
 } else if (story.stage === 'tower') {
   setTimeout(startTower, 0);
 } else if (story.stage === 'wards') {
-  me.x = WATCHTOWER.x - 2; me.z = WATCHTOWER.z + 16; prev.x = me.x; prev.z = me.z;
+  me.x = WATCHTOWER.x - 2; me.z = WATCHTOWER.z + 16;
   setTimeout(startWards, 0);
 } else if (story.stage === 'act2') {
   toGuild();
@@ -2341,4 +2343,4 @@ requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
 setTimeout(featureCheck, 3000); // (1.0) New Content already done in an older save: its reward, once
 applyGear(); // (1.1) what you wear
-window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), __clip: async (id, word) => { const t = await loadRigged(id); if (!t) return null; const name = Object.keys(t.clips).find((n) => n.toLowerCase().includes(word)); const clip = t.clips[name]; const mx = new THREE.AnimationMixer(t.scene); const act = mx.clipAction(clip); act.play(); const hands = []; t.scene.traverse((o) => { if (o.isBone && /hand/i.test(o.name)) hands.push(o); }); const out = []; const v = new THREE.Vector3(); for (let k = 0; k <= 40; k++) { act.time = clip.duration * k / 40; mx.update(0); t.scene.updateMatrixWorld(true); out.push([+(k / 40).toFixed(3), ...hands.slice(0, 2).map((h) => { h.getWorldPosition(v); return [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)]; })]); } act.stop(); return { name, dur: clip.duration, hands: hands.map((h) => h.name), out }; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

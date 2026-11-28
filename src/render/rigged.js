@@ -519,13 +519,15 @@ function prepare(spec, gltf) {
   // (1.1.4) any other creature's walk: its own step speed too (a walk played too slowly glides; too fast, skids)
   const walkName = Object.keys(clips).find((n) => /^walk|^gait_walk|^run$/i.test(n));
   const step = !gait.walk && spec.recentre === '*' && walkName ? stepSpeed(scene, clips[walkName]) : 0;
+  // (1.1.5) and its run, if it has one besides (played instead of the walk when it goes fast)
+  const runStep = !gait.walk && spec.recentre === '*' && walkName && !/^run$/i.test(walkName) && clips.run ? stepSpeed(scene, clips.run) : 0;
   if (spec.attack && spec.attack.cycle && clips[spec.attack.clip]) clips.__attack = clips[spec.attack.clip];
   else if (spec.attack && clips[spec.attack.clip]) {
     const src = clips[spec.attack.clip];
     const fps = 30;
     clips.__attack = THREE.AnimationUtils.subclip(src, 'attack', Math.round(spec.attack.from * fps), Math.round(spec.attack.to * fps), fps);
   }
-  return { spec, scene, scale, clips, gait: gait.walk ? gait : null, step };
+  return { spec, scene, scale, clips, gait: gait.walk ? gait : null, step, runStep };
 }
 
 /** (1.1.4) The leaf bones of legs and feet (by their names), which touch the ground. */

@@ -115,7 +115,9 @@ export function checkModel(id, tpl, uses = {}) {
   // leg bone pairs, left against right (for passing through each other)
   const legSegs = A.legs.filter((b) => b.parent && b.parent.isBone && A.legs.includes(b.parent)).map((b) => ({ a: b.parent, b, side: A.side(b.name), front: /0_(left|right)_limb/i.test(b.name) }));
   const pairs = [];
-  for (const s of legSegs) for (const t of legSegs) if (s.side === 'L' && t.side === 'R' && s.front === t.front) pairs.push([s, t]);
+  // (1.1.5) only pairs apart at rest: Tripo's many-legged rigs name legs by chain, not by side, so a 'left' and a
+  // 'right' can sit together by design; what matters is legs that come together in the clip
+  for (const s of legSegs) for (const t of legSegs) if (s.side === 'L' && t.side === 'R' && s.front === t.front && segDist(rest.get(s.a), rest.get(s.b), rest.get(t.a), rest.get(t.b)) > 0.03 * H) pairs.push([s, t]);
   // how far each leg bone points from its rest direction, at rest it is 0
   const restDir = new Map(legSegs.map((s) => [s.b, rest.get(s.b).clone().sub(rest.get(s.a)).normalize()]));
   for (const name of names) {
@@ -176,6 +178,11 @@ export function checkModel(id, tpl, uses = {}) {
     if (bend > 2.3) add(name, 'bend', /^(walk|trot|run|idle)/i.test(name) ? 'bad' : 'warn', (bend * 180) / Math.PI, bendAt, `${bendBone} turns ${Math.round((bend * 180) / Math.PI)}° from its rest pose (a joint folded back on itself)`);
     if (/^(walk|trot)/i.test(name) && legSegs.length && legMove < 0.04 * H) add(name, 'still', 'bad', legMove / H, null, 'the legs barely move in its walk');
     // the walk at the game's speed: do the planted feet keep pace with the ground?
+    if (/^run$/i.test(name) && tpl.runStep > 0.02 && uses.speed && uses.speed > tpl.step * (tpl.scale || 1) * (uses.height || 1) * 1.8) {
+      const k = (tpl.scale || 1) * (uses.height || 1), ts = Math.max(0.5, Math.min(3.4, uses.speed / (tpl.runStep * k)));
+      const ratio = (tpl.runStep * k * ts) / uses.speed;
+      if (Math.abs(1 - ratio) > 0.35) add(name, 'slide', Math.abs(1 - ratio) > 0.6 ? 'bad' : 'warn', ratio, null, `run at its game speed (${uses.speed} m/s): planted feet at ${Math.round(ratio * 100)}% of the ground's pace`);
+    }
     if (/^(walk|gait_walk)/i.test(name) && uses.speed && A.feet.length) {
       const k = (tpl.scale || 1) * (uses.height || 1);
       const foot = stepSpeed(scene, clip) * k; // metres a second at timeScale 1
@@ -185,6 +192,7 @@ export function checkModel(id, tpl, uses = {}) {
       else if (tpl.step > 0.02 && !uses.float) ts = Math.max(0.45, Math.min(3.6, uses.speed / (tpl.step * k)));
       else ts = Math.max(0.6, Math.min(2.2, uses.speed / (uses.beast ? 4 : 2.6)));
       if (tpl.gait && uses.speed > tpl.gait.walk * k * 1.7) ts = null; // it trots at that speed (checked below)
+      if (tpl.runStep > 0.02 && uses.speed > tpl.step * k * 1.8) ts = null; // it runs at that speed (checked below)
       if (ts != null && foot > 0) {
         const ratio = (foot * ts) / uses.speed; // 1 = feet planted
         if (Math.abs(1 - ratio) > 0.35) add(name, 'slide', Math.abs(1 - ratio) > 0.6 ? 'bad' : 'warn', ratio, null, `at its game speed (${uses.speed} m/s) its planted feet move at ${Math.round(ratio * 100)}% of the ground's pace (${ratio < 1 ? 'it glides' : 'its feet skid'})`);

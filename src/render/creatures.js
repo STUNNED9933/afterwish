@@ -357,7 +357,9 @@ export function makeCreature(tpl, spec) {
           mixer.update(dt);
           return;
         }
-        const w = action(s.walkKind || 'walk') || action('walk'); // (0.91) a jog, or a walk with a load
+        const kk = holder.scale.x * (s.scale || 1), fast = !s.walkKind && tpl.runStep > 0.02 && (s.speed || 3) > tpl.step * kk * 1.8;
+        const w = fast ? action('run') : action(s.walkKind || 'walk') || action('walk'); // (0.91) a jog, or a walk with a load; (1.1.5) a run when fast
+        if (w && fast) { fadeTo(w, 0.2); w.timeScale = Math.max(0.5, Math.min(3.4, (s.speed || 3) / (tpl.runStep * kk))); mixer.update(dt); return; }
         if (w) {
           fadeTo(w, 0.2);
           // (1.1.4) played so its planted feet keep pace with the ground (its own step speed, measured when it loaded);

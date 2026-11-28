@@ -24,6 +24,9 @@ await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
 
 export const GAITS = {
+  // (six legs: a tripod gait, front and hind of one side with the middle of the other)
+  walk6: { period: 0.9, stride: 0.8, duty: 0.6, lift: 0.22, bob: 0.008, nod: 0.02, tail: 0, phase: { frontLeft: 0, midRight: 0, hindLeft: 0, frontRight: 0.5, midLeft: 0.5, hindRight: 0.5 } },
+  trot6: { period: 0.5, stride: 1.0, duty: 0.5, lift: 0.26, bob: 0.012, nod: 0.02, tail: 0, phase: { frontLeft: 0, midRight: 0, hindLeft: 0, frontRight: 0.5, midLeft: 0.5, hindRight: 0.5 } },
   walk: { period: 1.0, stride: 0.95, duty: 0.66, lift: 0.17, bob: 0.012, nod: 0.05, tail: 0.14, phase: { hindLeft: 0, frontLeft: 0.25, hindRight: 0.5, frontRight: 0.75 } },
   trot: { period: 0.6, stride: 1.35, duty: 0.44, lift: 0.24, bob: 0.03, nod: 0.03, tail: 0.1, phase: { hindLeft: 0, frontRight: 0, hindRight: 0.5, frontLeft: 0.5 } },
 };
@@ -74,7 +77,7 @@ export function findRig(scene) {
   scene.traverse((o) => {
     const m = /(\d)_(Left|Right)_Limb_(\d+)$/.exec(o.name);
     if (m) {
-      const key = `${m[1] === '0' ? 'front' : 'hind'}${m[2]}`;
+      const key = `${m[2]}${m[1]}`; // (1.1.5) 'Left0', 'Right2'...: which is front, middle or hind is found by where they are
       (legs[key] = legs[key] || [])[+m[3]] = o;
     }
     if (/::Root$/.test(o.name) || o.name === 'Root') root = root || o;
@@ -84,6 +87,8 @@ export function findRig(scene) {
     if (t) tail[+t[1]] = o;
   });
   for (const k in legs) legs[k] = legs[k].filter(Boolean);
+  // (1.1.5) a leg of only two joints (a Tripo hexapod's, now and then) takes the bone it hangs from as its hip
+  for (const k in legs) if (legs[k].length === 2 && legs[k][0].parent && /bone_|Limb/.test(legs[k][0].parent.name)) legs[k].unshift(legs[k][0].parent);
   return { legs, root, head: head.filter(Boolean), tail: tail.filter(Boolean) };
 }
 
@@ -132,12 +137,21 @@ export function buildGait(scene, rig, G) {
   scene.traverse((o) => rest.set(o, { p: o.position.clone(), q: o.quaternion.clone() }));
   const reset = () => { for (const [o, r] of rest) { o.position.copy(r.p); o.quaternion.copy(r.q); } scene.updateMatrixWorld(true); };
   reset();
-  const legKeys = Object.keys(rig.legs).filter((k) => rig.legs[k].length >= 3);
-  if (legKeys.length !== 4) throw new Error(`expected four legs, found ${legKeys.join(',')}`);
-  // the body's axes, from the rest pose
-  const headAt = rig.head.length ? wpos(rig.head[0]) : wpos(rig.legs.frontLeft[0]);
-  const tailAt = rig.tail.length ? wpos(rig.tail[0]) : wpos(rig.legs.hindLeft[0]);
-  const fwd = headAt.clone().sub(tailAt); fwd.y = 0; fwd.normalize();
+  let legKeys = Object.keys(rig.legs).filter((k) => rig.legs[k].length >= 3);
+  if (legKeys.length !== 4 && legKeys.length !== 6) throw new Error(`expected four or six legs, found ${legKeys.join(',')}`);
+  // the body's axes, from the rest pose: toward the head from the middle of the hips (or the tail)
+  const hips = legKeys.map((k) => wpos(rig.legs[k][0]));
+  const mid = hips.reduce((a, b) => a.add(b), new THREE.Vector3()).multiplyScalar(1 / hips.length);
+  const fwd = (rig.head.length ? wpos(rig.head[0]).sub(mid) : mid.clone().sub(wpos(rig.tail[0]))); fwd.y = 0; fwd.normalize();
+  // (1.1.5) each leg's role, by where it is along the body: front, (middle,) hind
+  const roleOf = {};
+  for (const sideName of ['Left', 'Right']) {
+    const mine = legKeys.filter((k) => k.startsWith(sideName)).sort((a, b) => wpos(rig.legs[b][0]).dot(fwd) - wpos(rig.legs[a][0]).dot(fwd));
+    const roles = mine.length === 3 ? ['front', 'mid', 'hind'] : ['front', 'hind'];
+    mine.forEach((k, i) => (roleOf[k] = roles[i] + sideName));
+  }
+  // a parent leg before its children (a Tripo hexapod rig can hang one leg from another)
+  legKeys = legKeys.sort((a, b) => depth(rig.legs[a][0]) - depth(rig.legs[b][0]));
   const up = new THREE.Vector3(0, 1, 0);
   const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
   const legs = legKeys.map((k) => {
@@ -155,7 +169,7 @@ export function buildGait(scene, rig, G) {
     // which way each knee or hock sits off the hip-ankle line at rest (kept so: a solve never flips a joint)
     const bendSide = [];
     for (let i = 1; i < ankle; i++) bendSide[i] = Math.sign(new THREE.Vector3().crossVectors(P[i].clone().sub(P[0]), P[ankle].clone().sub(P[0])).dot(normal)) || 1;
-    return { k, J, ankle, L, restP: P, plane, normal, bendSide, hipH: P[0].y, pawDir: P[ankle + 1].clone().sub(P[ankle]), toeY: P[J.length - 1].y };
+    return { k: roleOf[k], J, ankle, L, restP: P, plane, normal, bendSide, hipH: P[0].y, pawDir: P[ankle + 1].clone().sub(P[ankle]), toeY: P[J.length - 1].y };
   });
   const ground = Math.min(...legs.map((l) => l.toeY));
   const legH = Math.min(...legs.map((l) => l.hipH - ground));
@@ -256,6 +270,7 @@ export function buildGait(scene, rig, G) {
   return { times, tracks, speed: G.move ? 0 : S / (G.duty * G.period), legH, ground };
 }
 
+function depth(o) { let n = 0; for (let p = o.parent; p; p = p.parent) n++; return n; }
 function isUnder(o, anc) { for (let p = o.parent; p; p = p.parent) if (p === anc) return true; return false; }
 
 /** Add a clip to the document from built samples. */
@@ -285,7 +300,8 @@ async function main() {
   const { scene, map } = mirror(doc);
   const rig = findRig(scene);
   const made = {};
-  for (const [name, G] of Object.entries(GAITS)) made[name] = buildGait(scene, rig, G);
+  const six = Object.values(rig.legs).filter((l) => l.length >= 3).length === 6;
+  for (const [name, G] of Object.entries(GAITS)) if (name.endsWith('6') === six) made[name.replace('6', '')] = buildGait(scene, rig, G);
   for (const [name, G] of Object.entries(MOVES)) made[name] = buildGait(scene, rig, G);
   for (const a of root.listAnimations()) {
     if (!/walk|run|trot|idle|bite|fall/i.test(a.getName())) continue;

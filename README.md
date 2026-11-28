@@ -160,6 +160,14 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Animation fixes from the checker: 64 problems down to none (1.1.6)
+
+- **Remade with Tripo** (about 360 credits): the **Mourner** (a knee-length lace dress and a short veil: the floor-length gown tore into shards in every move), the **Dune Scarab** (low and wide, legs planted: the old one stood upright and its rig hung its head under a leg), the **Court Guard** (a buckler instead of a tower shield that stretched into a slab) and **Edric** (a tabard instead of a cape).
+- **The scarab walks like a beetle**: the gait generator now handles six legs, with a tripod gait (front and back legs of one side with the middle of the other), plus an idle, a bite and a fall of its own.
+- **The Cinderling runs** instead of gliding (a run added to its existing rig).
+- The checker only counts legs passing through each other when they were apart to begin with (many-legged rigs keep some together by design).
+- The one finding left, the Seraph's wings folding through each other for a moment in its leap, is listed as known (tools/animcheck/known.json) and waits on a remake of the statue.
+
 ### Animation fixes from the checker: 64 problems down to 13 (1.1.5)
 
 - **Feet stay on the ground in every animation**, heroes included: each clip is checked key by key when it loads, and wherever a foot would go below the ground the body is raised just enough at that moment (a dash, a lunge and a walk keep their shape; only the sinking goes). Falls and rolls go down on purpose and are left alone.

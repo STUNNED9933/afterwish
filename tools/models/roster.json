@@ -1562,6 +1562,36 @@
         "preset:biped:run"
       ],
       "_why": "1.1.5: its walk's stride is too short for its speed (it glides)"
+    },
+    "t_mourner2_fetch": {
+      "fetchAnims": [
+        "ff17ffe1-49f8-451b-b431-094f8dc45e36"
+      ],
+      "prompt": "(download of an animation task that already ran: t_mourner2)"
+    },
+    "e_scarab2_fetch": {
+      "fetchAnims": [
+        "363d002f-933d-48b6-acca-7bab2fb6fb37"
+      ],
+      "prompt": "(download of an animation task that already ran: e_scarab2)"
+    },
+    "e_courtguard2_fetch": {
+      "fetchAnims": [
+        "3ca87f89-8d4c-40d4-9beb-e0b50e0ee01b"
+      ],
+      "prompt": "(download of an animation task that already ran: e_courtguard2)"
+    },
+    "e_edric2_fetch": {
+      "fetchAnims": [
+        "53917444-ee15-48de-856d-548f0e6f10db"
+      ],
+      "prompt": "(download of an animation task that already ran: e_edric2)"
+    },
+    "t_cinderling_run_fetch": {
+      "fetchAnims": [
+        "b08dd9f4-fff1-43c5-8024-ed6af339893f"
+      ],
+      "prompt": "(download of an animation task that already ran: t_cinderling_run)"
     }
   }
 }

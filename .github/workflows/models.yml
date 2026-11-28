@@ -52,4 +52,4 @@ jobs:
           mkdir -p runs && cp -r /tmp/models "runs/${{ github.run_id }}"
           git add runs && git commit -qm "Tripo models: ${{ inputs.characters }} (run ${{ github.run_id }})"
           # several runs may finish together: each writes its own folder, so rebase and try again
-          for i in 1 2 3 4 5; do git push -q origin tripo-models && exit 0; sleep $((i * 4)); git pull -q --rebase origin tripo-models; done; exit 1
+          for i in 1 2 3 4 5 6 7 8; do git push -q origin tripo-models && exit 0; sleep $((i * 4)); git fetch -q --depth 50 origin tripo-models && git rebase -q FETCH_HEAD || git rebase --abort; done; exit 1 # (1.1.5: was 'pull --rebase', which failed quietly on the shallow clone and lost four runs' files)

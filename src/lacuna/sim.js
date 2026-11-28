@@ -1083,7 +1083,7 @@ export class LandWorld {
         if (b.wind && b.swipeT <= 0) {
           b.wind = false;
           b.swipeT = def.every;
-          const dodged = p.guard > 0;
+          const dodged = p.guard > 0 || p.spared; // (1.1.4) spared: in a scene, nothing hurts (the page sets it)
           if (!dodged) {
             p.hp -= def.dmg * (1 - Math.min(0.6, M(p, 'armour'))); // (0.99.37) talents: less taken
             p.calm = 0;
@@ -1160,6 +1160,7 @@ export class LandWorld {
 
   /** A blow on a hero from a beast (armour taken off), and their going down. */
   harm(p, dmg, b) {
+    if (p.spared) return;
     p.hp -= dmg * (1 - Math.min(0.6, M(p, 'armour')));
     p.calm = 0;
     this.emit('swipe', { id: b.id, pid: p.pid, dmg: Math.round(dmg), x: b.x, z: b.z, big: 1 });

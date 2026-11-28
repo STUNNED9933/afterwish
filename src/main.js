@@ -6603,6 +6603,7 @@ function start(hot = {}) {
     act: (c) => applyNow(c), // (0.61.1) a command as the game's own buttons send it (tests, the console)
     talk: (id) => { talkTo = id; talkNote = ''; setMode('talk'); }, // (0.62) open someone's panel (tests)
     panel: (m) => setMode(m), // (0.64) open a window by its mode (tests): 'travel', 'play', ...
+    maps: MAP_IDS, // (1.1.4) every map (the menu bot)
     startRun,
     enterTown,
     startExplore,

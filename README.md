@@ -160,6 +160,18 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Automated playtests, and natural walks for wolves and thornhogs (1.1.4)
+
+- **Bots now play the game and look for what players would notice** (tools/playtest/README.md). They run on GitHub after every update and every night; anything bad goes to the *Playtest report* issue, with screenshots.
+  - **The animation checker** plays every clip of every model (86 of them) and flags feet in the ground, walks that glide or skid, legs through each other, joints folded backwards, skin torn into shards, loops that pop, and enemies missing an animation, each with a strip of frames.
+  - **The Lacuna story bot** plays from the first scene to the end of Act I like a player (follows the marker, uses things, reads every line, fights what the story sends) and flags getting stuck, a quest that stops moving on, unnamed speakers, a speaker off screen or behind a wall, the camera inside a house, the cast inside trees or each other, and `undefined` on screen. Its report shows every line of the story as it appeared.
+  - **The menu bot** visits every map in the main game, stands on every Waygate, waystone and crossing, talks to everyone and opens every window.
+- **Wolves and thornhogs walk and trot naturally**, from a new generator (tools/models/gait.mjs) that builds the gait the way four-legged animals move: legs in turn (back, front, back, front), each paw planted while on the ground, trotting in diagonal pairs when they hurry. The game now plays every creature's walk at exactly the speed it moves, so feet no longer slide.
+- **Creatures' feet no longer sink into the ground** (many Tripo clips stood them a few per cent below it): each clip is lifted when it loads.
+- **Fixed (found by the story bot):**
+  - After the last ashen wolf, the tracker stayed on "4/4" instead of sending you to the glade.
+  - A cutscene could start, or carry on, with the hero down: he then got up at Sunmere's gate mid-scene, and the end of Act I played in the town square. Scenes now start with him on his feet, and nothing hurts him while one plays.
+
 ### Fix: waystones after the Verge (1.1.3)
 
 - **Fixed: after using a crossing on the Verge (the Way Up or the Way Down), every waystone opened that crossing's page instead of its own** ("The way up is shut to you", with nowhere to go, even in Caelum). A waystone now always shows its own places.

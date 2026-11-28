@@ -315,14 +315,14 @@ export class LandView {
    * Returns the ids drawn that way (their cheap shapes are left out).
    */
   liveBeasts(near, time) {
-    const dt = this.liveT === null ? 0 : Math.min(0.1, Math.max(0, time - this.liveT));
+    const dt = this.liveT === null ? 0 : Math.min(0.25, Math.max(0, time - this.liveT)); // (1.1.4) up to a quarter second: on a slow computer the walks kept up less than the bodies (their feet slid)
     this.liveT = time;
     const want = near.filter((n) => n.d < LIVE_R && !n.b.hidden && (LIVE_BEAST[n.b.type] || LOOKS[n.b.look])).sort((p, q) => p.d - q.d).slice(0, LIVE_N).map((n) => ({
       key: n.b.id,
       spec: liveSpec(n.b),
       x: n.x, z: n.z, facing: n.b.facing, scale: n.b.size || 1,
       // (1.1.2) its blow: a swing (the bodies with an attack of their own) or a lunge (the wolf's and the hog's)
-      state: { moving: this.steady(n.b, time), speed: n.b.type === 'golem' ? 2.4 : n.b.type === 'hog' ? 4.2 : 5, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), swung: n.b.swungAt != null && time - n.b.swungAt < 0.9 ? time - n.b.swungAt : -1, wind: n.b.windAt != null && (n.b.swungAt == null || n.b.swungAt < n.b.windAt) && time - n.b.windAt < 0.8 ? time - n.b.windAt : -1 },
+      state: { moving: this.steady(n.b, time), speed: this.pace(n, time), scale: n.b.size || 1, stunned: !!(n.b.stunUntil && this.world && n.b.stunUntil > this.world.time), swung: n.b.swungAt != null && time - n.b.swungAt < 0.9 ? time - n.b.swungAt : -1, wind: n.b.windAt != null && (n.b.swungAt == null || n.b.swungAt < n.b.windAt) && time - n.b.windAt < 0.8 ? time - n.b.windAt : -1 },
     }));
     return this.lively.frame(dt, want);
   }
@@ -338,6 +338,21 @@ export class LandView {
       if (time - b.flipAt > (was ? 0.3 : 0.12)) { b.drawnMoving = !!b.moving; b.flipAt = null; }
     } else b.flipAt = null;
     return !!b.drawnMoving;
+  }
+
+  /**
+   * (1.1.4) How fast a beast is really going (metres a second, eased): its walk is played to match, so its feet do not
+   * slide (an amble is a walk, a chase a trot).
+   */
+  pace(n, time) {
+    const b = n.b;
+    if (b._pt == null || time - b._pt > 1) { b._pt = time; b._px = n.x; b._pz = n.z; b._pv = b._pv || 0; return b._pv || 2; }
+    const dt = time - b._pt;
+    if (dt < 0.05) return b._pv;
+    const v = Math.hypot(n.x - b._px, n.z - b._pz) / dt;
+    b._pv += (Math.min(12, v) - b._pv) * Math.min(1, dt * 4);
+    b._pt = time; b._px = n.x; b._pz = n.z;
+    return Math.max(0.6, b._pv);
   }
 
   /** (0.99.29) A beast struck at someone: its body (if it has one) swings. */

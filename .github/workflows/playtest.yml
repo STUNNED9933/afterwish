@@ -1,0 +1,83 @@
+# (1.1.4) Automated playtests: the animation checker, the main game's menu bot and the Lacuna story bot, in
+# headless Chromium. After every push the quick two run; every night (and from the Actions tab) all three.
+# Each run's reports and screenshots are kept as an artifact ("playtest-report"), the findings are written to the
+# run's summary, and anything bad is posted to the "Playtest report" issue (made if missing).
+name: Playtest
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 18 * * *' # 02:17 in Singapore
+  workflow_dispatch:
+    inputs:
+      story:
+        description: 'Run the Lacuna story bot too (about an hour)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: playtest
+  cancel-in-progress: true
+
+jobs:
+  playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: npm run build
+      - name: Animation check
+        id: anim
+        continue-on-error: true
+        run: python tools/animcheck/run.py out/anim
+      - name: Main game menus
+        id: menus
+        continue-on-error: true
+        run: python tools/playtest/main_menus.py out/main
+      - name: Lacuna story (nightly)
+        id: story
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.story)
+        continue-on-error: true
+        run: python tools/playtest/lacuna_story.py out/lacuna --minutes 95
+      - name: Summary
+        if: always()
+        run: |
+          for f in out/anim/report.md out/main/report.md out/lacuna/report.md; do
+            [ -f "$f" ] && { head -c 60000 "$f" | sed 's/!\[\]([^)]*)//g'; echo; } >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playtest-report
+          path: out/
+          retention-days: 14
+      - name: Post to the Playtest report issue
+        if: always() && github.event_name != 'push' && (steps.anim.outcome == 'failure' || steps.menus.outcome == 'failure' || steps.story.outcome == 'failure')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body=$(mktemp)
+          {
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (screenshots in the playtest-report artifact)"
+            echo
+            for f in out/anim/report.md out/main/report.md out/lacuna/report.md; do
+              [ -f "$f" ] && grep -E '^(# |- \*\*bad)' "$f" | sed 's/!\[\]([^)]*)//g' | head -40
+              echo
+            done
+          } > "$body"
+          num=$(gh issue list --state open --search "Playtest report in:title" --json number --jq '.[0].number')
+          if [ -z "$num" ]; then gh issue create --title "Playtest report" --body-file "$body"; else gh issue comment "$num" --body-file "$body"; fi

@@ -672,8 +672,15 @@ function act(k) {
   if (net && net.ready) net.send({ t: 'act', k, ax: +a.x.toFixed(2), az: +a.z.toFixed(2), ...(down ? { down: true } : {}) });
 }
 
+let botMove = null; // (1.1.4) a playtest bot's stick
 function wish() {
   if (cutscene.active) return { mx: 0, mz: 0, pace: 'run' };
+  if (botMove) {
+    const dx = botMove.x - me.x, dz = botMove.z - me.z, d = Math.hypot(dx, dz);
+    if (d < botMove.near) return { mx: 0, mz: 0, pace: 'run' };
+    yaw += Math.atan2(Math.sin(Math.atan2(dz, dx) - yaw), Math.cos(Math.atan2(dz, dx) - yaw)) * 0.2;
+    return { mx: dx / d, mz: dz / d, pace: story.stage === 'stumble' || hero.anim.carry ? 'walk' : 'run' };
+  }
   const f = (k) => (keys.has(k) ? 1 : 0);
   const fwd = f('KeyW') + f('ArrowUp') - f('KeyS') - f('ArrowDown');
   const side = f('KeyD') + f('ArrowRight') - f('KeyA') - f('ArrowLeft');
@@ -926,6 +933,10 @@ async function playAsking() {
 /** A scene: the HUD away, the Company handed in (and back after), the skip button. */
 async function runScene(script, ...args) {
   if (cutscene.active) return;
+  // (1.1.4) a scene never starts with the hero down: up where he fell, whole (else he got up at Sunmere's gate in the
+  // middle of it, and the end of Act I played in the town square: the story bot found it)
+  if (me.dead) { me.dead = false; me.downT = 0; me.hp = me.maxHp; me.mp = me.maxMp; me.y = me.vy = 0; }
+  me.spared = true; // and nothing hurts him while it plays (a beast left awake nearby took him down mid-scene)
   questRun = null;
   if (locked()) document.exitPointerLock();
   document.body.classList.add('scene');
@@ -937,6 +948,7 @@ async function runScene(script, ...args) {
     await cutscene.run((a) => script(a, ...args));
   } finally {
     if (cutscene.endFn) { cutscene.endFn(); cutscene.endFn = null; }
+    me.spared = false;
     hero.anim.lie = false;
     document.body.classList.remove('scene');
     $('cs-skip').classList.add('hidden');
@@ -1391,8 +1403,12 @@ $('recap-go').addEventListener('click', () => {
   location.reload(); // (the page sets itself up at the training ground, the choice open)
 });
 const markV = new THREE.Vector3();
+/** Where the quest leads now (a place or someone), or null. */
+function questLead() {
+  return story.stage === 'invitation' ? HOME.door : story.stage === 'tower' ? WATCHTOWER : story.stage === 'wards' && wards ? nextWard() : story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+}
 function drawMarker() {
-  const lead = story.stage === 'invitation' ? HOME.door : story.stage === 'tower' ? WATCHTOWER : story.stage === 'wards' && wards ? nextWard() : story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
+  const lead = questLead();
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
   markV.set(lead.x, 2.3, lead.z).project(view.camera);
@@ -1794,6 +1810,7 @@ function huntEvent(ev) {
   if (hunt.left === 2) bark([['juni', 'Two more! They\'re not running. Wolves always run.']]);
   if (hunt.left > 0) return;
   hunt.done = true;
+  showQuest(); // (1.1.4) the tracker moves on too ('Sorrel says something is wrong at the glade'): the bot found it stuck on 4/4
   bark([['rowan', 'That\'s all of them.'], ['sorrel', 'Rowan. The glade. Something\'s wrong at the glade.']]);
   const f = follow(company, world.land);
   questRun = { update(dt) { f.update(dt, me); if (Math.hypot(me.x - TEAR.x, me.z - TEAR.z) < 13) playVesper(); } };
@@ -2343,4 +2360,69 @@ requestAnimationFrame(frame);
 note('Click to look around. Left click to attack, Q E R for skills, 1-2 to change class. Space to jump. Hold T for emotes, Y for emoticons. Hold Alt to use the mouse.');
 setTimeout(featureCheck, 3000); // (1.0) New Content already done in an older save: its reward, once
 applyGear(); // (1.1) what you wear
-window.land = { world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), __clip: async (id, word) => { const t = await loadRigged(id); if (!t) return null; const name = Object.keys(t.clips).find((n) => n.toLowerCase().includes(word)); const clip = t.clips[name]; const mx = new THREE.AnimationMixer(t.scene); const act = mx.clipAction(clip); act.play(); const hands = []; t.scene.traverse((o) => { if (o.isBone && /hand/i.test(o.name)) hands.push(o); }); const out = []; const v = new THREE.Vector3(); for (let k = 0; k <= 40; k++) { act.time = clip.duration * k / 40; mx.update(0); t.scene.updateMatrixWorld(true); out.push([+(k / 40).toFixed(3), ...hands.slice(0, 2).map((h) => { h.getWorldPosition(v); return [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)]; })]); } act.stop(); return { name, dur: clip.duration, hands: hands.map((h) => h.name), out }; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)
+// (1.1.4) for the playtest bots (tools/playtest): what a player would see, and a few ways to act
+const BOT = {
+  state() {
+    const L = questLead();
+    const u = nearestUse();
+    return {
+      stage: story.stage, trial: story.trial || null, path: story.path || null,
+      me: { x: me.x, z: me.z, y: me.y, hp: me.hp, maxHp: me.maxHp, dead: me.dead, level: me.level },
+      lead: L && Number.isFinite(L.x) ? { x: L.x, z: L.z } : null,
+      use: u ? u.label : null,
+      quest: [$('quest-name').textContent, $('quest-goal').textContent],
+      scene: cutscene.active ? { who: cutscene.talk && !$('cs-box').classList.contains('thought') ? cutscene.talk.who : null, name: $('cs-name').textContent, text: cutscene.line ? cutscene.line.text : null, shown: !$('cs-box').classList.contains('hidden'), thought: $('cs-box').classList.contains('thought'), prompt: cutscene.prompt ? cutscene.prompt.key : null, card: !$('cs-card').classList.contains('hidden') } : null,
+      choose: !$('choose').classList.contains('hidden'),
+      overlays: ['journal', 'board', 'gear', 'riftpick', 'recap'].filter((id) => !$(id).classList.contains('hidden')),
+    };
+  },
+  /** Actors on screen now: the company and the townsfolk near, for the checks (overlaps, trees, weapons). */
+  actors() {
+    const out = [];
+    for (const [who, a] of Object.entries(company)) if (a && a.group && a.group.visible !== false) out.push({ who, x: a.x, z: a.z, moving: !!a.moving });
+    return out;
+  },
+  /** Solid things near (trees, rocks, houses), for 'walked into a tree'. */
+  solids(x, z, r) {
+    const out = [];
+    for (const c of world.land.chunks) for (const o of c.solid) if (Math.hypot(o.x - x, o.z - z) < r + (o.r || 1)) out.push({ kind: o.kind, x: o.x, z: o.z, r: o.r || 1, hw: o.hw, hd: o.hd });
+    return out;
+  },
+  foes() {
+    const list = net ? [...seen.values()].filter((b) => !b.player && !b.dead) : world.beasts.filter((b) => !b.dead && b.type !== 'dummy');
+    return list.filter((b) => Math.hypot(b.x - me.x, b.z - me.z) < 30).map((b) => ({ id: b.id, x: b.x, z: b.z, story: b.story || '', type: b.type, chase: b.state === 'chase' })).sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z));
+  },
+  /**
+   * Where the one speaking is in the shot: on screen or not, hidden behind something solid, or the camera itself
+   * inside something (a house, a tree).
+   */
+  view() {
+    if (!cutscene.active || !cutscene.talk || !cutscene.talk.who || $('cs-box').classList.contains('thought')) return null;
+    const who = cutscene.talk.who, at = cutscene.where(who) || (who === 'hero' ? { x: me.x, z: me.z } : null);
+    if (!at) return { who, missing: true };
+    const head = new THREE.Vector3(at.x, who === 'hero' ? 1.0 : 1.55, at.z);
+    const cam = view.camera.position;
+    const ndc = head.clone().project(view.camera);
+    const onscreen = ndc.z < 1 && Math.abs(ndc.x) < 0.97 && Math.abs(ndc.y) < 0.97;
+    let hidden = null, camIn = null;
+    const segD = (ox, oz) => { const dx = head.x - cam.x, dz = head.z - cam.z, L2 = dx * dx + dz * dz || 1; const t = Math.max(0, Math.min(1, ((ox - cam.x) * dx + (oz - cam.z) * dz) / L2)); return { d: Math.hypot(cam.x + dx * t - ox, cam.z + dz * t - oz), t }; };
+    for (const c of world.land.chunks) for (const o of c.solid) {
+      if (Math.hypot(o.x - cam.x, o.z - cam.z) > 60) continue;
+      const r = o.hw ? Math.max(o.hw, o.hd) * 0.9 : (o.r || 1) * 0.75;
+      const inside = o.hw ? (() => { const c = Math.cos(-(o.rot || 0)), sn = Math.sin(-(o.rot || 0)), lx = (cam.x - o.x) * c - (cam.z - o.z) * sn, lz = (cam.x - o.x) * sn + (cam.z - o.z) * c; return Math.abs(lx) < o.hw * 0.95 && Math.abs(lz) < o.hd * 0.95; })() : Math.hypot(o.x - cam.x, o.z - cam.z) < (o.r || 1) * 0.6;
+      if (inside && cam.y < (o.kind === 'tree' ? 6 : o.height || 4)) camIn = o.kind;
+      const s2 = segD(o.x, o.z);
+      if (s2.t > 0.05 && s2.t < 0.92 && s2.d < r * 0.8 && Math.hypot(o.x - head.x, o.z - head.z) > r + 0.3 && cam.y < (o.kind === 'tree' ? 5 : 3.5)) hidden = o.kind;
+    }
+    return { who, onscreen, ndc: [+ndc.x.toFixed(2), +ndc.y.toFixed(2)], hidden, camIn };
+  },
+  dummies() { return world.beasts.filter((b) => b.type === 'dummy').map((b) => ({ id: b.id, x: b.x, z: b.z, ring: !!b.ring })); },
+  /** Walk toward (x, z) for a moment (the real controls: blocked by what blocks a player). */
+  /** Walk to (x, z), steered every frame, stopping within `near` metres (the stick held toward it, the camera behind). */
+  walk(x, z, near = 1.6) { botMove = { x, z, near }; },
+  stop() { botMove = null; },
+  /** A skill or a blow aimed at (x, z). */
+  act(k, x, z) { if (!world.ready(me, k)) return false; world.act(1, k, x, z); if (net && net.ready) net.send({ t: 'act', k, ax: +x.toFixed(2), az: +z.toFixed(2) }); return true; },
+  key(code) { dispatchEvent(new KeyboardEvent('keydown', { code, key: code })); dispatchEvent(new KeyboardEvent('keyup', { code, key: code })); },
+};
+window.land = { THREE_V: THREE.Vector3, __bot: BOT, world, view, crowd, me, fx, hero, get __web() { return webUI; }, __load: (id) => loadRigged(id).then((t) => !!t, (e) => String(e)), __company: company, __target: () => { const t = day && day.marker && day.marker(); return t ? { x: t.x, z: t.z } : null; }, __use: () => { const u = nearestUse(); return u ? u.label : null; }, __home: HOME.door, __board: BOARD_AT, __ward: () => wards && nextWard(), __clip: async (id, word) => { const t = await loadRigged(id); if (!t) return null; const name = Object.keys(t.clips).find((n) => n.toLowerCase().includes(word)); const clip = t.clips[name]; const mx = new THREE.AnimationMixer(t.scene); const act = mx.clipAction(clip); act.play(); const hands = []; t.scene.traverse((o) => { if (o.isBone && /hand/i.test(o.name)) hands.push(o); }); const out = []; const v = new THREE.Vector3(); for (let k = 0; k <= 40; k++) { act.time = clip.duration * k / 40; mx.update(0); t.scene.updateMatrixWorld(true); out.push([+(k / 40).toFixed(3), ...hands.slice(0, 2).map((h) => { h.getWorldPosition(v); return [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)]; })]); } act.stop(); return { name, dur: clip.duration, hands: hands.map((h) => h.name), out }; }, setYaw: (y) => (yaw = y), setPitch: (p) => (pitch = p), addBot, wear, joinServer, act, aimPoint, others, seen, get net() { return net; } }; // (tests)

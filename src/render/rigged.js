@@ -508,13 +508,109 @@ function prepare(spec, gltf) {
   (spec.attacks || []).forEach((a, i) => {
     if (clips[a.clip]) clips[`__attack${i}`] = THREE.AnimationUtils.subclip(clips[a.clip], a.clip, Math.round(a.from * 30), Math.round(a.to * 30), 30);
   });
+  // (1.1.4) clips that stand their feet in the ground (Tripo's often do, by a few per cent of the body): lifted so the
+  // lowest foot over the clip is on the ground (falls, rolls and the like go down on purpose and are left)
+  if (spec.recentre === '*') for (const name in clips) if (!/fall|death|defeat|die|lay|roll|knock|kneel|sit|crouch|dodge|slide|lunge|land|jump/i.test(name)) groundClip(scene, clips[name], h);
+    // (1.1.4) a generated gait (tools/models/gait.mjs): how fast each one's planted feet go back, so it is played at
+  // exactly the speed the body moves (nothing slides)
+  const gait = {};
+  for (const name of ['walk', 'trot']) if (clips[name] && clips.trot) gait[name] = stepSpeed(scene, clips[name]);
+  // (1.1.4) any other creature's walk: its own step speed too (a walk played too slowly glides; too fast, skids)
+  const walkName = Object.keys(clips).find((n) => /^walk|^gait_walk|^run$/i.test(n));
+  const step = !gait.walk && spec.recentre === '*' && walkName ? stepSpeed(scene, clips[walkName]) : 0;
   if (spec.attack && spec.attack.cycle && clips[spec.attack.clip]) clips.__attack = clips[spec.attack.clip];
   else if (spec.attack && clips[spec.attack.clip]) {
     const src = clips[spec.attack.clip];
     const fps = 30;
     clips.__attack = THREE.AnimationUtils.subclip(src, 'attack', Math.round(spec.attack.from * fps), Math.round(spec.attack.to * fps), fps);
   }
-  return { spec, scene, scale, clips };
+  return { spec, scene, scale, clips, gait: gait.walk ? gait : null, step };
+}
+
+/** (1.1.4) The leaf bones of legs and feet (by their names), which touch the ground. */
+function feetOf(scene) {
+  const feet = [];
+  scene.traverse((o) => { if (o.isBone && !o.children.some((c) => c.isBone) && /(leg|limb|foot|toe|ankle|calf|shin)/i.test(o.name) && !/arm|hand|finger|0_(left|right)_limb/i.test(o.name)) feet.push(o); });
+  // (a four-legged rig's front legs are its 0_ limbs: counted when there are no others)
+  if (!feet.length) scene.traverse((o) => { if (o.isBone && !o.children.some((c) => c.isBone) && /limb/i.test(o.name)) feet.push(o); });
+  return feet;
+}
+
+/**
+ * (1.1.4) Lift a clip whose feet go into the ground: the lowest foot over the clip (sampled) is put back on the
+ * ground of the rest pose, by moving the top bone's track up (in its parent's space). Only when it sinks by more
+ * than 2% of the height `h`.
+ */
+function groundClip(scene, clip, h) {
+  const feet = feetOf(scene);
+  if (!feet.length) return;
+  let top = null;
+  scene.traverse((o) => { if (!top && o.isBone && !(o.parent && o.parent.isBone)) top = o; });
+  const track = top && clip.tracks.find((t) => t.name === `${top.name}.position`);
+  if (!track) return;
+  scene.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  const ground = 0; // (a creature stands with its model's origin on the ground)
+  const saved = [];
+  scene.traverse((o) => { if (o.isBone) saved.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
+  const mixer = new THREE.AnimationMixer(scene);
+  const act = mixer.clipAction(clip);
+  act.play();
+  let low = Infinity;
+  for (let i = 0; i <= 24; i++) {
+    act.time = Math.min(clip.duration - 1e-4, (i / 24) * clip.duration);
+    mixer.update(0);
+    scene.updateMatrixWorld(true);
+    for (const f of feet) low = Math.min(low, f.getWorldPosition(v).y);
+  }
+  act.stop();
+  mixer.uncacheRoot(scene);
+  for (const [o, p, q, sc] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); }
+  scene.updateMatrixWorld(true);
+  const sink = ground - low;
+  if (!(sink > 0.02 * h)) return;
+  // world up, in the top bone's parent's space
+  const local = new THREE.Vector3(0, sink, 0);
+  const pw = new THREE.Vector3(), pq = new THREE.Quaternion(), ps = new THREE.Vector3();
+  top.parent.matrixWorld.decompose(pw, pq, ps);
+  local.applyQuaternion(pq.invert()).divide(ps);
+  const val = track.values;
+  for (let i = 0; i < val.length; i += 3) { val[i] += local.x; val[i + 1] += local.y; val[i + 2] += local.z; }
+}
+
+/**
+ * (1.1.4) How fast a walk's planted feet move back under the body (scene units a second): at each moment the lowest
+ * foot (a leaf bone of a leg) is the one on the ground, and its speed along the ground is the walk's own speed. The
+ * median over the cycle (a foot changing over is not counted). The scene is left as it was.
+ */
+export function stepSpeed(scene, clip) {
+  const feet = [], saved = [];
+  scene.traverse((o) => {
+    if (!o.isBone) return;
+    saved.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]);
+    if (!o.children.some((c) => c.isBone) && !/head|tail|jaw|ear|eye/i.test(o.name)) feet.push(o);
+  });
+  if (!feet.length) return 0;
+  const mixer = new THREE.AnimationMixer(scene);
+  const act = mixer.clipAction(clip);
+  act.play();
+  const n = 60, dt = clip.duration / n, v = new THREE.Vector3(), speeds = [];
+  let last = null;
+  for (let i = 0; i <= n; i++) {
+    act.time = i * dt;
+    mixer.update(0);
+    scene.updateMatrixWorld(true);
+    let low = null, lowY = Infinity;
+    for (const f of feet) { f.getWorldPosition(v); if (v.y < lowY) { lowY = v.y; low = { f, x: v.x, z: v.z }; } }
+    if (last && last.f === low.f) speeds.push(Math.hypot(low.x - last.x, low.z - last.z) / dt);
+    last = low;
+  }
+  act.stop();
+  mixer.uncacheRoot(scene);
+  for (const [o, p, q, s] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(s); }
+  scene.updateMatrixWorld(true);
+  speeds.sort((a, b) => a - b);
+  return speeds.length ? speeds[Math.floor(speeds.length / 2)] : 0;
 }
 
 /** How far a clip's root bone travels across the ground from its first frame to its last, in world units. */

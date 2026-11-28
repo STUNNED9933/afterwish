@@ -345,10 +345,25 @@ export function makeCreature(tpl, spec) {
           h.timeScale = 0.35;
         }
       } else if (s.moving) {
+        if (tpl.gait && !s.walkKind) {
+          // (1.1.4) a generated gait: a walk, or a trot when faster, played so the planted feet keep pace with the ground
+          const k = holder.scale.x * (s.scale || 1), sp = s.speed || 3;
+          const kind = action('trot') && sp > tpl.gait.walk * k * 1.7 ? 'trot' : 'walk';
+          const w = action(kind);
+          if (w) {
+            fadeTo(w, 0.25);
+            w.timeScale = Math.max(0.25, Math.min(3, sp / Math.max(1e-3, tpl.gait[kind] * k)));
+          }
+          mixer.update(dt);
+          return;
+        }
         const w = action(s.walkKind || 'walk') || action('walk'); // (0.91) a jog, or a walk with a load
         if (w) {
           fadeTo(w, 0.2);
-          w.timeScale = Math.max(0.6, Math.min(2.2, (s.speed || 3) / (spec.beast ? 4 : 2.6)));
+          // (1.1.4) played so its planted feet keep pace with the ground (its own step speed, measured when it loaded);
+          // a floating thing, or one whose step could not be measured, keeps the old rule
+          const k = holder.scale.x * (s.scale || 1);
+          w.timeScale = tpl.step > 0.02 && spec.float == null && !s.walkKind ? Math.max(0.45, Math.min(3.6, (s.speed || 3) / (tpl.step * k))) : Math.max(0.6, Math.min(2.2, (s.speed || 3) / (spec.beast ? 4 : 2.6)));
         }
       } else {
         const idle = (s.idleKind && action(s.idleKind)) || action('idle'); // (0.91) a villager's work, a seat, a chat

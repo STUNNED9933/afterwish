@@ -1,0 +1,32 @@
+{
+  "task_id": "ea016875-7797-4235-9083-b792a1d7e6b1",
+  "type": "text_to_model",
+  "status": "success",
+  "input": {
+    "pbr": false,
+    "prompt": "a giant Dune Scarab beetle seen in profile, a low wide horizontal body close to the ground, a golden bronze carapace scarred with old royal engravings, six jointed legs spread out wide to the sides and planted on the ground, large curved mandibles at the front, head forward, not standing up. dark fantasy game character, full body, standing in a neutral pose with arms slightly away from the body, clean readable silhouette, stylised-realistic, hand-painted PBR-style textures, unsettling and sad rather than gory",
+    "delight": false,
+    "texture": true,
+    "export_uv": true,
+    "face_limit": 8000,
+    "model_version": "v3.1-20260211",
+    "smart_low_poly": true,
+    "texture_version": "v3.5-20260815",
+    "geometry_quality": "standard",
+    "texture_alignment": "geometry"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url",
+    "generated_image_url"
+  ],
+  "credits_consumed": 30,
+  "created_at": "2026-11-28T12:00:49.097477Z",
+  "completed_at": "2026-11-28T12:02:50.037537Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "generated_image.jpeg",
+    "preview.png"
+  ]
+}

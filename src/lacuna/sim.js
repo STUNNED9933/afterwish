@@ -93,6 +93,13 @@ export const KITS = {
 };
 export const LACUNA_CLASSES = Object.keys(KITS);
 const CALM = 6; // seconds without a fight before health comes back
+// (1.2.1) Patience: a beast that cannot get at whoever it is after (they are far off, or it has been drawn well away
+// from where they pulled it) gives up over PATIENCE seconds, with a bar to show it, instead of turning for home at once.
+// It is measured from where it was pulled, not from its home, so a beast met at the edge of its ground does not
+// reset the moment the fight starts. Hard stop: its leash again (up to HOME_MOST more) past its leash from home.
+export const PATIENCE = 6;
+export const HOME_MOST = 40;
+const hardLeash = (def) => def.leash + Math.min(def.leash + 10, HOME_MOST);
 const RESPAWN = 45; // a beast comes back this long after it falls (if nobody is standing on its home)
 const DOWN = 6; // seconds a hero is down
 export const JUMP = { up: 6.4, gravity: 21 }; // about a metre high, two thirds of a second in the air
@@ -123,6 +130,7 @@ export class LandWorld {
     this.players = new Map(); // pid -> player
     this.beasts = [];
     this.byChunk = Array.from({ length: CHUNKS * CHUNKS }, () => []); // beasts by home chunk
+    this.chasing = new Set(); // (1.2.1) beasts chasing or going home, stepped even when their home chunk is not
     this.shots = []; // arrows in the air
     this.shotId = 0;
     this.events = [];
@@ -445,6 +453,16 @@ export class LandWorld {
         awake++;
         this.think(b, near, dt);
       }
+    }
+    // (1.2.1) a beast drawn out of the chunks round you (its home is further off) still chases, and gives up, and goes
+    // home: it used to stand where it was, mid-chase, until you came back
+    for (const b of this.chasing) {
+      if (b.dead || b.state === 'idle') { this.chasing.delete(b); continue; }
+      if (live.has(b.chunk)) continue;
+      const near = this.nearest(b);
+      b.awake = true;
+      awake++;
+      this.think(b, near || { p: null, d: Infinity }, dt);
     }
     this.stats = { awake, looked, active: live.size };
   }
@@ -846,10 +864,17 @@ export class LandWorld {
     }
   }
 
+  /** (1.2.1) Is a chasing beast unable to get at its quarry (far off, or drawn past its leash from where it was pulled)? */
+  straying(b) {
+    const def = b.def || BEASTS[b.type], p = b.target && this.players.get(b.target);
+    if (!p) return true;
+    return dHypot(p.x - b.x, p.z - b.z) > def.aggro * 2.2 || (b.ax !== undefined && dHypot(b.x - b.ax, b.z - b.az) > def.leash);
+  }
+
   /** Living beasts whose home chunk is near (x, z) (they never stray more than a leash from home). */
   beastsNear(x, z, r) {
     const out = [];
-    const k0 = chunkOf(x - r - 32, z - r - 32), k1 = chunkOf(x + r + 32, z + r + 32);
+    const k0 = chunkOf(x - r - 32 - HOME_MOST, z - r - 32 - HOME_MOST), k1 = chunkOf(x + r + 32 + HOME_MOST, z + r + 32 + HOME_MOST); // (1.2.1) a beast may stray HOME_MOST further
     for (let cz = k0.cz; cz <= k1.cz; cz++)
       for (let cx = k0.cx; cx <= k1.cx; cx++)
         for (const b of this.byChunk[cz * CHUNKS + cx]) if (!b.dead && Math.abs(b.x - x) <= r + 1 && Math.abs(b.z - z) <= r + 1) out.push(b);
@@ -889,9 +914,11 @@ export class LandWorld {
       return;
     }
     // struck from afar, it comes for whoever struck it
+    if (b.state === 'chase' && b.target === p.pid && !this.straying(b)) b.pat = Math.min(1, (b.pat ?? 1) + 0.4); // (1.2.1) a fight in reach keeps it keen
     if (b.state !== 'chase' && this.players.has(p.pid) && !BEASTS[b.type].post) {
       b.state = 'chase';
       b.target = p.pid;
+      b.ax = b.x; b.az = b.z; b.pat = 1; this.chasing.add(b); // (1.2.1) where it was pulled
       this.wake(b, p);
       this.emit('aggro', { id: b.id, pid: p.pid, x: b.x, z: b.z });
     }
@@ -1055,13 +1082,23 @@ export class LandWorld {
     const t = b.target && this.players.get(b.target);
     if (b.state === 'chase' && t && !t.dead) { p = t; d = dHypot(t.x - b.x, t.z - b.z); }
     const fromHome = dHypot(b.x - b.hx, b.z - b.hz);
-    if (b.rift) { const t2 = this.players.get(b.rift); if (t2 && !t2.dead && b.state !== 'chase') { b.state = 'chase'; b.target = b.rift; } } // (1.1) a rift's foes come for whoever opened it
-    else if (b.state === 'chase' && (fromHome > def.leash || d > def.aggro * 2.2 || p.dead)) { b.state = 'return'; b.target = 0; }
+    if (b.rift) { const t2 = this.players.get(b.rift); if (t2 && !t2.dead && b.state !== 'chase') { b.state = 'chase'; b.target = b.rift; this.chasing.add(b); } } // (1.1) a rift's foes come for whoever opened it
+    else if (b.state === 'chase') {
+      // (1.2.1) gone (fallen), or far past its own ground: home at once. Otherwise its patience runs down while it
+      // cannot get at you, and fills again while it can
+      if (b.ax === undefined) { b.ax = b.x; b.az = b.z; b.pat = 1; }
+      if (!p || p.dead || fromHome > hardLeash(def)) b.pat = 0;
+      else if (d > def.aggro * 2.2 || dHypot(b.x - b.ax, b.z - b.az) > def.leash) b.pat = (b.pat ?? 1) - dt / PATIENCE;
+      else b.pat = Math.min(1, (b.pat ?? 1) + dt * 0.5);
+      if (fromHome > hardLeash(def) - 15) b.pat = Math.min(b.pat, (hardLeash(def) - fromHome) / 15); // nearing the hard stop: the bar shows it
+      if (b.pat <= 0) { b.state = 'return'; b.target = 0; b.pat = 1; }
+    }
     if (b.state === 'return' && fromHome < 2) { b.state = 'idle'; b.t = 1 + this.rng() * 3; if (b.lv && b.rank) { b.lv = 0; b.def = { ...b.def, hp: b.def.hp }; } b.hp = b.maxHp; b.tele = null; }
     if (b.rank === 3 && b.state === 'chase') this.bossSlam(b, p, dt); // (1.1) a world boss's great blow
     if (b.state === 'idle' && d < def.aggro && fromHome < def.leash * 0.8) {
       b.state = 'chase';
       b.target = p.pid;
+      b.ax = b.x; b.az = b.z; b.pat = 1; this.chasing.add(b); // (1.2.1) where it was pulled
       this.wake(b, p);
       this.emit('aggro', { id: b.id, pid: p.pid, x: b.x, z: b.z });
     }
@@ -1089,6 +1126,7 @@ export class LandWorld {
             p.calm = 0;
           }
           this.emit('swipe', { id: b.id, pid: p.pid, dmg: dodged ? 0 : Math.round(def.dmg), x: b.x, z: b.z });
+          b.pat = 1; // (1.2.1) it got at you
           if (p.hp <= 0 && !p.dead) {
             p.hp = 0;
             p.dead = true;

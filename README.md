@@ -160,6 +160,33 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Smoother music, a compass, and beasts that lose patience (1.2.1)
+
+- **Music no longer stutters.** The player queued notes only a fifth of a second ahead, so one slow frame (ground
+  loading, a busy fight) emptied the queue and the notes it missed then played all at once, late. It now queues
+  0.8 s ahead, and a note whose moment has passed is left out so the beat keeps its place. Measured in a slow test
+  browser (4 frames a second): late notes went from 3 in 27 (up to 0.32 s late) to none. The recorded notes also
+  start where their sound starts (the files had 5-20 ms of silence first, different per note).
+- **Quieter music**: a gentle limiter on the loudest moments, about 3 dB less overall, and Lacuna's music slider
+  starts lower. A theme now has to be wanted for a moment before it takes over, so the edge of town or a
+  stop-start fight cannot flip the music back and forth.
+- **A compass** along the top of Lacuna: which way you face, and the quest's ◆ with how far (held at an end, with an
+  arrow, when it is behind you).
+- **The quest marker for far places** (past how far the game draws) used to drop to the bottom of the screen, as if
+  under the ground. It now sits over the right place, or at the side it is nearer to when off the screen.
+- **Patience.** A beast that cannot get at you now gives up over 6 seconds, shown as an amber line under its health,
+  instead of turning for home at once. It is measured from where you pulled it, not from its home, so a beast met at
+  the edge of its ground (or shot from range) no longer resets the moment the fight starts. Hitting it, or it hitting
+  you, keeps it keen. A beast drawn far from home still chases and goes home (it used to freeze mid-chase).
+- **Vesper** no longer jitters in his fight: he was moved 30 times a second, so on faster screens he stood still one
+  frame and jumped the next, and he turned in a single frame. He is now eased.
+- **The opening rescue** is quicker: all four Hounds come out of the trees together, and Rowan and Sorrel are already
+  running while Juni shouts, instead of appearing after her line and going one at a time.
+- **Lines**: Vesper now says plainly that he has decided to kill you and take the body; his last words are about
+  being so close; Juni calls the Ninth Hand a myth told to recruits.
+- **The talent web is now the technique web** (and technique points): the story says you cannot gain more magic,
+  only better technique.
+
 ### Sound and music on real instruments (1.2.0)
 
 - **Recorded instruments.** The music used to be played on synthesised tones. It now plays on samples of real

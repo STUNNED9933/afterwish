@@ -206,18 +206,23 @@ export class Fx {
     const want = new Set();
     for (const b of beasts) {
       // (1.1) an elite, a named beast or a boss: its bar and name always shown (an ordinary beast only once hurt)
-      if (b.dead || (b.hp >= 0.999 && !b.rank) || b.rank === 3 || (b.x - heroX) ** 2 + (b.z - heroZ) ** 2 > (b.rank ? 40 : 45) ** 2) continue;
+      const pat = b.state === 'chase' && b.pat !== undefined ? b.pat : 1; // (1.2.1) losing patience: shown even unhurt
+      if (b.dead || (b.hp >= 0.999 && !b.rank && pat > 0.97) || b.rank === 3 || (b.x - heroX) ** 2 + (b.z - heroZ) ** 2 > (b.rank ? 40 : 45) ** 2) continue;
       want.add(b.id);
       let d = this.bars.get(b.id);
       if (!d) {
         d = document.createElement('div');
         d.className = 'bar' + (b.rank ? ` r${b.rank}` : '');
         d.appendChild(document.createElement('i'));
+        d.appendChild(document.createElement('s')); // (1.2.1) its patience
         if (b.name) { const n = document.createElement('b'); n.textContent = b.name + (b.lv ? ` · ${b.lv}` : ''); d.appendChild(n); }
         this.layer.appendChild(d);
         this.bars.set(b.id, d);
       }
       d.firstChild.style.width = `${Math.max(0, b.hp) * 100}%`;
+      const ps = d.children[1];
+      ps.style.display = pat > 0.97 ? 'none' : '';
+      if (pat <= 0.97) ps.style.setProperty('--p', `${Math.max(0, pat) * 100}%`);
       place(d, b.x, (b.tall || 1.9) * (b.size || 1), b.z);
     }
     for (const [id, d] of this.bars) if (!want.has(id)) { d.remove(); this.bars.delete(id); }

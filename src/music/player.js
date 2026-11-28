@@ -45,7 +45,14 @@ export class Music {
     this.mix.type = 'lowpass';
     this.mix.Q.value = 0.5;
     this.mix.frequency.value = 16000;
-    this.mix.connect(this.out);
+    // (1.2.1) a gentle limiter last: the loudest moments (a fight theme, a cymbal) no longer jump out at the ear
+    this.limit = ctx.createDynamicsCompressor();
+    this.limit.threshold.value = -16;
+    this.limit.knee.value = 12;
+    this.limit.ratio.value = 4;
+    this.limit.attack.value = 0.008;
+    this.limit.release.value = 0.3;
+    this.mix.connect(this.limit).connect(this.out);
     // A simple hall reverb: a burst of fading noise used as the room's echo.
     const len = Math.floor(ctx.sampleRate * 2.2);
     const ir = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -118,9 +125,10 @@ export class Music {
   }
 
   applyVolume() {
-    // 0.68 leaves headroom so the busiest theme does not distort with the slider at full.
+    // 0.68 leaves headroom so the busiest theme does not distort with the slider at full. (1.2.1) 0.5: the recorded
+    // instruments carry more than the old synths did, and it was too loud
     if (!this.out) return;
-    const v = this.muted || this.paused ? 0 : this.volume * 0.68 * (this.ducked ? 0.5 : 1);
+    const v = this.muted || this.paused ? 0 : this.volume * 0.5 * (this.ducked ? 0.5 : 1);
     this.out.gain.cancelScheduledValues(this.ctx.currentTime);
     this.out.gain.setTargetAtTime(v, this.ctx.currentTime, this.muted || this.paused ? 0.01 : 0.15);
   }
@@ -196,18 +204,25 @@ export class Music {
     this.nextTime = this.ctx.currentTime + delay;
     const tick = () => {
       const a = this.song(id);
-      // Queue every note that starts in the next fifth of a second.
-      while (this.nextTime < this.ctx.currentTime + 0.2) {
+      const now = this.ctx.currentTime;
+      if (this.nextTime < now - 1) this.nextTime = now + 0.1; // the tab slept; pick up from here
+      // (1.2.1) Queue every note that starts in the next Music.AHEAD seconds. It was a fifth of a second: one slow
+      // frame (ground loading, a busy fight) and the queue ran dry, then the notes it missed all played at once,
+      // late (the music stuttered). A note whose time has already gone is left out, so the beat keeps its place.
+      while (this.nextTime < now + Music.AHEAD) {
         const evs = a.byStep.get(this.step);
-        if (evs) for (const ev of evs) this.note(ev, this.nextTime, ev.dur * a.stepSeconds);
+        if (evs && this.nextTime > now - 0.03) for (const ev of evs) this.note(ev, Math.max(this.nextTime, now), ev.dur * a.stepSeconds);
+        else if (evs) this.dropped = (this.dropped || 0) + evs.length;
         this.step = (this.step + 1) % a.steps;
         this.nextTime += a.stepSeconds;
       }
-      if (this.nextTime < this.ctx.currentTime - 1) this.nextTime = this.ctx.currentTime + 0.1; // the tab slept; catch up
     };
     tick();
-    this.timer = setInterval(tick, 40);
+    this.timer = setInterval(tick, 50);
   }
+
+  /** (1.2.1) How far ahead notes are queued, in seconds: longer than any frame the game is likely to take. */
+  static AHEAD = 0.8;
 
   stopTimer() {
     if (this.timer) clearInterval(this.timer);

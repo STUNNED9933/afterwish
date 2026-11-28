@@ -264,7 +264,7 @@ function joinServer() {
         if (!s) seen.set(u.id, (s = { x: u.x, z: u.z }));
         s.fx = s.x; s.fz = s.z; s.tx = u.x; s.tz = u.z; s.t0 = now;
         if (u.dead && !s.dead) { s.x = s.fx = u.x; s.z = s.fz = u.z; }
-        Object.assign(s, { id: u.id, facing: u.facing, moving: u.moving, type: u.type, player: u.player, state: u.state, dead: u.dead, hp: u.hp, r: u.type ? BEASTS[u.type].r : 0.4, tall: u.type === 'golem' ? 2.9 : 1.8 });
+        Object.assign(s, { id: u.id, facing: u.facing, moving: u.moving, type: u.type, player: u.player, state: u.state, dead: u.dead, hp: u.hp, pat: u.pat, r: u.type ? BEASTS[u.type].r : 0.4, tall: u.type === 'golem' ? 2.9 : 1.8 });
         if (!s.marked && !u.player) { s.marked = true; Object.assign(s, marks.get(u.id) || NO_MARK); }
       }
       for (const id of gone) seen.delete(id);
@@ -1086,7 +1086,7 @@ function gainXp(n, why = '') {
     fx.ring(me.x, me.z, 2.4, 0xffd24a, 0.7);
     fx.ring(me.x, me.z, 1.2, 0xfff0b0, 0.5);
     sound.play('levelup');
-    $('lvlup').innerHTML = `Level ${now}<small>A little stronger, and a talent point: press P</small>`;
+    $('lvlup').innerHTML = `Level ${now}<small>A little stronger, and a technique point: press P</small>`;
     if (webUI.open) webUI.draw();
     $('lvlup').style.opacity = '1';
     clearTimeout(gainXp.t);
@@ -1110,7 +1110,7 @@ function toggleWeb() {
   sound.play('ui');
   if (webUI.open) { webUI.hide(); relock(); return; }
   if (cutscene.active) return;
-  if (me.cls !== 'warrior' && me.cls !== 'archer') return note('The talent web opens once you have a path (Rowan\'s or Juni\'s). Your points wait for you.');
+  if (me.cls !== 'warrior' && me.cls !== 'archer') return note('The technique web opens once you have a path (Rowan\'s or Juni\'s). Your points wait for you.');
   document.exitPointerLock();
   webUI.show();
 }
@@ -1135,7 +1135,7 @@ function takeProgress(msg) {
   world.setLevel(1, L);
   net.send({ t: 'lvl', L });
   applyWeb();
-  toast('Progress from your account', `Level ${L}, and your talents`);
+  toast('Progress from your account', `Level ${L}, and your techniques`);
 }
 
 /** The tricks, the web: done once you have learned every trick, or spent a point. */
@@ -1498,19 +1498,70 @@ const markV = new THREE.Vector3();
 function questLead() {
   return story.stage === 'invitation' ? HOME.door : story.stage === 'tower' ? WATCHTOWER : story.stage === 'wards' && wards ? nextWard() : story.stage === 'contracts' && job ? nearestFoe() : story.stage === 'report' ? CRYSTAL : story.stage === 'mourning' ? company.rowan : story.stage === 'hunt' && hunt ? (hunt.done ? TEAR : hunt.wolves.filter((w) => !w.dead && w.story === 'ashen').sort((p, q) => Math.hypot(p.x - me.x, p.z - me.z) - Math.hypot(q.x - me.x, q.z - me.z))[0]) : story.stage === 'ambush' ? company.rowan : story.stage === 'days' && day && day.marker ? day.marker() : story.stage === 'stumble' ? GLADE_EDGE : story.stage === 'rescued' ? TEAR : story.stage === 'waking' ? questRun && questRun.leader : story.stage === 'crystal' ? CRYSTAL : story.stage === 'path' && story.trial !== 'choose' ? (trial && trial.cls === 'archer' ? TRAINING.line : TRAINING.ring) : null;
 }
+// (1.2.1) the compass: north is -z (the ridge and the watchtower), east +x (the training ground)
+const COMPASS = [];
+{
+  const el = $('compass');
+  const names = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+  for (let deg = 0; deg < 360; deg += 15) {
+    const sp = document.createElement('span');
+    if (names[deg]) { sp.textContent = names[deg]; sp.className = deg % 90 ? '' : deg ? 'c' : 'c n'; } else sp.className = 't';
+    el.appendChild(sp);
+    COMPASS.push({ sp, a: (deg / 180) * Math.PI });
+  }
+  const q = document.createElement('span');
+  q.className = 'q';
+  el.appendChild(q);
+  COMPASS.q = q;
+}
+const camDir = new THREE.Vector3();
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+/** Where the camera faces, as a bearing (0 north, clockwise, radians). */
+function facing() { view.camera.getWorldDirection(camDir); return Math.atan2(camDir.x, -camDir.z); }
+function drawCompass(lead, d) {
+  const el = $('compass');
+  const w = el.clientWidth || 440, per = w / Math.PI; // half a turn across the strip
+  const f = facing();
+  for (const c of COMPASS) {
+    const rel = wrapA(c.a - f);
+    const show = Math.abs(rel) < Math.PI / 2 - 0.05;
+    c.sp.style.display = show ? '' : 'none';
+    if (show) c.sp.style.left = `${w / 2 + rel * per}px`;
+  }
+  const q = COMPASS.q;
+  if (!lead) { q.style.display = 'none'; return; }
+  const rel = wrapA(Math.atan2(lead.x - me.x, -(lead.z - me.z)) - f);
+  const edge = Math.PI / 2 - 0.12, out = Math.abs(rel) > edge; // behind you: held at the end it is nearer to
+  q.style.display = '';
+  q.style.left = out ? (rel < 0 ? '4px' : `${w - 4}px`) : `${w / 2 + rel * per}px`;
+  q.style.transform = out ? (rel < 0 ? 'none' : 'translateX(-100%)') : ''; // (held inside the strip at its ends)
+  q.textContent = out ? (rel < 0 ? `◀ ◆ ${Math.round(d)} m` : `◆ ${Math.round(d)} m ▶`) : `◆ ${Math.round(d)} m`;
+}
 function drawMarker() {
   const lead = questLead();
+  $('compass').classList.toggle('hidden', cutscene.active);
+  if (!cutscene.active) drawCompass(lead, lead ? Math.hypot(lead.x - me.x, lead.z - me.z) : 0);
   if (!lead || cutscene.active) { $('marker').classList.add('hidden'); return; }
   const d = Math.hypot(lead.x - me.x, lead.z - me.z);
-  markV.set(lead.x, 2.3, lead.z).project(view.camera);
+  // (1.2.1) past how far the game draws (the far plane), a point projects as if it were behind you: the marker for a
+  // far place went to the bottom of the screen ("under the ground"). It is placed along the same line, nearer.
+  const cp = view.camera.position, ex = lead.x - cp.x, ey = 2.3 - cp.y, ez = lead.z - cp.z, el = Math.hypot(ex, ey, ez) || 1, near = Math.min(el, 60) / el;
+  markV.set(cp.x + ex * near, cp.y + ey * near, cp.z + ez * near).project(view.camera);
   let x = ((markV.x + 1) / 2) * innerWidth, y = ((1 - markV.y) / 2) * innerHeight;
-  const behind = markV.z > 1;
-  if (behind) { x = innerWidth - x; y = innerHeight - 40; }
   const m = 24;
+  // (1.2.1) off the screen (behind you, or past an edge): it used to be mirrored to the bottom of the screen, where it
+  // looked as if it were under the ground. Now it is held at the side it is nearer to, with an arrow, at eye height
+  const rel = wrapA(Math.atan2(lead.x - me.x, -(lead.z - me.z)) - facing());
+  const off = markV.z > 1 || x < m + 30 || x > innerWidth - m - 30 || y < m + 20 || y > innerHeight - 180;
+  if (off) {
+    x = rel < 0 ? m + 60 : innerWidth - m - 60;
+    y = innerHeight * 0.42;
+  }
   x = Math.max(m + 30, Math.min(innerWidth - m - 30, x));
-  y = Math.max(m + 20, Math.min(innerHeight - 180, y));
+  y = Math.max(m + 46, Math.min(innerHeight - 180, y));
+  const behind = off;
   const what = story.stage === 'invitation' ? 'The lodging' : story.stage === 'tower' ? 'The watchtower' : story.stage === 'wards' ? 'An ash-ward' : story.stage === 'contracts' ? (lead.def && lead.def.name) || 'The quarry' : story.stage === 'report' ? 'The Guild' : story.stage === 'mourning' ? 'Rowan' : story.stage === 'hunt' ? (hunt && hunt.done ? 'The glade' : 'Ashen wolf') : story.stage === 'ambush' ? 'Rowan' : story.stage === 'days' ? (DAYS[day ? day.n : 0].tasks[day ? day.at : 0] || {}).text || '' : story.stage === 'stumble' ? 'Out of the glade' : story.stage === 'rescued' ? 'Sorrel' : story.stage === 'crystal' ? 'The Guild' : story.stage === 'path' ? (trial && trial.cls === 'archer' ? 'The line' : trial ? 'The ring' : 'Training ground') : 'Rowan';
-  $('marker').textContent = `◆ ${what} · ${Math.round(d)} m`;
+  $('marker').textContent = off ? (rel < 0 ? `◀ ${what} · ${Math.round(d)} m` : `${what} · ${Math.round(d)} m ▶`) : `◆ ${what} · ${Math.round(d)} m`;
   $('marker').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   $('marker').classList.toggle('hidden', d < 6 && !behind);
 }
@@ -1911,9 +1962,14 @@ let boss = null; // { b (sim), stage: 1 or 2, t, healT }
 function syncVesper(dt) {
   const v = company.vesper, b = boss && boss.b;
   if (!v || !b) return;
+  // (1.2.1) eased after the sim, not set to it: the sim moves him 30 times a second, so on a faster screen he stood
+  // still one frame and jumped the next (the jitter, worst in close-up), and he turned in a single frame
   const d = Math.hypot(b.x - v.x, b.z - v.z);
-  v.place(b.x, b.z, b.facing);
-  void d;
+  if (d > 3 || !(dt > 0)) v.place(b.x, b.z, b.facing);
+  else {
+    const k = Math.min(1, dt * 14), turn = Math.atan2(Math.sin(b.facing - v.facing), Math.cos(b.facing - v.facing));
+    v.place(v.x + (b.x - v.x) * k, v.z + (b.z - v.z) * k, v.facing + turn * Math.min(1, dt * 10));
+  }
   if (v.looping !== 'idle' && !v.once && !v.held) v.loop('idle'); // (0.99.27) walking or running: his own feet decide
 }
 const fightRun = { update(dt) { for (const [who, a] of Object.entries(company)) if (who !== 'vesper') a.update(dt); if (company.vesper) company.vesper.update(dt); syncVesper(dt); fightTick(dt); } };
@@ -2384,7 +2440,7 @@ function frame(now) {
   } else {
     view.drawBeasts(hx, hz, alpha, time);
     nearBeasts.length = 0;
-    for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: (b.def && b.def.r) || BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8, rank: b.rank || 0, name: b.name, size: b.size, lv: b.lv, state: b.state });
+    for (const b of world.beasts) if (!b.dead && (b.x - hx) ** 2 + (b.z - hz) ** 2 < 60 * 60) nearBeasts.push({ id: b.id, x: b.x, z: b.z, r: (b.def && b.def.r) || BEASTS[b.type].r, hp: b.hp / b.maxHp, dead: b.dead, tall: b.type === 'golem' ? 2.9 : 1.8, rank: b.rank || 0, name: b.name, size: b.size, lv: b.lv, state: b.state, pat: b.state === 'chase' ? b.pat ?? 1 : 1 });
     fxBeasts = nearBeasts;
   }
   fx.update(dt, fxBeasts, view.camera, innerWidth, innerHeight, !!me.oath, hx, hz);

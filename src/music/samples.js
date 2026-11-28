@@ -55,7 +55,11 @@ export class Sampler {
             let peak = 0;
             const d = buf.getChannelData(0);
             for (let i = 0; i < d.length; i += 7) peak = Math.max(peak, Math.abs(d[i]));
-            return { midi: m, buf, gain: peak > 0.001 ? 0.9 / peak : 1 };
+            // (1.2.1) and started where its sound starts: the MP3s carry 5-20 ms of silence first, different per
+            // note, which put the recorded notes a little behind the drums and each other (the music sounded uneven)
+            let lead = 0;
+            while (lead < d.length && Math.abs(d[lead]) < peak * 0.02) lead++;
+            return { midi: m, buf, gain: peak > 0.001 ? 0.9 / peak : 1, lead: Math.max(0, lead / buf.sampleRate - 0.002) };
           }));
           this.banks.set(inst, bank.sort((a, b) => a.midi - b.midi));
           return true;
@@ -104,7 +108,7 @@ export class Sampler {
     if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); out = p; }
     src.connect(g);
     out.connect(dest);
-    src.start(t);
+    src.start(t, Math.min(s.lead || 0, 0.05));
     src.stop(end + 0.05);
     return true;
   }

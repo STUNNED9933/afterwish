@@ -15,7 +15,7 @@ export class LandSound {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* private window */ }
     this.vol = saved.vol ?? 0.8;
-    this.musicVol = saved.music ?? 0.6;
+    this.musicVol = saved.music ?? 0.45; // (1.2.1) was 0.6: too loud
     this.muted = !!saved.muted;
     this.ctx = null;
     this.music = new Music();
@@ -251,7 +251,15 @@ export class LandSound {
   /** Each frame: the hero's own sounds (footsteps, landing), ambience, and the song wanted (`song`, `fight` 0..1). */
   frame(dt, { x, z, yaw, onGround, moving, speed, road, vy, song, fight, wild, wind }) {
     this.listener = { x, z, yaw };
-    if (song !== this.song) { this.song = song; if (this.ctx) this.music.play(song); }
+    // (1.2.1) a new theme has to be wanted for a moment before it takes over, so walking along the edge of town or
+    // a fight that stops and starts cannot flip the music back and forth (each switch restarts a song)
+    if (song === this.song) this.want = null;
+    else if (!this.song) { this.song = song; if (this.ctx) this.music.play(song); }
+    else {
+      if (this.want !== song) { this.want = song; this.wantFor = 0; }
+      this.wantFor += dt;
+      if (this.wantFor > 1.2) { this.song = song; this.want = null; if (this.ctx) this.music.play(song); }
+    }
     if (this.ctx) this.music.setIntensity(fight);
     if (!this.ctx || this.muted) return;
     // footsteps: one every ~0.33 s at a run, slower at a walk

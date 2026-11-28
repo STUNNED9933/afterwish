@@ -41,7 +41,7 @@ export const QUESTS = {
   invitation: { name: 'An Invitation', goal: 'Something has come for you at the Hounds\' lodging' },
   tower: { name: 'An Invitation', goal: 'The old watchtower on the north ridge, at dusk (with the Hounds)' },
   wards: { name: 'An Invitation', goal: 'Break the three ash-wards round the watchtower' },
-  act2: { name: 'Act II', goal: 'The End of Act I. Act II is coming: meanwhile, the Guild\'s bounties, the tricks and your talent web' },
+  act2: { name: 'Act II', goal: 'The End of Act I. Act II is coming: meanwhile, the Guild\'s bounties, the tricks and your technique web' },
 };
 // (1.0) every stage above is the Main Story (the ✦ in the tracker); the others are kinds of their own
 export const MAIN_STORY = new Set(Object.keys(QUESTS));
@@ -52,7 +52,7 @@ export const MAIN_STORY = new Set(Object.keys(QUESTS));
  */
 export const SIDE_QUESTS = {
   tricks: { cat: 'feature', name: 'Moving Well', where: 'Anywhere (press H)', goal: 'Learn the tricks: bunny hops, slides, wall kicks... (press H for the list)', opens: (s) => ['warrior', 'archer'].includes(s.path) },
-  web: { cat: 'feature', name: 'The Talent Web', where: 'Anywhere (press P)', goal: 'Spend a talent point in the web (press P)', opens: (s) => ['warrior', 'archer'].includes(s.path) },
+  web: { cat: 'feature', name: 'The Technique Web', where: 'Anywhere (press P)', goal: 'Spend a technique point in the web (press P)', opens: (s) => ['warrior', 'archer'].includes(s.path) },
   bounty: { cat: 'repeat', name: 'Guild Bounties', where: 'The Guild\'s board, by the Telling Glass', goal: 'Take a bounty from the Guild\'s board: beasts to cull, for experience', opens: (s) => (s.xpq && s.xpq.path) || ['ambush', 'hunt', 'mourning', 'contracts', 'report', 'invitation', 'tower', 'wards', 'act2'].includes(s.stage) },
 };
 /** (1.0) The Guild's bounties: one at a time, a fresh three on the board each day (of the page's clock). */
@@ -169,28 +169,32 @@ export async function openingWolves(a, at) {
   const juniAt = { x: R.x - Math.cos(away) * 9 + 6, z: R.z - Math.sin(away) * 9 - 4 };
   a.actor('juni', juniAt.x, juniAt.z).face(R.x, R.z);
   a.watch(null);
-  a.camera([R.x - Math.cos(away) * 2 + 1.5, 2.0, R.z - Math.sin(away) * 2 + 1.5], [juniAt.x, 1.3, juniAt.z], 0.4);
+  a.camera([R.x - Math.cos(away) * 2 + 1.5, 2.0, R.z - Math.sin(away) * 2 + 1.5], [juniAt.x, 1.3, juniAt.z], 0.2); // (1.2.1) quicker: she shouts sooner now
   const shoot = (from, to, speed, kind) => { const d = Math.hypot(to.x - from.x, to.z - from.z) || 1; fx.shot({ x: from.x, z: from.z, dx: (to.x - from.x) / d, dz: (to.z - from.z) / d, speed, range: d, kind }); return d / speed; };
+  // (1.2.1) the other three come out of the trees with her, and Rowan and Sorrel are already running while Juni
+  // shouts (they used to appear only after her line, then go one at a time: a long, still wait)
+  a.actor('rowan', juniAt.x + 1.4, juniAt.z + 0.8);
+  a.draw('rowan'); // (0.99.25) drawn as he comes
+  a.actor('sorrel', juniAt.x + 1.8, juniAt.z - 0.8);
+  a.actor('ilse', juniAt.x + 0.8, juniAt.z - 1.4);
   shoot(juniAt, wolves[0], 70, 'arrow');
   await a.wait(0.35);
   fx.puff(wolves[0].x, wolves[0].z);
   a.remove('wolf1');
+  const rowanGo = a.walk('rowan', wolves[1].x + Math.cos(away) * 1.4, wolves[1].z + Math.sin(away) * 1.4, { run: true });
+  const sorrelGo = a.walk('sorrel', R.x - Math.cos(away) * 5, R.z - Math.sin(away) * 5 + 2, { run: true });
   await a.say('juni', 'Got one! Rowan, there\'s someone down here! A little one!');
-  a.actor('rowan', juniAt.x + 2, juniAt.z + 1);
-  a.draw('rowan'); // (0.99.25) drawn as he comes
-  a.actor('sorrel', juniAt.x + 3, juniAt.z - 1);
-  a.actor('ilse', juniAt.x + 1, juniAt.z - 1.5);
-  a.camera([R.x - Math.cos(away) * 6 + 3, 2.6, R.z - Math.sin(away) * 6 + 3], [R.x, 1, R.z], 1.2);
-  await a.walk('rowan', wolves[1].x + Math.cos(away) * 1.4, wolves[1].z + Math.sin(away) * 1.4, { run: true });
+  a.camera([R.x - Math.cos(away) * 6 + 3, 2.6, R.z - Math.sin(away) * 6 + 3], [R.x, 1, R.z], 0.8);
+  await rowanGo;
   a.actor('rowan').face(wolves[1].x, wolves[1].z);
   await a.anim('rowan', 'slash', { speed: 1.2 });
   fx.puff(wolves[1].x, wolves[1].z);
   a.remove('wolf2');
   a.sheathe('rowan'); // (0.99.25) put away as soon as it is done
-  await a.walk('sorrel', R.x - Math.cos(away) * 5, R.z - Math.sin(away) * 5 + 2);
+  await sorrelGo;
   a.actor('sorrel').face(wolves[2].x, wolves[2].z);
   a.anim('sorrel', 'cast');
-  await a.wait(0.5);
+  await a.wait(0.35);
   await a.wait(shoot(a.actor('sorrel'), wolves[2], 30, 'deadeye'));
   fx.ring(wolves[2].x, wolves[2].z, 2.2, 0xff8a3a, 0.5);
   await a.walk('wolf3', ...out(22, 2), { run: true, speed: 8 });
@@ -929,11 +933,11 @@ export async function deathScene(a) {
   v.face(me.x, me.z);
   for (const who of ['rowan', 'juni', 'sorrel']) a.loop(who, 'idle');
   await a.camera([me.x + 3, 1.6, me.z + 3], [v.x, 1.4, v.z], 0.5);
-  await a.say('vesper', 'Enough. I\'ve seen what you do alive. Let\'s see what you\'re made of.', { to: 'hero', cam: false });
+  await a.say('vesper', 'Enough. I\'ve seen what you can do alive. I\'ve decided: I\'ll kill you, and take the body with me.', { to: 'hero', cam: false });
   await a.say('vesper', 'Hold still. The body is all I need, and I\'d rather it in one piece.', { to: 'hero', cam: false });
   a.anim('vesper', 'cast', { hold: true });
   fx.ring(v.x, v.z, 0.8, 0x1a0a2a, 0.6);
-  await a.say('', 'Black light gathers in his hand, narrow as a needle, aimed at your heart. It isn\'t meant to stop you. It\'s meant to kill you.', { auto: 2.6 });
+  await a.say('', 'Black light gathers in his hand, narrow as a needle, aimed at your heart. He means it.', { auto: 2.6 });
   // Ilse runs between them
   const mid = { x: me.x + (v.x - me.x) * 0.25, z: me.z + (v.z - me.z) * 0.25 };
   await a.walk('ilse', mid.x, mid.z, { run: true });
@@ -1018,7 +1022,7 @@ export async function afterScene(a) {
   a.anim('vesper', 'die', { hold: true });
   await a.camera([v.x + 2.6, 1.2, v.z + 2.2], [v.x, 0.5, v.z], 0.5);
   a.fog(0.2, 1.2);
-  await a.say('vesper', '...So small.', { auto: 1.6, cam: false });
+  await a.say('vesper', '...Not yet. I can\'t... not when I was so close...', { auto: 2.2, cam: false });
   await a.wait(0.6);
   fx.puff(v.x, v.z, 0x6a6470);
   a.remove('vesper');
@@ -1074,8 +1078,8 @@ export async function thessalyScene(a) {
   a.talkCam(true);
   await a.say('rowan', 'Training ground\'s closed.', { to: 'thessaly' });
   await a.say('thessaly', 'I won\'t keep you long. My name is Thessaly. I\'m with the Ninth Hand.', { to: 'rowan' });
-  await a.say('juni', 'There\'s no such thing as the Ninth Hand. Everyone knows that.', { to: 'thessaly' });
-  await a.say('thessaly', 'Good. That\'s rather the idea.', { to: 'juni' });
+  await a.say('juni', 'The Ninth Hand? That\'s a myth. A story they tell new recruits. Everyone knows that.', { to: 'thessaly' });
+  await a.say('thessaly', 'Good. That\'s what we want everyone to think.', { to: 'juni' });
   await a.say('thessaly', 'The man in the Wakewood. We believe his name was Vesper Ashgrave. We think he was an officer of the Unbound, and not a junior one. A captain, perhaps. Possibly higher.', { to: 'hero' });
   await a.say('sorrel', 'You believe. You think. You don\'t sound very sure of anything.', { to: 'thessaly' });
   await a.say('thessaly', 'We aren\'t. The Unbound leave very little behind. Ash, mostly.', { to: 'sorrel' });
@@ -1092,7 +1096,7 @@ export async function thessalyScene(a) {
   await a.wait(1.2);
   await a.camera([R.x + 4, 2.2, R.z - 4], [T.x, 1.1, T.z], 0.8);
   await a.say('', 'When you look up, she is gone. Nobody saw her go.');
-  await a.say('juni', '...I still say there\'s no such thing.', { to: 'rowan' });
+  await a.say('juni', '...I still say they\'re a myth.', { to: 'rowan' });
   await a.say('rowan', 'Then it\'s nothing. Keep it somewhere safe anyway, Sprout.', { to: 'hero' });
   a.talkCam(false);
   a.quiet();
@@ -1388,7 +1392,7 @@ export async function circleScene(a) {
     'End of Act I: The Boy from the Tear.',
     'He came through a wound in the world with nothing but a white keep in his memory and a fog where the rest should be.',
     'He found a family. He lost one of them. Something on the far side of the world has learned his face.',
-    'Act II is coming. Until then: the Guild\'s bounties, the tricks, the talent web, and the land, which is larger than it looks.',
+    'Act II is coming. Until then: the Guild\'s bounties, the tricks, the technique web, and the land, which is larger than it looks.',
   ], { hold: 4 });
   a.bars(false);
 }

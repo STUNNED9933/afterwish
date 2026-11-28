@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import { Land, LAND, CHUNKS, TOWN, chunkOf, groundAt } from '../src/lacuna/land.js';
 import { LandWorld, TICK, WAKE } from '../src/lacuna/sim.js';
-import { Interest, apply, SEE, SEND_HZ, PLAYER_ID } from '../src/lacuna/net.js';
+import { Interest, apply, decode, SEE, SEND_HZ, PLAYER_ID } from '../src/lacuna/net.js';
 import { streets } from '../src/lacuna/crowd.js';
 import { makeRng } from '../src/sim/rng.js';
 
@@ -71,8 +71,23 @@ const strip = (c) => JSON.stringify(c, (k, v) => (k === '_s' ? undefined : v));
   for (let s = 0; s < 30 * 4; s++) w.step(TICK);
   check('...and swipes when it reaches you', w.events.some((e) => e.type === 'swipe'));
   w.input(1, { mx: -Math.sign(wolf.x) || 1, mz: 0, pace: 'sprint' });
-  for (let s = 0; s < 30 * 12; s++) w.step(TICK);
+  for (let s = 0; s < 30 * 20; s++) w.step(TICK); // (1.2.1) 20 s: it runs out of patience over 6 s once past its leash
   check('...run and it gives up (goes home, or falls asleep once you are past ' + WAKE + ' m)', wolf.state !== 'chase' || !wolf.awake, `${wolf.state} awake=${wolf.awake}`);
+  // (1.2.1) patience: pulled at the edge of its ground, it does not reset at once; it gives up only after a while
+  {
+    const w2 = new LandWorld(), me2 = w2.addPlayer(1);
+    const wf = w2.beasts.find((b) => b.type === 'wolf' && !b.gone && !b.rank && Math.hypot(b.x, b.z) > 150);
+    me2.x = wf.hx + 40; me2.z = wf.hz; wf.x = wf.hx + 28; wf.z = wf.hz; // near the end of its leash (30) from home
+    for (let s = 0; s < 30 * 1; s++) w2.step(TICK);
+    w2.hurt(wf, me2, 1); // shot from 12 m
+    for (let s = 0; s < 30 * 2; s++) w2.step(TICK);
+    check('Patience (1.2.1): a wolf pulled at the edge of its ground still comes for you (it used to turn for home at once)', wf.state === 'chase', wf.state);
+    w2.input(1, { mx: 1, mz: 0, pace: 'sprint' });
+    let lowest = 1, gaveUp = -1;
+    for (let s = 0; s < 30 * 30 && gaveUp < 0; s++) { w2.step(TICK); if (wf.state === 'chase') lowest = Math.min(lowest, wf.pat); else gaveUp = s / 30; }
+    check('...run, and its patience runs down before it gives up (not all at once)', lowest < 0.5 && gaveUp > 2, `lowest ${lowest.toFixed(2)}, gave up after ${gaveUp} s`);
+    check('...and the wire carries it (a 10-byte update with patience)', (() => { const it = new Interest(1); wf.state = 'chase'; wf.pat = 0.5; const m = decode(it.delta(w2)); const u = m.ups.find((x) => x.id === wf.id); return u && Math.abs(u.pat - 0.5) < 0.05; })());
+  }
 }
 
 // ---- cost: nine players spread over the land

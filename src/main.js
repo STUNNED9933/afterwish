@@ -6300,6 +6300,7 @@ function start(hot = {}) {
         if (mode === 'play') {
           sfx.ui();
           travelStone = ev.index;
+          travelGate = null; // (1.1.3) not still the Verge's crossing from before: that showed the Way Up's 'shut' page at every waystone since
           setMode('travel');
         }
         break;

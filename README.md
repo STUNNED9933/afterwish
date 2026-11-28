@@ -160,6 +160,10 @@ single frame, a few times a second. It now eases into place. Measured on a test 
 went from 120% speed wobble with a jump in 1 frame of 36, to 20% and almost none. Each update's glide
 also keeps its own beat instead of the frame that noticed it.
 
+### Fix: waystones after the Verge (1.1.3)
+
+- **Fixed: after using a crossing on the Verge (the Way Up or the Way Down), every waystone opened that crossing's page instead of its own** ("The way up is shut to you", with nowhere to go, even in Caelum). A waystone now always shows its own places.
+
 ### Lacuna: beasts strike properly, and you can see it coming (1.1.2)
 
 - **Every beast now has an attack animation, with a wind-up before each blow.** Golems raise both fists and smash; ash-thralls swing; acolytes cast; wolves and thornhogs draw back, then lunge. The wind-up lasts 0.4 s, and **stepping out of reach during it makes the blow miss**, so you can now dodge by reading the beast as well as by rolling.

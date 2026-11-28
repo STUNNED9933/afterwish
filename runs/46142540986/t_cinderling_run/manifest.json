@@ -1,0 +1,38 @@
+{
+  "id": "t_cinderling_run",
+  "prompt": "(a run for the Cinderling, on its existing rig). stylised-realistic fantasy game character, full body, clean readable silhouette, hand-painted PBR-style textures",
+  "started": "2026-11-28T12:00:56.976Z",
+  "creditsBefore": 1235,
+  "steps": {
+    "model": {
+      "result": {}
+    },
+    "animations": [
+      {
+        "task": "b08dd9f4-fff1-43c5-8024-ed6af339893f",
+        "presets": [
+          "preset:biped:run"
+        ],
+        "result": {
+          "task_id": "b08dd9f4-fff1-43c5-8024-ed6af339893f",
+          "type": "animate_retarget",
+          "status": "success",
+          "credits_consumed": 10,
+          "output_dir": "out/models/t_cinderling_run/4-anim-1/tripo-out/retarget-b08dd9f4",
+          "files": [
+            "model.glb"
+          ],
+          "model_file": "out/models/t_cinderling_run/4-anim-1/tripo-out/retarget-b08dd9f4/model.glb"
+        }
+      }
+    ]
+  },
+  "creditsAfter": 1225,
+  "creditsUsed": 10,
+  "finished": "2026-11-28T12:01:04.737Z",
+  "files": [
+    "4-anim-1/tripo-out/retarget-b08dd9f4/model.glb",
+    "4-anim-1/tripo-out/retarget-b08dd9f4/task.json",
+    "manifest.json"
+  ]
+}

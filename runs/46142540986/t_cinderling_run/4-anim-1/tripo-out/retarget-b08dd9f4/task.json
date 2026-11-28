@@ -1,0 +1,20 @@
+{
+  "task_id": "b08dd9f4-fff1-43c5-8024-ed6af339893f",
+  "type": "animate_retarget",
+  "status": "success",
+  "input": {
+    "animation": "preset:biped:run",
+    "out_format": "glb",
+    "animate_in_place": true,
+    "original_model_id": "a1afa7ce-4a28-4457-9f67-a999025bb69c"
+  },
+  "output_fields": [
+    "model_url"
+  ],
+  "credits_consumed": 10,
+  "created_at": "2026-11-28T12:00:57.989673Z",
+  "completed_at": "2026-11-28T12:01:02.254707Z",
+  "files": [
+    "model.glb"
+  ]
+}
